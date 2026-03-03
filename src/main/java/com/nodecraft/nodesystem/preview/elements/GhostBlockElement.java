@@ -185,7 +185,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
     private void renderOriginalTexture(MatrixStack matrices, Camera camera, World world, float opacity) {
         MinecraftClient client = MinecraftClient.getInstance();
         BlockRenderManager blockRenderManager = client.getBlockRenderManager();
-        Vec3d cameraPos = camera.getFocusedEntity() != null ? camera.getFocusedEntity().getPos() : camera.getBlockPos().toCenterPos();
+        Vec3d cameraPos = camera.getBlockPos().toCenterPos();
         
         // 在循环外获取一次最大渲染距离，避免重复调用
         float maxRenderDistance = PreviewRenderer.getInstance().getSettings().maxRenderDistance;
@@ -235,13 +235,13 @@ public class GhostBlockElement extends AbstractPreviewElement {
                 b = Math.min(1.0f, b * tintColor.z());
 
                 // 使用 Tessellator 渲染带颜色的立方体
-                BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+                BufferBuilder buffer = tessellator.begin(com.mojang.blaze3d.vertex.VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
                 Matrix4f matrix = matrices.peek().getPositionMatrix();
                 
                 // 渲染立方体的6个面，使用方块的原始颜色
                 renderCubeFaces(buffer, matrix, 0, 0, 0, r, g, b, opacity);
                 
-                BufferRenderer.drawWithGlobalProgram(buffer.end());
+                buffer.end();
                 
             } catch (Exception e) {
                 NodeCraft.LOGGER.warn("渲染幽灵方块失败: {}, 位置: {}", blockData.blockId, blockPos, e);
@@ -262,16 +262,15 @@ public class GhostBlockElement extends AbstractPreviewElement {
      * - 此方法特有状态：disableCull（禁用面剔除以确保所有面都可见）
      */
     private void renderSolidColor(MatrixStack matrices, Camera camera, float opacity) {
-        Vec3d cameraPos = camera.getFocusedEntity() != null ? camera.getFocusedEntity().getPos() : camera.getBlockPos().toCenterPos();
+        Vec3d cameraPos = camera.getBlockPos().toCenterPos();
         
         // 在循环外获取一次最大渲染距离，避免重复调用
         float maxRenderDistance = PreviewRenderer.getInstance().getSettings().maxRenderDistance;
         
         // 设置此方法特有的渲染状态
-        RenderSystem.disableCull(); // 禁用面剔除，确保所有面都可见
         
         Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+        BufferBuilder buffer = tessellator.begin(com.mojang.blaze3d.vertex.VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         
         float r = tintColor.x();
@@ -301,12 +300,9 @@ public class GhostBlockElement extends AbstractPreviewElement {
         }
         
         try {
-            BufferRenderer.drawWithGlobalProgram(buffer.end());
+            buffer.end();
         } catch (Exception e) {
             NodeCraft.LOGGER.error("渲染纯色幽灵方块失败", e);
-        } finally {
-            // 恢复此方法修改的特有状态
-            RenderSystem.enableCull();
         }
     }
     
@@ -318,17 +314,15 @@ public class GhostBlockElement extends AbstractPreviewElement {
      * - 此方法特有状态：lineWidth（线宽）和 disableCull（禁用面剔除）
      */
     private void renderWireframe(MatrixStack matrices, Camera camera, float opacity) {
-        Vec3d cameraPos = camera.getFocusedEntity() != null ? camera.getFocusedEntity().getPos() : camera.getBlockPos().toCenterPos();
+        Vec3d cameraPos = camera.getBlockPos().toCenterPos();
         
         // 在循环外获取一次最大渲染距离，避免重复调用
         float maxRenderDistance = PreviewRenderer.getInstance().getSettings().maxRenderDistance;
         
         // 设置此方法特有的渲染状态
-        RenderSystem.lineWidth(2.0f); // 设置线宽
-        RenderSystem.disableCull();   // 禁用面剔除，确保所有线都可见
         
         Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.LINES, VertexFormats.POSITION_COLOR);
+        BufferBuilder buffer = tessellator.begin(com.mojang.blaze3d.vertex.VertexFormat.DrawMode.LINES, VertexFormats.POSITION_COLOR);
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         
         float r = tintColor.x();
@@ -377,13 +371,9 @@ public class GhostBlockElement extends AbstractPreviewElement {
         }
         
         try {
-            BufferRenderer.drawWithGlobalProgram(buffer.end());
+            buffer.end();
         } catch (Exception e) {
             NodeCraft.LOGGER.error("渲染线框幽灵方块失败", e);
-        } finally {
-            // 恢复此方法修改的特有状态
-            RenderSystem.lineWidth(1.0f); // 恢复默认线宽
-            RenderSystem.enableCull();    // 恢复面剔除
         }
     }
     
@@ -465,7 +455,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
         }
         
         // 检查距离 - 在循环外获取一次最大渲染距离
-        Vec3d cameraPos = camera.getFocusedEntity() != null ? camera.getFocusedEntity().getPos() : camera.getBlockPos().toCenterPos();
+        Vec3d cameraPos = camera.getBlockPos().toCenterPos();
         float maxDistance = PreviewRenderer.getInstance().getSettings().maxRenderDistance;
         
         for (BlockData block : blocks) {

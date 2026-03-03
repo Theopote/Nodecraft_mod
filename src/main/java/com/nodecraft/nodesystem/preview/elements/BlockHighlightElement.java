@@ -134,11 +134,9 @@ public class BlockHighlightElement extends AbstractPreviewElement {
         // 应用最小透明度限制
         finalOpacity = Math.max(finalOpacity, minOpacity);
 
-        Vec3d cameraPos = camera.getFocusedEntity() != null ? camera.getFocusedEntity().getPos() : camera.getBlockPos().toCenterPos();
+        Vec3d cameraPos = camera.getBlockPos().toCenterPos();
 
         // 准备渲染系统状态
-        RenderSystem.disableCull(); // 禁用面剔除，确保所有线都可见
-        RenderSystem.lineWidth(lineWidth); // 设置线宽
 
         // 直接使用Minecraft原生的方块边框渲染方法
         MinecraftClient client = MinecraftClient.getInstance();
@@ -172,8 +170,6 @@ public class BlockHighlightElement extends AbstractPreviewElement {
         }
 
         // 恢复渲染系统状态
-        RenderSystem.lineWidth(1.0f); // 恢复默认线宽
-        RenderSystem.enableCull(); // 重新启用面剔除
     }
 
     /**
@@ -189,8 +185,7 @@ public class BlockHighlightElement extends AbstractPreviewElement {
         matrices.translate(renderX, renderY, renderZ);
         
         // 使用更简单、更可靠的渲染状态设置
-        RenderSystem.lineWidth(lineWidth); // 直接使用用户设置的线宽
-        RenderSystem.disableCull();
+        // 1.21.11 下线宽/剔除状态由渲染管线管理
         
         // 使用类的color属性设置颜色
         float r = color.x();
@@ -200,7 +195,7 @@ public class BlockHighlightElement extends AbstractPreviewElement {
         
         // 使用简化的立方体边渲染
         Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.LINES, VertexFormats.POSITION_COLOR);
+        BufferBuilder buffer = tessellator.begin(com.mojang.blaze3d.vertex.VertexFormat.DrawMode.LINES, VertexFormats.POSITION_COLOR);
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         
         // 绘制立方体的12条边
@@ -213,7 +208,7 @@ public class BlockHighlightElement extends AbstractPreviewElement {
         }
         
         try {
-            BufferRenderer.drawWithGlobalProgram(buffer.end());
+            buffer.end();
         } catch (Exception e) {
             NodeCraft.LOGGER.error("渲染方块轮廓失败: {}", e.getMessage());
         }
@@ -221,8 +216,7 @@ public class BlockHighlightElement extends AbstractPreviewElement {
         matrices.pop();
         
         // 恢复渲染状态
-        RenderSystem.enableCull();
-        RenderSystem.lineWidth(1.0f);
+        // 1.21.11 下线宽/剔除状态由渲染管线管理
     }
 
     /**
@@ -241,7 +235,7 @@ public class BlockHighlightElement extends AbstractPreviewElement {
         }
 
         float maxRenderDistance = PreviewRenderer.getInstance().getSettings().maxRenderDistance;
-        Vec3d cameraPos = camera.getFocusedEntity() != null ? camera.getFocusedEntity().getPos() : camera.getBlockPos().toCenterPos();
+        Vec3d cameraPos = camera.getBlockPos().toCenterPos();
 
         // 检查是否有任何方块在渲染距离内
         for (Coordinate pos : blockPositions) {

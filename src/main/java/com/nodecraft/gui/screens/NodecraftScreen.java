@@ -20,6 +20,8 @@ import org.lwjgl.glfw.GLFW;
 
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.input.CharInput;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 import net.minecraft.client.MinecraftClient;
@@ -399,7 +401,10 @@ public boolean isImGuiWantCaptureMouse() {
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(KeyInput keyInput) {
+        int keyCode = keyInput.key();
+        int scanCode = keyInput.scancode();
+        int modifiers = keyInput.modifiers();
         // 如果渲染器未初始化，只允许 ESC 键工作
         if (closeRequested && !initialized) {
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
@@ -410,7 +415,7 @@ public boolean isImGuiWantCaptureMouse() {
         }
         
         if (!initialized) {
-            return super.keyPressed(keyCode, scanCode, modifiers);
+            return super.keyPressed(keyInput);
         }
         
         // 委托给 inputHandler
@@ -418,9 +423,12 @@ public boolean isImGuiWantCaptureMouse() {
     }
 
     @Override
-    public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
+    public boolean keyReleased(KeyInput keyInput) {
+        int keyCode = keyInput.key();
+        int scanCode = keyInput.scancode();
+        int modifiers = keyInput.modifiers();
         if (!initialized) {
-            return super.keyReleased(keyCode, scanCode, modifiers);
+            return super.keyReleased(keyInput);
         }
         
         // 委托给 inputHandler
@@ -428,16 +436,21 @@ public boolean isImGuiWantCaptureMouse() {
     }
 
     @Override
-    public boolean charTyped(char codePoint, int modifiers) {
+    public boolean charTyped(CharInput charInput) {
+        char codePoint = (char) charInput.codepoint();
+        int modifiers = charInput.modifiers();
         if (!initialized) {
-            return super.charTyped(codePoint, modifiers);
+            return super.charTyped(charInput);
         }
         // 只要 ImGui 想要捕获键盘事件，就阻止事件向下传递
         boolean wantCapture = ImGui.getIO() != null && ImGui.getIO().getWantCaptureKeyboard();
         if (wantCapture) {
             return true;
         }
-        return super.charTyped(codePoint, modifiers);
+        if (inputHandler.handleCharTyped(codePoint, modifiers)) {
+            return true;
+        }
+        return super.charTyped(charInput);
     }
 
     @Override

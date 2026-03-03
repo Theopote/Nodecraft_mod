@@ -3,6 +3,7 @@ package com.nodecraft.mixin;
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.screens.NodecraftScreen;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.client.gui.screen.Screen;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
@@ -52,8 +53,10 @@ public class ScreenMixin {
     }
     
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
-    private void onKeyPressed(int keyCode, int scanCode, int modifiers, CallbackInfoReturnable<Boolean> cir) {
+    private void onKeyPressed(KeyInput keyInput, CallbackInfoReturnable<Boolean> cir) {
         if ((Object) this instanceof NodecraftScreen screen) {
+            int keyCode = keyInput.key();
+            int scanCode = keyInput.scancode();
 
             if (keyCode == GLFW.GLFW_KEY_ESCAPE || scanCode == GLFW.GLFW_KEY_ESCAPE) {
                 NodeCraft.LOGGER.info("ESC键被按下，关闭Nodecraft窗口");

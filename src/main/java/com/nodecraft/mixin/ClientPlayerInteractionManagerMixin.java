@@ -42,7 +42,7 @@ public class ClientPlayerInteractionManagerMixin {
         if (client.currentScreen instanceof NodecraftScreen) {
             // 在"幽灵相机"模式下，游戏原生的hitResult就是我们需要的，无需自定义射线检测。
             BlockPos pos = hitResult.getBlockPos();
-            double distance = player.getPos().distanceTo(pos.toCenterPos());
+            double distance = player.getEyePos().distanceTo(pos.toCenterPos());
             
             if (distance <= MAX_INTERACTION_DISTANCE) {
                 MinecraftClientController controller = MinecraftClientController.getInstance();

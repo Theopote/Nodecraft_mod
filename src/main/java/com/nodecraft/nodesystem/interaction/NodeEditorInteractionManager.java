@@ -692,12 +692,12 @@ public class NodeEditorInteractionManager {
     public Ray getRayFromMouse(float mouseX, float mouseY) {
         try {
             MinecraftClient client = MinecraftClient.getInstance();
-            if (client.world == null || client.cameraEntity == null || client.getWindow() == null) {
+            if (client.world == null || client.getCameraEntity() == null || client.getWindow() == null) {
                 return null;
             }
             
             Camera camera = client.gameRenderer.getCamera();
-            Vec3d cameraPos = camera.getFocusedEntity() != null ? camera.getFocusedEntity().getPos() : camera.getBlockPos().toCenterPos();
+            Vec3d cameraPos = camera.getBlockPos().toCenterPos();
             
             // 获取窗口尺寸
             int windowWidth = client.getWindow().getWidth();
@@ -748,12 +748,12 @@ public class NodeEditorInteractionManager {
     private Ray getFallbackRayFromMouse(float mouseX, float mouseY) {
         try {
             MinecraftClient client = MinecraftClient.getInstance();
-            if (client.world == null || client.cameraEntity == null) {
+            if (client.world == null || client.getCameraEntity() == null) {
                 return null;
             }
             
             Camera camera = client.gameRenderer.getCamera();
-            Vec3d cameraPos = camera.getFocusedEntity() != null ? camera.getFocusedEntity().getPos() : camera.getBlockPos().toCenterPos();
+            Vec3d cameraPos = camera.getBlockPos().toCenterPos();
             
             // 使用屏幕中心的方向作为备用
             Vec3d direction = Vec3d.fromPolar(camera.getPitch(), camera.getYaw()).normalize();
@@ -879,7 +879,7 @@ public class NodeEditorInteractionManager {
      */
     private Matrix4f createViewMatrix(Camera camera) {
         try {
-            Vec3d cameraPos = camera.getFocusedEntity() != null ? camera.getFocusedEntity().getPos() : camera.getBlockPos().toCenterPos();
+            Vec3d cameraPos = camera.getBlockPos().toCenterPos();
             float pitch = camera.getPitch();
             float yaw = camera.getYaw();
             
@@ -984,7 +984,7 @@ public class NodeEditorInteractionManager {
     private BlockHitResult pickBlockWithRay(Ray ray) {
         try {
             MinecraftClient client = MinecraftClient.getInstance();
-            if (client.world == null || client.cameraEntity == null || ray == null) {
+            if (client.world == null || client.getCameraEntity() == null || ray == null) {
                 return null;
             }
             
@@ -998,7 +998,7 @@ public class NodeEditorInteractionManager {
                 endPos, 
                 RaycastContext.ShapeType.OUTLINE, // 只检测方块轮廓
                 RaycastContext.FluidHandling.NONE, // 不检测流体
-                client.cameraEntity
+                client.getCameraEntity()
             );
             
             // 进行射线投射
@@ -1032,7 +1032,7 @@ public class NodeEditorInteractionManager {
     private Ray getCachedOrComputeRay(float mouseX, float mouseY) {
         try {
             MinecraftClient client = MinecraftClient.getInstance();
-            if (client.world == null || client.cameraEntity == null) {
+            if (client.world == null || client.getCameraEntity() == null) {
                 // 清除缓存
                 invalidateRayCache();
                 return null;

@@ -4,6 +4,7 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.screens.NodecraftScreen;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.Mouse;
+import net.minecraft.client.input.MouseInput;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -22,8 +23,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(Mouse.class)
 public class MouseHandlerMixin {
-
-    @Shadow @Final private MinecraftClient client;
+    @Shadow
+    @Final
+    private MinecraftClient client;
     
     @Unique
     private boolean isMiddleMouseButtonPressed = false;
@@ -127,8 +129,9 @@ public class MouseHandlerMixin {
      * 监听鼠标按钮事件，跟踪中键状态。
      */
     @Inject(method = "onMouseButton", at = @At("HEAD"), cancellable = true)
-    private void onMouseButton(long window, int button, int action, int mods, CallbackInfo ci) {
+    private void onMouseButton(long window, MouseInput mouseInput, int action, CallbackInfo ci) {
         if (this.client.currentScreen instanceof NodecraftScreen screen) {
+            int button = mouseInput.button();
             
             // 中键处理（用于控制视角）
             if (button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE) {

@@ -115,7 +115,7 @@ public class RegionBoxElement extends AbstractPreviewElement {
         }
         
         // 检查距离
-        Vec3d cameraPos = camera.getFocusedEntity() != null ? camera.getFocusedEntity().getPos() : camera.getBlockPos().toCenterPos();
+        Vec3d cameraPos = camera.getBlockPos().toCenterPos();
         float maxDistance = PreviewRenderer.getInstance().getSettings().maxRenderDistance;
         
         for (BoundingBox region : regions) {
