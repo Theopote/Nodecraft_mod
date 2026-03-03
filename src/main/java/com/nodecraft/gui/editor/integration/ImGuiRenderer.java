@@ -31,6 +31,7 @@ public class ImGuiRenderer {
     private final ImGuiImplGlfw imGuiGlfw = new ImGuiImplGlfw();
     private final ImGuiImplGl3 imGuiGl3 = new ImGuiImplGl3();
     private boolean initialized = false;
+    private boolean drawDataReady = false;
     
     // 依赖的管理器实例，通常在更高层级初始化并传递，但此处保持单例获取
     private final WindowManager windowManager = WindowManager.getInstance();
@@ -314,26 +315,40 @@ public class ImGuiRenderer {
         try {
             closeDetector.onFrameEnd(); // 在帧结束时调用关闭检测器
             
-            ImGui.render(); // 生成绘制数据
-            imGuiGl3.renderDrawData(ImGui.getDrawData()); // 使用 OpenGL3 后端渲染数据
-            
-            // 处理多窗口渲染 (ViewportsEnable)
-            if (ImGui.getIO().hasConfigFlags(ImGuiConfigFlags.ViewportsEnable)) {
-                // 保存当前 OpenGL 上下文，切换到 ImGui 平台窗口上下文进行渲染，再恢复。
-                final long backupCurrentContext = GLFW.glfwGetCurrentContext();
-                ImGui.updatePlatformWindows(); // 更新所有平台窗口状态 (如大小，位置)
-                ImGui.renderPlatformWindowsDefault(); // 渲染所有平台窗口
-                GLFW.glfwMakeContextCurrent(backupCurrentContext); // 恢复主窗口上下文
-                
-                // 在多窗口渲染后，确保窗口层级正确 (依赖于 WindowManager 的实现)
-                ensureWindowLayering();
-            }
+            ImGui.render();
+            drawDataReady = true;
             
             // 更新窗口层级 (如果 WindowHandler 有额外的层级管理逻辑)
             windowHandler.updateWindowLayering();
             
         } catch (Exception e) {
             NodeCraft.LOGGER.error("结束ImGui帧时出错", e);
+        }
+    }
+
+    public boolean hasPendingDrawData() {
+        return initialized && drawDataReady;
+    }
+
+    public void renderPendingDrawData() {
+        if (!initialized || !drawDataReady) {
+            return;
+        }
+
+        try {
+            imGuiGl3.renderDrawData(ImGui.getDrawData());
+
+            if (ImGui.getIO().hasConfigFlags(ImGuiConfigFlags.ViewportsEnable)) {
+                final long backupCurrentContext = GLFW.glfwGetCurrentContext();
+                ImGui.updatePlatformWindows();
+                ImGui.renderPlatformWindowsDefault();
+                GLFW.glfwMakeContextCurrent(backupCurrentContext);
+                ensureWindowLayering();
+            }
+        } catch (Exception e) {
+            NodeCraft.LOGGER.error("渲染待提交ImGui数据时出错", e);
+        } finally {
+            drawDataReady = false;
         }
     }
     

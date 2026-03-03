@@ -11,6 +11,7 @@
     "MouseCursorMixin",
     "MouseHandlerMixin",
     "NodecraftScreenMixin",
+    "RenderSystemMixin",
     "ScreenMixin"
   ],
   "injectors": {
