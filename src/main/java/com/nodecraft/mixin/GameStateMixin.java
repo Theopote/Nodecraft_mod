@@ -6,7 +6,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.client.gui.screen.DisconnectedScreen;
-import net.minecraft.client.gui.screen.DownloadingTerrainScreen;
 import net.minecraft.client.gui.screen.multiplayer.ConnectScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -57,8 +56,7 @@ public class GameStateMixin {
             // 检查是否切换到了表示离开游戏世界的屏幕
             if (screen instanceof TitleScreen || 
                 screen instanceof DisconnectedScreen ||
-                screen instanceof ConnectScreen ||
-                screen instanceof DownloadingTerrainScreen) {
+                screen instanceof ConnectScreen) {
                 
                 NodeCraft.LOGGER.info("检测到游戏状态切换到: {}, 清理NodeCraft状态", 
                     screen.getClass().getSimpleName());

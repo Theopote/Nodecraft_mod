@@ -11,19 +11,14 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
-import net.fabricmc.fabric.api.client.rendering.v1.HudLayerRegistrationCallback;
-import net.fabricmc.fabric.api.client.rendering.v1.IdentifiedLayer;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.Identifier;
-import com.nodecraft.gui.screens.NodecraftScreen;
 import org.lwjgl.glfw.GLFW;
 
 public class NodeCraftClient implements ClientModInitializer {
     
     private static KeyBinding openNodeEditorKey;
-    private static final Identifier IMGUI_LAYER = Identifier.of("nodecraft", "imgui_layer");
     
     @Override
     public void onInitializeClient() {
@@ -110,14 +105,6 @@ public class NodeCraftClient implements ClientModInitializer {
                 }
             });
             
-            // 注册HUD渲染层 - 使用新的HudLayerRegistrationCallback API
-            HudLayerRegistrationCallback.EVENT.register(layeredDrawer -> {
-                // 将ImGui渲染层添加到顶层（在聊天上方）
-                layeredDrawer.attachLayerBefore(IdentifiedLayer.CHAT, IMGUI_LAYER, (drawContext, renderTickCounter) -> {
-                    // 不再需要在这里渲染 ImGuiNodeEditor
-                });
-            });
-            
             NodeCraft.LOGGER.info("ImGui注册初始化完成");
         } catch (Exception e) {
             NodeCraft.LOGGER.error("ImGui初始化过程中发生错误", e);
@@ -148,11 +135,6 @@ public class NodeCraftClient implements ClientModInitializer {
         
         // 初始化预览渲染处理器
         com.nodecraft.nodesystem.preview.PreviewRenderHandler.initialize();
-        
-        // 注册渲染回调
-        WorldRenderEvents.END.register(context -> {
-            // 在这里我们可以渲染预览几何体等
-        });
     }
     
     private void registerKeyBindings() {
@@ -161,7 +143,7 @@ public class NodeCraftClient implements ClientModInitializer {
                 "key.nodecraft.open_editor",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_N,
-                "category.nodecraft.general"
+            KeyBinding.Category.create(Identifier.of("nodecraft", "general"))
         ));
         
         // 添加按键监听

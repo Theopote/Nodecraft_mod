@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.preview.elements;
 
+import com.mojang.blaze3d.vertex.VertexFormat;
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.preview.AbstractPreviewElement;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
@@ -17,7 +18,6 @@ import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.random.Random;
 import net.minecraft.world.World;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
