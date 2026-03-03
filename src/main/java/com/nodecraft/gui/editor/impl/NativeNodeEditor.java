@@ -127,16 +127,16 @@ public class NativeNodeEditor implements INodeEditor {
         handleMouseInput(mouseX, mouseY, client.mouse.wasLeftButtonClicked(), client.mouse.wasRightButtonClicked());
 
         // --- 渲染变换 ---
-        context.getMatrices().push();
-        context.getMatrices().translate(canvasX, canvasY, 0);
-        context.getMatrices().scale(canvasScale, canvasScale, 1.0f);
+        context.getMatrices().pushMatrix();
+        context.getMatrices().translate(canvasX, canvasY);
+        context.getMatrices().scale(canvasScale, canvasScale);
 
         // --- 渲染元素 ---
         renderGrid(context, currentScreen.width, currentScreen.height);
         renderConnections(context);
         renderNodes(context, mouseX, mouseY); // 传入原始鼠标坐标以便计算悬停
 
-        context.getMatrices().pop();
+        context.getMatrices().popMatrix();
 
         // --- 渲染UI元素（不受画布变换影响） ---
         renderUI(context, mouseX, mouseY, currentScreen.width, currentScreen.height);
@@ -305,7 +305,7 @@ public class NativeNodeEditor implements INodeEditor {
 
         // 绘制节点背景和边框
         context.fill(node.x, node.y, node.x + node.width, node.y + node.height, backgroundColor);
-        context.drawBorder(node.x, node.y, node.width, node.height, borderColor);
+        context.drawStrokedRectangle(node.x, node.y, node.width, node.height, borderColor);
 
         // 绘制节点标题
         int titleColor = 0xFFFFFFFF;

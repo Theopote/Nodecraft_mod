@@ -262,14 +262,13 @@ private boolean isMouseOverImGuiForInteraction(com.nodecraft.nodesystem.interact
             // 如果 WantCaptureMouse 为 true，进行更保守的判断
             // 检查鼠标是否在窗口的边缘区域（可能是在拖拽或调整大小）
             float edgeThreshold = 10.0f; // 边缘阈值
-            boolean nearEdge = (mouseX <= windowX + edgeThreshold || 
-                               mouseX >= windowX + windowWidth - edgeThreshold ||
-                               mouseY <= windowY + edgeThreshold || 
-                               mouseY >= windowY + windowHeight - edgeThreshold);
-            
+
             // 如果在边缘区域，可能是窗口操作，保持UI捕获
             // 如果不在边缘，在交互模式下倾向于世界交互
-            return nearEdge;
+            return (mouseX <= windowX + edgeThreshold ||
+                               mouseX >= windowX + windowWidth - edgeThreshold ||
+                               mouseY <= windowY + edgeThreshold ||
+                               mouseY >= windowY + windowHeight - edgeThreshold);
             
         } else {
             // 非交互模式下，使用标准的检测逻辑
