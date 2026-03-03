@@ -6,6 +6,7 @@ import com.nodecraft.core.event.EditorUIEvent;
 import com.nodecraft.gui.editor.NodeEditorFactory;
 import com.nodecraft.gui.editor.base.INodeEditor;
 import com.nodecraft.gui.layout.StandardLayoutManager;
+import com.nodecraft.gui.window.ViewportCloseDetector;
 import com.nodecraft.minecraft.client.GhostCameraManager;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
@@ -28,6 +29,9 @@ public class NodecraftLifecycleManager {
      */
     public void initialize() throws Exception {
         NodeCraft.LOGGER.info("开始初始化NodeCraft编辑器...");
+
+        // 重置窗口关闭检测器状态，避免历史关闭标志影响重新打开
+        ViewportCloseDetector.getInstance().reset();
         
         // 启用幽灵相机模式
         ghostCameraManager.enable();

@@ -95,6 +95,13 @@ public class NodecraftWindowRenderer {
         float minVisibleWidth = 320.0f;
         float minVisibleHeight = 180.0f;
 
+        if (!viewportsEnabled) {
+            parentScreen.windowX = 0.0f;
+            parentScreen.windowY = 0.0f;
+            parentScreen.windowWidth = screenWidth;
+            parentScreen.windowHeight = screenHeight;
+        }
+
         float maxX = Math.max(0.0f, screenWidth - minVisibleWidth);
         float maxY = Math.max(0.0f, screenHeight - minVisibleHeight);
 
@@ -120,10 +127,14 @@ public class NodecraftWindowRenderer {
         
         boolean windowOpened = false;
         try {
-            windowOpened = ImGui.begin(windowTitle, closeDetector.getWindowOpenFlag(), windowFlags);
+            if (viewportsEnabled) {
+                windowOpened = ImGui.begin(windowTitle, closeDetector.getWindowOpenFlag(), windowFlags);
+            } else {
+                windowOpened = ImGui.begin(windowTitle, windowFlags | ImGuiWindowFlags.NoSavedSettings);
+            }
             
             // 检查窗口关闭请求
-            if (!closeDetector.getWindowOpenFlag().get()) {
+            if (viewportsEnabled && !closeDetector.getWindowOpenFlag().get()) {
                 parentScreen.closeRequested = true;
                 return;
             }
@@ -143,6 +154,8 @@ public class NodecraftWindowRenderer {
         
         if (viewportsEnabled) {
             windowFlags |= ImGuiWindowFlags.NoDocking;
+        } else {
+            windowFlags |= ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize;
         }
         
         // 根据交互状态调整窗口标志

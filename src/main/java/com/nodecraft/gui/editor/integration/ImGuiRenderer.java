@@ -411,7 +411,6 @@ public class ImGuiRenderer {
             
             imGuiGl3.dispose();
             imGuiGlfw.dispose();
-            ImGui.destroyContext();
             initialized = false;
             NodeCraft.LOGGER.info("ImGui Renderer 关闭成功。");
         } catch (Exception e) {

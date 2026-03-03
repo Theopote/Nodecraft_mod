@@ -116,9 +116,7 @@ public class NodeCraft implements ModInitializer {
 
 			// 将物品添加到创造模式物品栏的"工具和实用工具"标签中
 			// 确保 ModItems.NODECRAFT_TOOL 是一个 public static final 字段
-			ItemGroupEvents.modifyEntriesEvent(ItemGroups.TOOLS).register(content -> {
-				content.add(ModItems.NODECRAFT_TOOL);
-			});
+			ItemGroupEvents.modifyEntriesEvent(ItemGroups.TOOLS).register(content -> content.add(ModItems.NODECRAFT_TOOL));
 
 			LOGGER.debug("已注册NodeCraft物品");
 		} catch (Exception e) {
