@@ -12,6 +12,7 @@ import imgui.flag.ImGuiCond;
 import imgui.flag.ImGuiConfigFlags;
 import imgui.flag.ImGuiWindowFlags;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.MinecraftClient;
 
 /**
  * NodeCraft编辑器窗口渲染器
@@ -85,10 +86,30 @@ public class NodecraftWindowRenderer {
     private void renderMainWindow(DrawContext context, int mouseX, int mouseY, float delta) {
         // 检查是否启用了 ViewportsEnable
         boolean viewportsEnabled = ImGui.getIO().hasConfigFlags(ImGuiConfigFlags.ViewportsEnable);
+
+        // 防止窗口被历史配置移动到屏幕外
+        MinecraftClient client = MinecraftClient.getInstance();
+        float screenWidth = client.getWindow().getScaledWidth();
+        float screenHeight = client.getWindow().getScaledHeight();
+
+        float minVisibleWidth = 320.0f;
+        float minVisibleHeight = 180.0f;
+
+        float maxX = Math.max(0.0f, screenWidth - minVisibleWidth);
+        float maxY = Math.max(0.0f, screenHeight - minVisibleHeight);
+
+        parentScreen.windowX = Math.max(0.0f, Math.min(parentScreen.windowX, maxX));
+        parentScreen.windowY = Math.max(0.0f, Math.min(parentScreen.windowY, maxY));
+
+        float minWidth = 640.0f;
+        float minHeight = 420.0f;
+        parentScreen.windowWidth = Math.max(minWidth, Math.min(parentScreen.windowWidth, screenWidth));
+        parentScreen.windowHeight = Math.max(minHeight, Math.min(parentScreen.windowHeight, screenHeight));
         
         // 设置窗口位置和大小
-        ImGui.setNextWindowPos(parentScreen.windowX, parentScreen.windowY, ImGuiCond.FirstUseEver);
-        ImGui.setNextWindowSize(parentScreen.windowWidth, parentScreen.windowHeight, ImGuiCond.FirstUseEver);
+        ImGui.setNextWindowPos(parentScreen.windowX, parentScreen.windowY, ImGuiCond.Always);
+        ImGui.setNextWindowSize(parentScreen.windowWidth, parentScreen.windowHeight, ImGuiCond.Always);
+        ImGui.setNextWindowCollapsed(false, ImGuiCond.Always);
         
         // 创建窗口标志
         int windowFlags = createWindowFlags(viewportsEnabled);

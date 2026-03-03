@@ -75,7 +75,7 @@ public class ImGuiRenderer {
             ImGui.createContext();
             
             ImGuiIO io = ImGui.getIO();
-            io.setIniFilename("nodecraft_imgui.ini"); // ImGui 配置文件路径
+            io.setIniFilename(null); // 禁用ini持久化，避免窗口恢复到屏幕外
 
             // 2. 配置 ImGui 标志 (使用 addConfigFlags 避免覆盖)
             io.addConfigFlags(ImGuiConfigFlags.NavEnableKeyboard); // 启用键盘导航
