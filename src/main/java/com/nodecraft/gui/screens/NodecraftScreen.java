@@ -132,7 +132,9 @@ public class NodecraftScreen extends Screen {
         }
         
         if (!initialized) {
-            super.render(context, mouseX, mouseY, delta);
+            String loadingMessage = "NodeCraft 正在初始化...";
+            context.drawCenteredTextWithShadow(this.textRenderer, Text.literal(loadingMessage),
+                this.width / 2, this.height / 2, EditorConstants.COLOR_TEXT_HINT);
             return;
         }
         
@@ -675,6 +677,11 @@ public boolean isImGuiWantCaptureMouse() {
     @Override
     protected void clearAndInit() {
         super.clearAndInit();
+    }
+
+    @Override
+    public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
+        // 禁用原版半透明模糊背景，保持游戏画面可见
     }
 
     /**

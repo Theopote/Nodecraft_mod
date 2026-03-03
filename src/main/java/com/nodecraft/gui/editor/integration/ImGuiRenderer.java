@@ -80,7 +80,6 @@ public class ImGuiRenderer {
             // 2. 配置 ImGui 标志 (使用 addConfigFlags 避免覆盖)
             io.addConfigFlags(ImGuiConfigFlags.NavEnableKeyboard); // 启用键盘导航
             io.addConfigFlags(ImGuiConfigFlags.DockingEnable);    // 启用停靠功能
-            io.addConfigFlags(ImGuiConfigFlags.ViewportsEnable);  // 启用多视口渲染，允许窗口在 Minecraft 屏幕外渲染
 
             // 3. 设置后端名称
             io.setBackendPlatformName("imgui_java_impl_glfw");

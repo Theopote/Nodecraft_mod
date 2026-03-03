@@ -97,9 +97,9 @@ public class NodecraftWindowRenderer {
         String windowTitle = viewportsEnabled ?
                 "NodeCraft 编辑器 - 独立窗口模式" : "NodeCraft 编辑器";
         
-        boolean windowBegun = false;
+        boolean windowOpened = false;
         try {
-            windowBegun = ImGui.begin(windowTitle, closeDetector.getWindowOpenFlag(), windowFlags);
+            windowOpened = ImGui.begin(windowTitle, closeDetector.getWindowOpenFlag(), windowFlags);
             
             // 检查窗口关闭请求
             if (!closeDetector.getWindowOpenFlag().get()) {
@@ -107,15 +107,13 @@ public class NodecraftWindowRenderer {
                 return;
             }
             
-            if (windowBegun) {
+            if (windowOpened) {
                 handleWindowAssociation();
                 updateWindowDimensions();
                 renderWindowContent(context, mouseX, mouseY, delta);
             }
         } finally {
-            if (windowBegun) {
-                ImGui.end();
-            }
+            ImGui.end();
         }
     }
     

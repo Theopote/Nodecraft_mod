@@ -1,6 +1,5 @@
 package com.nodecraft.nodesystem.preview.elements;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.preview.AbstractPreviewElement;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
