@@ -46,8 +46,7 @@ public class RegionBoxElement extends AbstractPreviewElement {
     protected void processData(Object data) {
         regions.clear();
         
-        if (data instanceof List<?>) {
-            List<?> list = (List<?>) data;
+        if (data instanceof List<?> list) {
             for (Object item : list) {
                 processDataItem(item);
             }
