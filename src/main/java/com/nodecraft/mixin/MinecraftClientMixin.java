@@ -87,38 +87,21 @@ public class MinecraftClientMixin {
             if (GLFW.glfwGetKey(client.getWindow().getHandle(), GLFW.GLFW_KEY_ESCAPE) == GLFW.GLFW_PRESS) {
                 NodeCraft.LOGGER.info("ESC键被按下，关闭Nodecraft窗口");
                 screen.closeRequested = true;
-                
-                // 执行资源清理并关闭窗口
                 screen.cleanup();
-                
-                // 立即设置屏幕为null
                 client.execute(() -> client.setScreen(null));
-                
-                // 阻止其他事件处理
                 ci.cancel();
                 return;
             }
             
-            // 获取鼠标位置
-            double mouseX = client.mouse.getX();
-            double mouseY = client.mouse.getY();
-            
             // 检查鼠标是否在nodecraft窗口范围内
-            boolean mouseInWindow = screen.isMouseOverNodecraftGui(mouseX, mouseY);
+            boolean mouseInWindow = screen.isMouseOverNodecraftGui(
+                    client.mouse.getX(), client.mouse.getY());
             
             if (mouseInWindow) {
-                // 鼠标在nodecraft窗口内：
-                // 1. 阻止游戏相关的输入事件处理（如WASD移动、鼠标视角等）
-                // 2. 只允许nodecraft GUI处理输入
-                NodeCraft.LOGGER.debug("鼠标在Nodecraft窗口内，阻止游戏输入事件处理");
+                // 鼠标在nodecraft窗口内：阻止游戏输入事件处理
                 ci.cancel();
-            } else {
-                // 鼠标在nodecraft窗口外：
-                // 1. 允许游戏正常处理输入事件（WASD移动、鼠标视角等）
-                // 2. 但仍然需要阻止方块交互（由ClientPlayerInteractionManagerMixin处理）
-                NodeCraft.LOGGER.debug("鼠标在Nodecraft窗口外，允许游戏处理输入事件");
-                // 不调用ci.cancel()，让原版处理输入事件
             }
+            // 鼠标在窗口外：不拦截，让Minecraft正常处理输入事件（WASD移动等）
         }
     }
 } 

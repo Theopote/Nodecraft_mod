@@ -15,12 +15,15 @@ import java.util.UUID;
 /**
  * NodeCraft编辑器的输入事件处理器
  * 负责处理所有的键盘和鼠标输入事件
+ * 
+ * 核心逻辑：
+ * - 鼠标在UI内：鼠标和键盘操作UI面板
+ * - 鼠标在UI外：键盘操作Minecraft（WASD移动等），鼠标按住中键移动视角
  */
 public class NodecraftInputHandler {
     
     private final NodecraftScreen parentScreen;
     private final GhostCameraManager ghostCameraManager;
-    private boolean isMiddleMousePressed = false;
     
     public NodecraftInputHandler(NodecraftScreen parentScreen, GhostCameraManager ghostCameraManager) {
         this.parentScreen = parentScreen;
@@ -31,43 +34,19 @@ public class NodecraftInputHandler {
      * 处理鼠标点击事件
      */
     public boolean handleMouseClicked(double mouseX, double mouseY, int button) {
-        // 处理中键按下事件
+        boolean isMouseOverGui = parentScreen.isMouseOverNodecraftGui(mouseX, mouseY);
+
+        // 中键：不拦截，由 MouseHandlerMixin 处理视角控制
         if (button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE) {
-            isMiddleMousePressed = true;
-            if (NodeCraft.LOGGER.isDebugEnabled()) {
-                NodeCraft.LOGGER.debug("中键按下 (NodecraftScreen) - 鼠标位置: ({}, {}), 窗口位置: ({}, {}), 窗口大小: ({}x{})", 
-                    mouseX, mouseY, parentScreen.windowX, parentScreen.windowY, parentScreen.windowWidth, parentScreen.windowHeight);
-            }
-            
-            boolean isMouseOverGui = parentScreen.isMouseOverNodecraftGui(mouseX, mouseY);
-            if (NodeCraft.LOGGER.isDebugEnabled()) {
-                NodeCraft.LOGGER.debug("鼠标在GUI上: {}", isMouseOverGui);
-            }
-            
-            // 如果鼠标在窗口外，允许视角控制，不拦截事件
-            if (!isMouseOverGui) {
-                if (NodeCraft.LOGGER.isDebugEnabled()) {
-                    NodeCraft.LOGGER.debug("中键按下且鼠标在窗口外，允许视角控制，返回 false");
-                }
-                return false; // 不拦截，让 Minecraft 处理
-            } else {
-                if (NodeCraft.LOGGER.isDebugEnabled()) {
-                    NodeCraft.LOGGER.debug("中键按下但鼠标在窗口内，拦截事件");
-                }
-            }
+            return isMouseOverGui; // UI 内拦截，UI 外不拦截
         }
 
-        // 检查 ImGui 是否捕获了鼠标
-        if (parentScreen.isImGuiWantCaptureMouse()) {
+        // ImGui 捕获了鼠标或鼠标在 UI 窗口内，拦截事件
+        if (parentScreen.isImGuiWantCaptureMouse() || isMouseOverGui) {
             return true;
         }
 
-        // 如果 ImGui 没有捕获，但鼠标在 ImGui 窗口范围内，我们仍然返回 true，防止事件穿透到 Minecraft 游戏世界
-        if (parentScreen.isMouseOverNodecraftGui(mouseX, mouseY)) {
-            return true;
-        }
-
-        // 幽灵相机模式下的方块选择处理
+        // 鼠标在 UI 外：处理幽灵相机模式下的方块选择
         return handleGhostCameraBlockSelection(button);
     }
     
@@ -75,52 +54,29 @@ public class NodecraftInputHandler {
      * 处理鼠标释放事件
      */
     public boolean handleMouseReleased(double mouseX, double mouseY, int button) {
-        // 处理中键释放事件
+        boolean isMouseOverGui = parentScreen.isMouseOverNodecraftGui(mouseX, mouseY);
+
+        // 中键：不拦截
         if (button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE) {
-            isMiddleMousePressed = false;
-            if (NodeCraft.LOGGER.isDebugEnabled()) {
-                NodeCraft.LOGGER.debug("中键释放 (NodecraftScreen) - 鼠标位置: ({}, {})", mouseX, mouseY);
-            }
-            
-            boolean isMouseOverGui = parentScreen.isMouseOverNodecraftGui(mouseX, mouseY);
-            if (NodeCraft.LOGGER.isDebugEnabled()) {
-                NodeCraft.LOGGER.debug("鼠标在GUI上: {}", isMouseOverGui);
-            }
-            
-            // 如果鼠标在窗口外，不拦截事件，让 Minecraft 处理
-            if (!isMouseOverGui) {
-                if (NodeCraft.LOGGER.isDebugEnabled()) {
-                    NodeCraft.LOGGER.debug("中键释放且鼠标在窗口外，不拦截事件，返回 false");
-                }
-                return false; // 不拦截，让 Minecraft 处理
-            } else {
-                if (NodeCraft.LOGGER.isDebugEnabled()) {
-                    NodeCraft.LOGGER.debug("中键释放但鼠标在窗口内，拦截事件");
-                }
-            }
+            return isMouseOverGui;
         }
 
-        // 只要 ImGui 想要捕获鼠标，就阻止事件向下传递
-        if (parentScreen.isImGuiWantCaptureMouse()) {
-            return true;
-        }
-
-        // 如果鼠标在窗口范围内，但 ImGui 没有捕获，也视为已处理（防止事件穿透）
-        return parentScreen.isMouseOverNodecraftGui(mouseX, mouseY);
+        // ImGui 捕获了鼠标或鼠标在 UI 窗口内
+        return parentScreen.isImGuiWantCaptureMouse() || isMouseOverGui;
     }
     
     /**
      * 处理鼠标滚轮事件
      */
     public boolean handleMouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        // 只要 ImGui 想要捕获鼠标，就阻止事件向下传递
-        boolean wantCapture = ImGui.getIO() != null && ImGui.getIO().getWantCaptureMouse();
-        if (wantCapture) {
+        // ImGui 捕获了鼠标：拦截
+        if (ImGui.getIO() != null && ImGui.getIO().getWantCaptureMouse()) {
             return true;
         }
 
-        // 如果当前编辑器是 NativeNodeEditor，则转发滚轮事件
-        if (parentScreen.getCurrentEditor() != null && parentScreen.getCurrentEditor() instanceof com.nodecraft.gui.editor.impl.NativeNodeEditor nativeEditor) {
+        // 如果当前编辑器是 NativeNodeEditor，转发滚轮事件
+        if (parentScreen.getCurrentEditor() != null && 
+            parentScreen.getCurrentEditor() instanceof com.nodecraft.gui.editor.impl.NativeNodeEditor nativeEditor) {
             return nativeEditor.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
         }
 
@@ -131,67 +87,48 @@ public class NodecraftInputHandler {
      * 处理鼠标拖拽事件
      */
     public boolean handleMouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        // 获取缓存的鼠标状态
         boolean isMouseOverGui = parentScreen.isMouseOverNodecraftGui(mouseX, mouseY);
-        
-        // 如果应该允许视角控制，不拦截事件
-        if (shouldAllowCameraControl(isMouseOverGui)) {
-            if (NodeCraft.LOGGER.isDebugEnabled()) {
-                NodeCraft.LOGGER.debug("允许视角控制，不拦截 mouseDragged 事件");
-            }
-            return false; // 不拦截，让 Minecraft 处理视角移动
-        }
 
-        // 只要 ImGui 想要捕获鼠标，就阻止事件向下传递
-        if (parentScreen.isImGuiWantCaptureMouse()) {
+        // ImGui 捕获了鼠标或鼠标在 UI 窗口内
+        if (parentScreen.isImGuiWantCaptureMouse() || isMouseOverGui) {
             return true;
         }
 
-        // 如果 ImGui 没有捕获，但鼠标在 ImGui 窗口范围内，仍然返回 true，防止事件穿透到 Minecraft 游戏世界。
-        return isMouseOverGui;
+        // 鼠标在 UI 外：不拦截，让 Minecraft / MouseHandlerMixin 处理
+        return false;
     }
     
     /**
      * 处理鼠标移动事件
      */
     public boolean handleMouseMoved(double mouseX, double mouseY) {
-        // 获取缓存的鼠标状态
-        boolean isMouseOverGui = parentScreen.isMouseOverNodecraftGui(mouseX, mouseY);
-        
-        // 如果应该允许视角控制，不拦截鼠标移动事件
-        if (shouldAllowCameraControl(isMouseOverGui)) {
-            if (NodeCraft.LOGGER.isDebugEnabled()) {
-                NodeCraft.LOGGER.debug("允许视角控制，不拦截 mouseMoved 事件");
-            }
-            // 不调用 super，让 Minecraft 的鼠标处理器直接处理
-            return false;
-        }
-
+        // 不拦截鼠标移动事件，交给 MouseHandlerMixin 在 TAIL 处理视角
         return false;
     }
     
     /**
      * 处理键盘按键事件
+     * 鼠标在 UI 外时：移动键传递给 Minecraft，其他键由编辑器处理
+     * 鼠标在 UI 内时：所有键由 ImGui/编辑器处理（由 KeyboardMixin 在 Keyboard 级别拦截）
      */
     public boolean handleKeyPressed(int keyCode, int scanCode, int modifiers) {
-        // 检查是否是移动相关的键
-        boolean isMovementKey = isMovementKey(keyCode);
-        
-        // 添加调试信息
-        boolean isCtrlPressed = (modifiers & GLFW.GLFW_MOD_CONTROL) != 0;
-        if (NodeCraft.LOGGER.isDebugEnabled()) {
-            NodeCraft.LOGGER.debug("按键事件 - 键码: {}, 修饰符: {}, Ctrl: {}, 移动键: {}", keyCode, modifiers, isCtrlPressed, isMovementKey);
+        // 检查鼠标是否在 UI 上
+        MinecraftClient client = MinecraftClient.getInstance();
+        boolean mouseOverGui = parentScreen.isMouseOverNodecraftGui(client.mouse.getX(), client.mouse.getY());
+
+        if (mouseOverGui) {
+            // 鼠标在 UI 内：所有键盘事件由 UI 处理
+            // KeyboardMixin 已经在 Keyboard 级别拦截了 Minecraft 的处理
+            // 这里处理编辑器快捷键
+            return handleEditorShortcuts(keyCode, modifiers);
         }
 
-        // 如果是移动键，直接传递给 Minecraft，不拦截
-        if (isMovementKey) {
-            if (NodeCraft.LOGGER.isDebugEnabled()) {
-                NodeCraft.LOGGER.debug("移动键 {} 直接传递给 Minecraft", keyCode);
-            }
-            return false;
+        // 鼠标在 UI 外：移动键传递给 Minecraft
+        if (isMovementKey(keyCode)) {
+            return false; // 不拦截，让 Minecraft 处理
         }
 
-        // 处理编辑器快捷键
+        // 非移动键：处理编辑器快捷键
         return handleEditorShortcuts(keyCode, modifiers);
     }
     
@@ -199,18 +136,12 @@ public class NodecraftInputHandler {
      * 处理键盘释放事件
      */
     public boolean handleKeyReleased(int keyCode, int scanCode, int modifiers) {
-        // 检查是否是移动相关的键
-        boolean isMovementKey = isMovementKey(keyCode);
-        
-        // 如果是移动键，直接传递给 Minecraft，不拦截
-        if (isMovementKey) {
-            if (NodeCraft.LOGGER.isDebugEnabled()) {
-                NodeCraft.LOGGER.debug("移动键释放 {} 直接传递给 Minecraft", keyCode);
-            }
+        // 移动键直接传递给 Minecraft
+        if (isMovementKey(keyCode)) {
             return false;
         }
         
-        // 只要 ImGui 想要捕获键盘事件，就阻止事件向下传递
+        // ImGui 想要捕获键盘时拦截
         return ImGui.getIO() != null && ImGui.getIO().getWantCaptureKeyboard();
     }
     
@@ -218,42 +149,25 @@ public class NodecraftInputHandler {
      * 处理字符输入事件
      */
     public boolean handleCharTyped(char codePoint, int modifiers) {
-        // 只要 ImGui 想要捕获键盘事件，就阻止事件向下传递
+        // ImGui 想要捕获键盘时拦截
         return ImGui.getIO() != null && ImGui.getIO().getWantCaptureKeyboard();
     }
-    
-    /**
-     * 检查是否应该允许视角控制
-     * @param isMouseOverGui 鼠标是否在GUI上方（使用缓存的状态）
-     * @return 是否应该允许视角控制
-     */
-    public boolean shouldAllowCameraControl(boolean isMouseOverGui) {
-        return isMiddleMousePressed && !isMouseOverGui;
-    }
-    
-    /**
-     * 获取中键按下状态
-     * @return 中键是否被按下
-     */
-    public boolean isMiddleMousePressed() {
-        return isMiddleMousePressed;
-    }
-    
-    // 私有辅助方法
+
+    // ===================== 私有辅助方法 =====================
     
     /**
      * 检查是否是移动相关的键
      */
     private boolean isMovementKey(int keyCode) {
-        return keyCode == GLFW.GLFW_KEY_W ||     // 前进
-               keyCode == GLFW.GLFW_KEY_S ||     // 后退
-               keyCode == GLFW.GLFW_KEY_A ||     // 左移
-               keyCode == GLFW.GLFW_KEY_D ||     // 右移
-               keyCode == GLFW.GLFW_KEY_SPACE || // 跳跃
-               keyCode == GLFW.GLFW_KEY_LEFT_SHIFT || // 蹲下
-               keyCode == GLFW.GLFW_KEY_RIGHT_SHIFT || // 蹲下
-               keyCode == GLFW.GLFW_KEY_LEFT_CONTROL || // 疾跑
-               keyCode == GLFW.GLFW_KEY_RIGHT_CONTROL; // 疾跑
+        return keyCode == GLFW.GLFW_KEY_W ||
+               keyCode == GLFW.GLFW_KEY_S ||
+               keyCode == GLFW.GLFW_KEY_A ||
+               keyCode == GLFW.GLFW_KEY_D ||
+               keyCode == GLFW.GLFW_KEY_SPACE ||
+               keyCode == GLFW.GLFW_KEY_LEFT_SHIFT ||
+               keyCode == GLFW.GLFW_KEY_RIGHT_SHIFT ||
+               keyCode == GLFW.GLFW_KEY_LEFT_CONTROL ||
+               keyCode == GLFW.GLFW_KEY_RIGHT_CONTROL;
     }
     
     /**
