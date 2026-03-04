@@ -18,6 +18,7 @@ import org.jetbrains.annotations.NotNull;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL30;
 
 import java.nio.DoubleBuffer;
@@ -101,6 +102,7 @@ public class ImGuiRenderer {
             
             // 6. 初始化 GLFW 和 OpenGL3 后端
             imGuiGlfw.init(windowHandle, true); // true表示安装回调
+            resetPixelStoreStateForImGuiTextureUpload();
             imGuiGl3.init("#version 150"); // OpenGL 3.2+ Core Profile
             
             // 7. 设置 ImGui 样式
@@ -504,6 +506,24 @@ public class ImGuiRenderer {
             windowManager.updateWindowState(); // 更新窗口管理器状态
         } catch (Exception e) {
             NodeCraft.LOGGER.error("更新ImGui平台后端时出错", e);
+        }
+    }
+
+    private void resetPixelStoreStateForImGuiTextureUpload() {
+        try {
+            com.mojang.blaze3d.systems.RenderSystem.assertOnRenderThread();
+
+            GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
+            GL11.glPixelStorei(GL12.GL_UNPACK_ROW_LENGTH, 0);
+            GL11.glPixelStorei(GL12.GL_UNPACK_SKIP_PIXELS, 0);
+            GL11.glPixelStorei(GL12.GL_UNPACK_SKIP_ROWS, 0);
+
+            GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 1);
+            GL11.glPixelStorei(GL12.GL_PACK_ROW_LENGTH, 0);
+            GL11.glPixelStorei(GL12.GL_PACK_SKIP_PIXELS, 0);
+            GL11.glPixelStorei(GL12.GL_PACK_SKIP_ROWS, 0);
+        } catch (Throwable throwable) {
+            NodeCraft.LOGGER.warn("重置OpenGL像素存储状态失败（继续初始化）: {}", throwable.toString());
         }
     }
 }
