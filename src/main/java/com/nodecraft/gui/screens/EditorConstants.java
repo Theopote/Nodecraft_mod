@@ -8,8 +8,8 @@ public final class EditorConstants {
     private EditorConstants() {}
     
     // 窗口常量
-    public static final float MIN_WINDOW_WIDTH = 800.0f;
-    public static final float MIN_WINDOW_HEIGHT = 600.0f;
+    public static final float MIN_WINDOW_WIDTH = 480.0f;
+    public static final float MIN_WINDOW_HEIGHT = 320.0f;
 
     // 布局比例常量 (确保和为 1.0)
     public static final float NODE_PANEL_WIDTH_RATIO = 0.20f; // 左侧节点库比例
@@ -22,8 +22,8 @@ public final class EditorConstants {
     public static final float WINDOW_EDGE_MARGIN = 20f; // 减小边缘边距
 
     // 窗口尺寸常量 (保持简化版)
-    public static final float SCREEN_WIDTH_RATIO = 0.8f; // 稍微增大默认宽度占比
-    public static final float SCREEN_HEIGHT_RATIO = 0.8f;
+    public static final float SCREEN_WIDTH_RATIO = 0.5f;
+    public static final float SCREEN_HEIGHT_RATIO = 0.5f;
     public static final float MAX_WINDOW_WIDTH = 1800f;
     public static final float MAX_WINDOW_HEIGHT = 1200f;
 

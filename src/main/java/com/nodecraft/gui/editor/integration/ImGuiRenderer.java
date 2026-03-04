@@ -7,14 +7,11 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.window.WindowManager;
 import com.nodecraft.gui.window.ImGuiWindowHandler;
 import com.nodecraft.gui.window.ViewportCloseDetector;
-import imgui.ImGui;
-import imgui.ImGuiIO;
+import imgui.*;
 import imgui.flag.ImGuiConfigFlags;
 import imgui.flag.ImGuiCol;
 import imgui.gl3.ImGuiImplGl3;
 import imgui.glfw.ImGuiImplGlfw;
-import imgui.ImFontConfig;
-import imgui.ImFontGlyphRangesBuilder;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.Window;
 import org.jetbrains.annotations.NotNull;
@@ -153,9 +150,6 @@ public class ImGuiRenderer {
             ImFontGlyphRangesBuilder rangesBuilder = new ImFontGlyphRangesBuilder();
             rangesBuilder.addRanges(ImGui.getIO().getFonts().getGlyphRangesDefault());
             rangesBuilder.addRanges(ImGui.getIO().getFonts().getGlyphRangesChineseSimplifiedCommon());
-            rangesBuilder.addRanges(ImGui.getIO().getFonts().getGlyphRangesChineseFull());
-            rangesBuilder.addRanges(ImGui.getIO().getFonts().getGlyphRangesJapanese());
-            rangesBuilder.addRanges(ImGui.getIO().getFonts().getGlyphRangesCyrillic());
             
             // 添加自定义常用UI文本，确保它们也被包含
             rangesBuilder.addText("节点编辑器属性面板画布工具栏状态栏保存打开新建编辑删除复制粘贴撤销重做缩放重置视图");
@@ -168,9 +162,9 @@ public class ImGuiRenderer {
             baseFontConfig = new ImFontConfig();
             baseFontConfig.setMergeMode(false);
             baseFontConfig.setPixelSnapH(true);
-            baseFontConfig.setOversampleH(4); // 增加过采样，提高字体清晰度
-            baseFontConfig.setOversampleV(4);
-            baseFontConfig.setRasterizerMultiply(1.5f); // 增加光栅化乘数，使字体更清晰
+            baseFontConfig.setOversampleH(2);
+            baseFontConfig.setOversampleV(2);
+            baseFontConfig.setRasterizerMultiply(1.0f);
 
             return true;
         } catch (IOException e) {
@@ -194,26 +188,18 @@ public class ImGuiRenderer {
         }
         
         try {
-            io.getFonts().clear(); // 清除现有字体（包括默认字体）
+            io.getFonts().clear();
 
-            // 添加16pt字体，并设置为默认字体
-            // 克隆 fontConfig 以便为不同大小的字体进行调整
-            ImFontConfig fontConfig16 = getImFontConfig();
+            float dpiScale = 1.0f;
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client != null && client.getWindow() != null) {
+                dpiScale = (float) Math.max(1.0, client.getWindow().getScaleFactor());
+            }
 
-            io.getFonts().addFontFromMemoryTTF(fontDataBytes, 16.0f, fontConfig16, chineseGlyphRanges);
-            NodeCraft.LOGGER.info("已加载16pt中文字体。");
-
-            // 添加20pt字体
-            ImFontConfig fontConfig20 = new ImFontConfig();
-            fontConfig20.setFontDataOwnedByAtlas(false);
-            fontConfig20.setMergeMode(baseFontConfig.getMergeMode());
-            fontConfig20.setPixelSnapH(baseFontConfig.getPixelSnapH());
-            fontConfig20.setOversampleH(baseFontConfig.getOversampleH());
-            fontConfig20.setOversampleV(baseFontConfig.getOversampleV());
-            fontConfig20.setRasterizerMultiply(baseFontConfig.getRasterizerMultiply());
-
-            io.getFonts().addFontFromMemoryTTF(fontDataBytes, 20.0f, fontConfig20, chineseGlyphRanges);
-            NodeCraft.LOGGER.info("已加载20pt中文字体。");
+            ImFontConfig fontConfig = getImFontConfig();
+            io.getFonts().addFontFromMemoryTTF(fontDataBytes, 16.0f * dpiScale, fontConfig, chineseGlyphRanges);
+            io.setFontGlobalScale(1.0f / dpiScale);
+            NodeCraft.LOGGER.info("已加载中文字体，DPI缩放: {}", dpiScale);
 
             // 构建字体图集
             if (!io.getFonts().build()) {
@@ -285,7 +271,11 @@ public class ImGuiRenderer {
             Window window = client.getWindow();
 
             ImGuiIO io = ImGui.getIO();
-            io.setDisplaySize(window.getWidth(), window.getHeight());
+                io.setDisplaySize(window.getWidth(), window.getHeight());
+                io.setDisplayFramebufferScale(
+                    Math.max(1.0f, (float) window.getFramebufferWidth() / Math.max(1.0f, window.getWidth())),
+                    Math.max(1.0f, (float) window.getFramebufferHeight() / Math.max(1.0f, window.getHeight()))
+                );
 
             DoubleBuffer xBuffer = BufferUtils.createDoubleBuffer(1);
             DoubleBuffer yBuffer = BufferUtils.createDoubleBuffer(1);
@@ -306,19 +296,6 @@ public class ImGuiRenderer {
         }
     }
     
-    /**
-     * 注册 ImGui 创建的窗口句柄。
-     * 此方法通常不直接在 beginFrame 中调用，因为 ImGui 的 ViewportsEnable 会自动处理。
-     * 保留此方法仅作为示例或调试用途。
-     */
-    private void registerImGuiWindows() {
-        // ImGui.getIO().hasConfigFlags(ImGuiConfigFlags.ViewportsEnable) 检查已在 if 块外。
-        // 在 Java ImGui 绑定中，我们无法直接迭代所有平台窗口句柄以手动注册。
-        // ImGui.updatePlatformWindows() 会在内部处理。
-        // 确保 WindowManager 和 ImGuiWindowHandler 能够以其他方式获取这些句柄（例如通过回调或轮询）。
-        // 这里的逻辑通常是冗余的或需要更复杂的JNI/原生集成。
-    }
-
     /**
      * 结束 ImGui 帧渲染。
      * 必须在每次 ImGui 绘制后调用。
@@ -402,35 +379,9 @@ public class ImGuiRenderer {
      */
     private void setupMinecraftStyle() {
         ImGui.styleColorsDark(); // 使用暗色主题作为基础
-        
-        var style = ImGui.getStyle();
-        
-        // 窗口圆角
-        style.setWindowRounding(4.0f);
-        style.setFrameRounding(2.0f);
-        style.setTabRounding(2.0f);
-        style.setPopupRounding(2.0f);
-        style.setScrollbarRounding(3.0f);
-        style.setGrabRounding(2.0f);
-        
-        // 间距和内边距
-        style.setWindowPadding(10.0f, 10.0f);
-        style.setFramePadding(6.0f, 6.0f);
-        style.setItemSpacing(8.0f, 8.0f);
-        style.setItemInnerSpacing(5.0f, 5.0f);
-        
-        // 边框和最小尺寸
-        style.setWindowBorderSize(1.5f);
-        style.setFrameBorderSize(1.0f);
-        style.setWindowMinSize(400.0f, 300.0f);
-        
-        // 滚动条和抓取柄大小
-        style.setGrabMinSize(12.0f);
-        style.setScrollbarSize(18.0f);
-        
-        // 标题对齐
-        style.setWindowTitleAlign(0.5f, 0.5f); // 居中对齐
-        
+
+        var style = getImGuiStyle();
+
         // 颜色主题
         style.setColor(ImGuiCol.WindowBg, 0.16f, 0.16f, 0.20f, 0.72f);
         style.setColor(ImGuiCol.Border, 0.40f, 0.40f, 0.50f, 0.7f);
@@ -450,7 +401,38 @@ public class ImGuiRenderer {
         style.setColor(ImGuiCol.SliderGrabActive, 0.50f, 0.50f, 0.80f, 0.95f);
         style.setColor(ImGuiCol.Text, 0.90f, 0.90f, 0.90f, 1.00f);
     }
-    
+
+    private static @NotNull ImGuiStyle getImGuiStyle() {
+        var style = ImGui.getStyle();
+
+        // 窗口圆角
+        style.setWindowRounding(4.0f);
+        style.setFrameRounding(2.0f);
+        style.setTabRounding(2.0f);
+        style.setPopupRounding(2.0f);
+        style.setScrollbarRounding(3.0f);
+        style.setGrabRounding(2.0f);
+
+        // 间距和内边距
+        style.setWindowPadding(10.0f, 10.0f);
+        style.setFramePadding(6.0f, 6.0f);
+        style.setItemSpacing(8.0f, 8.0f);
+        style.setItemInnerSpacing(5.0f, 5.0f);
+
+        // 边框和最小尺寸
+        style.setWindowBorderSize(1.5f);
+        style.setFrameBorderSize(1.0f);
+        style.setWindowMinSize(400.0f, 300.0f);
+
+        // 滚动条和抓取柄大小
+        style.setGrabMinSize(12.0f);
+        style.setScrollbarSize(18.0f);
+
+        // 标题对齐
+        style.setWindowTitleAlign(0.5f, 0.5f); // 居中对齐
+        return style;
+    }
+
     /**
      * 关闭 ImGui 上下文和后端，释放资源。
      */

@@ -95,21 +95,14 @@ public class NodecraftWindowRenderer {
         float minVisibleWidth = 320.0f;
         float minVisibleHeight = 180.0f;
 
-        if (!viewportsEnabled) {
-            parentScreen.windowX = 0.0f;
-            parentScreen.windowY = 0.0f;
-            parentScreen.windowWidth = screenWidth;
-            parentScreen.windowHeight = screenHeight;
-        }
-
         float maxX = Math.max(0.0f, screenWidth - minVisibleWidth);
         float maxY = Math.max(0.0f, screenHeight - minVisibleHeight);
 
         parentScreen.windowX = Math.max(0.0f, Math.min(parentScreen.windowX, maxX));
         parentScreen.windowY = Math.max(0.0f, Math.min(parentScreen.windowY, maxY));
 
-        float minWidth = 640.0f;
-        float minHeight = 420.0f;
+        float minWidth = EditorConstants.MIN_WINDOW_WIDTH;
+        float minHeight = EditorConstants.MIN_WINDOW_HEIGHT;
         parentScreen.windowWidth = Math.max(minWidth, Math.min(parentScreen.windowWidth, screenWidth));
         parentScreen.windowHeight = Math.max(minHeight, Math.min(parentScreen.windowHeight, screenHeight));
         
@@ -154,8 +147,6 @@ public class NodecraftWindowRenderer {
         
         if (viewportsEnabled) {
             windowFlags |= ImGuiWindowFlags.NoDocking;
-        } else {
-            windowFlags |= ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize;
         }
         
         return windowFlags;
