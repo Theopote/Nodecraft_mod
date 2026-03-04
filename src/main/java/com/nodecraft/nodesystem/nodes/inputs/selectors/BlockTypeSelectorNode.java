@@ -1,16 +1,27 @@
 package com.nodecraft.nodesystem.nodes.inputs.selectors;
 
-import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.gui.editor.impl.BaseCustomUINode;
+import com.nodecraft.gui.editor.impl.ZoomHelper;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import imgui.ImGui;
+import imgui.type.ImString;
+import imgui.flag.ImGuiCol;
+import imgui.flag.ImGuiInputTextFlags;
+import net.minecraft.registry.Registries;
+import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
- * 方块类型选择器节点，用于在UI中选择Minecraft方块
+ * 方块类型选择器节点，提供搜索型下拉列表选择Minecraft方块。
  */
 @NodeInfo(
     id = "inputs.selectors.block_type_selector",
@@ -18,82 +29,193 @@ import java.util.UUID;
     description = "允许选择Minecraft方块类型",
     category = "inputs.selectors"
 )
-public class BlockTypeSelectorNode extends BaseNode {
+public class BlockTypeSelectorNode extends BaseCustomUINode {
     
-    // --- 节点属性 ---
-    private String selectedBlock = "minecraft:stone"; // 默认选择石头方块
-    private boolean showVariants = true; // 是否显示方块变种（如不同朝向、状态等）
-    private boolean allowModded = true; // 是否允许选择模组方块
+    @NodeProperty(displayName = "选中方块", category = "选择", order = 1,
+                  description = "当前选中的方块ID")
+    private String selectedBlock = "minecraft:stone";
+
+    @NodeProperty(displayName = "允许模组方块", category = "过滤", order = 10,
+                  description = "是否允许选择模组方块")
+    private boolean allowModded = true;
     
     // --- 输出端口 ---
     private static final String OUTPUT_BLOCK_ID = "output_block_id";
-    private static final String OUTPUT_BLOCK_INFO = "output_block_info";
-    private static final String OUTPUT_IS_MODDED = "output_is_modded";
     private static final String OUTPUT_NAMESPACE = "output_namespace";
     private static final String OUTPUT_BLOCK_PATH = "output_block_path";
+    private static final String OUTPUT_IS_MODDED = "output_is_modded";
     
-    /**
-     * 构造一个新的方块类型选择器节点
-     */
+    // --- UI状态 ---
+    private transient ImString searchBuffer = new ImString(256);
+    private transient List<String> filteredBlocks = new ArrayList<>();
+    private transient boolean showDropdown = false;
+    private transient long lastSearchTime = 0;
+    private transient String lastSearchText = "";
+    private static final int MAX_RESULTS = 20;
+    
     public BlockTypeSelectorNode() {
-        // 使用新的分类命名 - inputs.selectors.block_type_selector
         super(UUID.randomUUID(), "inputs.selectors.block_type_selector");
         
-        // 创建并添加输出端口
-        IPort blockIdOutput = new BasePort(OUTPUT_BLOCK_ID, "Block ID", 
-                "The selected block's full identifier", NodeDataType.STRING, this);
-        addOutputPort(blockIdOutput);
+        addOutputPort(new BasePort(OUTPUT_BLOCK_ID, "Block ID", "The selected block's full identifier", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_NAMESPACE, "Namespace", "The namespace part", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCK_PATH, "Block Path", "The path part", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_IS_MODDED, "Is Modded", "Whether the block is from a mod", NodeDataType.BOOLEAN, this));
         
-        IPort blockInfoOutput = new BasePort(OUTPUT_BLOCK_INFO, "Block Info", 
-                "Detailed information about the selected block", NodeDataType.BLOCK_INFO, this);
-        addOutputPort(blockInfoOutput);
-        
-        IPort isModdedOutput = new BasePort(OUTPUT_IS_MODDED, "Is Modded", 
-                "Whether the selected block is from a mod", NodeDataType.BOOLEAN, this);
-        addOutputPort(isModdedOutput);
-        
-        IPort namespaceOutput = new BasePort(OUTPUT_NAMESPACE, "Namespace", 
-                "The namespace part of the block ID (e.g., 'minecraft')", NodeDataType.STRING, this);
-        addOutputPort(namespaceOutput);
-        
-        IPort blockPathOutput = new BasePort(OUTPUT_BLOCK_PATH, "Block Path", 
-                "The path part of the block ID (e.g., 'stone')", NodeDataType.STRING, this);
-        addOutputPort(blockPathOutput);
-        
-        // 更新输出值
         updateOutputs();
     }
     
     @Override
-    public String getDescription() {
-        return "Allows selection of a Minecraft block type";
-    }
+    public String getDescription() { return "允许搜索和选择Minecraft方块类型"; }
     
     @Override
-    public String getDisplayName() {
-        return "Block Type Selector";
-    }
+    public void processNode(@Nullable ExecutionContext context) { updateOutputs(); }
     
-    /**
-     * 节点的计算逻辑
-     * @param context 执行上下文
-     */
+    // === BaseCustomUINode 实现 ===
+
     @Override
-    public void processNode(@Nullable ExecutionContext context) {
-        // 由于这是一个UI选择器节点，主要由用户交互驱动
-        // 仅需确保输出值与当前选择一致
-        updateOutputs();
+    protected float calculateUIHeight() {
+        float height = getMediumPadding();
+        height += ImGui.getTextLineHeight(); // "当前:" 标签
+        height += getSmallPadding();
+        height += ImGui.getFrameHeight(); // 搜索框
+        height += getSmallPadding();
+        if (showDropdown) {
+            height += Math.min(filteredBlocks.size(), MAX_RESULTS) * ImGui.getTextLineHeightWithSpacing();
+            height += getSmallPadding();
+        }
+        height += ImGui.getTextLineHeight(); // 选中方块显示
+        height += getMediumPadding();
+        return height;
+    }
+
+    @Override
+    protected float calculateMinUIWidth() {
+        return 200f + getContentMargin();
+    }
+
+    @Override
+    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
+        return layout(zoom, l -> {
+            boolean changed = false;
+            
+            try {
+                float availableWidth = getAvailableWidth(width, zoom);
+                l.addVerticalSpacing(getMediumPadding());
+                
+                // === 当前选中方块显示 ===
+                String displayName = selectedBlock.contains(":") ? selectedBlock.split(":", 2)[1] : selectedBlock;
+                ImGui.pushStyleColor(ImGuiCol.Text, 0.4f, 0.8f, 0.4f, 1.0f);
+                ImGui.text("▪ " + displayName);
+                ImGui.popStyleColor();
+                
+                l.addVerticalSpacing(getSmallPadding());
+                
+                // === 搜索框 ===
+                l.pushFramePadding(4.0f, 3.0f);
+                l.setItemWidth(availableWidth / zoom);
+                
+                if (ImGui.inputTextWithHint("##block_search", "搜索方块...", searchBuffer)) {
+                    String searchText = searchBuffer.get().trim().toLowerCase();
+                    if (!searchText.equals(lastSearchText)) {
+                        lastSearchText = searchText;
+                        updateFilteredList(searchText);
+                        showDropdown = !searchText.isEmpty();
+                    }
+                }
+                
+                // 聚焦时自动打开下拉
+                if (ImGui.isItemActivated() && !searchBuffer.get().isEmpty()) {
+                    showDropdown = true;
+                }
+                
+                l.popItemWidth();
+                l.popStyleVar();
+                
+                l.addVerticalSpacing(getSmallPadding());
+                
+                // === 搜索结果下拉列表 ===
+                if (showDropdown && !filteredBlocks.isEmpty()) {
+                    ImGui.pushStyleColor(ImGuiCol.ChildBg, 0.15f, 0.15f, 0.18f, 0.95f);
+                    
+                    int displayCount = Math.min(filteredBlocks.size(), MAX_RESULTS);
+                    for (int i = 0; i < displayCount; i++) {
+                        String blockId = filteredBlocks.get(i);
+                        String blockPath = blockId.contains(":") ? blockId.split(":", 2)[1] : blockId;
+                        
+                        boolean isSelected = blockId.equals(selectedBlock);
+                        if (isSelected) {
+                            ImGui.pushStyleColor(ImGuiCol.Text, 0.3f, 0.9f, 0.5f, 1.0f);
+                        }
+                        
+                        if (ImGui.selectable("  " + blockPath + "##" + i, isSelected)) {
+                            setSelectedBlock(blockId);
+                            searchBuffer.set("");
+                            showDropdown = false;
+                            lastSearchText = "";
+                            changed = true;
+                        }
+                        
+                        if (isSelected) {
+                            ImGui.popStyleColor();
+                        }
+                        
+                        // 悬浮时显示完整ID
+                        if (ImGui.isItemHovered()) {
+                            ImGui.setTooltip(blockId);
+                        }
+                    }
+                    
+                    if (filteredBlocks.size() > MAX_RESULTS) {
+                        ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 1.0f);
+                        ImGui.text("  ... 还有 " + (filteredBlocks.size() - MAX_RESULTS) + " 个结果");
+                        ImGui.popStyleColor();
+                    }
+                    
+                    ImGui.popStyleColor();
+                }
+                
+                // === 完整ID显示 ===
+                ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 1.0f);
+                ImGui.text(selectedBlock);
+                ImGui.popStyleColor();
+                
+                l.addVerticalSpacing(getMediumPadding());
+                
+            } catch (Exception e) {
+                System.err.println("BlockTypeSelectorNode UI渲染失败: " + e.getMessage());
+            }
+            
+            return changed;
+        });
     }
     
-    /**
-     * 设置选中的方块ID
-     * @param blockId 方块ID，例如 "minecraft:stone"
-     */
-    public void setSelectedBlock(String blockId) {
-        if (blockId == null || blockId.isEmpty()) {
-            blockId = "minecraft:stone"; // 防止无效输入
+    // === 搜索逻辑 ===
+    
+    private void updateFilteredList(String searchText) {
+        filteredBlocks.clear();
+        if (searchText.isEmpty()) return;
+        
+        try {
+            for (Identifier id : Registries.BLOCK.getIds()) {
+                String fullId = id.toString();
+                if (!allowModded && !id.getNamespace().equals("minecraft")) continue;
+                
+                if (fullId.contains(searchText) || id.getPath().contains(searchText)) {
+                    filteredBlocks.add(fullId);
+                    if (filteredBlocks.size() >= MAX_RESULTS * 2) break;
+                }
+            }
+        } catch (Exception e) {
+            // Registry可能还未初始化
         }
         
+        invalidateCache();
+    }
+    
+    // === 业务逻辑 ===
+    
+    public void setSelectedBlock(String blockId) {
+        if (blockId == null || blockId.isEmpty()) blockId = "minecraft:stone";
         if (!this.selectedBlock.equals(blockId)) {
             this.selectedBlock = blockId;
             updateOutputs();
@@ -101,72 +223,34 @@ public class BlockTypeSelectorNode extends BaseNode {
         }
     }
     
-    /**
-     * 更新输出端口的值
-     */
     private void updateOutputs() {
-        // 解析方块ID的命名空间和路径部分
         String namespace = "minecraft";
         String path = "stone";
-        
         if (selectedBlock.contains(":")) {
             String[] parts = selectedBlock.split(":", 2);
             namespace = parts[0];
             path = parts[1];
-        } else {
-            // 如果没有命名空间，假定为minecraft
-            path = selectedBlock;
         }
-        
-        // 确定是否为模组方块
-        boolean isModded = !namespace.equals("minecraft");
-        
-        // 在实际应用中，这里会创建一个真实的BlockInfo对象
-        // 为了演示，我们这里使用String代替
-        Object blockInfo = selectedBlock;
-        
-        // 更新输出值
         outputValues.put(OUTPUT_BLOCK_ID, selectedBlock);
-        outputValues.put(OUTPUT_BLOCK_INFO, blockInfo);
-        outputValues.put(OUTPUT_IS_MODDED, isModded);
         outputValues.put(OUTPUT_NAMESPACE, namespace);
         outputValues.put(OUTPUT_BLOCK_PATH, path);
+        outputValues.put(OUTPUT_IS_MODDED, !namespace.equals("minecraft"));
     }
     
-    // --- Getters/Setters for Properties ---
-    
-    public String getSelectedBlock() {
-        return selectedBlock;
-    }
-    
-    public boolean isShowVariants() {
-        return showVariants;
-    }
-    
-    public void setShowVariants(boolean showVariants) {
-        this.showVariants = showVariants;
-        // 这个属性不影响输出，只影响UI显示，所以不需要markDirty()
-    }
-    
-    public boolean isAllowModded() {
-        return allowModded;
-    }
+    public String getSelectedBlock() { return selectedBlock; }
+    public boolean isAllowModded() { return allowModded; }
     
     public void setAllowModded(boolean allowModded) {
         this.allowModded = allowModded;
-        // 如果设置为不允许模组方块，且当前选中的是模组方块，则重置为默认方块
         if (!allowModded && !selectedBlock.startsWith("minecraft:")) {
             setSelectedBlock("minecraft:stone");
         }
     }
     
-    // --- 节点状态序列化 ---
-    
     @Override
     public Object getNodeState() {
         java.util.Map<String, Object> state = new java.util.HashMap<>();
         state.put("selectedBlock", getSelectedBlock());
-        state.put("showVariants", isShowVariants());
         state.put("allowModded", isAllowModded());
         return state;
     }
@@ -174,30 +258,19 @@ public class BlockTypeSelectorNode extends BaseNode {
     @Override
     public void setNodeState(Object state) {
         if (state instanceof java.util.Map) {
-            java.util.Map<?, ?> stateMap = (java.util.Map<?, ?>) state;
-            
-            // 先设置属性
-            if (stateMap.containsKey("showVariants")) {
-                Object showVar = stateMap.get("showVariants");
-                if (showVar instanceof Boolean) {
-                    setShowVariants((Boolean) showVar);
-                }
+            java.util.Map<?, ?> m = (java.util.Map<?, ?>) state;
+            if (m.containsKey("allowModded")) {
+                Object v = m.get("allowModded");
+                if (v instanceof Boolean) setAllowModded((Boolean) v);
             }
-            
-            if (stateMap.containsKey("allowModded")) {
-                Object allowMod = stateMap.get("allowModded");
-                if (allowMod instanceof Boolean) {
-                    setAllowModded((Boolean) allowMod);
-                }
-            }
-            
-            // 最后设置选中的方块ID
-            if (stateMap.containsKey("selectedBlock")) {
-                Object selectedBlk = stateMap.get("selectedBlock");
-                if (selectedBlk instanceof String) {
-                    setSelectedBlock((String) selectedBlk);
-                }
+            if (m.containsKey("selectedBlock")) {
+                Object v = m.get("selectedBlock");
+                if (v instanceof String) setSelectedBlock((String) v);
             }
         }
     }
-} 
+
+    protected final float getAvailableWidth(float totalWidth, float zoom) {
+        return totalWidth - ZoomHelper.applyZoom(getContentMargin() * 2, zoom);
+    }
+}

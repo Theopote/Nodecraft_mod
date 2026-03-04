@@ -1,11 +1,15 @@
 package com.nodecraft.nodesystem.nodes.inputs.sources;
 
-import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.gui.editor.impl.BaseCustomUINode;
+import com.nodecraft.gui.editor.impl.ZoomHelper;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
-import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import imgui.ImGui;
+import imgui.type.ImString;
+import imgui.flag.ImGuiCol;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
@@ -14,7 +18,7 @@ import java.nio.file.Paths;
 import java.util.UUID;
 
 /**
- * 文件路径节点，用于输入文件路径
+ * 文件路径节点，提供文本输入框来编辑文件或目录路径。
  */
 @NodeInfo(
     id = "inputs.sources.file_path",
@@ -22,67 +26,46 @@ import java.util.UUID;
     description = "用于输入文件或目录路径",
     category = "inputs.sources"
 )
-public class FilePathNode extends BaseNode {
+public class FilePathNode extends BaseCustomUINode {
     
-    // --- 节点属性 ---
-    private String filePath = ""; // 文件路径
-    private boolean mustExist = false; // 文件是否必须存在
-    private String fileFilter = "*.*"; // 文件过滤器
-    private boolean isDirectory = false; // 是否为目录
+    @NodeProperty(displayName = "文件路径", category = "路径", order = 1,
+                  description = "文件或目录的路径")
+    private String filePath = "";
+
+    @NodeProperty(displayName = "必须存在", category = "验证", order = 10,
+                  description = "文件是否必须存在")
+    private boolean mustExist = false;
+
+    @NodeProperty(displayName = "是目录", category = "设置", order = 11,
+                  description = "是否为目录路径")
+    private boolean isDirectory = false;
     
-    // --- 输出端口ID ---
+    // --- 输出端口 ---
     private static final String OUTPUT_PATH_ID = "output_path";
     private static final String OUTPUT_EXISTS_ID = "output_exists";
     private static final String OUTPUT_FILENAME_ID = "output_filename";
     private static final String OUTPUT_EXTENSION_ID = "output_extension";
     private static final String OUTPUT_DIRECTORY_ID = "output_directory";
     
-    /**
-     * 构造一个新的文件路径节点
-     */
+    // --- UI状态 ---
+    private transient ImString pathBuffer = new ImString(1024);
+    private transient boolean bufferNeedsSync = true;
+    
     public FilePathNode() {
-        // 使用新的分类命名 - inputs.sources.file_path
         super(UUID.randomUUID(), "inputs.sources.file_path");
         
-        // 创建输出端口
-        IPort pathOutput = new BasePort(OUTPUT_PATH_ID, "Path", 
-                "The full file or directory path", NodeDataType.FILE_PATH, this);
-        addOutputPort(pathOutput);
-        
-        IPort existsOutput = new BasePort(OUTPUT_EXISTS_ID, "Exists", 
-                "Whether the file or directory exists", NodeDataType.BOOLEAN, this);
-        addOutputPort(existsOutput);
-        
-        IPort filenameOutput = new BasePort(OUTPUT_FILENAME_ID, "Filename", 
-                "The filename without extension", NodeDataType.STRING, this);
-        addOutputPort(filenameOutput);
-        
-        IPort extensionOutput = new BasePort(OUTPUT_EXTENSION_ID, "Extension", 
-                "The file extension", NodeDataType.STRING, this);
-        addOutputPort(extensionOutput);
-        
-        IPort directoryOutput = new BasePort(OUTPUT_DIRECTORY_ID, "Directory", 
-                "The directory containing the file", NodeDataType.STRING, this);
-        addOutputPort(directoryOutput);
+        addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path", "The full file or directory path", NodeDataType.FILE_PATH, this));
+        addOutputPort(new BasePort(OUTPUT_EXISTS_ID, "Exists", "Whether the file/directory exists", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_FILENAME_ID, "Filename", "The filename without extension", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_EXTENSION_ID, "Extension", "The file extension", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_DIRECTORY_ID, "Directory", "The containing directory", NodeDataType.STRING, this));
     }
     
     @Override
-    public String getDescription() {
-        return "Input a file or directory path";
-    }
+    public String getDescription() { return "输入文件或目录路径"; }
     
-    @Override
-    public String getDisplayName() {
-        return "File Path";
-    }
-    
-    /**
-     * 节点的计算逻辑
-     * @param context 执行上下文
-     */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        // 如果路径为空，则所有输出置空或置默认值
         if (filePath == null || filePath.isEmpty()) {
             outputValues.put(OUTPUT_PATH_ID, "");
             outputValues.put(OUTPUT_EXISTS_ID, false);
@@ -92,40 +75,27 @@ public class FilePathNode extends BaseNode {
             return;
         }
         
-        // 处理文件路径
         File file = new File(filePath);
         boolean exists = file.exists();
-        
-        // 获取文件名和扩展名
-        String filename = "";
-        String extension = "";
-        String directory = "";
+        String filename = "", extension = "", directory = "";
         
         try {
             Path path = Paths.get(filePath);
             Path fileName = path.getFileName();
             Path parent = path.getParent();
-            
             if (fileName != null) {
                 String fileNameStr = fileName.toString();
-                int lastDotIndex = fileNameStr.lastIndexOf('.');
-                
-                if (lastDotIndex > 0) {
-                    filename = fileNameStr.substring(0, lastDotIndex);
-                    extension = fileNameStr.substring(lastDotIndex + 1);
+                int lastDot = fileNameStr.lastIndexOf('.');
+                if (lastDot > 0) {
+                    filename = fileNameStr.substring(0, lastDot);
+                    extension = fileNameStr.substring(lastDot + 1);
                 } else {
                     filename = fileNameStr;
                 }
             }
-            
-            if (parent != null) {
-                directory = parent.toString();
-            }
-        } catch (Exception e) {
-            // 如果出现异常，保持默认空值
-        }
+            if (parent != null) directory = parent.toString();
+        } catch (Exception e) { /* 无效路径 */ }
         
-        // 设置输出
         outputValues.put(OUTPUT_PATH_ID, filePath);
         outputValues.put(OUTPUT_EXISTS_ID, exists);
         outputValues.put(OUTPUT_FILENAME_ID, filename);
@@ -133,85 +103,109 @@ public class FilePathNode extends BaseNode {
         outputValues.put(OUTPUT_DIRECTORY_ID, directory);
     }
     
-    /**
-     * 打开文件选择对话框
-     * 注意：实际实现应该由UI层负责调用此方法
-     * @return 是否选择了文件
-     */
-    public boolean browseForFile() {
-        // 这里仅是一个占位符方法
-        // 实际的文件浏览功能应该由UI层实现
-        // 并在选择文件后调用setFilePath方法
-        return false;
+    @Override
+    protected float calculateUIHeight() {
+        float height = getMediumPadding();
+        height += ImGui.getTextLineHeight(); // 类型标签
+        height += getSmallPadding();
+        height += ImGui.getFrameHeight(); // 路径输入框
+        height += getSmallPadding();
+        height += ImGui.getTextLineHeight(); // 状态显示
+        height += getMediumPadding();
+        return height;
+    }
+
+    @Override
+    protected float calculateMinUIWidth() {
+        return 200f + getContentMargin();
+    }
+
+    @Override
+    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
+        return layout(zoom, l -> {
+            boolean changed = false;
+            try {
+                float availableWidth = width - ZoomHelper.applyZoom(getContentMargin() * 2, zoom);
+                l.addVerticalSpacing(getMediumPadding());
+                
+                // === 类型标签 ===
+                ImGui.pushStyleColor(ImGuiCol.Text, 0.6f, 0.7f, 0.9f, 1.0f);
+                ImGui.text(isDirectory ? "📁 目录路径" : "📄 文件路径");
+                ImGui.popStyleColor();
+                
+                l.addVerticalSpacing(getSmallPadding());
+                
+                // === 路径输入框 ===
+                ensureBuffer();
+                l.pushFramePadding(4.0f, 3.0f);
+                l.setItemWidth(availableWidth / zoom);
+                
+                if (ImGui.inputTextWithHint("##file_path", "输入路径...", pathBuffer)) {
+                    String newPath = pathBuffer.get().trim();
+                    if (!newPath.equals(filePath)) {
+                        setFilePath(newPath);
+                        changed = true;
+                    }
+                }
+                
+                l.popItemWidth();
+                l.popStyleVar();
+                
+                l.addVerticalSpacing(getSmallPadding());
+                
+                // === 状态显示 ===
+                if (filePath != null && !filePath.isEmpty()) {
+                    boolean exists = new File(filePath).exists();
+                    if (exists) {
+                        ImGui.pushStyleColor(ImGuiCol.Text, 0.3f, 0.9f, 0.5f, 1.0f);
+                        ImGui.text("✓ 路径存在");
+                    } else {
+                        ImGui.pushStyleColor(ImGuiCol.Text, mustExist ? 0.9f : 0.7f, mustExist ? 0.3f : 0.7f, mustExist ? 0.3f : 0.3f, 1.0f);
+                        ImGui.text(mustExist ? "✗ 路径不存在!" : "? 路径不存在");
+                    }
+                    ImGui.popStyleColor();
+                } else {
+                    ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 1.0f);
+                    ImGui.text("未设置路径");
+                    ImGui.popStyleColor();
+                }
+                
+                l.addVerticalSpacing(getMediumPadding());
+            } catch (Exception e) {
+                System.err.println("FilePathNode UI渲染失败: " + e.getMessage());
+            }
+            return changed;
+        });
     }
     
-    /**
-     * 设置文件路径
-     * @param path 文件路径
-     */
-    public void setFilePath(String path) {
-        if (path == null) {
-            path = "";
+    private void ensureBuffer() {
+        if (pathBuffer == null) pathBuffer = new ImString(1024);
+        if (bufferNeedsSync) {
+            pathBuffer.set(filePath != null ? filePath : "");
+            bufferNeedsSync = false;
         }
-        
+    }
+    
+    public void setFilePath(String path) {
+        if (path == null) path = "";
         if (!this.filePath.equals(path)) {
             this.filePath = path;
+            bufferNeedsSync = true;
             markDirty();
         }
     }
     
-    // --- Getters/Setters for Properties ---
-    
-    public String getFilePath() {
-        return filePath;
-    }
-    
-    public boolean isMustExist() {
-        return mustExist;
-    }
-    
-    public void setMustExist(boolean mustExist) {
-        this.mustExist = mustExist;
-    }
-    
-    public String getFileFilter() {
-        return fileFilter;
-    }
-    
-    public void setFileFilter(String fileFilter) {
-        if (fileFilter == null || fileFilter.isEmpty()) {
-            fileFilter = "*.*";
-        }
-        this.fileFilter = fileFilter;
-    }
-    
-    public boolean isDirectory() {
-        return isDirectory;
-    }
-    
-    public void setDirectory(boolean directory) {
-        this.isDirectory = directory;
-    }
-    
-    /**
-     * 检查文件是否存在
-     * @return 文件是否存在
-     */
-    public boolean fileExists() {
-        if (filePath == null || filePath.isEmpty()) {
-            return false;
-        }
-        return new File(filePath).exists();
-    }
-    
-    // --- 节点状态序列化 ---
+    public String getFilePath() { return filePath; }
+    public boolean isMustExist() { return mustExist; }
+    public void setMustExist(boolean mustExist) { this.mustExist = mustExist; }
+    public boolean isDirectory() { return isDirectory; }
+    public void setDirectory(boolean directory) { this.isDirectory = directory; }
     
     @Override
     public Object getNodeState() {
         java.util.Map<String, Object> state = new java.util.HashMap<>();
         state.put("filePath", getFilePath());
         state.put("mustExist", isMustExist());
-        state.put("fileFilter", getFileFilter());
         state.put("isDirectory", isDirectory());
         return state;
     }
@@ -219,36 +213,19 @@ public class FilePathNode extends BaseNode {
     @Override
     public void setNodeState(Object state) {
         if (state instanceof java.util.Map) {
-            java.util.Map<?, ?> stateMap = (java.util.Map<?, ?>) state;
-            
-            if (stateMap.containsKey("mustExist")) {
-                Object must = stateMap.get("mustExist");
-                if (must instanceof Boolean) {
-                    setMustExist((Boolean) must);
-                }
+            java.util.Map<?, ?> m = (java.util.Map<?, ?>) state;
+            if (m.containsKey("mustExist")) {
+                Object v = m.get("mustExist");
+                if (v instanceof Boolean) setMustExist((Boolean) v);
             }
-            
-            if (stateMap.containsKey("fileFilter")) {
-                Object filter = stateMap.get("fileFilter");
-                if (filter instanceof String) {
-                    setFileFilter((String) filter);
-                }
+            if (m.containsKey("isDirectory")) {
+                Object v = m.get("isDirectory");
+                if (v instanceof Boolean) setDirectory((Boolean) v);
             }
-            
-            if (stateMap.containsKey("isDirectory")) {
-                Object dir = stateMap.get("isDirectory");
-                if (dir instanceof Boolean) {
-                    setDirectory((Boolean) dir);
-                }
-            }
-            
-            // 最后设置文件路径，因为这会触发markDirty
-            if (stateMap.containsKey("filePath")) {
-                Object path = stateMap.get("filePath");
-                if (path instanceof String) {
-                    setFilePath((String) path);
-                }
+            if (m.containsKey("filePath")) {
+                Object v = m.get("filePath");
+                if (v instanceof String) setFilePath((String) v);
             }
         }
     }
-} 
+}

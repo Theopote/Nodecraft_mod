@@ -1,16 +1,25 @@
 package com.nodecraft.nodesystem.nodes.inputs.selectors;
 
-import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.gui.editor.impl.BaseCustomUINode;
+import com.nodecraft.gui.editor.impl.ZoomHelper;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
-import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import imgui.ImGui;
+import imgui.type.ImString;
+import imgui.flag.ImGuiCol;
+import net.minecraft.registry.Registries;
+import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
- * 物品类型选择器节点，用于在UI中搜索和选择Minecraft物品
+ * 物品类型选择器节点，提供搜索型下拉列表选择Minecraft物品。
  */
 @NodeInfo(
     id = "inputs.selectors.item_type_selector",
@@ -18,88 +27,180 @@ import java.util.UUID;
     description = "允许选择Minecraft物品类型",
     category = "inputs.selectors"
 )
-public class ItemTypeSelectorNode extends BaseNode {
+public class ItemTypeSelectorNode extends BaseCustomUINode {
     
-    // --- 节点属性 ---
-    private String selectedItem = "minecraft:diamond"; // 默认选择钻石
-    private boolean allowModded = true; // 是否允许选择模组物品
-    private boolean showCreativeTabsOnly = false; // 是否只显示创造模式物品栏中的物品
-    private String categoryFilter = "all"; // 物品分类过滤
+    @NodeProperty(displayName = "选中物品", category = "选择", order = 1,
+                  description = "当前选中的物品ID")
+    private String selectedItem = "minecraft:diamond";
+
+    @NodeProperty(displayName = "允许模组物品", category = "过滤", order = 10,
+                  description = "是否允许选择模组物品")
+    private boolean allowModded = true;
     
     // --- 输出端口 ---
     private static final String OUTPUT_ITEM_ID = "output_item_id";
-    private static final String OUTPUT_ITEM_INFO = "output_item_info";
-    private static final String OUTPUT_IS_MODDED = "output_is_modded";
     private static final String OUTPUT_NAMESPACE = "output_namespace";
     private static final String OUTPUT_ITEM_PATH = "output_item_path";
+    private static final String OUTPUT_IS_MODDED = "output_is_modded";
     private static final String OUTPUT_CATEGORY = "output_category";
     
-    /**
-     * 构造一个新的物品类型选择器节点
-     */
+    // --- UI状态 ---
+    private transient ImString searchBuffer = new ImString(256);
+    private transient List<String> filteredItems = new ArrayList<>();
+    private transient boolean showDropdown = false;
+    private transient String lastSearchText = "";
+    private static final int MAX_RESULTS = 20;
+    
     public ItemTypeSelectorNode() {
-        // 使用新的分类命名 - inputs.selectors.item_type_selector
         super(UUID.randomUUID(), "inputs.selectors.item_type_selector");
         
-        // 创建并添加输出端口
-        IPort itemIdOutput = new BasePort(OUTPUT_ITEM_ID, "Item ID", 
-                "The selected item's full identifier", NodeDataType.STRING, this);
-        addOutputPort(itemIdOutput);
+        addOutputPort(new BasePort(OUTPUT_ITEM_ID, "Item ID", "The selected item's full identifier", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_NAMESPACE, "Namespace", "The namespace part", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_ITEM_PATH, "Item Path", "The path part", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_IS_MODDED, "Is Modded", "Whether the item is from a mod", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_CATEGORY, "Category", "The item's category", NodeDataType.STRING, this));
         
-        IPort itemInfoOutput = new BasePort(OUTPUT_ITEM_INFO, "Item Info", 
-                "Detailed information about the selected item", NodeDataType.ANY, this);
-        addOutputPort(itemInfoOutput);
-        
-        IPort isModdedOutput = new BasePort(OUTPUT_IS_MODDED, "Is Modded", 
-                "Whether the selected item is from a mod", NodeDataType.BOOLEAN, this);
-        addOutputPort(isModdedOutput);
-        
-        IPort namespaceOutput = new BasePort(OUTPUT_NAMESPACE, "Namespace", 
-                "The namespace part of the item ID (e.g., 'minecraft')", NodeDataType.STRING, this);
-        addOutputPort(namespaceOutput);
-        
-        IPort itemPathOutput = new BasePort(OUTPUT_ITEM_PATH, "Item Path", 
-                "The path part of the item ID (e.g., 'diamond')", NodeDataType.STRING, this);
-        addOutputPort(itemPathOutput);
-        
-        IPort categoryOutput = new BasePort(OUTPUT_CATEGORY, "Category", 
-                "The item's category (tool, weapon, food, etc.)", NodeDataType.STRING, this);
-        addOutputPort(categoryOutput);
-        
-        // 更新输出值
         updateOutputs();
     }
     
     @Override
-    public String getDescription() {
-        return "Allows search and selection of a Minecraft item type";
-    }
+    public String getDescription() { return "允许搜索和选择Minecraft物品类型"; }
     
     @Override
-    public String getDisplayName() {
-        return "Item Type Selector";
-    }
+    public void processNode(@Nullable ExecutionContext context) { updateOutputs(); }
     
-    /**
-     * 节点的计算逻辑
-     * @param context 执行上下文
-     */
     @Override
-    public void processNode(@Nullable ExecutionContext context) {
-        // 由于这是一个UI选择器节点，主要由用户交互驱动
-        // 仅需确保输出值与当前选择一致
-        updateOutputs();
-    }
-    
-    /**
-     * 设置选中的物品ID
-     * @param itemId 物品ID，例如 "minecraft:diamond"
-     */
-    public void setSelectedItem(String itemId) {
-        if (itemId == null || itemId.isEmpty()) {
-            itemId = "minecraft:diamond"; // 防止无效输入
+    protected float calculateUIHeight() {
+        float height = getMediumPadding();
+        height += ImGui.getTextLineHeight();
+        height += getSmallPadding();
+        height += ImGui.getFrameHeight();
+        height += getSmallPadding();
+        if (showDropdown) {
+            height += Math.min(filteredItems.size(), MAX_RESULTS) * ImGui.getTextLineHeightWithSpacing();
+            height += getSmallPadding();
         }
-        
+        height += ImGui.getTextLineHeight();
+        height += getMediumPadding();
+        return height;
+    }
+
+    @Override
+    protected float calculateMinUIWidth() {
+        return 200f + getContentMargin();
+    }
+
+    @Override
+    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
+        return layout(zoom, l -> {
+            boolean changed = false;
+            try {
+                float availableWidth = width - ZoomHelper.applyZoom(getContentMargin() * 2, zoom);
+                l.addVerticalSpacing(getMediumPadding());
+                
+                // === 当前选中物品显示 ===
+                String displayName = selectedItem.contains(":") ? selectedItem.split(":", 2)[1] : selectedItem;
+                ImGui.pushStyleColor(ImGuiCol.Text, 0.3f, 0.7f, 0.9f, 1.0f);
+                ImGui.text("◆ " + displayName);
+                ImGui.popStyleColor();
+                
+                l.addVerticalSpacing(getSmallPadding());
+                
+                // === 搜索框 ===
+                l.pushFramePadding(4.0f, 3.0f);
+                l.setItemWidth(availableWidth / zoom);
+                
+                if (ImGui.inputTextWithHint("##item_search", "搜索物品...", searchBuffer)) {
+                    String searchText = searchBuffer.get().trim().toLowerCase();
+                    if (!searchText.equals(lastSearchText)) {
+                        lastSearchText = searchText;
+                        updateFilteredList(searchText);
+                        showDropdown = !searchText.isEmpty();
+                    }
+                }
+                if (ImGui.isItemActivated() && !searchBuffer.get().isEmpty()) {
+                    showDropdown = true;
+                }
+                
+                l.popItemWidth();
+                l.popStyleVar();
+                
+                l.addVerticalSpacing(getSmallPadding());
+                
+                // === 搜索结果下拉列表 ===
+                if (showDropdown && !filteredItems.isEmpty()) {
+                    ImGui.pushStyleColor(ImGuiCol.ChildBg, 0.15f, 0.15f, 0.18f, 0.95f);
+                    int displayCount = Math.min(filteredItems.size(), MAX_RESULTS);
+                    for (int i = 0; i < displayCount; i++) {
+                        String itemId = filteredItems.get(i);
+                        String itemPath = itemId.contains(":") ? itemId.split(":", 2)[1] : itemId;
+                        boolean isSelected = itemId.equals(selectedItem);
+                        if (isSelected) ImGui.pushStyleColor(ImGuiCol.Text, 0.3f, 0.8f, 1.0f, 1.0f);
+                        
+                        if (ImGui.selectable("  " + itemPath + "##" + i, isSelected)) {
+                            setSelectedItem(itemId);
+                            searchBuffer.set("");
+                            showDropdown = false;
+                            lastSearchText = "";
+                            changed = true;
+                        }
+                        if (isSelected) ImGui.popStyleColor();
+                        if (ImGui.isItemHovered()) ImGui.setTooltip(itemId);
+                    }
+                    if (filteredItems.size() > MAX_RESULTS) {
+                        ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 1.0f);
+                        ImGui.text("  ... 还有 " + (filteredItems.size() - MAX_RESULTS) + " 个结果");
+                        ImGui.popStyleColor();
+                    }
+                    ImGui.popStyleColor();
+                }
+                
+                // === 完整ID显示 ===
+                ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 1.0f);
+                ImGui.text(selectedItem);
+                ImGui.popStyleColor();
+                
+                l.addVerticalSpacing(getMediumPadding());
+            } catch (Exception e) {
+                System.err.println("ItemTypeSelectorNode UI渲染失败: " + e.getMessage());
+            }
+            return changed;
+        });
+    }
+    
+    private void updateFilteredList(String searchText) {
+        filteredItems.clear();
+        if (searchText.isEmpty()) return;
+        try {
+            for (Identifier id : Registries.ITEM.getIds()) {
+                String fullId = id.toString();
+                if (!allowModded && !id.getNamespace().equals("minecraft")) continue;
+                if (fullId.contains(searchText) || id.getPath().contains(searchText)) {
+                    filteredItems.add(fullId);
+                    if (filteredItems.size() >= MAX_RESULTS * 2) break;
+                }
+            }
+        } catch (Exception e) { /* Registry可能还未初始化 */ }
+        invalidateCache();
+    }
+    
+    private String calculateItemCategory() {
+        String path = selectedItem.contains(":") ? selectedItem.split(":", 2)[1] : selectedItem;
+        if (path.contains("sword") || path.contains("bow") || path.contains("arrow") || path.equals("trident"))
+            return "weapon";
+        if (path.contains("pickaxe") || path.contains("shovel") || path.contains("hoe") || path.equals("shears"))
+            return "tool";
+        if (path.contains("helmet") || path.contains("chestplate") || path.contains("leggings") || path.contains("boots"))
+            return "armor";
+        if (path.contains("apple") || path.contains("bread") || path.contains("beef") || path.contains("porkchop") || path.contains("stew"))
+            return "food";
+        if (path.contains("ore") || path.equals("diamond") || path.equals("gold_ingot") || path.equals("iron_ingot"))
+            return "resource";
+        return "misc";
+    }
+    
+    public void setSelectedItem(String itemId) {
+        if (itemId == null || itemId.isEmpty()) itemId = "minecraft:diamond";
         if (!this.selectedItem.equals(itemId)) {
             this.selectedItem = itemId;
             updateOutputs();
@@ -107,166 +208,51 @@ public class ItemTypeSelectorNode extends BaseNode {
         }
     }
     
-    /**
-     * 根据当前选择计算物品的分类
-     * @return 物品分类
-     */
-    private String calculateItemCategory() {
-        // 在实际应用中，这应该通过Minecraft API查询物品分类
-        // 这里为了演示，我们根据物品ID进行简单判断
-        
-        String path = selectedItem.contains(":") ? 
-                selectedItem.split(":", 2)[1] : selectedItem;
-        
-        // 一些简单的分类规则
-        if (path.contains("sword") || path.contains("bow") || path.contains("arrow") || 
-            path.equals("trident") || path.contains("_axe")) {
-            return "weapon";
-        } else if (path.contains("pickaxe") || path.contains("shovel") || path.contains("hoe") ||
-                  path.equals("shears") || path.equals("flint_and_steel")) {
-            return "tool";
-        } else if (path.contains("helmet") || path.contains("chestplate") || 
-                  path.contains("leggings") || path.contains("boots")) {
-            return "armor";
-        } else if (path.contains("apple") || path.contains("bread") || path.contains("beef") ||
-                  path.contains("porkchop") || path.contains("fish") || path.contains("carrot") ||
-                  path.contains("potato") || path.contains("stew") || path.contains("soup")) {
-            return "food";
-        } else if (path.contains("ore") || path.equals("diamond") || path.equals("gold_ingot") ||
-                  path.equals("iron_ingot") || path.equals("emerald") || path.equals("coal")) {
-            return "resource";
-        } else if (path.contains("potion") || path.equals("enchanted_book") || 
-                  path.equals("experience_bottle")) {
-            return "magical";
-        }
-        
-        return "misc";
-    }
-    
-    /**
-     * 更新输出端口的值
-     */
     private void updateOutputs() {
-        // 解析物品ID的命名空间和路径部分
         String namespace = "minecraft";
         String path = "diamond";
-        
         if (selectedItem.contains(":")) {
             String[] parts = selectedItem.split(":", 2);
             namespace = parts[0];
             path = parts[1];
-        } else {
-            // 如果没有命名空间，假定为minecraft
-            path = selectedItem;
         }
-        
-        // 确定是否为模组物品
-        boolean isModded = !namespace.equals("minecraft");
-        
-        // 计算物品分类
-        String category = calculateItemCategory();
-        
-        // 在实际应用中，这里会创建一个真实的ItemInfo对象
-        // 为了演示，我们这里使用String代替
-        Object itemInfo = selectedItem;
-        
-        // 更新输出值
         outputValues.put(OUTPUT_ITEM_ID, selectedItem);
-        outputValues.put(OUTPUT_ITEM_INFO, itemInfo);
-        outputValues.put(OUTPUT_IS_MODDED, isModded);
         outputValues.put(OUTPUT_NAMESPACE, namespace);
         outputValues.put(OUTPUT_ITEM_PATH, path);
-        outputValues.put(OUTPUT_CATEGORY, category);
+        outputValues.put(OUTPUT_IS_MODDED, !namespace.equals("minecraft"));
+        outputValues.put(OUTPUT_CATEGORY, calculateItemCategory());
     }
     
-    // --- Getters/Setters for Properties ---
-    
-    public String getSelectedItem() {
-        return selectedItem;
-    }
-    
-    public boolean isAllowModded() {
-        return allowModded;
-    }
+    public String getSelectedItem() { return selectedItem; }
+    public boolean isAllowModded() { return allowModded; }
     
     public void setAllowModded(boolean allowModded) {
         this.allowModded = allowModded;
-        // 如果设置为不允许模组物品，且当前选中的是模组物品，则重置为默认物品
         if (!allowModded && !selectedItem.startsWith("minecraft:")) {
             setSelectedItem("minecraft:diamond");
         }
     }
-    
-    public boolean isShowCreativeTabsOnly() {
-        return showCreativeTabsOnly;
-    }
-    
-    public void setShowCreativeTabsOnly(boolean showCreativeTabsOnly) {
-        this.showCreativeTabsOnly = showCreativeTabsOnly;
-        // 这个属性不影响输出，只影响UI显示，所以不需要markDirty()
-    }
-    
-    public String getCategoryFilter() {
-        return categoryFilter;
-    }
-    
-    public void setCategoryFilter(String categoryFilter) {
-        if (categoryFilter == null || categoryFilter.isEmpty()) {
-            categoryFilter = "all";
-        }
-        
-        if (!this.categoryFilter.equals(categoryFilter)) {
-            this.categoryFilter = categoryFilter;
-            // 这个属性不影响输出，只影响UI显示，所以不需要markDirty()
-        }
-    }
-    
-    // --- 节点状态序列化 ---
     
     @Override
     public Object getNodeState() {
         java.util.Map<String, Object> state = new java.util.HashMap<>();
         state.put("selectedItem", getSelectedItem());
         state.put("allowModded", isAllowModded());
-        state.put("showCreativeTabsOnly", isShowCreativeTabsOnly());
-        state.put("categoryFilter", getCategoryFilter());
         return state;
     }
     
     @Override
     public void setNodeState(Object state) {
         if (state instanceof java.util.Map) {
-            java.util.Map<?, ?> stateMap = (java.util.Map<?, ?>) state;
-            
-            // 先设置属性
-            if (stateMap.containsKey("allowModded")) {
-                Object allowMod = stateMap.get("allowModded");
-                if (allowMod instanceof Boolean) {
-                    setAllowModded((Boolean) allowMod);
-                }
+            java.util.Map<?, ?> m = (java.util.Map<?, ?>) state;
+            if (m.containsKey("allowModded")) {
+                Object v = m.get("allowModded");
+                if (v instanceof Boolean) setAllowModded((Boolean) v);
             }
-            
-            if (stateMap.containsKey("showCreativeTabsOnly")) {
-                Object showCreative = stateMap.get("showCreativeTabsOnly");
-                if (showCreative instanceof Boolean) {
-                    setShowCreativeTabsOnly((Boolean) showCreative);
-                }
-            }
-            
-            if (stateMap.containsKey("categoryFilter")) {
-                Object catFilter = stateMap.get("categoryFilter");
-                if (catFilter instanceof String) {
-                    setCategoryFilter((String) catFilter);
-                }
-            }
-            
-            // 最后设置选中的物品ID
-            if (stateMap.containsKey("selectedItem")) {
-                Object selectedItm = stateMap.get("selectedItem");
-                if (selectedItm instanceof String) {
-                    setSelectedItem((String) selectedItm);
-                }
+            if (m.containsKey("selectedItem")) {
+                Object v = m.get("selectedItem");
+                if (v instanceof String) setSelectedItem((String) v);
             }
         }
     }
-} 
+}

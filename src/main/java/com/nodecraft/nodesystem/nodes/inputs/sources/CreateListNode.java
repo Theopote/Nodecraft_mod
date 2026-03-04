@@ -1,11 +1,16 @@
 package com.nodecraft.nodesystem.nodes.inputs.sources;
 
-import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.gui.editor.impl.BaseCustomUINode;
+import com.nodecraft.gui.editor.impl.ZoomHelper;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
-import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.IPort;
+import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import imgui.ImGui;
+import imgui.flag.ImGuiCol;
+import imgui.flag.ImGuiMouseButton;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -13,7 +18,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 列表创建节点，将多个输入项打包成一个List
+ * 列表创建节点，将多个输入项打包成一个List。
+ * 提供+/-按钮来动态调整输入端口数量。
  */
 @NodeInfo(
     id = "inputs.sources.create_list",
@@ -21,107 +27,135 @@ import java.util.UUID;
     description = "将多个输入项打包成一个列表",
     category = "inputs.sources"
 )
-public class CreateListNode extends BaseNode {
+public class CreateListNode extends BaseCustomUINode {
     
-    // --- 节点属性 ---
-    private int inputCount = 3; // 默认输入端口数量
-    private boolean allowDifferentTypes = true; // 是否允许不同类型的输入
+    @NodeProperty(displayName = "输入数量", category = "设置", order = 1,
+                  description = "列表输入端口数量")
+    private int inputCount = 3;
     
-    // --- 输入/输出端口ID ---
+    @NodeProperty(displayName = "允许不同类型", category = "设置", order = 2,
+                  description = "是否允许不同类型的输入")
+    private boolean allowDifferentTypes = true;
+    
     private static final String OUTPUT_LIST_ID = "output_list";
     
-    /**
-     * 构造一个新的列表创建节点
-     */
     public CreateListNode() {
-        // 使用新的分类命名 - inputs.sources.create_list
         super(UUID.randomUUID(), "inputs.sources.create_list");
-        
-        // 创建动态输入端口
         rebuildInputPorts();
         
-        // 创建输出端口
-        IPort listOutput = new BasePort(OUTPUT_LIST_ID, "List", 
-                "The resulting list containing all input items", NodeDataType.LIST, this);
-        addOutputPort(listOutput);
+        addOutputPort(new BasePort(OUTPUT_LIST_ID, "List", 
+                "The resulting list containing all input items", NodeDataType.LIST, this));
     }
     
     @Override
-    public String getDescription() {
-        return "Creates a list from multiple input items";
+    public String getDescription() { return "将多个输入项打包成一个列表"; }
+    
+    @Override
+    public void processNode(@Nullable ExecutionContext context) {
+        List<Object> resultList = new ArrayList<>();
+        for (int i = 0; i < inputCount; i++) {
+            Object value = inputValues.get("input_" + i);
+            if (value != null) resultList.add(value);
+        }
+        outputValues.put(OUTPUT_LIST_ID, resultList);
     }
     
     @Override
-    public String getDisplayName() {
-        return "Create List";
+    protected float calculateUIHeight() {
+        float height = getMediumPadding();
+        height += ImGui.getTextLineHeight(); // 标题
+        height += getSmallPadding();
+        height += ImGui.getFrameHeight(); // +/- 按钮行
+        height += getSmallPadding();
+        height += ImGui.getTextLineHeight(); // 信息行
+        height += getMediumPadding();
+        return height;
+    }
+
+    @Override
+    protected float calculateMinUIWidth() {
+        return 160f + getContentMargin();
+    }
+
+    @Override
+    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
+        return layout(zoom, l -> {
+            boolean changed = false;
+            try {
+                float availableWidth = width - ZoomHelper.applyZoom(getContentMargin() * 2, zoom);
+                l.addVerticalSpacing(getMediumPadding());
+                
+                // === 输入数量显示 ===
+                ImGui.pushStyleColor(ImGuiCol.Text, 0.6f, 0.8f, 1.0f, 1.0f);
+                ImGui.text("输入端口: " + inputCount);
+                ImGui.popStyleColor();
+                
+                l.addVerticalSpacing(getSmallPadding());
+                
+                // === +/- 按钮 ===
+                float buttonWidth = 40f;
+                
+                // 减号按钮
+                boolean canRemove = inputCount > 1;
+                if (!canRemove) {
+                    ImGui.pushStyleColor(ImGuiCol.Button, 0.3f, 0.3f, 0.3f, 0.5f);
+                    ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 0.5f);
+                }
+                if (ImGui.button(" - ##remove", buttonWidth, 0) && canRemove) {
+                    inputCount--;
+                    rebuildInputPorts();
+                    markDirty();
+                    changed = true;
+                }
+                if (!canRemove) {
+                    ImGui.popStyleColor(2);
+                }
+                
+                ImGui.sameLine();
+                
+                // 加号按钮
+                boolean canAdd = inputCount < 20;
+                if (!canAdd) {
+                    ImGui.pushStyleColor(ImGuiCol.Button, 0.3f, 0.3f, 0.3f, 0.5f);
+                    ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 0.5f);
+                }
+                if (ImGui.button(" + ##add", buttonWidth, 0) && canAdd) {
+                    inputCount++;
+                    rebuildInputPorts();
+                    markDirty();
+                    changed = true;
+                }
+                if (!canAdd) {
+                    ImGui.popStyleColor(2);
+                }
+                
+                l.addVerticalSpacing(getSmallPadding());
+                
+                // === 类型信息 ===
+                ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 1.0f);
+                ImGui.text(allowDifferentTypes ? "混合类型" : "同类型");
+                ImGui.popStyleColor();
+                
+                l.addVerticalSpacing(getMediumPadding());
+            } catch (Exception e) {
+                System.err.println("CreateListNode UI渲染失败: " + e.getMessage());
+            }
+            return changed;
+        });
     }
     
-    /**
-     * 根据当前设置的输入数量创建输入端口
-     */
     private void rebuildInputPorts() {
-        // 清除所有现有的输入端口
         inputPorts.clear();
-        
-        // 创建新的输入端口
         for (int i = 0; i < inputCount; i++) {
             String portId = "input_" + i;
             IPort inputPort = new BasePort(portId, "Item " + (i + 1), 
                     "Item to add to the list", NodeDataType.ANY, this);
             addInputPort(inputPort);
         }
+        invalidateCache();
     }
     
-    /**
-     * 节点的计算逻辑
-     * @param context 执行上下文
-     */
-    @Override
-    public void processNode(@Nullable ExecutionContext context) {
-        List<Object> resultList = new ArrayList<>();
-        
-        // 收集所有非空输入
-        for (int i = 0; i < inputCount; i++) {
-            String portId = "input_" + i;
-            Object value = inputValues.get(portId);
-            
-            if (value != null) {
-                resultList.add(value);
-            }
-        }
-        
-        // 设置输出
-        outputValues.put(OUTPUT_LIST_ID, resultList);
-    }
-    
-    /**
-     * 添加一个输入端口
-     */
-    public void addInputPort() {
-        inputCount++;
-        rebuildInputPorts();
-        markDirty();
-    }
-    
-    /**
-     * 移除一个输入端口
-     * @return 是否成功移除
-     */
-    public boolean removeInputPort() {
-        if (inputCount > 1) {
-            inputCount--;
-            rebuildInputPorts();
-            markDirty();
-            return true;
-        }
-        return false;
-    }
-    
-    // --- Getters/Setters for Properties ---
-    
-    public int getInputCount() {
-        return inputCount;
-    }
+    public int getInputCount() { return inputCount; }
     
     public void setInputCount(int count) {
         if (count > 0 && count != inputCount) {
@@ -131,16 +165,8 @@ public class CreateListNode extends BaseNode {
         }
     }
     
-    public boolean isAllowDifferentTypes() {
-        return allowDifferentTypes;
-    }
-    
-    public void setAllowDifferentTypes(boolean allow) {
-        this.allowDifferentTypes = allow;
-        // 这个属性不影响输出，只影响输入验证，所以不需要markDirty()
-    }
-    
-    // --- 节点状态序列化 ---
+    public boolean isAllowDifferentTypes() { return allowDifferentTypes; }
+    public void setAllowDifferentTypes(boolean allow) { this.allowDifferentTypes = allow; }
     
     @Override
     public Object getNodeState() {
@@ -153,30 +179,15 @@ public class CreateListNode extends BaseNode {
     @Override
     public void setNodeState(Object state) {
         if (state instanceof java.util.Map) {
-            java.util.Map<?, ?> stateMap = (java.util.Map<?, ?>) state;
-            
-            // 读取属性
-            if (stateMap.containsKey("allowDifferentTypes")) {
-                Object allowDiff = stateMap.get("allowDifferentTypes");
-                if (allowDiff instanceof Boolean) {
-                    setAllowDifferentTypes((Boolean) allowDiff);
-                }
+            java.util.Map<?, ?> m = (java.util.Map<?, ?>) state;
+            if (m.containsKey("allowDifferentTypes")) {
+                Object v = m.get("allowDifferentTypes");
+                if (v instanceof Boolean) setAllowDifferentTypes((Boolean) v);
             }
-            
-            // 最后设置输入端口数量，因为这会触发端口重建
-            if (stateMap.containsKey("inputCount")) {
-                Object count = stateMap.get("inputCount");
-                if (count instanceof Integer) {
-                    setInputCount((Integer) count);
-                }
+            if (m.containsKey("inputCount")) {
+                Object v = m.get("inputCount");
+                if (v instanceof Integer) setInputCount((Integer) v);
             }
         }
     }
-    
-    /**
-     * 标记节点需要重新计算
-     */
-    public void markDirty() {
-        // 未连接到图执行逻辑，预留实现
-    }
-} 
+}

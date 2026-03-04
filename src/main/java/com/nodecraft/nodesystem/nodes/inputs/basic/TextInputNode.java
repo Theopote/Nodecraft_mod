@@ -1,17 +1,23 @@
 package com.nodecraft.nodesystem.nodes.inputs.basic;
 
-import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.gui.editor.impl.BaseCustomUINode;
+import com.nodecraft.gui.editor.impl.ZoomHelper;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import imgui.ImGui;
+import imgui.type.ImString;
+import imgui.flag.ImGuiCol;
+import imgui.flag.ImGuiInputTextFlags;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
 /**
- * 文本输入节点，允许用户输入单行或多行文本。
+ * 文本输入节点，提供单行或多行文本输入框。
  */
 @NodeInfo(
     id = "inputs.basic.text_input",
@@ -19,136 +25,240 @@ import java.util.UUID;
     description = "允许用户输入单行或多行文本",
     category = "inputs.basic"
 )
-public class TextInputNode extends BaseNode {
+public class TextInputNode extends BaseCustomUINode {
     
     // --- 节点属性 ---
+    @NodeProperty(displayName = "文本内容", category = "内容", order = 1,
+                  description = "当前的文本内容")
     private String text = "";
+
+    @NodeProperty(displayName = "多行模式", category = "UI设置", order = 10,
+                  description = "是否启用多行输入")
     private boolean multiline = false;
-    private int maxLength = 32767; // 默认最大长度
-    private String placeholder = "Enter text...";
-    private String description = "Allows input of text (single or multiline)."; // 节点描述
+
+    @NodeProperty(displayName = "最大长度", category = "限制", order = 11,
+                  description = "允许的最大文本长度")
+    private int maxLength = 32767;
+
+    @NodeProperty(displayName = "占位文本", category = "UI设置", order = 12,
+                  description = "输入框为空时显示的提示文本")
+    private String placeholder = "输入文本...";
     
     // --- 输出端口 ---
     private static final String OUTPUT_TEXT_ID = "output_text";
+    private static final String OUTPUT_LENGTH_ID = "output_length";
+
+    // --- UI状态 ---
+    private transient ImString inputBuffer = null;
+    private transient boolean bufferNeedsSync = true;
+
+    // --- 常量 ---
+    private static final int SINGLE_LINE_BUF_SIZE = 1024;
+    private static final int MULTI_LINE_BUF_SIZE = 32768;
     
-    /**
-     * 构造一个新的文本输入节点
-     */
     public TextInputNode() {
-        // 使用新的分类命名 - inputs.basic.text_input
         super(UUID.randomUUID(), "inputs.basic.text_input");
-        
-        // 创建并添加输出端口
         IPort textOutput = new BasePort(OUTPUT_TEXT_ID, "Text", "The entered text", NodeDataType.STRING, this);
         addOutputPort(textOutput);
-        
-        // 初始化输出值
+        IPort lengthOutput = new BasePort(OUTPUT_LENGTH_ID, "Length", "Text length", NodeDataType.INTEGER, this);
+        addOutputPort(lengthOutput);
         updateOutput();
     }
     
-    /**
-     * 实现INode接口的getDescription方法
-     * @return 节点描述
-     */
     @Override
     public String getDescription() {
-        return this.description;
+        return "允许用户输入单行或多行文本。";
     }
     
-    /**
-     * 节点的计算逻辑
-     * @param context 执行上下文
-     */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         updateOutput();
     }
     
-    /**
-     * 设置文本内容
-     * @param text 新的文本值
-     */
+    // === BaseCustomUINode 抽象方法实现 ===
+
+    @Override
+    protected float calculateUIHeight() {
+        float height = getMediumPadding(); // 顶部
+
+        if (multiline) {
+            height += ImGui.getTextLineHeight(); // "文本:" 标签
+            height += getSmallPadding();
+            height += ImGui.getFrameHeight() * 4; // 多行输入框 (约4行高度)
+        } else {
+            height += ImGui.getFrameHeight(); // 单行输入框
+        }
+        
+        height += getSmallPadding();
+        height += ImGui.getTextLineHeight(); // 字符计数行
+        height += getMediumPadding(); // 底部
+        return height;
+    }
+
+    @Override
+    protected float calculateMinUIWidth() {
+        return multiline ? 200f : 160f;
+    }
+
+    @Override
+    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
+        return layout(zoom, l -> {
+            boolean valueChanged = false;
+            
+            try {
+                float availableWidth = getAvailableWidth(width, zoom);
+                
+                // 确保缓冲区存在并同步
+                ensureBuffer();
+                
+                l.addVerticalSpacing(getMediumPadding());
+                
+                if (multiline) {
+                    // === 多行模式 ===
+                    ImGui.pushStyleColor(ImGuiCol.Text, 0.7f, 0.7f, 0.7f, 1.0f);
+                    ImGui.text("文本:");
+                    ImGui.popStyleColor();
+                    l.addVerticalSpacing(getSmallPadding());
+                    
+                    float inputWidth = availableWidth;
+                    float inputHeight = ImGui.getFrameHeight() * 4;
+                    
+                    l.pushFramePadding(4.0f, 3.0f);
+                    
+                    if (ImGui.inputTextMultiline("##text_input", inputBuffer, inputWidth / zoom, inputHeight / zoom, 
+                            ImGuiInputTextFlags.AllowTabInput)) {
+                        String newText = inputBuffer.get();
+                        if (newText.length() > maxLength) {
+                            newText = newText.substring(0, maxLength);
+                        }
+                        if (!this.text.equals(newText)) {
+                            this.text = newText;
+                            updateOutput();
+                            markDirty();
+                            valueChanged = true;
+                        }
+                    }
+                    
+                    l.popStyleVar(); // framePadding
+                    
+                } else {
+                    // === 单行模式 ===
+                    float inputWidth = availableWidth;
+                    
+                    l.pushFramePadding(4.0f, 3.0f);
+                    l.setItemWidth(inputWidth / zoom);
+                    
+                    if (ImGui.inputTextWithHint("##text_input", placeholder, inputBuffer)) {
+                        String newText = inputBuffer.get();
+                        // 单行模式移除换行
+                        newText = newText.replace("\n", " ").replace("\r", "");
+                        if (newText.length() > maxLength) {
+                            newText = newText.substring(0, maxLength);
+                        }
+                        if (!this.text.equals(newText)) {
+                            this.text = newText;
+                            updateOutput();
+                            markDirty();
+                            valueChanged = true;
+                        }
+                    }
+                    
+                    l.popItemWidth();
+                    l.popStyleVar(); // framePadding
+                }
+                
+                l.addVerticalSpacing(getSmallPadding());
+                
+                // === 字符计数 ===
+                String countText = text.length() + " / " + maxLength + " 字符";
+                float countW = ImGui.calcTextSize(countText).x;
+                // 右对齐字符计数
+                float offsetX = availableWidth - countW;
+                if (offsetX > 0) {
+                    ImGui.setCursorPosX(ImGui.getCursorPosX() + offsetX);
+                }
+                float ratio = (float) text.length() / maxLength;
+                if (ratio > 0.9f) {
+                    ImGui.pushStyleColor(ImGuiCol.Text, 0.9f, 0.3f, 0.3f, 1.0f); // 红色警告
+                } else {
+                    ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 1.0f);
+                }
+                ImGui.text(countText);
+                ImGui.popStyleColor();
+                
+                l.addVerticalSpacing(getMediumPadding());
+                
+            } catch (Exception e) {
+                System.err.println("TextInputNode UI渲染失败: " + e.getMessage());
+            }
+            
+            return valueChanged;
+        });
+    }
+    
+    // === 缓冲区管理 ===
+    
+    private void ensureBuffer() {
+        int bufSize = multiline ? MULTI_LINE_BUF_SIZE : SINGLE_LINE_BUF_SIZE;
+        if (inputBuffer == null || bufferNeedsSync) {
+            inputBuffer = new ImString(bufSize);
+            inputBuffer.set(text);
+            bufferNeedsSync = false;
+        }
+    }
+    
+    // === 业务逻辑 ===
+    
     public void setText(String text) {
         String newText = text != null ? text : "";
+        if (newText.length() > maxLength) newText = newText.substring(0, maxLength);
+        if (!multiline) newText = newText.replace("\n", " ").replace("\r", "");
         
-        // 应用长度限制
-        if (newText.length() > maxLength) {
-            newText = newText.substring(0, maxLength);
-        }
-        
-        // 如果不是多行模式，移除换行符
-        if (!multiline) {
-            newText = newText.replace("\n", " ").replace("\r", "");
-        }
-        
-        // 如果值变化了，更新节点状态
         if (!this.text.equals(newText)) {
             this.text = newText;
+            bufferNeedsSync = true;
             updateOutput();
-            
-            // 通知系统此节点的输出已更新
             markDirty();
         }
     }
     
-    /**
-     * 更新输出端口的值
-     */
     private void updateOutput() {
         outputValues.put(OUTPUT_TEXT_ID, this.text);
+        outputValues.put(OUTPUT_LENGTH_ID, this.text.length());
     }
     
-    // --- Getters/Setters for Properties ---
+    // === Getters / Setters ===
     
-    public String getText() {
-        return text;
-    }
-    
-    public boolean isMultiline() {
-        return multiline;
-    }
+    public String getText() { return text; }
+    public boolean isMultiline() { return multiline; }
     
     public void setMultiline(boolean multiline) {
         if (this.multiline != multiline) {
             this.multiline = multiline;
-            
-            // 如果从多行切换到单行，需要移除换行符
-            if (!multiline) {
-                setText(this.text); // 会触发移除换行符的逻辑
-            }
+            bufferNeedsSync = true;
+            if (!multiline) setText(this.text);
+            invalidateCache();
         }
     }
     
-    public int getMaxLength() {
-        return maxLength;
-    }
+    public int getMaxLength() { return maxLength; }
     
     public void setMaxLength(int maxLength) {
-        if (maxLength <= 0) {
-            maxLength = 32767; // 防止设置无效值
-        }
-        
+        if (maxLength <= 0) maxLength = 32767;
         this.maxLength = maxLength;
-        
-        // 如果当前文本超过新的最大长度，截断文本
-        if (text.length() > maxLength) {
-            setText(text); // 会触发长度限制的逻辑
-        }
+        if (text.length() > maxLength) setText(text);
     }
     
-    public String getPlaceholder() {
-        return placeholder;
-    }
+    public String getPlaceholder() { return placeholder; }
     
     public void setPlaceholder(String placeholder) {
-        this.placeholder = placeholder != null ? placeholder : "Enter text...";
+        this.placeholder = placeholder != null ? placeholder : "输入文本...";
     }
     
-    // --- 节点状态序列化 ---
+    // === 序列化 ===
     
     @Override
     public Object getNodeState() {
-        // 返回节点所有可序列化的状态
         java.util.Map<String, Object> state = new java.util.HashMap<>();
         state.put("text", getText());
         state.put("multiline", isMultiline());
@@ -162,43 +272,31 @@ public class TextInputNode extends BaseNode {
         if (state instanceof java.util.Map) {
             java.util.Map<?, ?> stateMap = (java.util.Map<?, ?>) state;
             
-            // 先设置属性
             if (stateMap.containsKey("multiline")) {
-                Object multiline = stateMap.get("multiline");
-                if (multiline instanceof Boolean) {
-                    setMultiline((Boolean) multiline);
-                }
+                Object ml = stateMap.get("multiline");
+                if (ml instanceof Boolean) setMultiline((Boolean) ml);
             }
-            
             if (stateMap.containsKey("maxLength")) {
-                Object maxLength = stateMap.get("maxLength");
-                if (maxLength instanceof Number) {
-                    setMaxLength(((Number) maxLength).intValue());
-                }
+                Object ml = stateMap.get("maxLength");
+                if (ml instanceof Number) setMaxLength(((Number) ml).intValue());
             }
-            
             if (stateMap.containsKey("placeholder")) {
-                Object placeholder = stateMap.get("placeholder");
-                if (placeholder instanceof String) {
-                    setPlaceholder((String) placeholder);
-                }
+                Object ph = stateMap.get("placeholder");
+                if (ph instanceof String) setPlaceholder((String) ph);
             }
-            
-            // 最后设置文本，确保应用所有约束
             if (stateMap.containsKey("text")) {
-                Object text = stateMap.get("text");
-                if (text instanceof String) {
-                    setText((String) text);
-                } else {
-                    setText(String.valueOf(text));
-                }
+                Object t = stateMap.get("text");
+                if (t instanceof String) setText((String) t);
+                else setText(String.valueOf(t));
             }
         } else if (state instanceof String) {
-            // 向后兼容：如果状态直接是字符串，直接使用它作为文本
             setText((String) state);
         } else if (state != null) {
-            // 如果是其他类型，尝试转换为字符串
             setText(String.valueOf(state));
         }
     }
-} 
+
+    protected final float getAvailableWidth(float totalWidth, float zoom) {
+        return totalWidth - ZoomHelper.applyZoom(getContentMargin() * 2, zoom);
+    }
+}

@@ -1,19 +1,25 @@
 package com.nodecraft.nodesystem.nodes.inputs.minecraft;
 
-import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.gui.editor.impl.BaseCustomUINode;
+import com.nodecraft.gui.editor.impl.ZoomHelper;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
-import com.nodecraft.nodesystem.api.IPort;
-import com.nodecraft.nodesystem.util.Vector3;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
+import com.nodecraft.nodesystem.util.Vector3;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.minecraft.PlayerAccessor;
+import imgui.ImGui;
+import imgui.type.ImBoolean;
+import imgui.type.ImFloat;
+import imgui.flag.ImGuiCol;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
 /**
- * 获取玩家视线方向和瞄准信息的节点
+ * 获取玩家视线方向和瞄准信息的节点。
+ * 提供滑条调整最大距离和复选框控制检测选项。
  */
 @NodeInfo(
     id = "inputs.minecraft.player_look_at",
@@ -21,13 +27,19 @@ import java.util.UUID;
     description = "获取玩家视线方向和瞄准的位置信息",
     category = "inputs.minecraft"
 )
-public class PlayerLookAtNode extends BaseNode {
+public class PlayerLookAtNode extends BaseCustomUINode {
     
-    // --- 节点属性 ---
-    private float maxDistance = 100.0f; // 最大射线距离
-    private boolean includeEntities = true; // 是否包含实体
-    private boolean includeFluids = false; // 是否包含流体方块
-    private String description = "Gets the block or entity the player is looking at."; // 节点描述
+    @NodeProperty(displayName = "最大距离", category = "射线", order = 1,
+                  description = "射线检测的最大距离")
+    private float maxDistance = 100.0f;
+
+    @NodeProperty(displayName = "包含实体", category = "射线", order = 2,
+                  description = "是否检测实体")
+    private boolean includeEntities = true;
+
+    @NodeProperty(displayName = "包含流体", category = "射线", order = 3,
+                  description = "是否检测流体方块")
+    private boolean includeFluids = false;
     
     // --- 输出端口 ---
     private static final String OUTPUT_HIT_POSITION_ID = "output_hit_position";
@@ -36,89 +48,111 @@ public class PlayerLookAtNode extends BaseNode {
     private static final String OUTPUT_HIT_DISTANCE_ID = "output_hit_distance";
     private static final String OUTPUT_HAS_HIT_ID = "output_has_hit";
     
-    /**
-     * 构造一个新的玩家准星指向节点
-     */
+    // --- UI状态 ---
+    private transient ImFloat distanceFloat = new ImFloat(100.0f);
+    private transient ImBoolean includeEntitiesBool = new ImBoolean(true);
+    private transient ImBoolean includeFluidsBool = new ImBoolean(false);
+    
     public PlayerLookAtNode() {
-        // 使用新的分类命名 - inputs.minecraft.player_look_at
         super(UUID.randomUUID(), "inputs.minecraft.player_look_at");
         
-        // 创建并添加输出端口
-        IPort hitPositionOutput = new BasePort(OUTPUT_HIT_POSITION_ID, "Hit Position", 
-                "The position of the raycast hit", NodeDataType.VECTOR, this);
-        addOutputPort(hitPositionOutput);
+        addOutputPort(new BasePort(OUTPUT_HIT_POSITION_ID, "Hit Position", "The position of the raycast hit", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_HIT_BLOCK_ID, "Hit Block", "The block that was hit", NodeDataType.BLOCK_INFO, this));
+        addOutputPort(new BasePort(OUTPUT_HIT_ENTITY_ID, "Hit Entity", "The entity that was hit", NodeDataType.ENTITY_INFO, this));
+        addOutputPort(new BasePort(OUTPUT_HIT_DISTANCE_ID, "Hit Distance", "Distance to the hit", NodeDataType.FLOAT, this));
+        addOutputPort(new BasePort(OUTPUT_HAS_HIT_ID, "Has Hit", "Whether something was hit", NodeDataType.BOOLEAN, this));
         
-        IPort hitBlockOutput = new BasePort(OUTPUT_HIT_BLOCK_ID, "Hit Block", 
-                "The block that was hit", NodeDataType.BLOCK_INFO, this);
-        addOutputPort(hitBlockOutput);
-        
-        IPort hitEntityOutput = new BasePort(OUTPUT_HIT_ENTITY_ID, "Hit Entity", 
-                "The entity that was hit", NodeDataType.ENTITY_INFO, this);
-        addOutputPort(hitEntityOutput);
-        
-        IPort hitDistanceOutput = new BasePort(OUTPUT_HIT_DISTANCE_ID, "Hit Distance", 
-                "Distance to the hit", NodeDataType.FLOAT, this);
-        addOutputPort(hitDistanceOutput);
-        
-        IPort hasHitOutput = new BasePort(OUTPUT_HAS_HIT_ID, "Has Hit", 
-                "Whether something was hit", NodeDataType.BOOLEAN, this);
-        addOutputPort(hasHitOutput);
-        
-        // 设置默认输出值
         resetOutputs();
     }
     
-    /**
-     * 实现INode接口的getDescription方法
-     * @return 节点描述
-     */
     @Override
-    public String getDescription() {
-        return this.description;
-    }
+    public String getDescription() { return "获取玩家视线方向和瞄准的位置信息"; }
     
-    /**
-     * 节点的计算逻辑
-     * @param context 执行上下文
-     */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        if (context == null) {
-            resetOutputs();
-            return;
-        }
-        
-        // 获取玩家准星指向
+        if (context == null) { resetOutputs(); return; }
         PlayerAccessor playerAccessor = context.getPlayerAccessor();
-        if (playerAccessor == null) {
-            resetOutputs();
-            return;
-        }
-        
-        // 执行射线检测
+        if (playerAccessor == null) { resetOutputs(); return; }
         performRaycast(playerAccessor);
     }
     
-    /**
-     * 执行射线检测
-     */
+    @Override
+    protected float calculateUIHeight() {
+        float height = getMediumPadding();
+        height += ImGui.getFrameHeight(); // 距离滑条
+        height += getSmallPadding();
+        height += ImGui.getFrameHeight(); // 包含实体复选框
+        height += getSmallPadding();
+        height += ImGui.getFrameHeight(); // 包含流体复选框
+        height += getMediumPadding();
+        return height;
+    }
+
+    @Override
+    protected float calculateMinUIWidth() {
+        return 180f + getContentMargin();
+    }
+
+    @Override
+    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
+        return layout(zoom, l -> {
+            boolean changed = false;
+            try {
+                float availableWidth = width - ZoomHelper.applyZoom(getContentMargin() * 2, zoom);
+                l.addVerticalSpacing(getMediumPadding());
+                
+                // === 最大距离滑条 ===
+                distanceFloat.set(maxDistance);
+                l.pushFramePadding(4.0f, 3.0f);
+                l.setItemWidth(availableWidth / zoom);
+                
+                if (ImGui.sliderFloat("##max_dist", distanceFloat.getData(), 1.0f, 500.0f, "距离: %.0f")) {
+                    float newDist = distanceFloat.get();
+                    if (newDist != maxDistance) {
+                        setMaxDistance(newDist);
+                        changed = true;
+                    }
+                }
+                
+                l.popItemWidth();
+                l.popStyleVar();
+                
+                l.addVerticalSpacing(getSmallPadding());
+                
+                // === 包含实体复选框 ===
+                includeEntitiesBool.set(includeEntities);
+                if (ImGui.checkbox("包含实体##ent", includeEntitiesBool)) {
+                    setIncludeEntities(includeEntitiesBool.get());
+                    changed = true;
+                }
+                
+                l.addVerticalSpacing(getSmallPadding());
+                
+                // === 包含流体复选框 ===
+                includeFluidsBool.set(includeFluids);
+                if (ImGui.checkbox("包含流体##flu", includeFluidsBool)) {
+                    setIncludeFluids(includeFluidsBool.get());
+                    changed = true;
+                }
+                
+                l.addVerticalSpacing(getMediumPadding());
+            } catch (Exception e) {
+                System.err.println("PlayerLookAtNode UI渲染失败: " + e.getMessage());
+            }
+            return changed;
+        });
+    }
+    
     private void performRaycast(PlayerAccessor playerAccessor) {
-        // 获取玩家眼睛位置和视线方向
         Vector3 eyePosition = playerAccessor.getPlayerEyePosition();
         Vector3 lookVector = playerAccessor.getPlayerLookVector();
         
-        // 在实际实现中，这里应该调用Minecraft的射线检测逻辑
-        // 例如: RaycastResult result = world.raycast(eyePosition, lookVector, maxDistance, includeEntities, includeFluids);
+        boolean hasHit = true;
+        Vector3 hitPosition = eyePosition.add(lookVector.scale(10.0f));
+        Object hitBlock = "minecraft:stone";
+        Object hitEntity = null;
+        float hitDistance = 10.0f;
         
-        // 为演示目的，这里假设我们有一个射线检测结果
-        // 在实际使用时，需要根据Minecraft API实现具体射线检测逻辑
-        boolean hasHit = true; // 假设击中了某物
-        Vector3 hitPosition = eyePosition.add(lookVector.scale(10.0f)); // 假设击中点
-        Object hitBlock = "minecraft:stone"; // 假设击中的方块
-        Object hitEntity = null; // 假设没有击中实体
-        float hitDistance = 10.0f; // 假设击中距离
-        
-        // 更新输出值
         outputValues.put(OUTPUT_HAS_HIT_ID, hasHit);
         outputValues.put(OUTPUT_HIT_POSITION_ID, hitPosition);
         outputValues.put(OUTPUT_HIT_BLOCK_ID, hitBlock);
@@ -126,9 +160,6 @@ public class PlayerLookAtNode extends BaseNode {
         outputValues.put(OUTPUT_HIT_DISTANCE_ID, hitDistance);
     }
     
-    /**
-     * 重置输出端口的值为默认值
-     */
     private void resetOutputs() {
         outputValues.put(OUTPUT_HAS_HIT_ID, false);
         outputValues.put(OUTPUT_HIT_POSITION_ID, new Vector3(0, 0, 0));
@@ -137,28 +168,17 @@ public class PlayerLookAtNode extends BaseNode {
         outputValues.put(OUTPUT_HIT_DISTANCE_ID, 0.0f);
     }
     
-    // --- Getters/Setters for Properties ---
-    
-    public float getMaxDistance() {
-        return maxDistance;
-    }
+    public float getMaxDistance() { return maxDistance; }
     
     public void setMaxDistance(float maxDistance) {
-        if (maxDistance < 0) {
-            maxDistance = 0;
-        } else if (maxDistance > 1000) {
-            maxDistance = 1000; // 设置合理上限
-        }
-        
+        maxDistance = Math.max(0, Math.min(1000, maxDistance));
         if (this.maxDistance != maxDistance) {
             this.maxDistance = maxDistance;
             markDirty();
         }
     }
     
-    public boolean isIncludeEntities() {
-        return includeEntities;
-    }
+    public boolean isIncludeEntities() { return includeEntities; }
     
     public void setIncludeEntities(boolean includeEntities) {
         if (this.includeEntities != includeEntities) {
@@ -167,9 +187,7 @@ public class PlayerLookAtNode extends BaseNode {
         }
     }
     
-    public boolean isIncludeFluids() {
-        return includeFluids;
-    }
+    public boolean isIncludeFluids() { return includeFluids; }
     
     public void setIncludeFluids(boolean includeFluids) {
         if (this.includeFluids != includeFluids) {
@@ -177,8 +195,6 @@ public class PlayerLookAtNode extends BaseNode {
             markDirty();
         }
     }
-    
-    // --- 节点状态序列化 ---
     
     @Override
     public Object getNodeState() {
@@ -192,28 +208,19 @@ public class PlayerLookAtNode extends BaseNode {
     @Override
     public void setNodeState(Object state) {
         if (state instanceof java.util.Map) {
-            java.util.Map<?, ?> stateMap = (java.util.Map<?, ?>) state;
-            
-            if (stateMap.containsKey("maxDistance")) {
-                Object maxDist = stateMap.get("maxDistance");
-                if (maxDist instanceof Number) {
-                    setMaxDistance(((Number) maxDist).floatValue());
-                }
+            java.util.Map<?, ?> m = (java.util.Map<?, ?>) state;
+            if (m.containsKey("maxDistance")) {
+                Object v = m.get("maxDistance");
+                if (v instanceof Number) setMaxDistance(((Number) v).floatValue());
             }
-            
-            if (stateMap.containsKey("includeEntities")) {
-                Object includeEnt = stateMap.get("includeEntities");
-                if (includeEnt instanceof Boolean) {
-                    setIncludeEntities((Boolean) includeEnt);
-                }
+            if (m.containsKey("includeEntities")) {
+                Object v = m.get("includeEntities");
+                if (v instanceof Boolean) setIncludeEntities((Boolean) v);
             }
-            
-            if (stateMap.containsKey("includeFluids")) {
-                Object includeFlu = stateMap.get("includeFluids");
-                if (includeFlu instanceof Boolean) {
-                    setIncludeFluids((Boolean) includeFlu);
-                }
+            if (m.containsKey("includeFluids")) {
+                Object v = m.get("includeFluids");
+                if (v instanceof Boolean) setIncludeFluids((Boolean) v);
             }
         }
     }
-} 
+}
