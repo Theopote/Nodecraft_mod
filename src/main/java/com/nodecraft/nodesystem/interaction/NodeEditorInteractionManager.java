@@ -695,23 +695,42 @@ public class NodeEditorInteractionManager {
             }
             
             Camera camera = client.gameRenderer.getCamera();
-            Vec3d cameraPos = camera.getBlockPos().toCenterPos();
+            Vec3d cameraPos = client.getCameraEntity().getCameraPosVec(1.0f);
             
-            // 获取窗口尺寸
+            // 获取窗口与帧缓冲尺寸
             int windowWidth = client.getWindow().getWidth();
             int windowHeight = client.getWindow().getHeight();
+            int framebufferWidth = client.getWindow().getFramebufferWidth();
+            int framebufferHeight = client.getWindow().getFramebufferHeight();
+
+            if (windowWidth <= 0 || windowHeight <= 0 || framebufferWidth <= 0 || framebufferHeight <= 0) {
+                return null;
+            }
+
+            // 参考 chronoblocks：统一按帧缓冲像素进行 NDC 计算，避免缩放导致偏移
+            float mouseFramebufferX;
+            float mouseFramebufferY;
+
+            // ImGui 坐标可能是逻辑坐标，也可能已是像素坐标；做兼容处理
+            if (mouseX > windowWidth + 1.0f || mouseY > windowHeight + 1.0f) {
+                mouseFramebufferX = mouseX;
+                mouseFramebufferY = mouseY;
+            } else {
+                mouseFramebufferX = (float) (mouseX * framebufferWidth / (double) windowWidth);
+                mouseFramebufferY = (float) (mouseY * framebufferHeight / (double) windowHeight);
+            }
             
             // 验证鼠标坐标是否在有效范围内
-            if (mouseX < 0 || mouseX > windowWidth || mouseY < 0 || mouseY > windowHeight) {
-                NodeCraft.LOGGER.warn("鼠标坐标超出窗口范围: ({}, {}) 窗口尺寸: {}x{}", 
-                    mouseX, mouseY, windowWidth, windowHeight);
-                return null;
+            if (mouseFramebufferX < 0 || mouseFramebufferX > framebufferWidth ||
+                mouseFramebufferY < 0 || mouseFramebufferY > framebufferHeight) {
+                mouseFramebufferX = Math.max(0.0f, Math.min(mouseFramebufferX, framebufferWidth - 1.0f));
+                mouseFramebufferY = Math.max(0.0f, Math.min(mouseFramebufferY, framebufferHeight - 1.0f));
             }
             
             // 将屏幕坐标转换为归一化设备坐标 (NDC)
             // 屏幕坐标原点在左上角，NDC原点在中心，范围[-1, 1]
-            float ndcX = (2.0f * mouseX) / windowWidth - 1.0f;
-            float ndcY = 1.0f - (2.0f * mouseY) / windowHeight; // Y轴翻转
+            float ndcX = (2.0f * mouseFramebufferX) / framebufferWidth - 1.0f;
+            float ndcY = 1.0f - (2.0f * mouseFramebufferY) / framebufferHeight; // Y轴翻转
             
             // 计算射线方向
             Vec3d rayDirection = calculateRayDirection(ndcX, ndcY, camera);
@@ -1120,10 +1139,16 @@ public class NodeEditorInteractionManager {
         }
         
         try {
-            // 只有当鼠标不在ImGui界面上时，才进行游戏世界交互
-            if (!isMouseOverImGui) {
+            // 交互模式下需要允许 ImGui 光标与世界交互（参考 chronoblocks 的 UI+世界交互行为）
+            boolean allowWorldInteraction = !isMouseOverImGui || interactionState.isInInteractionMode();
+
+            if (allowWorldInteraction) {
                 // 检查中键视角控制
-                handleMiddleMouseCameraControl(mouseX, mouseY, isMiddleMouseDown);
+                if (!isMouseOverImGui) {
+                    handleMiddleMouseCameraControl(mouseX, mouseY, isMiddleMouseDown);
+                } else if (middleMousePressed) {
+                    middleMousePressed = false;
+                }
                 
                 // 使用缓存的射线进行拾取（性能优化）
                 Ray cachedRay = getCachedOrComputeRay(mouseX, mouseY);

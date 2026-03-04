@@ -154,10 +154,8 @@ public class LayoutRenderer {
             if (dims != null && dims.width() > 0 && dims.height() > 0) {
                 ImGui.setCursorPos(dims.x(), dims.y());
                 String childId = "simp_" + nodePanel.getComponentId();
-                boolean childBegun = ImGui.beginChild(childId, dims.width(), dims.height(), true);
-                if (childBegun) {
-                    ImGui.endChild();
-                }
+                ImGui.beginChild(childId, dims.width(), dims.height(), true);
+                ImGui.endChild();
             }
         }
 
@@ -167,10 +165,8 @@ public class LayoutRenderer {
             if (dims != null && dims.width() > 0 && dims.height() > 0) {
                 ImGui.setCursorPos(dims.x(), dims.y());
                 String childId = "simp_" + canvasComponent.getComponentId();
-                boolean childBegun = ImGui.beginChild(childId, dims.width(), dims.height(), true);
-                if (childBegun) {
-                    ImGui.endChild();
-                }
+                ImGui.beginChild(childId, dims.width(), dims.height(), true);
+                ImGui.endChild();
             }
         }
 
@@ -180,10 +176,8 @@ public class LayoutRenderer {
             if (dims != null && dims.width() > 0 && dims.height() > 0) {
                 ImGui.setCursorPos(dims.x(), dims.y());
                 String childId = "simp_" + propertyPanel.getComponentId();
-                boolean childBegun = ImGui.beginChild(childId, dims.width(), dims.height(), true);
-                if (childBegun) {
-                    ImGui.endChild();
-                }
+                ImGui.beginChild(childId, dims.width(), dims.height(), true);
+                ImGui.endChild();
             }
         }
     }
@@ -497,18 +491,16 @@ public class LayoutRenderer {
                     // 非画布组件可以有滚动条，根据类型决定是否有边框
                     boolean childBegun = ImGui.beginChild(childId, dims.width(), dims.height(), hasBorder);
 
-                    // 关键修复：如果窗口未成功开始，则直接返回，不尝试渲染内容或结束窗口
-                    if (!childBegun) {
-                        NodeCraft.LOGGER.warn("Failed to begin child window for component: {}",
-                                component.getComponentId());
-                        continue;
-                    }
-
                     try {
+                        if (!childBegun) {
+                            NodeCraft.LOGGER.warn("Failed to begin child window for component: {}",
+                                    component.getComponentId());
+                            continue;
+                        }
+
                         component.render(0, 0, ImGui.getContentRegionAvailX(),
                                 ImGui.getContentRegionAvailY(), 0, 0);
                     } finally {
-                        // 只有当窗口成功开始时才结束它
                         ImGui.endChild();
                     }
                 } catch (Exception e) {
@@ -549,18 +541,16 @@ public class LayoutRenderer {
             // 将画布边框设为 true
             boolean childBegun = ImGui.beginChild(childId, dims.width(), dims.height(), true, canvasFlags);
 
-            // 关键修复：如果窗口未成功开始，则直接返回，不尝试渲染内容或结束窗口
-            if (!childBegun) {
-                NodeCraft.LOGGER.warn("Failed to begin canvas child window");
-                return;
-            }
-
             try {
+                if (!childBegun) {
+                    NodeCraft.LOGGER.warn("Failed to begin canvas child window");
+                    return;
+                }
+
                 // 使用全尺寸进行渲染
                 canvasComponent.render(0, 0, ImGui.getContentRegionAvailX(),
                         ImGui.getContentRegionAvailY(), 0, 0);
             } finally {
-                // 只有当窗口成功开始时才结束它
                 ImGui.endChild();
             }
         } catch (Exception e) {
