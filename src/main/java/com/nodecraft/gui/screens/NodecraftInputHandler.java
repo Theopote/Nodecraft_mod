@@ -245,16 +245,16 @@ public class NodecraftInputHandler {
         // 删除：Delete - 优先处理，避免被ImGui捕获
         if (keyCode == GLFW.GLFW_KEY_DELETE) {
             boolean hasSelection = !editor.getSelectedNodeIds().isEmpty();
+            // 消费Delete键事件，避免被其他组件处理
             if (hasSelection) {
                 NodeCraft.LOGGER.info("触发删除快捷键: Delete");
                 editor.deleteSelectedNodes();
-                return true;
             } else {
                 if (NodeCraft.LOGGER.isDebugEnabled()) {
                     NodeCraft.LOGGER.debug("无法删除：没有选中的节点");
                 }
-                return true; // 消费Delete键事件，避免被其他组件处理
             }
+            return true;
         }
         
         return false;

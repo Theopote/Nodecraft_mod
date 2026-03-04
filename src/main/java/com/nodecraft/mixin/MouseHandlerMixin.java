@@ -1,6 +1,5 @@
 package com.nodecraft.mixin;
 
-import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.screens.NodecraftScreen;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.Mouse;

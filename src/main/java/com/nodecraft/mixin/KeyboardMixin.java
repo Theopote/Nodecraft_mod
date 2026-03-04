@@ -1,6 +1,5 @@
 package com.nodecraft.mixin;
 
-import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.screens.NodecraftScreen;
 import imgui.ImGui;
 import net.minecraft.client.Keyboard;
@@ -9,7 +8,6 @@ import net.minecraft.client.input.CharInput;
 import net.minecraft.client.input.KeyInput;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;

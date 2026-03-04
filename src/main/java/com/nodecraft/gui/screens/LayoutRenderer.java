@@ -231,7 +231,7 @@ public class LayoutRenderer {
         boolean showPropertyPanel = layoutConfig.propertyPanelRatio() > 0.001f;
 
         // 计算左侧分隔线位置
-        float nodePanelRight = 0;
+        float nodePanelRight;
         float nodePanelRightAbsolute = 0; // 绝对坐标
 
         if (showNodePanel && nodePanel != null) {
