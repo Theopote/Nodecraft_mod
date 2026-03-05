@@ -30,6 +30,7 @@ public class BlockHighlightElement extends AbstractPreviewElement {
     private float opacity = 1.0f; // 基础透明度
     private float minOpacity = 0.0f; // 最小透明度值，默认为0允许完全按照设置的透明度显示
     private boolean enablePulse = true; // 是否启用脉冲动画 (默认启用)
+    private boolean showOutline = true; // 是否显示方块边框
     private boolean showFill = false; // 是否显示方块表面填充
     private float pulsePhase = 0.0f; // 脉冲动画的当前阶段 (0.0 - 1.0)
 
@@ -74,6 +75,9 @@ public class BlockHighlightElement extends AbstractPreviewElement {
         }
         if (options.showFill != null) {
             this.showFill = options.showFill;
+        }
+        if (options.showOutline != null) {
+            this.showOutline = options.showOutline;
         }
 
         // 处理输入数据
@@ -176,7 +180,9 @@ public class BlockHighlightElement extends AbstractPreviewElement {
             if (showFill && fillVertexConsumer != null) {
                 renderSimpleBlockFill(matrices, cameraPos, blockPos, finalOpacity, pulseFactor, fillVertexConsumer);
             }
-            renderSimpleBlockOutline(matrices, cameraPos, blockPos, finalOpacity, pulseFactor, lineVertexConsumer);
+            if (showOutline) {
+                renderSimpleBlockOutline(matrices, cameraPos, blockPos, finalOpacity, pulseFactor, lineVertexConsumer);
+            }
         }
 
         vertexConsumers.draw();

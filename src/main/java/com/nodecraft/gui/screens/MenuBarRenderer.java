@@ -16,6 +16,7 @@ import com.nodecraft.gui.editor.impl.ImGuiNodeIO;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.NodeExecutor;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.visual.SelectionVisualFeedback;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.server.integrated.IntegratedServer;
@@ -249,6 +250,41 @@ public class MenuBarRenderer {
                     } else {
                         NodeCraft.LOGGER.warn("CanvasComponent is null, cannot toggle node previews");
                     }
+                }
+
+                if (ImGui.beginMenu("拾取高亮样式")) {
+                    SelectionVisualFeedback visualFeedback = SelectionVisualFeedback.getInstance();
+
+                    boolean showFill = visualFeedback.isBlockHighlightShowFill();
+                    if (ImGui.menuItem("显示面填充", null, showFill)) {
+                        visualFeedback.setBlockHighlightShowFill(!showFill);
+                    }
+
+                    boolean showOutline = visualFeedback.isBlockHighlightShowOutline();
+                    if (ImGui.menuItem("显示高亮边框", null, showOutline)) {
+                        visualFeedback.setBlockHighlightShowOutline(!showOutline);
+                    }
+
+                    boolean enablePulse = visualFeedback.isBlockHighlightEnablePulse();
+                    if (ImGui.menuItem("脉冲动画", null, enablePulse)) {
+                        visualFeedback.setBlockHighlightEnablePulse(!enablePulse);
+                    }
+
+                    float[] lineWidth = new float[] { visualFeedback.getBlockHighlightLineWidth() };
+                    if (ImGui.sliderFloat("边框线宽##picked_block_highlight", lineWidth, 0.5f, 8.0f, "%.1f")) {
+                        visualFeedback.setBlockHighlightLineWidth(lineWidth[0]);
+                    }
+
+                    float[] opacityScale = new float[] { visualFeedback.getBlockHighlightOpacityScale() };
+                    if (ImGui.sliderFloat("高亮透明度##picked_block_highlight", opacityScale, 0.1f, 1.0f, "%.2f")) {
+                        visualFeedback.setBlockHighlightOpacityScale(opacityScale[0]);
+                    }
+
+                    if (ImGui.menuItem("恢复默认样式")) {
+                        visualFeedback.resetBlockHighlightStyle();
+                    }
+
+                    ImGui.endMenu();
                 }
                 
                 ImGui.endMenu();

@@ -121,6 +121,14 @@ public class PreviewOptions {
         this.showFill = showFill;
         return this;
     }
+
+    /**
+     * 设置是否显示轮廓
+     */
+    public PreviewOptions setShowOutline(boolean showOutline) {
+        this.showOutline = showOutline;
+        return this;
+    }
     
     /**
      * 设置持续时间

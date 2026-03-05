@@ -26,6 +26,13 @@ public class SelectionVisualFeedback {
     
     // 预览ID管理 - 跟踪每个节点的预览
     private final ConcurrentMap<String, String> nodePreviewMap = new ConcurrentHashMap<>();
+
+    // 拾取高亮样式设置（可由菜单实时调整）
+    private volatile boolean blockHighlightShowFill = true;
+    private volatile boolean blockHighlightShowOutline = true;
+    private volatile boolean blockHighlightEnablePulse = true;
+    private volatile float blockHighlightLineWidth = 3.0f;
+    private volatile float blockHighlightOpacityScale = 1.0f;
     
     // 选择状态枚举
     public enum SelectionState {
@@ -111,6 +118,54 @@ public class SelectionVisualFeedback {
             }
         }
         return instance;
+    }
+
+    public boolean isBlockHighlightShowFill() {
+        return blockHighlightShowFill;
+    }
+
+    public void setBlockHighlightShowFill(boolean showFill) {
+        this.blockHighlightShowFill = showFill;
+    }
+
+    public boolean isBlockHighlightShowOutline() {
+        return blockHighlightShowOutline;
+    }
+
+    public void setBlockHighlightShowOutline(boolean showOutline) {
+        this.blockHighlightShowOutline = showOutline;
+    }
+
+    public boolean isBlockHighlightEnablePulse() {
+        return blockHighlightEnablePulse;
+    }
+
+    public void setBlockHighlightEnablePulse(boolean enablePulse) {
+        this.blockHighlightEnablePulse = enablePulse;
+    }
+
+    public float getBlockHighlightLineWidth() {
+        return blockHighlightLineWidth;
+    }
+
+    public void setBlockHighlightLineWidth(float lineWidth) {
+        this.blockHighlightLineWidth = Math.max(0.5f, Math.min(8.0f, lineWidth));
+    }
+
+    public float getBlockHighlightOpacityScale() {
+        return blockHighlightOpacityScale;
+    }
+
+    public void setBlockHighlightOpacityScale(float opacityScale) {
+        this.blockHighlightOpacityScale = Math.max(0.1f, Math.min(1.0f, opacityScale));
+    }
+
+    public void resetBlockHighlightStyle() {
+        this.blockHighlightShowFill = true;
+        this.blockHighlightShowOutline = true;
+        this.blockHighlightEnablePulse = true;
+        this.blockHighlightLineWidth = 3.0f;
+        this.blockHighlightOpacityScale = 1.0f;
     }
     
     // ================= 新的语义化API =================
@@ -282,15 +337,14 @@ public class SelectionVisualFeedback {
     private PreviewOptions createBlockSelectionOptions(SelectionState state) {
         PreviewOptions options = new PreviewOptions()
             .setColor(state.r, state.g, state.b)
-            .setOpacity(state.opacity)
-            .setLineWidth(3.0f)
+            .setOpacity(state.opacity * blockHighlightOpacityScale)
+            .setLineWidth(blockHighlightLineWidth)
             .wireframeMode();
 
-        if (state == SelectionState.SELECTED || state == SelectionState.CONFIRMED) {
-            options.setShowFill(true);
-        }
+        options.setShowFill(blockHighlightShowFill);
+        options.setShowOutline(blockHighlightShowOutline);
         
-        if (state.pulse) {
+        if (state.pulse && blockHighlightEnablePulse) {
             options.enablePulse();
         }
         
