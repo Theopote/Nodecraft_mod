@@ -229,13 +229,16 @@ public class FileDialogManager {
         
         ImBoolean isOpen = new ImBoolean(true);
         if (ImGui.begin(dialogTitle + "###FileOpenDialog", isOpen, windowFlags)) {
+            List<String> dirSnapshot = new ArrayList<>(dirList);
+            List<String> fileSnapshot = new ArrayList<>(fileList);
+
             // 显示当前路径
             ImGui.text("当前目录: " + currentDirectory.toString());
             ImGui.separator();
             
             // 渲染目录列表
             if (ImGui.beginListBox("###Directories", 380, 100)) {
-                for (String dir : dirList) {
+                for (String dir : dirSnapshot) {
                     if (ImGui.selectable("[目录] " + dir)) {
                         if ("..".equals(dir)) {
                             // 切换到上级目录
@@ -256,7 +259,7 @@ public class FileDialogManager {
             
             // 渲染文件列表
             if (ImGui.beginListBox("###Files", 380, 100)) {
-                for (String file : fileList) {
+                for (String file : fileSnapshot) {
                     if (ImGui.selectable(file, false)) {
                         filename.set(file);
                     }
@@ -324,13 +327,16 @@ public class FileDialogManager {
         
         ImBoolean isOpen = new ImBoolean(true);
         if (ImGui.begin(dialogTitle + "###FileSaveDialog", isOpen, windowFlags)) {
+            List<String> dirSnapshot = new ArrayList<>(dirList);
+            List<String> fileSnapshot = new ArrayList<>(fileList);
+
             // 显示当前路径
             ImGui.text("当前目录: " + currentDirectory.toString());
             ImGui.separator();
             
             // 渲染目录列表
             if (ImGui.beginListBox("###Directories", 380, 100)) {
-                for (String dir : dirList) {
+                for (String dir : dirSnapshot) {
                     if (ImGui.selectable("[目录] " + dir)) {
                         if ("..".equals(dir)) {
                             // 切换到上级目录
@@ -351,7 +357,7 @@ public class FileDialogManager {
             
             // 渲染文件列表
             if (ImGui.beginListBox("###Files", 380, 100)) {
-                for (String file : fileList) {
+                for (String file : fileSnapshot) {
                     if (ImGui.selectable(file, false)) {
                         filename.set(file);
                     }

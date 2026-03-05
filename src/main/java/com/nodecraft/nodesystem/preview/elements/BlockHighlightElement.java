@@ -160,9 +160,20 @@ public class BlockHighlightElement extends AbstractPreviewElement {
             return;
         }
 
-        VertexConsumerProvider.Immediate vertexConsumers = client.getBufferBuilders().getEntityVertexConsumers();
-        VertexConsumer lineVertexConsumer = vertexConsumers.getBuffer(RenderLayers.lines());
-        VertexConsumer fillVertexConsumer = showFill ? vertexConsumers.getBuffer(RenderLayers.debugFilledBox()) : null;
+        VertexConsumerProvider vertexConsumerProvider = PreviewRenderer.getInstance().getActiveVertexConsumers();
+        boolean shouldFlushImmediately = false;
+        if (vertexConsumerProvider == null) {
+            vertexConsumerProvider = client.getBufferBuilders().getEntityVertexConsumers();
+            shouldFlushImmediately = true;
+        }
+
+        VertexConsumerProvider.Immediate immediateConsumers =
+            vertexConsumerProvider instanceof VertexConsumerProvider.Immediate
+                ? (VertexConsumerProvider.Immediate) vertexConsumerProvider
+                : null;
+
+        VertexConsumer lineVertexConsumer = vertexConsumerProvider.getBuffer(RenderLayers.lines());
+        VertexConsumer fillVertexConsumer = showFill ? vertexConsumerProvider.getBuffer(RenderLayers.debugFilledBox()) : null;
 
         // 遍历所有要高亮的方块位置
         for (Coordinate pos : blockPositions) {
@@ -190,7 +201,9 @@ public class BlockHighlightElement extends AbstractPreviewElement {
             }
         }
 
-        vertexConsumers.draw();
+        if (shouldFlushImmediately && immediateConsumers != null) {
+            immediateConsumers.draw();
+        }
 
         // 恢复渲染系统状态
     }
@@ -210,10 +223,10 @@ public class BlockHighlightElement extends AbstractPreviewElement {
         // 使用更简单、更可靠的渲染状态设置
         // 1.21.11 下线宽/剔除状态由渲染管线管理
         
-        // 使用类的color属性设置颜色
-        float r = fillColor.x();
-        float g = fillColor.y();
-        float b = fillColor.z();
+        // 边框颜色使用主色（由 SelectionState 决定）
+        float r = color.x();
+        float g = color.y();
+        float b = color.z();
         float a = alpha * pulseFactor; // 直接使用计算的透明度，不再强制最小值
         
         // 使用统一的线框缓冲提交
@@ -263,9 +276,10 @@ public class BlockHighlightElement extends AbstractPreviewElement {
         matrices.push();
         matrices.translate(renderX, renderY, renderZ);
 
-        float r = color.x();
-        float g = color.y();
-        float b = color.z();
+        // 填充颜色使用独立 tintColor（由样式菜单配置）
+        float r = fillColor.x();
+        float g = fillColor.y();
+        float b = fillColor.z();
         float a = Math.max(0.08f, alpha * 0.28f * pulseFactor);
 
         Matrix4f matrix = matrices.peek().getPositionMatrix();

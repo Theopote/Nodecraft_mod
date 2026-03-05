@@ -63,6 +63,7 @@ public class PreviewRenderer {
     // 渲染配置 - 使用volatile确保跨线程可见性
     private volatile boolean globalPreviewEnabled = true;
     private volatile float globalOpacity = 1.0f;
+    private volatile VertexConsumerProvider activeVertexConsumers;
     private final PreviewRenderSettings settings = new PreviewRenderSettings();
 
     // ID生成器 - 使用原子计数器确保线程安全的唯一ID生成
@@ -270,6 +271,14 @@ public class PreviewRenderer {
             // 恢复渲染状态
             restoreRenderState();
         }
+    }
+
+    public void setActiveVertexConsumers(VertexConsumerProvider consumers) {
+        this.activeVertexConsumers = consumers;
+    }
+
+    public VertexConsumerProvider getActiveVertexConsumers() {
+        return activeVertexConsumers;
     }
     
     // ================= 预览元素创建 =================
