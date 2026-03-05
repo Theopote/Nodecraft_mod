@@ -606,8 +606,11 @@ public class ImGuiNodeRenderer {
         }
 
         // 如果节点处于可拖动状态并且交互状态为 DRAGGING_NODE，则持续移动节点
-        if ((isInvisibleButtonActive || (isMouseInNodeBounds && !isCustomUIWidgetActive)) 
-                && interaction.isDraggingNode() && ImGui.isMouseDown(ImGuiMouseButton.Left)) {
+        // 注意：一旦拖动已经开始（isDraggingNode()==true），不再检查 isCustomUIWidgetActive，
+        // 因为拖动过程中鼠标经过UI控件（如滑块）会导致它们被激活，从而错误地阻断拖动
+        boolean isDragging = interaction.isDraggingNode();
+        if ((isInvisibleButtonActive || (isMouseInNodeBounds && (isDragging || !isCustomUIWidgetActive))) 
+                && isDragging && ImGui.isMouseDown(ImGuiMouseButton.Left)) {
             // 确保当前活跃的节点是正在拖动的节点，或者拖动的节点是选中集的一部分
             if (Objects.equals(interaction.getDraggingNodeId(), nodeId) || selectedNodeIds.contains(nodeId)) {
                 float deltaX = ImGui.getIO().getMouseDelta().x / editor.getCanvasZoom();

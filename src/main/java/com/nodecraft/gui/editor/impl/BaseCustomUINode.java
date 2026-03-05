@@ -928,24 +928,28 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
     }
 
     protected final float getAvailableContentWidth(float totalWidth, float zoom) {
+        // totalWidth 是逻辑单位，必须先转换为像素单位，再减去像素单位的边距
+        float totalWidthPixels = toPixelsExact(totalWidth, zoom);
         float responsiveMargin = toPixels(getContentMargin() * 2, zoom, ResponsiveElementType.SPACING); // 左右两侧边距
-        float availableWidth = Math.max(0, totalWidth - responsiveMargin);
+        float availableWidth = Math.max(0, totalWidthPixels - responsiveMargin);
         
         if (isLayoutDebugEnabled()) {
-            NodeCraft.LOGGER.debug("[Layout Debug] Node {}: getAvailableContentWidth - totalWidth={}, margin={}, responsiveMargin={}, availableWidth={}", 
-                                 getId(), totalWidth, getContentMargin(), responsiveMargin, availableWidth);
+            NodeCraft.LOGGER.debug("[Layout Debug] Node {}: getAvailableContentWidth - totalWidth={}, totalWidthPixels={}, margin={}, responsiveMargin={}, availableWidth={}", 
+                                 getId(), totalWidth, totalWidthPixels, getContentMargin(), responsiveMargin, availableWidth);
         }
         
         return availableWidth;
     }
 
     protected final float getAvailableContentHeight(float totalHeight, float zoom) {
+        // totalHeight 是逻辑单位，必须先转换为像素单位，再减去像素单位的边距
+        float totalHeightPixels = toPixelsExact(totalHeight, zoom);
         float responsiveMargin = toPixels(getContentMargin() * 2, zoom, ResponsiveElementType.SPACING); // 上下两侧边距
-        float availableHeight = Math.max(0, totalHeight - responsiveMargin);
+        float availableHeight = Math.max(0, totalHeightPixels - responsiveMargin);
         
         if (isLayoutDebugEnabled()) {
-            NodeCraft.LOGGER.debug("[Layout Debug] Node {}: getAvailableContentHeight - totalHeight={}, margin={}, responsiveMargin={}, availableHeight={}", 
-                                 getId(), totalHeight, getContentMargin(), responsiveMargin, availableHeight);
+            NodeCraft.LOGGER.debug("[Layout Debug] Node {}: getAvailableContentHeight - totalHeight={}, totalHeightPixels={}, margin={}, responsiveMargin={}, availableHeight={}", 
+                                 getId(), totalHeight, totalHeightPixels, getContentMargin(), responsiveMargin, availableHeight);
         }
         
         return availableHeight;

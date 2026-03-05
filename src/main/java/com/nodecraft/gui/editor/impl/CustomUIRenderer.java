@@ -175,7 +175,20 @@ public class CustomUIRenderer {
                 boolean isAnyItemActiveInWindow = ImGui.isAnyItemActive();
                 boolean isAnyItemHoveredInWindow = ImGui.isAnyItemHovered();
 
-                if (isChildWindowHovered) {
+                // 检查此节点是否正在被拖动
+                // 如果正在拖动，忽略控件的 active 状态，因为那只是拖动时鼠标经过控件导致的误激活
+                ImGuiNodeInteraction interaction = editor.getInteraction();
+                boolean isNodeBeingDragged = interaction != null && interaction.isDraggingNode()
+                        && info.nodeId.equals(interaction.getDraggingNodeId());
+                
+                if (isNodeBeingDragged) {
+                    // 节点正在被拖动 → 不报告任何控件激活状态
+                    // 始终捕获鼠标以防止父窗口被拖动
+                    ImGui.getIO().setWantCaptureMouse(true);
+                    lastCustomUIHoveredNodeId = info.nodeId;
+                    lastCustomUIWasHoveredEmpty = true;
+                    lastCustomUIHasActiveWidget = false;
+                } else if (isChildWindowHovered) {
                     // 鼠标在自定义UI子窗口区域内
                     // 无论是否有控件交互，都要捕获鼠标以防止父窗口被拖动
                     ImGui.getIO().setWantCaptureMouse(true);
