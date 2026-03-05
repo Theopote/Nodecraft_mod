@@ -293,40 +293,11 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
         // 推入唯一的ImGui ID，确保节点内部控件的ID隔离
         // 使用更可靠的ID生成策略，避免hashCode()的碰撞风险
         pushUniqueImGuiId();
-        
-        // 检查字体缩放是否已经被 CustomUIRenderer 设置为 zoom
-        // CustomUIRenderer 会将所有样式属性统一按 zoom 线性缩放（包括字体），
-        // 所以这里必须比较 currentFontScale 和 zoom（而非非线性的 calculateImGuiFontScale），
-        // 否则字体缩放与其他样式属性不匹配，导致UI元素比例失调。
-        float currentFontScale = ImGui.getIO().getFontGlobalScale();
-        boolean alreadyScaledByRenderer = Math.abs(currentFontScale - zoom) < 0.05f;
-        
-        boolean fontScaleChanged = false;
-        
+
         try {
-            if (!alreadyScaledByRenderer) {
-                // 独立渲染模式（非通过 CustomUIRenderer）
-                // 使用线性 zoom 作为字体缩放，保持与 toPixels() 等布局方法的一致性
-                ImGui.getIO().setFontGlobalScale(zoom);
-                fontScaleChanged = true;
-                
-                if (isLayoutDebugEnabled()) {
-                    NodeCraft.LOGGER.debug("[Font Scale Debug] Node {}: Font scale set to zoom={:.3f} (was {:.3f})", 
-                                         getId(), zoom, currentFontScale);
-                }
-            } else if (isLayoutDebugEnabled()) {
-                NodeCraft.LOGGER.debug("[Font Scale Debug] Node {}: Font scale already at zoom={:.3f}, skipping", 
-                                     getId(), zoom);
-            }
-            
             // 调用子类实现的缩放感知渲染方法
             return renderCustomUIScaled(width, height, zoom);
         } finally {
-            // 只有在我们自己设置了字体缩放时才恢复
-            if (fontScaleChanged) {
-                ImGui.getIO().setFontGlobalScale(currentFontScale);
-            }
-            
             // 确保在任何情况下都能正确弹出ID
             ImGui.popID();
         }

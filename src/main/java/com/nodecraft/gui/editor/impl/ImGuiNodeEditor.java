@@ -231,6 +231,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             // 获取当前鼠标位置
             ImVec2 mousePos = ImGui.getIO().getMousePos();
 
+            // 2.0 在绘制前先处理节点拖动位移，确保本帧节点背景与自定义UI同步移动
+            applyNodeDragMovementBeforeRender();
+
             // 2. 先计算所有节点的尺寸和端口位置
             // 这一步会更新 NodePosition 中的 width/height 字段，并填充 portScreenPositions
             renderer.calculatePortPositions(canvasPos, currentGraph, nodePositions, portScreenPositions);
@@ -345,6 +348,50 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
 
         } catch (Exception e) {
             NodeCraft.LOGGER.error("渲染ImGui编辑器时出错: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 在渲染前应用节点拖动位移。
+     * 这样可以避免“本帧先绘制后位移”导致的节点背景与自定义UI视觉不同步。
+     */
+    private void applyNodeDragMovementBeforeRender() {
+        if (!interaction.isDraggingNode() || !ImGui.isMouseDown(ImGuiMouseButton.Left)) {
+            return;
+        }
+
+        float deltaX = ImGui.getIO().getMouseDelta().x / canvasZoom;
+        float deltaY = ImGui.getIO().getMouseDelta().y / canvasZoom;
+
+        if (deltaX == 0 && deltaY == 0) {
+            return;
+        }
+
+        UUID draggingNodeId = interaction.getDraggingNodeId();
+        if (draggingNodeId == null) {
+            return;
+        }
+
+        // 如果拖动节点属于当前选中集，则整体移动选中集；否则只移动拖动源节点
+        java.util.Set<UUID> moveTargets = new java.util.HashSet<>();
+        if (!selectedNodeIds.isEmpty() && selectedNodeIds.contains(draggingNodeId)) {
+            moveTargets.addAll(selectedNodeIds);
+        } else {
+            moveTargets.add(draggingNodeId);
+        }
+
+        boolean moved = false;
+        for (UUID nodeId : moveTargets) {
+            NodePosition nodePos = nodePositions.get(nodeId);
+            if (nodePos != null) {
+                nodePos.x += deltaX;
+                nodePos.y += deltaY;
+                moved = true;
+            }
+        }
+
+        if (moved) {
+            io.markDirty();
         }
     }
 

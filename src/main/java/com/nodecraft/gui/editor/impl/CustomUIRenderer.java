@@ -82,7 +82,6 @@ public class CustomUIRenderer {
      * 渲染单个节点的自定义UI（使用子窗口）
      */
     public void renderSingleCustomUIWithChildWindow(CustomUIRenderInfo info) {
-        boolean childStarted = false;
         try {
             ICustomUINode.ContentBounds bounds = null;
             if (info.customUINode != null) {
@@ -111,7 +110,6 @@ public class CustomUIRenderer {
 
             // === 画布级别缩放变换 ===
             // 保存原始样式状态
-            float originalFontScale = ImGui.getIO().getFontGlobalScale();
             float originalFramePaddingX = ImGui.getStyle().getFramePaddingX();
             float originalFramePaddingY = ImGui.getStyle().getFramePaddingY();
             float originalItemSpacingX = ImGui.getStyle().getItemSpacingX();
@@ -131,10 +129,9 @@ public class CustomUIRenderer {
             // 应用统一的缩放变换
             // 这样 ImGui 控件的所有部分（边框、内边距、交互区域等）都会正确缩放
             float zoom = info.zoom;
-            ImGui.getIO().setFontGlobalScale(zoom);
             ImGui.getStyle().setFramePadding(originalFramePaddingX * zoom, originalFramePaddingY * zoom);
-            // 节点面板内部使用更紧凑的垂直间距，X方向保持不变
-            ImGui.getStyle().setItemSpacing(originalItemSpacingX * zoom, 2.0f * zoom);
+            // ItemSpacing 维持原样式比例进行等比缩放，避免垂直方向缩放幅度不足
+            ImGui.getStyle().setItemSpacing(originalItemSpacingX * zoom, originalItemSpacingY * zoom);
             ImGui.getStyle().setIndentSpacing(originalIndentSpacing * zoom);
             ImGui.getStyle().setFrameBorderSize(originalFrameBorderSize * zoom);
             ImGui.getStyle().setFrameRounding(originalFrameRounding * zoom);
@@ -142,37 +139,44 @@ public class CustomUIRenderer {
             ImGui.getStyle().setScrollbarSize(originalScrollbarSize * zoom);
             ImGui.getStyle().setScrollbarRounding(originalScrollbarRounding * zoom);
             ImGui.getStyle().setGrabMinSize(originalGrabMinSize * zoom);
-            // WindowPadding 设为 0，确保子窗口的整个区域都可用于内容渲染，避免裁剪
+            // 保持窗口内边距为 0，确保可用渲染区域与节点内容区一致
             ImGui.getStyle().setWindowPadding(0, 0);
             ImGui.getStyle().setItemInnerSpacing(originalItemInnerSpacingX * zoom, originalItemInnerSpacingY * zoom);
 
             try {
+                // 在当前窗口内直接渲染（不再使用子窗口），避免重叠节点时子窗口层级覆盖问题
+                // 不使用强制裁剪，避免节点移动时自定义UI被意外截断
+                float clipMinX = info.screenX;
+                float clipMinY = info.screenY;
+                float clipMaxX = info.screenX + safeWidth;
+                float clipMaxY = info.screenY + safeHeight;
                 ImGui.setCursorScreenPos(info.screenX, info.screenY);
+                ImGui.beginGroup();
 
-                String customUIChildId = "custom_ui_" + info.nodeId;
-
-                int windowFlags = ImGuiWindowFlags.NoScrollbar |
-                        ImGuiWindowFlags.NoScrollWithMouse |
-                        ImGuiWindowFlags.NoBackground |
-                        ImGuiWindowFlags.NoDecoration |
-                        ImGuiWindowFlags.NoMove; // 防止子窗口本身被拖动
-
-                boolean childVisible = ImGui.beginChild(customUIChildId, safeWidth, safeHeight, false, windowFlags);
-                childStarted = true;
-
-                if (childVisible && info.customUINode != null) {
+                if (info.customUINode != null) {
                     try {
-                        // 在缩放变换下渲染自定义UI
-                        // 传递逻辑尺寸给节点，缩放变换已经在样式中处理
-                        info.customUINode.renderCustomUI(info.width, info.height, zoom);
+                        imgui.ImFont currentFont = ImGui.getFont();
+                        float originalFontObjectScale = currentFont != null ? currentFont.getScale() : 1.0f;
+                        try {
+                            if (currentFont != null) {
+                                currentFont.setScale(zoom);
+                            }
+                            info.customUINode.renderCustomUI(info.width, info.height, zoom);
+                        } finally {
+                            if (currentFont != null) {
+                                currentFont.setScale(originalFontObjectScale);
+                            }
+                        }
                     } catch (Exception e) {
                         NodeCraft.LOGGER.error("自定义UI渲染失败 (节点: {}): {}", info.nodeId, e.getMessage(), e);
                     }
                 }
 
+                ImGui.endGroup();
+
                 // === 自定义UI区域的鼠标事件处理 ===
-                // 检测鼠标是否在此子窗口区域内，以及是否有控件正在被交互
-                boolean isChildWindowHovered = ImGui.isWindowHovered();
+                // 基于节点自定义UI区域进行悬停检测
+                boolean isChildWindowHovered = ImGui.isMouseHoveringRect(clipMinX, clipMinY, clipMaxX, clipMaxY, true);
                 boolean isAnyItemActiveInWindow = ImGui.isAnyItemActive();
                 boolean isAnyItemHoveredInWindow = ImGui.isAnyItemHovered();
 
@@ -209,7 +213,6 @@ public class CustomUIRenderer {
 
             } finally {
                 // 恢复原始样式状态
-                ImGui.getIO().setFontGlobalScale(originalFontScale);
                 ImGui.getStyle().setFramePadding(originalFramePaddingX, originalFramePaddingY);
                 ImGui.getStyle().setItemSpacing(originalItemSpacingX, originalItemSpacingY);
                 ImGui.getStyle().setIndentSpacing(originalIndentSpacing);
@@ -225,10 +228,6 @@ public class CustomUIRenderer {
 
         } catch (Exception e) {
             NodeCraft.LOGGER.error("自定义UI子窗口创建失败 (节点: {}): {}", info.nodeId, e.getMessage(), e);
-        } finally {
-            if (childStarted) {
-                ImGui.endChild();
-            }
         }
     }
 
