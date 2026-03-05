@@ -2,6 +2,7 @@ package com.nodecraft.gui.editor.impl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import com.nodecraft.core.NodeCraft;
@@ -294,22 +295,30 @@ public class ImGuiNodeMenus {
      */
     private void deleteNode(UUID nodeId) {
         if (editor.getCurrentGraph() == null || nodeId == null) return;
-        
+
+        Set<UUID> selectedNodeIds = editor.getSelectedNodeIds();
+        boolean shouldDeleteSelection = selectedNodeIds.size() > 1 && selectedNodeIds.contains(nodeId);
+
+        if (shouldDeleteSelection) {
+            int count = selectedNodeIds.size();
+            boolean deleted = editor.deleteSelectedNodes();
+            if (deleted) {
+                NodeCraft.LOGGER.info("已通过右键菜单删除 {} 个选中节点", count);
+            }
+            return;
+        }
+
         INode node = editor.getCurrentGraph().getNode(nodeId);
-        if (node != null) {
-            // 记录我们将要删除的节点名称
-            String nodeName = node.getDisplayName();
-            
-            // 从选择集合中移除
-            editor.removeSelectedNode(nodeId);
-            
-            // 从位置映射中移除
-            editor.removeNodePosition(nodeId);
-            
-            // 从图表中移除
-            editor.getCurrentGraph().removeNode(nodeId);
-            
-            NodeCraft.LOGGER.info("已删除节点: {}", nodeName);
+        if (node == null) {
+            return;
+        }
+
+        editor.clearSelectedNodes();
+        editor.setSelectedNodeId(nodeId);
+
+        boolean deleted = editor.deleteSelectedNodes();
+        if (deleted) {
+            NodeCraft.LOGGER.info("已通过右键菜单删除节点: {}", node.getDisplayName());
         }
     }
 
