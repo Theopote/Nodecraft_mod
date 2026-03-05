@@ -50,9 +50,17 @@ public class KeyboardMixin {
 
                 // ImGui 不想捕获键盘（例如没有激活的输入框），
                 // 但鼠标在 UI 上，仍然拦截大部分按键避免误操作
-                // 只允许 ESC 键通过（用于关闭界面）
+                // 手动转发按键事件给 NodecraftScreen 处理编辑器快捷键
+                // （如 Delete 删除节点、Ctrl+Z 撤销、Ctrl+C 复制等）
+                // 然后仍然取消事件，阻止 Minecraft 默认处理
+                // 注：第二个参数 scanCode 实际上是 GLFW action (PRESS=1, RELEASE=0, REPEAT=2)
                 int keyCode = input.key();
                 if (keyCode != GLFW.GLFW_KEY_ESCAPE) {
+                    if (scanCode == GLFW.GLFW_PRESS || scanCode == GLFW.GLFW_REPEAT) {
+                        screen.keyPressed(input);
+                    } else if (scanCode == GLFW.GLFW_RELEASE) {
+                        screen.keyReleased(input);
+                    }
                     ci.cancel();
                 }
             }
