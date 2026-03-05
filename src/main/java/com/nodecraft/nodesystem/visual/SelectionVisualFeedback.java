@@ -26,6 +26,8 @@ public class SelectionVisualFeedback {
     
     // 预览ID管理 - 跟踪每个节点的预览
     private final ConcurrentMap<String, String> nodePreviewMap = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Coordinate> blockSelectionMap = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, SelectionState> blockSelectionStateMap = new ConcurrentHashMap<>();
 
     // 拾取高亮样式设置（可由菜单实时调整）
     private volatile boolean blockHighlightShowFill = true;
@@ -33,6 +35,9 @@ public class SelectionVisualFeedback {
     private volatile boolean blockHighlightEnablePulse = true;
     private volatile float blockHighlightLineWidth = 3.0f;
     private volatile float blockHighlightOpacityScale = 1.0f;
+    private volatile float blockHighlightFillR = 1.0f;
+    private volatile float blockHighlightFillG = 0.8f;
+    private volatile float blockHighlightFillB = 0.0f;
     
     // 选择状态枚举
     public enum SelectionState {
@@ -126,6 +131,7 @@ public class SelectionVisualFeedback {
 
     public void setBlockHighlightShowFill(boolean showFill) {
         this.blockHighlightShowFill = showFill;
+        refreshActiveBlockSelections();
     }
 
     public boolean isBlockHighlightShowOutline() {
@@ -134,6 +140,7 @@ public class SelectionVisualFeedback {
 
     public void setBlockHighlightShowOutline(boolean showOutline) {
         this.blockHighlightShowOutline = showOutline;
+        refreshActiveBlockSelections();
     }
 
     public boolean isBlockHighlightEnablePulse() {
@@ -142,6 +149,7 @@ public class SelectionVisualFeedback {
 
     public void setBlockHighlightEnablePulse(boolean enablePulse) {
         this.blockHighlightEnablePulse = enablePulse;
+        refreshActiveBlockSelections();
     }
 
     public float getBlockHighlightLineWidth() {
@@ -150,6 +158,7 @@ public class SelectionVisualFeedback {
 
     public void setBlockHighlightLineWidth(float lineWidth) {
         this.blockHighlightLineWidth = Math.max(0.5f, Math.min(8.0f, lineWidth));
+        refreshActiveBlockSelections();
     }
 
     public float getBlockHighlightOpacityScale() {
@@ -158,6 +167,18 @@ public class SelectionVisualFeedback {
 
     public void setBlockHighlightOpacityScale(float opacityScale) {
         this.blockHighlightOpacityScale = Math.max(0.1f, Math.min(1.0f, opacityScale));
+        refreshActiveBlockSelections();
+    }
+
+    public float[] getBlockHighlightFillColor() {
+        return new float[] { blockHighlightFillR, blockHighlightFillG, blockHighlightFillB };
+    }
+
+    public void setBlockHighlightFillColor(float r, float g, float b) {
+        this.blockHighlightFillR = Math.max(0.0f, Math.min(1.0f, r));
+        this.blockHighlightFillG = Math.max(0.0f, Math.min(1.0f, g));
+        this.blockHighlightFillB = Math.max(0.0f, Math.min(1.0f, b));
+        refreshActiveBlockSelections();
     }
 
     public void resetBlockHighlightStyle() {
@@ -166,6 +187,10 @@ public class SelectionVisualFeedback {
         this.blockHighlightEnablePulse = true;
         this.blockHighlightLineWidth = 3.0f;
         this.blockHighlightOpacityScale = 1.0f;
+        this.blockHighlightFillR = 1.0f;
+        this.blockHighlightFillG = 0.8f;
+        this.blockHighlightFillB = 0.0f;
+        refreshActiveBlockSelections();
     }
     
     // ================= 新的语义化API =================
@@ -190,6 +215,8 @@ public class SelectionVisualFeedback {
             if (previewId != null) {
                 // 记录预览ID
                 nodePreviewMap.put(nodeId, previewId);
+                blockSelectionMap.put(nodeId, position);
+                blockSelectionStateMap.put(nodeId, state);
                 NodeCraft.LOGGER.debug("方块选择反馈显示成功: 节点={}, 位置={}, 状态={}, 预览ID={}",
                     nodeId, position, state, previewId);
             } else {
@@ -278,6 +305,9 @@ public class SelectionVisualFeedback {
                 PreviewManager.hidePreview(previewId);
                 NodeCraft.LOGGER.debug("清除视觉反馈: 节点={}, 预览ID={}", nodeId, previewId);
             }
+
+            blockSelectionMap.remove(nodeId);
+            blockSelectionStateMap.remove(nodeId);
             
             // 同时清除可能的临时高亮
             PreviewManager.hideNodePreviews(nodeId + "_temp");
@@ -337,6 +367,7 @@ public class SelectionVisualFeedback {
     private PreviewOptions createBlockSelectionOptions(SelectionState state) {
         PreviewOptions options = new PreviewOptions()
             .setColor(state.r, state.g, state.b)
+            .setTintColor(blockHighlightFillR, blockHighlightFillG, blockHighlightFillB)
             .setOpacity(state.opacity * blockHighlightOpacityScale)
             .setLineWidth(blockHighlightLineWidth)
             .wireframeMode();
@@ -349,6 +380,33 @@ public class SelectionVisualFeedback {
         }
         
         return options;
+    }
+
+    private void refreshActiveBlockSelections() {
+        if (blockSelectionMap.isEmpty()) {
+            return;
+        }
+
+        for (String nodeId : blockSelectionMap.keySet()) {
+            Coordinate position = blockSelectionMap.get(nodeId);
+            SelectionState state = blockSelectionStateMap.get(nodeId);
+            if (position == null || state == null) {
+                continue;
+            }
+
+            try {
+                clearFeedback(nodeId);
+                PreviewOptions options = createBlockSelectionOptions(state);
+                String previewId = PreviewManager.highlightBlock(nodeId, position, options);
+                if (previewId != null) {
+                    nodePreviewMap.put(nodeId, previewId);
+                    blockSelectionMap.put(nodeId, position);
+                    blockSelectionStateMap.put(nodeId, state);
+                }
+            } catch (Exception e) {
+                NodeCraft.LOGGER.warn("刷新方块高亮样式失败: 节点={}, 错误={}", nodeId, e.getMessage());
+            }
+        }
     }
     
     /**

@@ -88,6 +88,14 @@ public class PreviewOptions {
         this.color = new Vector3f(r, g, b);
         return this;
     }
+
+    /**
+     * 设置着色颜色（可用于填充色）
+     */
+    public PreviewOptions setTintColor(float r, float g, float b) {
+        this.tintColor = new Vector3f(r, g, b);
+        return this;
+    }
     
     /**
      * 设置透明度

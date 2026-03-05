@@ -280,6 +280,11 @@ public class MenuBarRenderer {
                         visualFeedback.setBlockHighlightOpacityScale(opacityScale[0]);
                     }
 
+                    float[] fillColor = visualFeedback.getBlockHighlightFillColor();
+                    if (ImGui.colorEdit3("填充颜色##picked_block_fill_color", fillColor)) {
+                        visualFeedback.setBlockHighlightFillColor(fillColor[0], fillColor[1], fillColor[2]);
+                    }
+
                     if (ImGui.menuItem("恢复默认样式")) {
                         visualFeedback.resetBlockHighlightStyle();
                     }

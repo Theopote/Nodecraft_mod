@@ -26,6 +26,7 @@ public class BlockHighlightElement extends AbstractPreviewElement {
 
     private List<Coordinate> blockPositions = new ArrayList<>(); // 存储方块的整数坐标
     private Vector3f color = new Vector3f(1.0f, 0.8f, 0.0f); // 默认橙黄色 (RGBA)
+    private Vector3f fillColor = new Vector3f(1.0f, 0.8f, 0.0f); // 填充颜色（可独立配置）
     private float lineWidth = 4.0f; // 线宽 (增加线宽确保可见)
     private float opacity = 1.0f; // 基础透明度
     private float minOpacity = 0.0f; // 最小透明度值，默认为0允许完全按照设置的透明度显示
@@ -33,7 +34,7 @@ public class BlockHighlightElement extends AbstractPreviewElement {
     private boolean showOutline = true; // 是否显示方块边框
     private boolean showFill = false; // 是否显示方块表面填充
     private float pulsePhase = 0.0f; // 脉冲动画的当前阶段 (0.0 - 1.0)
-    private static final float OUTLINE_EXPAND = 0.0025f; // 轻微外扩，避免与填充面共面导致边框不可见
+    private static final float OUTLINE_EXPAND = 0.004f; // 轻微外扩，避免与填充面共面导致边框不可见
 
     // 预计算的方块顶点偏移量，用于构建线框
     private static final Vec3d[] CUBE_VERTICES = {
@@ -64,6 +65,9 @@ public class BlockHighlightElement extends AbstractPreviewElement {
         }
         if (options.lineWidth != null) {
             this.lineWidth = options.lineWidth;
+        }
+        if (options.tintColor != null) {
+            this.fillColor = new Vector3f(options.tintColor.x(), options.tintColor.y(), options.tintColor.z());
         }
         if (options.pulseAnimation != null) {
             this.enablePulse = options.pulseAnimation;
@@ -207,28 +211,17 @@ public class BlockHighlightElement extends AbstractPreviewElement {
         // 1.21.11 下线宽/剔除状态由渲染管线管理
         
         // 使用类的color属性设置颜色
-        float r = color.x();
-        float g = color.y();
-        float b = color.z();
+        float r = fillColor.x();
+        float g = fillColor.y();
+        float b = fillColor.z();
         float a = alpha * pulseFactor; // 直接使用计算的透明度，不再强制最小值
         
         // 使用统一的线框缓冲提交
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         
-        // 绘制立方体的12条边（轻微外扩，增强可见性）
-        for (int[] edge : CUBE_EDGES) {
-            Vec3d v1 = expandOutlineVertex(CUBE_VERTICES[edge[0]]);
-            Vec3d v2 = expandOutlineVertex(CUBE_VERTICES[edge[1]]);
-            
-            vertexConsumer.vertex(matrix, (float)v1.x, (float)v1.y, (float)v1.z)
-                .color(r, g, b, a)
-                .normal(0.0f, 1.0f, 0.0f)
-                .lineWidth(lineWidth);
-            vertexConsumer.vertex(matrix, (float)v2.x, (float)v2.y, (float)v2.z)
-                .color(r, g, b, a)
-                .normal(0.0f, 1.0f, 0.0f)
-                .lineWidth(lineWidth);
-        }
+        // 双层轮廓：外层深色 + 内层高亮，参考 chronoblocks 的高对比可视化效果
+        renderOutlineEdges(vertexConsumer, matrix, 2.0f * OUTLINE_EXPAND, 0.02f, 0.02f, 0.02f, Math.min(1.0f, a * 0.95f));
+        renderOutlineEdges(vertexConsumer, matrix, OUTLINE_EXPAND, r, g, b, a);
         
         matrices.pop();
         
@@ -236,11 +229,27 @@ public class BlockHighlightElement extends AbstractPreviewElement {
         // 1.21.11 下线宽/剔除状态由渲染管线管理
     }
 
-    private Vec3d expandOutlineVertex(Vec3d vertex) {
-        double ex = vertex.x == 0.0 ? -OUTLINE_EXPAND : OUTLINE_EXPAND;
-        double ey = vertex.y == 0.0 ? -OUTLINE_EXPAND : OUTLINE_EXPAND;
-        double ez = vertex.z == 0.0 ? -OUTLINE_EXPAND : OUTLINE_EXPAND;
+    private Vec3d expandOutlineVertex(Vec3d vertex, float expand) {
+        double ex = vertex.x == 0.0 ? -expand : expand;
+        double ey = vertex.y == 0.0 ? -expand : expand;
+        double ez = vertex.z == 0.0 ? -expand : expand;
         return new Vec3d(vertex.x + ex, vertex.y + ey, vertex.z + ez);
+    }
+
+    private void renderOutlineEdges(VertexConsumer vertexConsumer, Matrix4f matrix, float expand, float r, float g, float b, float a) {
+        for (int[] edge : CUBE_EDGES) {
+            Vec3d v1 = expandOutlineVertex(CUBE_VERTICES[edge[0]], expand);
+            Vec3d v2 = expandOutlineVertex(CUBE_VERTICES[edge[1]], expand);
+
+            vertexConsumer.vertex(matrix, (float) v1.x, (float) v1.y, (float) v1.z)
+                .color(r, g, b, a)
+                .normal(0.0f, 1.0f, 0.0f)
+                .lineWidth(lineWidth);
+            vertexConsumer.vertex(matrix, (float) v2.x, (float) v2.y, (float) v2.z)
+                .color(r, g, b, a)
+                .normal(0.0f, 1.0f, 0.0f)
+                .lineWidth(lineWidth);
+        }
     }
 
     /**
