@@ -70,10 +70,6 @@ public class CircularAngleNode extends BaseCustomUINode {
     /** 次刻度间隔（度） */
     private static final float MINOR_TICK_INTERVAL = 15.0f;
     
-    // --- 布局参数 ---
-    /** 圆形UI区域高度 */
-    private static final float CIRCULAR_UI_HEIGHT = 120.0f;
-    
     // --- 颜色常量 ---
     /** 旋转盘背景色 */
     private static final int DIAL_BG_COLOR = 0xFF2A2A2A;
@@ -148,9 +144,10 @@ public class CircularAngleNode extends BaseCustomUINode {
     
     @Override
     protected float calculateUIHeight() {
+        // 与 renderCustomUIScaled 的真实堆叠顺序保持一致，避免固定高度导致底部留白。
         float height = getMediumPadding(); // 顶部间距
-        height += CIRCULAR_UI_HEIGHT;      // 圆形UI区域
-        height += getMediumPadding();      // 中间间距
+        height += DIAL_RADIUS * 2.0f;      // 圆盘按钮实际高度
+        height += getMediumPadding();      // 圆盘与下方控件之间间距
         
         if (showValueInput) {
             height += ImGui.getFrameHeight(); // 使用ImGui的框架高度
