@@ -128,19 +128,29 @@ public class CustomUIRenderer {
             // 应用统一的缩放变换
             // 这样 ImGui 控件的所有部分（边框、内边距、交互区域等）都会正确缩放
             float zoom = info.zoom;
-            ImGui.getStyle().setFramePadding(originalFramePaddingX * zoom, originalFramePaddingY * zoom);
-            // ItemSpacing 维持原样式比例进行等比缩放，避免垂直方向缩放幅度不足
-            ImGui.getStyle().setItemSpacing(originalItemSpacingX * zoom, originalItemSpacingY * zoom);
+                // 统一做轻量紧凑化，减少控件与行间空隙，避免内容在底部溢出节点面板。
+                float compactFramePaddingFactor = 0.82f;
+                float compactItemSpacingFactor = 0.72f;
+                float compactInnerSpacingFactor = 0.80f;
+
+                ImGui.getStyle().setFramePadding(
+                    originalFramePaddingX * zoom * compactFramePaddingFactor,
+                    originalFramePaddingY * zoom * compactFramePaddingFactor);
+                ImGui.getStyle().setItemSpacing(
+                    originalItemSpacingX * zoom * compactItemSpacingFactor,
+                    originalItemSpacingY * zoom * compactItemSpacingFactor);
             ImGui.getStyle().setIndentSpacing(originalIndentSpacing * zoom);
             ImGui.getStyle().setFrameBorderSize(originalFrameBorderSize * zoom);
             ImGui.getStyle().setFrameRounding(originalFrameRounding * zoom);
             ImGui.getStyle().setGrabRounding(originalGrabRounding * zoom);
             ImGui.getStyle().setScrollbarSize(originalScrollbarSize * zoom);
             ImGui.getStyle().setScrollbarRounding(originalScrollbarRounding * zoom);
-            ImGui.getStyle().setGrabMinSize(originalGrabMinSize * zoom);
+                ImGui.getStyle().setGrabMinSize(Math.max(8.0f * zoom, originalGrabMinSize * zoom * 0.88f));
             // 保持窗口内边距为 0，确保可用渲染区域与节点内容区一致
             ImGui.getStyle().setWindowPadding(0, 0);
-            ImGui.getStyle().setItemInnerSpacing(originalItemInnerSpacingX * zoom, originalItemInnerSpacingY * zoom);
+                ImGui.getStyle().setItemInnerSpacing(
+                    originalItemInnerSpacingX * zoom * compactInnerSpacingFactor,
+                    originalItemInnerSpacingY * zoom * compactInnerSpacingFactor);
 
             try {
                 // 在当前窗口内直接渲染（不再使用子窗口），避免重叠节点时子窗口层级覆盖问题
@@ -153,19 +163,23 @@ public class CustomUIRenderer {
                 ImGui.beginGroup();
                 imgui.ImGui imguiInstance = new imgui.ImGui();
 
-                // 关键：使用窗口级字体缩放，让控件文字与控件尺寸同步缩放。
-                // 仅在当前自定义UI渲染段内生效，结束后恢复为 1.0。
-                imguiInstance.setWindowFontScale(zoom);
+                // 限定渲染区域，避免 separator 等元素横向无限延展到节点外。
+                ImGui.getWindowDrawList().pushClipRect(clipMinX, clipMinY, clipMaxX, clipMaxY, true);
 
                 if (info.customUINode != null) {
                     try {
+                        // 关键：使用窗口级字体缩放，让控件文字与控件尺寸同步缩放。
+                        // 仅在当前自定义UI渲染段内生效，结束后恢复为 1.0。
+                        imguiInstance.setWindowFontScale(zoom);
                         info.customUINode.renderCustomUI(info.width, info.height, zoom);
                     } catch (Exception e) {
                         NodeCraft.LOGGER.error("自定义UI渲染失败 (节点: {}): {}", info.nodeId, e.getMessage(), e);
+                    } finally {
+                        imguiInstance.setWindowFontScale(1.0f);
                     }
                 }
 
-                imguiInstance.setWindowFontScale(1.0f);
+                ImGui.getWindowDrawList().popClipRect();
                 ImGui.endGroup();
 
                 // === 自定义UI区域的鼠标事件处理 ===

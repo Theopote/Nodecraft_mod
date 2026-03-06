@@ -320,7 +320,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
                 }
                 
                 String btnText = placed ? "✓ 已放置到世界" : "▶ 永久放置到世界";
-                if (ImGui.button(btnText, aw / zoom, 0)) {
+                if (ImGui.button(btnText, aw, 0)) {
                     placementRequested = true;
                     placed = false; // 重置状态以允许重新放置
                     changed = true;
