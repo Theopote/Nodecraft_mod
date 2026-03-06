@@ -2,18 +2,18 @@ package com.nodecraft.gui.editor.impl;
 
 /**
  * 提供缩放和布局计算的助手方法
- * 
+ * <p>
  * ### 单位转换说明
  * 为了解决接口单位不一致的问题，本类提供了完整的单位转换工具：
- * 
+ * <p>
  * **术语定义**：
  * - **逻辑单位**：未缩放的基础单位，通常用于设计和计算
  * - **像素单位**：已缩放的实际屏幕像素，用于渲染和显示
- * 
+ * <p>
  * **转换规则**：
  * - 逻辑单位 × 缩放因子 = 像素单位
  * - 像素单位 ÷ 缩放因子 = 逻辑单位
- * 
+ * <p>
  * **使用指导**：
  * - 计算方法（如 calculateUIHeight）应返回逻辑单位
  * - 渲染方法（如 renderCustomUI）接收像素单位
@@ -25,7 +25,7 @@ public class ZoomHelper {
     
     /**
      * 将逻辑单位转换为像素单位（应用缩放）。
-     * 
+     * <p>
      * 这是最基础的转换方法，将设计时的逻辑尺寸转换为实际渲染的像素尺寸。
      * 
      * @param logicalSize 逻辑单位尺寸
@@ -38,7 +38,7 @@ public class ZoomHelper {
     
     /**
      * 将逻辑单位转换为像素单位的别名方法。
-     * 
+     * <p>
      * 提供更明确的方法名，避免混淆。
      * 
      * @param logicalSize 逻辑单位尺寸
@@ -51,7 +51,7 @@ public class ZoomHelper {
     
     /**
      * 将像素单位转换为逻辑单位（移除缩放）。
-     * 
+     * <p>
      * 当需要将已缩放的像素值转换回逻辑单位时使用。
      * 
      * @param pixelSize 像素单位尺寸
@@ -369,9 +369,9 @@ public class ZoomHelper {
         
         // 如果比例过大（超过10倍），可能存在单位不匹配
         if (ratio > 10.0f) {
-            System.err.println(String.format(
-                "[Unit Warning] %s: Possible unit mismatch - value1=%.2f, value2=%.2f, ratio=%.2f", 
-                context, value1, value2, ratio));
+            System.err.printf(
+                    "[Unit Warning] %s: Possible unit mismatch - value1=%.2f, value2=%.2f, ratio=%.2f%n",
+                context, value1, value2, ratio);
             return false;
         }
         
@@ -388,23 +388,23 @@ public class ZoomHelper {
      */
     public static boolean validateSizeRange(float size, boolean isPixelUnit, String context) {
         if (size < 0) {
-            System.err.println(String.format(
-                "[Size Warning] %s: Negative size value: %.2f", context, size));
+            System.err.printf(
+                    "[Size Warning] %s: Negative size value: %.2f%n", context, size);
             return false;
         }
         
         if (isPixelUnit) {
             // 像素单位的合理范围：0-10000像素
             if (size > 10000) {
-                System.err.println(String.format(
-                    "[Size Warning] %s: Unusually large pixel size: %.2f", context, size));
+                System.err.printf(
+                        "[Size Warning] %s: Unusually large pixel size: %.2f%n", context, size);
                 return false;
             }
         } else {
             // 逻辑单位的合理范围：0-2000逻辑单位
             if (size > 2000) {
-                System.err.println(String.format(
-                    "[Size Warning] %s: Unusually large logical size: %.2f", context, size));
+                System.err.printf(
+                        "[Size Warning] %s: Unusually large logical size: %.2f%n", context, size);
                 return false;
             }
         }

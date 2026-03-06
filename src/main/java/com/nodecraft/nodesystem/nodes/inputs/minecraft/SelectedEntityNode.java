@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.visual.SelectionVisualFeedback;
 import net.minecraft.util.math.Vec3d;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
+import imgui.flag.ImGuiTreeNodeFlags;
 import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 import java.util.Map;
@@ -38,6 +39,10 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
     private Coordinate pickedEntityPosition = null;
     private Vec3d pickedEntityExactPosition = null;
     private boolean hasPickedEntity = false;
+
+    // --- UI折叠状态（影响节点高度计算） ---
+    private transient boolean entityInfoExpanded = true;
+    private transient boolean settingsExpanded = false;
     
     // --- 输出端口 ---
     private static final String OUTPUT_ENTITY_ID = "output_entity_id";
@@ -175,7 +180,7 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
     
     @Override
     protected float calculateUIHeight() {
-        float baseHeight = 140f; // 基础高度：拾取按钮 + 设置选项
+        float baseHeight = 80f; // 基础高度：按钮 + 间距
         
         // 如果正在拾取，为状态提示增加高度
         NodeEditorInteractionManager interactionManager = NodeEditorInteractionManager.getInstance();
@@ -183,8 +188,22 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
             baseHeight += 50f;
         }
         
+        // 实体信息区域（可折叠）
         if (hasPickedEntity) {
-            baseHeight += 100f; // 为实体信息和清除按钮增加高度
+            baseHeight += 25f; // 折叠标题行
+            if (entityInfoExpanded) {
+                // 类型/ID/位置 + 清除按钮 + 间距
+                baseHeight += 88f;
+            }
+        } else {
+            baseHeight += 20f; // 未选择实体提示
+        }
+
+        // 设置区域（可折叠）
+        baseHeight += 25f; // 设置标题行
+        if (settingsExpanded) {
+            // 高亮选项 + 距离文本和滑块 + 间距
+            baseHeight += 72f;
         }
         
         baseHeight += getMediumPadding() * 2; // 上下边距
@@ -245,41 +264,44 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
                 addVerticalSpacing(getSmallPadding(), zoom);
             }
 
-            // 当前选中的实体信息
+            // 当前选中的实体信息（可折叠）
             if (hasPickedEntity) {
-                ImGui.text("已选择实体:");
-                addVerticalSpacing(getSmallPadding(), zoom);
-                
-                ImGui.pushStyleColor(ImGuiCol.Text, 0.8f, 0.9f, 1.0f, 1.0f);
-                ImGui.text("实体类型: " + pickedEntityType);
-                ImGui.popStyleColor();
-                
-                if (pickedEntityId != null) {
+                boolean infoExpandedNow = ImGui.collapsingHeader("已选择实体信息##entityInfo", ImGuiTreeNodeFlags.DefaultOpen);
+                entityInfoExpanded = syncExpandableUiState(entityInfoExpanded, infoExpandedNow);
+
+                if (infoExpandedNow) {
                     addVerticalSpacing(2, zoom);
-                    ImGui.pushStyleColor(ImGuiCol.Text, 0.9f, 0.8f, 1.0f, 1.0f);
-                    ImGui.text("实体ID: " + pickedEntityId);
+                    ImGui.pushStyleColor(ImGuiCol.Text, 0.8f, 0.9f, 1.0f, 1.0f);
+                    ImGui.text("实体类型: " + pickedEntityType);
                     ImGui.popStyleColor();
+
+                    if (pickedEntityId != null) {
+                        addVerticalSpacing(2, zoom);
+                        ImGui.pushStyleColor(ImGuiCol.Text, 0.9f, 0.8f, 1.0f, 1.0f);
+                        ImGui.text("实体ID: " + pickedEntityId);
+                        ImGui.popStyleColor();
+                    }
+
+                    if (pickedEntityPosition != null) {
+                        addVerticalSpacing(2, zoom);
+                        ImGui.pushStyleColor(ImGuiCol.Text, 0.7f, 0.7f, 0.7f, 1.0f);
+                        ImGui.text(String.format("位置: %d, %d, %d",
+                                pickedEntityPosition.getX(),
+                                pickedEntityPosition.getY(),
+                                pickedEntityPosition.getZ()));
+                        ImGui.popStyleColor();
+                    }
+
+                    addVerticalSpacing(getSmallPadding(), zoom);
+
+                    // 清除按钮
+                    if (ImGui.button("清除选择##clearEntity", availableWidth, buttonHeight)) {
+                        clearPickedEntity();
+                        changed = true;
+                    }
+
+                    hasUIInteraction |= ImGui.isItemHovered() || ImGui.isItemActive();
                 }
-                
-                if (pickedEntityPosition != null) {
-                    addVerticalSpacing(2, zoom);
-                    ImGui.pushStyleColor(ImGuiCol.Text, 0.7f, 0.7f, 0.7f, 1.0f);
-                    ImGui.text(String.format("位置: %d, %d, %d", 
-                        pickedEntityPosition.getX(), 
-                        pickedEntityPosition.getY(), 
-                        pickedEntityPosition.getZ()));
-                    ImGui.popStyleColor();
-                }
-                
-                addVerticalSpacing(getSmallPadding(), zoom);
-                
-                // 清除按钮
-                if (ImGui.button("清除选择##clearEntity", availableWidth, buttonHeight)) {
-                    clearPickedEntity();
-                    changed = true;
-                }
-                
-                hasUIInteraction |= ImGui.isItemHovered() || ImGui.isItemActive();
             } else {
                 ImGui.pushStyleColor(ImGuiCol.Text, 0.6f, 0.6f, 0.6f, 1.0f);
                 ImGui.text("未选择实体");
@@ -288,25 +310,29 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
 
             addVerticalSpacing(getMediumPadding(), zoom);
 
-            // 设置选项
-            ImGui.text("设置:");
-            addVerticalSpacing(getSmallPadding(), zoom);
-            
-            if (ImGui.checkbox("显示高亮##showHighlight", showHighlight)) {
-                setShowHighlight(!showHighlight);
-                changed = true;
-            }
-            hasUIInteraction |= ImGui.isItemHovered() || ImGui.isItemActive();
+            // 设置选项（可折叠）
+            boolean settingsExpandedNow = ImGui.collapsingHeader("设置##settings");
+            settingsExpanded = syncExpandableUiState(settingsExpanded, settingsExpandedNow);
 
-            // 最大距离设置
-            addVerticalSpacing(getSmallPadding(), zoom);
-            ImGui.text("最大距离:");
-            float[] maxDistanceArray = {maxDistance};
-            if (ImGui.sliderFloat("##maxDistance", maxDistanceArray, 10.0f, 200.0f, "%.1f")) {
-                setMaxDistance(maxDistanceArray[0]);
-                changed = true;
+            if (settingsExpandedNow) {
+                addVerticalSpacing(getSmallPadding(), zoom);
+
+                if (ImGui.checkbox("显示高亮##showHighlight", showHighlight)) {
+                    setShowHighlight(!showHighlight);
+                    changed = true;
+                }
+                hasUIInteraction |= ImGui.isItemHovered() || ImGui.isItemActive();
+
+                // 最大距离设置
+                addVerticalSpacing(getSmallPadding(), zoom);
+                ImGui.text("最大距离:");
+                float[] maxDistanceArray = {maxDistance};
+                if (ImGui.sliderFloat("##maxDistance", maxDistanceArray, 10.0f, 200.0f, "%.1f")) {
+                    setMaxDistance(maxDistanceArray[0]);
+                    changed = true;
+                }
+                hasUIInteraction |= ImGui.isItemHovered() || ImGui.isItemActive();
             }
-            hasUIInteraction |= ImGui.isItemHovered() || ImGui.isItemActive();
 
             addVerticalSpacing(getMediumPadding(), zoom);
 
@@ -315,7 +341,7 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
             e.printStackTrace();
         }
 
-        return changed;
+        return changed || hasUIInteraction;
     }
     
     protected final float getAvailableWidth(float unscaledNodeWidth, float zoom) {

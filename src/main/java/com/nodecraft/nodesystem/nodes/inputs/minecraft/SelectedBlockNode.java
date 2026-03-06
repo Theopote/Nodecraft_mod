@@ -1046,10 +1046,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 // 默认展开状态显示区
                 String headerText = hasPickedBlock ? "已选方块信息##info" : "输入坐标方块##info";
                 boolean infoExpandedNow = ImGui.collapsingHeader(headerText, ImGuiTreeNodeFlags.DefaultOpen);
-                if (infoExpandedNow != infoSectionExpanded) {
-                    infoSectionExpanded = infoExpandedNow;
-                    markDirty();
-                }
+                infoSectionExpanded = syncExpandableUiState(infoSectionExpanded, infoExpandedNow);
                 if (infoExpandedNow) {
                     ImGui.indent(); // 缩进内容
                     addVerticalSpacing(getSmallPadding(), zoom);
@@ -1104,10 +1101,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                         // 使用树形节点展示属性列表
                         String stateLabel = "属性 (" + pickedBlockStateData.size() + ")";
                         boolean treeExpandedNow = ImGui.treeNode(stateLabel + "##blockState");
-                        if (treeExpandedNow != blockStateTreeExpanded) {
-                            blockStateTreeExpanded = treeExpandedNow;
-                            markDirty();
-                        }
+                        blockStateTreeExpanded = syncExpandableUiState(blockStateTreeExpanded, treeExpandedNow);
                         if (treeExpandedNow) {
                             for (Map.Entry<String, String> entry : pickedBlockStateData.entrySet()) {
                                 ImGui.bulletText(entry.getKey() + ": " + entry.getValue());
@@ -1147,10 +1141,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
 
             // === 3. 高级设置区 ===
             boolean settingsExpandedNow = ImGui.collapsingHeader("设置##settings");
-            if (settingsExpandedNow != settingsSectionExpanded) {
-                settingsSectionExpanded = settingsExpandedNow;
-                markDirty();
-            }
+            settingsSectionExpanded = syncExpandableUiState(settingsSectionExpanded, settingsExpandedNow);
             if (settingsExpandedNow) {
                 addVerticalSpacing(getSmallPadding(), zoom);
                 

@@ -1360,6 +1360,21 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
     }
 
     /**
+     * 同步可折叠UI元素的展开状态。
+     * 当状态变化时会自动调用 markDirty() 触发尺寸重算。
+     *
+     * @param previousState 上一帧状态
+     * @param currentState 当前帧状态
+     * @return 应写回字段的新状态
+     */
+    protected final boolean syncExpandableUiState(boolean previousState, boolean currentState) {
+        if (previousState != currentState) {
+            markDirty();
+        }
+        return currentState;
+    }
+
+    /**
      * 强制刷新缓存
      * 
      * <p>此方法会立即失效当前缓存并重新计算UI尺寸。

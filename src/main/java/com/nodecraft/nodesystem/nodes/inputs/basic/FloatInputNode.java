@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -153,17 +154,8 @@ public class FloatInputNode extends BaseCustomUINode {
                 
                 // === 范围信息 ===
                 if (showRange) {
-                    String rangeText;
-                    if (Float.isInfinite(minValue) && Float.isInfinite(maxValue)) {
-                        rangeText = "范围: 无限制";
-                    } else if (Float.isInfinite(minValue)) {
-                        rangeText = String.format("最大值: " + formatString, maxValue);
-                    } else if (Float.isInfinite(maxValue)) {
-                        rangeText = String.format("最小值: " + formatString, minValue);
-                    } else {
-                        rangeText = String.format("范围: " + formatString + " ~ " + formatString, minValue, maxValue);
-                    }
-                    
+                    String rangeText = getString();
+
                     float rangeW = ImGui.calcTextSize(rangeText).x;
                     setCenterX(availableWidth, rangeW);
                     ImGui.pushStyleColor(ImGuiCol.Text, 0.55f, 0.55f, 0.55f, 1.0f);
@@ -181,7 +173,21 @@ public class FloatInputNode extends BaseCustomUINode {
             return valueChanged;
         });
     }
-    
+
+    private @NotNull String getString() {
+        String rangeText;
+        if (Float.isInfinite(minValue) && Float.isInfinite(maxValue)) {
+            rangeText = "范围: 无限制";
+        } else if (Float.isInfinite(minValue)) {
+            rangeText = String.format("最大值: " + formatString, maxValue);
+        } else if (Float.isInfinite(maxValue)) {
+            rangeText = String.format("最小值: " + formatString, minValue);
+        } else {
+            rangeText = String.format("范围: " + formatString + " ~ " + formatString, minValue, maxValue);
+        }
+        return rangeText;
+    }
+
     // === 业务逻辑 ===
     
     public void setValue(float value) {
