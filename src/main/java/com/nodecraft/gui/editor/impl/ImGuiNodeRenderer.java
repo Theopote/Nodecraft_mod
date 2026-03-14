@@ -633,8 +633,8 @@ public class ImGuiNodeRenderer {
         connectionRenderer.renderForegroundConnections(drawList, graph, portScreenPositions, selectedNodeIds);
     }
 
-    public void drawConnectionPreview(ImDrawList drawList, ImVec2 startPos, float canvasZoom, boolean isFromOutput) {
-        connectionRenderer.drawConnectionPreview(drawList, startPos, canvasZoom, isFromOutput);
+    public void drawConnectionPreview(ImDrawList drawList, ImVec2 startPos, float canvasZoom, boolean isFromOutput, boolean typeMismatch) {
+        connectionRenderer.drawConnectionPreview(drawList, startPos, canvasZoom, isFromOutput, typeMismatch);
     }
 
     public void drawSelectionBox(ImDrawList drawList, ImVec2 canvasPos, NodePosition boxSelectStart, NodePosition boxSelectEnd) {

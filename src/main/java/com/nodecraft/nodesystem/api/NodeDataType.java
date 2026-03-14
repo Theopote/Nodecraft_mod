@@ -180,6 +180,26 @@ public enum NodeDataType {
     }
 
     /**
+     * 检查「输出端口类型」是否可以连接到「输入端口类型」。
+     * 用于连线时类型校验：不匹配时连线应显示为红色警告。
+     *
+     * @param outputType 输出端口的数据类型
+     * @param inputType  输入端口的数据类型
+     * @return 若输出可以安全接到该输入返回 true，否则返回 false
+     */
+    public static boolean isConnectableTo(NodeDataType outputType, NodeDataType inputType) {
+        if (outputType == null) outputType = ANY;
+        if (inputType == null) inputType = ANY;
+        if (inputType == ANY) return true;
+        if (outputType == ANY) return true;
+        if (outputType == inputType) return true;
+        // 数字可放宽：整数/浮点可接到双精度
+        if (inputType == DOUBLE && (outputType == INTEGER || outputType == FLOAT)) return true;
+        if (inputType == FLOAT && outputType == INTEGER) return true;
+        return false;
+    }
+
+    /**
      * 根据ID查找数据类型
      * @param id 类型ID
      * @return 找到的数据类型，如果未找到则返回ANY

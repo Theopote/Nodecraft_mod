@@ -10,6 +10,8 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.editor.NodeEditorFactory;
 import com.nodecraft.gui.editor.base.INodeEditor;
 import com.nodecraft.nodesystem.api.INode;
+import com.nodecraft.nodesystem.api.IPort;
+import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.gui.components.CanvasComponent; // Needed for CanvasComponent.isNodeDragDropActive()
@@ -318,9 +320,10 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             // 10.5 处理键盘快捷键（直接通过ImGui/GLFW状态检测，不依赖Minecraft事件链）
             handleKeyboardShortcutsInRenderLoop();
 
-            // 11. 渲染连接预览线 (如果正在创建连接)
+            // 11. 渲染连接预览线 (如果正在创建连接)，类型不匹配时显示红色
             if (interaction.isCreatingConnection()) {
-                renderer.drawConnectionPreview(drawList, interaction.getDragPreviewLineStartPos(), canvasZoom, interaction.isFromOutputPort());
+                boolean previewTypeMismatch = computeConnectionPreviewTypeMismatch(currentGraph, interaction);
+                renderer.drawConnectionPreview(drawList, interaction.getDragPreviewLineStartPos(), canvasZoom, interaction.isFromOutputPort(), previewTypeMismatch);
             }
 
             // 12. 绘制框选框 (如果正在框选)
@@ -331,6 +334,26 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             // 13. 处理连接线断开 (右键点击连接线)
             // 此方法不依赖 ImGui.isAnyItemActive()，因为它处理的是右键事件，且鼠标已在连接线上。
             interaction.handleConnectionDisconnection(currentGraph, portScreenPositions);
+
+            // 13.5 悬停在类型不匹配的连线上时显示提示
+            if (interaction.isHoveringConnection() && currentGraph != null) {
+                UUID srcId = interaction.getHoveredConnectionSourceNodeId();
+                String srcPortId = interaction.getHoveredConnectionSourcePortId();
+                UUID tgtId = interaction.getHoveredConnectionTargetNodeId();
+                String tgtPortId = interaction.getHoveredConnectionTargetPortId();
+                for (NodeGraph.Connection c : currentGraph.getConnections()) {
+                    if (c.sourceNode.getId().equals(srcId) && c.sourcePort.getId().equals(srcPortId)
+                            && c.targetNode.getId().equals(tgtId) && c.targetPort.getId().equals(tgtPortId)) {
+                        if (!NodeDataType.isConnectableTo(c.sourcePort.getDataType(), c.targetPort.getDataType())) {
+                            String msg = String.format("类型不匹配: 输出 %s 无法连接到输入 %s",
+                                    c.sourcePort.getDataType().getDisplayName(),
+                                    c.targetPort.getDataType().getDisplayName());
+                            ImGui.setTooltip(msg);
+                        }
+                        break;
+                    }
+                }
+            }
 
             // 14. 处理节点右键菜单 (仅当 ImGui 没有被其他 Item 捕获时)
             if (ImGui.isMouseClicked(ImGuiMouseButton.Right)) {
@@ -393,6 +416,35 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         if (moved) {
             io.markDirty();
         }
+    }
+
+    /**
+     * 计算当前拖拽连接预览线是否因类型不匹配应显示为红色。
+     * 当鼠标悬停在目标端口上且输出类型与输入类型不兼容时返回 true。
+     */
+    private boolean computeConnectionPreviewTypeMismatch(NodeGraph graph, ImGuiNodeInteraction interaction) {
+        if (graph == null || !interaction.isCreatingConnection()) return false;
+        UUID sourceNodeId = interaction.getSourceNodeId();
+        String sourcePortId = interaction.getSourcePortId();
+        UUID hoveredNodeId = interaction.getHoveredNodeId();
+        String hoveredPortId = interaction.getHoveredPortId();
+        boolean isFromOutput = interaction.isFromOutputPort();
+        boolean hoveredIsOutput = interaction.isHoveredPortOutput();
+        if (sourceNodeId == null || sourcePortId == null || hoveredNodeId == null || hoveredPortId == null) return false;
+        INode sourceNode = graph.getNode(sourceNodeId);
+        INode hoveredNode = graph.getNode(hoveredNodeId);
+        if (sourceNode == null || hoveredNode == null) return false;
+        IPort sourcePort = null;
+        IPort targetPort = null;
+        if (isFromOutput && !hoveredIsOutput) {
+            for (IPort p : sourceNode.getOutputPorts()) if (p.getId().equals(sourcePortId)) { sourcePort = p; break; }
+            for (IPort p : hoveredNode.getInputPorts()) if (p.getId().equals(hoveredPortId)) { targetPort = p; break; }
+        } else if (!isFromOutput && hoveredIsOutput) {
+            for (IPort p : sourceNode.getInputPorts()) if (p.getId().equals(sourcePortId)) { targetPort = p; break; }
+            for (IPort p : hoveredNode.getOutputPorts()) if (p.getId().equals(hoveredPortId)) { sourcePort = p; break; }
+        }
+        if (sourcePort == null || targetPort == null) return false;
+        return !NodeDataType.isConnectableTo(sourcePort.getDataType(), targetPort.getDataType());
     }
 
     /**

@@ -106,6 +106,8 @@ public class ImGuiNodeInteraction {
     public String getHoveredConnectionSourcePortId() { return hoveredConnectionSourcePortId; }
     public UUID getHoveredConnectionTargetNodeId() { return hoveredConnectionTargetNodeId; }
     public String getHoveredConnectionTargetPortId() { return hoveredConnectionTargetPortId; }
+    public UUID getSourceNodeId() { return sourceNodeId; }
+    public String getSourcePortId() { return sourcePortId; }
     public float getPortHighlightAnimationTimer() { return portHighlightAnimationTimer; }
     public boolean shouldShowPortHighlight() { return shouldShowPortHighlight; }
     public boolean isPanningCanvas() { return currentState == InteractionState.PANNING_CANVAS; }

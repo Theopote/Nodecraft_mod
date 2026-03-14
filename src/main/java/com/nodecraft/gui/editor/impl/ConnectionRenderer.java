@@ -2,6 +2,7 @@ package com.nodecraft.gui.editor.impl;
 
 import java.util.Map;
 import java.util.UUID;
+import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import imgui.ImDrawList;
 import imgui.ImGui;
@@ -48,6 +49,7 @@ public class ConnectionRenderer {
 
         int hoveredLineColor = ImGui.getColorU32(1.0f, 1.0f, 0.4f, 1.0f);
         int normalLineColor = ImGui.getColorU32(ImGuiCol.PlotLines);
+        int typeMismatchLineColor = ImGui.getColorU32(0.95f, 0.2f, 0.2f, 1.0f);
         float hoveredLineThickness = 3.5f * canvasZoom;
         float normalLineThickness = 2.5f * canvasZoom;
 
@@ -57,7 +59,7 @@ public class ConnectionRenderer {
             renderAllConnections(drawList, graph, portScreenPositions, canvasZoom,
                     isHoveringConnection, hoveredSourceNodeId, hoveredSourcePortId,
                     hoveredTargetNodeId, hoveredTargetPortId, hoveredLineColor,
-                    normalLineColor, hoveredLineThickness, normalLineThickness,
+                    normalLineColor, typeMismatchLineColor, hoveredLineThickness, normalLineThickness,
                     highlightPortRadius);
             return;
         }
@@ -79,7 +81,7 @@ public class ConnectionRenderer {
         renderConnectionList(drawList, normalConnections, portScreenPositions, canvasZoom,
                 isHoveringConnection, hoveredSourceNodeId, hoveredSourcePortId,
                 hoveredTargetNodeId, hoveredTargetPortId, hoveredLineColor,
-                normalLineColor, hoveredLineThickness, normalLineThickness,
+                normalLineColor, typeMismatchLineColor, hoveredLineThickness, normalLineThickness,
                 highlightPortRadius);
     }
 
@@ -105,6 +107,7 @@ public class ConnectionRenderer {
 
         int hoveredLineColor = ImGui.getColorU32(1.0f, 1.0f, 0.4f, 1.0f);
         int normalLineColor = ImGui.getColorU32(ImGuiCol.PlotLines);
+        int typeMismatchLineColor = ImGui.getColorU32(0.95f, 0.2f, 0.2f, 1.0f);
         int highlightedLineColor = NodeDrawingUtils.adjustBrightnessFast(normalLineColor, 1.3f);
         float hoveredLineThickness = 3.5f * canvasZoom;
         float normalLineThickness = 2.5f * canvasZoom;
@@ -124,15 +127,16 @@ public class ConnectionRenderer {
             renderConnectionList(drawList, highlightedConnections, portScreenPositions, canvasZoom,
                     isHoveringConnection, hoveredSourceNodeId, hoveredSourcePortId,
                     hoveredTargetNodeId, hoveredTargetPortId, hoveredLineColor,
-                    highlightedLineColor, hoveredLineThickness, normalLineThickness,
+                    highlightedLineColor, typeMismatchLineColor, hoveredLineThickness, normalLineThickness,
                     highlightPortRadius);
         }
     }
 
     /**
-     * 绘制连接预览线
+     * 绘制连接预览线。
+     * @param typeMismatch 若为 true 则使用红色表示当前悬停目标端口类型不匹配
      */
-    public void drawConnectionPreview(ImDrawList drawList, ImVec2 startPos, float canvasZoom, boolean isFromOutput) {
+    public void drawConnectionPreview(ImDrawList drawList, ImVec2 startPos, float canvasZoom, boolean isFromOutput, boolean typeMismatch) {
         float startX = startPos.x;
         float startY = startPos.y;
 
@@ -154,7 +158,7 @@ public class ConnectionRenderer {
         }
         ctrl2Y = endY;
 
-        int lineColor = ImGui.getColorU32(ImGuiCol.PlotLines);
+        int lineColor = typeMismatch ? ImGui.getColorU32(0.95f, 0.2f, 0.2f, 1.0f) : ImGui.getColorU32(ImGuiCol.PlotLines);
         float lineThickness = 2.0f * canvasZoom;
 
         drawList.addBezierCubic(startX, startY, ctrl1X, ctrl1Y, ctrl2X, ctrl2Y, endX, endY, lineColor, lineThickness);
@@ -164,13 +168,13 @@ public class ConnectionRenderer {
                                       Map<UUID, Map<String, ImVec2>> portScreenPositions, float canvasZoom,
                                       boolean isHoveringConnection, UUID hoveredSourceNodeId, String hoveredSourcePortId,
                                       UUID hoveredTargetNodeId, String hoveredTargetPortId, int hoveredLineColor,
-                                      int normalLineColor, float hoveredLineThickness, float normalLineThickness,
+                                      int normalLineColor, int typeMismatchLineColor, float hoveredLineThickness, float normalLineThickness,
                                       float highlightPortRadius) {
 
         renderConnectionList(drawList, graph.getConnections(), portScreenPositions, canvasZoom,
                 isHoveringConnection, hoveredSourceNodeId, hoveredSourcePortId,
                 hoveredTargetNodeId, hoveredTargetPortId, hoveredLineColor,
-                normalLineColor, hoveredLineThickness, normalLineThickness,
+                normalLineColor, typeMismatchLineColor, hoveredLineThickness, normalLineThickness,
                 highlightPortRadius);
     }
 
@@ -178,7 +182,7 @@ public class ConnectionRenderer {
                                       Map<UUID, Map<String, ImVec2>> portScreenPositions, float canvasZoom,
                                       boolean isHoveringConnection, UUID hoveredSourceNodeId, String hoveredSourcePortId,
                                       UUID hoveredTargetNodeId, String hoveredTargetPortId, int hoveredLineColor,
-                                      int lineColor, float hoveredLineThickness, float normalLineThickness,
+                                      int lineColor, int typeMismatchLineColor, float hoveredLineThickness, float normalLineThickness,
                                       float highlightPortRadius) {
 
         for (NodeGraph.Connection connection : connections) {
@@ -202,7 +206,9 @@ public class ConnectionRenderer {
                         connection.targetNode.getId().equals(hoveredTargetNodeId) &&
                         connection.targetPort.getId().equals(hoveredTargetPortId);
 
-                int currentLineColor = isCurrentConnectionHovered ? hoveredLineColor : lineColor;
+                boolean typeMismatch = !NodeDataType.isConnectableTo(connection.sourcePort.getDataType(), connection.targetPort.getDataType());
+                int normalColor = typeMismatch ? typeMismatchLineColor : lineColor;
+                int currentLineColor = isCurrentConnectionHovered ? hoveredLineColor : normalColor;
                 float currentThickness = isCurrentConnectionHovered ? hoveredLineThickness : normalLineThickness;
 
                 drawList.addBezierCubic(
