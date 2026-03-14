@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.bake.BakePlacementService;
+import com.nodecraft.nodesystem.bake.PlacementMode;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.nodesystem.util.BlockPosList;
@@ -24,6 +26,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.Objects;
 
 /**
  * Geometry Viewer 节点: 几何体查看器
@@ -59,10 +62,27 @@ public class GeometryViewerNode extends BaseCustomUINode {
     @NodeProperty(displayName = "已放置", category = "状态", order = 6)
     private boolean placed = false;
 
+    @NodeProperty(displayName = "放置模式", category = "放置", order = 7,
+                  description = "覆盖：直接替换目标位置；增量：仅在空气位置放置")
+    private PlacementMode placementMode = PlacementMode.OVERWRITE;
+
+    @NodeProperty(displayName = "异步放置", category = "放置", order = 8,
+                  description = "开启后分批放置，避免大体量时卡顿")
+    private boolean useAsyncBake = true;
+
+    @NodeProperty(displayName = "记录撤销", category = "放置", order = 9,
+                  description = "记录被覆盖的方块，支持撤销")
+    private boolean recordUndo = true;
+
     private UUID previewId = UUID.randomUUID();
     private boolean placementRequested = false;
     private int lastBlockCount = 0;
     private String statusMessage = "等待输入...";
+
+    /** 虚拟几何体缓存：仅当参数变化时重绘 (脏标记) */
+    private int cachedGeometrySignature = 0;
+    private float cachedTransparency = -1f;
+    private String cachedColor = null;
 
     // --- 输入端口 IDs ---
     private static final String INPUT_BLOCKS_ID = "input_blocks";
@@ -122,33 +142,42 @@ public class GeometryViewerNode extends BaseCustomUINode {
         int blockCount = (blocksList != null) ? blocksList.size() : 0;
         lastBlockCount = blockCount;
 
-        // === 幽灵方块预览 ===
+        // === 幽灵方块预览（脏标记：仅当几何体或显示参数变化时重绘）===
+        int geometrySignature = computeGeometrySignature(blocksList);
+        boolean previewDirty = (geometrySignature != cachedGeometrySignature)
+                || (trans != cachedTransparency)
+                || !Objects.equals(color, cachedColor);
+
         if (previewEnabled && blocksList != null && !blocksList.isEmpty()) {
-            try {
-                // 清除旧预览
-                PreviewManager.hideNodePreviews(getId().toString());
+            if (previewDirty) {
+                try {
+                    cachedGeometrySignature = geometrySignature;
+                    cachedTransparency = trans;
+                    cachedColor = color;
 
-                // 转换为 Coordinate 列表
-                List<Coordinate> coordinates = new ArrayList<>();
-                for (BlockPos pos : blocksList) {
-                    coordinates.add(new Coordinate(pos.getX(), pos.getY(), pos.getZ()));
+                    PreviewManager.hideNodePreviews(getId().toString());
+                    List<Coordinate> coordinates = new ArrayList<>();
+                    for (BlockPos pos : blocksList) {
+                        coordinates.add(new Coordinate(pos.getX(), pos.getY(), pos.getZ()));
+                    }
+                    PreviewOptions options = new PreviewOptions()
+                        .ghostBlockMode()
+                        .setOpacity(trans);
+                    PreviewManager.showGhostBlocks(getId().toString(), coordinates, options);
+                } catch (Exception e) {
+                    statusMessage = "预览失败: " + e.getMessage();
+                    System.err.println("GeometryViewerNode preview error: " + e.getMessage());
+                    return;
                 }
-
-                // 创建幽灵方块预览
-                PreviewOptions options = new PreviewOptions()
-                    .ghostBlockMode()
-                    .setOpacity(trans);
-                PreviewManager.showGhostBlocks(getId().toString(), coordinates, options);
-
-                statusMessage = "预览中: " + blockCount + " 方块";
-            } catch (Exception e) {
-                statusMessage = "预览失败: " + e.getMessage();
-                System.err.println("GeometryViewerNode preview error: " + e.getMessage());
             }
+            statusMessage = "预览中: " + blockCount + " 方块";
         } else if (!previewEnabled) {
             PreviewManager.hideNodePreviews(getId().toString());
             statusMessage = blockCount > 0 ? "预览已关闭 (" + blockCount + " 方块)" : "等待输入...";
         } else {
+            cachedGeometrySignature = 0;
+            cachedTransparency = -1f;
+            cachedColor = null;
             PreviewManager.hideNodePreviews(getId().toString());
             statusMessage = "等待输入...";
         }
@@ -156,29 +185,37 @@ public class GeometryViewerNode extends BaseCustomUINode {
         // === 永久放置逻辑 ===
         if (placementRequested && blocksList != null && !blocksList.isEmpty()) {
             placementRequested = false;
-            
-            if (context != null && context instanceof com.nodecraft.nodesystem.execution.ExecutionContext execCtx) {
-                if (execCtx.getWorld() != null) {
-                    try {
-                        BlockState targetState = resolveBlockState(bType);
-                        if (targetState != null) {
-                            int successCount = 0;
-                            for (BlockPos pos : blocksList) {
-                                boolean success = execCtx.getWorld().setBlockState(
-                                    pos.toImmutable(), targetState, Block.NOTIFY_ALL);
-                                if (success) successCount++;
-                            }
-                            placed = true;
-                            statusMessage = "已放置: " + successCount + "/" + blockCount + " 方块";
-                        } else {
-                            statusMessage = "无效方块类型: " + bType;
-                        }
-                    } catch (Exception e) {
-                        statusMessage = "放置失败: " + e.getMessage();
-                        System.err.println("GeometryViewerNode placement error: " + e.getMessage());
-                    }
+
+            if (context != null && context instanceof com.nodecraft.nodesystem.execution.ExecutionContext execCtx
+                    && execCtx.getWorld() != null) {
+                BlockState targetState = resolveBlockState(bType);
+                if (targetState == null) {
+                    statusMessage = "无效方块类型: " + bType;
                 } else {
-                    statusMessage = "无法放置: 世界不可用";
+                    List<BlockPos> posList = new ArrayList<>();
+                    for (BlockPos pos : blocksList) {
+                        posList.add(pos.toImmutable());
+                    }
+
+                    if (useAsyncBake) {
+                        BakePlacementService.getInstance().enqueue(
+                                execCtx.getWorld(), posList, targetState, placementMode,
+                                recordUndo, 1000, null);
+                        statusMessage = "已提交放置任务 (" + blockCount + " 方块，异步)";
+                    } else {
+                        int successCount = 0;
+                        for (BlockPos pos : posList) {
+                            if (placementMode == PlacementMode.INCREMENTAL
+                                    && !execCtx.getWorld().isAir(pos)) {
+                                continue;
+                            }
+                            if (execCtx.getWorld().setBlockState(pos, targetState, Block.NOTIFY_ALL)) {
+                                successCount++;
+                            }
+                        }
+                        placed = true;
+                        statusMessage = "已放置: " + successCount + "/" + blockCount + " 方块";
+                    }
                 }
             } else {
                 statusMessage = "无法放置: 需要执行上下文";
@@ -189,6 +226,19 @@ public class GeometryViewerNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_BLOCKS_ID, blocksList);
         outputValues.put(OUTPUT_COUNT_ID, blockCount);
         outputValues.put(OUTPUT_PLACED_ID, placed);
+    }
+
+    /** 计算几何体签名，用于脏标记检测 */
+    private int computeGeometrySignature(BlockPosList blocks) {
+        if (blocks == null || blocks.isEmpty()) return 0;
+        int n = blocks.size();
+        int h = n;
+        int i = 0;
+        for (BlockPos pos : blocks) {
+            if (pos != null) h = 31 * h + pos.hashCode();
+            if (++i >= 5) break;
+        }
+        return h;
     }
 
     /**
@@ -226,6 +276,12 @@ public class GeometryViewerNode extends BaseCustomUINode {
         h += ImGui.getFrameHeight();        // 预览开关
         h += getSmallPadding();
         h += ImGui.getFrameHeight();        // 轮廓开关
+        h += getSmallPadding();
+        h += ImGui.getFrameHeight();        // 放置模式
+        h += getSmallPadding();
+        h += ImGui.getFrameHeight();        // 异步放置
+        h += getSmallPadding();
+        h += ImGui.getFrameHeight();        // 记录撤销
         h += getSmallPadding();
         h += ImGui.getFrameHeight();        // 放置按钮
         h += getMediumPadding();
@@ -308,6 +364,36 @@ public class GeometryViewerNode extends BaseCustomUINode {
                 }
                 l.addVerticalSpacing(getSmallPadding());
 
+                // 放置模式
+                if (ImGui.beginCombo("##gv_placement_mode", placementMode == PlacementMode.OVERWRITE ? "覆盖" : "增量")) {
+                    if (ImGui.selectable("覆盖", placementMode == PlacementMode.OVERWRITE)) {
+                        setPlacementMode(PlacementMode.OVERWRITE);
+                        changed = true;
+                    }
+                    if (ImGui.selectable("增量", placementMode == PlacementMode.INCREMENTAL)) {
+                        setPlacementMode(PlacementMode.INCREMENTAL);
+                        changed = true;
+                    }
+                    ImGui.endCombo();
+                }
+                l.addVerticalSpacing(getSmallPadding());
+
+                // 异步放置
+                ImBoolean asyncBool = new ImBoolean(useAsyncBake);
+                if (ImGui.checkbox("异步放置##gv_async", asyncBool)) {
+                    setUseAsyncBake(asyncBool.get());
+                    changed = true;
+                }
+                l.addVerticalSpacing(getSmallPadding());
+
+                // 记录撤销
+                ImBoolean undoBool = new ImBoolean(recordUndo);
+                if (ImGui.checkbox("记录撤销##gv_undo", undoBool)) {
+                    setRecordUndo(undoBool.get());
+                    changed = true;
+                }
+                l.addVerticalSpacing(getSmallPadding());
+
                 // ======= 永久放置按钮 =======
                 if (placed) {
                     ImGui.pushStyleColor(ImGuiCol.Button, 0xFF44DD44);
@@ -383,6 +469,21 @@ public class GeometryViewerNode extends BaseCustomUINode {
 
     public boolean isPlaced() { return placed; }
 
+    public PlacementMode getPlacementMode() { return placementMode; }
+    public void setPlacementMode(PlacementMode v) {
+        if (placementMode != v) { placementMode = v; markDirty(); }
+    }
+
+    public boolean isUseAsyncBake() { return useAsyncBake; }
+    public void setUseAsyncBake(boolean v) {
+        if (useAsyncBake != v) { useAsyncBake = v; markDirty(); }
+    }
+
+    public boolean isRecordUndo() { return recordUndo; }
+    public void setRecordUndo(boolean v) {
+        if (recordUndo != v) { recordUndo = v; markDirty(); }
+    }
+
     // === 状态序列化 ===
 
     @Override
@@ -395,6 +496,9 @@ public class GeometryViewerNode extends BaseCustomUINode {
         s.put("previewEnabled", previewEnabled);
         s.put("placed", placed);
         s.put("previewId", previewId.toString());
+        s.put("placementMode", placementMode.name());
+        s.put("useAsyncBake", useAsyncBake);
+        s.put("recordUndo", recordUndo);
         return s;
     }
 
@@ -404,14 +508,20 @@ public class GeometryViewerNode extends BaseCustomUINode {
             java.util.Map<?, ?> m = (java.util.Map<?, ?>) state;
             if (m.get("previewColor") instanceof String) setPreviewColor((String) m.get("previewColor"));
             if (m.get("transparency") instanceof Number) setTransparency(((Number) m.get("transparency")).floatValue());
-            if (m.get("showOutline") instanceof Boolean) setShowOutline((Boolean) m.get("showOutline"));
+            if (m.get("showOutline") instanceof Boolean) setShowOutline(Boolean.TRUE.equals(m.get("showOutline")));
             if (m.get("blockType") instanceof String) setBlockType((String) m.get("blockType"));
-            if (m.get("previewEnabled") instanceof Boolean) setPreviewEnabled((Boolean) m.get("previewEnabled"));
-            if (m.get("placed") instanceof Boolean) placed = (Boolean) m.get("placed");
+            if (m.get("previewEnabled") instanceof Boolean) setPreviewEnabled(Boolean.TRUE.equals(m.get("previewEnabled")));
+            if (m.get("placed") instanceof Boolean) placed = Boolean.TRUE.equals(m.get("placed"));
             if (m.get("previewId") instanceof String) {
                 try { previewId = UUID.fromString((String) m.get("previewId")); }
                 catch (IllegalArgumentException e) { previewId = UUID.randomUUID(); }
             }
+            if (m.get("placementMode") instanceof String) {
+                try { setPlacementMode(PlacementMode.valueOf((String) m.get("placementMode"))); }
+                catch (Exception ignored) {}
+            }
+            if (m.get("useAsyncBake") instanceof Boolean) setUseAsyncBake(Boolean.TRUE.equals(m.get("useAsyncBake")));
+            if (m.get("recordUndo") instanceof Boolean) setRecordUndo(Boolean.TRUE.equals(m.get("recordUndo")));
         }
     }
 }

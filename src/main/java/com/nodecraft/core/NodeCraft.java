@@ -99,7 +99,7 @@ public class NodeCraft implements ModInitializer {
 
 	private void initializeWorldInteraction() {
 		LOGGER.debug("初始化世界交互模块...");
-		// TODO: 在这里添加实际的世界交互模块初始化代码
+		com.nodecraft.nodesystem.bake.BakePlacementService.getInstance().registerTickHandler();
 	}
 
 	private void initializeDataManagement() {
