@@ -1,229 +1,193 @@
 package com.nodecraft.nodesystem.nodes.visualization.debugging;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
-import com.nodecraft.gui.editor.impl.ZoomHelper;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.BlockPosList;
 import imgui.ImGui;
-import imgui.type.ImBoolean;
 import imgui.flag.ImGuiCol;
+import imgui.flag.ImGuiStyleVar;
+import imgui.flag.ImGuiWindowFlags;
+import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+
 import java.util.UUID;
 
 /**
- * Value Monitor 节点: 在画布上悬停显示连接端口的数据值。
- * 提供复选框控制显示选项和刷新间隔滑条。
+ * 值监视器：面板/“小电视”风格，仅需将任意节点的输出连到输入，即可在面板上查看该输出的数据和类型。
  */
 @NodeInfo(
     id = "visualization.debugging.value_monitor",
-    displayName = "值监视器",
-    description = "在画布上悬停显示连接端口的数据值",
+    displayName = "数据预览",
+    description = "将任意输出连到输入，在面板上查看该输出的数据和类型",
     category = "visualization.debugging"
 )
 public class ValueMonitorNode extends BaseCustomUINode {
 
-    @NodeProperty(displayName = "显示标签", category = "显示", order = 1)
-    private boolean showLabel = true;
-
-    @NodeProperty(displayName = "显示类型", category = "显示", order = 2)
-    private boolean showType = true;
-
-    @NodeProperty(displayName = "紧凑视图", category = "显示", order = 3)
-    private boolean compactView = false;
-
-    @NodeProperty(displayName = "刷新间隔", category = "显示", order = 4)
-    private int refreshInterval = 500;
-
-    private String displayText = "";
-
     private static final String INPUT_VALUE_ID = "input_value";
-    private static final String INPUT_LABEL_ID = "input_label";
-    private static final String INPUT_SHOW_TYPE_ID = "input_show_type";
-    private static final String INPUT_REFRESH_INTERVAL_ID = "input_refresh_interval";
     private static final String OUTPUT_VALUE_ID = "output_value";
-    private static final String OUTPUT_DISPLAY_TEXT_ID = "output_display_text";
-    private static final String OUTPUT_TYPE_ID = "output_type";
+
+    /** 供面板显示用，processNode 中写入 */
+    private String displayContent = "";
+    private String typeLabel = "—";
 
     public ValueMonitorNode() {
         super(UUID.randomUUID(), "visualization.debugging.value_monitor");
-        addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "要监视的值", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_LABEL_ID, "Label", "显示值的标签", NodeDataType.STRING, this));
-        addInputPort(new BasePort(INPUT_SHOW_TYPE_ID, "Show Type", "是否显示类型信息", NodeDataType.BOOLEAN, this));
-        addInputPort(new BasePort(INPUT_REFRESH_INTERVAL_ID, "Refresh Interval", "刷新间隔（毫秒）", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALUE_ID, "Value", "监视的值（直接传递）", NodeDataType.ANY, this));
-        addOutputPort(new BasePort(OUTPUT_DISPLAY_TEXT_ID, "Display Text", "显示的文本", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_TYPE_ID, "Type", "监视值的类型", NodeDataType.STRING, this));
+        addInputPort(new BasePort(INPUT_VALUE_ID, "输入", "连接任意节点的输出，在此查看数据", NodeDataType.ANY, this));
+        addOutputPort(new BasePort(OUTPUT_VALUE_ID, "输出", "原样传递输入值", NodeDataType.ANY, this));
     }
 
     @Override
-    public String getDescription() { return "在画布上悬停显示连接端口的数据值"; }
+    public String getDescription() {
+        return "将任意输出连到输入，在面板上查看该输出的数据和类型";
+    }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object valueObj = inputValues.get(INPUT_VALUE_ID);
-        Object labelObj = inputValues.get(INPUT_LABEL_ID);
-        Object showTypeObj = inputValues.get(INPUT_SHOW_TYPE_ID);
-        Object refreshIntervalObj = inputValues.get(INPUT_REFRESH_INTERVAL_ID);
-
-        boolean st = this.showType;
-        if (showTypeObj instanceof Boolean) st = (Boolean) showTypeObj;
-        if (refreshIntervalObj instanceof Number) refreshInterval = Math.max(100, ((Number) refreshIntervalObj).intValue());
-
-        String label = (labelObj instanceof String) ? (String) labelObj : "";
-        String typeName = getDataTypeName(valueObj);
-        displayText = formatDisplayText(valueObj, label, typeName, st);
-
-        outputValues.put(OUTPUT_VALUE_ID, valueObj);
-        outputValues.put(OUTPUT_DISPLAY_TEXT_ID, displayText);
-        outputValues.put(OUTPUT_TYPE_ID, typeName);
+        Object value = inputValues.get(INPUT_VALUE_ID);
+        typeLabel = getDataTypeLabel(value);
+        displayContent = formatContent(value);
+        outputValues.put(OUTPUT_VALUE_ID, value);
     }
 
     @Override
     protected float calculateUIHeight() {
         float h = getMediumPadding();
-        h += ImGui.getTextLineHeight();    // 值文本
-        h += ImGui.getTextLineHeight();    // 类型行
+        h += ImGui.getTextLineHeight();           // 标题行
         h += getSmallPadding();
-        h += ImGui.getFrameHeight();       // showLabel
-        h += getSmallPadding();
-        h += ImGui.getFrameHeight();       // showType
-        h += getSmallPadding();
-        h += ImGui.getFrameHeight();       // compactView
-        h += getSmallPadding();
-        h += ImGui.getFrameHeight();       // refreshInterval
+        h += 80f;                                 // 屏幕内容区最小高度
         h += getMediumPadding();
         return h;
     }
 
     @Override
     protected float calculateMinUIWidth() {
-        return 180f + getContentMargin();
+        return 220f + getContentMargin();
     }
 
     @Override
     protected boolean renderCustomUIScaled(float width, float height, float zoom) {
         return layout(zoom, l -> {
-            boolean changed = false;
             try {
                 float aw = l.getAvailableContentWidth(width);
-                l.addVerticalSpacing(getMediumPadding());
 
-                ImGui.pushStyleColor(ImGuiCol.Text, 0xFF88CCFF);
-                String show = displayText.isEmpty() ? "(无数据)" : displayText;
-                if (show.length() > 40) show = show.substring(0, 37) + "...";
-                ImGui.text(show);
+                // 标题：像“小电视”的顶栏
+                ImGui.pushStyleColor(ImGuiCol.Text, 0xFFAAAAAA);
+                ImGui.text("数据预览");
                 ImGui.popStyleColor();
-
-                ImGui.pushStyleColor(ImGuiCol.Text, 0xFF888888);
-                ImGui.text("类型: " + getDataTypeName(inputValues.get(INPUT_VALUE_ID)));
-                ImGui.popStyleColor();
-
                 l.addVerticalSpacing(getSmallPadding());
 
-                ImBoolean slBool = new ImBoolean(showLabel);
-                if (ImGui.checkbox("显示标签##sl", slBool)) { setShowLabel(slBool.get()); changed = true; }
-                l.addVerticalSpacing(getSmallPadding());
+                // “屏幕”区域：深色背景 + 边框，像小电视
+                float screenH = 88f;
+                ImGui.pushStyleColor(ImGuiCol.ChildBg, 0.08f, 0.08f, 0.10f, 0.98f);
+                ImGui.pushStyleVar(ImGuiStyleVar.ChildBorderSize, 1.2f);
+                ImGui.pushStyleVar(ImGuiStyleVar.ChildRounding, 4f);
+                ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, 8f, 8f);
+                boolean childOpen = ImGui.beginChild("##value_monitor_screen", aw, screenH, true, ImGuiWindowFlags.AlwaysUseWindowPadding);
 
-                ImBoolean stBool = new ImBoolean(showType);
-                if (ImGui.checkbox("显示类型##st", stBool)) { setShowType(stBool.get()); changed = true; }
-                l.addVerticalSpacing(getSmallPadding());
+                if (childOpen) {
+                    float contentW = ImGui.getContentRegionAvailX();
+                    // 类型标签（小字、灰）
+                    ImGui.pushStyleColor(ImGuiCol.Text, 0xFF666666);
+                    ImGui.text("[" + typeLabel + "]");
+                    ImGui.popStyleColor();
+                    ImGui.sameLine(0, 6);
+                    ImGui.setCursorPosY(ImGui.getCursorPosY() - 2);
 
-                ImBoolean cvBool = new ImBoolean(compactView);
-                if (ImGui.checkbox("紧凑视图##cv", cvBool)) { setCompactView(cvBool.get()); changed = true; }
-                l.addVerticalSpacing(getSmallPadding());
-
-                int[] ri = {refreshInterval};
-                l.pushFramePadding(4.0f, 3.0f);
-                l.setItemWidth(aw / zoom);
-                if (ImGui.sliderInt("##refresh", ri, 100, 5000, "%d ms")) {
-                    setRefreshInterval(ri[0]); changed = true;
+                    // 主内容：自动换行，突出显示
+                    ImGui.pushStyleColor(ImGuiCol.Text, 0xFFCCDDEE);
+                    String text = displayContent.isEmpty() ? "（未连接或无数据）" : displayContent;
+                    ImGui.setNextItemWidth(contentW);
+                    ImGui.textWrapped(text);
+                    ImGui.popStyleColor();
                 }
-                l.popItemWidth();
-                l.popStyleVar();
+                ImGui.endChild();
+                ImGui.popStyleVar(3);
+                ImGui.popStyleColor();
 
                 l.addVerticalSpacing(getMediumPadding());
             } catch (Exception e) {
-                System.err.println("ValueMonitorNode UI渲染失败: " + e.getMessage());
+                System.err.println("ValueMonitorNode UI 渲染失败: " + e.getMessage());
             }
-            return changed;
+            return false;
         });
     }
 
-    private String getDataTypeName(Object obj) {
-        return switch (obj) {
-            case null -> "null";
-            case Iterable iterable -> "List";
-            case Object[] objects -> "Array";
-            case String s -> "String";
-            case Integer i -> "Int";
-            case Float v -> "Float";
-            case Double v -> "Double";
-            case Boolean b -> "Boolean";
-            case Number number -> "Number";
-            default -> obj.getClass().getSimpleName();
-        };
+    private String getDataTypeLabel(Object obj) {
+        if (obj == null) return "null";
+        if (obj instanceof BlockPosList) return "坐标列表";
+        if (obj instanceof Iterable && !(obj instanceof String)) return "列表";
+        if (obj instanceof Object[]) return "数组";
+        if (obj instanceof String) return "字符串";
+        if (obj instanceof Integer) return "整数";
+        if (obj instanceof Long) return "长整数";
+        if (obj instanceof Float) return "浮点";
+        if (obj instanceof Double) return "双精度";
+        if (obj instanceof Boolean) return "布尔";
+        if (obj instanceof Number) return "数值";
+        return obj.getClass().getSimpleName();
     }
 
-    private String formatDisplayText(Object value, String label, String typeName, boolean showType) {
-        StringBuilder sb = new StringBuilder();
-        if (showLabel && !label.isEmpty()) sb.append(label).append(": ");
-        if (showType) sb.append("(").append(typeName).append(") ");
-        switch (value) {
-            case null -> sb.append("null");
-            case String str ->
-                    sb.append(compactView && str.length() > 30 ? "\"" + str.substring(0, 27) + "...\"" : "\"" + str + "\"");
-            case Iterable iterable -> {
-                if (compactView) sb.append("[...]");
-                else {
-                    sb.append("[");
-                    boolean first = true;
-                    int count = 0;
-                    for (Object item : (Iterable<?>) value) {
-                        if (count >= 3) {
-                            sb.append(", ...");
-                            break;
-                        }
-                        if (!first) sb.append(", ");
-                        first = false;
-                        sb.append(item instanceof String ? "\"" + item + "\"" : String.valueOf(item));
-                        count++;
-                    }
-                    sb.append("]");
-                }
+    private String formatContent(Object value) {
+        if (value == null) return "null";
+        if (value instanceof BlockPosList list) {
+            int n = list.size();
+            if (n == 0) return "空列表 (0 个坐标)";
+            StringBuilder sb = new StringBuilder();
+            sb.append("共 ").append(n).append(" 个坐标");
+            int shown = 0;
+            for (BlockPos p : list) {
+                if (shown >= 3) { sb.append("\n  ..."); break; }
+                sb.append("\n  ").append(p.getX()).append(", ").append(p.getY()).append(", ").append(p.getZ());
+                shown++;
             }
-            default -> sb.append(value);
+            return sb.toString();
         }
-        return sb.toString();
+        if (value instanceof Iterable && !(value instanceof String)) {
+            Iterable<?> it = (Iterable<?>) value;
+            int count = 0;
+            StringBuilder sb = new StringBuilder();
+            for (Object item : it) {
+                if (count >= 8) {
+                    sb.append("\n  ...");
+                    break;
+                }
+                if (count > 0) sb.append("\n  ");
+                sb.append(item instanceof String ? "\"" + item + "\"" : String.valueOf(item));
+                count++;
+            }
+            if (count == 0) return "[]";
+            return sb.toString();
+        }
+        if (value instanceof Object[] arr) {
+            StringBuilder sb = new StringBuilder();
+            int show = Math.min(8, arr.length);
+            for (int i = 0; i < show; i++) {
+                if (i > 0) sb.append(", ");
+                sb.append(arr[i] instanceof String ? "\"" + arr[i] + "\"" : String.valueOf(arr[i]));
+            }
+            if (arr.length > show) sb.append(" ...");
+            return sb.toString();
+        }
+        if (value instanceof String s) {
+            if (s.length() > 200) return "\"" + s.substring(0, 197) + "...\"";
+            return "\"" + s + "\"";
+        }
+        if (value instanceof BlockPos p) {
+            return p.getX() + ", " + p.getY() + ", " + p.getZ();
+        }
+        return value.toString();
     }
-
-    public boolean isShowLabel() { return showLabel; }
-    public void setShowLabel(boolean v) { if (this.showLabel != v) { this.showLabel = v; markDirty(); } }
-    public boolean isShowType() { return showType; }
-    public void setShowType(boolean v) { if (this.showType != v) { this.showType = v; markDirty(); } }
-    public boolean isCompactView() { return compactView; }
-    public void setCompactView(boolean v) { if (this.compactView != v) { this.compactView = v; markDirty(); } }
-    public int getRefreshInterval() { return refreshInterval; }
-    public void setRefreshInterval(int v) { v = Math.max(100, v); if (this.refreshInterval != v) { this.refreshInterval = v; markDirty(); } }
-    public String getDisplayText() { return displayText; }
 
     @Override
     public @Nullable Object getNodeState() {
-        java.util.Map<String, Object> s = new java.util.HashMap<>();
-        s.put("showLabel", showLabel); s.put("showType", showType);
-        s.put("compactView", compactView); s.put("refreshInterval", refreshInterval);
-        return s;
+        return new java.util.HashMap<String, Object>();
     }
 
     @Override
     public void setNodeState(@Nullable Object state) {
-        if (state instanceof java.util.Map<?, ?> m) {
-            if (m.get("showLabel") instanceof Boolean) setShowLabel((Boolean) m.get("showLabel"));
-            if (m.get("showType") instanceof Boolean) setShowType((Boolean) m.get("showType"));
-            if (m.get("compactView") instanceof Boolean) setCompactView((Boolean) m.get("compactView"));
-            if (m.get("refreshInterval") instanceof Number) setRefreshInterval(((Number) m.get("refreshInterval")).intValue());
-        }
+        // 无持久选项，忽略
     }
 }
