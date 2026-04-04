@@ -4,7 +4,7 @@ import org.joml.Vector3d;
 
 import java.util.Objects;
 
-public class SphereData {
+public class SphereData implements GeometryData {
     private final Vector3d center;
     private final double radius;
 

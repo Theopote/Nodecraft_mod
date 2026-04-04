@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
+import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.datatypes.TorusGeometryData;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -20,13 +21,14 @@ public final class GeometryVoxelizer {
     public static BlockPosList resolveBlocks(@Nullable Object blocksObj,
                                              @Nullable Object boxGeometryObj,
                                              @Nullable Object cylinderGeometryObj,
+                                             @Nullable Object sphereGeometryObj,
                                              @Nullable Object torusGeometryObj,
                                              boolean fillSolid) {
         if (blocksObj instanceof BlockPosList blockPosList) {
             return blockPosList;
         }
 
-        GeometryData geometry = resolveGeometry(boxGeometryObj, cylinderGeometryObj, torusGeometryObj);
+        GeometryData geometry = resolveGeometry(boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj);
         if (geometry != null) {
             return voxelize(geometry, fillSolid);
         }
@@ -36,12 +38,17 @@ public final class GeometryVoxelizer {
 
     public static @Nullable GeometryData resolveGeometry(@Nullable Object boxGeometryObj,
                                                          @Nullable Object cylinderGeometryObj,
+                                                         @Nullable Object sphereGeometryObj,
                                                          @Nullable Object torusGeometryObj) {
         if (boxGeometryObj instanceof GeometryData geometry) {
             return geometry;
         }
 
         if (cylinderGeometryObj instanceof GeometryData geometry) {
+            return geometry;
+        }
+
+        if (sphereGeometryObj instanceof GeometryData geometry) {
             return geometry;
         }
 
@@ -58,6 +65,9 @@ public final class GeometryVoxelizer {
         }
         if (geometry instanceof CylinderGeometryData cylinderGeometry) {
             return voxelizeCylinder(cylinderGeometry, fillSolid);
+        }
+        if (geometry instanceof SphereData sphereGeometry) {
+            return voxelizeSphere(sphereGeometry, fillSolid);
         }
         if (geometry instanceof TorusGeometryData torusGeometry) {
             return voxelizeTorus(torusGeometry, fillSolid);
@@ -77,6 +87,9 @@ public final class GeometryVoxelizer {
         }
         if (geometry instanceof CylinderGeometryData cylinderGeometry) {
             return CylinderBlockGenerator.createBoundingRegion(cylinderGeometry);
+        }
+        if (geometry instanceof SphereData sphereGeometry) {
+            return SphereBlockGenerator.createBoundingRegion(sphereGeometry);
         }
         if (geometry instanceof TorusGeometryData torusGeometry) {
             return TorusBlockGenerator.createBoundingRegion(torusGeometry);
@@ -141,6 +154,13 @@ public final class GeometryVoxelizer {
         BlockPosList blocks = new BlockPosList();
         RegionData region = CylinderBlockGenerator.createBoundingRegion(geometry);
         CylinderBlockGenerator.populateCylinder(blocks, region, geometry, fillSolid);
+        return blocks;
+    }
+
+    public static BlockPosList voxelizeSphere(SphereData geometry, boolean fillSolid) {
+        BlockPosList blocks = new BlockPosList();
+        RegionData region = SphereBlockGenerator.createBoundingRegion(geometry);
+        SphereBlockGenerator.populateSphere(blocks, region, geometry, fillSolid);
         return blocks;
     }
 

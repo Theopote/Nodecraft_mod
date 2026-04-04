@@ -31,6 +31,7 @@ public class MaterialMapperNode extends BaseNode {
     private static final String INPUT_COORDINATES_ID = "input_coordinates";
     private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
     private static final String INPUT_CYLINDER_GEOMETRY_ID = "input_cylinder_geometry";
+    private static final String INPUT_SPHERE_GEOMETRY_ID = "input_sphere_geometry";
     private static final String INPUT_TORUS_GEOMETRY_ID = "input_torus_geometry";
     private static final String INPUT_BOTTOM_ID = "input_bottom";
     private static final String INPUT_MIDDLE_ID = "input_middle";
@@ -45,6 +46,7 @@ public class MaterialMapperNode extends BaseNode {
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry data to materialize", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to materialize", NodeDataType.CYLINDER_GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
         addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry data to materialize", NodeDataType.TORUS_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BOTTOM_ID, "Bottom", "Block for the lower third", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_MIDDLE_ID, "Middle", "Block for the middle third", NodeDataType.BLOCK_TYPE, this));
@@ -65,13 +67,14 @@ public class MaterialMapperNode extends BaseNode {
         Object coordsObj = inputValues.get(INPUT_COORDINATES_ID);
         Object boxGeometryObj = inputValues.get(INPUT_BOX_GEOMETRY_ID);
         Object cylinderGeometryObj = inputValues.get(INPUT_CYLINDER_GEOMETRY_ID);
+        Object sphereGeometryObj = inputValues.get(INPUT_SPHERE_GEOMETRY_ID);
         Object torusGeometryObj = inputValues.get(INPUT_TORUS_GEOMETRY_ID);
 
         String bottom = getInputString(INPUT_BOTTOM_ID, "minecraft:stone");
         String middle = getInputString(INPUT_MIDDLE_ID, "minecraft:dirt");
         String top = getInputString(INPUT_TOP_ID, "minecraft:grass_block");
 
-        BlockPosList positions = resolveCoordinates(coordsObj, boxGeometryObj, cylinderGeometryObj, torusGeometryObj);
+        BlockPosList positions = resolveCoordinates(coordsObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj);
         List<String> blockIds = new ArrayList<>();
         List<BlockPlacementData> placements = new ArrayList<>();
 
@@ -123,7 +126,7 @@ public class MaterialMapperNode extends BaseNode {
         return (value instanceof String && !((String) value).isEmpty()) ? (String) value : fallback;
     }
 
-    private BlockPosList resolveCoordinates(Object coordsObj, Object boxGeometryObj, Object cylinderGeometryObj, Object torusGeometryObj) {
-        return GeometryVoxelizer.resolveBlocks(coordsObj, boxGeometryObj, cylinderGeometryObj, torusGeometryObj, true);
+    private BlockPosList resolveCoordinates(Object coordsObj, Object boxGeometryObj, Object cylinderGeometryObj, Object sphereGeometryObj, Object torusGeometryObj) {
+        return GeometryVoxelizer.resolveBlocks(coordsObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj, true);
     }
 }
