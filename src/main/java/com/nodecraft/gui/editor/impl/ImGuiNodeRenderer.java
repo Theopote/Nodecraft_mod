@@ -11,6 +11,7 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.nodes.visualization.execute.ApplyChangesNode;
 import com.nodecraft.nodesystem.nodes.visualization.preview.GeometryViewerNode;
 
 import imgui.ImGui;
@@ -562,7 +563,7 @@ public class ImGuiNodeRenderer {
     }
 
     private static List<IPort> filterViewerPorts(List<IPort> ports, INode node) {
-        if (!(node instanceof GeometryViewerNode) || ports == null || ports.isEmpty()) {
+        if (ports == null || ports.isEmpty()) {
             return ports;
         }
 
@@ -573,13 +574,27 @@ public class ImGuiNodeRenderer {
             }
 
             String portId = port.getId();
-            boolean isLegacyInput =
-                    "input_box_geometry".equals(portId) ||
-                    "input_cylinder_geometry".equals(portId) ||
-                    "input_sphere_geometry".equals(portId) ||
-                    "input_torus_geometry".equals(portId) ||
-                    "input_color".equals(portId) ||
-                    "input_transparency".equals(portId);
+            boolean isLegacyInput = false;
+
+            if (node instanceof GeometryViewerNode) {
+                isLegacyInput =
+                        "input_box_geometry".equals(portId) ||
+                        "input_cylinder_geometry".equals(portId) ||
+                        "input_sphere_geometry".equals(portId) ||
+                        "input_torus_geometry".equals(portId) ||
+                        "input_color".equals(portId) ||
+                        "input_transparency".equals(portId);
+            } else if (node instanceof ApplyChangesNode) {
+                isLegacyInput =
+                        "input_box_geometry".equals(portId) ||
+                        "input_cylinder_geometry".equals(portId) ||
+                        "input_sphere_geometry".equals(portId) ||
+                        "input_torus_geometry".equals(portId) ||
+                        "input_preview_ids".equals(portId) ||
+                        "input_notify".equals(portId);
+            } else {
+                return ports;
+            }
 
             if (isLegacyInput && !port.isConnected()) {
                 continue;

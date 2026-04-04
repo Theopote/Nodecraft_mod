@@ -371,12 +371,6 @@ public class ApplyChangesNode extends BaseCustomUINode {
         h += ImGui.getFrameHeight();
         h += getSmallPadding();
         h += ImGui.getFrameHeight();
-        h += getSmallPadding();
-        h += ImGui.getFrameHeight();
-        h += getSmallPadding();
-        h += ImGui.getFrameHeight();
-        h += getSmallPadding();
-        h += ImGui.getFrameHeight();
         h += getMediumPadding();
         return h;
     }
@@ -405,13 +399,6 @@ public class ApplyChangesNode extends BaseCustomUINode {
                     l.addVerticalSpacing(getSmallPadding());
                 }
 
-                ImBoolean progressBool = new ImBoolean(showProgressBar);
-                if (ImGui.checkbox("Show Progress##ac_progress", progressBool)) {
-                    setShowProgressBar(progressBool.get());
-                    changed = true;
-                }
-                l.addVerticalSpacing(getSmallPadding());
-
                 ImBoolean notifyBool = new ImBoolean(notifyOnComplete);
                 if (ImGui.checkbox("Notify On Complete##ac_notify", notifyBool)) {
                     setNotifyOnComplete(notifyBool.get());
@@ -439,29 +426,11 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 }
                 l.addVerticalSpacing(getSmallPadding());
 
-                ImBoolean undoBool = new ImBoolean(recordUndo);
-                if (ImGui.checkbox("Record Undo##ac_undo", undoBool)) {
-                    setRecordUndo(undoBool.get());
-                    changed = true;
-                }
-                l.addVerticalSpacing(getSmallPadding());
-
                 ImBoolean solidBool = new ImBoolean(solidGeometry);
                 if (ImGui.checkbox("Solid Geometry##ac_solid", solidBool)) {
                     setSolidGeometry(solidBool.get());
                     changed = true;
                 }
-                l.addVerticalSpacing(getSmallPadding());
-
-                int[] timeout = {executionTimeout};
-                l.pushFramePadding(4.0f, 3.0f);
-                l.setItemWidth(aw / zoom);
-                if (ImGui.sliderInt("##ac_timeout", timeout, 5, 300, "Timeout: %d s")) {
-                    setExecutionTimeout(timeout[0]);
-                    changed = true;
-                }
-                l.popItemWidth();
-                l.popStyleVar();
 
                 l.addVerticalSpacing(getMediumPadding());
             } catch (Exception e) {
