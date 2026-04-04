@@ -12,19 +12,19 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
 /**
  * Generates a torus block volume around a center point.
  *
  * If a plane is provided, the torus is oriented so its axis matches the
- * plane normal. Otherwise it defaults to the world Y axis.
+ * plane normal. When no center is provided, the node falls back to the
+ * plane origin.
  */
 @NodeInfo(
-    id = "spatial.generators.torus_blocks",
-    displayName = "圆环生成器",
-    description = "生成圆环体区域的坐标列表，可选平面输入用于控制朝向",
+    id = "spatial.generators.torusblocks",
+    displayName = "Torus (Blocks)",
+    description = "Generates a torus block volume with optional plane-based orientation",
     category = "spatial.generators"
 )
 public class TorusBlocksNode extends BaseNode {
@@ -38,7 +38,7 @@ public class TorusBlocksNode extends BaseNode {
     private static final String OUTPUT_COUNT_ID = "output_count";
 
     public TorusBlocksNode() {
-        super(UUID.randomUUID(), "spatial.generators.torus_blocks");
+        super(UUID.randomUUID(), "spatial.generators.torusblocks");
 
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Center point of the torus", NodeDataType.BLOCK_POS, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Optional plane used to orient the torus axis", NodeDataType.PLANE, this));
@@ -68,9 +68,15 @@ public class TorusBlocksNode extends BaseNode {
 
         BlockPosList result = new BlockPosList();
 
-        if (centerObj instanceof BlockPos center &&
-            majorRObj instanceof Number majorRadiusObj &&
+        if (majorRObj instanceof Number majorRadiusObj &&
             minorRObj instanceof Number minorRadiusObj) {
+
+            BlockPos center = resolveCenter(centerObj, planeObj);
+            if (center == null) {
+                outputValues.put(OUTPUT_BLOCKS_ID, result);
+                outputValues.put(OUTPUT_COUNT_ID, 0);
+                return;
+            }
 
             double majorRadius = Math.max(1.0d, majorRadiusObj.doubleValue());
             double minorRadius = Math.max(1.0d, minorRadiusObj.doubleValue());
@@ -117,6 +123,19 @@ public class TorusBlocksNode extends BaseNode {
 
         outputValues.put(OUTPUT_BLOCKS_ID, result);
         outputValues.put(OUTPUT_COUNT_ID, result.size());
+    }
+
+    private BlockPos resolveCenter(Object centerObj, Object planeObj) {
+        if (centerObj instanceof BlockPos center) {
+            return center.toImmutable();
+        }
+
+        if (planeObj instanceof PlaneData planeData) {
+            Vector3d point = planeData.getPoint();
+            return BlockPos.ofFloored(point.x, point.y, point.z);
+        }
+
+        return null;
     }
 
     private Vector3d buildOrthogonalBasisVector(Vector3d axis) {
