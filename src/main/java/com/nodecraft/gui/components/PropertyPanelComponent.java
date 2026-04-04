@@ -683,24 +683,8 @@ public class PropertyPanelComponent implements EditorComponent {
                     renderOutputPorts();
                 }
 
-                if (ImGui.collapsingHeader("Debug Tools (Advanced)", ImGuiTreeNodeFlags.None)) {
-                    renderDebugTools();
-                }
-
                 if (ImGui.collapsingHeader("Actions", ImGuiTreeNodeFlags.DefaultOpen)) {
                     renderActionButtons();
-                }
-
-                if (selectedNode instanceof BaseNode) {
-                    Object nodeState = selectedNode.getNodeState();
-                    if (nodeState != null && ImGui.collapsingHeader("Runtime State (Advanced)", ImGuiTreeNodeFlags.None)) {
-                        ImGui.textWrapped("Object Type: " + nodeState.getClass().getSimpleName());
-                        if (nodeState instanceof Map<?, ?> stateMap) {
-                            renderMap(stateMap, "State Data");
-                        } else {
-                            ImGui.textWrapped("Value: " + nodeState);
-                        }
-                    }
                 }
             } else {
                 ImGui.text("No node selected");
