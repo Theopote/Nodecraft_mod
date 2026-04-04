@@ -28,6 +28,7 @@ public enum NodeDataType {
     POSITION("position", "位置", Vector3d.class),     // 浮点坐标
     PLANE("plane", "平面", PlaneData.class),
     BOUNDING_BOX("bounding_box", "包围盒", BoundingBoxData.class),
+    BOX_GEOMETRY("box_geometry", "Box Geometry", BoxGeometryData.class),
     SPHERE("sphere", "球体", SphereData.class),
     LINE("line", "线段", LineData.class),
     POLYLINE("polyline", "多段线", PolylineData.class),

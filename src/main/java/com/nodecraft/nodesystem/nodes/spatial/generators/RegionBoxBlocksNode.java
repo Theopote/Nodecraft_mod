@@ -6,12 +6,15 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
+import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BoxBlockGenerator;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Matrix3d;
+import org.joml.Vector3d;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -44,6 +47,7 @@ public class RegionBoxBlocksNode extends BaseNode {
     private static final String OUTPUT_MIN_CORNER_ID = "output_min_corner";
     private static final String OUTPUT_MAX_CORNER_ID = "output_max_corner";
     private static final String OUTPUT_COUNT_ID = "output_count";
+    private static final String OUTPUT_BOX_GEOMETRY_ID = "output_box_geometry";
 
     public RegionBoxBlocksNode() {
         super(UUID.randomUUID(), "spatial.generators.region_box_blocks");
@@ -56,6 +60,7 @@ public class RegionBoxBlocksNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_MIN_CORNER_ID, "Min Corner", "Minimum corner of the box", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_MAX_CORNER_ID, "Max Corner", "Maximum corner of the box", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Generated block count", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_BOX_GEOMETRY_ID, "Box Geometry", "Resolved box geometry", NodeDataType.BOX_GEOMETRY, this));
     }
 
     @Override
@@ -78,12 +83,14 @@ public class RegionBoxBlocksNode extends BaseNode {
         BlockPosList blocks = new BlockPosList();
         BlockPos minCorner = null;
         BlockPos maxCorner = null;
+        BoxGeometryData geometry = null;
 
         if (region != null && region.isComplete()) {
             minCorner = region.getMinCorner();
             maxCorner = region.getMaxCorner();
 
             if (minCorner != null && maxCorner != null) {
+                geometry = createGeometry(minCorner, maxCorner);
                 populateBlocks(blocks, minCorner, maxCorner);
             }
         }
@@ -93,6 +100,7 @@ public class RegionBoxBlocksNode extends BaseNode {
         outputValues.put(OUTPUT_MIN_CORNER_ID, minCorner);
         outputValues.put(OUTPUT_MAX_CORNER_ID, maxCorner);
         outputValues.put(OUTPUT_COUNT_ID, blocks.size());
+        outputValues.put(OUTPUT_BOX_GEOMETRY_ID, geometry);
     }
 
     private RegionData resolveRegion(Object regionObj, Object boundingBoxObj) {
@@ -127,6 +135,20 @@ public class RegionBoxBlocksNode extends BaseNode {
 
     private void populateBlocks(BlockPosList blocks, BlockPos minCorner, BlockPos maxCorner) {
         BoxBlockGenerator.populateAxisAlignedBox(blocks, minCorner, maxCorner, fillBox);
+    }
+
+    private BoxGeometryData createGeometry(BlockPos minCorner, BlockPos maxCorner) {
+        Vector3d center = new Vector3d(
+            (minCorner.getX() + maxCorner.getX()) / 2.0d,
+            (minCorner.getY() + maxCorner.getY()) / 2.0d,
+            (minCorner.getZ() + maxCorner.getZ()) / 2.0d
+        );
+        Vector3d halfExtents = new Vector3d(
+            (maxCorner.getX() - minCorner.getX()) / 2.0d,
+            (maxCorner.getY() - minCorner.getY()) / 2.0d,
+            (maxCorner.getZ() - minCorner.getZ()) / 2.0d
+        );
+        return new BoxGeometryData(center, halfExtents, new Matrix3d().identity(), false);
     }
 
     public boolean isFillBox() {

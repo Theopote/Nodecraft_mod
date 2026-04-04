@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -54,6 +55,7 @@ public class BoxBlocksNode extends BaseNode {
     private static final String OUTPUT_MIN_CORNER_ID = "output_min_corner";
     private static final String OUTPUT_MAX_CORNER_ID = "output_max_corner";
     private static final String OUTPUT_COUNT_ID = "output_count";
+    private static final String OUTPUT_BOX_GEOMETRY_ID = "output_box_geometry";
 
     public BoxBlocksNode() {
         super(UUID.randomUUID(), "spatial.generators.box_blocks");
@@ -74,6 +76,7 @@ public class BoxBlocksNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_MIN_CORNER_ID, "Min Corner", "Minimum corner of the box", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_MAX_CORNER_ID, "Max Corner", "Maximum corner of the box", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Generated block count", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_BOX_GEOMETRY_ID, "Box Geometry", "Resolved box geometry", NodeDataType.BOX_GEOMETRY, this));
     }
 
     @Override
@@ -108,6 +111,7 @@ public class BoxBlocksNode extends BaseNode {
         outputValues.put(OUTPUT_MIN_CORNER_ID, minCorner);
         outputValues.put(OUTPUT_MAX_CORNER_ID, maxCorner);
         outputValues.put(OUTPUT_COUNT_ID, blocksList.size());
+        outputValues.put(OUTPUT_BOX_GEOMETRY_ID, definition != null ? definition.toGeometryData() : null);
     }
 
     private BoxDefinition resolveBoxDefinition() {
@@ -278,5 +282,11 @@ public class BoxBlocksNode extends BaseNode {
         Matrix3d orientationMatrix,
         boolean rotated
     ) {
+        private BoxGeometryData toGeometryData() {
+            if (center == null || halfExtents == null || orientationMatrix == null) {
+                return null;
+            }
+            return new BoxGeometryData(center, halfExtents, orientationMatrix, rotated);
+        }
     }
 }
