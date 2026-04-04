@@ -33,9 +33,9 @@ public class ConstructCoordinateNode extends BaseNode {
         super(UUID.randomUUID(), "math.vector.construct_coordinate");
         
         // 创建并添加输入端口 (接受任何数值类型，但会转换为整数)
-        addInputPort(new BasePort(INPUT_X_ID, "X", "X coordinate (integer)", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_Y_ID, "Y", "Y coordinate (integer)", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_Z_ID, "Z", "Z coordinate (integer)", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_X_ID, "X", "X coordinate", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_Y_ID, "Y", "Y coordinate", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_Z_ID, "Z", "Z coordinate", NodeDataType.DOUBLE, this));
 
         // 创建并添加输出端口
         addOutputPort(new BasePort(OUTPUT_COORDINATE_ID, "Coordinate", "Block position (integer coordinates)", NodeDataType.BLOCK_POS, this));
