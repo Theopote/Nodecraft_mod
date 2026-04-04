@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.math.vector;
 
+import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
@@ -66,6 +67,14 @@ public class ConstructCoordinateNode extends BaseNode {
         
         // 设置输出值
         outputValues.put(OUTPUT_COORDINATE_ID, coordinate);
+        NodeCraft.LOGGER.info(
+                "ConstructCoordinateNode[{}] processed: rawX={}, rawY={}, rawZ={}, outputCoordinate={}",
+                getId(),
+                inputValues.get(INPUT_X_ID),
+                inputValues.get(INPUT_Y_ID),
+                inputValues.get(INPUT_Z_ID),
+                coordinate
+        );
     }
     
     /**

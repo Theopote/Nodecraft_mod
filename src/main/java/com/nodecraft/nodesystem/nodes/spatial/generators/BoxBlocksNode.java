@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.spatial.generators;
 
+import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
@@ -116,6 +117,18 @@ public class BoxBlocksNode extends BaseNode {
         outputValues.put(OUTPUT_COUNT_ID, blocksList.size());
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_BOX_GEOMETRY_ID, geometry);
+
+        NodeCraft.LOGGER.info(
+                "BoxBlocksNode[{}] processed: hasDefinition={}, fillBox={}, outputRegionOnly={}, blockCount={}, minCorner={}, maxCorner={}, geometryPresent={}",
+                getId(),
+                definition != null,
+                fillBox,
+                outputAsRegion,
+                blocksList.size(),
+                minCorner,
+                maxCorner,
+                geometry != null
+        );
     }
 
     private BoxDefinition resolveBoxDefinition() {
@@ -124,6 +137,10 @@ public class BoxBlocksNode extends BaseNode {
 
         if (cornerAObj instanceof BlockPos cornerA && cornerBObj instanceof BlockPos cornerB) {
             RegionData region = new RegionData(cornerA.toImmutable(), cornerB.toImmutable());
+            NodeCraft.LOGGER.debug(
+                    "BoxBlocksNode[{}] resolved from corners: cornerA={}, cornerB={}",
+                    getId(), cornerA, cornerB
+            );
             return new BoxDefinition(region, null, null, null, false);
         }
 
@@ -140,6 +157,14 @@ public class BoxBlocksNode extends BaseNode {
             !(sizeXObj instanceof Number sizeXNumber) ||
             !(sizeYObj instanceof Number sizeYNumber) ||
             !(sizeZObj instanceof Number sizeZNumber)) {
+            NodeCraft.LOGGER.warn(
+                    "BoxBlocksNode[{}] missing required center/size inputs: centerType={}, sizeXType={}, sizeYType={}, sizeZType={}",
+                    getId(),
+                    centerObj == null ? "null" : centerObj.getClass().getSimpleName(),
+                    sizeXObj == null ? "null" : sizeXObj.getClass().getSimpleName(),
+                    sizeYObj == null ? "null" : sizeYObj.getClass().getSimpleName(),
+                    sizeZObj == null ? "null" : sizeZObj.getClass().getSimpleName()
+            );
             return null;
         }
 
@@ -162,6 +187,19 @@ public class BoxBlocksNode extends BaseNode {
         RegionData region = rotated
             ? BoxBlockGenerator.createOrientedBoundingRegion(centerVector, halfExtents, orientationMatrix)
             : BoxBlockGenerator.createAxisAlignedRegion(center, sizeX, sizeY, sizeZ);
+
+        NodeCraft.LOGGER.info(
+                "BoxBlocksNode[{}] resolved from center: center={}, size=({}, {}, {}), rotated={}, planePresent={}, regionMin={}, regionMax={}",
+                getId(),
+                center,
+                sizeX,
+                sizeY,
+                sizeZ,
+                rotated,
+                planeObj instanceof PlaneData,
+                region != null ? region.getMinCorner() : null,
+                region != null ? region.getMaxCorner() : null
+        );
 
         return new BoxDefinition(region, centerVector, halfExtents, orientationMatrix, rotated);
     }
