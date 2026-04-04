@@ -173,7 +173,7 @@ public class BasePort implements IPort {
 
     private void link(IPort port) {
         connectedPorts.add(port);
-        isConnected = !connectedPorts.isEmpty();
+        isConnected = true;
         connectedPort = connectedPorts.stream().findFirst().orElse(null);
     }
 
