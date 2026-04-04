@@ -38,6 +38,7 @@ public class TorusBlocksNode extends BaseNode {
 
     private static final String OUTPUT_BLOCKS_ID = "output_blocks";
     private static final String OUTPUT_COUNT_ID = "output_count";
+    private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_TORUS_GEOMETRY_ID = "output_torus_geometry";
 
     public TorusBlocksNode() {
@@ -50,6 +51,7 @@ public class TorusBlocksNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Blocks composing the torus", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Block count", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Resolved torus geometry", NodeDataType.TORUS_GEOMETRY, this));
     }
 
@@ -107,6 +109,7 @@ public class TorusBlocksNode extends BaseNode {
 
         outputValues.put(OUTPUT_BLOCKS_ID, result);
         outputValues.put(OUTPUT_COUNT_ID, result.size());
+        outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_TORUS_GEOMETRY_ID, geometry);
     }
 

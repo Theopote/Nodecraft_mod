@@ -28,6 +28,7 @@ public enum NodeDataType {
     POSITION("position", "位置", Vector3d.class),     // 浮点坐标
     PLANE("plane", "平面", PlaneData.class),
     BOUNDING_BOX("bounding_box", "包围盒", BoundingBoxData.class),
+    GEOMETRY("geometry", "Geometry", GeometryData.class),
     BOX_GEOMETRY("box_geometry", "Box Geometry", BoxGeometryData.class),
     CYLINDER_GEOMETRY("cylinder_geometry", "Cylinder Geometry", CylinderGeometryData.class),
     TORUS_GEOMETRY("torus_geometry", "Torus Geometry", TorusGeometryData.class),
@@ -179,6 +180,10 @@ public enum NodeDataType {
                    value.getClass().getSimpleName().contains("NBT");
         }
 
+        if (this == GEOMETRY && value instanceof GeometryData) {
+            return true;
+        }
+
         return javaClass != null && javaClass.isInstance(value);
     }
 
@@ -196,6 +201,12 @@ public enum NodeDataType {
         if (inputType == ANY) return true;
         if (outputType == ANY) return true;
         if (outputType == inputType) return true;
+        if (inputType == GEOMETRY && (
+            outputType == BOX_GEOMETRY ||
+            outputType == CYLINDER_GEOMETRY ||
+            outputType == SPHERE ||
+            outputType == TORUS_GEOMETRY
+        )) return true;
         // 数字可放宽：整数/浮点可接到双精度
         if (inputType == DOUBLE && (outputType == INTEGER || outputType == FLOAT)) return true;
         if (inputType == FLOAT && outputType == INTEGER) return true;

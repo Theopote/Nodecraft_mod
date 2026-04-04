@@ -47,6 +47,7 @@ public class RegionBoxBlocksNode extends BaseNode {
     private static final String OUTPUT_MIN_CORNER_ID = "output_min_corner";
     private static final String OUTPUT_MAX_CORNER_ID = "output_max_corner";
     private static final String OUTPUT_COUNT_ID = "output_count";
+    private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_BOX_GEOMETRY_ID = "output_box_geometry";
 
     public RegionBoxBlocksNode() {
@@ -60,6 +61,7 @@ public class RegionBoxBlocksNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_MIN_CORNER_ID, "Min Corner", "Minimum corner of the box", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_MAX_CORNER_ID, "Max Corner", "Maximum corner of the box", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Generated block count", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_BOX_GEOMETRY_ID, "Box Geometry", "Resolved box geometry", NodeDataType.BOX_GEOMETRY, this));
     }
 
@@ -100,6 +102,7 @@ public class RegionBoxBlocksNode extends BaseNode {
         outputValues.put(OUTPUT_MIN_CORNER_ID, minCorner);
         outputValues.put(OUTPUT_MAX_CORNER_ID, maxCorner);
         outputValues.put(OUTPUT_COUNT_ID, blocks.size());
+        outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_BOX_GEOMETRY_ID, geometry);
     }
 

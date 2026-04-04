@@ -37,6 +37,7 @@ public class CylinderBlocksNode extends BaseNode {
 
     private static final String OUTPUT_BLOCKS_ID = "output_cylinder_blocks";
     private static final String OUTPUT_COUNT_ID = "output_count";
+    private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_CYLINDER_GEOMETRY_ID = "output_cylinder_geometry";
 
     public CylinderBlocksNode() {
@@ -48,6 +49,7 @@ public class CylinderBlocksNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Cylinder Blocks", "The blocks forming the cylinder", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Generated block count", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Resolved cylinder geometry", NodeDataType.CYLINDER_GEOMETRY, this));
     }
 
@@ -89,6 +91,7 @@ public class CylinderBlocksNode extends BaseNode {
 
         outputValues.put(OUTPUT_BLOCKS_ID, result);
         outputValues.put(OUTPUT_COUNT_ID, result.size());
+        outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_CYLINDER_GEOMETRY_ID, geometry);
     }
 

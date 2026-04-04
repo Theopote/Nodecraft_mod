@@ -40,6 +40,7 @@ public class CircleSphereBlocksNode extends BaseNode {
 
     private static final String OUTPUT_BLOCKS_ID = "output_blocks";
     private static final String OUTPUT_COUNT_ID = "output_count";
+    private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_SPHERE_GEOMETRY_ID = "output_sphere_geometry";
 
     public CircleSphereBlocksNode() {
@@ -49,6 +50,7 @@ public class CircleSphereBlocksNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Generated blocks", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Generated block count", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Resolved sphere geometry when 3D is enabled", NodeDataType.SPHERE, this));
     }
 
@@ -89,6 +91,7 @@ public class CircleSphereBlocksNode extends BaseNode {
 
         outputValues.put(OUTPUT_BLOCKS_ID, result);
         outputValues.put(OUTPUT_COUNT_ID, result.size());
+        outputValues.put(OUTPUT_GEOMETRY_ID, sphereGeometry);
         outputValues.put(OUTPUT_SPHERE_GEOMETRY_ID, sphereGeometry);
     }
 
