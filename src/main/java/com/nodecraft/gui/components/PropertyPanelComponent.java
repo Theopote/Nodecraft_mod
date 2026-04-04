@@ -712,13 +712,11 @@ public class PropertyPanelComponent implements EditorComponent {
         }
     }
     private void renderNodeInfo() {
-        String idStr = selectedNode.getId().toString();
         String typeId = selectedNode.getTypeId();
         String categoryName = getCategoryNameForNode(typeId);
 
         ImGui.text("Name: " + selectedNode.getDisplayName());
         ImGui.text("Category: " + categoryName);
-        ImGui.textDisabled("Node ID: " + idStr.substring(0, Math.min(8, idStr.length())) + "...");
 
         String description = selectedNode.getDescription();
         if (description != null && !description.isEmpty()) {
@@ -934,6 +932,7 @@ public class PropertyPanelComponent implements EditorComponent {
             }
         }
     }
+
     private void renderPropertyGroup(List<PropertyDescriptor> props, String categoryInternalName) {
         if (ImGui.beginTable("propertiesTable_" + categoryInternalName, 2,
                 ImGuiTableFlags.Resizable | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersOuter)) {
@@ -1335,12 +1334,15 @@ public class PropertyPanelComponent implements EditorComponent {
                         if (sourceNodeId != null) {
                             INode sourceNode = graph.getNode(sourceNodeId);
                             if (sourceNode != null) {
-                                ImGui.text("Connected from: " + sourceNode.getDisplayName());
+                                ImGui.textDisabled("Connected from: " + sourceNode.getDisplayName());
 
                                 for (IPort sourcePort : sourceNode.getOutputPorts()) {
                                     if (sourcePort.getId().equals(sourcePortId)) {
                                         Object value = resolveNodeOutput(graph, sourceNode, sourcePortId, new HashSet<>());
-                                        renderPortData(value, "Input Data");
+                                        ImGui.textWrapped(formatValuePreview(value));
+                                        if (ImGui.isItemHovered()) {
+                                            ImGui.setTooltip(formatValueDetails(value, "Input Data"));
+                                        }
                                         break;
                                     }
                                 }
@@ -1349,7 +1351,10 @@ public class PropertyPanelComponent implements EditorComponent {
                     }
                 } else {
                     Object value = port.getValue();
-                    renderPortData(value, "Default Value");
+                    ImGui.textWrapped(formatValuePreview(value));
+                    if (ImGui.isItemHovered()) {
+                        ImGui.setTooltip(formatValueDetails(value, "Default Value"));
+                    }
                 }
             }
             ImGui.endTable();
@@ -1390,17 +1395,23 @@ public class PropertyPanelComponent implements EditorComponent {
                         ? resolveNodeOutput(graph, selectedNode, port.getId(), new HashSet<>())
                         : selectedNode.getOutput(port.getId());
                 if (value != null) {
-                    renderPortData(value, "Output Data");
+                    ImGui.textWrapped(formatValuePreview(value));
+                    if (ImGui.isItemHovered()) {
+                        ImGui.setTooltip(formatValueDetails(value, "Output Data"));
+                    }
                 } else {
                     value = port.getValue();
-                    renderPortData(value, "Current Value");
+                    ImGui.textWrapped(formatValuePreview(value));
+                    if (ImGui.isItemHovered()) {
+                        ImGui.setTooltip(formatValueDetails(value, "Current Value"));
+                    }
                 }
 
                 if (graph != null && port.isConnected()) {
                     Map<UUID, String> connectedInputs = graph.getConnectedInputs(selectedNode.getId(), port.getId());
                     if (!connectedInputs.isEmpty()) {
                         ImGui.separator();
-                        ImGui.text("Connected to:");
+                        ImGui.textDisabled("Connected to:");
                         for (Map.Entry<UUID, String> entry : connectedInputs.entrySet()) {
                             INode targetNode = graph.getNode(entry.getKey());
                             if (targetNode != null) {
@@ -1419,6 +1430,38 @@ public class PropertyPanelComponent implements EditorComponent {
             }
             ImGui.endTable();
         }
+    }
+
+    private String formatValuePreview(Object value) {
+        if (value == null) {
+            return "(empty)";
+        }
+
+        String preview;
+        if (value instanceof Collection<?> collection) {
+            preview = "Collection (" + collection.size() + ")";
+        } else if (value instanceof Map<?, ?> map) {
+            preview = "Map (" + map.size() + ")";
+        } else if (value instanceof Vec3 vec) {
+            preview = String.format("Vec3(%.2f, %.2f, %.2f)", vec.getX(), vec.getY(), vec.getZ());
+        } else {
+            preview = value.toString();
+        }
+
+        return preview.length() > 96 ? preview.substring(0, 93) + "..." : preview;
+    }
+
+    private String formatValueDetails(Object value, String label) {
+        if (value == null) {
+            return label + ": (empty)";
+        }
+
+        String typeName = value.getClass().getSimpleName();
+        String rendered = value.toString();
+        if (rendered.length() > 600) {
+            rendered = rendered.substring(0, 597) + "...";
+        }
+        return label + "\nType: " + typeName + "\nValue: " + rendered;
     }
     private void renderPortData(Object value, String label) {
         if (value == null) {
