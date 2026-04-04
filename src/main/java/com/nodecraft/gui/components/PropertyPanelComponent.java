@@ -38,6 +38,17 @@ public class PropertyPanelComponent implements EditorComponent {
     private static final String GET_PREFIX = "get";
     private static final String IS_PREFIX = "is";
     private static final String SET_PREFIX = "set";
+    private static final Set<String> HIDDEN_NODE_PROPERTIES = Set.of(
+            "description",
+            "displayName",
+            "id",
+            "inputPorts",
+            "nodeState",
+            "outputPorts",
+            "positionX",
+            "positionY",
+            "typeId"
+    );
 
     private boolean visible = true;
     private INode selectedNode = null;
@@ -645,7 +656,7 @@ public class PropertyPanelComponent implements EditorComponent {
         selectedNode = null;
     }
 
-        @Override
+    @Override
     public void render(float x, float y, float width, float height, float windowPaddingX, float windowPaddingY) {
         if (!visible) return;
 
@@ -700,7 +711,7 @@ public class PropertyPanelComponent implements EditorComponent {
             ImGui.textColored(1.0f, 0.2f, 0.2f, 1.0f, "Render error: " + e.getMessage());
         }
     }
-        private void renderNodeInfo() {
+    private void renderNodeInfo() {
         String idStr = selectedNode.getId().toString();
         String typeId = selectedNode.getTypeId();
         String categoryName = getCategoryNameForNode(typeId);
@@ -743,7 +754,7 @@ public class PropertyPanelComponent implements EditorComponent {
      */
     private String getCategoryNameForNode(String typeId) {
         if (typeId == null || typeId.isEmpty()) {
-            return "未知";
+            return "Unknown";
         }
 
         // 从typeId中提取分类部分
@@ -766,7 +777,7 @@ public class PropertyPanelComponent implements EditorComponent {
             }
         } catch (Exception e) {
             // 如果发生错误，记录日志并使用备用格式化
-            NodeCraft.LOGGER.error("获取节点分类时出错: {}", e.getMessage());
+            NodeCraft.LOGGER.error("Failed to resolve node category: {}", e.getMessage());
         }
 
         // 如果无法通过注册表获取分类，则进行简单格式化
@@ -776,7 +787,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
         // 回退：尝试使用类型ID的第一部分作为分类
         String[] parts = typeId.split("\\.");
-        return parts.length > 0 ? formatSingleWord(parts[0]) : "未分类";
+        return parts.length > 0 ? formatSingleWord(parts[0]) : "Uncategorized";
     }
 
     /**
@@ -813,7 +824,7 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     // 获取节点状态 (示例实现，需要根据实际节点系统修改)
-        private String getNodeStatus() {
+    private String getNodeStatus() {
         if (selectedNode == null) return "Unselected";
 
         try {
@@ -897,120 +908,103 @@ public class PropertyPanelComponent implements EditorComponent {
     private void renderNodeProperties() {
         if (selectedNode == null) return;
 
-        List<PropertyDescriptor> properties = getPropertiesForNode(selectedNode.getClass());
+        List<PropertyDescriptor> properties = getPropertiesForNode(selectedNode.getClass()).stream()
+                .filter(prop -> !HIDDEN_NODE_PROPERTIES.contains(prop.name))
+                .toList();
         if (properties.isEmpty()) {
-            ImGui.textDisabled("无可用属性");
+            ImGui.textDisabled("No editable properties");
             return;
         }
 
-        // 将属性按类别分组
         Map<String, List<PropertyDescriptor>> groupedProperties = properties.stream()
                 .collect(Collectors.groupingBy(prop -> prop.category));
 
-        // 处理无分类属性（空字符串分类）
         if (groupedProperties.containsKey("")) {
             List<PropertyDescriptor> uncategorizedProps = groupedProperties.remove("");
-            renderPropertyGroup(uncategorizedProps, "常规属性"); // 无分类属性命名为"常规属性"
+            renderPropertyGroup(uncategorizedProps, "General");
         }
 
-        // 按类别名称排序 (如果需要自定义排序，可以添加一个映射或在 NodeProperty 中添加 categoryOrder)
         List<String> categories = new ArrayList<>(groupedProperties.keySet());
-        categories.sort(Comparator.naturalOrder()); // 字母排序
+        categories.sort(Comparator.naturalOrder());
 
-        // 渲染每个分组
         for (String category : categories) {
-            // 只有分类名非空时才使用折叠标题
-            // 使用 formatSingleWord 来格式化显示分类名
             String formattedCategory = formatSingleWord(category);
-            if (!formattedCategory.isEmpty() && ImGui.collapsingHeader(formattedCategory, ImGuiTreeNodeFlags.DefaultOpen)) { // 默认打开
+            if (!formattedCategory.isEmpty() && ImGui.collapsingHeader(formattedCategory, ImGuiTreeNodeFlags.DefaultOpen)) {
                 renderPropertyGroup(groupedProperties.get(category), category);
             }
         }
     }
-
-    // 添加新方法渲染属性组
     private void renderPropertyGroup(List<PropertyDescriptor> props, String categoryInternalName) {
         if (ImGui.beginTable("propertiesTable_" + categoryInternalName, 2,
-                ImGuiTableFlags.Resizable | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersOuter)) { // 修正标志名称
-            ImGui.tableSetupColumn("属性名", ImGuiTableColumnFlags.WidthFixed, ImGui.getContentRegionAvailX() * 0.4f); // 修正为 ImGuiTableColumnFlags
-            ImGui.tableSetupColumn("值", ImGuiTableColumnFlags.WidthStretch); // 修正为 ImGuiTableColumnFlags
-            ImGui.tableHeadersRow(); // 显示表头
+                ImGuiTableFlags.Resizable | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersOuter)) {
+            ImGui.tableSetupColumn("Property", ImGuiTableColumnFlags.WidthFixed, ImGui.getContentRegionAvailX() * 0.4f);
+            ImGui.tableSetupColumn("Value", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.tableHeadersRow();
 
-            // 按order和displayName排序
             props.sort(Comparator.comparingInt((PropertyDescriptor p) -> p.order).thenComparing(p -> p.displayName));
 
             for (PropertyDescriptor prop : props) {
-                // 检查属性是否因错误而禁用
-                boolean isDisabled = errorCounts.getOrDefault(prop.name, 0) >= NodeConstants.ERROR_THRESHOLD; // 使用常量
+                boolean isDisabled = errorCounts.getOrDefault(prop.name, 0) >= NodeConstants.ERROR_THRESHOLD;
 
                 ImGui.tableNextRow();
                 ImGui.tableSetColumnIndex(0);
                 ImGui.text(prop.displayName);
-                // 增强工具提示 - 显示属性描述
                 if (ImGui.isItemHovered()) {
                     StringBuilder tooltip = new StringBuilder();
                     if (prop.description != null && !prop.description.isEmpty()) {
                         tooltip.append(prop.description).append("\n");
                     }
-                    tooltip.append("内部名: ").append(prop.name);
+                    tooltip.append("Internal Name: ").append(prop.name);
                     if (prop.setter == null) {
-                        tooltip.append(" (只读)");
+                        tooltip.append(" (Read-only)");
                     }
                     if (isDisabled) {
-                        tooltip.append("\n此属性因错误已被禁用，请重启或重新选择节点以重置。");
+                        tooltip.append("\nThis property is temporarily disabled after repeated errors. Reselect the node to reset it.");
                     }
                     ImGui.setTooltip(tooltip.toString());
                 }
 
                 ImGui.tableSetColumnIndex(1);
-                // 为每个属性的控件提供基于节点ID和属性名的唯一ID
                 String uniqueId = selectedNode.getId().toString() + "_" + prop.name;
                 ImGui.pushID(uniqueId);
-                // 传入 isDisabled 状态
                 prop.renderer.render(this, selectedNode, prop, isDisabled);
                 ImGui.popID();
             }
             ImGui.endTable();
         }
     }
-
-    // 渲染操作按钮
     private void renderActionButtons() {
         ImGui.separator();
 
-        // 重置按钮
-        if (ImGui.button("重置属性")) {
-            // 清理临时值和编辑状态
+        if (ImGui.button("Reset Properties")) {
             clearCurrentNodeTempValues();
-            // 如果节点有重置功能，调用它
             if (selectedNode instanceof BaseNode) {
                 try {
                     Method resetMethod = selectedNode.getClass().getMethod("resetProperties");
                     resetMethod.invoke(selectedNode);
-                    NodeCraft.LOGGER.info("已重置节点 {} 的属性。", selectedNode.getDisplayName());
+                    NodeCraft.LOGGER.info("Reset node properties for {}", selectedNode.getDisplayName());
                 } catch (NoSuchMethodException e) {
-                    NodeCraft.LOGGER.debug("节点 {} 没有 resetProperties 方法。", selectedNode.getDisplayName());
+                    NodeCraft.LOGGER.debug("Node {} does not expose resetProperties()", selectedNode.getDisplayName());
                 } catch (Exception e) {
-                    NodeCraft.LOGGER.error("重置节点 {} 属性时出错: {}", selectedNode.getDisplayName(), e.getMessage());
+                    NodeCraft.LOGGER.error("Failed to reset node properties for {}: {}", selectedNode.getDisplayName(), e.getMessage());
                 }
             }
         }
 
         ImGui.sameLine();
 
-        // 删除节点按钮
         ImGui.pushStyleColor(ImGuiCol.Button, 0.8f, 0.2f, 0.2f, 0.6f);
         ImGui.pushStyleColor(ImGuiCol.ButtonHovered, 0.9f, 0.3f, 0.3f, 0.8f);
         ImGui.pushStyleColor(ImGuiCol.ButtonActive, 1.0f, 0.4f, 0.4f, 1.0f);
-        if (ImGui.button("删除节点")) {
+        if (ImGui.button("Delete Node")) {
             NodeGraph graph = getNodeGraph();
             if (graph != null) {
                 boolean success = graph.removeNode(selectedNode.getId());
                 if (success) {
-                    NodeCraft.LOGGER.info("已从图上删除节点: {}", selectedNode.getDisplayName());
-                    setSelectedNode(null); // 清除选择
+                    NodeCraft.LOGGER.info("Removed node from graph: {}", selectedNode.getDisplayName());
+                    setSelectedNode(null);
                 } else {
-                    NodeCraft.LOGGER.warn("删除节点 {} 失败。", selectedNode.getDisplayName());
+                    NodeCraft.LOGGER.warn("Failed to remove node from graph: {}", selectedNode.getDisplayName());
                 }
             }
         }
@@ -1129,7 +1123,7 @@ public class PropertyPanelComponent implements EditorComponent {
             }
         }
 
-        @Override
+    @Override
         public Object invoke(Object obj, Object... args) throws Throwable { // 统一为 Throwable
             if (args == null || args.length == 0) {
                 return handle.invoke(obj);
@@ -1145,12 +1139,12 @@ public class PropertyPanelComponent implements EditorComponent {
             }
         }
 
-        @Override
+    @Override
         public Class<?> getReturnType() {
             return returnType;
         }
 
-        @Override
+    @Override
         public Class<?>[] getParameterTypes() {
             return parameterTypes;
         }
@@ -1172,17 +1166,17 @@ public class PropertyPanelComponent implements EditorComponent {
             }
         }
 
-        @Override
+    @Override
         public Object invoke(Object obj, Object... args) throws Throwable {
             return getter.invoke(obj);
         }
 
-        @Override
+    @Override
         public Class<?> getReturnType() {
             return fieldType;
         }
 
-        @Override
+    @Override
         public Class<?>[] getParameterTypes() {
             return new Class<?>[0];
         }
@@ -1204,7 +1198,7 @@ public class PropertyPanelComponent implements EditorComponent {
             }
         }
 
-        @Override
+    @Override
         public Object invoke(Object obj, Object... args) throws Throwable {
             if (args == null || args.length == 0) {
                 throw new IllegalArgumentException("Setter requires a value argument");
@@ -1213,12 +1207,12 @@ public class PropertyPanelComponent implements EditorComponent {
             return null; // Setter方法没有返回值
         }
 
-        @Override
+    @Override
         public Class<?> getReturnType() {
             return void.class;
         }
 
-        @Override
+    @Override
         public Class<?>[] getParameterTypes() {
             return new Class<?>[] { fieldType };
         }
@@ -1232,17 +1226,17 @@ public class PropertyPanelComponent implements EditorComponent {
             methodHandleAccessor = new MethodHandleAccessorImpl(method);
         }
 
-        @Override
+    @Override
         public Object invoke(Object obj, Object... args) throws Throwable {
             return methodHandleAccessor.invoke(obj, args);
         }
 
-        @Override
+    @Override
         public Class<?> getReturnType() {
             return methodHandleAccessor.getReturnType();
         }
 
-        @Override
+    @Override
         public Class<?>[] getParameterTypes() {
             return methodHandleAccessor.getParameterTypes();
         }
@@ -1257,17 +1251,17 @@ public class PropertyPanelComponent implements EditorComponent {
             field.setAccessible(true);
         }
 
-        @Override
+    @Override
         public Object invoke(Object obj, Object... args) throws IllegalAccessException {
             return field.get(obj);
         }
 
-        @Override
+    @Override
         public Class<?> getReturnType() {
             return field.getType();
         }
 
-        @Override
+    @Override
         public Class<?>[] getParameterTypes() {
             return new Class<?>[0];
         }
@@ -1282,7 +1276,7 @@ public class PropertyPanelComponent implements EditorComponent {
             field.setAccessible(true);
         }
 
-        @Override
+    @Override
         public Object invoke(Object obj, Object... args) throws IllegalAccessException {
             if (args != null && args.length > 0) {
                 field.set(obj, args[0]);
@@ -1290,12 +1284,12 @@ public class PropertyPanelComponent implements EditorComponent {
             return null;
         }
 
-        @Override
+    @Override
         public Class<?> getReturnType() {
             return void.class;
         }
 
-        @Override
+    @Override
         public Class<?>[] getParameterTypes() {
             return new Class<?>[] { field.getType() };
         }
@@ -1305,27 +1299,25 @@ public class PropertyPanelComponent implements EditorComponent {
     private void renderInputPorts() {
         List<IPort> inputPorts = selectedNode.getInputPorts();
         if (inputPorts.isEmpty()) {
-            ImGui.textDisabled("无输入端口");
+            ImGui.textDisabled("No input ports");
             return;
         }
 
-        // 以表格形式显示端口信息
         if (ImGui.beginTable("inputPortsTable", 2,
                 ImGuiTableFlags.Resizable | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersOuter)) {
-            ImGui.tableSetupColumn("端口", ImGuiTableColumnFlags.WidthFixed, ImGui.getContentRegionAvailX() * 0.4f); // 修正为 ImGuiTableColumnFlags
-            ImGui.tableSetupColumn("值/连接", ImGuiTableColumnFlags.WidthStretch); // 修正为 ImGuiTableColumnFlags
+            ImGui.tableSetupColumn("Port", ImGuiTableColumnFlags.WidthFixed, ImGui.getContentRegionAvailX() * 0.4f);
+            ImGui.tableSetupColumn("Value / Connection", ImGuiTableColumnFlags.WidthStretch);
             ImGui.tableHeadersRow();
 
             for (IPort port : inputPorts) {
                 ImGui.tableNextRow();
                 ImGui.tableSetColumnIndex(0);
 
-                // 端口名称与数据类型
                 ImGui.text(port.getDisplayName());
                 if (ImGui.isItemHovered()) {
                     StringBuilder tooltip = new StringBuilder();
                     tooltip.append("ID: ").append(port.getId()).append("\n");
-                    tooltip.append("类型: ").append(port.getDataType().name()).append("\n");
+                    tooltip.append("Type: ").append(port.getDataType().name()).append("\n");
                     if (port.getDescription() != null && !port.getDescription().isEmpty()) {
                         tooltip.append(port.getDescription());
                     }
@@ -1334,9 +1326,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
                 ImGui.tableSetColumnIndex(1);
 
-                // 检查端口连接状态
                 if (port.isConnected()) {
-                    // 端口已连接，显示连接信息
                     NodeGraph graph = getNodeGraph();
                     if (graph != null) {
                         UUID sourceNodeId = graph.getConnectedOutputNodeId(selectedNode.getId(), port.getId());
@@ -1345,13 +1335,12 @@ public class PropertyPanelComponent implements EditorComponent {
                         if (sourceNodeId != null) {
                             INode sourceNode = graph.getNode(sourceNodeId);
                             if (sourceNode != null) {
-                                ImGui.text("连接自: " + sourceNode.getDisplayName());
+                                ImGui.text("Connected from: " + sourceNode.getDisplayName());
 
-                                // 查找源端口并显示其数据
                                 for (IPort sourcePort : sourceNode.getOutputPorts()) {
                                     if (sourcePort.getId().equals(sourcePortId)) {
                                         Object value = resolveNodeOutput(graph, sourceNode, sourcePortId, new HashSet<>());
-                                        renderPortData(value, "输入数据"); // 递归调用，传递标签
+                                        renderPortData(value, "Input Data");
                                         break;
                                     }
                                 }
@@ -1359,40 +1348,35 @@ public class PropertyPanelComponent implements EditorComponent {
                         }
                     }
                 } else {
-                    // 端口未连接，显示当前值
                     Object value = port.getValue();
-                    renderPortData(value, "默认值"); // 递归调用，传递标签
+                    renderPortData(value, "Default Value");
                 }
             }
             ImGui.endTable();
         }
     }
-
-    // 新增：渲染输出端口信息
     private void renderOutputPorts() {
         List<IPort> outputPorts = selectedNode.getOutputPorts();
         if (outputPorts.isEmpty()) {
-            ImGui.textDisabled("无输出端口");
+            ImGui.textDisabled("No output ports");
             return;
         }
 
-        // 以表格形式显示端口信息
         if (ImGui.beginTable("outputPortsTable", 2,
                 ImGuiTableFlags.Resizable | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersOuter)) {
-            ImGui.tableSetupColumn("端口", ImGuiTableColumnFlags.WidthFixed, ImGui.getContentRegionAvailX() * 0.4f); // 修正为 ImGuiTableColumnFlags
-            ImGui.tableSetupColumn("值/连接", ImGuiTableColumnFlags.WidthStretch); // 修正为 ImGuiTableColumnFlags
+            ImGui.tableSetupColumn("Port", ImGuiTableColumnFlags.WidthFixed, ImGui.getContentRegionAvailX() * 0.4f);
+            ImGui.tableSetupColumn("Value / Connection", ImGuiTableColumnFlags.WidthStretch);
             ImGui.tableHeadersRow();
 
             for (IPort port : outputPorts) {
                 ImGui.tableNextRow();
                 ImGui.tableSetColumnIndex(0);
 
-                // 端口名称与数据类型
                 ImGui.text(port.getDisplayName());
                 if (ImGui.isItemHovered()) {
                     StringBuilder tooltip = new StringBuilder();
                     tooltip.append("ID: ").append(port.getId()).append("\n");
-                    tooltip.append("类型: ").append(port.getDataType().name()).append("\n");
+                    tooltip.append("Type: ").append(port.getDataType().name()).append("\n");
                     if (port.getDescription() != null && !port.getDescription().isEmpty()) {
                         tooltip.append(port.getDescription());
                     }
@@ -1402,27 +1386,24 @@ public class PropertyPanelComponent implements EditorComponent {
                 ImGui.tableSetColumnIndex(1);
 
                 NodeGraph graph = getNodeGraph();
-                // 获取当前值
                 Object value = graph != null
                         ? resolveNodeOutput(graph, selectedNode, port.getId(), new HashSet<>())
                         : selectedNode.getOutput(port.getId());
                 if (value != null) {
-                    renderPortData(value, "输出数据"); // 递归调用，传递标签
+                    renderPortData(value, "Output Data");
                 } else {
-                    value = port.getValue(); // 回退到端口的默认值
-                    renderPortData(value, "当前值"); // 递归调用，传递标签
+                    value = port.getValue();
+                    renderPortData(value, "Current Value");
                 }
 
-                // 如果连接到其他节点，显示连接信息
                 if (graph != null && port.isConnected()) {
                     Map<UUID, String> connectedInputs = graph.getConnectedInputs(selectedNode.getId(), port.getId());
                     if (!connectedInputs.isEmpty()) {
                         ImGui.separator();
-                        ImGui.text("连接到:");
+                        ImGui.text("Connected to:");
                         for (Map.Entry<UUID, String> entry : connectedInputs.entrySet()) {
                             INode targetNode = graph.getNode(entry.getKey());
                             if (targetNode != null) {
-                                // 查找目标端口名称
                                 String targetPortName = entry.getValue();
                                 for (IPort targetPort : targetNode.getInputPorts()) {
                                     if (targetPort.getId().equals(entry.getValue())) {
@@ -1439,11 +1420,9 @@ public class PropertyPanelComponent implements EditorComponent {
             ImGui.endTable();
         }
     }
-
-    // 新增：根据数据类型渲染端口数据
     private void renderPortData(Object value, String label) {
         if (value == null) {
-            ImGui.textDisabled("(空)");
+            ImGui.textDisabled("(empty)");
             return;
         }
 
@@ -1482,7 +1461,7 @@ public class PropertyPanelComponent implements EditorComponent {
                     ImGui.text(label + ": " + value);
                 }
             } catch (Exception e) {
-                ImGui.textColored(1.0f, 0.3f, 0.3f, 1.0f, "渲染端口数据失败: " + e.getMessage());
+                ImGui.textColored(1.0f, 0.3f, 0.3f, 1.0f, "Failed to render port data: " + e.getMessage());
             } finally {
                 ImGui.treePop();
             }
