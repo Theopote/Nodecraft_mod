@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
@@ -37,6 +38,7 @@ public class BoxBlocksNode extends BaseNode {
     private boolean outputAsRegion = false;
 
     private static final String INPUT_CENTER_ID = "input_center";
+    private static final String INPUT_PLANE_ID = "input_plane";
     private static final String INPUT_SIZE_X_ID = "input_size_x";
     private static final String INPUT_SIZE_Y_ID = "input_size_y";
     private static final String INPUT_SIZE_Z_ID = "input_size_z";
@@ -56,6 +58,7 @@ public class BoxBlocksNode extends BaseNode {
         super(UUID.randomUUID(), "spatial.generators.box_blocks");
 
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Center point of the box", NodeDataType.BLOCK_POS, this));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Optional plane used to orient the box", NodeDataType.PLANE, this));
         addInputPort(new BasePort(INPUT_SIZE_X_ID, "Size X", "Width in blocks on the X axis", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SIZE_Y_ID, "Size Y", "Height in blocks on the Y axis", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SIZE_Z_ID, "Size Z", "Depth in blocks on the Z axis", NodeDataType.INTEGER, this));
@@ -116,6 +119,7 @@ public class BoxBlocksNode extends BaseNode {
         }
 
         Object centerObj = inputValues.get(INPUT_CENTER_ID);
+        Object planeObj = inputValues.get(INPUT_PLANE_ID);
         Object sizeXObj = inputValues.get(INPUT_SIZE_X_ID);
         Object sizeYObj = inputValues.get(INPUT_SIZE_Y_ID);
         Object sizeZObj = inputValues.get(INPUT_SIZE_Z_ID);
@@ -143,13 +147,14 @@ public class BoxBlocksNode extends BaseNode {
             (sizeY - 1) / 2.0d,
             (sizeZ - 1) / 2.0d
         );
-        boolean rotated = hasRotation(rotationX, rotationY, rotationZ);
+        Matrix3d orientationMatrix = createOrientationMatrix(planeObj, rotationX, rotationY, rotationZ);
+        boolean rotated = hasRotation(rotationX, rotationY, rotationZ) || planeObj instanceof PlaneData;
 
         RegionData region = rotated
-            ? createRotatedBoundingRegion(centerVector, halfExtents, rotationX, rotationY, rotationZ)
+            ? createOrientedBoundingRegion(centerVector, halfExtents, orientationMatrix)
             : createAxisAlignedRegion(center, sizeX, sizeY, sizeZ);
 
-        return new BoxDefinition(region, centerVector, halfExtents, rotationX, rotationY, rotationZ, rotated);
+        return new BoxDefinition(region, centerVector, halfExtents, orientationMatrix, rotated);
     }
 
     private RegionData createAxisAlignedRegion(BlockPos center, int sizeX, int sizeY, int sizeZ) {
@@ -168,14 +173,11 @@ public class BoxBlocksNode extends BaseNode {
         return new RegionData(minCorner, maxCorner);
     }
 
-    private RegionData createRotatedBoundingRegion(
+    private RegionData createOrientedBoundingRegion(
         Vector3d center,
         Vector3d halfExtents,
-        double rotationX,
-        double rotationY,
-        double rotationZ
+        Matrix3d orientationMatrix
     ) {
-        Matrix3d rotationMatrix = createRotationMatrix(rotationX, rotationY, rotationZ);
         double minX = Double.POSITIVE_INFINITY;
         double minY = Double.POSITIVE_INFINITY;
         double minZ = Double.POSITIVE_INFINITY;
@@ -191,7 +193,7 @@ public class BoxBlocksNode extends BaseNode {
                         sy * halfExtents.y,
                         sz * halfExtents.z
                     );
-                    rotationMatrix.transform(corner);
+                    orientationMatrix.transform(corner);
                     corner.add(center);
 
                     minX = Math.min(minX, corner.x);
@@ -239,11 +241,7 @@ public class BoxBlocksNode extends BaseNode {
                 && z >= minCorner.getZ() && z <= maxCorner.getZ();
         }
 
-        Matrix3d inverseRotation = createRotationMatrix(
-            definition.rotationX(),
-            definition.rotationY(),
-            definition.rotationZ()
-        ).transpose();
+        Matrix3d inverseRotation = new Matrix3d(definition.orientationMatrix()).transpose();
 
         Vector3d local = new Vector3d(x, y, z).sub(definition.center());
         inverseRotation.transform(local);
@@ -275,6 +273,43 @@ public class BoxBlocksNode extends BaseNode {
                 Math.toRadians(rotationY),
                 Math.toRadians(rotationZ)
             );
+    }
+
+    private Matrix3d createOrientationMatrix(Object planeObj, double rotationX, double rotationY, double rotationZ) {
+        Matrix3d orientationMatrix = planeObj instanceof PlaneData planeData
+            ? createPlaneAlignmentMatrix(planeData)
+            : new Matrix3d().identity();
+
+        orientationMatrix.mul(createRotationMatrix(rotationX, rotationY, rotationZ));
+        return orientationMatrix;
+    }
+
+    private Matrix3d createPlaneAlignmentMatrix(PlaneData planeData) {
+        Vector3d up = new Vector3d(planeData.getNormal());
+        if (up.lengthSquared() < 1e-9d) {
+            return new Matrix3d().identity();
+        }
+
+        up.normalize();
+
+        Vector3d reference = Math.abs(up.y) < 0.99d
+            ? new Vector3d(0.0d, 1.0d, 0.0d)
+            : new Vector3d(1.0d, 0.0d, 0.0d);
+
+        Vector3d xAxis = reference.cross(up, new Vector3d());
+        if (xAxis.lengthSquared() < 1e-9d) {
+            xAxis.set(0.0d, 0.0d, 1.0d);
+        } else {
+            xAxis.normalize();
+        }
+
+        Vector3d zAxis = new Vector3d(xAxis).cross(up).normalize();
+
+        return new Matrix3d(
+            xAxis.x, up.x, zAxis.x,
+            xAxis.y, up.y, zAxis.y,
+            xAxis.z, up.z, zAxis.z
+        );
     }
 
     public boolean isFillBox() {
@@ -325,9 +360,7 @@ public class BoxBlocksNode extends BaseNode {
         RegionData region,
         Vector3d center,
         Vector3d halfExtents,
-        double rotationX,
-        double rotationY,
-        double rotationZ,
+        Matrix3d orientationMatrix,
         boolean rotated
     ) {
     }
