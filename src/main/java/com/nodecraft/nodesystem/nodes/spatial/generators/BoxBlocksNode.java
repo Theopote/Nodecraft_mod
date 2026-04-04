@@ -10,6 +10,8 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Matrix3d;
+import org.joml.Vector3d;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -38,6 +40,9 @@ public class BoxBlocksNode extends BaseNode {
     private static final String INPUT_SIZE_X_ID = "input_size_x";
     private static final String INPUT_SIZE_Y_ID = "input_size_y";
     private static final String INPUT_SIZE_Z_ID = "input_size_z";
+    private static final String INPUT_ROT_X_ID = "input_rotation_x";
+    private static final String INPUT_ROT_Y_ID = "input_rotation_y";
+    private static final String INPUT_ROT_Z_ID = "input_rotation_z";
     private static final String INPUT_CORNER_A_ID = "input_corner_a";
     private static final String INPUT_CORNER_B_ID = "input_corner_b";
 
@@ -54,6 +59,9 @@ public class BoxBlocksNode extends BaseNode {
         addInputPort(new BasePort(INPUT_SIZE_X_ID, "Size X", "Width in blocks on the X axis", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SIZE_Y_ID, "Size Y", "Height in blocks on the Y axis", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SIZE_Z_ID, "Size Z", "Depth in blocks on the Z axis", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_ROT_X_ID, "Rotation X", "Rotation around the X axis in degrees", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_ROT_Y_ID, "Rotation Y", "Rotation around the Y axis in degrees", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_ROT_Z_ID, "Rotation Z", "Rotation around the Z axis in degrees", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_CORNER_A_ID, "Corner A", "Optional first corner of the box", NodeDataType.BLOCK_POS, this));
         addInputPort(new BasePort(INPUT_CORNER_B_ID, "Corner B", "Optional second corner of the box", NodeDataType.BLOCK_POS, this));
 
@@ -76,7 +84,8 @@ public class BoxBlocksNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        RegionData region = resolveRegion();
+        BoxDefinition definition = resolveBoxDefinition();
+        RegionData region = definition != null ? definition.region() : null;
         BlockPosList blocksList = new BlockPosList();
         BlockPos minCorner = null;
         BlockPos maxCorner = null;
@@ -86,7 +95,7 @@ public class BoxBlocksNode extends BaseNode {
             maxCorner = region.getMaxCorner();
 
             if (!outputAsRegion && minCorner != null && maxCorner != null) {
-                populateBlocks(blocksList, minCorner, maxCorner);
+                populateBlocks(blocksList, minCorner, maxCorner, definition);
             }
         }
 
@@ -97,18 +106,22 @@ public class BoxBlocksNode extends BaseNode {
         outputValues.put(OUTPUT_COUNT_ID, blocksList.size());
     }
 
-    private RegionData resolveRegion() {
+    private BoxDefinition resolveBoxDefinition() {
         Object cornerAObj = inputValues.get(INPUT_CORNER_A_ID);
         Object cornerBObj = inputValues.get(INPUT_CORNER_B_ID);
 
         if (cornerAObj instanceof BlockPos cornerA && cornerBObj instanceof BlockPos cornerB) {
-            return new RegionData(cornerA.toImmutable(), cornerB.toImmutable());
+            RegionData region = new RegionData(cornerA.toImmutable(), cornerB.toImmutable());
+            return new BoxDefinition(region, null, null, 0.0d, 0.0d, 0.0d, false);
         }
 
         Object centerObj = inputValues.get(INPUT_CENTER_ID);
         Object sizeXObj = inputValues.get(INPUT_SIZE_X_ID);
         Object sizeYObj = inputValues.get(INPUT_SIZE_Y_ID);
         Object sizeZObj = inputValues.get(INPUT_SIZE_Z_ID);
+        Object rotXObj = inputValues.get(INPUT_ROT_X_ID);
+        Object rotYObj = inputValues.get(INPUT_ROT_Y_ID);
+        Object rotZObj = inputValues.get(INPUT_ROT_Z_ID);
 
         if (!(centerObj instanceof BlockPos center) ||
             !(sizeXObj instanceof Number sizeXNumber) ||
@@ -120,7 +133,26 @@ public class BoxBlocksNode extends BaseNode {
         int sizeX = Math.max(1, sizeXNumber.intValue());
         int sizeY = Math.max(1, sizeYNumber.intValue());
         int sizeZ = Math.max(1, sizeZNumber.intValue());
+        double rotationX = rotXObj instanceof Number rotXNumber ? rotXNumber.doubleValue() : 0.0d;
+        double rotationY = rotYObj instanceof Number rotYNumber ? rotYNumber.doubleValue() : 0.0d;
+        double rotationZ = rotZObj instanceof Number rotZNumber ? rotZNumber.doubleValue() : 0.0d;
 
+        Vector3d centerVector = new Vector3d(center.getX(), center.getY(), center.getZ());
+        Vector3d halfExtents = new Vector3d(
+            (sizeX - 1) / 2.0d,
+            (sizeY - 1) / 2.0d,
+            (sizeZ - 1) / 2.0d
+        );
+        boolean rotated = hasRotation(rotationX, rotationY, rotationZ);
+
+        RegionData region = rotated
+            ? createRotatedBoundingRegion(centerVector, halfExtents, rotationX, rotationY, rotationZ)
+            : createAxisAlignedRegion(center, sizeX, sizeY, sizeZ);
+
+        return new BoxDefinition(region, centerVector, halfExtents, rotationX, rotationY, rotationZ, rotated);
+    }
+
+    private RegionData createAxisAlignedRegion(BlockPos center, int sizeX, int sizeY, int sizeZ) {
         BlockPos minCorner = new BlockPos(
             center.getX() - ((sizeX - 1) / 2),
             center.getY() - ((sizeY - 1) / 2),
@@ -136,11 +168,56 @@ public class BoxBlocksNode extends BaseNode {
         return new RegionData(minCorner, maxCorner);
     }
 
-    private void populateBlocks(BlockPosList blocksList, BlockPos minCorner, BlockPos maxCorner) {
+    private RegionData createRotatedBoundingRegion(
+        Vector3d center,
+        Vector3d halfExtents,
+        double rotationX,
+        double rotationY,
+        double rotationZ
+    ) {
+        Matrix3d rotationMatrix = createRotationMatrix(rotationX, rotationY, rotationZ);
+        double minX = Double.POSITIVE_INFINITY;
+        double minY = Double.POSITIVE_INFINITY;
+        double minZ = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+        double maxZ = Double.NEGATIVE_INFINITY;
+
+        for (int sx = -1; sx <= 1; sx += 2) {
+            for (int sy = -1; sy <= 1; sy += 2) {
+                for (int sz = -1; sz <= 1; sz += 2) {
+                    Vector3d corner = new Vector3d(
+                        sx * halfExtents.x,
+                        sy * halfExtents.y,
+                        sz * halfExtents.z
+                    );
+                    rotationMatrix.transform(corner);
+                    corner.add(center);
+
+                    minX = Math.min(minX, corner.x);
+                    minY = Math.min(minY, corner.y);
+                    minZ = Math.min(minZ, corner.z);
+                    maxX = Math.max(maxX, corner.x);
+                    maxY = Math.max(maxY, corner.y);
+                    maxZ = Math.max(maxZ, corner.z);
+                }
+            }
+        }
+
+        BlockPos minCorner = BlockPos.ofFloored(minX, minY, minZ);
+        BlockPos maxCorner = BlockPos.ofFloored(maxX - 1e-9d, maxY - 1e-9d, maxZ - 1e-9d);
+        return new RegionData(minCorner, maxCorner);
+    }
+
+    private void populateBlocks(BlockPosList blocksList, BlockPos minCorner, BlockPos maxCorner, BoxDefinition definition) {
         for (int x = minCorner.getX(); x <= maxCorner.getX(); x++) {
             for (int y = minCorner.getY(); y <= maxCorner.getY(); y++) {
                 for (int z = minCorner.getZ(); z <= maxCorner.getZ(); z++) {
-                    if (fillBox || isShellBlock(x, y, z, minCorner, maxCorner)) {
+                    if (!containsBlock(definition, x, y, z)) {
+                        continue;
+                    }
+
+                    if (fillBox || isShellBlock(x, y, z, definition)) {
                         blocksList.add(new BlockPos(x, y, z));
                     }
                 }
@@ -148,10 +225,56 @@ public class BoxBlocksNode extends BaseNode {
         }
     }
 
-    private boolean isShellBlock(int x, int y, int z, BlockPos minCorner, BlockPos maxCorner) {
-        return x == minCorner.getX() || x == maxCorner.getX()
-            || y == minCorner.getY() || y == maxCorner.getY()
-            || z == minCorner.getZ() || z == maxCorner.getZ();
+    private boolean containsBlock(BoxDefinition definition, int x, int y, int z) {
+        if (definition == null || definition.center() == null || definition.halfExtents() == null) {
+            return false;
+        }
+
+        if (!definition.rotated()) {
+            BlockPos minCorner = definition.region().getMinCorner();
+            BlockPos maxCorner = definition.region().getMaxCorner();
+            return minCorner != null && maxCorner != null
+                && x >= minCorner.getX() && x <= maxCorner.getX()
+                && y >= minCorner.getY() && y <= maxCorner.getY()
+                && z >= minCorner.getZ() && z <= maxCorner.getZ();
+        }
+
+        Matrix3d inverseRotation = createRotationMatrix(
+            definition.rotationX(),
+            definition.rotationY(),
+            definition.rotationZ()
+        ).transpose();
+
+        Vector3d local = new Vector3d(x, y, z).sub(definition.center());
+        inverseRotation.transform(local);
+
+        return Math.abs(local.x) <= definition.halfExtents().x
+            && Math.abs(local.y) <= definition.halfExtents().y
+            && Math.abs(local.z) <= definition.halfExtents().z;
+    }
+
+    private boolean isShellBlock(int x, int y, int z, BoxDefinition definition) {
+        return !containsBlock(definition, x + 1, y, z)
+            || !containsBlock(definition, x - 1, y, z)
+            || !containsBlock(definition, x, y + 1, z)
+            || !containsBlock(definition, x, y - 1, z)
+            || !containsBlock(definition, x, y, z + 1)
+            || !containsBlock(definition, x, y, z - 1);
+    }
+
+    private boolean hasRotation(double rotationX, double rotationY, double rotationZ) {
+        return Math.abs(rotationX) > 1e-9d
+            || Math.abs(rotationY) > 1e-9d
+            || Math.abs(rotationZ) > 1e-9d;
+    }
+
+    private Matrix3d createRotationMatrix(double rotationX, double rotationY, double rotationZ) {
+        return new Matrix3d()
+            .rotateXYZ(
+                Math.toRadians(rotationX),
+                Math.toRadians(rotationY),
+                Math.toRadians(rotationZ)
+            );
     }
 
     public boolean isFillBox() {
@@ -196,5 +319,16 @@ public class BoxBlocksNode extends BaseNode {
         if (stateMap.get("outputAsRegion") instanceof Boolean outputAsRegionValue) {
             setOutputAsRegion(outputAsRegionValue);
         }
+    }
+
+    private record BoxDefinition(
+        RegionData region,
+        Vector3d center,
+        Vector3d halfExtents,
+        double rotationX,
+        double rotationY,
+        double rotationZ,
+        boolean rotated
+    ) {
     }
 }
