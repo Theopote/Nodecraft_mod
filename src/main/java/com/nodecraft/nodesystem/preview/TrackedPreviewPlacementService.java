@@ -8,9 +8,11 @@ import net.minecraft.world.World;
 
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.nodecraft.nodesystem.bake.PlacementMode;
 
@@ -42,41 +44,86 @@ public final class TrackedPreviewPlacementService {
             return 0;
         }
 
-        clearTrackedPreview(world, nodeId);
+        Map<String, TrackedPreviewState> byNode = trackedPreviews.computeIfAbsent(world, ignored -> new LinkedHashMap<>());
+        TrackedPreviewState previousTrackedState = byNode.get(nodeId);
 
-        Map<BlockPos, BlockState> previousStates = new LinkedHashMap<>();
+        Map<BlockPos, BlockState> trackedOriginalStates = previousTrackedState == null
+                ? new LinkedHashMap<>()
+                : new LinkedHashMap<>(previousTrackedState.previousStates());
+        BlockState previousPreviewState = previousTrackedState == null ? null : previousTrackedState.previewState();
+
+        Set<BlockPos> requestedPositions = new LinkedHashSet<>();
+        for (BlockPos originalPos : positions) {
+            if (originalPos != null) {
+                requestedPositions.add(originalPos.toImmutable());
+            }
+        }
+
+        if (requestedPositions.isEmpty()) {
+            clearTrackedPreview(world, nodeId);
+            return 0;
+        }
+
         int placedCount = 0;
         int skippedCount = 0;
+        int restoredCount = 0;
+        int unchangedCount = 0;
 
-        for (BlockPos originalPos : positions) {
-            if (originalPos == null) {
-                continue;
+        List<BlockPos> removedPositions = new ArrayList<>();
+        for (BlockPos trackedPos : trackedOriginalStates.keySet()) {
+            if (!requestedPositions.contains(trackedPos)) {
+                removedPositions.add(trackedPos);
             }
+        }
 
-            BlockPos pos = originalPos.toImmutable();
-            if (placementMode == PlacementMode.INCREMENTAL && !world.isAir(pos)) {
+        for (BlockPos removedPos : removedPositions) {
+            BlockState originalState = trackedOriginalStates.remove(removedPos);
+            if (originalState != null && world.setBlockState(removedPos, originalState, Block.NOTIFY_ALL)) {
+                restoredCount++;
+            }
+        }
+
+        boolean previewStateChanged = previousPreviewState != null && !previousPreviewState.equals(previewState);
+
+        for (BlockPos pos : requestedPositions) {
+            boolean alreadyTracked = trackedOriginalStates.containsKey(pos);
+            if (!alreadyTracked && placementMode == PlacementMode.INCREMENTAL && !world.isAir(pos)) {
                 skippedCount++;
                 continue;
             }
 
-            previousStates.put(pos, world.getBlockState(pos));
+            if (!alreadyTracked) {
+                trackedOriginalStates.put(pos, world.getBlockState(pos));
+            }
+
+            if (alreadyTracked && !previewStateChanged) {
+                unchangedCount++;
+                continue;
+            }
+
             if (world.setBlockState(pos, previewState, Block.NOTIFY_ALL)) {
                 placedCount++;
+            } else if (alreadyTracked) {
+                unchangedCount++;
             }
         }
 
-        if (!previousStates.isEmpty()) {
-            trackedPreviews
-                .computeIfAbsent(world, ignored -> new LinkedHashMap<>())
-                .put(nodeId, new TrackedPreviewState(previousStates));
+        if (!trackedOriginalStates.isEmpty()) {
+            byNode.put(nodeId, new TrackedPreviewState(trackedOriginalStates, previewState));
+        } else {
+            byNode.remove(nodeId);
+        }
+
+        if (byNode.isEmpty()) {
+            trackedPreviews.remove(world);
         }
 
         NodeCraft.LOGGER.info(
-                "TrackedPreviewPlacementService.updateTrackedPreview nodeId={} requested={} placed={} skipped={} tracked={}",
-                nodeId, positions.size(), placedCount, skippedCount, previousStates.size()
+                "TrackedPreviewPlacementService.updateTrackedPreview nodeId={} requested={} placed={} skipped={} restored={} unchanged={} tracked={}",
+                nodeId, requestedPositions.size(), placedCount, skippedCount, restoredCount, unchangedCount, trackedOriginalStates.size()
         );
 
-        return placedCount;
+        return trackedOriginalStates.size();
     }
 
     public synchronized int clearTrackedPreview(World world, String nodeId) {
@@ -157,6 +204,6 @@ public final class TrackedPreviewPlacementService {
         return new ArrayList<>(byNode.keySet());
     }
 
-    private record TrackedPreviewState(Map<BlockPos, BlockState> previousStates) {
+    private record TrackedPreviewState(Map<BlockPos, BlockState> previousStates, BlockState previewState) {
     }
 }

@@ -78,6 +78,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
 
     private boolean placementRequested = false;
     private boolean placementPendingLogged = false;
+    private boolean trackedPreviewDeferredLogged = false;
     private int lastBlockCount = 0;
     private String statusMessage = "Waiting for input...";
 
@@ -172,10 +173,12 @@ public class GeometryViewerNode extends BaseCustomUINode {
                 if (previewBackend == PreviewBackend.TRACKED_WORLD) {
                     if (refreshTrackedPreview(context, blocksList, effectiveBlockType)) {
                         cachePreviewState(geometrySignature, trans, color, effectiveBlockType);
+                        trackedPreviewDeferredLogged = false;
                     } else {
                         cachedPreviewBackend = null;
                     }
                 } else {
+                    trackedPreviewDeferredLogged = false;
                     refreshGhostPreview(context, blocksList, effectiveBlockType, trans);
                     cachePreviewState(geometrySignature, trans, color, effectiveBlockType);
                     statusMessage = "Previewing " + blockCount + " blocks";
@@ -188,6 +191,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
                 statusMessage = "Tracked preview waiting for execution context";
             }
         } else {
+            trackedPreviewDeferredLogged = false;
             clearAllPreviewState(context);
             statusMessage = previewEnabled ? "Waiting for input..." : "Preview disabled";
         }
@@ -283,9 +287,13 @@ public class GeometryViewerNode extends BaseCustomUINode {
 
         if (context == null || context.getWorld() == null) {
             statusMessage = "Tracked preview waiting for execution context";
-            NodeCraft.LOGGER.info("GeometryViewerNode[{}] tracked preview deferred: missing world context", getId());
+            if (!trackedPreviewDeferredLogged) {
+                NodeCraft.LOGGER.info("GeometryViewerNode[{}] tracked preview deferred: missing world context", getId());
+                trackedPreviewDeferredLogged = true;
+            }
             return false;
         }
+        trackedPreviewDeferredLogged = false;
 
         BlockState trackedState = resolveBlockState(effectiveBlockType);
         if (trackedState == null) {
@@ -310,6 +318,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
     }
 
     private void clearAllPreviewState(@Nullable ExecutionContext context) {
+        trackedPreviewDeferredLogged = false;
         cachedGeometrySignature = 0;
         cachedTransparency = -1f;
         cachedColor = null;
