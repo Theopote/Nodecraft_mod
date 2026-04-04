@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.util;
 
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
+import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.TorusGeometryData;
 import net.minecraft.util.math.BlockPos;
@@ -17,6 +18,7 @@ public final class GeometryVoxelizer {
 
     public static BlockPosList resolveBlocks(@Nullable Object blocksObj,
                                              @Nullable Object boxGeometryObj,
+                                             @Nullable Object cylinderGeometryObj,
                                              @Nullable Object torusGeometryObj,
                                              boolean fillSolid) {
         if (blocksObj instanceof BlockPosList blockPosList) {
@@ -25,6 +27,10 @@ public final class GeometryVoxelizer {
 
         if (boxGeometryObj instanceof BoxGeometryData boxGeometry) {
             return voxelizeBox(boxGeometry, fillSolid);
+        }
+
+        if (cylinderGeometryObj instanceof CylinderGeometryData cylinderGeometry) {
+            return voxelizeCylinder(cylinderGeometry, fillSolid);
         }
 
         if (torusGeometryObj instanceof TorusGeometryData torusGeometry) {
@@ -84,6 +90,13 @@ public final class GeometryVoxelizer {
         BlockPosList blocks = new BlockPosList();
         RegionData region = TorusBlockGenerator.createBoundingRegion(geometry);
         TorusBlockGenerator.populateTorus(blocks, region, geometry, fillSolid);
+        return blocks;
+    }
+
+    public static BlockPosList voxelizeCylinder(CylinderGeometryData geometry, boolean fillSolid) {
+        BlockPosList blocks = new BlockPosList();
+        RegionData region = CylinderBlockGenerator.createBoundingRegion(geometry);
+        CylinderBlockGenerator.populateCylinder(blocks, region, geometry, fillSolid);
         return blocks;
     }
 

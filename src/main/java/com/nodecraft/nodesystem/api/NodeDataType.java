@@ -29,6 +29,7 @@ public enum NodeDataType {
     PLANE("plane", "平面", PlaneData.class),
     BOUNDING_BOX("bounding_box", "包围盒", BoundingBoxData.class),
     BOX_GEOMETRY("box_geometry", "Box Geometry", BoxGeometryData.class),
+    CYLINDER_GEOMETRY("cylinder_geometry", "Cylinder Geometry", CylinderGeometryData.class),
     TORUS_GEOMETRY("torus_geometry", "Torus Geometry", TorusGeometryData.class),
     SPHERE("sphere", "球体", SphereData.class),
     LINE("line", "线段", LineData.class),
