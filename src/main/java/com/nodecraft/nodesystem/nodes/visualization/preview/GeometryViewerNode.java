@@ -90,6 +90,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
 
     // --- 输入端口 IDs ---
     private static final String INPUT_BLOCKS_ID = "input_blocks";
+    private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
     private static final String INPUT_CYLINDER_GEOMETRY_ID = "input_cylinder_geometry";
     private static final String INPUT_SPHERE_GEOMETRY_ID = "input_sphere_geometry";
@@ -114,6 +115,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
 
         // 输入端口
         addInputPort(new BasePort(INPUT_BLOCKS_ID, "Geometry", "几何体方块坐标列表（来自几何体生成器）", NodeDataType.BLOCK_LIST, this));
+        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry Input", "Unified abstract geometry input", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry data to preview", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to preview", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to preview", NodeDataType.SPHERE, this));
@@ -137,6 +139,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object blocksObj = inputValues.get(INPUT_BLOCKS_ID);
+        Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
         Object boxGeometryObj = inputValues.get(INPUT_BOX_GEOMETRY_ID);
         Object cylinderGeometryObj = inputValues.get(INPUT_CYLINDER_GEOMETRY_ID);
         Object sphereGeometryObj = inputValues.get(INPUT_SPHERE_GEOMETRY_ID);
@@ -150,7 +153,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
         float trans = (transparencyObj instanceof Number) ? Math.max(0f, Math.min(1f, ((Number) transparencyObj).floatValue())) : this.transparency;
         String bType = (blockTypeObj instanceof String) ? (String) blockTypeObj : this.blockType;
 
-        BlockPosList blocksList = resolveBlocks(blocksObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj);
+        BlockPosList blocksList = resolveBlocks(blocksObj, geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj);
 
         int blockCount = (blocksList != null) ? blocksList.size() : 0;
         lastBlockCount = blockCount;
@@ -241,8 +244,8 @@ public class GeometryViewerNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_PLACED_ID, placed);
     }
 
-    private BlockPosList resolveBlocks(Object blocksObj, Object boxGeometryObj, Object cylinderGeometryObj, Object sphereGeometryObj, Object torusGeometryObj) {
-        return GeometryVoxelizer.resolveBlocks(blocksObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj, previewSolidGeometry);
+    private BlockPosList resolveBlocks(Object blocksObj, Object geometryObj, Object boxGeometryObj, Object cylinderGeometryObj, Object sphereGeometryObj, Object torusGeometryObj) {
+        return GeometryVoxelizer.resolveBlocks(blocksObj, geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj, previewSolidGeometry);
     }
 
     /** 计算几何体签名，用于脏标记检测 */

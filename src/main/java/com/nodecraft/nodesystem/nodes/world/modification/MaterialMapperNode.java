@@ -29,6 +29,7 @@ import java.util.UUID;
 public class MaterialMapperNode extends BaseNode {
 
     private static final String INPUT_COORDINATES_ID = "input_coordinates";
+    private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
     private static final String INPUT_CYLINDER_GEOMETRY_ID = "input_cylinder_geometry";
     private static final String INPUT_SPHERE_GEOMETRY_ID = "input_sphere_geometry";
@@ -44,6 +45,7 @@ public class MaterialMapperNode extends BaseNode {
     public MaterialMapperNode() {
         super(UUID.randomUUID(), "world.modification.material_mapper");
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list", NodeDataType.BLOCK_LIST, this));
+        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified abstract geometry input", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry data to materialize", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to materialize", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
@@ -65,6 +67,7 @@ public class MaterialMapperNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object coordsObj = inputValues.get(INPUT_COORDINATES_ID);
+        Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
         Object boxGeometryObj = inputValues.get(INPUT_BOX_GEOMETRY_ID);
         Object cylinderGeometryObj = inputValues.get(INPUT_CYLINDER_GEOMETRY_ID);
         Object sphereGeometryObj = inputValues.get(INPUT_SPHERE_GEOMETRY_ID);
@@ -74,7 +77,7 @@ public class MaterialMapperNode extends BaseNode {
         String middle = getInputString(INPUT_MIDDLE_ID, "minecraft:dirt");
         String top = getInputString(INPUT_TOP_ID, "minecraft:grass_block");
 
-        BlockPosList positions = resolveCoordinates(coordsObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj);
+        BlockPosList positions = resolveCoordinates(coordsObj, geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj);
         List<String> blockIds = new ArrayList<>();
         List<BlockPlacementData> placements = new ArrayList<>();
 
@@ -126,7 +129,7 @@ public class MaterialMapperNode extends BaseNode {
         return (value instanceof String && !((String) value).isEmpty()) ? (String) value : fallback;
     }
 
-    private BlockPosList resolveCoordinates(Object coordsObj, Object boxGeometryObj, Object cylinderGeometryObj, Object sphereGeometryObj, Object torusGeometryObj) {
-        return GeometryVoxelizer.resolveBlocks(coordsObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj, true);
+    private BlockPosList resolveCoordinates(Object coordsObj, Object geometryObj, Object boxGeometryObj, Object cylinderGeometryObj, Object sphereGeometryObj, Object torusGeometryObj) {
+        return GeometryVoxelizer.resolveBlocks(coordsObj, geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj, true);
     }
 }

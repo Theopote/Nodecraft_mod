@@ -19,6 +19,7 @@ public final class GeometryVoxelizer {
     }
 
     public static BlockPosList resolveBlocks(@Nullable Object blocksObj,
+                                             @Nullable Object geometryObj,
                                              @Nullable Object boxGeometryObj,
                                              @Nullable Object cylinderGeometryObj,
                                              @Nullable Object sphereGeometryObj,
@@ -28,7 +29,7 @@ public final class GeometryVoxelizer {
             return blockPosList;
         }
 
-        GeometryData geometry = resolveGeometry(boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj);
+        GeometryData geometry = resolveGeometry(geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj);
         if (geometry != null) {
             return voxelize(geometry, fillSolid);
         }
@@ -36,10 +37,15 @@ public final class GeometryVoxelizer {
         return new BlockPosList();
     }
 
-    public static @Nullable GeometryData resolveGeometry(@Nullable Object boxGeometryObj,
+    public static @Nullable GeometryData resolveGeometry(@Nullable Object geometryObj,
+                                                         @Nullable Object boxGeometryObj,
                                                          @Nullable Object cylinderGeometryObj,
                                                          @Nullable Object sphereGeometryObj,
                                                          @Nullable Object torusGeometryObj) {
+        if (geometryObj instanceof GeometryData geometry) {
+            return geometry;
+        }
+
         if (boxGeometryObj instanceof GeometryData geometry) {
             return geometry;
         }
