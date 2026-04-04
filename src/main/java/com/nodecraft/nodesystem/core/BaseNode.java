@@ -115,6 +115,7 @@ public abstract class BaseNode implements INode {
              inputValues.putAll(inputs);
          }
          processNode(null); // 调用无参数版本
+         syncOutputPorts();
          return new HashMap<>(outputValues);
     }
     
@@ -132,6 +133,7 @@ public abstract class BaseNode implements INode {
         
         // 执行计算，传递上下文
         processNode(context);
+        syncOutputPorts();
         
         // 返回输出
         return new HashMap<>(outputValues);
@@ -187,6 +189,15 @@ public abstract class BaseNode implements INode {
      */
     protected void addOutputPort(IPort port) {
         outputPorts.add(port);
+    }
+
+    /**
+     * Keep output port values aligned with the node's computed output map.
+     */
+    protected void syncOutputPorts() {
+        for (IPort port : outputPorts) {
+            port.setValue(outputValues.get(port.getId()));
+        }
     }
 
     /**

@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
+import com.nodecraft.nodesystem.core.BasePort;
 
 /**
  * 节点图类，表示一组相互连接的节点网络
@@ -176,8 +177,11 @@ public class NodeGraph {
         connections.add(connection);
         
         // 建立端口间连接
-        sourcePort.connectTo(targetPort);
-        
+        if (!sourcePort.connectTo(targetPort)) {
+            connections.remove(connection);
+            return false;
+        }
+
         return true;
     }
     
@@ -188,7 +192,11 @@ public class NodeGraph {
     public void removeConnection(Connection connection) {
         if (connection != null) {
             // 断开端口间连接
-            connection.sourcePort.disconnect();
+            if (connection.targetPort instanceof BasePort baseTargetPort) {
+                baseTargetPort.disconnectFrom(connection.sourcePort);
+            } else {
+                connection.targetPort.disconnect();
+            }
             
             // 移除连接
             connections.remove(connection);

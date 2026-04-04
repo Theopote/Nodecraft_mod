@@ -4,11 +4,18 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 /**
- * 基础端口类，实现IPort接口
+ * 基础端口类，实现 IPort 接口。
+ *
+ * 连接语义：
+ * - 输入端口最多只能连接一个上游输出端口
+ * - 输出端口可以连接多个下游输入端口
  */
 public class BasePort implements IPort {
-    
+
     private final String id;
     private final String displayName;
     private final String description;
@@ -16,30 +23,18 @@ public class BasePort implements IPort {
     private final INode node;
     private boolean isConnected = false;
     private IPort connectedPort = null;
+    private final Set<IPort> connectedPorts = new LinkedHashSet<>();
     private Object value;
-    
-    /**
-     * 构造基础端口
-     * @param id 端口ID
-     * @param displayName 显示名称
-     * @param description 端口描述
-     * @param dataType 数据类型
-     * @param node 父节点
-     */
+
     public BasePort(String id, String displayName, String description, NodeDataType dataType, INode node) {
         this.id = id;
         this.displayName = displayName;
         this.description = description;
         this.dataType = dataType;
         this.node = node;
-        
-        // 根据数据类型初始化默认值
         initializeDefaultValue();
     }
-    
-    /**
-     * 根据数据类型初始化默认值
-     */
+
     private void initializeDefaultValue() {
         switch (dataType) {
             case INTEGER:
@@ -68,117 +63,123 @@ public class BasePort implements IPort {
                 break;
         }
     }
-    
+
     @Override
     public String getId() {
         return id;
     }
-    
+
     @Override
     public String getDisplayName() {
         return displayName;
     }
-    
+
     @Override
     public String getDescription() {
         return description;
     }
-    
+
     @Override
     public NodeDataType getDataType() {
         return dataType;
     }
-    
+
     @Override
     public boolean isInput() {
         return !isOutput();
     }
-    
-    /**
-     * 判断此端口是否为输出端口
-     * @return 如果是输出端口返回true，否则为false
-     */
+
     public boolean isOutput() {
         return id.startsWith("output_");
     }
-    
+
     @Override
     public boolean isConnected() {
         return isConnected;
     }
-    
+
     @Override
     public INode getNode() {
         return node;
     }
-    
+
     @Override
     public void setValue(Object newValue) {
         if (dataType.isCompatible(newValue)) {
             this.value = newValue;
         }
     }
-    
+
     @Override
     public Object getValue() {
         return value;
     }
-    
+
     @Override
     public boolean connectTo(IPort targetPort) {
-        // 检查连接有效性
         if (targetPort == null || targetPort == this) {
             return false;
         }
-        
-        // 检查端口方向
+
         if (isInput() == targetPort.isInput()) {
-            return false; // 两个输入/输出端口不能直接连接
-        }
-        
-        // 检查数据类型兼容性
-        if (dataType != NodeDataType.ANY && targetPort.getDataType() != NodeDataType.ANY && 
-            dataType != targetPort.getDataType()) {
             return false;
         }
-        
-        // 断开现有连接
-        if (isConnected) {
-            disconnect();
+
+        IPort outputPort = isOutput() ? this : targetPort;
+        IPort inputPort = isOutput() ? targetPort : this;
+
+        if (!NodeDataType.isConnectableTo(outputPort.getDataType(), inputPort.getDataType())) {
+            return false;
         }
-        
-        // 如果目标端口已连接，断开它
-        if (targetPort.isConnected()) {
-            targetPort.disconnect();
+
+        if (inputPort.isConnected()) {
+            inputPort.disconnect();
         }
-        
-        // 创建连接
-        isConnected = true;
-        connectedPort = targetPort;
-        
-        // 双向连接
-        if (targetPort instanceof BasePort) {
-            ((BasePort) targetPort).isConnected = true;
-            ((BasePort) targetPort).connectedPort = this;
+
+        if (outputPort instanceof BasePort outputBase && inputPort instanceof BasePort inputBase) {
+            outputBase.link(inputBase);
+            inputBase.link(outputBase);
+            return true;
         }
-        
-        return true;
+
+        return false;
     }
-    
+
     @Override
     public void disconnect() {
-        if (!isConnected || connectedPort == null) {
+        if (!isConnected || connectedPorts.isEmpty()) {
             return;
         }
-        
-        // 断开另一侧的连接
-        if (connectedPort instanceof BasePort) {
-            ((BasePort) connectedPort).isConnected = false;
-            ((BasePort) connectedPort).connectedPort = null;
+
+        for (IPort port : Set.copyOf(connectedPorts)) {
+            if (port instanceof BasePort basePort) {
+                unlink(basePort);
+                basePort.unlink(this);
+            }
         }
-        
-        // 断开本侧的连接
-        isConnected = false;
-        connectedPort = null;
     }
-} 
+
+    /**
+     * Disconnect this port from one specific peer without affecting other links.
+     */
+    public void disconnectFrom(IPort port) {
+        if (!(port instanceof BasePort basePort)) {
+            return;
+        }
+
+        unlink(basePort);
+        basePort.unlink(this);
+    }
+
+    private void link(IPort port) {
+        connectedPorts.add(port);
+        isConnected = !connectedPorts.isEmpty();
+        connectedPort = connectedPorts.stream().findFirst().orElse(null);
+    }
+
+    private void unlink(IPort port) {
+        connectedPorts.remove(port);
+        isConnected = !connectedPorts.isEmpty();
+        connectedPort = connectedPorts.stream().findFirst().orElse(null);
+    }
+}

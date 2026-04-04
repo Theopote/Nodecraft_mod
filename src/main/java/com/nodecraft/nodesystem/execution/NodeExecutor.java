@@ -5,7 +5,6 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.core.BaseNode;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -202,7 +201,6 @@ public class NodeExecutor {
             }
         }
         
-        Collections.reverse(result);
         return result;
     }
     
@@ -245,7 +243,7 @@ public class NodeExecutor {
         // 遍历所有连接，找到所有连接到此节点的输入
         for (NodeGraph.Connection connection : graph.getConnections()) {
             if (connection.targetNode.getId().equals(node.getId())) {
-                Object value = connection.sourcePort.getValue();
+                Object value = connection.sourceNode.getOutput(connection.sourcePort.getId());
                 inputs.put(connection.targetPort.getId(), value);
             }
         }

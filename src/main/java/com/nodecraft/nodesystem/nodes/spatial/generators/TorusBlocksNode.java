@@ -4,47 +4,54 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
-
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3d;
+
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 /**
- * Torus (Blocks) 节点: 生成圆环体区域的坐标列表
+ * Generates a torus block volume around a center point.
+ *
+ * If a plane is provided, the torus is oriented so its axis matches the
+ * plane normal. Otherwise it defaults to the world Y axis.
  */
 @NodeInfo(
     id = "spatial.generators.torus_blocks",
     displayName = "圆环生成器",
-    description = "生成圆环（甜甜圈形）区域的坐标列表",
+    description = "生成圆环体区域的坐标列表，可选平面输入用于控制朝向",
     category = "spatial.generators"
 )
 public class TorusBlocksNode extends BaseNode {
 
-    // --- 输入端口 IDs ---
     private static final String INPUT_CENTER_ID = "input_center";
+    private static final String INPUT_PLANE_ID = "input_plane";
     private static final String INPUT_MAJOR_RADIUS_ID = "input_major_radius";
     private static final String INPUT_MINOR_RADIUS_ID = "input_minor_radius";
 
-    // --- 输出端口 IDs ---
     private static final String OUTPUT_BLOCKS_ID = "output_blocks";
     private static final String OUTPUT_COUNT_ID = "output_count";
 
     public TorusBlocksNode() {
         super(UUID.randomUUID(), "spatial.generators.torus_blocks");
 
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "圆环中心点", NodeDataType.BLOCK_POS, this));
-        addInputPort(new BasePort(INPUT_MAJOR_RADIUS_ID, "Major Radius", "主半径（中心到管道中心的距离）", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_MINOR_RADIUS_ID, "Minor Radius", "管道半径（管道截面半径）", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Center point of the torus", NodeDataType.BLOCK_POS, this));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Optional plane used to orient the torus axis", NodeDataType.PLANE, this));
+        addInputPort(new BasePort(INPUT_MAJOR_RADIUS_ID, "Major Radius", "Distance from center to tube center", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_MINOR_RADIUS_ID, "Minor Radius", "Tube radius", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "组成圆环的方块列表", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "方块数量", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Blocks composing the torus", NodeDataType.BLOCK_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Block count", NodeDataType.INTEGER, this));
     }
 
     @Override
     public String getDescription() {
-        return "生成圆环（甜甜圈形）区域的坐标列表";
+        return "Generates a torus block volume with optional plane-based orientation";
     }
 
     @Override
@@ -55,35 +62,52 @@ public class TorusBlocksNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object centerObj = inputValues.get(INPUT_CENTER_ID);
+        Object planeObj = inputValues.get(INPUT_PLANE_ID);
         Object majorRObj = inputValues.get(INPUT_MAJOR_RADIUS_ID);
         Object minorRObj = inputValues.get(INPUT_MINOR_RADIUS_ID);
 
         BlockPosList result = new BlockPosList();
 
-        if (centerObj instanceof BlockPos &&
-            majorRObj instanceof Number &&
-            minorRObj instanceof Number) {
+        if (centerObj instanceof BlockPos center &&
+            majorRObj instanceof Number majorRadiusObj &&
+            minorRObj instanceof Number minorRadiusObj) {
 
-            BlockPos center = (BlockPos) centerObj;
-            double R = Math.max(1, ((Number) majorRObj).doubleValue()); // 主半径
-            double r = Math.max(1, ((Number) minorRObj).doubleValue()); // 管道半径
+            double majorRadius = Math.max(1.0d, majorRadiusObj.doubleValue());
+            double minorRadius = Math.max(1.0d, minorRadiusObj.doubleValue());
 
+            Vector3d axis = new Vector3d(0.0d, 1.0d, 0.0d);
+            if (planeObj instanceof PlaneData planeData) {
+                axis = planeData.getNormal();
+                if (axis.lengthSquared() < 1e-9) {
+                    axis.set(0.0d, 1.0d, 0.0d);
+                } else {
+                    axis.normalize();
+                }
+            }
+
+            Vector3d tangent = buildOrthogonalBasisVector(axis);
+            Vector3d bitangent = new Vector3d(axis).cross(tangent).normalize();
+
+            int bound = (int) Math.ceil(majorRadius + minorRadius);
             int cx = center.getX();
             int cy = center.getY();
             int cz = center.getZ();
-
-            // 扫描包围盒
-            int bound = (int) Math.ceil(R + r);
+            double minorRadiusSquared = minorRadius * minorRadius;
 
             for (int dx = -bound; dx <= bound; dx++) {
-                for (int dy = -(int) Math.ceil(r); dy <= (int) Math.ceil(r); dy++) {
+                for (int dy = -bound; dy <= bound; dy++) {
                     for (int dz = -bound; dz <= bound; dz++) {
-                        // 圆环方程:
-                        // (sqrt(x^2 + z^2) - R)^2 + y^2 <= r^2
-                        double distXZ = Math.sqrt(dx * dx + dz * dz);
-                        double distFromTube = (distXZ - R) * (distXZ - R) + dy * dy;
+                        Vector3d relative = new Vector3d(dx, dy, dz);
 
-                        if (distFromTube <= r * r) {
+                        double localX = relative.dot(tangent);
+                        double localY = relative.dot(bitangent);
+                        double localZ = relative.dot(axis);
+
+                        double radialDistance = Math.sqrt(localX * localX + localY * localY);
+                        double torusEquation = (radialDistance - majorRadius) * (radialDistance - majorRadius)
+                            + localZ * localZ;
+
+                        if (torusEquation <= minorRadiusSquared) {
                             result.add(new BlockPos(cx + dx, cy + dy, cz + dz));
                         }
                     }
@@ -95,13 +119,25 @@ public class TorusBlocksNode extends BaseNode {
         outputValues.put(OUTPUT_COUNT_ID, result.size());
     }
 
+    private Vector3d buildOrthogonalBasisVector(Vector3d axis) {
+        Vector3d reference = Math.abs(axis.y) < 0.99d
+            ? new Vector3d(0.0d, 1.0d, 0.0d)
+            : new Vector3d(1.0d, 0.0d, 0.0d);
+
+        Vector3d tangent = reference.cross(axis, new Vector3d());
+        if (tangent.lengthSquared() < 1e-9) {
+            tangent = new Vector3d(0.0d, 0.0d, 1.0d);
+        }
+        return tangent.normalize();
+    }
+
     @Override
     public Object getNodeState() {
-        return new java.util.HashMap<>();
+        return new HashMap<String, Object>();
     }
 
     @Override
     public void setNodeState(Object state) {
-        // 无额外状态
+        // no custom state
     }
 }
