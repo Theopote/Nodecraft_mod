@@ -310,10 +310,6 @@ public class GeometryViewerNode extends BaseCustomUINode {
                 placementMode
         );
         statusMessage = "Previewing " + trackedCount + " blocks (tracked)";
-        NodeCraft.LOGGER.info(
-                "GeometryViewerNode[{}] tracked preview refreshed: requested={}, placed={}, blockType={}, placementMode={}",
-                getId(), blocksList.size(), trackedCount, effectiveBlockType, placementMode
-        );
         return true;
     }
 

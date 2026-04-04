@@ -1,6 +1,5 @@
 package com.nodecraft.nodesystem.nodes.math.basic;
 
-import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -58,21 +57,9 @@ public class AdditionNode extends BaseNode implements INode {
             double b = ((Number) valB).doubleValue();
             outputValues.put(OUTPUT_SUM_ID, a + b);
             outputValues.put(OUTPUT_VALID_ID, true);
-            NodeCraft.LOGGER.info(
-                    "AdditionNode[{}] processed: A={}, B={}, Sum={}, Valid=true",
-                    getId(), a, b, a + b
-            );
         } else {
             outputValues.put(OUTPUT_SUM_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
-            NodeCraft.LOGGER.warn(
-                    "AdditionNode[{}] invalid inputs: AType={}, BType={}, AValue={}, BValue={}",
-                    getId(),
-                    valA == null ? "null" : valA.getClass().getSimpleName(),
-                    valB == null ? "null" : valB.getClass().getSimpleName(),
-                    valA,
-                    valB
-            );
         }
     }
 }

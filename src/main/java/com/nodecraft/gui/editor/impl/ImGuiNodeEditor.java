@@ -1049,7 +1049,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         lastAutoPreviewExecutionAt = now;
 
         autoPreviewExecutor = new NodeExecutor(currentGraph, new ExecutionContext(world, serverPlayer));
-        NodeCraft.LOGGER.info(
+        NodeCraft.LOGGER.debug(
                 "自动执行预览图: reason={}, dirtyVersion={}, nodes={}",
                 triggerReason,
                 executingVersion,
@@ -1057,9 +1057,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         );
         autoPreviewExecutor.executeAsync().thenAccept(result -> {
             if (result) {
-                NodeCraft.LOGGER.info("自动执行预览图完成: reason={}, dirtyVersion={}", triggerReason, executingVersion);
+                NodeCraft.LOGGER.debug("自动执行预览图完成: reason={}, dirtyVersion={}", triggerReason, executingVersion);
             } else {
-                NodeCraft.LOGGER.warn("自动执行预览图失败: reason={}, dirtyVersion={}", triggerReason, executingVersion);
+                NodeCraft.LOGGER.debug("自动执行预览图失败: reason={}, dirtyVersion={}", triggerReason, executingVersion);
             }
             autoPreviewExecutor = null;
         }).exceptionally(throwable -> {

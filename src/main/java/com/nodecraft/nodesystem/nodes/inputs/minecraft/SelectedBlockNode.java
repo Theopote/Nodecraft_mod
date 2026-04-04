@@ -169,16 +169,6 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         
         // 输出当前方块数据（无论是拾取的还是从输入获取的）
         updateOutputsWithPickedBlock();
-        NodeCraft.LOGGER.info(
-                "SelectedBlockNode[{}] processed: hasPickedBlock={}, pickedBlockPosition={}, blockId={}, outputX={}, outputY={}, outputZ={}",
-                getId(),
-                hasPickedBlock,
-                pickedBlockPosition,
-                pickedBlockId,
-                outputValues.get(OUTPUT_BLOCK_X_ID),
-                outputValues.get(OUTPUT_BLOCK_Y_ID),
-                outputValues.get(OUTPUT_BLOCK_Z_ID)
-        );
     }
     
     /**
