@@ -57,6 +57,18 @@ public class NodeLibraryComponent implements EditorComponent {
         previewOrder.put("visualization.preview.clear_all_previews", 9);
         categoryOrder.put("visualization.preview", previewOrder);
 
+        Map<String, Integer> inputsMinecraftOrder = new HashMap<>();
+        inputsMinecraftOrder.put("inputs.minecraft.selected_block", 0);
+        inputsMinecraftOrder.put("inputs.minecraft.selected_block_sequence", 1);
+        inputsMinecraftOrder.put("inputs.minecraft.selected_region", 2);
+        inputsMinecraftOrder.put("inputs.minecraft.selected_entity", 3);
+        inputsMinecraftOrder.put("inputs.minecraft.player_position", 4);
+        inputsMinecraftOrder.put("inputs.minecraft.player_look_at", 5);
+        inputsMinecraftOrder.put("inputs.minecraft.dimension_info", 6);
+        inputsMinecraftOrder.put("inputs.minecraft.current_time", 7);
+        inputsMinecraftOrder.put("inputs.minecraft.biome_at_player", 8);
+        categoryOrder.put("inputs.minecraft", inputsMinecraftOrder);
+
         Map<String, Integer> spatialGeneratorsOrder = new HashMap<>();
         spatialGeneratorsOrder.put("spatial.generators.box_center_size", 0);
         spatialGeneratorsOrder.put("spatial.generators.box_corners", 1);
