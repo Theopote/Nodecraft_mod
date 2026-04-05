@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.inputs.minecraft;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PointData;
@@ -53,11 +54,29 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
 
     private boolean pickingActive = false;
     private boolean pendingRepick = false;
+
+    @NodeProperty(displayName = "Pick Distance", category = "Picking", order = 1,
+            description = "Maximum distance used for each block pick request.")
     private float maxDistance = 100.0f;
+
+    @NodeProperty(displayName = "Include Fluids", category = "Picking", order = 2,
+            description = "Whether fluid blocks can be picked.")
     private boolean includeFluids = false;
+
+    @NodeProperty(displayName = "Allow Duplicates", category = "Sequence", order = 3,
+            description = "Whether the same block can appear multiple times in the picked order.")
     private boolean allowDuplicates = false;
+
+    @NodeProperty(displayName = "Auto Preview Path", category = "Preview", order = 4,
+            description = "Automatically preview the ordered path while picking.")
     private boolean autoPreviewPath = true;
+
+    @NodeProperty(displayName = "Close Path", category = "Preview", order = 5,
+            description = "Treat the sequence as closed by repeating the first point at the end.")
     private boolean closePath = false;
+
+    @NodeProperty(displayName = "Preview Path Color", category = "Preview", order = 6,
+            description = "Hex color used for the automatic path preview.")
     private String previewPathColor = "#FFD933";
 
     public SelectedBlockSequenceNode() {
@@ -272,22 +291,25 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
 
     @Override
     protected float calculateUIHeight() {
-        float textLine = ImGui.getTextLineHeight();
         float frame = ImGui.getFrameHeight();
         float small = getSmallPadding();
-        float medium = getMediumPadding();
+        float edgeMargin = getMediumPadding();
 
-        float height = medium;
-        height += textLine * 4.0f;   // Ordered blocks / First / Last / color label
-        height += frame * 8.0f;      // 4 checkboxes + slider + 2 color buttons row + 3 action buttons
-        height += small * 11.0f;     // compact vertical spacing between groups
-        height += medium;
+        float height = edgeMargin;
+        height += frame * 3.0f;      // Start/Stop + Remove Last + Clear Sequence
+        height += small * 3.0f;
+        height += edgeMargin;
         return height;
     }
 
     @Override
     protected float calculateMinUIWidth() {
-        return 220.0f + getContentMargin();
+        float buttonPadding = 20.0f;
+        float labelWidth = Math.max(
+                Math.max(ImGui.calcTextSize("Start Picking").x, ImGui.calcTextSize("Stop Picking").x),
+                Math.max(ImGui.calcTextSize("Remove Last").x, ImGui.calcTextSize("Clear Sequence").x)
+        );
+        return Math.max(144.0f, labelWidth + buttonPadding);
     }
 
     @Override
@@ -297,68 +319,6 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
             float availableWidth = layout.getAvailableContentWidth(width);
 
             layout.addVerticalSpacing(getMediumPadding());
-
-            ImGui.pushStyleColor(ImGuiCol.Text, 0.80f, 0.80f, 0.85f, 1.0f);
-            ImGui.text("Ordered blocks: " + pickedBlocks.size());
-            if (!pickedBlocks.isEmpty()) {
-                Coordinate first = pickedBlocks.getFirst();
-                Coordinate last = pickedBlocks.getLast();
-                ImGui.text(String.format("First: %d, %d, %d", first.getX(), first.getY(), first.getZ()));
-                ImGui.text(String.format("Last: %d, %d, %d", last.getX(), last.getY(), last.getZ()));
-            } else {
-                ImGui.textDisabled("First: none");
-                ImGui.textDisabled("Last: none");
-            }
-            ImGui.popStyleColor();
-
-            layout.addVerticalSpacing(getSmallPadding());
-
-            if (ImGui.checkbox("Allow Duplicates##allowDuplicates", allowDuplicates)) {
-                allowDuplicates = !allowDuplicates;
-                updatePathPreview();
-                changed = true;
-            }
-            if (ImGui.checkbox("Include Fluids##includeFluids", includeFluids)) {
-                includeFluids = !includeFluids;
-                changed = true;
-            }
-            if (ImGui.checkbox("Auto Preview Path##autoPreviewPath", autoPreviewPath)) {
-                autoPreviewPath = !autoPreviewPath;
-                updatePathPreview();
-                changed = true;
-            }
-            if (ImGui.checkbox("Close Path##closePath", closePath)) {
-                closePath = !closePath;
-                updateOutputs();
-                updatePathPreview();
-                changed = true;
-            }
-
-            layout.addVerticalSpacing(getSmallPadding());
-
-            ImGui.text("Preview");
-            ImGui.sameLine();
-            ImGui.textDisabled(previewPathColor);
-            float[] distance = {maxDistance};
-            ImGui.text("Pick Distance: " + String.format("%.1f", maxDistance));
-            if (ImGui.sliderFloat("##pickDistance", distance, 1.0f, 300.0f)) {
-                maxDistance = distance[0];
-                changed = true;
-            }
-
-            if (ImGui.button("Yellow##pathColorYellow", availableWidth / 2.0f - 2.0f, 0)) {
-                previewPathColor = "#FFD933";
-                updatePathPreview();
-                changed = true;
-            }
-            ImGui.sameLine();
-            if (ImGui.button("Cyan##pathColorCyan", availableWidth / 2.0f - 2.0f, 0)) {
-                previewPathColor = "#4DE3FF";
-                updatePathPreview();
-                changed = true;
-            }
-
-            layout.addVerticalSpacing(getSmallPadding());
 
             if (!pickingActive) {
                 if (ImGui.button("Start Picking##startPicking", availableWidth, 0)) {
@@ -399,6 +359,7 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
                 clearSequence();
                 changed = true;
             }
+            layout.addVerticalSpacing(getMediumPadding());
             return changed;
         });
     }
