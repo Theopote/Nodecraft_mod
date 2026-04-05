@@ -74,11 +74,12 @@ public class NodeLibraryComponent implements EditorComponent {
         spatialAnalysisOrder.put("spatial.analysis.get_box_corner", 3);
         spatialAnalysisOrder.put("spatial.analysis.get_box_face", 4);
         spatialAnalysisOrder.put("spatial.analysis.deconstruct_box_face", 5);
-        spatialAnalysisOrder.put("spatial.analysis.offset_box_face", 6);
-        spatialAnalysisOrder.put("spatial.analysis.get_face_edge", 7);
-        spatialAnalysisOrder.put("spatial.analysis.deconstruct_face_edge", 8);
-        spatialAnalysisOrder.put("spatial.analysis.point_list_bounds", 9);
-        spatialAnalysisOrder.put("spatial.analysis.point_list_center", 10);
+        spatialAnalysisOrder.put("spatial.analysis.box_face_to_plane", 6);
+        spatialAnalysisOrder.put("spatial.analysis.offset_box_face", 7);
+        spatialAnalysisOrder.put("spatial.analysis.get_face_edge", 8);
+        spatialAnalysisOrder.put("spatial.analysis.deconstruct_face_edge", 9);
+        spatialAnalysisOrder.put("spatial.analysis.point_list_bounds", 10);
+        spatialAnalysisOrder.put("spatial.analysis.point_list_center", 11);
         categoryOrder.put("spatial.analysis", spatialAnalysisOrder);
 
         Map<String, Integer> spatialPointsOrder = new HashMap<>();
