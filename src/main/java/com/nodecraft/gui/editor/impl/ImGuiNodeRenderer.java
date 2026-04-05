@@ -184,7 +184,7 @@ public class ImGuiNodeRenderer {
             // 由于 ImGui 控件的实际高度可能因样式参数（FramePadding、ItemSpacing 等）
             // 的缩放而略微超出计算的逻辑高度，这里增加一个小的安全边距。
             float customUISafetyMargin = 12.0f; // 逻辑单位的安全边距（提高以避免底部裁剪）
-            finalUnscaledNodeHeight += customUIUnscaledHeight + customUISafetyMargin + NodeRenderConstants.NODE_VERTICAL_PADDING;
+            finalUnscaledNodeHeight += customUIUnscaledHeight + 2.0f + NodeRenderConstants.NODE_VERTICAL_PADDING;
         }
 
         pos.setSize(finalUnscaledNodeWidth, finalUnscaledNodeHeight);

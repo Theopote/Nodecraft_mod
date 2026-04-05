@@ -316,12 +316,15 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
     protected boolean renderCustomUIScaled(float width, float height, float zoom) {
         return layout(zoom, layout -> {
             boolean changed = false;
-            float availableWidth = layout.getAvailableContentWidth(width);
+            float edgeMargin = layout.toPixels(getMediumPadding());
+            float buttonWidth = Math.max(0.0f, layout.toPixelsExact(width) - edgeMargin * 2.0f);
 
             layout.addVerticalSpacing(getMediumPadding());
+            float baseCursorX = ImGui.getCursorPosX();
 
             if (!pickingActive) {
-                if (ImGui.button("Start Picking##startPicking", availableWidth, 0)) {
+                ImGui.setCursorPosX(baseCursorX + edgeMargin);
+                if (ImGui.button("Start Picking##startPicking", buttonWidth, 0)) {
                     startPicking();
                     changed = true;
                 }
@@ -329,7 +332,8 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
                 ImGui.pushStyleColor(ImGuiCol.Button, 0.80f, 0.25f, 0.25f, 1.0f);
                 ImGui.pushStyleColor(ImGuiCol.ButtonHovered, 0.90f, 0.30f, 0.30f, 1.0f);
                 ImGui.pushStyleColor(ImGuiCol.ButtonActive, 0.70f, 0.15f, 0.15f, 1.0f);
-                if (ImGui.button("Stop Picking##stopPicking", availableWidth, 0)) {
+                ImGui.setCursorPosX(baseCursorX + edgeMargin);
+                if (ImGui.button("Stop Picking##stopPicking", buttonWidth, 0)) {
                     stopPicking();
                     changed = true;
                 }
@@ -340,7 +344,8 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
 
             boolean hasBlocks = !pickedBlocks.isEmpty();
             if (hasBlocks) {
-                if (ImGui.button("Remove Last##removeLast", availableWidth, 0)) {
+                ImGui.setCursorPosX(baseCursorX + edgeMargin);
+                if (ImGui.button("Remove Last##removeLast", buttonWidth, 0)) {
                     removeLast();
                     changed = true;
                 }
@@ -349,13 +354,15 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
                 ImGui.pushStyleColor(ImGuiCol.ButtonHovered, 0.25f, 0.25f, 0.25f, 1.0f);
                 ImGui.pushStyleColor(ImGuiCol.ButtonActive, 0.25f, 0.25f, 0.25f, 1.0f);
                 ImGui.pushStyleColor(ImGuiCol.Text, 0.45f, 0.45f, 0.45f, 1.0f);
-                ImGui.button("Remove Last##removeLastDisabled", availableWidth, 0);
+                ImGui.setCursorPosX(baseCursorX + edgeMargin);
+                ImGui.button("Remove Last##removeLastDisabled", buttonWidth, 0);
                 ImGui.popStyleColor(4);
             }
 
             layout.addVerticalSpacing(getSmallPadding());
 
-            if (ImGui.button("Clear Sequence##clearSequence", availableWidth, 0)) {
+            ImGui.setCursorPosX(baseCursorX + edgeMargin);
+            if (ImGui.button("Clear Sequence##clearSequence", buttonWidth, 0)) {
                 clearSequence();
                 changed = true;
             }
