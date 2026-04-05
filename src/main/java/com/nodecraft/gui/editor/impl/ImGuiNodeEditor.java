@@ -481,7 +481,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
                 connectedNodeId.equals(sourcePort.getNode().getId()) &&
                 connectedPortId != null &&
                 connectedPortId.equals(sourcePort.getId());
-        if (connectedNodeId != null && !isSameExistingConnection) {
+        if (connectedNodeId != null && !isSameExistingConnection && !targetPort.allowsMultipleIncomingConnections()) {
             return "该输入端只允许一个输入连接";
         }
         if (!graph.canConnect(sourcePort.getNode().getId(), sourcePort.getId(), targetPort.getNode().getId(), targetPort.getId())) {

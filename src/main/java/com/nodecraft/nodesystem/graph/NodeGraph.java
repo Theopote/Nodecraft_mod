@@ -202,6 +202,10 @@ public class NodeGraph {
             return true;
         }
 
+        if (targetPort.allowsMultipleIncomingConnections()) {
+            return true;
+        }
+
         return findConnectionToInput(targetNodeId, targetPortId) == null;
     }
     

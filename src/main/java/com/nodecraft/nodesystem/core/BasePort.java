@@ -21,17 +21,24 @@ public class BasePort implements IPort {
     private final String description;
     private final NodeDataType dataType;
     private final INode node;
+    private final boolean allowMultipleIncomingConnections;
     private boolean isConnected = false;
     private IPort connectedPort = null;
     private final Set<IPort> connectedPorts = new LinkedHashSet<>();
     private Object value;
 
     public BasePort(String id, String displayName, String description, NodeDataType dataType, INode node) {
+        this(id, displayName, description, dataType, node, false);
+    }
+
+    public BasePort(String id, String displayName, String description, NodeDataType dataType, INode node,
+                    boolean allowMultipleIncomingConnections) {
         this.id = id;
         this.displayName = displayName;
         this.description = description;
         this.dataType = dataType;
         this.node = node;
+        this.allowMultipleIncomingConnections = allowMultipleIncomingConnections;
         initializeDefaultValue();
     }
 
@@ -99,6 +106,11 @@ public class BasePort implements IPort {
     }
 
     @Override
+    public boolean allowsMultipleIncomingConnections() {
+        return allowMultipleIncomingConnections;
+    }
+
+    @Override
     public INode getNode() {
         return node;
     }
@@ -132,7 +144,7 @@ public class BasePort implements IPort {
             return false;
         }
 
-        if (inputPort.isConnected()) {
+        if (inputPort.isConnected() && !inputPort.allowsMultipleIncomingConnections()) {
             return false;
         }
 

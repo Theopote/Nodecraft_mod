@@ -70,4 +70,12 @@ public interface IPort {
      * 断开与其他端口的连接
      */
     void disconnect();
+
+    /**
+     * 输入端口是否允许多个上游连接。
+     * 默认情况下，输入端口只允许一个连接；输出端口的扇出不受此限制。
+     */
+    default boolean allowsMultipleIncomingConnections() {
+        return false;
+    }
 } 
