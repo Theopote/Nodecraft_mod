@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.inputs.sources;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.gui.editor.impl.ZoomHelper;
+import com.nodecraft.gui.dialogs.FileDialogManager;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -112,7 +113,7 @@ public class FilePathNode extends BaseCustomUINode {
 
     @Override
     protected float calculateMinUIWidth() {
-        return 176f + getContentMargin();
+        return 208f + getContentMargin();
     }
 
     @Override
@@ -120,8 +121,14 @@ public class FilePathNode extends BaseCustomUINode {
         return layout(zoom, l -> {
             boolean changed = false;
             try {
-                float edgeMargin = ZoomHelper.applyZoom(getContentMargin(), zoom);
+                float edgeMargin = ZoomHelper.applyZoom(getMediumPadding(), zoom);
                 float availableWidth = Math.max(0.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
+                float gap = ZoomHelper.applyZoom(getSmallPadding(), zoom);
+                float browseButtonWidth = Math.max(
+                    ZoomHelper.applyZoom(28.0f, zoom),
+                    ImGui.calcTextSize("...").x + ZoomHelper.applyZoom(14.0f, zoom)
+                );
+                float inputWidth = Math.max(0.0f, availableWidth - browseButtonWidth - gap);
                 float baseCursorX = ImGui.getCursorPosX();
 
                 l.addVerticalSpacing(getMediumPadding());
@@ -129,7 +136,7 @@ public class FilePathNode extends BaseCustomUINode {
                 ensureBuffer();
                 ImGui.setCursorPosX(baseCursorX + edgeMargin);
                 l.pushFramePadding(4.0f, 3.0f);
-                ImGui.pushItemWidth(availableWidth);
+                ImGui.pushItemWidth(inputWidth);
                 
                 if (ImGui.inputTextWithHint("##file_path", "输入路径...", pathBuffer)) {
                     String newPath = pathBuffer.get().trim();
@@ -140,6 +147,39 @@ public class FilePathNode extends BaseCustomUINode {
                 }
                 
                 ImGui.popItemWidth();
+                ImGui.sameLine(0.0f, gap);
+                if (ImGui.button("...", browseButtonWidth, 0.0f)) {
+                    Path initialDir;
+                    try {
+                        if (filePath != null && !filePath.isBlank()) {
+                            Path currentPath = Paths.get(filePath);
+                            if (java.nio.file.Files.isDirectory(currentPath)) {
+                                initialDir = currentPath;
+                            } else {
+                                Path parent = currentPath.getParent();
+                                initialDir = parent != null ? parent : Paths.get("").toAbsolutePath();
+                            }
+                        } else {
+                            initialDir = Paths.get("").toAbsolutePath();
+                        }
+                    } catch (Exception ignored) {
+                        initialDir = Paths.get("").toAbsolutePath();
+                    }
+
+                    FileDialogManager.showFileDialog(
+                        isDirectory ? "Select Directory" : "Select File",
+                        initialDir,
+                        "",
+                        false,
+                        "",
+                        selectedPath -> {
+                            if (selectedPath != null) {
+                                setFilePath(selectedPath.toString());
+                            }
+                        }
+                    );
+                    changed = true;
+                }
                 l.popStyleVar();
 
                 l.addVerticalSpacing(getMediumPadding());
