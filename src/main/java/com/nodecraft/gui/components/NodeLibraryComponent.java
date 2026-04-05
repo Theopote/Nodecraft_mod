@@ -70,16 +70,17 @@ public class NodeLibraryComponent implements EditorComponent {
         spatialPointsOrder.put("spatial.points.project_point_to_plane", 1);
         spatialPointsOrder.put("spatial.points.distance_point_to_plane", 2);
         spatialPointsOrder.put("spatial.points.point_along_vector", 3);
-        spatialPointsOrder.put("spatial.points.is_grid_point", 4);
-        spatialPointsOrder.put("spatial.points.point_to_block_if_grid", 5);
-        spatialPointsOrder.put("spatial.points.snap_point_to_block", 6);
-        spatialPointsOrder.put("spatial.points.filter_grid_points", 7);
-        spatialPointsOrder.put("spatial.points.snap_point_list_to_blocks", 8);
-        spatialPointsOrder.put("spatial.points.offsetcoordinates", 9);
-        spatialPointsOrder.put("spatial.points.rotatecoordinates", 10);
-        spatialPointsOrder.put("spatial.points.scalecoordinates", 11);
-        spatialPointsOrder.put("spatial.points.mirrorcoordinates", 12);
-        spatialPointsOrder.put("spatial.points.randomizecoordinates", 13);
+        spatialPointsOrder.put("spatial.points.point_between_two_points", 4);
+        spatialPointsOrder.put("spatial.points.is_grid_point", 5);
+        spatialPointsOrder.put("spatial.points.point_to_block_if_grid", 6);
+        spatialPointsOrder.put("spatial.points.snap_point_to_block", 7);
+        spatialPointsOrder.put("spatial.points.filter_grid_points", 8);
+        spatialPointsOrder.put("spatial.points.snap_point_list_to_blocks", 9);
+        spatialPointsOrder.put("spatial.points.offsetcoordinates", 10);
+        spatialPointsOrder.put("spatial.points.rotatecoordinates", 11);
+        spatialPointsOrder.put("spatial.points.scalecoordinates", 12);
+        spatialPointsOrder.put("spatial.points.mirrorcoordinates", 13);
+        spatialPointsOrder.put("spatial.points.randomizecoordinates", 14);
         categoryOrder.put("spatial.points", spatialPointsOrder);
 
         return categoryOrder;

@@ -18,6 +18,7 @@ public class SpatialPointNodes {
         registry.registerNode(new NodeInfo("spatial.points.project_point_to_plane", "Project Point To Plane", "Project a geometric point onto a plane.", "spatial.points", ProjectPointToPlaneNode.class));
         registry.registerNode(new NodeInfo("spatial.points.distance_point_to_plane", "Distance Point To Plane", "Measure the absolute and signed distance from a point to a plane.", "spatial.points", DistancePointToPlaneNode.class));
         registry.registerNode(new NodeInfo("spatial.points.point_along_vector", "Point Along Vector", "Create a new point by moving along a direction vector.", "spatial.points", PointAlongVectorNode.class));
+        registry.registerNode(new NodeInfo("spatial.points.point_between_two_points", "Point Between Two Points", "Interpolate a point between A and B using a parameter t.", "spatial.points", PointBetweenTwoPointsNode.class));
         registry.registerNode(new NodeInfo("spatial.points.snap_point_to_block", "Snap Point To Block", "Explicitly snap a geometric point onto the block grid.", "spatial.points", SnapPointToBlockNode.class));
         registry.registerNode(new NodeInfo("spatial.points.is_grid_point", "Is Grid Point", "Check whether a point is already on the block grid.", "spatial.points", IsGridPointNode.class));
         registry.registerNode(new NodeInfo("spatial.points.point_to_block_if_grid", "Point To Block If Grid", "Strictly convert only grid-aligned points into block coordinates.", "spatial.points", PointToBlockIfGridNode.class));
