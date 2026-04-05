@@ -32,7 +32,7 @@ import imgui.ImVec2;
  */
 public class NodeLibraryComponent implements EditorComponent {
 
-    private static final Map<String, Integer> PREVIEW_NODE_ORDER = createPreviewNodeOrder();
+    private static final Map<String, Map<String, Integer>> CATEGORY_NODE_ORDER = createCategoryNodeOrder();
 
     // Inner record for display purposes
     private record DisplayCategory(NodeCategory originalCategory, List<NodeInfo> displayNodes) {
@@ -41,19 +41,23 @@ public class NodeLibraryComponent implements EditorComponent {
         List<NodeInfo> getNodes() { return displayNodes; } // Returns filtered nodes
     }
 
-    private static Map<String, Integer> createPreviewNodeOrder() {
-        Map<String, Integer> order = new HashMap<>();
-        order.put("visualization.preview.geometry_viewer", 0);
-        order.put("visualization.preview.preview_blocks", 1);
-        order.put("visualization.preview.preview_points", 2);
-        order.put("visualization.preview.preview_vectors", 3);
-        order.put("visualization.preview.preview_plane", 4);
-        order.put("visualization.preview.preview_frame", 5);
-        order.put("visualization.preview.preview_paths", 6);
-        order.put("visualization.preview.preview_regions", 7);
-        order.put("visualization.preview.preview_labels", 8);
-        order.put("visualization.preview.clear_all_previews", 9);
-        return order;
+    private static Map<String, Map<String, Integer>> createCategoryNodeOrder() {
+        Map<String, Map<String, Integer>> categoryOrder = new HashMap<>();
+
+        Map<String, Integer> previewOrder = new HashMap<>();
+        previewOrder.put("visualization.preview.geometry_viewer", 0);
+        previewOrder.put("visualization.preview.preview_blocks", 1);
+        previewOrder.put("visualization.preview.preview_points", 2);
+        previewOrder.put("visualization.preview.preview_vectors", 3);
+        previewOrder.put("visualization.preview.preview_plane", 4);
+        previewOrder.put("visualization.preview.preview_frame", 5);
+        previewOrder.put("visualization.preview.preview_paths", 6);
+        previewOrder.put("visualization.preview.preview_regions", 7);
+        previewOrder.put("visualization.preview.preview_labels", 8);
+        previewOrder.put("visualization.preview.clear_all_previews", 9);
+        categoryOrder.put("visualization.preview", previewOrder);
+
+        return categoryOrder;
     }
 
     // 内部常量类
@@ -1015,9 +1019,10 @@ public class NodeLibraryComponent implements EditorComponent {
     private List<NodeInfo> getSortedNodesForDisplay(DisplayCategory displayCategory) {
         List<NodeInfo> nodes = new ArrayList<>(displayCategory.getNodes());
 
-        if ("visualization.preview".equals(displayCategory.getId())) {
+        Map<String, Integer> explicitOrder = CATEGORY_NODE_ORDER.get(displayCategory.getId());
+        if (explicitOrder != null && !explicitOrder.isEmpty()) {
             nodes.sort(Comparator
-                .comparingInt((NodeInfo node) -> PREVIEW_NODE_ORDER.getOrDefault(node.getId(), Integer.MAX_VALUE))
+                .comparingInt((NodeInfo node) -> explicitOrder.getOrDefault(node.getId(), Integer.MAX_VALUE))
                 .thenComparing(NodeInfo::getDisplayName, String.CASE_INSENSITIVE_ORDER));
             return nodes;
         }
