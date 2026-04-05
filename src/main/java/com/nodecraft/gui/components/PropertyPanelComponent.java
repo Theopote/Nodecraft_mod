@@ -18,7 +18,6 @@ import imgui.flag.ImGuiWindowFlags;
 import imgui.flag.ImGuiCol;
 import imgui.flag.ImGuiTreeNodeFlags;
 import imgui.type.ImBoolean;
-import imgui.type.ImFloat;
 import imgui.type.ImInt;
 import imgui.type.ImString;
 
