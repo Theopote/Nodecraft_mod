@@ -65,6 +65,20 @@ public class NodeLibraryComponent implements EditorComponent {
         spatialGeneratorsOrder.put("spatial.generators.region_box_blocks", 4);
         categoryOrder.put("spatial.generators", spatialGeneratorsOrder);
 
+        Map<String, Integer> spatialPointsOrder = new HashMap<>();
+        spatialPointsOrder.put("spatial.points.block_to_point", 0);
+        spatialPointsOrder.put("spatial.points.is_grid_point", 1);
+        spatialPointsOrder.put("spatial.points.point_to_block_if_grid", 2);
+        spatialPointsOrder.put("spatial.points.snap_point_to_block", 3);
+        spatialPointsOrder.put("spatial.points.filter_grid_points", 4);
+        spatialPointsOrder.put("spatial.points.snap_point_list_to_blocks", 5);
+        spatialPointsOrder.put("spatial.points.offsetcoordinates", 6);
+        spatialPointsOrder.put("spatial.points.rotatecoordinates", 7);
+        spatialPointsOrder.put("spatial.points.scalecoordinates", 8);
+        spatialPointsOrder.put("spatial.points.mirrorcoordinates", 9);
+        spatialPointsOrder.put("spatial.points.randomizecoordinates", 10);
+        categoryOrder.put("spatial.points", spatialPointsOrder);
+
         return categoryOrder;
     }
 
