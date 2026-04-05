@@ -21,6 +21,8 @@ import java.util.UUID;
 public class DeconstructFaceEdgeNode extends BaseNode {
 
     private static final String INPUT_EDGE_ID = "input_edge";
+    private static final String INPUT_START_CORNER_INDEX_ID = "input_start_corner_index";
+    private static final String INPUT_END_CORNER_INDEX_ID = "input_end_corner_index";
 
     private static final String OUTPUT_START_ID = "output_start";
     private static final String OUTPUT_END_ID = "output_end";
@@ -28,11 +30,15 @@ public class DeconstructFaceEdgeNode extends BaseNode {
     private static final String OUTPUT_DIRECTION_ID = "output_direction";
     private static final String OUTPUT_VECTOR_ID = "output_vector";
     private static final String OUTPUT_LENGTH_ID = "output_length";
+    private static final String OUTPUT_START_CORNER_INDEX_ID = "output_start_corner_index";
+    private static final String OUTPUT_END_CORNER_INDEX_ID = "output_end_corner_index";
 
     public DeconstructFaceEdgeNode() {
         super(UUID.randomUUID(), "spatial.analysis.deconstruct_face_edge");
 
         addInputPort(new BasePort(INPUT_EDGE_ID, "Edge", "The face edge to deconstruct", NodeDataType.LINE, this));
+        addInputPort(new BasePort(INPUT_START_CORNER_INDEX_ID, "Start Corner Index", "Optional start corner index from the parent box", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_END_CORNER_INDEX_ID, "End Corner Index", "Optional end corner index from the parent box", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_START_ID, "Start", "Edge start point", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_END_ID, "End", "Edge end point", NodeDataType.VECTOR, this));
@@ -40,6 +46,8 @@ public class DeconstructFaceEdgeNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_DIRECTION_ID, "Direction", "Normalized edge direction", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "Full edge vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Edge length", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_START_CORNER_INDEX_ID, "Start Corner Index", "Start corner index passed through from the edge source", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_END_CORNER_INDEX_ID, "End Corner Index", "End corner index passed through from the edge source", NodeDataType.INTEGER, this));
     }
 
     @Override
@@ -50,6 +58,8 @@ public class DeconstructFaceEdgeNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object edgeObj = inputValues.get(INPUT_EDGE_ID);
+        Object startCornerIndexObj = inputValues.get(INPUT_START_CORNER_INDEX_ID);
+        Object endCornerIndexObj = inputValues.get(INPUT_END_CORNER_INDEX_ID);
 
         if (!(edgeObj instanceof LineData edge)) {
             outputValues.put(OUTPUT_START_ID, null);
@@ -58,6 +68,8 @@ public class DeconstructFaceEdgeNode extends BaseNode {
             outputValues.put(OUTPUT_DIRECTION_ID, null);
             outputValues.put(OUTPUT_VECTOR_ID, null);
             outputValues.put(OUTPUT_LENGTH_ID, null);
+            outputValues.put(OUTPUT_START_CORNER_INDEX_ID, null);
+            outputValues.put(OUTPUT_END_CORNER_INDEX_ID, null);
             return;
         }
 
@@ -73,5 +85,7 @@ public class DeconstructFaceEdgeNode extends BaseNode {
         outputValues.put(OUTPUT_DIRECTION_ID, new Vector3d(direction.x, direction.y, direction.z));
         outputValues.put(OUTPUT_VECTOR_ID, new Vector3d(vector.x, vector.y, vector.z));
         outputValues.put(OUTPUT_LENGTH_ID, edge.getLength());
+        outputValues.put(OUTPUT_START_CORNER_INDEX_ID, startCornerIndexObj instanceof Number number ? number.intValue() : null);
+        outputValues.put(OUTPUT_END_CORNER_INDEX_ID, endCornerIndexObj instanceof Number number ? number.intValue() : null);
     }
 }
