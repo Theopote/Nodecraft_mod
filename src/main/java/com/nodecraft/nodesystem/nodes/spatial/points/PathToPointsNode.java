@@ -68,7 +68,6 @@ public class PathToPointsNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<PointData> points = new ArrayList<>();
-        boolean valid = false;
 
         Object lineObj = inputValues.get(INPUT_LINE_ID);
         Object polylineObj = inputValues.get(INPUT_POLYLINE_ID);
@@ -77,19 +76,17 @@ public class PathToPointsNode extends BaseNode {
         if (lineObj instanceof LineData line) {
             points.add(fromVec3d(line.getStart()));
             points.add(fromVec3d(line.getEnd()));
-            valid = true;
         } else if (polylineObj instanceof PolylineData polyline) {
             for (Vec3d point : polyline.getPoints()) {
                 points.add(fromVec3d(point));
             }
-            valid = true;
         } else if (curveObj instanceof Curve curve) {
             for (Vec3d point : curve.getSamplePoints()) {
                 points.add(fromVec3d(point));
             }
-            valid = true;
         }
 
+        boolean valid = !points.isEmpty();
         outputValues.put(OUTPUT_POINTS_ID, points);
         outputValues.put(OUTPUT_COUNT_ID, points.size());
         outputValues.put(OUTPUT_VALID_ID, valid);
