@@ -108,6 +108,7 @@ public class ExecutionTimerNode extends BaseCustomUINode {
         h += getSmallPadding();
         h += ImGui.getTextLineHeight();    // 执行次数
         h += getMediumPadding();
+        h += getSmallPadding();            // 底部安全边距，避免最后一行贴边/裁剪
         return h;
     }
 
