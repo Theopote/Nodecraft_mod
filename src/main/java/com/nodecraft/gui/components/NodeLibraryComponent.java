@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Comparator;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -31,11 +32,28 @@ import imgui.ImVec2;
  */
 public class NodeLibraryComponent implements EditorComponent {
 
+    private static final Map<String, Integer> PREVIEW_NODE_ORDER = createPreviewNodeOrder();
+
     // Inner record for display purposes
     private record DisplayCategory(NodeCategory originalCategory, List<NodeInfo> displayNodes) {
         String getDisplayName() { return originalCategory.getDisplayName(); }
         String getId() { return originalCategory.getId(); } // For ImGui IDs
         List<NodeInfo> getNodes() { return displayNodes; } // Returns filtered nodes
+    }
+
+    private static Map<String, Integer> createPreviewNodeOrder() {
+        Map<String, Integer> order = new HashMap<>();
+        order.put("visualization.preview.geometry_viewer", 0);
+        order.put("visualization.preview.preview_blocks", 1);
+        order.put("visualization.preview.preview_points", 2);
+        order.put("visualization.preview.preview_vectors", 3);
+        order.put("visualization.preview.preview_plane", 4);
+        order.put("visualization.preview.preview_frame", 5);
+        order.put("visualization.preview.preview_paths", 6);
+        order.put("visualization.preview.preview_regions", 7);
+        order.put("visualization.preview.preview_labels", 8);
+        order.put("visualization.preview.clear_all_previews", 9);
+        return order;
     }
 
     // 内部常量类
@@ -867,7 +885,7 @@ public class NodeLibraryComponent implements EditorComponent {
             }
             
             // 'displayCategory.getNodes()' here already contains the filtered list if searching
-            List<NodeInfo> nodesToRender = displayCategory.getNodes();
+            List<NodeInfo> nodesToRender = getSortedNodesForDisplay(displayCategory);
             
             // 打印该分类中节点数量的调试信息
             NodeCraft.LOGGER.debug("分类 {} 有 {} 个节点需要渲染", displayCategory.getDisplayName(), nodesToRender.size());
@@ -992,6 +1010,20 @@ public class NodeLibraryComponent implements EditorComponent {
              // Optional: Add very small spacing below collapsed header for visual separation
              ImGui.dummy(0, NodeLibraryConstants.CATEGORY_SPACING_COLLAPSED);
         }
+    }
+
+    private List<NodeInfo> getSortedNodesForDisplay(DisplayCategory displayCategory) {
+        List<NodeInfo> nodes = new ArrayList<>(displayCategory.getNodes());
+
+        if ("visualization.preview".equals(displayCategory.getId())) {
+            nodes.sort(Comparator
+                .comparingInt((NodeInfo node) -> PREVIEW_NODE_ORDER.getOrDefault(node.getId(), Integer.MAX_VALUE))
+                .thenComparing(NodeInfo::getDisplayName, String.CASE_INSENSITIVE_ORDER));
+            return nodes;
+        }
+
+        nodes.sort(Comparator.comparing(NodeInfo::getDisplayName, String.CASE_INSENSITIVE_ORDER));
+        return nodes;
     }
 
     private static String getString(DisplayCategory displayCategory, int level, String categoryId) {
