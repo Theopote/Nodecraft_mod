@@ -57,6 +57,14 @@ public class NodeLibraryComponent implements EditorComponent {
         previewOrder.put("visualization.preview.clear_all_previews", 9);
         categoryOrder.put("visualization.preview", previewOrder);
 
+        Map<String, Integer> spatialGeneratorsOrder = new HashMap<>();
+        spatialGeneratorsOrder.put("spatial.generators.box_center_size", 0);
+        spatialGeneratorsOrder.put("spatial.generators.box_corners", 1);
+        spatialGeneratorsOrder.put("spatial.generators.box_corner_size", 2);
+        spatialGeneratorsOrder.put("spatial.generators.box_blocks", 3);
+        spatialGeneratorsOrder.put("spatial.generators.region_box_blocks", 4);
+        categoryOrder.put("spatial.generators", spatialGeneratorsOrder);
+
         return categoryOrder;
     }
 
