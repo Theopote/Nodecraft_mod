@@ -8,9 +8,6 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.minecraft.PlayerAccessor;
 import com.nodecraft.nodesystem.util.Vector3;
-import imgui.ImGui;
-import imgui.ImVec4;
-import imgui.type.ImBoolean;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -61,51 +58,17 @@ public class PlayerPositionNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
-        float textLine = ImGui.getTextLineHeight();
-        float frame = ImGui.getFrameHeight();
-        float small = getSmallPadding();
-        float medium = getMediumPadding();
-
-        float height = medium;
-        height += textLine;
-        height += small;
-        height += frame;
-        height += small;
-        height += medium;
-        return height;
+        return 0.0f;
     }
 
     @Override
     protected float calculateMinUIWidth() {
-        return 156f + getContentMargin();
+        return 0.0f;
     }
 
     @Override
     protected boolean renderCustomUIScaled(float width, float height, float zoom) {
-        return layout(zoom, layout -> {
-            boolean changed = false;
-
-            layout.addVerticalSpacing(getMediumPadding());
-
-            String modeLabel = useEyePosition ? "Eye Position" : "Feet Position";
-            ImVec4 modeColor = useEyePosition
-                    ? new ImVec4(0.27f, 0.67f, 1.0f, 1.0f)
-                    : new ImVec4(0.27f, 0.8f, 0.53f, 1.0f);
-            ImGui.pushStyleColor(imgui.flag.ImGuiCol.Text, modeColor.x, modeColor.y, modeColor.z, modeColor.w);
-            ImGui.text(modeLabel);
-            ImGui.popStyleColor();
-
-            layout.addVerticalSpacing(getSmallPadding());
-
-            ImBoolean useEyeBool = new ImBoolean(useEyePosition);
-            if (ImGui.checkbox("Use Eye Position##player_position_eye", useEyeBool)) {
-                setUseEyePosition(useEyeBool.get());
-                changed = true;
-            }
-
-            layout.addVerticalSpacing(getSmallPadding());
-            return changed;
-        });
+        return false;
     }
 
     private Vector3 getPlayerPosition(ExecutionContext context) {
