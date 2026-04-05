@@ -87,7 +87,12 @@ public class ValueMonitorNode extends BaseCustomUINode {
                     aw,
                     screenH,
                     true,
-                    ImGuiWindowFlags.AlwaysUseWindowPadding | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse
+                    ImGuiWindowFlags.AlwaysUseWindowPadding
+                        | ImGuiWindowFlags.NoScrollbar
+                        | ImGuiWindowFlags.NoScrollWithMouse
+                        | ImGuiWindowFlags.NoMove
+                        | ImGuiWindowFlags.NoNav
+                        | ImGuiWindowFlags.NoNavFocus
                 );
 
                 if (childOpen) {

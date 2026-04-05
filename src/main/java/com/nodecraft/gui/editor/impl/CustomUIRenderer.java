@@ -166,18 +166,12 @@ public class CustomUIRenderer {
                 ImGui.beginGroup();
                 imgui.ImGui imguiInstance = new imgui.ImGui();
 
-                // 记录当前窗口原始裁剪区域，用于“仅横向裁剪”。
-                imgui.ImVec2 windowClipMin = new imgui.ImVec2();
-                imgui.ImVec2 windowClipMax = new imgui.ImVec2();
-                ImGui.getWindowDrawList().getClipRectMin(windowClipMin);
-                ImGui.getWindowDrawList().getClipRectMax(windowClipMax);
-
-                // 仅限制 X 方向，防止 separator 横向外溢；Y 方向沿用窗口原始裁剪，避免底部误裁剪。
+                float clipPadding = Math.max(2.0f * info.zoom, 2.0f);
                 ImGui.getWindowDrawList().pushClipRect(
                     clipMinX,
-                    windowClipMin.y,
+                    clipMinY,
                     clipMaxX,
-                    windowClipMax.y,
+                    clipMaxY + clipPadding,
                     true);
 
                 if (info.customUINode != null) {
@@ -198,7 +192,13 @@ public class CustomUIRenderer {
 
                 // === 自定义UI区域的鼠标事件处理 ===
                 // 基于节点自定义UI区域进行悬停检测
-                boolean isChildWindowHovered = ImGui.isMouseHoveringRect(clipMinX, clipMinY, clipMaxX, clipMaxY, true);
+                boolean isChildWindowHovered = ImGui.isMouseHoveringRect(
+                        info.screenX,
+                        info.screenY,
+                        info.screenX + scaledWidth,
+                        info.screenY + scaledHeight,
+                        true
+                );
                 boolean isAnyItemActiveInWindow = ImGui.isAnyItemActive();
                 boolean isAnyItemHoveredInWindow = ImGui.isAnyItemHovered();
 
