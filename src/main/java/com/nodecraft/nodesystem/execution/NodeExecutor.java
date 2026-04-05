@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.execution;
 
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.api.INode;
+import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.core.BaseNode;
 
 import java.util.ArrayList;
@@ -239,15 +240,45 @@ public class NodeExecutor {
      */
     private Map<String, Object> collectNodeInputs(INode node) {
         Map<String, Object> inputs = new HashMap<>();
+        Map<String, IPort> inputPortsById = new HashMap<>();
+        for (IPort port : node.getInputPorts()) {
+            inputPortsById.put(port.getId(), port);
+        }
         
         // 遍历所有连接，找到所有连接到此节点的输入
         for (NodeGraph.Connection connection : graph.getConnections()) {
             if (connection.targetNode.getId().equals(node.getId())) {
                 Object value = connection.sourceNode.getOutput(connection.sourcePort.getId());
-                inputs.put(connection.targetPort.getId(), value);
+                mergeCollectedInput(inputs, inputPortsById.get(connection.targetPort.getId()), value);
             }
         }
         
         return inputs;
     }
-} 
+
+    private void mergeCollectedInput(Map<String, Object> inputs, IPort targetPort, Object value) {
+        if (targetPort == null) {
+            return;
+        }
+
+        String portId = targetPort.getId();
+        if (targetPort.allowsMultipleIncomingConnections()) {
+            List<Object> values = null;
+            Object existing = inputs.get(portId);
+            if (existing instanceof List<?> existingList) {
+                values = new ArrayList<>(existingList);
+            }
+            if (values == null) {
+                values = new ArrayList<>();
+                if (existing != null) {
+                    values.add(existing);
+                }
+            }
+            values.add(value);
+            inputs.put(portId, values);
+            return;
+        }
+
+        inputs.put(portId, value);
+    }
+}

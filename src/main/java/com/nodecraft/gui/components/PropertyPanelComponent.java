@@ -1862,13 +1862,44 @@ public class PropertyPanelComponent implements EditorComponent {
             return inputs;
         }
 
+        Map<String, IPort> inputPortsById = new HashMap<>();
+        for (IPort port : node.getInputPorts()) {
+            inputPortsById.put(port.getId(), port);
+        }
+
         for (NodeGraph.Connection connection : graph.getConnections()) {
             if (connection.targetNode.getId().equals(node.getId())) {
                 Object value = resolveNodeOutput(graph, connection.sourceNode, connection.sourcePort.getId(), visiting);
-                inputs.put(connection.targetPort.getId(), value);
+                mergeCollectedInput(inputs, inputPortsById.get(connection.targetPort.getId()), value);
             }
         }
         return inputs;
+    }
+
+    private void mergeCollectedInput(Map<String, Object> inputs, IPort targetPort, Object value) {
+        if (targetPort == null) {
+            return;
+        }
+
+        String portId = targetPort.getId();
+        if (targetPort.allowsMultipleIncomingConnections()) {
+            List<Object> values = null;
+            Object existing = inputs.get(portId);
+            if (existing instanceof List<?> existingList) {
+                values = new ArrayList<>(existingList);
+            }
+            if (values == null) {
+                values = new ArrayList<>();
+                if (existing != null) {
+                    values.add(existing);
+                }
+            }
+            values.add(value);
+            inputs.put(portId, values);
+            return;
+        }
+
+        inputs.put(portId, value);
     }
 
     private Object resolveNodeOutput(NodeGraph graph, INode node, String outputPortId, Set<UUID> visiting) {
