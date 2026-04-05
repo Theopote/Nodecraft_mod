@@ -7,6 +7,7 @@ import com.nodecraft.gui.editor.impl.ZoomHelper;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.IPort;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.BlockStateData;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -51,8 +52,28 @@ import org.joml.Vector3d;
 public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerCallback {
     
     // --- 节点设置（影响拾取行为） ---
+    @NodeProperty(
+        displayName = "Max Distance",
+        category = "Picking",
+        order = 1,
+        description = "Maximum distance used when picking a block."
+    )
     private float maxDistance = 100.0f;
+
+    @NodeProperty(
+        displayName = "Include Fluids",
+        category = "Picking",
+        order = 2,
+        description = "Whether fluid blocks can be selected."
+    )
     private boolean includeFluids = false;
+
+    @NodeProperty(
+        displayName = "Show Ghost Block",
+        category = "Preview",
+        order = 3,
+        description = "Whether the selected block should show a ghost preview in the world."
+    )
     private boolean showGhostBlock = true;
     
     // --- 核心数据状态 ---
@@ -65,11 +86,11 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     private String inputValidationError = null;
     private boolean hasInputValidationWarning = false;
     private String inputValidationWarning = null;
-
-    // --- UI折叠状态（影响节点高度计算） ---
     private transient boolean infoSectionExpanded = true;
     private transient boolean settingsSectionExpanded = false;
     private transient boolean blockStateTreeExpanded = false;
+
+    // --- UI折叠状态（影响节点高度计算） ---
     
     // --- 预览管理 ---
     private String currentGhostBlockPreviewId = null;
