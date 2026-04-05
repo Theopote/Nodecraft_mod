@@ -18,7 +18,6 @@ import com.nodecraft.nodesystem.preview.PreviewRenderer;
 import com.nodecraft.nodesystem.visual.SelectionVisualFeedback;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
-import imgui.flag.ImGuiTreeNodeFlags;
 import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 import java.util.Map;
@@ -122,10 +121,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         order = 13,
         description = "Grid-aligned position of the current block."
     )
-    public Coordinate getSelectedBlockPositionForPanel() {
-        return pickedBlockPosition;
-    }
-    
+
     // --- 输入验证状态 ---
     private String inputValidationError = null;
     private boolean hasInputValidationWarning = false;
@@ -955,33 +951,35 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     
     @Override
     protected float calculateUIHeight() {
-        // 基础高度：主按钮 + 顶部/基础间距
-        float baseHeight = 60f;
-        
-        // 如果正在拾取，为状态提示增加高度
+        float buttonHeight = 22f;
+        float smallGap = 4f;
+        float baseHeight = 0f;
+
+        baseHeight += smallGap;
+        baseHeight += buttonHeight;
+
         NodeEditorInteractionManager interactionManager = NodeEditorInteractionManager.getInstance();
         if (interactionManager.isPendingBlockPick(getId().toString())) {
-            baseHeight += 40f; // 等待状态提示
+            baseHeight += smallGap;
+            baseHeight += 30f;
         }
-        
-        // 输入验证错误/警告的高度
+
         if (inputValidationError != null && !inputValidationError.isEmpty()) {
-            baseHeight += 20f;
+            baseHeight += smallGap;
+            baseHeight += 18f;
         }
         if (hasInputValidationWarning && inputValidationWarning != null && !inputValidationWarning.isEmpty()) {
-            baseHeight += 20f;
+            baseHeight += smallGap;
+            baseHeight += 18f;
         }
-        
+
         if (hasPickedBlock) {
-            baseHeight += 28f; // spacing + clear button
+            baseHeight += smallGap;
+            baseHeight += buttonHeight;
         }
-        
-        // Settings moved to the property panel.
-        baseHeight += 0f;
-        
-        // 添加间距
-        baseHeight += 20f; // 各种小间距的总和
-        
+
+        baseHeight += smallGap;
+
         return baseHeight;
     }
 
@@ -1346,11 +1344,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             markDirty();
         }
     }
-    
-    public boolean isShowGhostBlock() {
-        return showGhostBlock;
-    }
-    
+
     public void setShowGhostBlock(boolean showGhostBlock) {
         if (this.showGhostBlock != showGhostBlock) {
             this.showGhostBlock = showGhostBlock;
@@ -1647,45 +1641,6 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             // 如果检查过程中出现异常，默认为可见，避免影响正常功能
             NodeCraft.LOGGER.warn("节点 {} 检查游戏内可见性时出现异常，默认为可见: {}", getId(), e.getMessage());
             return true;
-        }
-    }
-    
-    /**
-     * 强制刷新幽灵方块预览状态
-     * 外部系统可以调用此方法来确保预览状态正确
-     * 
-     * 注意：此方法不调用markDirty()，因为它只是刷新预览显示，
-     * 不改变节点的实际状态或数据
-     */
-    public void refreshGhostBlockPreview() {
-        updateGhostBlockPreview();
-    }
-    
-    /**
-     * 当节点的游戏内可见性状态发生变化时调用
-     * 这个方法应该由编辑器在切换 "Hide in Game" / "Show in Game" 时调用
-     * 
-     * @param visible 新的可见性状态
-     */
-    public void onGameVisibilityChanged(boolean visible) {
-        NodeCraft.LOGGER.debug("节点 {} 游戏内可见性变更为: {}", getId(), visible);
-        
-        if (visible) {
-            // 节点变为可见，更新预览状态
-            updateGhostBlockPreview();
-            
-            // 如果有选中的方块，重新显示选择反馈
-            if (hasPickedBlock && pickedBlockPosition != null) {
-                SelectionVisualFeedback.getInstance().showBlockSelection(
-                    getId().toString(), 
-                    pickedBlockPosition, 
-                    SelectionVisualFeedback.SelectionState.SELECTED
-                );
-            }
-        } else {
-            // 节点变为不可见，隐藏所有预览
-            hideGhostBlockPreview();
-            SelectionVisualFeedback.getInstance().clearFeedback(getId().toString());
         }
     }
 
