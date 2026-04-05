@@ -71,14 +71,9 @@ public class ValueMonitorNode extends BaseCustomUINode {
         return layout(zoom, l -> {
             try {
                 float aw = l.getAvailableContentWidth(width);
+                float topBottomPadding = ZoomHelper.applyZoom(getMediumPadding(), zoom);
+                float screenH = Math.max(ImGui.getTextLineHeight() * 2.0f, height - topBottomPadding * 2.0f);
 
-                // “屏幕”区域：深色背景 + 边框，像小电视
-                // 计算内容区高度，和calculateUIHeight保持一致，所有padding等都缩放
-                float scaledMediumPad = ZoomHelper.applyZoom(getMediumPadding(), zoom);
-                float scaledSmallPad = ZoomHelper.applyZoom(getSmallPadding(), zoom);
-                float scaledTextLine = ImGui.getTextLineHeight() * zoom;
-                float screenH = height - scaledMediumPad * 2;
-                if (screenH < scaledTextLine * 2) screenH = scaledTextLine * 2; // 最小高度保护
                 ImGui.pushStyleColor(ImGuiCol.ChildBg, 0.08f, 0.08f, 0.10f, 0.98f);
                 ImGui.pushStyleVar(ImGuiStyleVar.ChildBorderSize, ZoomHelper.applyZoom(1.2f, zoom));
                 ImGui.pushStyleVar(ImGuiStyleVar.ChildRounding, ZoomHelper.applyZoom(4f, zoom));
@@ -104,8 +99,6 @@ public class ValueMonitorNode extends BaseCustomUINode {
                 ImGui.endChild();
                 ImGui.popStyleVar(3);
                 ImGui.popStyleColor();
-
-                l.addVerticalSpacing(scaledMediumPad);
             } catch (Exception e) {
                 System.err.println("ValueMonitorNode UI 渲染失败: " + e.getMessage());
             }
@@ -116,7 +109,7 @@ public class ValueMonitorNode extends BaseCustomUINode {
     private String getDataTypeLabel(Object obj) {
         if (obj == null) return "null";
         if (obj instanceof BlockPosList) return "坐标列表";
-        if (obj instanceof Iterable && !(obj instanceof String)) return "列表";
+        if (obj instanceof Iterable) return "列表";
         if (obj instanceof Object[]) return "数组";
         if (obj instanceof String) return "字符串";
         if (obj instanceof Integer) return "整数";
@@ -129,52 +122,60 @@ public class ValueMonitorNode extends BaseCustomUINode {
     }
 
     private String formatContent(Object value) {
-        if (value == null) return "null";
-        if (value instanceof BlockPosList list) {
-            int n = list.size();
-            if (n == 0) return "空列表 (0 个坐标)";
-            StringBuilder sb = new StringBuilder();
-            sb.append("共 ").append(n).append(" 个坐标");
-            int shown = 0;
-            for (BlockPos p : list) {
-                if (shown >= 3) { sb.append("\n  ..."); break; }
-                sb.append("\n  ").append(p.getX()).append(", ").append(p.getY()).append(", ").append(p.getZ());
-                shown++;
+        switch (value) {
+            case null -> {
+                return "null";
             }
-            return sb.toString();
-        }
-        if (value instanceof Iterable && !(value instanceof String)) {
-            Iterable<?> it = (Iterable<?>) value;
-            int count = 0;
-            StringBuilder sb = new StringBuilder();
-            for (Object item : it) {
-                if (count >= 8) {
-                    sb.append("\n  ...");
-                    break;
+            case BlockPosList list -> {
+                int n = list.size();
+                if (n == 0) return "空列表 (0 个坐标)";
+                StringBuilder sb = new StringBuilder();
+                sb.append("共 ").append(n).append(" 个坐标");
+                int shown = 0;
+                for (BlockPos p : list) {
+                    if (shown >= 3) {
+                        sb.append("\n  ...");
+                        break;
+                    }
+                    sb.append("\n  ").append(p.getX()).append(", ").append(p.getY()).append(", ").append(p.getZ());
+                    shown++;
                 }
-                if (count > 0) sb.append("\n  ");
-                sb.append(item instanceof String ? "\"" + item + "\"" : String.valueOf(item));
-                count++;
+                return sb.toString();
             }
-            if (count == 0) return "[]";
-            return sb.toString();
-        }
-        if (value instanceof Object[] arr) {
-            StringBuilder sb = new StringBuilder();
-            int show = Math.min(8, arr.length);
-            for (int i = 0; i < show; i++) {
-                if (i > 0) sb.append(", ");
-                sb.append(arr[i] instanceof String ? "\"" + arr[i] + "\"" : String.valueOf(arr[i]));
+            case Iterable it when !(value instanceof String) -> {
+                int count = 0;
+                StringBuilder sb = new StringBuilder();
+                for (Object item : it) {
+                    if (count >= 8) {
+                        sb.append("\n  ...");
+                        break;
+                    }
+                    if (count > 0) sb.append("\n  ");
+                    sb.append(item instanceof String ? "\"" + item + "\"" : String.valueOf(item));
+                    count++;
+                }
+                if (count == 0) return "[]";
+                return sb.toString();
             }
-            if (arr.length > show) sb.append(" ...");
-            return sb.toString();
-        }
-        if (value instanceof String s) {
-            if (s.length() > 200) return "\"" + s.substring(0, 197) + "...\"";
-            return "\"" + s + "\"";
-        }
-        if (value instanceof BlockPos p) {
-            return p.getX() + ", " + p.getY() + ", " + p.getZ();
+            case Object[] arr -> {
+                StringBuilder sb = new StringBuilder();
+                int show = Math.min(8, arr.length);
+                for (int i = 0; i < show; i++) {
+                    if (i > 0) sb.append(", ");
+                    sb.append(arr[i] instanceof String ? "\"" + arr[i] + "\"" : String.valueOf(arr[i]));
+                }
+                if (arr.length > show) sb.append(" ...");
+                return sb.toString();
+            }
+            case String s -> {
+                if (s.length() > 200) return "\"" + s.substring(0, 197) + "...\"";
+                return "\"" + s + "\"";
+            }
+            case BlockPos p -> {
+                return p.getX() + ", " + p.getY() + ", " + p.getZ();
+            }
+            default -> {
+            }
         }
         return value.toString();
     }

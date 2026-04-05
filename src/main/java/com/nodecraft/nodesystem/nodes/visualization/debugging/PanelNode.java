@@ -8,11 +8,10 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import imgui.ImGui;
-import imgui.type.ImBoolean;
+import imgui.flag.ImGuiWindowFlags;
 import imgui.flag.ImGuiCol;
-import imgui.flag.ImGuiInputTextFlags;
+import imgui.flag.ImGuiStyleVar;
 import org.jetbrains.annotations.Nullable;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -106,25 +105,34 @@ public class PanelNode extends BaseCustomUINode {
             boolean changed = false;
             try {
                 float aw = l.getAvailableContentWidth(width);
-                l.addVerticalSpacing(getMediumPadding());
+                float topBottomPadding = ZoomHelper.applyZoom(getMediumPadding(), zoom);
+                float screenH = Math.max(ImGui.getTextLineHeight() * 2.0f, height - topBottomPadding * 2.0f);
 
-                // === 数据预览区（4行文本）===
-                ImGui.pushStyleColor(ImGuiCol.Text, 0xFFCCCCCC);
-                String preview = panelContent.isEmpty() ? "(无数据)" : panelContent;
-                // 限制预览行数
-                String[] lines = preview.split("\n", 5);
-                for (int i = 0; i < 4; i++) {
-                    if (i < lines.length) {
-                        String line = lines[i];
-                        if (line.length() > 50) line = line.substring(0, 47) + "...";
-                        ImGui.text(line);
-                    } else {
-                        ImGui.text("");
+                ImGui.pushStyleColor(ImGuiCol.ChildBg, 0.08f, 0.08f, 0.10f, 0.98f);
+                ImGui.pushStyleVar(ImGuiStyleVar.ChildBorderSize, ZoomHelper.applyZoom(1.2f, zoom));
+                ImGui.pushStyleVar(ImGuiStyleVar.ChildRounding, ZoomHelper.applyZoom(4f, zoom));
+                ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, ZoomHelper.applyZoom(8f, zoom), ZoomHelper.applyZoom(8f, zoom));
+                boolean childOpen = ImGui.beginChild("##panel_preview_screen", aw, screenH, true, ImGuiWindowFlags.AlwaysUseWindowPadding);
+
+                if (childOpen) {
+                    ImGui.pushStyleColor(ImGuiCol.Text, 0xFFCCCCCC);
+                    String preview = panelContent.isEmpty() ? "(无数据)" : panelContent;
+                    String[] lines = preview.split("\n", 5);
+                    for (int i = 0; i < 4; i++) {
+                        if (i < lines.length) {
+                            String line = lines[i];
+                            if (line.length() > 50) line = line.substring(0, 47) + "...";
+                            ImGui.text(line);
+                        } else {
+                            ImGui.text("");
+                        }
                     }
+                    ImGui.popStyleColor();
                 }
-                ImGui.popStyleColor();
 
-                l.addVerticalSpacing(getMediumPadding());
+                ImGui.endChild();
+                ImGui.popStyleVar(3);
+                ImGui.popStyleColor();
             } catch (Exception e) {
                 System.err.println("PanelNode UI渲染失败: " + e.getMessage());
             }
