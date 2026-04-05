@@ -721,7 +721,7 @@ public class PropertyPanelComponent implements EditorComponent {
             ImGui.textDisabled("(?)");
             if (ImGui.isItemHovered()) {
                 ImGui.beginTooltip();
-                ImGui.pushTextWrapPos(ImGui.getCursorPosX() + 320.0f);
+                ImGui.pushTextWrapPos(ImGui.getFontSize() * 22.0f);
                 ImGui.textUnformatted(getNodeStatusMessage());
                 ImGui.popTextWrapPos();
                 ImGui.endTooltip();
@@ -934,16 +934,23 @@ public class PropertyPanelComponent implements EditorComponent {
                 if (ImGui.isItemHovered()) {
                     StringBuilder tooltip = new StringBuilder();
                     if (prop.description != null && !prop.description.isEmpty()) {
-                        tooltip.append(prop.description).append("\n");
+                        tooltip.append(prop.description);
                     }
-                    tooltip.append("Internal Name: ").append(prop.name);
                     if (prop.setter == null) {
-                        tooltip.append(" (Read-only)");
+                        if (!tooltip.isEmpty()) {
+                            tooltip.append("\n");
+                        }
+                        tooltip.append("Read-only property");
                     }
                     if (isDisabled) {
-                        tooltip.append("\nThis property is temporarily disabled after repeated errors. Reselect the node to reset it.");
+                        if (!tooltip.isEmpty()) {
+                            tooltip.append("\n");
+                        }
+                        tooltip.append("Temporarily disabled after repeated errors. Reselect the node to reset it.");
                     }
-                    ImGui.setTooltip(tooltip.toString());
+                    if (!tooltip.isEmpty()) {
+                        ImGui.setTooltip(tooltip.toString());
+                    }
                 }
 
                 ImGui.tableSetColumnIndex(1);
@@ -1298,10 +1305,9 @@ public class PropertyPanelComponent implements EditorComponent {
                 ImGui.text(port.getDisplayName());
                 if (ImGui.isItemHovered()) {
                     StringBuilder tooltip = new StringBuilder();
-                    tooltip.append("ID: ").append(port.getId()).append("\n");
-                    tooltip.append("Type: ").append(port.getDataType().name()).append("\n");
+                    tooltip.append("Type: ").append(port.getDataType().name());
                     if (port.getDescription() != null && !port.getDescription().isEmpty()) {
-                        tooltip.append(port.getDescription());
+                        tooltip.append("\n").append(port.getDescription());
                     }
                     ImGui.setTooltip(tooltip.toString());
                 }
@@ -1363,10 +1369,9 @@ public class PropertyPanelComponent implements EditorComponent {
                 ImGui.text(port.getDisplayName());
                 if (ImGui.isItemHovered()) {
                     StringBuilder tooltip = new StringBuilder();
-                    tooltip.append("ID: ").append(port.getId()).append("\n");
-                    tooltip.append("Type: ").append(port.getDataType().name()).append("\n");
+                    tooltip.append("Type: ").append(port.getDataType().name());
                     if (port.getDescription() != null && !port.getDescription().isEmpty()) {
-                        tooltip.append(port.getDescription());
+                        tooltip.append("\n").append(port.getDescription());
                     }
                     ImGui.setTooltip(tooltip.toString());
                 }
