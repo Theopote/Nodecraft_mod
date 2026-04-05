@@ -268,6 +268,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             // 这两个方法会更新 interaction.hoveredNodeId, hoveredPortId, isHoveredPortOutput, isHoveringConnection 等
             interaction.updateHoveredPort(mousePos, portScreenPositions, currentGraph);
             interaction.updateHoveredConnection(mousePos, portScreenPositions, currentGraph);
+            renderHoveredPortTooltip(currentGraph, interaction);
 
             // 7. 处理进行中的连接创建（绘制预览线，鼠标释放时完成连接）
             // 此方法内部会检查 interaction.isCreatingConnection()
@@ -441,6 +442,62 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
      */
     private boolean computeConnectionPreviewTypeMismatch(NodeGraph graph, ImGuiNodeInteraction interaction) {
         return getConnectionPreviewInvalidReason(graph, interaction) != null;
+    }
+
+    private void renderHoveredPortTooltip(NodeGraph graph, ImGuiNodeInteraction interaction) {
+        if (graph == null || interaction == null || interaction.isCreatingConnection()) {
+            return;
+        }
+
+        UUID hoveredNodeId = interaction.getHoveredNodeId();
+        String hoveredPortId = interaction.getHoveredPortId();
+        if (hoveredNodeId == null || hoveredPortId == null) {
+            return;
+        }
+
+        INode node = graph.getNode(hoveredNodeId);
+        if (node == null) {
+            return;
+        }
+
+        IPort hoveredPort = findPort(node, hoveredPortId, interaction.isHoveredPortOutput());
+        if (hoveredPort == null) {
+            return;
+        }
+
+        StringBuilder tooltip = new StringBuilder();
+        tooltip.append(hoveredPort.getDisplayName()).append("\n");
+        tooltip.append("Type: ").append(hoveredPort.getDataType().getDisplayName()).append("\n");
+        if (hoveredPort.isInput()) {
+            tooltip.append("Connection: ")
+                    .append(hoveredPort.allowsMultipleIncomingConnections() ? "multiple upstream inputs allowed" : "single upstream input only")
+                    .append("\n");
+
+            UUID connectedNodeId = graph.getConnectedOutputNodeId(node.getId(), hoveredPort.getId());
+            if (connectedNodeId != null) {
+                tooltip.append("Status: connected");
+            } else {
+                tooltip.append("Status: not connected");
+            }
+        } else {
+            tooltip.append("Connection: fan-out allowed");
+        }
+
+        if (hoveredPort.getDescription() != null && !hoveredPort.getDescription().isEmpty()) {
+            tooltip.append("\n").append(hoveredPort.getDescription());
+        }
+
+        ImGui.setTooltip(tooltip.toString());
+    }
+
+    private IPort findPort(INode node, String portId, boolean isOutputPort) {
+        List<IPort> ports = isOutputPort ? node.getOutputPorts() : node.getInputPorts();
+        for (IPort port : ports) {
+            if (port.getId().equals(portId)) {
+                return port;
+            }
+        }
+        return null;
     }
 
     private String getConnectionPreviewInvalidReason(NodeGraph graph, ImGuiNodeInteraction interaction) {
