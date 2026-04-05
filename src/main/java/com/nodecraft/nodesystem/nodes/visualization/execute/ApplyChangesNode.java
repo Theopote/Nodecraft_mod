@@ -95,8 +95,8 @@ public class ApplyChangesNode extends BaseCustomUINode {
         addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry to voxelize and place", NodeDataType.TORUS_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BLOCK_TYPE_ID, "Block Type", "Fallback block type for uniform placement", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_BLOCK_PLACEMENTS_ID, "Block Placements", "Per-position block assignments", NodeDataType.BLOCK_PLACEMENT_LIST, this));
-        addInputPort(new BasePort(INPUT_PREVIEW_IDS_ID, "Preview IDs", "Reserved preview identifiers", NodeDataType.LIST, this));
-        addInputPort(new BasePort(INPUT_PREVIEW_TRACKING_ID, "Preview Tracking ID", "Tracked-world preview identifier to commit", NodeDataType.STRING, this));
+        addInputPort(new BasePort(INPUT_PREVIEW_IDS_ID, "Preview IDs (Deprecated)", "Deprecated compatibility input for tracked-world preview commits", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_PREVIEW_TRACKING_ID, "Preview Tracking ID (Deprecated)", "Deprecated compatibility input for tracked-world preview commits", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_NOTIFY_ID, "Notify On Complete", "Overrides node notification behavior", NodeDataType.BOOLEAN, this));
 
         addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether placement succeeded", NodeDataType.BOOLEAN, this));

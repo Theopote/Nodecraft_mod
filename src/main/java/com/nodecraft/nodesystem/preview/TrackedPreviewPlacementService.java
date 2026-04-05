@@ -204,6 +204,23 @@ public final class TrackedPreviewPlacementService {
         return new ArrayList<>(byNode.keySet());
     }
 
+    public synchronized int clearAllTrackedPreviews(World world) {
+        if (world == null) {
+            return 0;
+        }
+
+        List<String> previewIds = getTrackedPreviewIds(world);
+        int restoredCount = 0;
+        for (String previewId : previewIds) {
+            restoredCount += clearTrackedPreview(world, previewId);
+        }
+        NodeCraft.LOGGER.info(
+                "TrackedPreviewPlacementService.clearAllTrackedPreviews clearedPreviews={} restoredBlocks={}",
+                previewIds.size(), restoredCount
+        );
+        return restoredCount;
+    }
+
     private record TrackedPreviewState(Map<BlockPos, BlockState> previousStates, BlockState previewState) {
     }
 }

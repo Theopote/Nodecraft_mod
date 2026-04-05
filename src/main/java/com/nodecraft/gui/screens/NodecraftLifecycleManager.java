@@ -8,6 +8,7 @@ import com.nodecraft.gui.editor.base.INodeEditor;
 import com.nodecraft.gui.layout.StandardLayoutManager;
 import com.nodecraft.gui.window.ViewportCloseDetector;
 import com.nodecraft.minecraft.client.GhostCameraManager;
+import com.nodecraft.nodesystem.preview.TrackedPreviewPlacementService;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import net.minecraft.client.MinecraftClient;
 
@@ -59,6 +60,10 @@ public class NodecraftLifecycleManager {
             
             // 清除所有预览渲染元素
             com.nodecraft.nodesystem.preview.PreviewRenderer.getInstance().clearAllPreviews();
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client != null && client.world != null) {
+                TrackedPreviewPlacementService.getInstance().clearAllTrackedPreviews(client.world);
+            }
             NodeCraft.LOGGER.info("所有预览元素已清除");
             
             // 退出编辑模式
