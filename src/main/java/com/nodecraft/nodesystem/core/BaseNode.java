@@ -110,13 +110,10 @@ public abstract class BaseNode implements INode {
     
     @Override
     public Map<String, Object> compute(Map<String, Object> inputs) {
-        // 保持原始行为直到执行器被修改
-         if (inputs != null) {
-             inputValues.putAll(inputs);
-         }
-         processNode(null); // 调用无参数版本
-         syncOutputPorts();
-         return new HashMap<>(outputValues);
+        refreshInputValues(inputs);
+        processNode(null); // 调用无参数版本
+        syncOutputPorts();
+        return new HashMap<>(outputValues);
     }
     
     /**
@@ -126,17 +123,22 @@ public abstract class BaseNode implements INode {
      * @return 输出值 Map
      */
     public Map<String, Object> compute(Map<String, Object> inputs, ExecutionContext context) {
-        // 更新输入值
-        if (inputs != null) {
-            inputValues.putAll(inputs);
-        }
-        
+        refreshInputValues(inputs);
         // 执行计算，传递上下文
         processNode(context);
         syncOutputPorts();
         
         // 返回输出
         return new HashMap<>(outputValues);
+    }
+
+    private void refreshInputValues(Map<String, Object> inputs) {
+        for (IPort port : inputPorts) {
+            inputValues.remove(port.getId());
+        }
+        if (inputs != null) {
+            inputValues.putAll(inputs);
+        }
     }
     
     /**
