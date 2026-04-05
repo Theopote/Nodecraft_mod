@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import imgui.ImGui;
 import imgui.type.ImString;
-import imgui.flag.ImGuiCol;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
@@ -106,18 +105,14 @@ public class FilePathNode extends BaseCustomUINode {
     @Override
     protected float calculateUIHeight() {
         float height = getMediumPadding();
-        height += ImGui.getTextLineHeight(); // 类型标签
-        height += getSmallPadding();
-        height += ImGui.getFrameHeight(); // 路径输入框
-        height += getSmallPadding();
-        height += ImGui.getTextLineHeight(); // 状态显示
+        height += ImGui.getFrameHeight();
         height += getMediumPadding();
         return height;
     }
 
     @Override
     protected float calculateMinUIWidth() {
-        return 200f + getContentMargin();
+        return 176f + getContentMargin();
     }
 
     @Override
@@ -125,20 +120,16 @@ public class FilePathNode extends BaseCustomUINode {
         return layout(zoom, l -> {
             boolean changed = false;
             try {
-                float availableWidth = l.getAvailableContentWidth(width);
+                float edgeMargin = ZoomHelper.applyZoom(getContentMargin(), zoom);
+                float availableWidth = Math.max(0.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
+                float baseCursorX = ImGui.getCursorPosX();
+
                 l.addVerticalSpacing(getMediumPadding());
-                
-                // === 类型标签 ===
-                ImGui.pushStyleColor(ImGuiCol.Text, 0.6f, 0.7f, 0.9f, 1.0f);
-                ImGui.text(isDirectory ? "📁 目录路径" : "📄 文件路径");
-                ImGui.popStyleColor();
-                
-                l.addVerticalSpacing(getSmallPadding());
-                
-                // === 路径输入框 ===
+
                 ensureBuffer();
+                ImGui.setCursorPosX(baseCursorX + edgeMargin);
                 l.pushFramePadding(4.0f, 3.0f);
-                l.setItemWidth(availableWidth / zoom);
+                ImGui.pushItemWidth(availableWidth);
                 
                 if (ImGui.inputTextWithHint("##file_path", "输入路径...", pathBuffer)) {
                     String newPath = pathBuffer.get().trim();
@@ -148,28 +139,9 @@ public class FilePathNode extends BaseCustomUINode {
                     }
                 }
                 
-                l.popItemWidth();
+                ImGui.popItemWidth();
                 l.popStyleVar();
-                
-                l.addVerticalSpacing(getSmallPadding());
-                
-                // === 状态显示 ===
-                if (filePath != null && !filePath.isEmpty()) {
-                    boolean exists = new File(filePath).exists();
-                    if (exists) {
-                        ImGui.pushStyleColor(ImGuiCol.Text, 0.3f, 0.9f, 0.5f, 1.0f);
-                        ImGui.text("✓ 路径存在");
-                    } else {
-                        ImGui.pushStyleColor(ImGuiCol.Text, mustExist ? 0.9f : 0.7f, mustExist ? 0.3f : 0.7f, mustExist ? 0.3f : 0.3f, 1.0f);
-                        ImGui.text(mustExist ? "✗ 路径不存在!" : "? 路径不存在");
-                    }
-                    ImGui.popStyleColor();
-                } else {
-                    ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 1.0f);
-                    ImGui.text("未设置路径");
-                    ImGui.popStyleColor();
-                }
-                
+
                 l.addVerticalSpacing(getMediumPadding());
             } catch (Exception e) {
                 System.err.println("FilePathNode UI渲染失败: " + e.getMessage());
