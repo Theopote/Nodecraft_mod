@@ -457,8 +457,8 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             for (IPort p : sourceNode.getInputPorts()) if (p.getId().equals(sourcePortId)) { targetPort = p; break; }
             for (IPort p : hoveredNode.getOutputPorts()) if (p.getId().equals(hoveredPortId)) { sourcePort = p; break; }
         }
-        if (sourcePort == null || targetPort == null) return false;
-        return !NodeDataType.isConnectableTo(sourcePort.getDataType(), targetPort.getDataType());
+        if (sourcePort == null || targetPort == null) return true;
+        return !graph.canConnect(sourcePort.getNode().getId(), sourcePort.getId(), targetPort.getNode().getId(), targetPort.getId());
     }
 
     /**

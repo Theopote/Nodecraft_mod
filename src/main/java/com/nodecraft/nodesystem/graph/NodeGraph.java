@@ -133,6 +133,10 @@ public class NodeGraph {
      * @return 如果连接成功返回true，否则为false
      */
     public boolean connect(UUID sourceNodeId, String sourcePortId, UUID targetNodeId, String targetPortId) {
+        if (!canConnect(sourceNodeId, sourcePortId, targetNodeId, targetPortId)) {
+            return false;
+        }
+
         INode sourceNode = nodeMap.get(sourceNodeId);
         INode targetNode = nodeMap.get(targetNodeId);
         
@@ -158,20 +162,6 @@ public class NodeGraph {
             }
         }
         
-        if (sourcePort == null || targetPort == null) {
-            return false;
-        }
-        
-        // 检查是否已有连接
-        for (Connection connection : connections) {
-            if (connection.sourceNode.getId().equals(sourceNodeId) && 
-                connection.sourcePort.getId().equals(sourcePortId) &&
-                connection.targetNode.getId().equals(targetNodeId) && 
-                connection.targetPort.getId().equals(targetPortId)) {
-                return true; // 已连接
-            }
-        }
-        
         // 创建连接并添加到列表
         Connection connection = new Connection(sourceNode, sourcePort, targetNode, targetPort);
         connections.add(connection);
@@ -183,6 +173,36 @@ public class NodeGraph {
         }
 
         return true;
+    }
+
+    public boolean canConnect(UUID sourceNodeId, String sourcePortId, UUID targetNodeId, String targetPortId) {
+        INode sourceNode = nodeMap.get(sourceNodeId);
+        INode targetNode = nodeMap.get(targetNodeId);
+
+        if (sourceNode == null || targetNode == null) {
+            return false;
+        }
+
+        if (sourceNodeId.equals(targetNodeId)) {
+            return false;
+        }
+
+        IPort sourcePort = findOutputPort(sourceNode, sourcePortId);
+        IPort targetPort = findInputPort(targetNode, targetPortId);
+        if (sourcePort == null || targetPort == null) {
+            return false;
+        }
+
+        if (!com.nodecraft.nodesystem.api.NodeDataType.isConnectableTo(sourcePort.getDataType(), targetPort.getDataType())) {
+            return false;
+        }
+
+        Connection existingExactConnection = findConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
+        if (existingExactConnection != null) {
+            return true;
+        }
+
+        return findConnectionToInput(targetNodeId, targetPortId) == null;
     }
     
     /**
@@ -212,16 +232,7 @@ public class NodeGraph {
      * @return 如果断开成功返回true，否则为false
      */
     public boolean disconnectPorts(UUID sourceNodeId, String sourcePortId, UUID targetNodeId, String targetPortId) {
-        Connection connectionToRemove = null;
-        for (Connection connection : connections) {
-            if (connection.sourceNode.getId().equals(sourceNodeId) && 
-                connection.sourcePort.getId().equals(sourcePortId) &&
-                connection.targetNode.getId().equals(targetNodeId) && 
-                connection.targetPort.getId().equals(targetPortId)) {
-                connectionToRemove = connection;
-                break;
-            }
-        }
+        Connection connectionToRemove = findConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
         
         if (connectionToRemove != null) {
             removeConnection(connectionToRemove);
@@ -234,15 +245,7 @@ public class NodeGraph {
      * 检查两个端口是否已连接
      */
     public boolean isConnected(UUID sourceNodeId, String sourcePortId, UUID targetNodeId, String targetPortId) {
-        for (Connection connection : connections) {
-            if (connection.sourceNode.getId().equals(sourceNodeId) && 
-                connection.sourcePort.getId().equals(sourcePortId) &&
-                connection.targetNode.getId().equals(targetNodeId) && 
-                connection.targetPort.getId().equals(targetPortId)) {
-                return true;
-            }
-        }
-        return false;
+        return findConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId) != null;
     }
     
     /**
@@ -300,6 +303,46 @@ public class NodeGraph {
      */
     public List<Connection> getConnections() {
         return new ArrayList<>(connections);
+    }
+
+    private IPort findOutputPort(INode node, String portId) {
+        for (IPort port : node.getOutputPorts()) {
+            if (port.getId().equals(portId)) {
+                return port;
+            }
+        }
+        return null;
+    }
+
+    private IPort findInputPort(INode node, String portId) {
+        for (IPort port : node.getInputPorts()) {
+            if (port.getId().equals(portId)) {
+                return port;
+            }
+        }
+        return null;
+    }
+
+    private Connection findConnection(UUID sourceNodeId, String sourcePortId, UUID targetNodeId, String targetPortId) {
+        for (Connection connection : connections) {
+            if (connection.sourceNode.getId().equals(sourceNodeId) &&
+                connection.sourcePort.getId().equals(sourcePortId) &&
+                connection.targetNode.getId().equals(targetNodeId) &&
+                connection.targetPort.getId().equals(targetPortId)) {
+                return connection;
+            }
+        }
+        return null;
+    }
+
+    private Connection findConnectionToInput(UUID targetNodeId, String targetPortId) {
+        for (Connection connection : connections) {
+            if (connection.targetNode.getId().equals(targetNodeId) &&
+                connection.targetPort.getId().equals(targetPortId)) {
+                return connection;
+            }
+        }
+        return null;
     }
     
     /**

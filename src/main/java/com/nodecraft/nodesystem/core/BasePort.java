@@ -133,7 +133,7 @@ public class BasePort implements IPort {
         }
 
         if (inputPort.isConnected()) {
-            inputPort.disconnect();
+            return false;
         }
 
         if (outputPort instanceof BasePort outputBase && inputPort instanceof BasePort inputBase) {
