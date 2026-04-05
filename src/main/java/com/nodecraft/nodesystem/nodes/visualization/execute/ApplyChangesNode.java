@@ -379,7 +379,8 @@ public class ApplyChangesNode extends BaseCustomUINode {
         return layout(zoom, l -> {
             boolean changed = false;
             try {
-                float aw = l.getAvailableContentWidth(width);
+                float edgeMargin = l.toPixels(getSmallPadding());
+                float progressWidth = Math.max(0.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
                 l.addVerticalSpacing(getMediumPadding());
 
                 int statusColor = isExecuting ? 0xFF44AADD : (progressPercentage >= 1.0f ? 0xFF44DD44 : 0xFF888888);
@@ -389,7 +390,9 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 l.addVerticalSpacing(getSmallPadding());
 
                 if (showProgressBar) {
-                    ImGui.progressBar(progressPercentage, aw, ImGui.getFrameHeight(), String.format("%.0f%%", progressPercentage * 100));
+                    float baseCursorX = ImGui.getCursorPosX();
+                    ImGui.setCursorPosX(baseCursorX + edgeMargin);
+                    ImGui.progressBar(progressPercentage, progressWidth, ImGui.getFrameHeight(), String.format("%.0f%%", progressPercentage * 100));
                 }
 
                 l.addVerticalSpacing(getMediumPadding());
