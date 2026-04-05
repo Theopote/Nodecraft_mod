@@ -1,35 +1,31 @@
 package com.nodecraft.nodesystem.nodes.inputs.selectors;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
-import com.nodecraft.gui.editor.impl.ZoomHelper;
-import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
-import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import imgui.ImGui;
-import imgui.type.ImString;
 import imgui.flag.ImGuiCol;
-import imgui.flag.ImGuiInputTextFlags;
+import imgui.type.ImString;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
-/**
- * 方块类型选择器节点，提供搜索型下拉列表选择Minecraft方块。
- */
 @NodeInfo(
     id = "inputs.selectors.block_type_selector",
-    displayName = "方块类型选择器",
-    description = "允许选择Minecraft方块类型",
+    displayName = "Block Type Selector",
+    description = "Searches and selects a Minecraft block type.",
     category = "inputs.selectors"
 )
 public class BlockTypeSelectorNode extends BaseCustomUINode {
+
     private static final String[] QUICK_BLOCKS = {
         "minecraft:stone",
         "minecraft:cobblestone",
@@ -40,85 +36,85 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
         "minecraft:oak_planks",
         "minecraft:quartz_block"
     };
-    
-    @NodeProperty(displayName = "选中方块", category = "选择", order = 1,
-                  description = "当前选中的方块ID")
+
+    @NodeProperty(
+        displayName = "Selected Block",
+        category = "Selection",
+        order = 1,
+        description = "The currently selected block ID."
+    )
     private String selectedBlock = "minecraft:stone";
 
-    @NodeProperty(displayName = "允许模组方块", category = "过滤", order = 10,
-                  description = "是否允许选择模组方块")
+    @NodeProperty(
+        displayName = "Allow Modded Blocks",
+        category = "Filter",
+        order = 2,
+        description = "Whether block IDs outside the minecraft namespace should appear in search results."
+    )
     private boolean allowModded = true;
-    
-    // --- 输出端口 ---
+
     private static final String OUTPUT_BLOCK_ID = "output_block_id";
     private static final String OUTPUT_NAMESPACE = "output_namespace";
     private static final String OUTPUT_BLOCK_PATH = "output_block_path";
     private static final String OUTPUT_IS_MODDED = "output_is_modded";
-    
-    // --- UI状态 ---
+
     private transient ImString searchBuffer = new ImString(256);
     private transient List<String> filteredBlocks = new ArrayList<>();
     private transient boolean showDropdown = false;
-    private transient long lastSearchTime = 0;
     private transient String lastSearchText = "";
+
     private static final int MAX_RESULTS = 20;
-    
+
     public BlockTypeSelectorNode() {
         super(UUID.randomUUID(), "inputs.selectors.block_type_selector");
-        
+
         addOutputPort(new BasePort(OUTPUT_BLOCK_ID, "Block ID", "The selected block's full identifier", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_NAMESPACE, "Namespace", "The namespace part", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCK_PATH, "Block Path", "The path part", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_IS_MODDED, "Is Modded", "Whether the block is from a mod", NodeDataType.BOOLEAN, this));
-        
+        addOutputPort(new BasePort(OUTPUT_NAMESPACE, "Namespace", "The namespace part of the selected block ID", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCK_PATH, "Block Path", "The path part of the selected block ID", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_IS_MODDED, "Is Modded", "Whether the selected block is outside the minecraft namespace", NodeDataType.BOOLEAN, this));
+
         updateOutputs();
     }
-    
+
     @Override
-    public String getDescription() { return "允许搜索和选择Minecraft方块类型"; }
-    
+    public String getDescription() {
+        return "Searches and selects a Minecraft block type.";
+    }
+
     @Override
-    public void processNode(@Nullable ExecutionContext context) { updateOutputs(); }
-    
-    // === BaseCustomUINode 实现 ===
+    public void processNode(@Nullable ExecutionContext context) {
+        updateOutputs();
+    }
 
     @Override
     protected float calculateUIHeight() {
         float height = getMediumPadding();
-        height += ImGui.getTextLineHeight(); // "当前:" 标签
+        height += ImGui.getTextLineHeight();
         height += getSmallPadding();
-        height += ImGui.getFrameHeight(); // 搜索框
+        height += ImGui.getFrameHeight();
         height += getSmallPadding();
         if (showDropdown) {
             height += Math.min(filteredBlocks.size(), MAX_RESULTS) * ImGui.getTextLineHeightWithSpacing();
             height += getSmallPadding();
         }
-        height += ImGui.getTextLineHeight(); // 选中方块显示
         height += getMediumPadding();
         return height;
     }
 
     @Override
     protected float calculateMinUIWidth() {
-        return 200f + getContentMargin();
+        return 184f + getContentMargin();
     }
 
     @Override
     protected boolean renderCustomUIScaled(float width, float height, float zoom) {
-        return layout(zoom, l -> {
+        return layout(zoom, layout -> {
             boolean changed = false;
-            
+
             try {
-                float availableWidth = getAvailableWidth(width, zoom);
-                l.addVerticalSpacing(getMediumPadding());
-                
-                // === 当前选中方块显示 ===
-                String displayName = selectedBlock.contains(":") ? selectedBlock.split(":", 2)[1] : selectedBlock;
-                ImGui.pushStyleColor(ImGuiCol.Text, 0.4f, 0.8f, 0.4f, 1.0f);
-                ImGui.text("▪ " + displayName);
-                ImGui.popStyleColor();
-                
-                l.addVerticalSpacing(getSmallPadding());
+                float availableWidth = getAvailableContentWidth(width, zoom);
+                layout.addVerticalSpacing(getMediumPadding());
+
                 ImGui.text("Common:");
                 for (int i = 0; i < QUICK_BLOCKS.length; i++) {
                     String quickBlock = QUICK_BLOCKS[i];
@@ -135,14 +131,13 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
                         changed = true;
                     }
                 }
-                
-                l.addVerticalSpacing(getSmallPadding());
-                
-                // === 搜索框 ===
-                l.pushFramePadding(4.0f, 3.0f);
-                l.setItemWidth(availableWidth / zoom);
-                
-                if (ImGui.inputTextWithHint("##block_search", "搜索方块...", searchBuffer)) {
+
+                layout.addVerticalSpacing(getSmallPadding());
+
+                layout.pushFramePadding(4.0f, 3.0f);
+                layout.setItemWidth(availableWidth / zoom);
+
+                if (ImGui.inputTextWithHint("##block_search", "Search blocks...", searchBuffer)) {
                     String searchText = searchBuffer.get().trim().toLowerCase();
                     if (!searchText.equals(lastSearchText)) {
                         lastSearchText = searchText;
@@ -150,31 +145,29 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
                         showDropdown = !searchText.isEmpty();
                     }
                 }
-                
-                // 聚焦时自动打开下拉
+
                 if (ImGui.isItemActivated() && !searchBuffer.get().isEmpty()) {
                     showDropdown = true;
                 }
-                
-                l.popItemWidth();
-                l.popStyleVar();
-                
-                l.addVerticalSpacing(getSmallPadding());
-                
-                // === 搜索结果下拉列表 ===
+
+                layout.popItemWidth();
+                layout.popStyleVar();
+
+                layout.addVerticalSpacing(getSmallPadding());
+
                 if (showDropdown && !filteredBlocks.isEmpty()) {
                     ImGui.pushStyleColor(ImGuiCol.ChildBg, 0.15f, 0.15f, 0.18f, 0.95f);
-                    
+
                     int displayCount = Math.min(filteredBlocks.size(), MAX_RESULTS);
                     for (int i = 0; i < displayCount; i++) {
                         String blockId = filteredBlocks.get(i);
                         String blockPath = blockId.contains(":") ? blockId.split(":", 2)[1] : blockId;
-                        
+
                         boolean isSelected = blockId.equals(selectedBlock);
                         if (isSelected) {
                             ImGui.pushStyleColor(ImGuiCol.Text, 0.3f, 0.9f, 0.5f, 1.0f);
                         }
-                        
+
                         if (ImGui.selectable("  " + blockPath + "##" + i, isSelected)) {
                             setSelectedBlock(blockId);
                             searchBuffer.set("");
@@ -182,43 +175,34 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
                             lastSearchText = "";
                             changed = true;
                         }
-                        
+
                         if (isSelected) {
                             ImGui.popStyleColor();
                         }
-                        
-                        // 悬浮时显示完整ID
+
                         if (ImGui.isItemHovered()) {
                             ImGui.setTooltip(blockId);
                         }
                     }
-                    
+
                     if (filteredBlocks.size() > MAX_RESULTS) {
                         ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 1.0f);
-                        ImGui.text("  ... 还有 " + (filteredBlocks.size() - MAX_RESULTS) + " 个结果");
+                        ImGui.text("  ... " + (filteredBlocks.size() - MAX_RESULTS) + " more");
                         ImGui.popStyleColor();
                     }
-                    
+
                     ImGui.popStyleColor();
                 }
-                
-                // === 完整ID显示 ===
-                ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 1.0f);
-                ImGui.text(selectedBlock);
-                ImGui.popStyleColor();
-                
-                l.addVerticalSpacing(getMediumPadding());
-                
+
+                layout.addVerticalSpacing(getMediumPadding());
             } catch (Exception e) {
-                System.err.println("BlockTypeSelectorNode UI渲染失败: " + e.getMessage());
+                System.err.println("BlockTypeSelectorNode UI render failed: " + e.getMessage());
             }
-            
+
             return changed;
         });
     }
-    
-    // === 搜索逻辑 ===
-    
+
     private void updateFilteredList(String searchText) {
         filteredBlocks.clear();
         if (searchText.isEmpty()) {
@@ -230,35 +214,39 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
             invalidateCache();
             return;
         }
-        
+
         try {
             for (Identifier id : Registries.BLOCK.getIds()) {
                 String fullId = id.toString();
-                if (!allowModded && !id.getNamespace().equals("minecraft")) continue;
-                
+                if (!allowModded && !id.getNamespace().equals("minecraft")) {
+                    continue;
+                }
+
                 if (fullId.contains(searchText) || id.getPath().contains(searchText)) {
                     filteredBlocks.add(fullId);
-                    if (filteredBlocks.size() >= MAX_RESULTS * 2) break;
+                    if (filteredBlocks.size() >= MAX_RESULTS * 2) {
+                        break;
+                    }
                 }
             }
-        } catch (Exception e) {
-            // Registry可能还未初始化
+        } catch (Exception ignored) {
+            // Registry may not be ready yet.
         }
-        
+
         invalidateCache();
     }
-    
-    // === 业务逻辑 ===
-    
+
     public void setSelectedBlock(String blockId) {
-        if (blockId == null || blockId.isEmpty()) blockId = "minecraft:stone";
+        if (blockId == null || blockId.isEmpty()) {
+            blockId = "minecraft:stone";
+        }
         if (!this.selectedBlock.equals(blockId)) {
             this.selectedBlock = blockId;
             updateOutputs();
             markDirty();
         }
     }
-    
+
     private void updateOutputs() {
         String namespace = "minecraft";
         String path = "stone";
@@ -273,41 +261,39 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_IS_MODDED, !namespace.equals("minecraft"));
         syncOutputPorts();
     }
-    
-    public String getSelectedBlock() { return selectedBlock; }
-    public boolean isAllowModded() { return allowModded; }
-    
+
+    public String getSelectedBlock() {
+        return selectedBlock;
+    }
+
+    public boolean isAllowModded() {
+        return allowModded;
+    }
+
     public void setAllowModded(boolean allowModded) {
         this.allowModded = allowModded;
         if (!allowModded && !selectedBlock.startsWith("minecraft:")) {
             setSelectedBlock("minecraft:stone");
         }
     }
-    
+
     @Override
     public Object getNodeState() {
-        java.util.Map<String, Object> state = new java.util.HashMap<>();
-        state.put("selectedBlock", getSelectedBlock());
-        state.put("allowModded", isAllowModded());
-        return state;
-    }
-    
-    @Override
-    public void setNodeState(Object state) {
-        if (state instanceof java.util.Map) {
-            java.util.Map<?, ?> m = (java.util.Map<?, ?>) state;
-            if (m.containsKey("allowModded")) {
-                Object v = m.get("allowModded");
-                if (v instanceof Boolean) setAllowModded((Boolean) v);
-            }
-            if (m.containsKey("selectedBlock")) {
-                Object v = m.get("selectedBlock");
-                if (v instanceof String) setSelectedBlock((String) v);
-            }
-        }
+        return Map.of(
+            "selectedBlock", getSelectedBlock(),
+            "allowModded", isAllowModded()
+        );
     }
 
-    protected final float getAvailableWidth(float totalWidth, float zoom) {
-        return getAvailableContentWidth(totalWidth, zoom);
+    @Override
+    public void setNodeState(Object state) {
+        if (state instanceof Map<?, ?> map) {
+            if (map.get("allowModded") instanceof Boolean bool) {
+                setAllowModded(bool);
+            }
+            if (map.get("selectedBlock") instanceof String value) {
+                setSelectedBlock(value);
+            }
+        }
     }
 }
