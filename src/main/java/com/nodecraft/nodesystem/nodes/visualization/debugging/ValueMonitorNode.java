@@ -70,10 +70,10 @@ public class ValueMonitorNode extends BaseCustomUINode {
     protected boolean renderCustomUIScaled(float width, float height, float zoom) {
         return layout(zoom, l -> {
             try {
-                float edgeMargin = ZoomHelper.applyZoom(getContentMargin(), zoom);
+                float edgeMargin = ZoomHelper.applyZoom(getMediumPadding(), zoom);
                 float aw = Math.max(0.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
                 float totalHeightPixels = l.toPixelsExact(height);
-                float topBottomPadding = ZoomHelper.applyZoom(getMediumPadding(), zoom);
+                float topBottomPadding = ZoomHelper.applyZoom(getSmallPadding(), zoom);
                 float screenH = Math.max(ImGui.getTextLineHeight() * 2.0f, totalHeightPixels - topBottomPadding * 2.0f);
                 float baseCursorX = ImGui.getCursorPosX();
                 ImGui.setCursorPosX(baseCursorX + edgeMargin);
@@ -81,8 +81,14 @@ public class ValueMonitorNode extends BaseCustomUINode {
                 ImGui.pushStyleColor(ImGuiCol.ChildBg, 0.08f, 0.08f, 0.10f, 0.98f);
                 ImGui.pushStyleVar(ImGuiStyleVar.ChildBorderSize, ZoomHelper.applyZoom(1.2f, zoom));
                 ImGui.pushStyleVar(ImGuiStyleVar.ChildRounding, ZoomHelper.applyZoom(4f, zoom));
-                ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, ZoomHelper.applyZoom(8f, zoom), ZoomHelper.applyZoom(8f, zoom));
-                boolean childOpen = ImGui.beginChild("##value_monitor_screen", aw, screenH, true, ImGuiWindowFlags.AlwaysUseWindowPadding);
+                ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, ZoomHelper.applyZoom(4f, zoom), ZoomHelper.applyZoom(4f, zoom));
+                boolean childOpen = ImGui.beginChild(
+                    "##value_monitor_screen",
+                    aw,
+                    screenH,
+                    true,
+                    ImGuiWindowFlags.AlwaysUseWindowPadding | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse
+                );
 
                 if (childOpen) {
                     float contentW = ImGui.getContentRegionAvailX();
