@@ -33,6 +33,7 @@ public class DeconstructBoxFaceNode extends BaseNode {
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_EDGES_ID = "output_edges";
     private static final String OUTPUT_CORNER_INDICES_ID = "output_corner_indices";
+    private static final String OUTPUT_EDGE_CORNER_INDEX_PAIRS_ID = "output_edge_corner_index_pairs";
 
     public DeconstructBoxFaceNode() {
         super(UUID.randomUUID(), "spatial.analysis.deconstruct_box_face");
@@ -47,6 +48,7 @@ public class DeconstructBoxFaceNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Plane containing the face", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_EDGES_ID, "Edges", "Face edge segments", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_CORNER_INDICES_ID, "Corner Indices", "Indices into the parent box corner list", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_EDGE_CORNER_INDEX_PAIRS_ID, "Edge Corner Index Pairs", "Corner index pairs for each edge in winding order", NodeDataType.LIST, this));
     }
 
     @Override
@@ -66,6 +68,7 @@ public class DeconstructBoxFaceNode extends BaseNode {
             outputValues.put(OUTPUT_PLANE_ID, null);
             outputValues.put(OUTPUT_EDGES_ID, List.of());
             outputValues.put(OUTPUT_CORNER_INDICES_ID, List.of());
+            outputValues.put(OUTPUT_EDGE_CORNER_INDEX_PAIRS_ID, List.of());
             return;
         }
 
@@ -88,5 +91,6 @@ public class DeconstructBoxFaceNode extends BaseNode {
         outputValues.put(OUTPUT_PLANE_ID, face.getPlane());
         outputValues.put(OUTPUT_EDGES_ID, edges);
         outputValues.put(OUTPUT_CORNER_INDICES_ID, face.getCornerIndices());
+        outputValues.put(OUTPUT_EDGE_CORNER_INDEX_PAIRS_ID, face.getEdgeCornerIndexPairs());
     }
 }
