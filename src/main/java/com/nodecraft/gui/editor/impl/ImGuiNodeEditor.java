@@ -467,20 +467,20 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
 
         StringBuilder tooltip = new StringBuilder();
         tooltip.append(hoveredPort.getDisplayName()).append("\n");
-        tooltip.append("Type: ").append(hoveredPort.getDataType().getDisplayName()).append("\n");
+        tooltip.append("类型: ").append(hoveredPort.getDataType().getDisplayName()).append("\n");
         if (hoveredPort.isInput()) {
-            tooltip.append("Connection: ")
-                    .append(hoveredPort.allowsMultipleIncomingConnections() ? "multiple upstream inputs allowed" : "single upstream input only")
+            tooltip.append("连接规则: ")
+                    .append(hoveredPort.allowsMultipleIncomingConnections() ? "允许多个上游输入连接" : "只允许一个上游输入连接")
                     .append("\n");
 
             UUID connectedNodeId = graph.getConnectedOutputNodeId(node.getId(), hoveredPort.getId());
             if (connectedNodeId != null) {
-                tooltip.append("Status: connected");
+                tooltip.append("状态: 已连接");
             } else {
-                tooltip.append("Status: not connected");
+                tooltip.append("状态: 未连接");
             }
         } else {
-            tooltip.append("Connection: fan-out allowed");
+            tooltip.append("连接规则: 允许一对多输出");
         }
 
         if (hoveredPort.getDescription() != null && !hoveredPort.getDescription().isEmpty()) {
