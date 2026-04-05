@@ -60,7 +60,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
     private boolean previewEnabled = true;
 
     @NodeProperty(displayName = "Preview Backend", category = "Display", order = 6)
-    private PreviewBackend previewBackend = PreviewBackend.GHOST;
+    private PreviewBackend previewBackend = PreviewBackend.TRACKED_WORLD;
 
     @NodeProperty(displayName = "Solid Geometry", category = "Display", order = 7)
     private boolean previewSolidGeometry = true;
@@ -169,10 +169,18 @@ public class GeometryViewerNode extends BaseCustomUINode {
         if (previewEnabled && blocksList != null && !blocksList.isEmpty()) {
             if (previewDirty) {
                 placed = false;
-                refreshGhostPreview(context, blocksList, effectiveBlockType, trans);
-                cachePreviewState(geometrySignature, trans, color, effectiveBlockType);
+                if (refreshTrackedPreview(context, blocksList, effectiveBlockType)) {
+                    cachePreviewState(geometrySignature, trans, color, effectiveBlockType);
+                } else {
+                    cachedPreviewBackend = null;
+                }
+            } else if (hasWorldContext) {
+                statusMessage = "Previewing "
+                        + TrackedPreviewPlacementService.getInstance().getTrackedCount(context.getWorld(), getId().toString())
+                        + " blocks";
+            } else {
+                statusMessage = "Preview waiting for execution context";
             }
-            statusMessage = "Previewing " + blockCount + " blocks";
         } else {
             clearAllPreviewState(context);
             statusMessage = previewEnabled ? "Waiting for input..." : "Preview disabled";
@@ -195,13 +203,20 @@ public class GeometryViewerNode extends BaseCustomUINode {
                         "GeometryViewerNode[{}] placement requested: backend={}, blockCount={}, blockType={}",
                         getId(), previewBackend, blockCount, effectiveBlockType
                 );
-                BlockState targetState = resolveBlockState(effectiveBlockType);
-                if (targetState == null) {
-                    statusMessage = "Invalid block type: " + effectiveBlockType;
-                    NodeCraft.LOGGER.warn("GeometryViewerNode[{}] invalid block type for placement: {}", getId(), effectiveBlockType);
-                } else {
-                    placeBlocks(context, blocksList, targetState);
-                }
+                boolean committed = TrackedPreviewPlacementService.getInstance().commitTrackedPreview(
+                        context.getWorld(),
+                        getId().toString()
+                );
+                placed = committed;
+                statusMessage = committed
+                        ? "Build committed: " + blockCount + " blocks"
+                        : "No preview available to commit";
+                NodeCraft.LOGGER.info(
+                        "GeometryViewerNode[{}] tracked preview commit result: committed={}, trackedCountAfter={}",
+                        getId(),
+                        committed,
+                        TrackedPreviewPlacementService.getInstance().getTrackedCount(context.getWorld(), getId().toString())
+                );
             }
         }
         if (!placementRequested) {
@@ -222,32 +237,37 @@ public class GeometryViewerNode extends BaseCustomUINode {
         cachedPreviewBackend = previewBackend;
     }
 
-    private void refreshGhostPreview(@Nullable ExecutionContext context,
-                                     BlockPosList blocksList,
-                                     String effectiveBlockType,
-                                     float trans) {
-        if (context != null && context.getWorld() != null) {
-            TrackedPreviewPlacementService.getInstance().clearTrackedPreview(context.getWorld(), getId().toString());
-        }
-
+    private boolean refreshTrackedPreview(@Nullable ExecutionContext context,
+                                          BlockPosList blocksList,
+                                          String effectiveBlockType) {
         PreviewManager.hideNodePreviews(getId().toString());
-        List<GhostBlockElement.BlockPlacement> placements = new ArrayList<>();
-        for (BlockPos pos : blocksList) {
-            placements.add(new GhostBlockElement.BlockPlacement(
-                    new Vec3d(pos.getX(), pos.getY(), pos.getZ()),
-                    effectiveBlockType,
-                    trans
-            ));
+
+        if (context == null || context.getWorld() == null) {
+            statusMessage = "Preview waiting for execution context";
+            NodeCraft.LOGGER.info("GeometryViewerNode[{}] tracked preview deferred: missing world context", getId());
+            return false;
         }
 
-        PreviewOptions options = new PreviewOptions()
-                .ghostBlockMode()
-                .setOpacity(trans);
-        PreviewManager.showGhostBlockPlacements(getId().toString(), placements, options);
-        NodeCraft.LOGGER.debug(
-                "GeometryViewerNode[{}] ghost preview refreshed: placements={}, blockType={}, transparency={}",
-                getId(), placements.size(), effectiveBlockType, trans
+        BlockState trackedState = resolveBlockState(effectiveBlockType);
+        if (trackedState == null) {
+            statusMessage = "Invalid block type: " + effectiveBlockType;
+            NodeCraft.LOGGER.warn("GeometryViewerNode[{}] tracked preview skipped: invalid block type {}", getId(), effectiveBlockType);
+            return false;
+        }
+
+        int trackedCount = TrackedPreviewPlacementService.getInstance().updateTrackedPreview(
+                context.getWorld(),
+                getId().toString(),
+                new ArrayList<>(blocksList.getPositions()),
+                trackedState,
+                placementMode
         );
+        statusMessage = "Previewing " + trackedCount + " blocks";
+        NodeCraft.LOGGER.debug(
+                "GeometryViewerNode[{}] tracked preview refreshed: placements={}, blockType={}",
+                getId(), trackedCount, effectiveBlockType
+        );
+        return true;
     }
 
     private void clearAllPreviewState(@Nullable ExecutionContext context) {
@@ -263,46 +283,6 @@ public class GeometryViewerNode extends BaseCustomUINode {
                 NodeCraft.LOGGER.debug("GeometryViewerNode[{}] cleared {} tracked preview blocks", getId(), cleared);
             }
         }
-    }
-
-    private void placeBlocks(ExecutionContext context, BlockPosList blocksList, BlockState targetState) {
-        List<BlockPos> positions = new ArrayList<>();
-        for (BlockPos pos : blocksList) {
-            positions.add(pos.toImmutable());
-        }
-
-        if (useAsyncBake) {
-            BakePlacementService.getInstance().enqueue(
-                    context.getWorld(),
-                    positions,
-                    targetState,
-                    placementMode,
-                    recordUndo,
-                    1000,
-                    null
-            );
-            statusMessage = "Queued placement task (" + positions.size() + " blocks, async)";
-            placed = true;
-            NodeCraft.LOGGER.info("GeometryViewerNode[{}] queued async placement for {} blocks", getId(), positions.size());
-            return;
-        }
-
-        int successCount = 0;
-        for (BlockPos pos : positions) {
-            if (placementMode == PlacementMode.INCREMENTAL && !context.getWorld().isAir(pos)) {
-                continue;
-            }
-            if (context.getWorld().setBlockState(pos, targetState, Block.NOTIFY_ALL)) {
-                successCount++;
-            }
-        }
-
-        placed = true;
-        statusMessage = "Placed " + successCount + "/" + positions.size() + " blocks";
-        NodeCraft.LOGGER.info(
-                "GeometryViewerNode[{}] completed direct placement: placed={}, requested={}, mode={}",
-                getId(), successCount, positions.size(), placementMode
-        );
     }
 
     private BlockPosList resolveBlocks(Object blocksObj,
@@ -408,7 +388,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
             }
             layout.addVerticalSpacing(getSmallPadding());
 
-            ImGui.textDisabled("Preview Mode: Visual only");
+            ImGui.textDisabled("Preview Mode: Tracked temporary blocks");
             layout.addVerticalSpacing(getSmallPadding());
 
             ImBoolean solidValue = new ImBoolean(previewSolidGeometry);
