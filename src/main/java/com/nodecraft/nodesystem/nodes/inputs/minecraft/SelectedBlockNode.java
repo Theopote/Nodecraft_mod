@@ -1302,30 +1302,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             addVerticalSpacing(getSmallPadding(), zoom);
         }
     }
-    
-    /**
-     * 获取可用的UI宽度（与通用节点元素缩放策略一致）
-     * 
-     * 通用节点元素使用直接的像素缩放，我们也采用相同的策略
-     * 以确保自定义UI与节点面板保持完美的比例关系
-     * 
-     * @param width 传入的宽度（已经是适合当前缩放级别的值）
-     * @param zoom 当前缩放级别
-     * @return 扣除padding后的可用宽度
-     */
-    protected final float getAvailableWidth(float width, float zoom) {
-        // 将逻辑宽度和边距统一转换为像素后再做减法，确保缩放一致
-        float logicalPadding = 8.0f;
-        float availableWidth = Math.max(0, ZoomHelper.toScaledPixels(width - logicalPadding * 2, zoom));
-        
-        if (isLayoutDebugEnabled()) {
-            NodeCraft.LOGGER.debug("[Layout Debug] Node {}: getAvailableWidth (direct scaling) - inputWidth={}, zoom={}, logicalPadding={}, availableWidth={}", 
-                                 getId(), width, zoom, logicalPadding, availableWidth);
-        }
-        
-        return availableWidth;
-    }
-    
+
     // === 属性访问器 ===
     
     /*
@@ -1369,8 +1346,6 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             markDirty();
         }
     }
-    
-
     
     public boolean isShowGhostBlock() {
         return showGhostBlock;
@@ -1713,28 +1688,6 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             SelectionVisualFeedback.getInstance().clearFeedback(getId().toString());
         }
     }
-    
-    /**
-     * 验证预览状态的一致性
-     * 用于调试和确保预览状态正确
-     */
-    private void validatePreviewState() {
-        boolean isVisibleInGame = isNodeVisibleInGame();
-        boolean shouldShowPreview = isVisibleInGame && showGhostBlock && hasPickedBlock && pickedBlockPosition != null && pickedBlockId != null;
-        boolean hasActivePreview = currentGhostBlockPreviewId != null;
-        
-        if (shouldShowPreview != hasActivePreview) {
-            NodeCraft.LOGGER.warn("节点 {} 预览状态不一致 - 应该显示: {}, 实际有预览: {}", 
-                getId(), shouldShowPreview, hasActivePreview);
-            if (NodeCraft.LOGGER.isDebugEnabled()) {
-                NodeCraft.LOGGER.debug("节点 {} 状态详情: isVisibleInGame={}, showGhostBlock={}, hasPickedBlock={}, position={}, blockId={}, previewId={}", 
-                    getId(), isVisibleInGame, showGhostBlock, hasPickedBlock, pickedBlockPosition, pickedBlockId, currentGhostBlockPreviewId);
-            }
-            
-            // 尝试修复状态不一致
-            updateGhostBlockPreview();
-        }
-    }
 
     // === 新增的辅助方法 ===
     
@@ -1847,49 +1800,5 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             NodeCraft.LOGGER.debug("节点 {} 检查方块实体失败: {}", getId(), e.getMessage());
             return false;
         }
-    }
-    
-
-
-    // === 节点生命周期管理 ===
-    
-    /**
-     * 节点被删除时的清理方法
-     * 应该由NodeCraft框架在删除节点时调用
-     */
-    public void onNodeRemoved() {
-        // 清理选择视觉反馈
-        SelectionVisualFeedback.getInstance().clearFeedback(getId().toString());
-        
-        // 清理幽灵方块预览
-        hideGhostBlockPreview();
-        
-        // 如果当前节点正在交互模式中，取消拾取
-        NodeEditorInteractionManager interactionManager = NodeEditorInteractionManager.getInstance();
-        if (interactionManager.isCurrentInteractionNode(getId().toString())) {
-            interactionManager.cancelBlockPick();
-        }
-        
-        // 防御性清理：确保清理掉任何可能因为逻辑错误而残留的预览
-        // 注意：理论上 hideGhostBlockPreview() 已经处理了本节点的唯一预览，
-        // 但这个调用提供额外的安全保障，防止预览残留影响用户体验
-        try {
-            PreviewRenderer.getInstance().removeAllPreviewsByNodeId(getId().toString());
-        } catch (Exception e) {
-            // 即使清理失败也不应该影响节点删除过程
-            NodeCraft.LOGGER.debug("节点 {} 清理残留预览时发生异常（可忽略）", getId(), e);
-        }
-    }
-    
-    /**
-     * 节点被选中时调用
-     * 可以用于显示预览
-     */
-    public void onNodeSelected() {
-        // 验证预览状态一致性
-        validatePreviewState();
-        
-        // 统一调用预览更新方法，确保选中时预览状态正确
-        updateGhostBlockPreview();
     }
 } 
