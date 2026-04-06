@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.util.math.BlockPos;
@@ -32,6 +33,7 @@ public class RegularPolygonOnPlaneNode extends BaseNode {
     private static final String INPUT_START_DIRECTION_ID = "input_start_direction";
 
     private static final String OUTPUT_POINTS_ID = "output_points";
+    private static final String OUTPUT_PROFILE_ID = "output_profile";
     private static final String OUTPUT_BOUNDARY_ID = "output_boundary";
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_CENTER_ID = "output_center";
@@ -49,6 +51,7 @@ public class RegularPolygonOnPlaneNode extends BaseNode {
         addInputPort(new BasePort(INPUT_START_DIRECTION_ID, "Start Direction", "Optional in-plane direction to the first vertex", NodeDataType.VECTOR, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed regular polygon points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Regular polygon profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed regular polygon boundary polyline", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved construction plane", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved polygon center", NodeDataType.VECTOR, this));
@@ -99,9 +102,11 @@ public class RegularPolygonOnPlaneNode extends BaseNode {
         }
         points.add(new Vector3d(points.get(0)));
 
+        PlaneData resolvedPlane = new PlaneData(center, basis.normal);
         outputValues.put(OUTPUT_POINTS_ID, List.copyOf(points));
+        outputValues.put(OUTPUT_PROFILE_ID, new PolygonProfileData(points, resolvedPlane));
         outputValues.put(OUTPUT_BOUNDARY_ID, toPolyline(points));
-        outputValues.put(OUTPUT_PLANE_ID, new PlaneData(center, basis.normal));
+        outputValues.put(OUTPUT_PLANE_ID, resolvedPlane);
         outputValues.put(OUTPUT_CENTER_ID, center);
         outputValues.put(OUTPUT_RADIUS_ID, radius);
         outputValues.put(OUTPUT_SIDE_COUNT_ID, sideCount);
@@ -110,6 +115,7 @@ public class RegularPolygonOnPlaneNode extends BaseNode {
 
     private void writeEmptyOutputs() {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
+        outputValues.put(OUTPUT_PROFILE_ID, null);
         outputValues.put(OUTPUT_BOUNDARY_ID, null);
         outputValues.put(OUTPUT_PLANE_ID, null);
         outputValues.put(OUTPUT_CENTER_ID, null);

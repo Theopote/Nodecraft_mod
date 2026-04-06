@@ -35,6 +35,7 @@ public enum NodeDataType {
     CYLINDER_GEOMETRY("cylinder_geometry", "Cylinder Geometry", CylinderGeometryData.class),
     ELLIPSOID_GEOMETRY("ellipsoid_geometry", "Ellipsoid Geometry", EllipsoidGeometryData.class),
     OCTAHEDRON_GEOMETRY("octahedron_geometry", "Octahedron Geometry", OctahedronGeometryData.class),
+    POLYGON_PROFILE("polygon_profile", "Polygon Profile", PolygonProfileData.class),
     PRISM_GEOMETRY("prism_geometry", "Prism Geometry", PrismGeometryData.class),
     TETRAHEDRON_GEOMETRY("tetrahedron_geometry", "Tetrahedron Geometry", TetrahedronGeometryData.class),
     TORUS_GEOMETRY("torus_geometry", "Torus Geometry", TorusGeometryData.class),

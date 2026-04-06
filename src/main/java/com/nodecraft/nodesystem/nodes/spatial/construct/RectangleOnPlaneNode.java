@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.util.math.BlockPos;
@@ -32,6 +33,7 @@ public class RectangleOnPlaneNode extends BaseNode {
     private static final String INPUT_X_AXIS_ID = "input_x_axis";
 
     private static final String OUTPUT_POINTS_ID = "output_points";
+    private static final String OUTPUT_PROFILE_ID = "output_profile";
     private static final String OUTPUT_BOUNDARY_ID = "output_boundary";
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_CENTER_ID = "output_center";
@@ -49,6 +51,7 @@ public class RectangleOnPlaneNode extends BaseNode {
         addInputPort(new BasePort(INPUT_X_AXIS_ID, "X Axis", "Optional in-plane axis to control rectangle rotation", NodeDataType.VECTOR, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Rectangle corner points in closed order", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Rectangle polygon profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed rectangle boundary polyline", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved construction plane", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved rectangle center", NodeDataType.VECTOR, this));
@@ -98,9 +101,11 @@ public class RectangleOnPlaneNode extends BaseNode {
         corners.add(new Vector3d(center).sub(halfX).add(halfY));
         corners.add(new Vector3d(corners.get(0)));
 
+        PlaneData resolvedPlane = new PlaneData(center, basis.normal);
         outputValues.put(OUTPUT_POINTS_ID, List.copyOf(corners));
+        outputValues.put(OUTPUT_PROFILE_ID, new PolygonProfileData(corners, resolvedPlane));
         outputValues.put(OUTPUT_BOUNDARY_ID, toPolyline(corners));
-        outputValues.put(OUTPUT_PLANE_ID, new PlaneData(center, basis.normal));
+        outputValues.put(OUTPUT_PLANE_ID, resolvedPlane);
         outputValues.put(OUTPUT_CENTER_ID, center);
         outputValues.put(OUTPUT_WIDTH_ID, width);
         outputValues.put(OUTPUT_HEIGHT_ID, height);
@@ -109,6 +114,7 @@ public class RectangleOnPlaneNode extends BaseNode {
 
     private void writeEmptyOutputs() {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
+        outputValues.put(OUTPUT_PROFILE_ID, null);
         outputValues.put(OUTPUT_BOUNDARY_ID, null);
         outputValues.put(OUTPUT_PLANE_ID, null);
         outputValues.put(OUTPUT_CENTER_ID, null);

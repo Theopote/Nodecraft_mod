@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.util.math.BlockPos;
@@ -28,6 +29,7 @@ public class PolygonByPointsNode extends BaseNode {
     private static final String INPUT_POINTS_ID = "input_points";
 
     private static final String OUTPUT_POINTS_ID = "output_points";
+    private static final String OUTPUT_PROFILE_ID = "output_profile";
     private static final String OUTPUT_BOUNDARY_ID = "output_boundary";
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_CENTER_ID = "output_center";
@@ -42,6 +44,7 @@ public class PolygonByPointsNode extends BaseNode {
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Ordered polygon points", NodeDataType.LIST, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed planar polygon points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Resolved polygon profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed polygon boundary polyline", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved polygon plane", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Average polygon center", NodeDataType.VECTOR, this));
@@ -81,6 +84,7 @@ public class PolygonByPointsNode extends BaseNode {
         closedPoints.add(new Vector3d(points.get(0)));
 
         outputValues.put(OUTPUT_POINTS_ID, List.copyOf(closedPoints));
+        outputValues.put(OUTPUT_PROFILE_ID, new PolygonProfileData(closedPoints, plane));
         outputValues.put(OUTPUT_BOUNDARY_ID, toPolyline(closedPoints));
         outputValues.put(OUTPUT_PLANE_ID, plane);
         outputValues.put(OUTPUT_CENTER_ID, averagePoint(points));
@@ -90,6 +94,7 @@ public class PolygonByPointsNode extends BaseNode {
 
     private void writeEmptyOutputs() {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
+        outputValues.put(OUTPUT_PROFILE_ID, null);
         outputValues.put(OUTPUT_BOUNDARY_ID, null);
         outputValues.put(OUTPUT_PLANE_ID, null);
         outputValues.put(OUTPUT_CENTER_ID, null);
