@@ -90,9 +90,8 @@ public class IntegerInputNode extends BaseCustomUINode {
             float baseCursorX = ImGui.getCursorPosX();
 
             l.addVerticalSpacing(getMediumPadding());
-            float inputWidth = Math.min(140.0f, availableWidth / Math.max(zoom, 0.001f));
-            float inputWidthPx = l.toPixels(inputWidth);
-            ImGui.setCursorPosX(baseCursorX + edgeMargin + Math.max(0.0f, (availableWidth - inputWidthPx) * 0.5f));
+            float inputWidth = availableWidth / Math.max(zoom, 0.001f);
+            ImGui.setCursorPosX(baseCursorX + edgeMargin);
             l.pushFramePadding(4.0f, 2.0f);
             l.setItemWidth(inputWidth);
 
