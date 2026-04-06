@@ -6,9 +6,11 @@ import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
+import com.nodecraft.nodesystem.datatypes.OctahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
+import com.nodecraft.nodesystem.datatypes.TetrahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.TorusGeometryData;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -88,11 +90,17 @@ public final class GeometryVoxelizer {
         if (geometry instanceof EllipsoidGeometryData ellipsoidGeometry) {
             return voxelizeEllipsoid(ellipsoidGeometry, fillSolid);
         }
+        if (geometry instanceof OctahedronGeometryData octahedronGeometry) {
+            return voxelizeOctahedron(octahedronGeometry, fillSolid);
+        }
         if (geometry instanceof PrismGeometryData prismGeometry) {
             return voxelizePrism(prismGeometry, fillSolid);
         }
         if (geometry instanceof SphereData sphereGeometry) {
             return voxelizeSphere(sphereGeometry, fillSolid);
+        }
+        if (geometry instanceof TetrahedronGeometryData tetrahedronGeometry) {
+            return voxelizeTetrahedron(tetrahedronGeometry, fillSolid);
         }
         if (geometry instanceof TorusGeometryData torusGeometry) {
             return voxelizeTorus(torusGeometry, fillSolid);
@@ -122,11 +130,17 @@ public final class GeometryVoxelizer {
         if (geometry instanceof EllipsoidGeometryData ellipsoidGeometry) {
             return EllipsoidBlockGenerator.createBoundingRegion(ellipsoidGeometry);
         }
+        if (geometry instanceof OctahedronGeometryData octahedronGeometry) {
+            return OctahedronBlockGenerator.createBoundingRegion(octahedronGeometry);
+        }
         if (geometry instanceof PrismGeometryData prismGeometry) {
             return createPrismBoundingRegion(prismGeometry);
         }
         if (geometry instanceof SphereData sphereGeometry) {
             return SphereBlockGenerator.createBoundingRegion(sphereGeometry);
+        }
+        if (geometry instanceof TetrahedronGeometryData tetrahedronGeometry) {
+            return TetrahedronBlockGenerator.createBoundingRegion(tetrahedronGeometry);
         }
         if (geometry instanceof TorusGeometryData torusGeometry) {
             return TorusBlockGenerator.createBoundingRegion(torusGeometry);
@@ -278,6 +292,13 @@ public final class GeometryVoxelizer {
         );
     }
 
+    public static BlockPosList voxelizeOctahedron(OctahedronGeometryData geometry, boolean fillSolid) {
+        BlockPosList blocks = new BlockPosList();
+        RegionData region = OctahedronBlockGenerator.createBoundingRegion(geometry);
+        OctahedronBlockGenerator.populateOctahedron(blocks, region, geometry, fillSolid);
+        return blocks;
+    }
+
     public static BlockPosList voxelizeSphere(SphereData geometry, boolean fillSolid) {
         return voxelizeSphere(
             geometry,
@@ -292,6 +313,14 @@ public final class GeometryVoxelizer {
         BlockPosList blocks = new BlockPosList();
         RegionData region = SphereBlockGenerator.createBoundingRegion(geometry);
         SphereBlockGenerator.populateSphere(blocks, region, geometry, voxelMode, shellThickness);
+        return blocks;
+    }
+
+    public static BlockPosList voxelizeTetrahedron(TetrahedronGeometryData geometry, boolean fillSolid) {
+        BlockPosList blocks = new BlockPosList();
+        RegionData region = TetrahedronBlockGenerator.createBoundingRegion(geometry);
+        // First pass matches the legacy generator, which only exposed a solid tetrahedron.
+        TetrahedronBlockGenerator.populateTetrahedron(blocks, region, geometry);
         return blocks;
     }
 
