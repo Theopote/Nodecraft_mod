@@ -270,6 +270,18 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             interaction.updateHoveredConnection(mousePos, portScreenPositions, currentGraph);
             renderHoveredPortTooltip(currentGraph, interaction);
 
+            // 6.5 双击连接线自动插入中继节点（Reroute）
+            if (ImGui.isMouseDoubleClicked(ImGuiMouseButton.Left)
+                    && interaction.isHoveringConnection()
+                    && !interaction.isCreatingConnection()
+                    && !interaction.isDraggingNode()
+                    && !interaction.isBoxSelecting()
+                    && currentGraph != null) {
+                // 捕获鼠标，避免被画布层当作空白处双击处理
+                ImGui.getIO().setWantCaptureMouse(true);
+                insertRerouteNodeOnHoveredConnection(mousePos, canvasPos);
+            }
+
             // 7. 处理进行中的连接创建（绘制预览线，鼠标释放时完成连接）
             // 此方法内部会检查 interaction.isCreatingConnection()
             interaction.handleActiveConnectionCreation(currentGraph, portScreenPositions);
@@ -442,6 +454,65 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
      */
     private boolean computeConnectionPreviewTypeMismatch(NodeGraph graph, ImGuiNodeInteraction interaction) {
         return getConnectionPreviewInvalidReason(graph, interaction) != null;
+    }
+
+    /**
+     * 在当前悬停连接线上插入中继节点（utilities.assist.reroute）。
+     */
+    private void insertRerouteNodeOnHoveredConnection(ImVec2 mousePos, ImVec2 canvasPos) {
+        UUID sourceNodeId = interaction.getHoveredConnectionSourceNodeId();
+        String sourcePortId = interaction.getHoveredConnectionSourcePortId();
+        UUID targetNodeId = interaction.getHoveredConnectionTargetNodeId();
+        String targetPortId = interaction.getHoveredConnectionTargetPortId();
+
+        if (sourceNodeId == null || sourcePortId == null || targetNodeId == null || targetPortId == null) {
+            return;
+        }
+
+        if (currentGraph == null || !currentGraph.isConnected(sourceNodeId, sourcePortId, targetNodeId, targetPortId)) {
+            return;
+        }
+
+        float worldX = (mousePos.x - canvasPos.x - canvasOffsetX) / canvasZoom;
+        float worldY = (mousePos.y - canvasPos.y - canvasOffsetY) / canvasZoom;
+
+        INode rerouteNode = addNode("utilities.assist.reroute", worldX, worldY);
+        if (rerouteNode == null) {
+            NodeCraft.LOGGER.warn("双击连接线插入中继失败：无法创建中继节点");
+            return;
+        }
+
+        UUID rerouteNodeId = rerouteNode.getId();
+        boolean oldDisconnected = disconnectPorts(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
+        if (!oldDisconnected) {
+            currentGraph.removeNode(rerouteNodeId);
+            nodePositions.remove(rerouteNodeId);
+            NodeCraft.LOGGER.warn("双击连接线插入中继失败：无法断开原连接");
+            return;
+        }
+
+        boolean firstConnected = connectPorts(sourceNodeId, sourcePortId, rerouteNodeId, "input_signal");
+        boolean secondConnected = connectPorts(rerouteNodeId, "output_signal", targetNodeId, targetPortId);
+
+        if (!firstConnected || !secondConnected) {
+            // 回滚：尽最大努力恢复原连接
+            disconnectPorts(sourceNodeId, sourcePortId, rerouteNodeId, "input_signal");
+            disconnectPorts(rerouteNodeId, "output_signal", targetNodeId, targetPortId);
+            currentGraph.removeNode(rerouteNodeId);
+            nodePositions.remove(rerouteNodeId);
+            connectPorts(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
+            NodeCraft.LOGGER.warn("双击连接线插入中继失败：连接重建失败，已回滚");
+            return;
+        }
+
+        clearSelectedNodes();
+        setSelectedNodeId(rerouteNodeId);
+        if (io != null) {
+            io.markDirty();
+        }
+
+        NodeCraft.LOGGER.info("已在连接线上插入中继节点: {}({}) -> {} -> {}({})",
+                sourceNodeId, sourcePortId, rerouteNodeId, targetNodeId, targetPortId);
     }
 
     private void renderHoveredPortTooltip(NodeGraph graph, ImGuiNodeInteraction interaction) {
