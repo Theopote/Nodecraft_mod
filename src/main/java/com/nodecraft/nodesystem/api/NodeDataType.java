@@ -210,6 +210,13 @@ public enum NodeDataType {
         if (outputType == ANY) return true;
         if (outputType == inputType) return true;
 
+        // 数值家族互通（允许隐式数值转换）。
+        // 可覆盖 INTEGER/FLOAT/DOUBLE 之间的双向连接，
+        // 避免滑动条、输入框与整数/浮点端口之间出现不必要的拒连。
+        if (isNumericType(outputType) && isNumericType(inputType)) {
+            return true;
+        }
+
         // 列表家族互通：只要两端底层都为 java.util.List，就允许连接。
         // 例如 VECTOR_LIST -> LIST、COORDINATE_LIST -> VECTOR_LIST 等。
         if (outputType.getJavaClass() == java.util.List.class
@@ -228,10 +235,11 @@ public enum NodeDataType {
             outputType == TETRAHEDRON_GEOMETRY ||
             outputType == TORUS_GEOMETRY
         )) return true;
-        // 数字可放宽：整数/浮点可接到双精度
-        if (inputType == DOUBLE && (outputType == INTEGER || outputType == FLOAT)) return true;
-        if (inputType == FLOAT && outputType == INTEGER) return true;
         return false;
+    }
+
+    private static boolean isNumericType(NodeDataType type) {
+        return type == INTEGER || type == FLOAT || type == DOUBLE;
     }
 
     /**
