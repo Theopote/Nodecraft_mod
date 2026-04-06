@@ -33,7 +33,10 @@ public enum NodeDataType {
     BOX_FACE("box_face", "Box Face", BoxFaceData.class),
     CONE_GEOMETRY("cone_geometry", "Cone Geometry", ConeGeometryData.class),
     CYLINDER_GEOMETRY("cylinder_geometry", "Cylinder Geometry", CylinderGeometryData.class),
+    ELLIPSOID_GEOMETRY("ellipsoid_geometry", "Ellipsoid Geometry", EllipsoidGeometryData.class),
+    OCTAHEDRON_GEOMETRY("octahedron_geometry", "Octahedron Geometry", OctahedronGeometryData.class),
     PRISM_GEOMETRY("prism_geometry", "Prism Geometry", PrismGeometryData.class),
+    TETRAHEDRON_GEOMETRY("tetrahedron_geometry", "Tetrahedron Geometry", TetrahedronGeometryData.class),
     TORUS_GEOMETRY("torus_geometry", "Torus Geometry", TorusGeometryData.class),
     SPHERE("sphere", "球体", SphereData.class),
     SURFACE_STRIP("surface_strip", "Surface Strip", SurfaceStripData.class),
@@ -209,8 +212,11 @@ public enum NodeDataType {
             outputType == BOX_GEOMETRY ||
             outputType == CONE_GEOMETRY ||
             outputType == CYLINDER_GEOMETRY ||
+            outputType == ELLIPSOID_GEOMETRY ||
+            outputType == OCTAHEDRON_GEOMETRY ||
             outputType == PRISM_GEOMETRY ||
             outputType == SPHERE ||
+            outputType == TETRAHEDRON_GEOMETRY ||
             outputType == TORUS_GEOMETRY
         )) return true;
         // 数字可放宽：整数/浮点可接到双精度
