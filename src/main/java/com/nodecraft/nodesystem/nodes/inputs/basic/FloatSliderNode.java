@@ -89,13 +89,13 @@ protected float calculateUIHeight() {
 
     @Override
     protected float calculateMinUIWidth() {
-        float minWidth = 176.0f;
+        float minWidth = 176.0f + getContentMargin();
         if (showMinMaxLabels) {
             String rangeText = String.format("范围: " + formatString + " ~ " + formatString, minValue, maxValue);
-            minWidth = Math.max(minWidth, 176.0f);
+            minWidth = Math.max(minWidth, 176.0f + getContentMargin());
         }
         if (showSettingsPanel) {
-            minWidth = Math.max(minWidth, 176.0f);
+            minWidth = Math.max(minWidth, 176.0f + getContentMargin());
         }
         return minWidth;
     }
