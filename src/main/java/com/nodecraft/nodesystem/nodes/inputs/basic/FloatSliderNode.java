@@ -82,8 +82,7 @@ protected float calculateUIHeight() {
             height += getSmallPadding();
         }
         height += ImGui.getFrameHeight();
-        height += getSmallPadding();
-        height += getSmallPadding();
+        height += 1.0f;
         return height;
     }
 
@@ -129,7 +128,6 @@ protected float calculateUIHeight() {
                 changed = true;
             }
             l.popItemWidth();
-            l.addVerticalSpacing(getSmallPadding());
 
             if (false && showMinMaxLabels) {
                 String rangeText = String.format("范围: " + formatString + " ~ " + formatString, minValue, maxValue);
@@ -169,9 +167,7 @@ protected float calculateUIHeight() {
                     changed = true;
                 }
                 l.popItemWidth();
-                l.addVerticalSpacing(getSmallPadding());
             } else {
-                l.addVerticalSpacing(getSmallPadding());
             }
 
             return changed;
