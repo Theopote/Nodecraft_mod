@@ -31,7 +31,9 @@ public enum NodeDataType {
     GEOMETRY("geometry", "Geometry", GeometryData.class),
     BOX_GEOMETRY("box_geometry", "Box Geometry", BoxGeometryData.class),
     BOX_FACE("box_face", "Box Face", BoxFaceData.class),
+    CONE_GEOMETRY("cone_geometry", "Cone Geometry", ConeGeometryData.class),
     CYLINDER_GEOMETRY("cylinder_geometry", "Cylinder Geometry", CylinderGeometryData.class),
+    PRISM_GEOMETRY("prism_geometry", "Prism Geometry", PrismGeometryData.class),
     TORUS_GEOMETRY("torus_geometry", "Torus Geometry", TorusGeometryData.class),
     SPHERE("sphere", "球体", SphereData.class),
     SURFACE_STRIP("surface_strip", "Surface Strip", SurfaceStripData.class),
@@ -205,7 +207,9 @@ public enum NodeDataType {
         if (outputType == inputType) return true;
         if (inputType == GEOMETRY && (
             outputType == BOX_GEOMETRY ||
+            outputType == CONE_GEOMETRY ||
             outputType == CYLINDER_GEOMETRY ||
+            outputType == PRISM_GEOMETRY ||
             outputType == SPHERE ||
             outputType == TORUS_GEOMETRY
         )) return true;
