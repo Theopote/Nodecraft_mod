@@ -20,13 +20,26 @@ import java.util.Set;
 public final class SurfaceStripBridge {
     private static final double EPSILON = 1.0e-9d;
 
+    public enum BridgeMode {
+        RAILS_ONLY,
+        SECTIONS_ONLY,
+        LATTICE;
+
+        public boolean includeRails() {
+            return this == RAILS_ONLY || this == LATTICE;
+        }
+
+        public boolean includeSectionEdges() {
+            return this == SECTIONS_ONLY || this == LATTICE;
+        }
+    }
+
     private SurfaceStripBridge() {
     }
 
     public static BlockPosList voxelize(SurfaceStripData surfaceStrip,
                                         int longitudinalSteps,
-                                        boolean includeSectionEdges,
-                                        boolean includeRails) {
+                                        BridgeMode mode) {
         if (surfaceStrip == null) {
             return new BlockPosList();
         }
@@ -35,6 +48,9 @@ public final class SurfaceStripBridge {
         List<List<Vector3d>> sections = surfaceStrip.getSections();
         List<Boolean> closedFlags = surfaceStrip.getSectionClosedFlags();
         int resolvedSteps = Math.max(1, longitudinalSteps);
+        BridgeMode resolvedMode = mode == null ? BridgeMode.LATTICE : mode;
+        boolean includeSectionEdges = resolvedMode.includeSectionEdges();
+        boolean includeRails = resolvedMode.includeRails();
 
         if (includeSectionEdges) {
             for (int sectionIndex = 0; sectionIndex < sections.size(); sectionIndex++) {
@@ -67,8 +83,7 @@ public final class SurfaceStripBridge {
 
     public static @Nullable GeometryData toGeometry(SurfaceStripData surfaceStrip,
                                                     int longitudinalSteps,
-                                                    boolean includeSectionEdges,
-                                                    boolean includeRails,
+                                                    BridgeMode mode,
                                                     double radius) {
         if (surfaceStrip == null || radius <= 0.0d) {
             return null;
@@ -78,6 +93,9 @@ public final class SurfaceStripBridge {
         List<List<Vector3d>> sections = surfaceStrip.getSections();
         List<Boolean> closedFlags = surfaceStrip.getSectionClosedFlags();
         int resolvedSteps = Math.max(1, longitudinalSteps);
+        BridgeMode resolvedMode = mode == null ? BridgeMode.LATTICE : mode;
+        boolean includeSectionEdges = resolvedMode.includeSectionEdges();
+        boolean includeRails = resolvedMode.includeRails();
 
         if (includeSectionEdges) {
             for (int sectionIndex = 0; sectionIndex < sections.size(); sectionIndex++) {
@@ -155,8 +173,7 @@ public final class SurfaceStripBridge {
 
     public static int estimateGeometrySegmentCount(SurfaceStripData surfaceStrip,
                                                    int longitudinalSteps,
-                                                   boolean includeSectionEdges,
-                                                   boolean includeRails) {
+                                                   BridgeMode mode) {
         if (surfaceStrip == null) {
             return 0;
         }
@@ -168,6 +185,9 @@ public final class SurfaceStripBridge {
         }
 
         int resolvedSteps = Math.max(1, longitudinalSteps);
+        BridgeMode resolvedMode = mode == null ? BridgeMode.LATTICE : mode;
+        boolean includeSectionEdges = resolvedMode.includeSectionEdges();
+        boolean includeRails = resolvedMode.includeRails();
         int total = 0;
 
         if (includeSectionEdges) {
