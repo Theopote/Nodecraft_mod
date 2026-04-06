@@ -371,7 +371,7 @@ public class MenuBarRenderer {
 
             // 菜单栏最右侧关闭按钮
             float closeButtonWidth = 24.0f;
-            float rightEdgeX = ImGui.getWindowContentRegionMaxX();
+            float rightEdgeX = ImGui.getWindowWidth();
             float closeButtonPosX = rightEdgeX - closeButtonWidth;
             ImGui.setCursorPosX(closeButtonPosX);
             if (ImGui.button("×", closeButtonWidth, 0)) {
