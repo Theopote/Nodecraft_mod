@@ -65,10 +65,6 @@ public class CoordinateInputNode extends BaseCustomUINode {
     @Override
     protected float calculateUIHeight() {
         float height = getMediumPadding();
-        if (showLabel) {
-            height += ImGui.getTextLineHeight();
-            height += getSmallPadding();
-        }
         height += ImGui.getFrameHeight() * 3;
         height += getSmallPadding() * 2;
         height += getMediumPadding();
@@ -87,16 +83,6 @@ public class CoordinateInputNode extends BaseCustomUINode {
             float availableWidth = getAvailableContentWidth(width, zoom);
 
             l.addVerticalSpacing(getMediumPadding());
-
-            if (showLabel) {
-                String label = "Coordinate (" + x + ", " + y + ", " + z + ")";
-                float labelWidth = ImGui.calcTextSize(label).x;
-                setCenterX(availableWidth, labelWidth);
-                ImGui.pushStyleColor(ImGuiCol.Text, 0.75f, 0.75f, 0.75f, 1.0f);
-                ImGui.text(label);
-                ImGui.popStyleColor();
-                l.addVerticalSpacing(getSmallPadding());
-            }
 
             changed |= renderComponentInput("X", x, this::setX);
             l.addVerticalSpacing(getSmallPadding());

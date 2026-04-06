@@ -66,10 +66,6 @@ public class VectorInputNode extends BaseCustomUINode {
     @Override
     protected float calculateUIHeight() {
         float height = getMediumPadding();
-        if (showLabel) {
-            height += ImGui.getTextLineHeight();
-            height += getSmallPadding();
-        }
         height += ImGui.getFrameHeight() * 3;
         height += getSmallPadding() * 2;
         height += getMediumPadding();
@@ -88,17 +84,6 @@ public class VectorInputNode extends BaseCustomUINode {
             float availableWidth = getAvailableContentWidth(width, zoom);
 
             l.addVerticalSpacing(getMediumPadding());
-
-            if (showLabel) {
-                String format = "%." + getSafePrecision() + "f";
-                String label = "Vector (" + String.format(format, x) + ", " + String.format(format, y) + ", " + String.format(format, z) + ")";
-                float labelWidth = ImGui.calcTextSize(label).x;
-                setCenterX(availableWidth, labelWidth);
-                ImGui.pushStyleColor(ImGuiCol.Text, 0.75f, 0.75f, 0.75f, 1.0f);
-                ImGui.text(label);
-                ImGui.popStyleColor();
-                l.addVerticalSpacing(getSmallPadding());
-            }
 
             changed |= renderComponentInput("X", availableWidth, l, x, this::setX);
             l.addVerticalSpacing(getSmallPadding());

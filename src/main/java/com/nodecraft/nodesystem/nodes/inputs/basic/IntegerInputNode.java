@@ -71,54 +71,28 @@ public class IntegerInputNode extends BaseCustomUINode {
     @Override
     protected float calculateUIHeight() {
         float height = getMediumPadding();
-        if (showLabel) {
-            height += ImGui.getTextLineHeight();
-            height += getSmallPadding();
-        }
         height += ImGui.getFrameHeight();
-        height += getMediumPadding();
-        if (showRange) {
-            height += ImGui.getTextLineHeight();
-            height += getSmallPadding();
-        }
         height += getMediumPadding();
         return height;
     }
 
     @Override
     protected float calculateMinUIWidth() {
-        float minWidth = 140.0f;
-        if (showLabel) {
-            String labelText = "当前值: " + value;
-            minWidth = Math.max(minWidth, ImGui.calcTextSize(labelText).x);
-        }
-        if (showRange) {
-            String rangeText = getRangeText();
-            minWidth = Math.max(minWidth, ImGui.calcTextSize(rangeText).x);
-        }
-        return minWidth + getContentMargin();
+        return 140.0f + getContentMargin();
     }
 
     @Override
     protected boolean renderCustomUIScaled(float width, float height, float zoom) {
         return layout(zoom, l -> {
             boolean changed = false;
-            float availableWidth = l.getAvailableContentWidth(width);
+            float edgeMargin = l.toPixels(getMediumPadding());
+            float availableWidth = Math.max(0.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
+            float baseCursorX = ImGui.getCursorPosX();
 
             l.addVerticalSpacing(getMediumPadding());
-
-            if (showLabel) {
-                String labelText = "当前值: " + value;
-                float labelWidth = ImGui.calcTextSize(labelText).x;
-                setCenterX(availableWidth, labelWidth);
-                ImGui.pushStyleColor(ImGuiCol.Text, 0.75f, 0.75f, 0.75f, 1.0f);
-                ImGui.text(labelText);
-                ImGui.popStyleColor();
-                l.addVerticalSpacing(getSmallPadding());
-            }
-
-            float inputWidth = Math.min(140.0f, availableWidth - l.toPixels(20.0f));
-            setCenterX(availableWidth, l.toPixels(inputWidth));
+            float inputWidth = Math.min(140.0f, availableWidth / Math.max(zoom, 0.001f));
+            float inputWidthPx = l.toPixels(inputWidth);
+            ImGui.setCursorPosX(baseCursorX + edgeMargin + Math.max(0.0f, (availableWidth - inputWidthPx) * 0.5f));
             l.pushFramePadding(4.0f, 2.0f);
             l.setItemWidth(inputWidth);
 
@@ -130,18 +104,6 @@ public class IntegerInputNode extends BaseCustomUINode {
 
             l.popItemWidth();
             l.popStyleVar();
-            l.addVerticalSpacing(getMediumPadding());
-
-            if (showRange) {
-                String rangeText = getRangeText();
-                float textWidth = ImGui.calcTextSize(rangeText).x;
-                setCenterX(availableWidth, textWidth);
-                ImGui.pushStyleColor(ImGuiCol.Text, 0.60f, 0.60f, 0.60f, 1.0f);
-                ImGui.text(rangeText);
-                ImGui.popStyleColor();
-                l.addVerticalSpacing(getSmallPadding());
-            }
-
             l.addVerticalSpacing(getMediumPadding());
             return changed;
         });
