@@ -83,18 +83,19 @@ protected float calculateUIHeight() {
         }
         height += ImGui.getFrameHeight();
         height += getSmallPadding();
+        height += getSmallPadding();
         return height;
     }
 
     @Override
     protected float calculateMinUIWidth() {
-        float minWidth = 190.0f;
+        float minWidth = 176.0f;
         if (showMinMaxLabels) {
             String rangeText = String.format("范围: " + formatString + " ~ " + formatString, minValue, maxValue);
-            minWidth = Math.max(minWidth, ImGui.calcTextSize(rangeText).x + getContentMargin());
+            minWidth = Math.max(minWidth, 176.0f);
         }
         if (showSettingsPanel) {
-            minWidth = Math.max(minWidth, 260.0f);
+            minWidth = Math.max(minWidth, 176.0f);
         }
         return minWidth;
     }
