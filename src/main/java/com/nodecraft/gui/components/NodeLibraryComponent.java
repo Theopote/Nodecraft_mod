@@ -256,7 +256,10 @@ public class NodeLibraryComponent implements EditorComponent {
             // spatial子分类
             CATEGORY_COLORS_FLOAT.put("spatial.analysis", new float[]{0.95f, 0.95f, 0.35f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("spatial.arrays", new float[]{1.0f, 1.0f, 0.4f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("spatial.construct", new float[]{1.0f, 0.95f, 0.35f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("spatial.generators", new float[]{1.0f, 1.0f, 0.45f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("spatial.legacy", new float[]{0.85f, 0.85f, 0.45f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("spatial.modeling", new float[]{1.0f, 0.98f, 0.5f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("spatial.shapes", new float[]{1.0f, 1.0f, 0.45f, 1.0f});   // 兼容generators
             CATEGORY_COLORS_FLOAT.put("spatial.points", new float[]{1.0f, 1.0f, 0.5f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("spatial.voxel", new float[]{1.0f, 1.0f, 0.55f, 1.0f});
