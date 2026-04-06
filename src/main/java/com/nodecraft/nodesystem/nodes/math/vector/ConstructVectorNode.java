@@ -5,8 +5,8 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3d;
 import java.util.UUID;
 
 /**
@@ -51,7 +51,7 @@ public class ConstructVectorNode extends BaseNode {
         double z = getValueAsDouble(inputValues.get(INPUT_Z_ID), 0.0);
         
         // 创建 Vec3d
-        Vec3d result = new Vec3d(x, y, z);
+        Vector3d result = new Vector3d(x, y, z);
         
         // 设置输出值
         outputValues.put(OUTPUT_VECTOR_ID, result);
