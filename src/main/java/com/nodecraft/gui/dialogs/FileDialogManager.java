@@ -201,6 +201,22 @@ public class FileDialogManager {
         
         return true;
     }
+
+    /**
+     * 校验打开对话框中的当前文件名是否可打开。
+     */
+    private static boolean isOpenSelectionValid(String selectedName) {
+        if (selectedName == null || selectedName.isBlank()) {
+            return false;
+        }
+
+        Path selected = currentDirectory.resolve(selectedName.trim());
+        if (!Files.exists(selected) || Files.isDirectory(selected)) {
+            return false;
+        }
+
+        return matchesFilter(selected.getFileName().toString());
+    }
     
     /**
      * 渲染文件对话框
@@ -271,22 +287,32 @@ public class FileDialogManager {
             ImGui.text("文件名:");
             ImGui.sameLine();
             ImGui.inputText("###FileName", filename);
+            boolean canOpen = isOpenSelectionValid(filename.get());
             
             // 按钮行
             ImGui.separator();
-            if (ImGui.button("打开", 120, 0)) {
-                if (!filename.get().isEmpty()) {
-                    Path selected = currentDirectory.resolve(filename.get());
-                    if (Files.exists(selected) && !Files.isDirectory(selected)) {
-                        selectedPath = selected;
-                        showOpenDialog = false;
-                        
-                        // 调用回调函数
-                        if (callback != null) {
-                            callback.accept(selectedPath);
-                            callback = null;
-                        }
-                    }
+            if (!canOpen) {
+                ImGui.beginDisabled();
+            }
+            if (ImGui.button("打开", 120, 0) && canOpen) {
+                Path selected = currentDirectory.resolve(filename.get().trim());
+                selectedPath = selected;
+                showOpenDialog = false;
+
+                // 调用回调函数
+                if (callback != null) {
+                    callback.accept(selectedPath);
+                    callback = null;
+                }
+            }
+            if (!canOpen) {
+                ImGui.endDisabled();
+                if (ImGui.isItemHovered()) {
+                    ImGui.setTooltip("请选择存在且符合过滤条件的文件");
+                }
+                if (!filename.get().isBlank() && !matchesFilter(filename.get().trim())) {
+                    ImGui.sameLine();
+                    ImGui.textColored(1.0f, 0.72f, 0.2f, 1.0f, "仅支持 .nodecraft");
                 }
             }
             

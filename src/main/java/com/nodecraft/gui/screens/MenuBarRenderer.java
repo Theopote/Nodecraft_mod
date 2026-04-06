@@ -33,7 +33,7 @@ public class MenuBarRenderer {
     private final Runnable closeAction;
 
     // 文件过滤器
-    private static final String NODE_GRAPH_FILTER = "节点图文件 (*.nodecraft;*.json)";
+    private static final String NODE_GRAPH_FILTER = "节点图文件 (*.nodecraft)";
     private static final String DEFAULT_EXTENSION = ".nodecraft";
     
     // 最近文件路径
