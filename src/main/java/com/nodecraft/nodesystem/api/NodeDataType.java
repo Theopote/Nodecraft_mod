@@ -209,6 +209,14 @@ public enum NodeDataType {
         if (inputType == ANY) return true;
         if (outputType == ANY) return true;
         if (outputType == inputType) return true;
+
+        // 列表家族互通：只要两端底层都为 java.util.List，就允许连接。
+        // 例如 VECTOR_LIST -> LIST、COORDINATE_LIST -> VECTOR_LIST 等。
+        if (outputType.getJavaClass() == java.util.List.class
+                && inputType.getJavaClass() == java.util.List.class) {
+            return true;
+        }
+
         if (inputType == GEOMETRY && (
             outputType == BOX_GEOMETRY ||
             outputType == CONE_GEOMETRY ||
