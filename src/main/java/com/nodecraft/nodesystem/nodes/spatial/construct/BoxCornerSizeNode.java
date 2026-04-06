@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.generators;
+package com.nodecraft.nodesystem.nodes.spatial.construct;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -6,14 +6,14 @@ import com.nodecraft.nodesystem.core.BasePort;
 import net.minecraft.util.math.BlockPos;
 
 @NodeInfo(
-    id = "spatial.generators.box_center_size",
-    displayName = "Box by Center + Size",
-    description = "Generates a box from a center point and explicit X/Y/Z sizes",
-    category = "spatial.generators"
+    id = "spatial.generators.box_corner_size",
+    displayName = "Box by Corner + Size",
+    description = "Generates a box from one anchor corner and signed X/Y/Z sizes. Negative values grow in the opposite local axis direction.",
+    category = "spatial.construct"
 )
-public class BoxCenterSizeNode extends AbstractBoxGeneratorNode {
+public class BoxCornerSizeNode extends AbstractBoxGeneratorNode {
 
-    private static final String INPUT_CENTER_ID = "input_center";
+    private static final String INPUT_CORNER_ID = "input_corner";
     private static final String INPUT_PLANE_ID = "input_plane";
     private static final String INPUT_SIZE_X_ID = "input_size_x";
     private static final String INPUT_SIZE_Y_ID = "input_size_y";
@@ -22,14 +22,14 @@ public class BoxCenterSizeNode extends AbstractBoxGeneratorNode {
     private static final String INPUT_ROT_Y_ID = "input_rotation_y";
     private static final String INPUT_ROT_Z_ID = "input_rotation_z";
 
-    public BoxCenterSizeNode() {
-        super("spatial.generators.box_center_size");
+    public BoxCornerSizeNode() {
+        super("spatial.generators.box_corner_size");
 
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Center point of the box", NodeDataType.BLOCK_POS, this));
+        addInputPort(new BasePort(INPUT_CORNER_ID, "Corner", "Anchor corner of the box", NodeDataType.BLOCK_POS, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Optional reference plane used to orient the local X/Y/Z axes", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_SIZE_X_ID, "Size X", "Box size along local X. Negative values use the same size magnitude.", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_SIZE_Y_ID, "Size Y", "Box size along local Y. Negative values use the same size magnitude.", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_SIZE_Z_ID, "Size Z", "Box size along local Z. Negative values use the same size magnitude.", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_SIZE_X_ID, "Size X", "Signed size along local X. Negative values grow from the corner in the opposite X direction.", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_SIZE_Y_ID, "Size Y", "Signed size along local Y. Negative values grow from the corner in the opposite Y direction.", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_SIZE_Z_ID, "Size Z", "Signed size along local Z. Negative values grow from the corner in the opposite Z direction.", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_ROT_X_ID, "Rotation X", "Additional local rotation around the box X axis in degrees", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_ROT_Y_ID, "Rotation Y", "Additional local rotation around the box Y axis in degrees", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_ROT_Z_ID, "Rotation Z", "Additional local rotation around the box Z axis in degrees", NodeDataType.DOUBLE, this));
@@ -37,17 +37,17 @@ public class BoxCenterSizeNode extends AbstractBoxGeneratorNode {
 
     @Override
     public String getDescription() {
-        return "Generates a box from a center point and explicit X/Y/Z sizes";
+        return "Generates a box from one anchor corner and signed X/Y/Z sizes. Negative values grow in the opposite local axis direction.";
     }
 
     @Override
     public String getDisplayName() {
-        return "Box by Center + Size";
+        return "Box by Corner + Size";
     }
 
     @Override
     protected BoxDefinition resolveBoxDefinition() {
-        Object centerObj = inputValues.get(INPUT_CENTER_ID);
+        Object cornerObj = inputValues.get(INPUT_CORNER_ID);
         Object planeObj = inputValues.get(INPUT_PLANE_ID);
         Object sizeXObj = inputValues.get(INPUT_SIZE_X_ID);
         Object sizeYObj = inputValues.get(INPUT_SIZE_Y_ID);
@@ -56,7 +56,7 @@ public class BoxCenterSizeNode extends AbstractBoxGeneratorNode {
         Object rotYObj = inputValues.get(INPUT_ROT_Y_ID);
         Object rotZObj = inputValues.get(INPUT_ROT_Z_ID);
 
-        if (!(centerObj instanceof BlockPos center)
+        if (!(cornerObj instanceof BlockPos corner)
             || !(sizeXObj instanceof Number sizeX)
             || !(sizeYObj instanceof Number sizeY)
             || !(sizeZObj instanceof Number sizeZ)) {
@@ -67,8 +67,8 @@ public class BoxCenterSizeNode extends AbstractBoxGeneratorNode {
         double rotationY = rotYObj instanceof Number number ? number.doubleValue() : 0.0d;
         double rotationZ = rotZObj instanceof Number number ? number.doubleValue() : 0.0d;
 
-        return createCenterDefinition(
-            center,
+        return createCornerAndSizeDefinition(
+            corner,
             sizeX.intValue(),
             sizeY.intValue(),
             sizeZ.intValue(),

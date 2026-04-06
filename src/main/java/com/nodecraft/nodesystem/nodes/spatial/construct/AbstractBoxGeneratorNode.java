@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.generators;
+package com.nodecraft.nodesystem.nodes.spatial.construct;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeProperty;

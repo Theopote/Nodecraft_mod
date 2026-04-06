@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.generators;
+package com.nodecraft.nodesystem.nodes.spatial.construct;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -9,7 +9,7 @@ import net.minecraft.util.math.BlockPos;
     id = "spatial.generators.box_corners",
     displayName = "Box by Two Corners",
     description = "Generates an axis-aligned box from two opposite corner points",
-    category = "spatial.generators"
+    category = "spatial.construct"
 )
 public class BoxCornersNode extends AbstractBoxGeneratorNode {
 
