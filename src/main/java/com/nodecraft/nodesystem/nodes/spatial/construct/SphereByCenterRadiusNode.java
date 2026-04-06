@@ -14,7 +14,7 @@ import org.joml.Vector3d;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.generators.sphere_by_center_radius",
+    id = "spatial.construct.sphere_by_center_radius",
     displayName = "Sphere By Center Radius",
     description = "Constructs sphere geometry from a center point and radius",
     category = "spatial.construct"
@@ -32,7 +32,7 @@ public class SphereByCenterRadiusNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SphereByCenterRadiusNode() {
-        super(UUID.randomUUID(), "spatial.generators.sphere_by_center_radius");
+        super(UUID.randomUUID(), "spatial.construct.sphere_by_center_radius");
 
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Sphere center as point, vector, or block coordinate", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Sphere radius", NodeDataType.DOUBLE, this));

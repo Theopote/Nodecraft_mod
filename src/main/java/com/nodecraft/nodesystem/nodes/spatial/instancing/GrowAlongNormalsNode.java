@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.generators.grow_along_normals",
+    id = "spatial.instancing.grow_along_normals",
     displayName = "Grow Along Normals",
     description = "Builds cylinder geometry along point-normal pairs for generic growth and instancing workflows",
     category = "spatial.instancing"
@@ -55,7 +55,7 @@ public class GrowAlongNormalsNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public GrowAlongNormalsNode() {
-        super(UUID.randomUUID(), "spatial.generators.grow_along_normals");
+        super(UUID.randomUUID(), "spatial.instancing.grow_along_normals");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Base points for each growth instance", NodeDataType.LIST, this));
         addInputPort(new BasePort(INPUT_NORMALS_ID, "Normals", "Normals aligned by point index", NodeDataType.LIST, this));

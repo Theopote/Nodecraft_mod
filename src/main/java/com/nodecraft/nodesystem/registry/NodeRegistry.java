@@ -52,18 +52,20 @@ public class NodeRegistry {
         aliases.put("spatial.points.scalecoordinates", "spatial.points.scale_coordinates");
         aliases.put("spatial.points.mirrorcoordinates", "spatial.points.mirror_coordinates");
         aliases.put("spatial.points.randomizecoordinates", "spatial.points.randomize_coordinates");
+        aliases.put("spatial.generators.box_center_size", "spatial.construct.box_center_size");
+        aliases.put("spatial.generators.box_corners", "spatial.construct.box_corners");
+        aliases.put("spatial.generators.box_corner_size", "spatial.construct.box_corner_size");
+        aliases.put("spatial.generators.sphere_by_center_radius", "spatial.construct.sphere_by_center_radius");
+        aliases.put("spatial.generators.sphere_by_diameter", "spatial.construct.sphere_by_diameter");
+        aliases.put("spatial.generators.push_pull_box_face", "spatial.modeling.push_pull_box_face");
+        aliases.put("spatial.generators.extrude_box_face", "spatial.modeling.extrude_box_face");
+        aliases.put("spatial.generators.grow_along_normals", "spatial.instancing.grow_along_normals");
+        aliases.put("spatial.generators.grow_along_sphere_normal", "spatial.instancing.grow_along_sphere_normal");
         return Collections.unmodifiableMap(aliases);
     }
 
     private static Map<String, String> createNodeCategoryOverrides() {
         Map<String, String> overrides = new HashMap<>();
-        overrides.put("spatial.generators.box_center_size", "spatial.construct");
-        overrides.put("spatial.generators.box_corners", "spatial.construct");
-        overrides.put("spatial.generators.box_corner_size", "spatial.construct");
-        overrides.put("spatial.generators.sphere_by_center_radius", "spatial.construct");
-        overrides.put("spatial.generators.sphere_by_diameter", "spatial.construct");
-        overrides.put("spatial.generators.push_pull_box_face", "spatial.modeling");
-        overrides.put("spatial.generators.extrude_box_face", "spatial.modeling");
         return Collections.unmodifiableMap(overrides);
     }
 

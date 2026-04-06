@@ -16,7 +16,7 @@ import org.joml.Vector3d;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.generators.sphere_by_diameter",
+    id = "spatial.construct.sphere_by_diameter",
     displayName = "Sphere By Diameter",
     description = "Constructs sphere geometry from two diameter endpoints",
     category = "spatial.construct"
@@ -35,7 +35,7 @@ public class SphereByDiameterNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SphereByDiameterNode() {
-        super(UUID.randomUUID(), "spatial.generators.sphere_by_diameter");
+        super(UUID.randomUUID(), "spatial.construct.sphere_by_diameter");
 
         addInputPort(new BasePort(INPUT_START_ID, "Point A", "First diameter endpoint", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_END_ID, "Point B", "Second diameter endpoint", NodeDataType.ANY, this));

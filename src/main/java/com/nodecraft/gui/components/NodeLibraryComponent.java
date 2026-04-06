@@ -72,13 +72,8 @@ public class NodeLibraryComponent implements EditorComponent {
         categoryOrder.put("inputs.minecraft", inputsMinecraftOrder);
 
         Map<String, Integer> spatialGeneratorsOrder = new HashMap<>();
-        spatialGeneratorsOrder.put("spatial.generators.box_center_size", 0);
-        spatialGeneratorsOrder.put("spatial.generators.box_corners", 1);
-        spatialGeneratorsOrder.put("spatial.generators.box_corner_size", 2);
-        spatialGeneratorsOrder.put("spatial.generators.box_blocks", 3);
-        spatialGeneratorsOrder.put("spatial.generators.region_box_blocks", 4);
-        spatialGeneratorsOrder.put("spatial.generators.push_pull_box_face", 5);
-        spatialGeneratorsOrder.put("spatial.generators.extrude_box_face", 6);
+        spatialGeneratorsOrder.put("spatial.generators.box_blocks", 0);
+        spatialGeneratorsOrder.put("spatial.generators.region_box_blocks", 1);
         categoryOrder.put("spatial.generators", spatialGeneratorsOrder);
 
         Map<String, Integer> spatialConstructOrder = new HashMap<>();
@@ -92,11 +87,11 @@ public class NodeLibraryComponent implements EditorComponent {
         spatialConstructOrder.put("spatial.construct.ellipsoid_by_center_radii", 7);
         spatialConstructOrder.put("spatial.construct.octahedron_by_center_size", 8);
         spatialConstructOrder.put("spatial.construct.tetrahedron_by_center_edge", 9);
-        spatialConstructOrder.put("spatial.generators.box_center_size", 10);
-        spatialConstructOrder.put("spatial.generators.box_corners", 11);
-        spatialConstructOrder.put("spatial.generators.box_corner_size", 12);
-        spatialConstructOrder.put("spatial.generators.sphere_by_center_radius", 13);
-        spatialConstructOrder.put("spatial.generators.sphere_by_diameter", 14);
+        spatialConstructOrder.put("spatial.construct.box_center_size", 10);
+        spatialConstructOrder.put("spatial.construct.box_corners", 11);
+        spatialConstructOrder.put("spatial.construct.box_corner_size", 12);
+        spatialConstructOrder.put("spatial.construct.sphere_by_center_radius", 13);
+        spatialConstructOrder.put("spatial.construct.sphere_by_diameter", 14);
         categoryOrder.put("spatial.construct", spatialConstructOrder);
 
         Map<String, Integer> spatialAnalysisOrder = new HashMap<>();
@@ -148,13 +143,13 @@ public class NodeLibraryComponent implements EditorComponent {
         spatialModelingOrder.put("spatial.modeling.loft_point_lists", 6);
         spatialModelingOrder.put("spatial.modeling.sweep_point_list_along_path", 7);
         spatialModelingOrder.put("spatial.modeling.surface_strip_to_geometry", 8);
-        spatialModelingOrder.put("spatial.generators.push_pull_box_face", 9);
-        spatialModelingOrder.put("spatial.generators.extrude_box_face", 10);
+        spatialModelingOrder.put("spatial.modeling.push_pull_box_face", 9);
+        spatialModelingOrder.put("spatial.modeling.extrude_box_face", 10);
         categoryOrder.put("spatial.modeling", spatialModelingOrder);
 
         Map<String, Integer> spatialInstancingOrder = new HashMap<>();
-        spatialInstancingOrder.put("spatial.generators.grow_along_normals", 0);
-        spatialInstancingOrder.put("spatial.generators.grow_along_sphere_normal", 1);
+        spatialInstancingOrder.put("spatial.instancing.grow_along_normals", 0);
+        spatialInstancingOrder.put("spatial.instancing.grow_along_sphere_normal", 1);
         categoryOrder.put("spatial.instancing", spatialInstancingOrder);
 
         Map<String, Integer> spatialVoxelOrder = new HashMap<>();

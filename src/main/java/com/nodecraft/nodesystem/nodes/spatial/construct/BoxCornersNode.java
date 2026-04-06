@@ -6,7 +6,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import net.minecraft.util.math.BlockPos;
 
 @NodeInfo(
-    id = "spatial.generators.box_corners",
+    id = "spatial.construct.box_corners",
     displayName = "Box by Two Corners",
     description = "Generates an axis-aligned box from two opposite corner points",
     category = "spatial.construct"
@@ -17,7 +17,7 @@ public class BoxCornersNode extends AbstractBoxGeneratorNode {
     private static final String INPUT_CORNER_B_ID = "input_corner_b";
 
     public BoxCornersNode() {
-        super("spatial.generators.box_corners");
+        super("spatial.construct.box_corners");
 
         addInputPort(new BasePort(INPUT_CORNER_A_ID, "Corner A", "First corner of the box", NodeDataType.BLOCK_POS, this));
         addInputPort(new BasePort(INPUT_CORNER_B_ID, "Corner B", "Opposite corner of the box. The result stays axis-aligned.", NodeDataType.BLOCK_POS, this));

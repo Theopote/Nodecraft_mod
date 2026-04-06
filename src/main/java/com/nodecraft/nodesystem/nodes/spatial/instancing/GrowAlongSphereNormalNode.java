@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.generators.grow_along_sphere_normal",
+    id = "spatial.instancing.grow_along_sphere_normal",
     displayName = "Grow Along Sphere Normal",
     description = "Builds cylinder geometry growing outward from sphere surface points along their normals",
     category = "spatial.instancing"
@@ -57,7 +57,7 @@ public class GrowAlongSphereNormalNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public GrowAlongSphereNormalNode() {
-        super(UUID.randomUUID(), "spatial.generators.grow_along_sphere_normal");
+        super(UUID.randomUUID(), "spatial.instancing.grow_along_sphere_normal");
 
         addInputPort(new BasePort(INPUT_SPHERE_ID, "Sphere", "Sphere geometry used to derive fallback normals", NodeDataType.SPHERE, this));
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Sphere surface points to grow from", NodeDataType.LIST, this));

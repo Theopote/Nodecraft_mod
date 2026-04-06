@@ -14,7 +14,7 @@ import org.joml.Vector3d;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.generators.push_pull_box_face",
+    id = "spatial.modeling.push_pull_box_face",
     displayName = "Push/Pull Box Face",
     description = "Moves one box face along its normal and outputs a new box geometry",
     category = "spatial.modeling"
@@ -32,7 +32,7 @@ public class PushPullBoxFaceNode extends BaseNode {
     private static final String OUTPUT_RESOLVED_FACE_INDEX_ID = "output_resolved_face_index";
 
     public PushPullBoxFaceNode() {
-        super(UUID.randomUUID(), "spatial.generators.push_pull_box_face");
+        super(UUID.randomUUID(), "spatial.modeling.push_pull_box_face");
 
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "The source box geometry", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_FACE_ID, "Face", "Optional box face to modify", NodeDataType.BOX_FACE, this));

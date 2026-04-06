@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.generators.extrude_box_face",
+    id = "spatial.modeling.extrude_box_face",
     displayName = "Extrude Box Face",
     description = "Extrudes a box face into a new box segment and returns a composite geometry",
     category = "spatial.modeling"
@@ -35,7 +35,7 @@ public class ExtrudeBoxFaceNode extends BaseNode {
     private static final String OUTPUT_RESOLVED_FACE_INDEX_ID = "output_resolved_face_index";
 
     public ExtrudeBoxFaceNode() {
-        super(UUID.randomUUID(), "spatial.generators.extrude_box_face");
+        super(UUID.randomUUID(), "spatial.modeling.extrude_box_face");
 
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "The source box geometry", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_FACE_ID, "Face", "Optional box face to extrude", NodeDataType.BOX_FACE, this));
