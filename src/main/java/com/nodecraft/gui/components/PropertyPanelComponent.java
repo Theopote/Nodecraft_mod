@@ -657,6 +657,8 @@ public class PropertyPanelComponent implements EditorComponent {
     public void render(float x, float y, float width, float height, float windowPaddingX, float windowPaddingY) {
         if (!visible) return;
 
+        float baseScrollbarSize = ImGui.getStyle().getScrollbarSize();
+        ImGui.pushStyleVar(imgui.flag.ImGuiStyleVar.ScrollbarSize, baseScrollbarSize * 0.5f);
         try {
             checkAndCleanExpiredEditLocks();
 
@@ -690,6 +692,8 @@ public class PropertyPanelComponent implements EditorComponent {
         } catch (Exception e) {
             NodeCraft.LOGGER.error("Failed to render property panel", e);
             ImGui.textColored(1.0f, 0.2f, 0.2f, 1.0f, "Render error: " + e.getMessage());
+        } finally {
+            ImGui.popStyleVar();
         }
     }
     private void renderNodeInfo() {
