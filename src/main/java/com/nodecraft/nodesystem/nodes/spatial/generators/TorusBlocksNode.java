@@ -24,7 +24,7 @@ import java.util.UUID;
  * plane origin.
  */
 @NodeInfo(
-    id = "spatial.generators.torusblocks",
+    id = "spatial.generators.torus_blocks",
     displayName = "Torus (Blocks)",
     description = "Generates a torus block volume with optional plane-based orientation",
     category = "spatial.generators"
@@ -42,7 +42,7 @@ public class TorusBlocksNode extends BaseNode {
     private static final String OUTPUT_TORUS_GEOMETRY_ID = "output_torus_geometry";
 
     public TorusBlocksNode() {
-        super(UUID.randomUUID(), "spatial.generators.torusblocks");
+        super(UUID.randomUUID(), "spatial.generators.torus_blocks");
 
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Center point of the torus", NodeDataType.BLOCK_POS, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Optional plane used to orient the torus axis", NodeDataType.PLANE, this));

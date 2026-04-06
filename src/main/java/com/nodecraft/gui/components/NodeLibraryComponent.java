@@ -180,7 +180,7 @@ public class NodeLibraryComponent implements EditorComponent {
         spatialLegacyOrder.put("spatial.generators.cylinder_blocks", 10);
         spatialLegacyOrder.put("spatial.generators.cone_blocks", 11);
         spatialLegacyOrder.put("spatial.generators.ellipsoid_blocks", 12);
-        spatialLegacyOrder.put("spatial.generators.torusblocks", 13);
+        spatialLegacyOrder.put("spatial.generators.torus_blocks", 13);
         spatialLegacyOrder.put("spatial.generators.octahedron_blocks", 14);
         spatialLegacyOrder.put("spatial.generators.tetrahedron_blocks", 15);
         spatialLegacyOrder.put("spatial.generators.triangular_prism_blocks", 16);

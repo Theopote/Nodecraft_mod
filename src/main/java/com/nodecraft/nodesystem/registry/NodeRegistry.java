@@ -61,6 +61,20 @@ public class NodeRegistry {
         aliases.put("spatial.generators.extrude_box_face", "spatial.modeling.extrude_box_face");
         aliases.put("spatial.generators.grow_along_normals", "spatial.instancing.grow_along_normals");
         aliases.put("spatial.generators.grow_along_sphere_normal", "spatial.instancing.grow_along_sphere_normal");
+        aliases.put("spatial.generators.lineblocks", "spatial.generators.line_blocks");
+        aliases.put("spatial.generators.rectangleblocks", "spatial.generators.rectangle_blocks");
+        aliases.put("spatial.generators.boxblocks", "spatial.generators.box_blocks");
+        aliases.put("spatial.generators.circlesphereblocks", "spatial.generators.circle_sphere_blocks");
+        aliases.put("spatial.generators.cylinderblocks", "spatial.generators.cylinder_blocks");
+        aliases.put("spatial.generators.polylineblocks", "spatial.generators.polyline_blocks");
+        aliases.put("spatial.generators.curveblocks", "spatial.generators.curve_blocks");
+        aliases.put("spatial.generators.ellipsoidblocks", "spatial.generators.ellipsoid_blocks");
+        aliases.put("spatial.generators.coneblocks", "spatial.generators.cone_blocks");
+        aliases.put("spatial.generators.torusblocks", "spatial.generators.torus_blocks");
+        aliases.put("spatial.generators.octahedronblocks", "spatial.generators.octahedron_blocks");
+        aliases.put("spatial.generators.tetrahedronblocks", "spatial.generators.tetrahedron_blocks");
+        aliases.put("spatial.generators.triangularpyramidblocks", "spatial.generators.triangular_pyramid_blocks");
+        aliases.put("spatial.generators.triangularprismblocks", "spatial.generators.triangular_prism_blocks");
         return Collections.unmodifiableMap(aliases);
     }
 
