@@ -43,6 +43,13 @@ public class PrismGeometryData implements GeometryData {
         return List.copyOf(topVertices);
     }
 
+    public SurfaceStripData getSideSurfaceStrip() {
+        return new SurfaceStripData(
+            List.of(getBaseVertices(), getTopVertices()),
+            List.of(true, true)
+        );
+    }
+
     public Vector3d getExtrusionVector() {
         return new Vector3d(extrusionVector);
     }

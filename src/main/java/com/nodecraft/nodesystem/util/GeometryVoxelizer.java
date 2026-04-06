@@ -1,9 +1,11 @@
 package com.nodecraft.nodesystem.util;
 
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
+import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
+import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.datatypes.TorusGeometryData;
@@ -76,8 +78,14 @@ public final class GeometryVoxelizer {
         if (geometry instanceof BoxGeometryData boxGeometry) {
             return voxelizeBox(boxGeometry, fillSolid);
         }
+        if (geometry instanceof ConeGeometryData coneGeometry) {
+            return voxelizeCone(coneGeometry, fillSolid);
+        }
         if (geometry instanceof CylinderGeometryData cylinderGeometry) {
             return voxelizeCylinder(cylinderGeometry, fillSolid);
+        }
+        if (geometry instanceof PrismGeometryData prismGeometry) {
+            return voxelizePrism(prismGeometry, fillSolid);
         }
         if (geometry instanceof SphereData sphereGeometry) {
             return voxelizeSphere(sphereGeometry, fillSolid);
@@ -101,8 +109,14 @@ public final class GeometryVoxelizer {
                 )
                 : createAxisAlignedRegion(boxGeometry);
         }
+        if (geometry instanceof ConeGeometryData coneGeometry) {
+            return ConeBlockGenerator.createBoundingRegion(coneGeometry);
+        }
         if (geometry instanceof CylinderGeometryData cylinderGeometry) {
             return CylinderBlockGenerator.createBoundingRegion(cylinderGeometry);
+        }
+        if (geometry instanceof PrismGeometryData prismGeometry) {
+            return createPrismBoundingRegion(prismGeometry);
         }
         if (geometry instanceof SphereData sphereGeometry) {
             return SphereBlockGenerator.createBoundingRegion(sphereGeometry);
@@ -223,6 +237,23 @@ public final class GeometryVoxelizer {
         return blocks;
     }
 
+    public static BlockPosList voxelizeCone(ConeGeometryData geometry, boolean fillSolid) {
+        BlockPosList blocks = new BlockPosList();
+        RegionData region = ConeBlockGenerator.createBoundingRegion(geometry);
+        ConeBlockGenerator.populateCone(blocks, region, geometry, fillSolid);
+        return blocks;
+    }
+
+    public static BlockPosList voxelizePrism(PrismGeometryData geometry, boolean fillSolid) {
+        // First-pass bridge: prism side walls and section loops are approximated as a surface lattice.
+        // This keeps the new primitive in the voxel workflow until a dedicated solid prism rasterizer is added.
+        return SurfaceStripBridge.voxelize(
+            geometry.getSideSurfaceStrip(),
+            Math.max(1, (int) Math.ceil(Math.max(1.0d, geometry.getHeight()))),
+            SurfaceStripBridge.BridgeMode.LATTICE
+        );
+    }
+
     public static BlockPosList voxelizeSphere(SphereData geometry, boolean fillSolid) {
         return voxelizeSphere(
             geometry,
@@ -255,5 +286,36 @@ public final class GeometryVoxelizer {
             center.z + halfExtents.z
         );
         return new RegionData(minCorner, maxCorner);
+    }
+
+    public static RegionData createPrismBoundingRegion(PrismGeometryData geometry) {
+        double minX = Double.POSITIVE_INFINITY;
+        double minY = Double.POSITIVE_INFINITY;
+        double minZ = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+        double maxZ = Double.NEGATIVE_INFINITY;
+
+        for (Vector3d point : geometry.getBaseVertices()) {
+            minX = Math.min(minX, point.x);
+            minY = Math.min(minY, point.y);
+            minZ = Math.min(minZ, point.z);
+            maxX = Math.max(maxX, point.x);
+            maxY = Math.max(maxY, point.y);
+            maxZ = Math.max(maxZ, point.z);
+        }
+        for (Vector3d point : geometry.getTopVertices()) {
+            minX = Math.min(minX, point.x);
+            minY = Math.min(minY, point.y);
+            minZ = Math.min(minZ, point.z);
+            maxX = Math.max(maxX, point.x);
+            maxY = Math.max(maxY, point.y);
+            maxZ = Math.max(maxZ, point.z);
+        }
+
+        return new RegionData(
+            BlockPos.ofFloored(minX, minY, minZ),
+            BlockPos.ofFloored(maxX, maxY, maxZ)
+        );
     }
 }
