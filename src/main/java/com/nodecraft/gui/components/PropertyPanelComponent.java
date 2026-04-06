@@ -670,7 +670,7 @@ public class PropertyPanelComponent implements EditorComponent {
             ImGui.separator();
 
             if (selectedNode != null) {
-                if (ImGui.collapsingHeader("Basic Info", ImGuiTreeNodeFlags.DefaultOpen)) {
+                if (ImGui.collapsingHeader("Basic Info")) {
                     renderNodeInfo();
                 }
 
@@ -902,7 +902,7 @@ public class PropertyPanelComponent implements EditorComponent {
         }
 
         Map<String, List<PropertyDescriptor>> groupedProperties = properties.stream()
-                .collect(Collectors.groupingBy(prop -> prop.category));
+                .collect(Collectors.groupingBy(prop -> normalizePropertyCategory(prop.category)));
 
         if (groupedProperties.containsKey("")) {
             List<PropertyDescriptor> uncategorizedProps = groupedProperties.remove("");
@@ -913,11 +913,43 @@ public class PropertyPanelComponent implements EditorComponent {
         categories.sort(Comparator.naturalOrder());
 
         for (String category : categories) {
-            String formattedCategory = formatSingleWord(category);
-            if (!formattedCategory.isEmpty() && ImGui.collapsingHeader(formattedCategory, ImGuiTreeNodeFlags.DefaultOpen)) {
-                renderPropertyGroup(groupedProperties.get(category), category);
+            String formattedCategory = formatPropertyCategory(category);
+            if (!formattedCategory.isEmpty()) {
+                ImGui.pushStyleColor(ImGuiCol.Text, 0.72f, 0.76f, 0.82f, 1.0f);
+                boolean open = ImGui.collapsingHeader(formattedCategory, ImGuiTreeNodeFlags.DefaultOpen);
+                ImGui.popStyleColor();
+                if (open) {
+                    renderPropertyGroup(groupedProperties.get(category), category);
+                }
             }
         }
+    }
+
+    private String normalizePropertyCategory(String category) {
+        if (category == null) {
+            return "";
+        }
+        String trimmed = category.trim();
+        if (trimmed.isEmpty()) {
+            return "";
+        }
+        return switch (trimmed) {
+            case "精度" -> "数值";
+            case "UI设置", "UI璁剧疆" -> "UI设置";
+            case "数值", "鏁板€?" -> "数值";
+            case "范围", "鑼冨洿" -> "范围";
+            default -> trimmed;
+        };
+    }
+
+    private String formatPropertyCategory(String category) {
+        String normalized = normalizePropertyCategory(category);
+        return switch (normalized) {
+            case "UI设置" -> "UI Settings";
+            case "数值" -> "Values";
+            case "范围" -> "Range";
+            default -> formatSingleWord(normalized);
+        };
     }
 
     private void renderPropertyGroup(List<PropertyDescriptor> props, String categoryInternalName) {
