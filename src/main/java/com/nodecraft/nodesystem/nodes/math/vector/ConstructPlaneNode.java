@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -30,7 +31,7 @@ public class ConstructPlaneNode extends BaseNode {
     public ConstructPlaneNode() {
         super(UUID.randomUUID(), "math.vector.construct_plane");
 
-        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "A point on the plane", NodeDataType.BLOCK_POS, this));
+        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "A point on the plane. Supports Point, Vector, or Block Coordinate.", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_NORMAL_ID, "Normal", "Plane normal vector", NodeDataType.VECTOR, this));
 
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Constructed plane", NodeDataType.PLANE, this));
@@ -50,10 +51,10 @@ public class ConstructPlaneNode extends BaseNode {
         PlaneData plane = null;
         Vector3d normalizedNormal = null;
 
-        if (originObj instanceof BlockPos origin && normalObj instanceof Vector3d normal && normal.lengthSquared() > 1e-9) {
-            Vector3d originVec = new Vector3d(origin.getX(), origin.getY(), origin.getZ());
+        Vector3d originVec = resolvePoint(originObj);
+        if (originVec != null && normalObj instanceof Vector3d normal && normal.lengthSquared() > 1e-9) {
             normalizedNormal = new Vector3d(normal).normalize();
-            plane = new PlaneData(originVec, normalizedNormal);
+            plane = new PlaneData(new Vector3d(originVec), normalizedNormal);
         }
 
         outputValues.put(OUTPUT_PLANE_ID, plane);
@@ -68,5 +69,18 @@ public class ConstructPlaneNode extends BaseNode {
     @Override
     public void setNodeState(Object state) {
         // stateless
+    }
+
+    private Vector3d resolvePoint(Object value) {
+        if (value instanceof PointData pointData) {
+            return pointData.getPosition();
+        }
+        if (value instanceof Vector3d vector) {
+            return new Vector3d(vector);
+        }
+        if (value instanceof BlockPos blockPos) {
+            return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
+        }
+        return null;
     }
 }
