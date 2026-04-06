@@ -152,6 +152,11 @@ public class NodeLibraryComponent implements EditorComponent {
         spatialModelingOrder.put("spatial.generators.extrude_box_face", 10);
         categoryOrder.put("spatial.modeling", spatialModelingOrder);
 
+        Map<String, Integer> spatialInstancingOrder = new HashMap<>();
+        spatialInstancingOrder.put("spatial.generators.grow_along_normals", 0);
+        spatialInstancingOrder.put("spatial.generators.grow_along_sphere_normal", 1);
+        categoryOrder.put("spatial.instancing", spatialInstancingOrder);
+
         Map<String, Integer> spatialVoxelOrder = new HashMap<>();
         spatialVoxelOrder.put("spatial.voxel.geometry_to_blocks", 0);
         spatialVoxelOrder.put("spatial.voxel.surface_strip_to_blocks", 1);
@@ -259,6 +264,7 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("spatial.construct", new float[]{1.0f, 0.95f, 0.35f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("spatial.generators", new float[]{1.0f, 1.0f, 0.45f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("spatial.legacy", new float[]{0.85f, 0.85f, 0.45f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("spatial.instancing", new float[]{0.95f, 0.9f, 0.55f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("spatial.modeling", new float[]{1.0f, 0.98f, 0.5f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("spatial.shapes", new float[]{1.0f, 1.0f, 0.45f, 1.0f});   // 兼容generators
             CATEGORY_COLORS_FLOAT.put("spatial.points", new float[]{1.0f, 1.0f, 0.5f, 1.0f});

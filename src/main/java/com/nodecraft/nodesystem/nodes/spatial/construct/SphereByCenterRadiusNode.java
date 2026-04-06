@@ -1,85 +1,77 @@
-package com.nodecraft.nodesystem.nodes.spatial.generators;
+package com.nodecraft.nodesystem.nodes.spatial.construct;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.generators.sphere_by_diameter",
-    displayName = "Sphere By Diameter",
-    description = "Constructs sphere geometry from two diameter endpoints",
-    category = "spatial.generators"
+    id = "spatial.generators.sphere_by_center_radius",
+    displayName = "Sphere By Center Radius",
+    description = "Constructs sphere geometry from a center point and radius",
+    category = "spatial.construct"
 )
-public class SphereByDiameterNode extends BaseNode {
+public class SphereByCenterRadiusNode extends BaseNode {
 
-    private static final String INPUT_START_ID = "input_start";
-    private static final String INPUT_END_ID = "input_end";
+    private static final String INPUT_CENTER_ID = "input_center";
+    private static final String INPUT_RADIUS_ID = "input_radius";
 
     private static final String OUTPUT_SPHERE_ID = "output_sphere";
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_CENTER_ID = "output_center";
     private static final String OUTPUT_RADIUS_ID = "output_radius";
     private static final String OUTPUT_DIAMETER_ID = "output_diameter";
-    private static final String OUTPUT_DIAMETER_LINE_ID = "output_diameter_line";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
-    public SphereByDiameterNode() {
-        super(UUID.randomUUID(), "spatial.generators.sphere_by_diameter");
+    public SphereByCenterRadiusNode() {
+        super(UUID.randomUUID(), "spatial.generators.sphere_by_center_radius");
 
-        addInputPort(new BasePort(INPUT_START_ID, "Point A", "First diameter endpoint", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_END_ID, "Point B", "Second diameter endpoint", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Sphere center as point, vector, or block coordinate", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Sphere radius", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_SPHERE_ID, "Sphere", "Constructed sphere geometry", NodeDataType.SPHERE, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved sphere center", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_RADIUS_ID, "Radius", "Resolved radius", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_DIAMETER_ID, "Diameter", "Diameter length", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_DIAMETER_LINE_ID, "Diameter Line", "Line segment between both diameter endpoints", NodeDataType.LINE, this));
+        addOutputPort(new BasePort(OUTPUT_DIAMETER_ID, "Diameter", "Resolved diameter", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a sphere could be constructed", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Constructs sphere geometry from two diameter endpoints";
+        return "Constructs sphere geometry from a center point and radius";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d start = resolvePoint(inputValues.get(INPUT_START_ID));
-        Vector3d end = resolvePoint(inputValues.get(INPUT_END_ID));
+        Vector3d center = resolvePoint(inputValues.get(INPUT_CENTER_ID));
+        Object radiusObj = inputValues.get(INPUT_RADIUS_ID);
 
-        if (start == null || end == null) {
+        if (center == null || !(radiusObj instanceof Number radiusNumber)) {
             writeEmptyOutputs();
             return;
         }
 
-        Vector3d center = new Vector3d(start).add(end).mul(0.5d);
-        double diameter = start.distance(end);
-        double radius = diameter * 0.5d;
+        double radius = radiusNumber.doubleValue();
+        if (!Double.isFinite(radius) || radius < 0.0d) {
+            writeEmptyOutputs();
+            return;
+        }
 
         SphereData sphere = new SphereData(center, radius);
-        LineData diameterLine = new LineData(
-            new Vec3d(start.x, start.y, start.z),
-            new Vec3d(end.x, end.y, end.z)
-        );
-
         outputValues.put(OUTPUT_SPHERE_ID, sphere);
         outputValues.put(OUTPUT_GEOMETRY_ID, sphere);
         outputValues.put(OUTPUT_CENTER_ID, center);
         outputValues.put(OUTPUT_RADIUS_ID, radius);
-        outputValues.put(OUTPUT_DIAMETER_ID, diameter);
-        outputValues.put(OUTPUT_DIAMETER_LINE_ID, diameterLine);
+        outputValues.put(OUTPUT_DIAMETER_ID, radius * 2.0d);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
@@ -89,7 +81,6 @@ public class SphereByDiameterNode extends BaseNode {
         outputValues.put(OUTPUT_CENTER_ID, null);
         outputValues.put(OUTPUT_RADIUS_ID, 0.0d);
         outputValues.put(OUTPUT_DIAMETER_ID, 0.0d);
-        outputValues.put(OUTPUT_DIAMETER_LINE_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 

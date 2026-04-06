@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.generators;
+package com.nodecraft.nodesystem.nodes.spatial.instancing;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -21,12 +22,12 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.generators.grow_along_normals",
-    displayName = "Grow Along Normals",
-    description = "Builds cylinder geometry along point-normal pairs for generic growth and instancing workflows",
-    category = "spatial.generators"
+    id = "spatial.generators.grow_along_sphere_normal",
+    displayName = "Grow Along Sphere Normal",
+    description = "Builds cylinder geometry growing outward from sphere surface points along their normals",
+    category = "spatial.instancing"
 )
-public class GrowAlongNormalsNode extends BaseNode {
+public class GrowAlongSphereNormalNode extends BaseNode {
 
     private static final double EPSILON = 1.0e-9d;
 
@@ -36,12 +37,13 @@ public class GrowAlongNormalsNode extends BaseNode {
     @NodeProperty(displayName = "Radius", category = "Growth", order = 2)
     private double radius = 0.5d;
 
-    @NodeProperty(displayName = "Bidirectional", category = "Growth", order = 3)
+    @NodeProperty(displayName = "Use Input Normals", category = "Growth", order = 3)
+    private boolean useInputNormals = true;
+
+    @NodeProperty(displayName = "Bidirectional", category = "Growth", order = 4)
     private boolean bidirectional = false;
 
-    @NodeProperty(displayName = "Normalize Normals", category = "Growth", order = 4)
-    private boolean normalizeNormals = true;
-
+    private static final String INPUT_SPHERE_ID = "input_sphere";
     private static final String INPUT_POINTS_ID = "input_points";
     private static final String INPUT_NORMALS_ID = "input_normals";
     private static final String INPUT_LENGTH_ID = "input_length";
@@ -54,11 +56,12 @@ public class GrowAlongNormalsNode extends BaseNode {
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
-    public GrowAlongNormalsNode() {
-        super(UUID.randomUUID(), "spatial.generators.grow_along_normals");
+    public GrowAlongSphereNormalNode() {
+        super(UUID.randomUUID(), "spatial.generators.grow_along_sphere_normal");
 
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Base points for each growth instance", NodeDataType.LIST, this));
-        addInputPort(new BasePort(INPUT_NORMALS_ID, "Normals", "Normals aligned by point index", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_SPHERE_ID, "Sphere", "Sphere geometry used to derive fallback normals", NodeDataType.SPHERE, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Sphere surface points to grow from", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_NORMALS_ID, "Normals", "Optional normals aligned by point index", NodeDataType.LIST, this));
         addInputPort(new BasePort(INPUT_LENGTH_ID, "Length", "Optional growth length override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Optional cylinder radius override", NodeDataType.DOUBLE, this));
 
@@ -67,53 +70,58 @@ public class GrowAlongNormalsNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_BASE_POINTS_ID, "Base Points", "Base points used for each growth instance", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_TIP_POINTS_ID, "Tip Points", "Tip points reached after growth", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of generated growth instances", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when both point and normal lists were resolved", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when sphere and point list were resolved", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Builds cylinder geometry along point-normal pairs for generic growth and instancing workflows";
+        return "Builds cylinder geometry growing outward from sphere surface points along their normals";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
+        Object sphereObj = inputValues.get(INPUT_SPHERE_ID);
         Object pointsObj = inputValues.get(INPUT_POINTS_ID);
         Object normalsObj = inputValues.get(INPUT_NORMALS_ID);
 
-        if (!(pointsObj instanceof List<?> pointsInput) || !(normalsObj instanceof List<?> normalsInput)) {
+        if (!(sphereObj instanceof SphereData sphere) || !(pointsObj instanceof List<?> pointsInput)) {
             writeEmptyOutputs();
             return;
         }
 
+        List<?> normalsInput = normalsObj instanceof List<?> list ? list : List.of();
         double resolvedLength = resolvePositiveDouble(inputValues.get(INPUT_LENGTH_ID), length);
         double resolvedRadius = resolvePositiveDouble(inputValues.get(INPUT_RADIUS_ID), radius);
+        Vector3d center = sphere.getCenter();
 
         List<GeometryData> cylinders = new ArrayList<>();
         List<Vector3d> basePoints = new ArrayList<>();
         List<Vector3d> tipPoints = new ArrayList<>();
 
-        int count = Math.min(pointsInput.size(), normalsInput.size());
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < pointsInput.size(); i++) {
             Vector3d basePoint = resolvePoint(pointsInput.get(i));
-            Vector3d direction = resolvePoint(normalsInput.get(i));
-            if (basePoint == null || direction == null || direction.lengthSquared() <= EPSILON) {
+            if (basePoint == null) {
                 continue;
             }
 
-            Vector3d axis = new Vector3d(direction);
-            if (normalizeNormals) {
-                axis.normalize();
+            Vector3d direction = null;
+            if (useInputNormals && i < normalsInput.size()) {
+                direction = resolvePoint(normalsInput.get(i));
             }
-            if (axis.lengthSquared() <= EPSILON) {
+            if (direction == null || direction.lengthSquared() <= EPSILON) {
+                direction = new Vector3d(basePoint).sub(center);
+            }
+            if (direction.lengthSquared() <= EPSILON) {
                 continue;
             }
+            direction.normalize();
 
             Vector3d start = bidirectional
-                ? new Vector3d(basePoint).sub(new Vector3d(axis).mul(resolvedLength * 0.5d))
+                ? new Vector3d(basePoint).sub(new Vector3d(direction).mul(resolvedLength * 0.5d))
                 : new Vector3d(basePoint);
             Vector3d end = bidirectional
-                ? new Vector3d(basePoint).add(new Vector3d(axis).mul(resolvedLength * 0.5d))
-                : new Vector3d(basePoint).add(new Vector3d(axis).mul(resolvedLength));
+                ? new Vector3d(basePoint).add(new Vector3d(direction).mul(resolvedLength * 0.5d))
+                : new Vector3d(basePoint).add(new Vector3d(direction).mul(resolvedLength));
 
             cylinders.add(new CylinderGeometryData(start, end, resolvedRadius));
             basePoints.add(start);
@@ -140,8 +148,8 @@ public class GrowAlongNormalsNode extends BaseNode {
         Map<String, Object> state = new HashMap<>();
         state.put("length", length);
         state.put("radius", radius);
+        state.put("useInputNormals", useInputNormals);
         state.put("bidirectional", bidirectional);
-        state.put("normalizeNormals", normalizeNormals);
         return state;
     }
 
@@ -156,11 +164,11 @@ public class GrowAlongNormalsNode extends BaseNode {
         if (map.get("radius") instanceof Number value) {
             setRadius(value.doubleValue());
         }
+        if (map.get("useInputNormals") instanceof Boolean value) {
+            setUseInputNormals(value);
+        }
         if (map.get("bidirectional") instanceof Boolean value) {
             setBidirectional(value);
-        }
-        if (map.get("normalizeNormals") instanceof Boolean value) {
-            setNormalizeNormals(value);
         }
     }
 
@@ -182,21 +190,21 @@ public class GrowAlongNormalsNode extends BaseNode {
         markDirty();
     }
 
+    public boolean isUseInputNormals() {
+        return useInputNormals;
+    }
+
+    public void setUseInputNormals(boolean useInputNormals) {
+        this.useInputNormals = useInputNormals;
+        markDirty();
+    }
+
     public boolean isBidirectional() {
         return bidirectional;
     }
 
     public void setBidirectional(boolean bidirectional) {
         this.bidirectional = bidirectional;
-        markDirty();
-    }
-
-    public boolean isNormalizeNormals() {
-        return normalizeNormals;
-    }
-
-    public void setNormalizeNormals(boolean normalizeNormals) {
-        this.normalizeNormals = normalizeNormals;
         markDirty();
     }
 
