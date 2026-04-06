@@ -250,7 +250,8 @@ public enum NodeDataType {
     private static boolean isSemanticAliasCompatible(NodeDataType outputType, NodeDataType inputType) {
         boolean coordinateAlias = isCoordinateAlias(outputType) && isCoordinateAlias(inputType);
         boolean vectorAlias = isVectorAlias(outputType) && isVectorAlias(inputType);
-        return coordinateAlias || vectorAlias;
+        boolean coordinateListAlias = isCoordinateListAlias(outputType) && isCoordinateListAlias(inputType);
+        return coordinateAlias || vectorAlias || coordinateListAlias;
     }
 
     private static boolean isCoordinateAlias(NodeDataType type) {
@@ -259,6 +260,10 @@ public enum NodeDataType {
 
     private static boolean isVectorAlias(NodeDataType type) {
         return type == VECTOR || type == POSITION;
+    }
+
+    private static boolean isCoordinateListAlias(NodeDataType type) {
+        return type == COORDINATE_LIST || type == BLOCK_LIST;
     }
 
     /**
