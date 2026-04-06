@@ -23,6 +23,7 @@ public class NodeRegistry {
 
     private static NodeRegistry instance;
     private static final Map<String, String> NODE_ID_ALIASES = createNodeIdAliases();
+    private static final Map<String, String> NODE_CATEGORY_OVERRIDES = createNodeCategoryOverrides();
 
     private final Map<String, NodeInfo> nodeInfoMap = new HashMap<>();
     private final Map<String, NodeCategory> categoryMap = new HashMap<>();
@@ -54,12 +55,54 @@ public class NodeRegistry {
         return Collections.unmodifiableMap(aliases);
     }
 
+    private static Map<String, String> createNodeCategoryOverrides() {
+        Map<String, String> overrides = new HashMap<>();
+        overrides.put("spatial.generators.box_center_size", "spatial.construct");
+        overrides.put("spatial.generators.box_corners", "spatial.construct");
+        overrides.put("spatial.generators.box_corner_size", "spatial.construct");
+        overrides.put("spatial.generators.sphere_by_center_radius", "spatial.construct");
+        overrides.put("spatial.generators.sphere_by_diameter", "spatial.construct");
+        overrides.put("spatial.generators.push_pull_box_face", "spatial.modeling");
+        overrides.put("spatial.generators.extrude_box_face", "spatial.modeling");
+        return Collections.unmodifiableMap(overrides);
+    }
+
     private String normalizeNodeId(String nodeId) {
         if (nodeId == null) {
             return null;
         }
         String normalizedId = nodeId.toLowerCase();
         return NODE_ID_ALIASES.getOrDefault(normalizedId, normalizedId);
+    }
+
+    private String remapCategory(String normalizedNodeId, String categoryId) {
+        String normalizedCategoryId = categoryId == null ? "" : categoryId.toLowerCase();
+        String explicitOverride = NODE_CATEGORY_OVERRIDES.get(normalizedNodeId);
+        if (explicitOverride != null) {
+            return explicitOverride;
+        }
+        if ("spatial.generators".equals(normalizedCategoryId) && isLegacyDirectOutputNode(normalizedNodeId)) {
+            return "spatial.legacy";
+        }
+        return normalizedCategoryId;
+    }
+
+    private boolean isLegacyDirectOutputNode(String normalizedNodeId) {
+        return normalizedNodeId.endsWith("_blocks")
+            || normalizedNodeId.endsWith("blocks")
+            || normalizedNodeId.contains(".circle_sphere_blocks")
+            || normalizedNodeId.contains(".line_blocks")
+            || normalizedNodeId.contains(".polyline_blocks")
+            || normalizedNodeId.contains(".curve_blocks");
+    }
+
+    private String remapDescription(String targetCategoryId, String description) {
+        String safeDescription = description == null ? "" : description;
+        if (!"spatial.legacy".equals(targetCategoryId)) {
+            return safeDescription;
+        }
+        String prefix = "Legacy direct block output node. ";
+        return safeDescription.startsWith(prefix) ? safeDescription : prefix + safeDescription;
     }
 
     /**
@@ -173,6 +216,15 @@ public class NodeRegistry {
 
         // 标准化节点ID
         String normalizedId = nodeInfo.getId().toLowerCase();
+        String categoryId = remapCategory(normalizedId, nodeInfo.getCategoryId());
+        String description = remapDescription(categoryId, nodeInfo.getDescription());
+        NodeInfo normalizedNodeInfo = new NodeInfo(
+                normalizedId,
+                nodeInfo.getDisplayName(),
+                description,
+                categoryId,
+                nodeInfo.getNodeClass());
+        normalizedNodeInfo.setIcon(nodeInfo.getIcon());
 
         // 检查是否已存在
         if (nodeInfoMap.containsKey(normalizedId)) {
@@ -182,10 +234,9 @@ public class NodeRegistry {
         }
 
         // 注册节点
-        nodeInfoMap.put(normalizedId, nodeInfo);
+        nodeInfoMap.put(normalizedId, normalizedNodeInfo);
 
         // 确保分类存在 (调用 registerCategory 确保其父分类链也被处理)
-        String categoryId = nodeInfo.getCategoryId().toLowerCase();
         if (!categoryMap.containsKey(categoryId)) {
             // 如果分类不存在，则注册它，这将自动处理父分类链
             NodeCategory newCategoryForNode = new NodeCategory(categoryId, formatCategoryName(categoryId));
@@ -195,13 +246,13 @@ public class NodeRegistry {
         // 将节点添加到分类中
         NodeCategory category = categoryMap.get(categoryId);
         if (category != null) { // 确保分类确实存在（理论上应存在，因为上面已注册）
-            category.addNode(nodeInfo);
+            category.addNode(normalizedNodeInfo);
             NodeCraft.LOGGER.debug("注册节点: {} (ID: {}) 到类别 [{}]",
-                    nodeInfo.getDisplayName(), normalizedId, category.getDisplayName());
+                    normalizedNodeInfo.getDisplayName(), normalizedId, category.getDisplayName());
             return true;
         } else {
             NodeCraft.LOGGER.error("节点 {} (ID: {}) 注册失败：无法找到或创建分类 {}",
-                    nodeInfo.getDisplayName(), normalizedId, categoryId);
+                    normalizedNodeInfo.getDisplayName(), normalizedId, categoryId);
             nodeInfoMap.remove(normalizedId); // 回滚注册
             return false;
         }

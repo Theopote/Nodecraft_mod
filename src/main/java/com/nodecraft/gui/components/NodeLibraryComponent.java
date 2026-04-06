@@ -54,7 +54,9 @@ public class NodeLibraryComponent implements EditorComponent {
         previewOrder.put("visualization.preview.preview_paths", 6);
         previewOrder.put("visualization.preview.preview_regions", 7);
         previewOrder.put("visualization.preview.preview_labels", 8);
-        previewOrder.put("visualization.preview.clear_all_previews", 9);
+        previewOrder.put("visualization.preview.preview_surface_strip", 9);
+        previewOrder.put("visualization.preview.preview_polygon_profiles", 10);
+        previewOrder.put("visualization.preview.clear_all_previews", 11);
         categoryOrder.put("visualization.preview", previewOrder);
 
         Map<String, Integer> inputsMinecraftOrder = new HashMap<>();
@@ -78,6 +80,24 @@ public class NodeLibraryComponent implements EditorComponent {
         spatialGeneratorsOrder.put("spatial.generators.push_pull_box_face", 5);
         spatialGeneratorsOrder.put("spatial.generators.extrude_box_face", 6);
         categoryOrder.put("spatial.generators", spatialGeneratorsOrder);
+
+        Map<String, Integer> spatialConstructOrder = new HashMap<>();
+        spatialConstructOrder.put("spatial.construct.rectangle_on_plane", 0);
+        spatialConstructOrder.put("spatial.construct.regular_polygon_on_plane", 1);
+        spatialConstructOrder.put("spatial.construct.polygon_by_points", 2);
+        spatialConstructOrder.put("spatial.construct.prism_by_profile_vector", 3);
+        spatialConstructOrder.put("spatial.construct.prism_by_base_points_vector", 4);
+        spatialConstructOrder.put("spatial.construct.cylinder_by_axis_radius", 5);
+        spatialConstructOrder.put("spatial.construct.cone_by_base_apex_radius", 6);
+        spatialConstructOrder.put("spatial.construct.ellipsoid_by_center_radii", 7);
+        spatialConstructOrder.put("spatial.construct.octahedron_by_center_size", 8);
+        spatialConstructOrder.put("spatial.construct.tetrahedron_by_center_edge", 9);
+        spatialConstructOrder.put("spatial.generators.box_center_size", 10);
+        spatialConstructOrder.put("spatial.generators.box_corners", 11);
+        spatialConstructOrder.put("spatial.generators.box_corner_size", 12);
+        spatialConstructOrder.put("spatial.generators.sphere_by_center_radius", 13);
+        spatialConstructOrder.put("spatial.generators.sphere_by_diameter", 14);
+        categoryOrder.put("spatial.construct", spatialConstructOrder);
 
         Map<String, Integer> spatialAnalysisOrder = new HashMap<>();
         spatialAnalysisOrder.put("spatial.analysis.bounding_box", 0);
@@ -117,6 +137,57 @@ public class NodeLibraryComponent implements EditorComponent {
         spatialPointsOrder.put("spatial.points.mirror_coordinates", 15);
         spatialPointsOrder.put("spatial.points.randomize_coordinates", 16);
         categoryOrder.put("spatial.points", spatialPointsOrder);
+
+        Map<String, Integer> spatialModelingOrder = new HashMap<>();
+        spatialModelingOrder.put("spatial.modeling.resample_polygon_profile", 0);
+        spatialModelingOrder.put("spatial.modeling.extrude_profile", 1);
+        spatialModelingOrder.put("spatial.modeling.loft_profiles", 2);
+        spatialModelingOrder.put("spatial.modeling.sweep_profile_along_path", 3);
+        spatialModelingOrder.put("spatial.modeling.twist_point_list", 4);
+        spatialModelingOrder.put("spatial.modeling.extrude_point_list", 5);
+        spatialModelingOrder.put("spatial.modeling.loft_point_lists", 6);
+        spatialModelingOrder.put("spatial.modeling.sweep_point_list_along_path", 7);
+        spatialModelingOrder.put("spatial.modeling.surface_strip_to_geometry", 8);
+        spatialModelingOrder.put("spatial.generators.push_pull_box_face", 9);
+        spatialModelingOrder.put("spatial.generators.extrude_box_face", 10);
+        categoryOrder.put("spatial.modeling", spatialModelingOrder);
+
+        Map<String, Integer> spatialVoxelOrder = new HashMap<>();
+        spatialVoxelOrder.put("spatial.voxel.geometry_to_blocks", 0);
+        spatialVoxelOrder.put("spatial.voxel.surface_strip_to_blocks", 1);
+        spatialVoxelOrder.put("spatial.voxel.box_geometry_voxelizer", 2);
+        spatialVoxelOrder.put("spatial.voxel.sphere_geometry_voxelizer", 3);
+        spatialVoxelOrder.put("spatial.voxel.cylinder_geometry_voxelizer", 4);
+        spatialVoxelOrder.put("spatial.voxel.cone_geometry_voxelizer", 5);
+        spatialVoxelOrder.put("spatial.voxel.ellipsoid_geometry_voxelizer", 6);
+        spatialVoxelOrder.put("spatial.voxel.prism_geometry_voxelizer", 7);
+        spatialVoxelOrder.put("spatial.voxel.octahedron_geometry_voxelizer", 8);
+        spatialVoxelOrder.put("spatial.voxel.tetrahedron_geometry_voxelizer", 9);
+        spatialVoxelOrder.put("spatial.voxel.torus_geometry_voxelizer", 10);
+        categoryOrder.put("spatial.voxel", spatialVoxelOrder);
+
+        Map<String, Integer> spatialLegacyOrder = new HashMap<>();
+        spatialLegacyOrder.put("spatial.generators.line_blocks", 0);
+        spatialLegacyOrder.put("spatial.generators.rectangle_blocks", 1);
+        spatialLegacyOrder.put("spatial.generators.arc_blocks", 2);
+        spatialLegacyOrder.put("spatial.generators.semicircle_blocks", 3);
+        spatialLegacyOrder.put("spatial.generators.regular_polygon_blocks", 4);
+        spatialLegacyOrder.put("spatial.generators.star_blocks", 5);
+        spatialLegacyOrder.put("spatial.generators.ellipse_blocks", 6);
+        spatialLegacyOrder.put("spatial.generators.circle_sphere_blocks", 7);
+        spatialLegacyOrder.put("spatial.generators.box_blocks", 8);
+        spatialLegacyOrder.put("spatial.generators.region_box_blocks", 9);
+        spatialLegacyOrder.put("spatial.generators.cylinder_blocks", 10);
+        spatialLegacyOrder.put("spatial.generators.cone_blocks", 11);
+        spatialLegacyOrder.put("spatial.generators.ellipsoid_blocks", 12);
+        spatialLegacyOrder.put("spatial.generators.torusblocks", 13);
+        spatialLegacyOrder.put("spatial.generators.octahedron_blocks", 14);
+        spatialLegacyOrder.put("spatial.generators.tetrahedron_blocks", 15);
+        spatialLegacyOrder.put("spatial.generators.triangular_prism_blocks", 16);
+        spatialLegacyOrder.put("spatial.generators.triangular_pyramid_blocks", 17);
+        spatialLegacyOrder.put("spatial.generators.polyline_blocks", 18);
+        spatialLegacyOrder.put("spatial.generators.curve_blocks", 19);
+        categoryOrder.put("spatial.legacy", spatialLegacyOrder);
 
         return categoryOrder;
     }
