@@ -7,6 +7,11 @@ import org.joml.Vector3d;
 
 public final class SphereBlockGenerator {
 
+    public enum VoxelMode {
+        SOLID,
+        SHELL
+    }
+
     private SphereBlockGenerator() {
     }
 
@@ -28,6 +33,14 @@ public final class SphereBlockGenerator {
     }
 
     public static void populateSphere(BlockPosList blocks, RegionData region, SphereData geometry, boolean fillSolid) {
+        populateSphere(blocks, region, geometry, fillSolid ? VoxelMode.SOLID : VoxelMode.SHELL, 1.0d);
+    }
+
+    public static void populateSphere(BlockPosList blocks,
+                                      RegionData region,
+                                      SphereData geometry,
+                                      VoxelMode voxelMode,
+                                      double shellThickness) {
         if (region == null || !region.isComplete()) {
             return;
         }
@@ -40,7 +53,8 @@ public final class SphereBlockGenerator {
 
         Vector3d center = geometry.getCenter();
         double radius = Math.max(1.0d, geometry.getRadius());
-        double shellThreshold = Math.max(0.0d, radius - 1.0d);
+        double shellThreshold = Math.max(0.0d, radius - Math.max(0.0d, shellThickness));
+        boolean fillSolid = voxelMode == null || voxelMode == VoxelMode.SOLID;
 
         for (int x = minCorner.getX(); x <= maxCorner.getX(); x++) {
             for (int y = minCorner.getY(); y <= maxCorner.getY(); y++) {

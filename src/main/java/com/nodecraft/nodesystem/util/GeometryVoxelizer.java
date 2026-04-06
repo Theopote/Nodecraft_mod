@@ -224,9 +224,19 @@ public final class GeometryVoxelizer {
     }
 
     public static BlockPosList voxelizeSphere(SphereData geometry, boolean fillSolid) {
+        return voxelizeSphere(
+            geometry,
+            fillSolid ? SphereBlockGenerator.VoxelMode.SOLID : SphereBlockGenerator.VoxelMode.SHELL,
+            1.0d
+        );
+    }
+
+    public static BlockPosList voxelizeSphere(SphereData geometry,
+                                              SphereBlockGenerator.VoxelMode voxelMode,
+                                              double shellThickness) {
         BlockPosList blocks = new BlockPosList();
         RegionData region = SphereBlockGenerator.createBoundingRegion(geometry);
-        SphereBlockGenerator.populateSphere(blocks, region, geometry, fillSolid);
+        SphereBlockGenerator.populateSphere(blocks, region, geometry, voxelMode, shellThickness);
         return blocks;
     }
 

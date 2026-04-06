@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.SphereBlockGenerator;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -24,8 +25,16 @@ import java.util.UUID;
 )
 public class SphereGeometryVoxelizerNode extends BaseNode {
 
-    @NodeProperty(displayName = "Fill Sphere", category = "Shape", order = 1)
-    private boolean fillSphere = true;
+    public enum VoxelMode {
+        SOLID,
+        SHELL
+    }
+
+    @NodeProperty(displayName = "Voxel Mode", category = "Shape", order = 1)
+    private VoxelMode voxelMode = VoxelMode.SOLID;
+
+    @NodeProperty(displayName = "Shell Thickness", category = "Shape", order = 2)
+    private double shellThickness = 1.0d;
 
     private static final String INPUT_SPHERE_GEOMETRY_ID = "input_sphere_geometry";
     private static final String OUTPUT_BLOCKS_ID = "output_blocks";
@@ -53,7 +62,11 @@ public class SphereGeometryVoxelizerNode extends BaseNode {
         RegionData region = null;
 
         if (geometryObj instanceof SphereData geometry) {
-            blocks = GeometryVoxelizer.voxelizeSphere(geometry, fillSphere);
+            blocks = GeometryVoxelizer.voxelizeSphere(
+                geometry,
+                voxelMode == VoxelMode.SHELL ? SphereBlockGenerator.VoxelMode.SHELL : SphereBlockGenerator.VoxelMode.SOLID,
+                shellThickness
+            );
             region = GeometryVoxelizer.createBoundingRegion(geometry);
         }
 
@@ -62,13 +75,38 @@ public class SphereGeometryVoxelizerNode extends BaseNode {
         outputValues.put(OUTPUT_COUNT_ID, blocks.size());
     }
 
-    public boolean isFillSphere() {
-        return fillSphere;
+    public VoxelMode getVoxelMode() {
+        return voxelMode;
     }
 
-    public void setFillSphere(boolean fillSphere) {
-        if (this.fillSphere != fillSphere) {
-            this.fillSphere = fillSphere;
+    public void setVoxelMode(VoxelMode voxelMode) {
+        VoxelMode resolvedMode = voxelMode == null ? VoxelMode.SOLID : voxelMode;
+        if (this.voxelMode != resolvedMode) {
+            this.voxelMode = resolvedMode;
+            markDirty();
+        }
+    }
+
+    public void setVoxelModeString(String mode) {
+        if (mode == null || mode.isBlank()) {
+            setVoxelMode(VoxelMode.SOLID);
+            return;
+        }
+        try {
+            setVoxelMode(VoxelMode.valueOf(mode.trim().toUpperCase()));
+        } catch (IllegalArgumentException ignored) {
+            setVoxelMode(VoxelMode.SOLID);
+        }
+    }
+
+    public double getShellThickness() {
+        return shellThickness;
+    }
+
+    public void setShellThickness(double shellThickness) {
+        double resolvedThickness = Math.max(0.0d, shellThickness);
+        if (Double.compare(this.shellThickness, resolvedThickness) != 0) {
+            this.shellThickness = resolvedThickness;
             markDirty();
         }
     }
@@ -76,7 +114,8 @@ public class SphereGeometryVoxelizerNode extends BaseNode {
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
-        state.put("fillSphere", fillSphere);
+        state.put("voxelMode", voxelMode.name());
+        state.put("shellThickness", shellThickness);
         return state;
     }
 
@@ -86,7 +125,13 @@ public class SphereGeometryVoxelizerNode extends BaseNode {
             return;
         }
         if (map.get("fillSphere") instanceof Boolean fillValue) {
-            setFillSphere(fillValue);
+            setVoxelMode(fillValue ? VoxelMode.SOLID : VoxelMode.SHELL);
+        }
+        if (map.get("voxelMode") instanceof String voxelModeValue) {
+            setVoxelModeString(voxelModeValue);
+        }
+        if (map.get("shellThickness") instanceof Number shellThicknessValue) {
+            setShellThickness(shellThicknessValue.doubleValue());
         }
     }
 }
