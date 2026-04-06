@@ -65,11 +65,7 @@ public class BooleanToggleNode extends BaseCustomUINode {
     protected float calculateUIHeight() {
         float height = getMediumPadding();
         height += 24f;
-        if (showStateText) {
-            height += getSmallPadding();
-            height += ImGui.getTextLineHeight();
-        }
-        height += getMediumPadding();
+        height += getSmallPadding();
         return height;
     }
 
@@ -78,7 +74,7 @@ public class BooleanToggleNode extends BaseCustomUINode {
         float switchWidth = 50f;
         String longerLabel = trueLabel.length() > falseLabel.length() ? trueLabel : falseLabel;
         float labelWidth = ImGui.calcTextSize(longerLabel).x;
-        return Math.max(120f, switchWidth + labelWidth + 20f) + getContentMargin();
+        return Math.max(112f, switchWidth + labelWidth + 12f) + getContentMargin();
     }
 
     @Override
@@ -87,8 +83,9 @@ public class BooleanToggleNode extends BaseCustomUINode {
             boolean changed = false;
             boolean interacted = false;
 
-            float availableWidth = getAvailableContentWidth(width, zoom);
-            l.addVerticalSpacing(getMediumPadding());
+            float edgeMargin = l.toPixels(getSmallPadding());
+            float availableWidth = Math.max(80.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
+            float baseCursorX = ImGui.getCursorPosX();
 
             float switchWidth = 44f * zoom;
             float switchHeight = 22f * zoom;
@@ -98,7 +95,8 @@ public class BooleanToggleNode extends BaseCustomUINode {
             String currentLabel = value ? trueLabel : falseLabel;
             float labelWidth = ImGui.calcTextSize(currentLabel).x;
             float totalWidth = switchWidth + 8f * zoom + labelWidth;
-            setCenterX(availableWidth, totalWidth);
+            float localOffset = Math.max(0.0f, (availableWidth - totalWidth) * 0.5f);
+            ImGui.setCursorPosX(baseCursorX + edgeMargin + localOffset);
 
             ImVec2 cursor = ImGui.getCursorScreenPos();
             float switchX = cursor.x;
@@ -148,7 +146,7 @@ public class BooleanToggleNode extends BaseCustomUINode {
             ImGui.text(currentLabel);
             ImGui.popStyleColor();
 
-            if (showStateText) {
+            if (false && showStateText) {
                 l.addVerticalSpacing(getSmallPadding());
                 String stateText = value ? "● 已启用" : "● 已禁用";
                 float stateWidth = ImGui.calcTextSize(stateText).x;
@@ -158,7 +156,7 @@ public class BooleanToggleNode extends BaseCustomUINode {
                 ImGui.popStyleColor();
             }
 
-            l.addVerticalSpacing(getMediumPadding());
+            l.addVerticalSpacing(getSmallPadding());
             return interacted || changed;
         });
     }

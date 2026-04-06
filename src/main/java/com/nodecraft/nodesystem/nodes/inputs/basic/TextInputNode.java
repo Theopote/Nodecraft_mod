@@ -36,7 +36,7 @@ public class TextInputNode extends BaseCustomUINode {
 
     @NodeProperty(displayName = "多行模式", category = "UI设置", order = 10,
         description = "是否启用多行输入")
-    private boolean multiline = false;
+    private boolean multiline = true;
 
     @NodeProperty(displayName = "最大长度", category = "限制", order = 11,
         description = "允许输入的最大字符数")
@@ -75,11 +75,7 @@ public class TextInputNode extends BaseCustomUINode {
     @Override
     protected float calculateUIHeight() {
         float height = getMediumPadding();
-        if (multiline) {
-            height += ImGui.getFrameHeight() * getVisibleLineCount();
-        } else {
-            height += ImGui.getFrameHeight();
-        }
+        height += ImGui.getFrameHeight() * getVisibleLineCount();
         if (showLengthCounter) {
             height += getSmallPadding();
             height += ImGui.getTextLineHeight();
@@ -90,7 +86,7 @@ public class TextInputNode extends BaseCustomUINode {
 
     @Override
     protected float calculateMinUIWidth() {
-        return multiline ? 220f : 160f;
+        return 220f;
     }
 
     @Override
@@ -104,24 +100,13 @@ public class TextInputNode extends BaseCustomUINode {
             ensureBuffer();
             l.addVerticalSpacing(getMediumPadding());
 
-            if (multiline) {
-                float inputHeight = ImGui.getFrameHeight() * getVisibleLineCount();
-                ImGui.setCursorPosX(baseCursorX + edgeMargin);
-                l.pushFramePadding(4.0f, 3.0f);
-                if (ImGui.inputTextMultiline("##text_input", inputBuffer, availableWidth, inputHeight, ImGuiInputTextFlags.AllowTabInput)) {
-                    changed = applyBufferText(inputBuffer.get());
-                }
-                l.popStyleVar();
-            } else {
-                ImGui.setCursorPosX(baseCursorX + edgeMargin);
-                l.pushFramePadding(4.0f, 3.0f);
-                l.setItemWidth(availableWidth / Math.max(zoom, 0.001f));
-                if (ImGui.inputTextWithHint("##text_input", placeholder, inputBuffer)) {
-                    changed = applyBufferText(inputBuffer.get());
-                }
-                l.popItemWidth();
-                l.popStyleVar();
+            float inputHeight = ImGui.getFrameHeight() * getVisibleLineCount();
+            ImGui.setCursorPosX(baseCursorX + edgeMargin);
+            l.pushFramePadding(4.0f, 3.0f);
+            if (ImGui.inputTextMultiline("##text_input", inputBuffer, availableWidth, inputHeight, ImGuiInputTextFlags.AllowTabInput)) {
+                changed = applyBufferText(inputBuffer.get());
             }
+            l.popStyleVar();
 
             if (showLengthCounter) {
                 l.addVerticalSpacing(getSmallPadding());
@@ -163,7 +148,7 @@ public class TextInputNode extends BaseCustomUINode {
     }
 
     private void ensureBuffer() {
-        int bufferSize = multiline ? MULTI_LINE_BUF_SIZE : SINGLE_LINE_BUF_SIZE;
+        int bufferSize = MULTI_LINE_BUF_SIZE;
         if (inputBuffer == null || bufferNeedsSync) {
             inputBuffer = new ImString(bufferSize);
             inputBuffer.set(text);
@@ -173,9 +158,6 @@ public class TextInputNode extends BaseCustomUINode {
 
     private boolean applyBufferText(String rawText) {
         String newText = rawText != null ? rawText : "";
-        if (!multiline) {
-            newText = newText.replace("\n", " ").replace("\r", "");
-        }
         if (newText.length() > maxLength) {
             newText = newText.substring(0, maxLength);
         }
@@ -190,9 +172,6 @@ public class TextInputNode extends BaseCustomUINode {
 
     public void setText(String text) {
         String newText = text != null ? text : "";
-        if (!multiline) {
-            newText = newText.replace("\n", " ").replace("\r", "");
-        }
         if (newText.length() > maxLength) {
             newText = newText.substring(0, maxLength);
         }

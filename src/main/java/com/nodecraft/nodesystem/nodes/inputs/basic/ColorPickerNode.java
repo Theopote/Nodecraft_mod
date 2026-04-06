@@ -10,7 +10,6 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Color;
 import imgui.ImGui;
 import imgui.flag.ImGuiColorEditFlags;
-import imgui.type.ImBoolean;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -27,9 +26,6 @@ public class ColorPickerNode extends BaseCustomUINode {
 
     private static final float COLOR_PREVIEW_HEIGHT = 30.0f;
     private static final float COLOR_EDIT_HEIGHT = 120.0f;
-    private static final float TEXT_LINE_HEIGHT = 18.0f;
-    private static final float CHECKBOX_HEIGHT = 20.0f;
-
     private static final String OUTPUT_COLOR_ID = "output_color";
     private static final String OUTPUT_RED_ID = "output_red";
     private static final String OUTPUT_GREEN_ID = "output_green";
@@ -97,31 +93,13 @@ public class ColorPickerNode extends BaseCustomUINode {
         if (showPreview) {
             height += COLOR_PREVIEW_HEIGHT + getSmallPadding();
         }
-        height += COLOR_EDIT_HEIGHT + getMediumPadding();
-        if (showRGBValues) {
-            height += TEXT_LINE_HEIGHT * (includeAlpha ? 2 : 1) + getSmallPadding();
-        }
-        if (showHexValue) {
-            height += TEXT_LINE_HEIGHT + getSmallPadding();
-        }
-        if (showAlphaToggle) {
-            height += CHECKBOX_HEIGHT + getMediumPadding();
-        }
+        height += COLOR_EDIT_HEIGHT + getSmallPadding();
         return height;
     }
 
     @Override
     protected float calculateMinUIWidth() {
-        float minWidth = 220.0f;
-        if (showHexValue) {
-            String sampleHex = includeAlpha ? "Hex: #AARRGGBB" : "Hex: #RRGGBB";
-            minWidth = Math.max(minWidth, sampleHex.length() * 8.0f + 20.0f);
-        }
-        if (showRGBValues) {
-            String sampleRgb = "RGB: 1.000, 1.000, 1.000";
-            minWidth = Math.max(minWidth, sampleRgb.length() * 8.0f + 20.0f);
-        }
-        return minWidth + getContentMargin();
+        return 196.0f + getContentMargin();
     }
 
     @Override
@@ -134,42 +112,30 @@ public class ColorPickerNode extends BaseCustomUINode {
                 needsUIUpdate = false;
             }
 
-            float availableWidth = l.getAvailableContentWidth(width);
+            float edgeMargin = l.toPixels(getSmallPadding());
+            float availableWidth = Math.max(96.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
+            float baseCursorX = ImGui.getCursorPosX();
 
             if (showPreview) {
-                renderColorPreview(availableWidth, l);
+                renderColorPreview(availableWidth, l, baseCursorX, edgeMargin);
                 l.addVerticalSpacing(getSmallPadding());
             }
 
-            changed |= renderColorEditor(availableWidth, l);
-            l.addVerticalSpacing(getMediumPadding());
-
-            if (showRGBValues) {
-                renderRGBValues();
-                l.addVerticalSpacing(getSmallPadding());
-            }
-
-            if (showHexValue) {
-                ImGui.text("Hex: " + colorToHex());
-                l.addVerticalSpacing(getSmallPadding());
-            }
-
-            if (showAlphaToggle) {
-                changed |= renderAlphaToggle(l);
-            }
+            changed |= renderColorEditor(availableWidth, l, baseCursorX, edgeMargin);
 
             return changed;
         });
     }
 
-    private void renderColorPreview(float availableWidth, LayoutHelper l) {
+    private void renderColorPreview(float availableWidth, LayoutHelper l, float baseCursorX, float edgeMargin) {
         float buttonHeight = l.toPixels(COLOR_PREVIEW_HEIGHT);
+        ImGui.setCursorPosX(baseCursorX + edgeMargin);
         ImGui.pushItemWidth(availableWidth);
         ImGui.colorButton("##color_preview_" + getId(), colorArray, ImGuiColorEditFlags.AlphaPreview, availableWidth, buttonHeight);
         ImGui.popItemWidth();
     }
 
-    private boolean renderColorEditor(float availableWidth, LayoutHelper l) {
+    private boolean renderColorEditor(float availableWidth, LayoutHelper l, float baseCursorX, float edgeMargin) {
         int flags = ImGuiColorEditFlags.DisplayRGB
             | ImGuiColorEditFlags.InputRGB
             | ImGuiColorEditFlags.Float
@@ -183,6 +149,7 @@ public class ColorPickerNode extends BaseCustomUINode {
 
         l.pushFramePadding(4.0f, 4.0f);
         l.pushFrameRounding(3.0f);
+        ImGui.setCursorPosX(baseCursorX + edgeMargin);
         ImGui.pushItemWidth(availableWidth);
         boolean changed = includeAlpha
             ? ImGui.colorEdit4("##color_edit_" + getId(), colorArray, flags)
@@ -192,24 +159,6 @@ public class ColorPickerNode extends BaseCustomUINode {
 
         if (changed) {
             onColorChangedFromUI();
-        }
-        return changed;
-    }
-
-    private void renderRGBValues() {
-        ImGui.text(String.format("RGB: %.3f, %.3f, %.3f", colorArray[0], colorArray[1], colorArray[2]));
-        if (includeAlpha) {
-            ImGui.text(String.format("Alpha: %.3f", colorArray[3]));
-        }
-    }
-
-    private boolean renderAlphaToggle(LayoutHelper l) {
-        l.pushFramePadding(2.0f, 2.0f);
-        ImBoolean alphaToggle = new ImBoolean(includeAlpha);
-        boolean changed = ImGui.checkbox("Include Alpha##" + getId(), alphaToggle);
-        l.popStyleVar();
-        if (changed) {
-            setIncludeAlpha(alphaToggle.get());
         }
         return changed;
     }
@@ -229,17 +178,6 @@ public class ColorPickerNode extends BaseCustomUINode {
         colorArray[1] = color.getGreen();
         colorArray[2] = color.getBlue();
         colorArray[3] = color.getAlpha();
-    }
-
-    private String colorToHex() {
-        int r = Math.max(0, Math.min(255, Math.round(colorArray[0] * 255)));
-        int g = Math.max(0, Math.min(255, Math.round(colorArray[1] * 255)));
-        int b = Math.max(0, Math.min(255, Math.round(colorArray[2] * 255)));
-        if (includeAlpha) {
-            int a = Math.max(0, Math.min(255, Math.round(colorArray[3] * 255)));
-            return String.format("#%02X%02X%02X%02X", a, r, g, b);
-        }
-        return String.format("#%02X%02X%02X", r, g, b);
     }
 
     public Color getColor() {

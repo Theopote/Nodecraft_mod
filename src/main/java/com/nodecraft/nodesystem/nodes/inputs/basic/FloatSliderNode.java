@@ -75,31 +75,20 @@ public class FloatSliderNode extends BaseCustomUINode {
     }
 
     @Override
-    protected float calculateUIHeight() {
+protected float calculateUIHeight() {
         float height = getMediumPadding();
         if (showValueInput) {
-            height += ImGui.getTextLineHeight();
-            height += getSmallPadding();
             height += ImGui.getFrameHeight();
-            height += getMediumPadding();
+            height += getSmallPadding();
         }
         height += ImGui.getFrameHeight();
-        height += getMediumPadding();
-        if (showMinMaxLabels) {
-            height += ImGui.getTextLineHeight();
-            height += getSmallPadding();
-        }
-        if (showSettingsPanel) {
-            height += ImGui.getFrameHeight() * 3;
-            height += getMediumPadding() * 3;
-        }
-        height += getMediumPadding();
+        height += getSmallPadding();
         return height;
     }
 
     @Override
     protected float calculateMinUIWidth() {
-        float minWidth = 210.0f;
+        float minWidth = 190.0f;
         if (showMinMaxLabels) {
             String rangeText = String.format("范围: " + formatString + " ~ " + formatString, minValue, maxValue);
             minWidth = Math.max(minWidth, ImGui.calcTextSize(rangeText).x + getContentMargin());
@@ -114,9 +103,9 @@ public class FloatSliderNode extends BaseCustomUINode {
     protected boolean renderCustomUIScaled(float width, float height, float zoom) {
         return layout(zoom, l -> {
             boolean changed = false;
-            float availableWidth = l.getAvailableContentWidth(width);
-
-            l.addVerticalSpacing(getMediumPadding());
+            float edgeMargin = l.toPixels(getSmallPadding());
+            float availableWidth = Math.max(96.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
+            float baseCursorX = ImGui.getCursorPosX();
 
             if (showValueInput) {
                 String labelText = "当前值: " + String.format(formatString, currentValue);
@@ -148,7 +137,7 @@ public class FloatSliderNode extends BaseCustomUINode {
             l.popItemWidth();
             l.addVerticalSpacing(getMediumPadding());
 
-            if (showMinMaxLabels) {
+            if (false && showMinMaxLabels) {
                 String rangeText = String.format("范围: " + formatString + " ~ " + formatString, minValue, maxValue);
                 float rangeWidth = ImGui.calcTextSize(rangeText).x;
                 setCenterX(availableWidth, rangeWidth);
@@ -158,7 +147,7 @@ public class FloatSliderNode extends BaseCustomUINode {
                 l.addVerticalSpacing(getSmallPadding());
             }
 
-            if (showSettingsPanel) {
+            if (false && showSettingsPanel) {
                 ImGui.separator();
                 l.addVerticalSpacing(getSmallPadding());
 
