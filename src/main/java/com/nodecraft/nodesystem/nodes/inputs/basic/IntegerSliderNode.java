@@ -7,7 +7,6 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import imgui.ImGui;
-import imgui.flag.ImGuiCol;
 import imgui.type.ImInt;
 import org.jetbrains.annotations.Nullable;
 
@@ -75,8 +74,6 @@ public class IntegerSliderNode extends BaseCustomUINode {
         float height = getMediumPadding();
 
         if (!compact && showValueInput) {
-            height += ImGui.getTextLineHeight();
-            height += getSmallPadding();
             height += ImGui.getFrameHeight();
             height += getMediumPadding();
         }
@@ -84,23 +81,13 @@ public class IntegerSliderNode extends BaseCustomUINode {
         height += ImGui.getFrameHeight();
         height += getMediumPadding();
 
-        if (!compact && showRangeInfo) {
-            height += ImGui.getTextLineHeight();
-            height += getSmallPadding();
-        }
-
         height += getMediumPadding();
         return height;
     }
 
     @Override
     protected float calculateMinUIWidth() {
-        float width = compact ? 180.0f : 220.0f;
-        if (!compact && showRangeInfo) {
-            String infoText = String.format("范围: %d ~ %d  步长: %d", min, max, step);
-            width = Math.max(width, ImGui.calcTextSize(infoText).x + getContentMargin());
-        }
-        return width;
+        return compact ? 180.0f : 220.0f;
     }
 
     @Override
@@ -108,49 +95,55 @@ public class IntegerSliderNode extends BaseCustomUINode {
         return layout(zoom, l -> {
             boolean changed = false;
             boolean interacted = false;
-            float availableWidth = getAvailableContentWidth(width, zoom);
+            float edgeMargin = l.toPixels(getSmallPadding());
+            float availableWidth = Math.max(96.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
+            float baseCursorX = ImGui.getCursorPosX();
 
             l.addVerticalSpacing(getMediumPadding());
 
             if (!compact && showValueInput) {
-                String labelText = "当前值: " + value;
-                float labelWidth = ImGui.calcTextSize(labelText).x;
-                setCenterX(availableWidth, labelWidth);
-                ImGui.pushStyleColor(ImGuiCol.Text, 0.80f, 0.80f, 0.80f, 1.0f);
-                ImGui.text(labelText);
-                ImGui.popStyleColor();
-                l.addVerticalSpacing(getSmallPadding());
-
+                float buttonHeight = ImGui.getFrameHeight();
+                float buttonWidth = buttonHeight;
+                float spacingX = ImGui.getStyle().getItemSpacingX();
                 float inputWidth = Math.min(120.0f, availableWidth / Math.max(zoom, 0.001f));
-                setCenterX(availableWidth, l.toPixels(inputWidth));
+                float inputPixelWidth = l.toPixels(inputWidth);
+                float rowWidth = buttonWidth * 2.0f + spacingX * 2.0f + inputPixelWidth;
+
+                ImGui.setCursorPosX(baseCursorX + edgeMargin + Math.max(0.0f, (availableWidth - rowWidth) * 0.5f));
+                ImGui.pushID("input_minus_btn");
+                if (ImGui.button("-", buttonWidth, buttonHeight)) {
+                    setValue(value - step);
+                    changed = true;
+                }
+                interacted |= ImGui.isItemHovered() || ImGui.isItemActive();
+                ImGui.popID();
+
+                ImGui.sameLine();
                 l.pushFramePadding(4.0f, 2.0f);
                 l.setItemWidth(inputWidth);
                 ImInt inputValue = new ImInt(value);
-                if (ImGui.inputInt("##value_input", inputValue, step, Math.max(step * 10, 1))) {
+                if (ImGui.inputInt("##value_input", inputValue, 0, 0)) {
                     setValue(inputValue.get());
                     changed = true;
                 }
                 interacted |= ImGui.isItemHovered() || ImGui.isItemActive();
                 l.popItemWidth();
                 l.popStyleVar();
+
+                ImGui.sameLine();
+                ImGui.pushID("input_plus_btn");
+                if (ImGui.button("+", buttonWidth, buttonHeight)) {
+                    setValue(value + step);
+                    changed = true;
+                }
+                interacted |= ImGui.isItemHovered() || ImGui.isItemActive();
+                ImGui.popID();
+
                 l.addVerticalSpacing(getMediumPadding());
             }
 
-            float buttonHeight = ImGui.getFrameHeight();
-            float buttonWidth = buttonHeight;
-            float spacingX = ImGui.getStyle().getItemSpacingX();
-            float sliderWidth = Math.max(availableWidth - (buttonWidth * 2 + spacingX * 2), l.toPixels(80.0f));
-
-            ImGui.pushID("minus_btn");
-            if (ImGui.button("-", buttonWidth, buttonHeight)) {
-                setValue(value - step);
-                changed = true;
-            }
-            interacted |= ImGui.isItemHovered() || ImGui.isItemActive();
-            ImGui.popID();
-
-            ImGui.sameLine();
-            l.setItemWidth(sliderWidth / Math.max(zoom, 0.001f));
+            ImGui.setCursorPosX(baseCursorX + edgeMargin);
+            l.setItemWidth(availableWidth / Math.max(zoom, 0.001f));
             int[] sliderValue = {value};
             if (ImGui.sliderInt("##slider", sliderValue, min, max)) {
                 setValue(sliderValue[0]);
@@ -159,26 +152,7 @@ public class IntegerSliderNode extends BaseCustomUINode {
             interacted |= ImGui.isItemHovered() || ImGui.isItemActive();
             l.popItemWidth();
 
-            ImGui.sameLine();
-            ImGui.pushID("plus_btn");
-            if (ImGui.button("+", buttonWidth, buttonHeight)) {
-                setValue(value + step);
-                changed = true;
-            }
-            interacted |= ImGui.isItemHovered() || ImGui.isItemActive();
-            ImGui.popID();
-
             l.addVerticalSpacing(getMediumPadding());
-
-            if (!compact && showRangeInfo) {
-                String infoText = String.format("范围: %d ~ %d  步长: %d", min, max, step);
-                float infoWidth = ImGui.calcTextSize(infoText).x;
-                setCenterX(availableWidth, infoWidth);
-                ImGui.pushStyleColor(ImGuiCol.Text, 0.65f, 0.65f, 0.65f, 1.0f);
-                ImGui.text(infoText);
-                ImGui.popStyleColor();
-                l.addVerticalSpacing(getSmallPadding());
-            }
 
             l.addVerticalSpacing(getMediumPadding());
             return interacted || changed;
