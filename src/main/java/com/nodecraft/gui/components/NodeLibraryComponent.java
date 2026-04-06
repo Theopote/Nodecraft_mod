@@ -253,7 +253,7 @@ public class NodeLibraryComponent implements EditorComponent {
         static final float GRID_TILE_TEXT_PADDING = 6f;
         static final float GRID_TILE_SIZE_SCALE = 1.5f;
         static final float GRID_TILE_SIZE_SCALE_MIN = 1.0f;
-        static final float GRID_TILE_SIZE_SCALE_MAX = 3.0f;
+        static final float GRID_TILE_SIZE_SCALE_MAX = 2.0f;
         static final String DRAG_DROP_PAYLOAD_TYPE = "DND_NODE_FROM_LIBRARY";
 
         static final Map<String, float[]> CATEGORY_COLORS_FLOAT = new HashMap<>();
@@ -1187,7 +1187,8 @@ public class NodeLibraryComponent implements EditorComponent {
 
     private void renderNodesAsGrid(List<NodeInfo> nodesToRender, DisplayCategory displayCategory) {
         float listLikeSpacing = ImGui.getStyle().getItemSpacingY();
-        float tileSide = ImGui.getTextLineHeight() * gridTileSizeScale;
+        // 1x 基准：分类标签行高（ImGui frame height）
+        float tileSide = ImGui.getFrameHeight() * gridTileSizeScale;
         float spacingX = listLikeSpacing;
         float spacingY = listLikeSpacing;
         float availableWidth = Math.max(tileSide, ImGui.getContentRegionAvailX());

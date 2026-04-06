@@ -213,13 +213,13 @@ public class MenuBarRenderer {
                         ImGui.separator();
                         if (ImGui.beginMenu("平铺尺寸倍率")) {
                             float scale = nodeLibrary.getGridTileSizeScale();
-                            if (ImGui.menuItem("1.2x", null, Math.abs(scale - 1.2f) < 0.001f)) {
-                                nodeLibrary.setGridTileSizeScale(1.2f);
+                            if (ImGui.menuItem("1x", null, Math.abs(scale - 1.0f) < 0.001f)) {
+                                nodeLibrary.setGridTileSizeScale(1.0f);
                             }
                             if (ImGui.menuItem("1.5x", null, Math.abs(scale - 1.5f) < 0.001f)) {
                                 nodeLibrary.setGridTileSizeScale(1.5f);
                             }
-                            if (ImGui.menuItem("2.0x", null, Math.abs(scale - 2.0f) < 0.001f)) {
+                            if (ImGui.menuItem("2x", null, Math.abs(scale - 2.0f) < 0.001f)) {
                                 nodeLibrary.setGridTileSizeScale(2.0f);
                             }
                             ImGui.endMenu();
