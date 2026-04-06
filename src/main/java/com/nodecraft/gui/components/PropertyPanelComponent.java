@@ -10,8 +10,8 @@ import com.nodecraft.nodesystem.nodes.utilities.assist.SignalForkNode;
 import com.nodecraft.nodesystem.nodes.utilities.assist.SignalMergeNode;
 import com.nodecraft.nodesystem.nodes.utilities.assist.TagRelayNode;
 import com.nodecraft.nodesystem.util.Vec3; // 确保 Vec3 可用
+import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
-import com.nodecraft.gui.editor.impl.NodePosition; // 添加 NodePosition 导入
 import imgui.ImGui;
 import imgui.ImVec4;
 import imgui.flag.ImGuiInputTextFlags;
@@ -88,9 +88,10 @@ public class PropertyPanelComponent implements EditorComponent {
         // 使用默认的graphProvider
     }
 
-    public PropertyPanelComponent(NodeGraphProvider graphProvider) {
-        if (graphProvider != null) {
-            this.graphProvider = graphProvider;
+    private void applyPropertyValue(INode node, PropertyDescriptor prop, Object value) throws Throwable {
+        prop.setter.invoke(node, value);
+        if (node instanceof BaseCustomUINode customUINode) {
+            customUINode.markDirty();
         }
     }
 
@@ -106,16 +107,6 @@ public class PropertyPanelComponent implements EditorComponent {
         final String category; // 属性分类
         final int order; // 排序顺序
         // boolean disabled; // 禁用状态由 errorCounts 和当前节点选择决定，不存储在描述符中
-
-        PropertyDescriptor(String name, String displayName, Class<?> type, MethodAccessor getter, MethodAccessor setter,
-                           PropertyRenderer renderer) {
-            this(name, displayName, type, getter, setter, renderer, "", "", 100);
-        }
-
-        PropertyDescriptor(String name, String displayName, Class<?> type, MethodAccessor getter, MethodAccessor setter,
-                           PropertyRenderer renderer, String description) {
-            this(name, displayName, type, getter, setter, renderer, description, "", 100);
-        }
 
         PropertyDescriptor(String name, String displayName, Class<?> type, MethodAccessor getter, MethodAccessor setter,
                            PropertyRenderer renderer, String description, String category, int order) {
@@ -171,7 +162,7 @@ public class PropertyPanelComponent implements EditorComponent {
             if (ImGui.checkbox("##" + prop.name, imVal)) {
                 if (!isReadOnly) {
                     // 立即保存到节点
-                    prop.setter.invoke(node, imVal.get());
+                    panel.applyPropertyValue(node, prop, imVal.get());
                     NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), imVal.get());
                 }
             }
@@ -235,7 +226,7 @@ public class PropertyPanelComponent implements EditorComponent {
             if (changed || (ImGui.isItemDeactivated() && panel.isPropertyBeingEdited(node, prop.name))) {
                 if (!isReadOnly) {
                     if (!imStr.get().equals(currentValue)) { // 避免不必要的setter调用
-                        prop.setter.invoke(node, imStr.get());
+                        panel.applyPropertyValue(node, prop, imStr.get());
                         NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), imStr.get());
                     }
                 }
@@ -266,7 +257,7 @@ public class PropertyPanelComponent implements EditorComponent {
             if (ImGui.dragInt("##" + prop.name, valArr, 1)) { // 默认速度为1
                 if (!isReadOnly) {
                     if (valArr[0] != currentValue) { // 避免不必要的setter调用
-                        prop.setter.invoke(node, valArr[0]);
+                        panel.applyPropertyValue(node, prop, valArr[0]);
                         NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), valArr[0]);
                     }
                 }
@@ -302,7 +293,7 @@ public class PropertyPanelComponent implements EditorComponent {
             if (ImGui.dragFloat("##" + prop.name, valArr, 0.01f)) {
                 if (!isReadOnly) {
                     if (valArr[0] != currentValue) { // 避免不必要的setter调用
-                        prop.setter.invoke(node, valArr[0]);
+                        panel.applyPropertyValue(node, prop, valArr[0]);
                         NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), valArr[0]);
                     }
                 }
@@ -373,7 +364,7 @@ public class PropertyPanelComponent implements EditorComponent {
                 try {
                     double newValue = Double.parseDouble(textValue.get());
                     if (Math.abs(newValue - currentValue) > 1e-12) { // 避免不必要的setter调用
-                        prop.setter.invoke(node, newValue);
+                        panel.applyPropertyValue(node, prop, newValue);
                         NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), newValue);
                     }
                 } catch (NumberFormatException e) {
@@ -402,7 +393,7 @@ public class PropertyPanelComponent implements EditorComponent {
                         double newValue = baseValue + dragValue[0];
                         // 更新显示文本和节点值
                         textValue.set(String.format("%.12f", newValue));
-                        prop.setter.invoke(node, newValue);
+                        panel.applyPropertyValue(node, prop, newValue);
                         NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), newValue);
                         // 重置拖动增量
                         dragValue[0] = 0.0f;
@@ -450,7 +441,7 @@ public class PropertyPanelComponent implements EditorComponent {
             if (isReadOnly) ImGui.beginDisabled();
             if (ImGui.combo("##" + prop.name, selectedIndex, names)) {
                 if (!isReadOnly && selectedIndex.get() != currentIndex) { // 避免不必要的setter调用
-                    prop.setter.invoke(node, values[selectedIndex.get()]);
+                    panel.applyPropertyValue(node, prop, values[selectedIndex.get()]);
                     NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), values[selectedIndex.get()]);
                 }
             }
@@ -555,7 +546,7 @@ public class PropertyPanelComponent implements EditorComponent {
                             Double.parseDouble(zStr.get()));
                     // 只有当实际值发生变化时才调用setter
                     if (!newVec.equals(vec)) {
-                        prop.setter.invoke(node, newVec);
+                        panel.applyPropertyValue(node, prop, newVec);
                         NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), newVec);
                     }
                 } catch (NumberFormatException e) {
@@ -796,19 +787,6 @@ public class PropertyPanelComponent implements EditorComponent {
             }
         }
         return formatted.toString().trim(); // 去掉尾部空格
-    }
-
-    /**
-     * 格式化类型ID，只显示最后一部分，并转为可读格式
-     * @param typeId 完整的类型ID
-     * @return 格式化后的类型显示名称
-     */
-    private String formatTypeId(String typeId) {
-        if (typeId != null && typeId.contains(".")) {
-            String lastPart = typeId.substring(typeId.lastIndexOf('.') + 1);
-            return formatSingleWord(lastPart);
-        }
-        return formatSingleWord(typeId); // 如果没有点，也进行格式化
     }
 
     // 获取节点状态 (示例实现，需要根据实际节点系统修改)
@@ -1897,66 +1875,11 @@ public class PropertyPanelComponent implements EditorComponent {
         NodeCraft.LOGGER.info("Preview region: {}", region);
     }
 
-    // 实现单独预览当前节点功能
-    private void previewCurrentNode() {
-        if (selectedNode == null) return;
-        previewNodeWithMode(PreviewMode.HIGHLIGHT);
-    }
-
-    // 使用指定模式预览节点
-    private void previewNodeWithMode(PreviewMode mode) {
-        if (selectedNode == null) return;
-
-        NodeCraft.LOGGER.info("Preview node: {}, mode: {}", selectedNode.getId(), mode);
-    }
-
     // 清除节点预览
     private void clearNodePreview() {
         if (selectedNode == null) return;
 
         NodeCraft.LOGGER.info("Clear node preview: {}", selectedNode.getId());
-    }
-
-    // 重新计算节点
-    private void recalculateNode() {
-        if (selectedNode == null) return;
-
-        try {
-            NodeGraph graph = getNodeGraph();
-            if (graph != null) {
-                NodeCraft.LOGGER.info("开始重新计算节点: {}", selectedNode.getDisplayName());
-                long startTime = System.nanoTime();
-
-                // 执行计算
-                // 确保 selectedNode.compute 方法存在并能够处理输入
-                // compute 方法可能依赖于 ExecutionContext 或其他参数
-                // 这里假设 compute(Map<String, Object> inputs) 存在
-                Map<String, Object> inputs = collectConnectedInputs(graph, selectedNode, new HashSet<>());
-                for (IPort port : selectedNode.getInputPorts()) {
-                    inputs.putIfAbsent(port.getId(), port.getValue());
-                }
-
-                // 执行计算
-                // 如果节点没有实现 compute 方法，这里会抛出异常
-                Map<String, Object> outputs = selectedNode.compute(inputs); // 假设 compute 返回 Map<String, Object>
-
-                long endTime = System.nanoTime();
-                double executionTime = (endTime - startTime) / 1_000_000.0; // 转换为毫秒
-
-                updatePerformanceStats(executionTime);
-
-                NodeCraft.LOGGER.info("Node recalculation finished: {}, took {}ms", selectedNode.getDisplayName(), String.format("%.2f", executionTime));
-
-                // 如果节点是BaseNode，将其标记为脏以便触发下游更新
-                if (selectedNode instanceof BaseNode) {
-                    ((BaseNode) selectedNode).markDirty();
-                }
-            }
-        } catch (NoSuchMethodError e) { // 捕获方法不存在的错误
-            NodeCraft.LOGGER.error("Node {} does not implement compute(Map<String, Object>) or its signature is incompatible.", selectedNode.getDisplayName());
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("Node recalculation failed: {}", e.getMessage(), e);
-        }
     }
 
     private Map<String, Object> collectConnectedInputs(NodeGraph graph, INode node, Set<UUID> visiting) {
@@ -2050,110 +1973,10 @@ public class PropertyPanelComponent implements EditorComponent {
         return null;
     }
 
-    // 记录节点详细信息到日志
-    private void logNodeInfo() {
-        if (selectedNode == null) return;
-
-        StringBuilder info = new StringBuilder();
-        info.append("Node Details:\n");
-        info.append("==============================================\n");
-        info.append("Node ID: ").append(selectedNode.getId()).append("\n");
-        info.append("Type: ").append(selectedNode.getTypeId()).append("\n");
-        info.append("Display Name: ").append(selectedNode.getDisplayName()).append("\n");
-        info.append("Description: ").append(selectedNode.getDescription()).append("\n");
-        // selectedNode 并没有 getPositionX/Y 方法，可能需要从 nodePositions 中获取
-        // if (selectedNode instanceof ImGuiNodeEditor.NodePosition) { // 错误，selectedNode 不是 NodePosition
-        //     info.append("位置: (").append(selectedNode.getPositionX()).append(", ")
-        //         .append(selectedNode.getPositionY()).append(")\n");
-        // } else {
-        // 从编辑器获取位置信息
-        ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
-        NodePosition pos = editor.getNodePosition(selectedNode.getId());
-        if (pos != null) {
-            info.append("Position: (").append(String.format("%.1f", pos.x)).append(", ")
-                    .append(String.format("%.1f", pos.y)).append(")\n");
-        } else {
-            info.append("Position: Unknown\n");
-        }
-
-        info.append("\nInput Ports:\n");
-        info.append("----------------------------------------------\n");
-        for (IPort port : selectedNode.getInputPorts()) {
-            info.append(" - ").append(port.getDisplayName())
-                    .append(" (").append(port.getDataType().name()).append("): ")
-                    .append(port.isConnected() ? "Connected" : "Disconnected").append("\n");
-
-            Object value = port.getValue();
-            if (value != null) {
-                info.append("   Value: ").append(formatValueForLog(value)).append("\n");
-            }
-        }
-
-        info.append("\nOutput Ports:\n");
-        info.append("----------------------------------------------\n");
-        for (IPort port : selectedNode.getOutputPorts()) {
-            info.append(" - ").append(port.getDisplayName())
-                    .append(" (").append(port.getDataType().name()).append("): ")
-                    .append(port.isConnected() ? "Connected" : "Disconnected").append("\n");
-
-            Object value = selectedNode.getOutput(port.getId());
-            if (value != null) {
-                info.append("   Value: ").append(formatValueForLog(value)).append("\n");
-            }
-        }
-
-        info.append("==============================================");
-
-        NodeCraft.LOGGER.info(info.toString());
-    }
-
-    // 格式化值用于日志输出
-    private String formatValueForLog(Object value) {
-        if (value == null) return "null";
-
-        if (value instanceof List<?> list) {
-            return "List (" + list.size() + " items)";
-        } else if (value instanceof Map<?, ?> map) {
-            return "Map (" + map.size() + " entries)";
-        } else if (value.getClass().getSimpleName().contains("NBT") ||
-                value.getClass().getSimpleName().equals("CompoundTag")) {
-            return "NBT Data";
-        } else if (value.getClass().getSimpleName().equals("Region")) {
-            return "Region";
-        } else if (value instanceof Vec3 vec) {
-            return String.format("Vec3(%.1f, %.1f, %.1f)", vec.getX(), vec.getY(), vec.getZ());
-        } else {
-            return value.toString();
-        }
-    }
-
     // 记录节点性能数据的字段
     private double lastExecutionTime = 0;
     private double averageExecutionTime = 0;
     private int executionCount = 0;
-
-    // 更新性能统计
-    private void updatePerformanceStats(double executionTime) {
-        lastExecutionTime = executionTime;
-        executionCount++;
-
-        // 计算移动平均值
-        averageExecutionTime = ((averageExecutionTime * (executionCount - 1)) + executionTime) / executionCount;
-    }
-
-    // 渲染性能统计
-    private void renderPerformanceStats() {
-        ImGui.text("Last Execution Time: " + (lastExecutionTime > 0 ? String.format("%.2f ms", lastExecutionTime) : "N/A"));
-        ImGui.text("Average Execution Time: " + (executionCount > 0 ? String.format("%.2f ms", averageExecutionTime) : "N/A"));
-        ImGui.text("Execution Count: " + (executionCount > 0 ? executionCount : "N/A"));
-    }
-
-    // 预览模式枚举
-    private enum PreviewMode {
-        HIGHLIGHT,  // 高亮显示
-        WIREFRAME,  // 线框模式
-        SOLID       // 实体模式
-    }
 
     // 添加这些方法来管理属性编辑状态
 
