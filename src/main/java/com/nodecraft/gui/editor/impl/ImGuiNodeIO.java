@@ -35,6 +35,7 @@ public class ImGuiNodeIO {
     private final Gson gson;
     private final Path defaultSavePath;
     private Path lastSavedPath = null;
+    private String lastOperationError = null;
     private boolean dirty = false; // 跟踪是否有未保存的更改
     private long dirtyVersion = 0L;
     
@@ -51,15 +52,15 @@ public class ImGuiNodeIO {
     /**
      * 保存节点图到默认位置
      */
-    public void saveGraph() {
-        saveGraph(defaultSavePath);
+    public boolean saveGraph() {
+        return saveGraph(defaultSavePath);
     }
     
     /**
      * 加载默认位置的节点图
      */
-    public void loadGraph() {
-        loadGraph(defaultSavePath);
+    public boolean loadGraph() {
+        return loadGraph(defaultSavePath);
     }
     
     /**
@@ -73,13 +74,15 @@ public class ImGuiNodeIO {
      * 保存节点图到指定文件
      * @param filePath 文件保存路径
      */
-    public void saveGraph(Path filePath) {
+    public boolean saveGraph(Path filePath) {
+        lastOperationError = null;
         NodeGraph currentGraph = editor.getCurrentGraph();
         Map<UUID, NodePosition> nodePositions = editor.getNodePositions();
         
         if (currentGraph == null) {
-            NodeCraft.LOGGER.warn("无法保存：当前没有节点图。");
-            return;
+            lastOperationError = "当前没有节点图可保存。";
+            NodeCraft.LOGGER.warn("无法保存：{}", lastOperationError);
+            return false;
         }
 
         NodeCraft.LOGGER.info("开始保存节点图到: {}", filePath);
@@ -124,14 +127,23 @@ public class ImGuiNodeIO {
         // Serialize to JSON and write to file
         try {
             String json = gson.toJson(savedGraph);
+            Path parent = filePath.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
             Files.writeString(filePath, json, StandardCharsets.UTF_8);
             lastSavedPath = filePath;
             dirty = false;
             NodeCraft.LOGGER.info("节点图成功保存到: {}", filePath);
+            return true;
         } catch (IOException e) {
+            lastOperationError = "保存节点图时发生 IO 错误: " + e.getMessage();
             NodeCraft.LOGGER.error("保存节点图时发生 IO 错误: {}", e.getMessage(), e);
+            return false;
         } catch (Exception e) {
+            lastOperationError = "序列化节点图时发生错误: " + e.getMessage();
             NodeCraft.LOGGER.error("序列化节点图时发生错误: {}", e.getMessage(), e);
+            return false;
         }
     }
 
@@ -139,20 +151,38 @@ public class ImGuiNodeIO {
      * 从指定文件加载节点图
      * @param filePath 文件路径
      */
-    public void loadGraph(Path filePath) {
+    public boolean loadGraph(Path filePath) {
+        lastOperationError = null;
         if (!Files.exists(filePath)) {
-            NodeCraft.LOGGER.warn("无法加载：文件不存在: {}", filePath);
-            return;
+            lastOperationError = "文件不存在: " + filePath;
+            NodeCraft.LOGGER.warn("无法加载：{}", lastOperationError);
+            return false;
         }
 
         NodeCraft.LOGGER.info("开始从文件加载节点图: {}", filePath);
         try {
             String json = Files.readString(filePath, StandardCharsets.UTF_8);
+
+            JsonElement root = JsonParser.parseString(json);
+            if (!root.isJsonObject()) {
+                lastOperationError = "文件格式无效：根节点必须是 JSON 对象（请确认选择的是 .nodecraft 节点图文件）。";
+                NodeCraft.LOGGER.error("{}", lastOperationError);
+                return false;
+            }
+
             SavedGraph savedGraph = gson.fromJson(json, SavedGraph.class);
 
             if (savedGraph == null) {
-                NodeCraft.LOGGER.error("加载失败：无法解析 JSON 文件。");
-                return;
+                lastOperationError = "加载失败：无法解析 JSON 文件。";
+                NodeCraft.LOGGER.error("{}", lastOperationError);
+                return false;
+            }
+
+            if (savedGraph.nodes == null) {
+                savedGraph.nodes = new ArrayList<>();
+            }
+            if (savedGraph.connections == null) {
+                savedGraph.connections = new ArrayList<>();
             }
 
             // 创建新图
@@ -165,27 +195,29 @@ public class ImGuiNodeIO {
 
             // 1. Recreate nodes
             NodeRegistry registry = NodeRegistry.getInstance();
+            int skippedUnknownNodeTypes = 0;
             for (SavedNode savedNode : savedGraph.nodes) {
-                INode iNode = registry.createNodeInstance(savedNode.typeId); // Get INode instance
-                if (iNode instanceof BaseNode newNode) { // Check if it's a BaseNode
-                    // Cast to BaseNode
-                    // newNode will not be null here if instanceof is true
-                    try {
-                         // Restore state BEFORE adding to map/graph
-                        newNode.setNodeState(savedNode.state); 
-                        // Store mapping using the OLD ID
-                        loadedNodesMap.put(savedNode.nodeId, newNode);
-                        newGraph.addNode(newNode); // Add to graph
-                    } catch (Exception e) {
-                         NodeCraft.LOGGER.error("恢复节点状态或添加到图时出错: Node Type={}, Saved ID={}, Error={}", 
-                             savedNode.typeId, savedNode.nodeId, e.getMessage(), e);
+                try {
+                    INode iNode = registry.createNodeInstance(savedNode.typeId);
+                    if (iNode instanceof BaseNode newNode) {
+                        try {
+                            newNode.setNodeState(savedNode.state);
+                            loadedNodesMap.put(savedNode.nodeId, newNode);
+                            newGraph.addNode(newNode);
+                        } catch (Exception e) {
+                            NodeCraft.LOGGER.error("恢复节点状态或添加到图时出错: Node Type={}, Saved ID={}, Error={}",
+                                savedNode.typeId, savedNode.nodeId, e.getMessage(), e);
+                        }
+                    } else if (iNode == null) {
+                        NodeCraft.LOGGER.warn("无法创建节点实例 (返回为null): Type ID={}, Saved ID={}",
+                            savedNode.typeId, savedNode.nodeId);
+                    } else {
+                        NodeCraft.LOGGER.warn("无法加载节点：实例不是 BaseNode 类型。Type ID={}, Saved ID={}, Actual Type={}",
+                            savedNode.typeId, savedNode.nodeId, iNode.getClass().getName());
                     }
-                } else if (iNode == null) {
-                    NodeCraft.LOGGER.warn("无法创建节点实例 (返回为null): Type ID={}, Saved ID={}", 
-                        savedNode.typeId, savedNode.nodeId);
-                } else {
-                    NodeCraft.LOGGER.warn("无法加载节点：实例不是 BaseNode 类型。Type ID={}, Saved ID={}, Actual Type={}", 
-                        savedNode.typeId, savedNode.nodeId, iNode.getClass().getName());
+                } catch (IllegalArgumentException e) {
+                    skippedUnknownNodeTypes++;
+                    NodeCraft.LOGGER.warn("跳过未注册节点类型: {} (Saved ID: {})", savedNode.typeId, savedNode.nodeId);
                 }
             }
 
@@ -204,28 +236,32 @@ public class ImGuiNodeIO {
             }
 
             // 3. Recreate connections
-            if (savedGraph.connections != null) {
-                for (SavedConnection savedConnection : savedGraph.connections) {
-                    BaseNode sourceNode = loadedNodesMap.get(savedConnection.sourceNodeId);
-                    BaseNode targetNode = loadedNodesMap.get(savedConnection.targetNodeId);
-                    
-                    if (sourceNode != null && targetNode != null) {
-                        boolean success = newGraph.connect(
-                            sourceNode.getId(), // Use NEW source ID
-                            savedConnection.sourcePortId, 
-                            targetNode.getId(), // Use NEW target ID
-                            savedConnection.targetPortId
-                        );
-                        if (!success) {
-                             NodeCraft.LOGGER.warn("无法重新连接端口: {} ({}) -> {} ({})", 
-                                savedConnection.sourceNodeId, savedConnection.sourcePortId, 
-                                savedConnection.targetNodeId, savedConnection.targetPortId);
-                        }
-                    } else {
-                        NodeCraft.LOGGER.warn("无法重新连接端口：找不到源节点或目标节点实例 for connection {} -> {}", 
-                                           savedConnection.sourceNodeId, savedConnection.targetNodeId);
+            for (SavedConnection savedConnection : savedGraph.connections) {
+                BaseNode sourceNode = loadedNodesMap.get(savedConnection.sourceNodeId);
+                BaseNode targetNode = loadedNodesMap.get(savedConnection.targetNodeId);
+
+                if (sourceNode != null && targetNode != null) {
+                    boolean success = newGraph.connect(
+                        sourceNode.getId(),
+                        savedConnection.sourcePortId,
+                        targetNode.getId(),
+                        savedConnection.targetPortId
+                    );
+                    if (!success) {
+                        NodeCraft.LOGGER.warn("无法重新连接端口: {} ({}) -> {} ({})",
+                            savedConnection.sourceNodeId, savedConnection.sourcePortId,
+                            savedConnection.targetNodeId, savedConnection.targetPortId);
                     }
+                } else {
+                    NodeCraft.LOGGER.warn("无法重新连接端口：找不到源节点或目标节点实例 for connection {} -> {}",
+                        savedConnection.sourceNodeId, savedConnection.targetNodeId);
                 }
+            }
+
+            if (!savedGraph.nodes.isEmpty() && loadedNodesMap.isEmpty()) {
+                lastOperationError = "加载失败：文件中的节点类型在当前版本中均不可用。";
+                NodeCraft.LOGGER.error("{}", lastOperationError);
+                return false;
             }
 
             // 最后将加载的图和位置设置到编辑器
@@ -233,14 +269,31 @@ public class ImGuiNodeIO {
             editor.setNodePositions(newPositions);
             lastSavedPath = filePath;
             dirty = false;
-            
+
+            if (skippedUnknownNodeTypes > 0) {
+                lastOperationError = "已部分加载：" + skippedUnknownNodeTypes + " 个节点类型未注册，已跳过。";
+                NodeCraft.LOGGER.warn("{}", lastOperationError);
+            }
+
             NodeCraft.LOGGER.info("节点图成功从文件加载: {}", filePath);
+            return true;
 
         } catch (IOException e) {
+            lastOperationError = "加载节点图时发生 IO 错误: " + e.getMessage();
             NodeCraft.LOGGER.error("加载节点图时发生 IO 错误: {}", e.getMessage(), e);
+            return false;
         } catch (Exception e) {
+            lastOperationError = "解析或重建节点图时发生错误: " + e.getMessage();
             NodeCraft.LOGGER.error("解析或重建节点图时发生错误: {}", e.getMessage(), e);
+            return false;
         }
+    }
+
+    /**
+     * 获取最近一次保存/加载失败或告警信息。
+     */
+    public String getLastOperationError() {
+        return lastOperationError;
     }
 
     /**

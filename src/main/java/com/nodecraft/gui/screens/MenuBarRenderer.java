@@ -522,9 +522,22 @@ public class MenuBarRenderer {
                     // 获取IO组件并加载文件
                     ImGuiNodeIO io = editor.getNodeIO();
                     if (io != null) {
-                        io.loadGraph(selectedPath);
-                        lastSavedPath = selectedPath;
-                        NodeCraft.LOGGER.info("成功加载节点图: {}", selectedPath);
+                        boolean loaded = io.loadGraph(selectedPath);
+                        if (loaded) {
+                            lastSavedPath = selectedPath;
+                            String notice = io.getLastOperationError();
+                            if (notice != null && !notice.isBlank()) {
+                                new MessageDialog("打开节点图", notice).show();
+                            }
+                            NodeCraft.LOGGER.info("成功加载节点图: {}", selectedPath);
+                        } else {
+                            String error = io.getLastOperationError();
+                            if (error == null || error.isBlank()) {
+                                error = "打开失败：节点图格式无效或内容不兼容。";
+                            }
+                            new MessageDialog("打开节点图失败", error).show();
+                            NodeCraft.LOGGER.warn("加载节点图失败: {} - {}", selectedPath, error);
+                        }
                     } else {
                         NodeCraft.LOGGER.error("无法获取NodeIO组件");
                     }
@@ -571,27 +584,40 @@ public class MenuBarRenderer {
                         selectedPath -> {
                             if (selectedPath != null) {
                                 // 更新最近保存路径
-                                lastSavedPath = selectedPath;
-                                
                                 // 保存文件
-                                io.saveGraph(selectedPath);
-                                NodeCraft.LOGGER.info("成功保存节点图: {}", selectedPath);
-                                
-                                // 调用回调
-                                if (onSaveComplete != null) {
-                                    onSaveComplete.run();
+                                boolean saved = io.saveGraph(selectedPath);
+                                if (saved) {
+                                    lastSavedPath = selectedPath;
+                                    NodeCraft.LOGGER.info("成功保存节点图: {}", selectedPath);
+                                    if (onSaveComplete != null) {
+                                        onSaveComplete.run();
+                                    }
+                                } else {
+                                    String error = io.getLastOperationError();
+                                    if (error == null || error.isBlank()) {
+                                        error = "保存失败：请检查路径和写入权限。";
+                                    }
+                                    new MessageDialog("保存节点图失败", error).show();
+                                    NodeCraft.LOGGER.warn("保存节点图失败: {} - {}", selectedPath, error);
                                 }
                             }
                         }
                     );
                 } else {
                     // 直接保存到已有路径
-                    io.saveGraph(savePath);
-                    NodeCraft.LOGGER.info("成功保存节点图: {}", savePath);
-                    
-                    // 调用回调
-                    if (onSaveComplete != null) {
-                        onSaveComplete.run();
+                    boolean saved = io.saveGraph(savePath);
+                    if (saved) {
+                        NodeCraft.LOGGER.info("成功保存节点图: {}", savePath);
+                        if (onSaveComplete != null) {
+                            onSaveComplete.run();
+                        }
+                    } else {
+                        String error = io.getLastOperationError();
+                        if (error == null || error.isBlank()) {
+                            error = "保存失败：请检查路径和写入权限。";
+                        }
+                        new MessageDialog("保存节点图失败", error).show();
+                        NodeCraft.LOGGER.warn("保存节点图失败: {} - {}", savePath, error);
                     }
                 }
             }
