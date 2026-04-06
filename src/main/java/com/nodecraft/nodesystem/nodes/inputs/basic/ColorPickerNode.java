@@ -25,7 +25,6 @@ import java.util.UUID;
 public class ColorPickerNode extends BaseCustomUINode {
 
     private static final float COLOR_PREVIEW_HEIGHT = 30.0f;
-    private static final float COLOR_EDIT_HEIGHT = 64.0f;
     private static final String OUTPUT_COLOR_ID = "output_color";
     private static final String OUTPUT_RED_ID = "output_red";
     private static final String OUTPUT_GREEN_ID = "output_green";
@@ -93,7 +92,8 @@ public class ColorPickerNode extends BaseCustomUINode {
         if (showPreview) {
             height += COLOR_PREVIEW_HEIGHT + getSmallPadding();
         }
-        height += COLOR_EDIT_HEIGHT + getSmallPadding();
+        height += ImGui.getFrameHeight();
+        height += getSmallPadding();
         return height;
     }
 
