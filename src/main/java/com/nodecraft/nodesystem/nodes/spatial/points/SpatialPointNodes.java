@@ -4,12 +4,18 @@ import com.nodecraft.gui.node.NodeInfo;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 /**
- * Registers spatial point related nodes.
+ * Deprecated manual registration helper kept only for compatibility with
+ * older bootstrap paths. The main registry flow uses annotation scanning.
  */
-public class SpatialPointNodes {
+@Deprecated
+public final class SpatialPointNodes {
+
+    private SpatialPointNodes() {
+    }
 
     /**
-     * Registers all spatial point related nodes.
+     * Registers all spatial point related nodes when an older manual
+     * registration path still invokes this helper.
      */
     public static void registerNodes() {
         NodeRegistry registry = NodeRegistry.getInstance();
