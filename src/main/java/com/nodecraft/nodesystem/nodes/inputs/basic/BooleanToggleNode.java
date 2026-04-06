@@ -81,7 +81,7 @@ public class BooleanToggleNode extends BaseCustomUINode {
     protected boolean renderCustomUIScaled(float width, float height, float zoom) {
         return layout(zoom, l -> {
             boolean changed = false;
-            boolean interacted = false;
+            boolean interacted;
 
             float edgeMargin = l.toPixels(getSmallPadding());
             float availableWidth = Math.max(80.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
@@ -118,7 +118,7 @@ public class BooleanToggleNode extends BaseCustomUINode {
             ImGui.invisibleButton("##toggle_switch", switchWidth, switchHeight);
             boolean hovered = ImGui.isItemHovered();
             boolean active = ImGui.isItemActive();
-            interacted |= hovered || active;
+            interacted = hovered || active;
 
             if (hovered) {
                 drawList.addRectFilled(
@@ -146,7 +146,7 @@ public class BooleanToggleNode extends BaseCustomUINode {
             ImGui.text(currentLabel);
             ImGui.popStyleColor();
 
-            if (false && showStateText) {
+            if (false) {
                 l.addVerticalSpacing(getSmallPadding());
                 String stateText = value ? "● 已启用" : "● 已禁用";
                 float stateWidth = ImGui.calcTextSize(stateText).x;

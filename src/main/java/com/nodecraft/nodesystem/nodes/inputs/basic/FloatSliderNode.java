@@ -129,7 +129,7 @@ protected float calculateUIHeight() {
             }
             l.popItemWidth();
 
-            if (false && showMinMaxLabels) {
+            if (false) {
                 String rangeText = String.format("范围: " + formatString + " ~ " + formatString, minValue, maxValue);
                 float rangeWidth = ImGui.calcTextSize(rangeText).x;
                 setCenterX(availableWidth, rangeWidth);
@@ -139,7 +139,7 @@ protected float calculateUIHeight() {
                 l.addVerticalSpacing(getSmallPadding());
             }
 
-            if (false && showSettingsPanel) {
+            if (false) {
                 ImGui.separator();
                 l.addVerticalSpacing(getSmallPadding());
 
