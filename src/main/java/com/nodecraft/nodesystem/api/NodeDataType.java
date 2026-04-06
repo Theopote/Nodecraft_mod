@@ -210,6 +210,18 @@ public enum NodeDataType {
         if (outputType == ANY) return true;
         if (outputType == inputType) return true;
 
+        // 同底层 Java 类型互通（但排除 Object.class）。
+        // 例如 COORDINATE <-> BLOCK_POS、VECTOR <-> POSITION。
+        Class<?> outputClass = outputType.getJavaClass();
+        Class<?> inputClass = inputType.getJavaClass();
+        if (outputClass != null
+                && inputClass != null
+                && outputClass != Object.class
+                && inputClass != Object.class
+                && outputClass == inputClass) {
+            return true;
+        }
+
         // 数值家族互通（允许隐式数值转换）。
         // 可覆盖 INTEGER/FLOAT/DOUBLE 之间的双向连接，
         // 避免滑动条、输入框与整数/浮点端口之间出现不必要的拒连。
