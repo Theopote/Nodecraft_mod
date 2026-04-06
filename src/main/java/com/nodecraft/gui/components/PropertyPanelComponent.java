@@ -38,10 +38,14 @@ public class PropertyPanelComponent implements EditorComponent {
     private static final String IS_PREFIX = "is";
     private static final String SET_PREFIX = "set";
     private static final Set<String> HIDDEN_NODE_PROPERTIES = Set.of(
+            "cachedHeight",
+            "cachedMinWidth",
+            "customUIHeight",
             "description",
             "displayName",
             "id",
             "inputPorts",
+            "minRequiredUIWidth",
             "nodeState",
             "outputPorts",
             "positionX",
