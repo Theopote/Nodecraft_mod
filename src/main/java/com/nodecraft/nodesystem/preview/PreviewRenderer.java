@@ -91,6 +91,7 @@ public class PreviewRenderer {
         registerElementType("arrows", VectorsElement::new);
         registerElementType("lines", LinesElement::new);
         registerElementType("paths", LinesElement::new);
+        registerElementType("geometry_surface", GeometrySurfaceElement::new);
         registerElementType("transformation_gizmo", TransformationGizmoElement::new);
         registerElementType("field_visualization", FieldVisualizationElement::new);
         registerElementType("text_labels", TextLabelsElement::new);
