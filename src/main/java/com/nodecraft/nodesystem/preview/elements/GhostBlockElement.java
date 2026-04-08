@@ -144,6 +144,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
         
         MinecraftClient client = MinecraftClient.getInstance();
         World world = client.world;
+        float maxRenderDistance = PreviewRenderer.getInstance().getSettings().maxRenderDistance;
         
         if (world == null) {
             NodeCraft.LOGGER.warn("世界为空，无法渲染幽灵方块");
@@ -153,14 +154,14 @@ public class GhostBlockElement extends AbstractPreviewElement {
         // 根据纹理模式选择渲染方法
         switch (textureMode) {
             case "solid_color":
-                renderSolidColor(matrices, camera, finalOpacity, blocksSnapshot);
+                renderSolidColor(matrices, camera, finalOpacity, blocksSnapshot, maxRenderDistance);
                 break;
             case "wireframe":
-                renderWireframe(matrices, camera, finalOpacity, blocksSnapshot);
+                renderWireframe(matrices, camera, finalOpacity, blocksSnapshot, maxRenderDistance);
                 break;
             case "original":
             default:
-                renderOriginalTexture(matrices, camera, world, finalOpacity, blocksSnapshot);
+                renderOriginalTexture(matrices, camera, world, finalOpacity, blocksSnapshot, maxRenderDistance);
                 break;
         }
     }
@@ -178,13 +179,15 @@ public class GhostBlockElement extends AbstractPreviewElement {
      * - 假设通用状态（blend, depthTest, depthMask）已由 PreviewRenderer 设置
      * - 此方法不需要设置任何特有状态，直接使用通用状态即可
      */
-    private void renderOriginalTexture(MatrixStack matrices, Camera camera, World world, float opacity, List<BlockData> blocksSnapshot) {
+    private void renderOriginalTexture(MatrixStack matrices,
+                                       Camera camera,
+                                       World world,
+                                       float opacity,
+                                       List<BlockData> blocksSnapshot,
+                                       float maxRenderDistance) {
         MinecraftClient client = MinecraftClient.getInstance();
         BlockRenderManager blockRenderManager = client.getBlockRenderManager();
         Vec3d cameraPos = camera.getBlockPos().toCenterPos();
-        
-        // 在循环外获取一次最大渲染距离，避免重复调用
-        float maxRenderDistance = PreviewRenderer.getInstance().getSettings().maxRenderDistance;
         
         // 使用简化的渲染方法，直接使用 Tessellator
         // 注意：不需要设置渲染状态，因为通用状态已由 PreviewRenderer 设置
@@ -255,11 +258,12 @@ public class GhostBlockElement extends AbstractPreviewElement {
      * - 假设通用状态（blend, depthTest, depthMask）已由 PreviewRenderer 设置
      * - 此方法特有状态：disableCull（禁用面剔除以确保所有面都可见）
      */
-    private void renderSolidColor(MatrixStack matrices, Camera camera, float opacity, List<BlockData> blocksSnapshot) {
+    private void renderSolidColor(MatrixStack matrices,
+                                  Camera camera,
+                                  float opacity,
+                                  List<BlockData> blocksSnapshot,
+                                  float maxRenderDistance) {
         Vec3d cameraPos = camera.getBlockPos().toCenterPos();
-        
-        // 在循环外获取一次最大渲染距离，避免重复调用
-        float maxRenderDistance = PreviewRenderer.getInstance().getSettings().maxRenderDistance;
         
         // 设置此方法特有的渲染状态
         
@@ -304,11 +308,12 @@ public class GhostBlockElement extends AbstractPreviewElement {
      * - 假设通用状态（blend, depthTest, depthMask）已由 PreviewRenderer 设置
      * - 此方法特有状态：lineWidth（线宽）和 disableCull（禁用面剔除）
      */
-    private void renderWireframe(MatrixStack matrices, Camera camera, float opacity, List<BlockData> blocksSnapshot) {
+    private void renderWireframe(MatrixStack matrices,
+                                 Camera camera,
+                                 float opacity,
+                                 List<BlockData> blocksSnapshot,
+                                 float maxRenderDistance) {
         Vec3d cameraPos = camera.getBlockPos().toCenterPos();
-        
-        // 在循环外获取一次最大渲染距离，避免重复调用
-        float maxRenderDistance = PreviewRenderer.getInstance().getSettings().maxRenderDistance;
         
         // 设置此方法特有的渲染状态
         

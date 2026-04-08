@@ -329,12 +329,19 @@ public class PreviewRenderer {
     private void renderElementsByType(MatrixStack matrices, Camera camera, float partialTicks) {
         // 使用 getAndSet 原子性地获取当前值并设为 false
         if (listDirty.getAndSet(false)) {
-            rebuildSortedListOptimized();
+            // 如果重建期间有并发更新再次将 listDirty 置为 true，继续重建直到稳定。
+            do {
+                rebuildSortedListOptimized();
+            } while (listDirty.getAndSet(false));
         }
 
         // 直接按优先级顺序渲染元素
         for (List<AbstractPreviewElement> priorityGroup : prioritizedElements.values()) {
             for (AbstractPreviewElement element : priorityGroup) {
+                // 避免并发删除后旧快照元素被渲染（可能已执行 cleanup）。
+                if (activeElements.get(element.getId()) != element) {
+                    continue;
+                }
                 if (element.isVisible() && element.shouldRender(camera)) {
                     try {
                         element.render(matrices, camera, partialTicks, globalOpacity);

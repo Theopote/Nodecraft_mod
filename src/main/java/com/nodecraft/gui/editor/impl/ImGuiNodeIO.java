@@ -23,9 +23,8 @@ import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import org.jetbrains.annotations.NotNull;
+import net.fabricmc.loader.api.FabricLoader;
 
 /**
  * ImGui节点编辑器的IO组件，处理节点图的保存和加载
@@ -46,7 +45,12 @@ public class ImGuiNodeIO {
     public ImGuiNodeIO(ICanvasEditor editor) {
         this.editor = editor;
         this.gson = new GsonBuilder().setPrettyPrinting().create();
-        this.defaultSavePath = Paths.get("nodecraft_graph.json");
+        this.defaultSavePath = resolveDefaultSavePath();
+    }
+
+    private Path resolveDefaultSavePath() {
+        Path gameDir = FabricLoader.getInstance().getGameDir();
+        return gameDir.resolve("nodecraft").resolve("graphs").resolve("nodecraft_graph.json");
     }
     
     /**
@@ -326,82 +330,5 @@ public class ImGuiNodeIO {
     public void markDirty() {
         dirty = true;
         dirtyVersion++;
-    }
-    
-    /**
-     * 从JSON中加载节点位置
-     * @param jsonContent JSON内容
-     * @return 节点位置映射
-     */
-    private Map<UUID, NodePosition> loadNodePositions(String jsonContent) {
-        try {
-            Map<UUID, NodePosition> positions = new HashMap<>();
-            
-            JsonElement element = JsonParser.parseString(jsonContent);
-            if (element.isJsonObject()) {
-                JsonObject json = element.getAsJsonObject();
-                if (json.has("nodePositions") && json.get("nodePositions").isJsonObject()) {
-                    JsonObject positionsJson = json.getAsJsonObject("nodePositions");
-                    
-                    for (Map.Entry<String, JsonElement> entry : positionsJson.entrySet()) {
-                        try {
-                            UUID nodeId = UUID.fromString(entry.getKey());
-                            JsonObject posObj = entry.getValue().getAsJsonObject();
-                            float x = posObj.has("x") ? posObj.get("x").getAsFloat() : 0;
-                            float y = posObj.has("y") ? posObj.get("y").getAsFloat() : 0;
-                            positions.put(nodeId, new NodePosition(x, y));
-                        } catch (Exception e) {
-                            NodeCraft.LOGGER.warn("解析节点位置时出错: {}", e.getMessage());
-                        }
-                    }
-                }
-            }
-            
-            return positions;
-        } catch (Exception e) {
-            NodeCraft.LOGGER.warn("解析节点位置失败: {}", e.getMessage());
-            return new HashMap<>();
-        }
-    }
-    
-    /**
-     * 将节点位置添加到JSON中
-     * @param graphJson 节点图JSON
-     * @param positions 节点位置映射
-     * @return 更新后的JSON
-     */
-    private String addNodePositionsToJson(String graphJson, Map<UUID, NodePosition> positions) {
-        try {
-            JsonElement element = JsonParser.parseString(graphJson);
-            if (element.isJsonObject()) {
-                JsonObject json = getJsonObject(positions, element);
-
-                // 使用美化输出
-                Gson gson = new GsonBuilder().setPrettyPrinting().create();
-                return gson.toJson(json);
-            }
-            
-            return graphJson;
-        } catch (Exception e) {
-            NodeCraft.LOGGER.warn("添加节点位置信息时出错: {}", e.getMessage());
-            return graphJson;
-        }
-    }
-
-    private static @NotNull JsonObject getJsonObject(Map<UUID, NodePosition> positions, JsonElement element) {
-        JsonObject json = element.getAsJsonObject();
-
-        // 创建节点位置对象
-        JsonObject positionsJson = new JsonObject();
-        for (Map.Entry<UUID, NodePosition> entry : positions.entrySet()) {
-            JsonObject posObj = new JsonObject();
-            posObj.addProperty("x", entry.getValue().x);
-            posObj.addProperty("y", entry.getValue().y);
-            positionsJson.add(entry.getKey().toString(), posObj);
-        }
-
-        // 添加到主JSON对象
-        json.add("nodePositions", positionsJson);
-        return json;
     }
 } 

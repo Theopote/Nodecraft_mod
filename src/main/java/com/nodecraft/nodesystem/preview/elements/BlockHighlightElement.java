@@ -165,12 +165,12 @@ public class BlockHighlightElement extends AbstractPreviewElement {
 
         VertexConsumer lineVertexConsumer = vertexConsumerProvider.getBuffer(RenderLayers.lines());
         VertexConsumer fillVertexConsumer = showFill ? vertexConsumerProvider.getBuffer(RenderLayers.debugFilledBox()) : null;
+        float maxRenderDistance = PreviewRenderer.getInstance().getSettings().maxRenderDistance;
 
         // 遍历所有要高亮的方块位置
         for (Coordinate pos : blockPositionsSnapshot) {
             // 检查是否在渲染距离内
             double distance = cameraPos.distanceTo(new Vec3d(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
-            float maxRenderDistance = PreviewRenderer.getInstance().getSettings().maxRenderDistance;
             if (distance > maxRenderDistance) {
                 continue;
             }
