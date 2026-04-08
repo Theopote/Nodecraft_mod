@@ -201,7 +201,7 @@ public class NodeRegistry {
      * @param category 要注册的节点类别。
      * @return 如果成功注册或类别已存在，则返回 true；如果 category 为 null 或 categoryId 为 null，则返回 false。
      */
-    public boolean registerCategory(NodeCategory category) {
+    public synchronized boolean registerCategory(NodeCategory category) {
         if (category == null || category.getId() == null) {
             NodeCraft.LOGGER.warn("尝试注册无效的节点类别 (null 或 null ID)。");
             return false;
@@ -248,7 +248,7 @@ public class NodeRegistry {
      * @param nodeInfo 要注册的节点信息。
      * @return 如果成功注册，则返回 true；如果节点信息无效或已存在，则返回 false。
      */
-    public boolean registerNode(NodeInfo nodeInfo) {
+    public synchronized boolean registerNode(NodeInfo nodeInfo) {
         if (nodeInfo == null || nodeInfo.getId() == null || nodeInfo.getNodeClass() == null) {
             NodeCraft.LOGGER.warn("尝试注册无效的节点信息 (null, null ID, 或 null NodeClass)。");
             return false;
