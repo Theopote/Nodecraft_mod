@@ -30,7 +30,7 @@ public class FilePathNode extends BaseCustomUINode {
     
     @NodeProperty(displayName = "文件路径", category = "路径", order = 1,
                   description = "文件或目录的路径")
-    private String filePath = "";
+    private volatile String filePath = "";
 
     @NodeProperty(displayName = "必须存在", category = "验证", order = 10,
                   description = "文件是否必须存在")
@@ -49,7 +49,7 @@ public class FilePathNode extends BaseCustomUINode {
     
     // --- UI状态 ---
     private transient ImString pathBuffer = new ImString(1024);
-    private transient boolean bufferNeedsSync = true;
+    private transient volatile boolean bufferNeedsSync = true;
     
     public FilePathNode() {
         super(UUID.randomUUID(), "inputs.sources.file_path");

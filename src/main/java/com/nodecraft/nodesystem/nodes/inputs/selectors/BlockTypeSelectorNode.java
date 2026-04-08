@@ -59,9 +59,9 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
     private static final String OUTPUT_IS_MODDED = "output_is_modded";
 
     private transient ImString searchBuffer = new ImString(256);
-    private transient List<String> filteredBlocks = new ArrayList<>();
-    private transient boolean showDropdown = false;
-    private transient String lastSearchText = "";
+    private transient volatile List<String> filteredBlocks = new ArrayList<>();
+    private transient volatile boolean showDropdown = false;
+    private transient volatile String lastSearchText = "";
 
     private static final int MAX_RESULTS = 20;
 
@@ -125,7 +125,7 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
                     if (ImGui.smallButton(quickLabel + "##quick_" + i)) {
                         setSelectedBlock(quickBlock);
                         searchBuffer.set("");
-                        filteredBlocks.clear();
+                        filteredBlocks = new ArrayList<>();
                         showDropdown = false;
                         lastSearchText = "";
                         changed = true;
@@ -155,12 +155,13 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
 
                 layout.addVerticalSpacing(getSmallPadding());
 
-                if (showDropdown && !filteredBlocks.isEmpty()) {
+                List<String> filteredSnapshot = filteredBlocks;
+                if (showDropdown && !filteredSnapshot.isEmpty()) {
                     ImGui.pushStyleColor(ImGuiCol.ChildBg, 0.15f, 0.15f, 0.18f, 0.95f);
 
-                    int displayCount = Math.min(filteredBlocks.size(), MAX_RESULTS);
+                    int displayCount = Math.min(filteredSnapshot.size(), MAX_RESULTS);
                     for (int i = 0; i < displayCount; i++) {
-                        String blockId = filteredBlocks.get(i);
+                        String blockId = filteredSnapshot.get(i);
                         String blockPath = blockId.contains(":") ? blockId.split(":", 2)[1] : blockId;
 
                         boolean isSelected = blockId.equals(selectedBlock);
@@ -185,9 +186,9 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
                         }
                     }
 
-                    if (filteredBlocks.size() > MAX_RESULTS) {
+                    if (filteredSnapshot.size() > MAX_RESULTS) {
                         ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 1.0f);
-                        ImGui.text("  ... " + (filteredBlocks.size() - MAX_RESULTS) + " more");
+                        ImGui.text("  ... " + (filteredSnapshot.size() - MAX_RESULTS) + " more");
                         ImGui.popStyleColor();
                     }
 
@@ -204,13 +205,14 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
     }
 
     private void updateFilteredList(String searchText) {
-        filteredBlocks.clear();
+        List<String> nextFilteredBlocks = new ArrayList<>();
         if (searchText.isEmpty()) {
             for (String quickBlock : QUICK_BLOCKS) {
                 if (allowModded || quickBlock.startsWith("minecraft:")) {
-                    filteredBlocks.add(quickBlock);
+                    nextFilteredBlocks.add(quickBlock);
                 }
             }
+            filteredBlocks = nextFilteredBlocks;
             invalidateCache();
             return;
         }
@@ -223,8 +225,8 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
                 }
 
                 if (fullId.contains(searchText) || id.getPath().contains(searchText)) {
-                    filteredBlocks.add(fullId);
-                    if (filteredBlocks.size() >= MAX_RESULTS * 2) {
+                    nextFilteredBlocks.add(fullId);
+                    if (nextFilteredBlocks.size() >= MAX_RESULTS * 2) {
                         break;
                     }
                 }
@@ -232,6 +234,8 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
         } catch (Exception ignored) {
             // Registry may not be ready yet.
         }
+
+        filteredBlocks = nextFilteredBlocks;
 
         invalidateCache();
     }

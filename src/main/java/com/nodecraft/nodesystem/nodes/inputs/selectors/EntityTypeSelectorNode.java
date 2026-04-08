@@ -49,9 +49,9 @@ public class EntityTypeSelectorNode extends BaseCustomUINode {
     private static final String OUTPUT_CATEGORY = "output_category";
 
     private transient ImString searchBuffer = new ImString(256);
-    private transient List<String> filteredEntities = new ArrayList<>();
-    private transient boolean showDropdown = false;
-    private transient String lastSearchText = "";
+    private transient volatile List<String> filteredEntities = new ArrayList<>();
+    private transient volatile boolean showDropdown = false;
+    private transient volatile String lastSearchText = "";
 
     private static final int MAX_RESULTS = 20;
 
@@ -127,11 +127,12 @@ public class EntityTypeSelectorNode extends BaseCustomUINode {
 
                 layout.addVerticalSpacing(getSmallPadding());
 
-                if (showDropdown && !filteredEntities.isEmpty()) {
+                List<String> filteredSnapshot = filteredEntities;
+                if (showDropdown && !filteredSnapshot.isEmpty()) {
                     ImGui.pushStyleColor(ImGuiCol.ChildBg, 0.15f, 0.15f, 0.18f, 0.95f);
-                    int displayCount = Math.min(filteredEntities.size(), MAX_RESULTS);
+                    int displayCount = Math.min(filteredSnapshot.size(), MAX_RESULTS);
                     for (int i = 0; i < displayCount; i++) {
-                        String entityId = filteredEntities.get(i);
+                        String entityId = filteredSnapshot.get(i);
                         String entityPath = entityId.contains(":") ? entityId.split(":", 2)[1] : entityId;
                         boolean isSelected = entityId.equals(selectedEntity);
                         if (isSelected) {
@@ -154,9 +155,9 @@ public class EntityTypeSelectorNode extends BaseCustomUINode {
                         }
                     }
 
-                    if (filteredEntities.size() > MAX_RESULTS) {
+                    if (filteredSnapshot.size() > MAX_RESULTS) {
                         ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 1.0f);
-                        ImGui.text("  ... " + (filteredEntities.size() - MAX_RESULTS) + " more");
+                        ImGui.text("  ... " + (filteredSnapshot.size() - MAX_RESULTS) + " more");
                         ImGui.popStyleColor();
                     }
                     ImGui.popStyleColor();
@@ -171,8 +172,9 @@ public class EntityTypeSelectorNode extends BaseCustomUINode {
     }
 
     private void updateFilteredList(String searchText) {
-        filteredEntities.clear();
+        List<String> nextFilteredEntities = new ArrayList<>();
         if (searchText.isEmpty()) {
+            filteredEntities = nextFilteredEntities;
             invalidateCache();
             return;
         }
@@ -183,8 +185,8 @@ public class EntityTypeSelectorNode extends BaseCustomUINode {
                     continue;
                 }
                 if (fullId.contains(searchText) || id.getPath().contains(searchText)) {
-                    filteredEntities.add(fullId);
-                    if (filteredEntities.size() >= MAX_RESULTS * 2) {
+                    nextFilteredEntities.add(fullId);
+                    if (nextFilteredEntities.size() >= MAX_RESULTS * 2) {
                         break;
                     }
                 }
@@ -192,6 +194,7 @@ public class EntityTypeSelectorNode extends BaseCustomUINode {
         } catch (Exception ignored) {
             // Registry may not be ready yet.
         }
+        filteredEntities = nextFilteredEntities;
         invalidateCache();
     }
 

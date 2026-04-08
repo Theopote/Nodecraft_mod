@@ -30,7 +30,7 @@ public class TextPanelNode extends BaseCustomUINode {
     
     @NodeProperty(displayName = "文本内容", category = "文本", order = 1,
                   description = "文本内容")
-    private String text = "";
+    private volatile String text = "";
 
     @NodeProperty(displayName = "多行模式", category = "设置", order = 10,
                   description = "是否为多行文本")
@@ -56,7 +56,7 @@ public class TextPanelNode extends BaseCustomUINode {
     
     // --- UI状态 ---
     private transient ImString textBuffer = new ImString(32768);
-    private transient boolean bufferNeedsSync = true;
+    private transient volatile boolean bufferNeedsSync = true;
     
     public TextPanelNode() {
         super(UUID.randomUUID(), "inputs.sources.text_panel");

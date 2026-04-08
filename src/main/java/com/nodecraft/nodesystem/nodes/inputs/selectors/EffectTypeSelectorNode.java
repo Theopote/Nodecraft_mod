@@ -58,9 +58,9 @@ public class EffectTypeSelectorNode extends BaseCustomUINode {
     private static final String OUTPUT_EFFECT_TYPE = "output_effect_type";
 
     private transient ImString searchBuffer = new ImString(256);
-    private transient List<String> filteredEffects = new ArrayList<>();
-    private transient boolean showDropdown = false;
-    private transient String lastSearchText = "";
+    private transient volatile List<String> filteredEffects = new ArrayList<>();
+    private transient volatile boolean showDropdown = false;
+    private transient volatile String lastSearchText = "";
 
     private static final int MAX_RESULTS = 20;
 
@@ -137,11 +137,12 @@ public class EffectTypeSelectorNode extends BaseCustomUINode {
 
                 layout.addVerticalSpacing(0.5f);
 
-                if (showDropdown && !filteredEffects.isEmpty()) {
+                List<String> filteredSnapshot = filteredEffects;
+                if (showDropdown && !filteredSnapshot.isEmpty()) {
                     ImGui.pushStyleColor(ImGuiCol.ChildBg, 0.15f, 0.15f, 0.18f, 0.95f);
-                    int displayCount = Math.min(filteredEffects.size(), MAX_RESULTS);
+                    int displayCount = Math.min(filteredSnapshot.size(), MAX_RESULTS);
                     for (int i = 0; i < displayCount; i++) {
-                        String effectId = filteredEffects.get(i);
+                        String effectId = filteredSnapshot.get(i);
                         String effectPath = effectId.contains(":") ? effectId.split(":", 2)[1] : effectId;
                         boolean isSelected = effectId.equals(selectedEffect);
                         boolean isBeneficial = BENEFICIAL_EFFECTS.contains(effectPath);
@@ -173,9 +174,9 @@ public class EffectTypeSelectorNode extends BaseCustomUINode {
                         }
                     }
 
-                    if (filteredEffects.size() > MAX_RESULTS) {
+                    if (filteredSnapshot.size() > MAX_RESULTS) {
                         ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 1.0f);
-                        ImGui.text("  ... " + (filteredEffects.size() - MAX_RESULTS) + " more");
+                        ImGui.text("  ... " + (filteredSnapshot.size() - MAX_RESULTS) + " more");
                         ImGui.popStyleColor();
                     }
                     ImGui.popStyleColor();
@@ -190,8 +191,9 @@ public class EffectTypeSelectorNode extends BaseCustomUINode {
     }
 
     private void updateFilteredList(String searchText) {
-        filteredEffects.clear();
+        List<String> nextFilteredEffects = new ArrayList<>();
         if (searchText.isEmpty()) {
+            filteredEffects = nextFilteredEffects;
             invalidateCache();
             return;
         }
@@ -202,8 +204,8 @@ public class EffectTypeSelectorNode extends BaseCustomUINode {
                     continue;
                 }
                 if (fullId.contains(searchText) || id.getPath().contains(searchText)) {
-                    filteredEffects.add(fullId);
-                    if (filteredEffects.size() >= MAX_RESULTS * 2) {
+                    nextFilteredEffects.add(fullId);
+                    if (nextFilteredEffects.size() >= MAX_RESULTS * 2) {
                         break;
                     }
                 }
@@ -211,6 +213,7 @@ public class EffectTypeSelectorNode extends BaseCustomUINode {
         } catch (Exception ignored) {
             // Registry may not be ready yet.
         }
+        filteredEffects = nextFilteredEffects;
         invalidateCache();
     }
 

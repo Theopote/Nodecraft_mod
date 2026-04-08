@@ -49,9 +49,9 @@ public class SoundEventSelectorNode extends BaseCustomUINode {
     private static final String OUTPUT_CATEGORY = "output_category";
 
     private transient ImString searchBuffer = new ImString(256);
-    private transient List<String> filteredSounds = new ArrayList<>();
-    private transient boolean showDropdown = false;
-    private transient String lastSearchText = "";
+    private transient volatile List<String> filteredSounds = new ArrayList<>();
+    private transient volatile boolean showDropdown = false;
+    private transient volatile String lastSearchText = "";
 
     private static final int MAX_RESULTS = 20;
 
@@ -127,10 +127,11 @@ public class SoundEventSelectorNode extends BaseCustomUINode {
 
                 layout.addVerticalSpacing(0.5f);
 
-                if (showDropdown && !filteredSounds.isEmpty()) {
-                    int displayCount = Math.min(filteredSounds.size(), MAX_RESULTS);
+                List<String> filteredSnapshot = filteredSounds;
+                if (showDropdown && !filteredSnapshot.isEmpty()) {
+                    int displayCount = Math.min(filteredSnapshot.size(), MAX_RESULTS);
                     for (int i = 0; i < displayCount; i++) {
-                        String soundId = filteredSounds.get(i);
+                        String soundId = filteredSnapshot.get(i);
                         String soundPath = soundId.contains(":") ? soundId.split(":", 2)[1] : soundId;
                         boolean isSelected = soundId.equals(selectedSound);
                         if (isSelected) {
@@ -152,9 +153,9 @@ public class SoundEventSelectorNode extends BaseCustomUINode {
                             ImGui.setTooltip(soundId);
                         }
                     }
-                    if (filteredSounds.size() > MAX_RESULTS) {
+                    if (filteredSnapshot.size() > MAX_RESULTS) {
                         ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 1.0f);
-                        ImGui.text("  ... " + (filteredSounds.size() - MAX_RESULTS) + " more");
+                        ImGui.text("  ... " + (filteredSnapshot.size() - MAX_RESULTS) + " more");
                         ImGui.popStyleColor();
                     }
                 }
@@ -168,8 +169,9 @@ public class SoundEventSelectorNode extends BaseCustomUINode {
     }
 
     private void updateFilteredList(String searchText) {
-        filteredSounds.clear();
+        List<String> nextFilteredSounds = new ArrayList<>();
         if (searchText.isEmpty()) {
+            filteredSounds = nextFilteredSounds;
             invalidateCache();
             return;
         }
@@ -180,8 +182,8 @@ public class SoundEventSelectorNode extends BaseCustomUINode {
                     continue;
                 }
                 if (fullId.contains(searchText) || id.getPath().contains(searchText)) {
-                    filteredSounds.add(fullId);
-                    if (filteredSounds.size() >= MAX_RESULTS * 2) {
+                    nextFilteredSounds.add(fullId);
+                    if (nextFilteredSounds.size() >= MAX_RESULTS * 2) {
                         break;
                     }
                 }
@@ -189,6 +191,7 @@ public class SoundEventSelectorNode extends BaseCustomUINode {
         } catch (Exception ignored) {
             // Registry may not be ready yet.
         }
+        filteredSounds = nextFilteredSounds;
         invalidateCache();
     }
 
