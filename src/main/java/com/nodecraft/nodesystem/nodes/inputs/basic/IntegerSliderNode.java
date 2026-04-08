@@ -26,31 +26,31 @@ public class IntegerSliderNode extends BaseCustomUINode {
 
     @NodeProperty(displayName = "当前值", category = "数值", order = 1,
         description = "滑动条当前输出的整数值")
-    private int value = 50;
+    private volatile int value = 50;
 
     @NodeProperty(displayName = "最小值", category = "范围", order = 2,
         description = "滑动条允许的最小值")
-    private int min = 0;
+    private volatile int min = 0;
 
     @NodeProperty(displayName = "最大值", category = "范围", order = 3,
         description = "滑动条允许的最大值")
-    private int max = 100;
+    private volatile int max = 100;
 
     @NodeProperty(displayName = "步长", category = "范围", order = 4,
         description = "点击加减按钮时每次变化的数值")
-    private int step = 1;
+    private volatile int step = 1;
 
     @NodeProperty(displayName = "显示数值输入", category = "UI设置", order = 10,
         description = "在滑动条上方显示手动输入框")
-    private boolean showValueInput = true;
+    private volatile boolean showValueInput = true;
 
     @NodeProperty(displayName = "显示范围信息", category = "UI设置", order = 11,
         description = "在底部显示最小值、最大值和步长")
-    private boolean showRangeInfo = true;
+    private volatile boolean showRangeInfo = true;
 
     @NodeProperty(displayName = "紧凑模式", category = "UI设置", order = 12,
         description = "隐藏冗余信息，减少节点高度")
-    private boolean compact = false;
+    private volatile boolean compact = false;
 
     public IntegerSliderNode() {
         super(UUID.randomUUID(), "inputs.basic.integer_slider");

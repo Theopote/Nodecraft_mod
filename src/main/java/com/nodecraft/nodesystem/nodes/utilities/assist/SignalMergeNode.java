@@ -35,7 +35,7 @@ public class SignalMergeNode extends BaseCustomUINode {
     private static final String OUTPUT_SIGNAL_ID = "output_signal";
     private static final String OUTPUT_SOURCE_ID = "output_source";
 
-    private int inputBranchCount = DEFAULT_INPUT_BRANCHES;
+    private volatile int inputBranchCount = DEFAULT_INPUT_BRANCHES;
     private boolean preferPrimary = true;
 
     public SignalMergeNode() {

@@ -30,7 +30,7 @@ public class CreateListNode extends BaseCustomUINode {
     
     @NodeProperty(displayName = "输入数量", category = "设置", order = 1,
                   description = "列表输入端口数量")
-    private int inputCount = 3;
+    private volatile int inputCount = 3;
     
     @NodeProperty(displayName = "允许不同类型", category = "设置", order = 2,
                   description = "是否允许不同类型的输入")

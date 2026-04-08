@@ -27,33 +27,33 @@ public class FloatSliderNode extends BaseCustomUINode {
 
     @NodeProperty(displayName = "当前值", category = "数值", order = 1,
         description = "滑动条当前输出的浮点数值")
-    private double currentValue = 50.0;
+    private volatile double currentValue = 50.0;
 
     @NodeProperty(displayName = "最小值", category = "范围", order = 2,
         description = "滑动条允许的最小值")
-    private double minValue = 0.0;
+    private volatile double minValue = 0.0;
 
     @NodeProperty(displayName = "最大值", category = "范围", order = 3,
         description = "滑动条允许的最大值")
-    private double maxValue = 100.0;
+    private volatile double maxValue = 100.0;
 
     @NodeProperty(displayName = "小数位数", category = "精度", order = 4,
         description = "界面显示和输入时保留的小数位数")
-    private int decimalPlaces = 2;
+    private volatile int decimalPlaces = 2;
 
     @NodeProperty(displayName = "显示范围标签", category = "UI设置", order = 10,
         description = "在滑动条下方显示最小值和最大值")
-    private boolean showMinMaxLabels = true;
+    private volatile boolean showMinMaxLabels = true;
 
     @NodeProperty(displayName = "显示数值输入", category = "UI设置", order = 11,
         description = "在滑动条上方显示当前值输入框")
-    private boolean showValueInput = true;
+    private volatile boolean showValueInput = true;
 
     @NodeProperty(displayName = "显示设置面板", category = "UI设置", order = 12,
         description = "显示范围与精度设置区域")
-    private boolean showSettingsPanel = false;
+    private volatile boolean showSettingsPanel = false;
 
-    private transient String formatString = "%.2f";
+    private transient volatile String formatString = "%.2f";
 
     public FloatSliderNode() {
         super(UUID.randomUUID(), "inputs.basic.float_slider");

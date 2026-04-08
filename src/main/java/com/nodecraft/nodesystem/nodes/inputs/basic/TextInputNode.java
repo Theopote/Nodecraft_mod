@@ -32,23 +32,23 @@ public class TextInputNode extends BaseCustomUINode {
 
     @NodeProperty(displayName = "文本内容", category = "内容", order = 1,
         description = "当前文本内容")
-    private String text = "";
+    private volatile String text = "";
 
     @NodeProperty(displayName = "多行模式", category = "UI设置", order = 10,
         description = "是否启用多行输入")
-    private boolean multiline = true;
+    private volatile boolean multiline = true;
 
     @NodeProperty(displayName = "最大长度", category = "限制", order = 11,
         description = "允许输入的最大字符数")
-    private int maxLength = 32767;
+    private volatile int maxLength = 32767;
 
     @NodeProperty(displayName = "占位文本", category = "UI设置", order = 12,
         description = "输入框为空时显示的提示文本")
-    private String placeholder = "输入文本...";
+    private volatile String placeholder = "输入文本...";
 
     @NodeProperty(displayName = "显示字数统计", category = "UI设置", order = 13,
         description = "是否在底部显示当前字数和最大长度")
-    private boolean showLengthCounter = true;
+    private volatile boolean showLengthCounter = true;
 
     private transient ImString inputBuffer;
     private transient boolean bufferNeedsSync = true;

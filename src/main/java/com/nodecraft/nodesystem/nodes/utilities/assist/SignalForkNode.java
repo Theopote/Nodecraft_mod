@@ -29,7 +29,7 @@ public class SignalForkNode extends BaseCustomUINode {
     private static final int DEFAULT_OUTPUT_BRANCHES = 2;
     private static final int MAX_OUTPUT_BRANCHES = 8;
 
-    private int outputBranchCount = DEFAULT_OUTPUT_BRANCHES;
+    private volatile int outputBranchCount = DEFAULT_OUTPUT_BRANCHES;
 
     public SignalForkNode() {
         super(UUID.randomUUID(), "utilities.assist.signal_fork");
