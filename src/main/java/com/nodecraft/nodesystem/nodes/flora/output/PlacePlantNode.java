@@ -8,6 +8,8 @@ import com.nodecraft.nodesystem.datatypes.PlantStructure;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +25,8 @@ import java.util.UUID;
     category = "flora.output"
 )
 public class PlacePlantNode extends BaseNode {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PlacePlantNode.class);
     
     // --- 节点属性 ---
     private boolean includeAir = false;            // 是否包含空气方块
@@ -154,8 +158,7 @@ public class PlacePlantNode extends BaseNode {
                 success = true;
                 
             } catch (Exception e) {
-                System.err.println("Error in Place Plant conversion: " + e.getMessage());
-                e.printStackTrace();
+                LOGGER.error("Error in Place Plant conversion", e);
                 success = false;
             }
         }

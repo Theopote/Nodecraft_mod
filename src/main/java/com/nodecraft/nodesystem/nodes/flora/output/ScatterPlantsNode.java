@@ -8,6 +8,8 @@ import com.nodecraft.nodesystem.datatypes.PlantStructure;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +26,8 @@ import java.util.UUID;
     category = "flora.output"
 )
 public class ScatterPlantsNode extends BaseNode {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ScatterPlantsNode.class);
     
     // --- 节点属性 ---
     private int plantCount = 10;                  // 植物数量
@@ -129,8 +133,7 @@ public class ScatterPlantsNode extends BaseNode {
                     scatteredPlants.size(), scatterRadiusValue, minDistanceValue, totalBlocks);
                 
             } catch (Exception e) {
-                System.err.println("Error in Scatter Plants: " + e.getMessage());
-                e.printStackTrace();
+                LOGGER.error("Error in Scatter Plants", e);
                 scatterInfo = "Error during scattering";
             }
         }

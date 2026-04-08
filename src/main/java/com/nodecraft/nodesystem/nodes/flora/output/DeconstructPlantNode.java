@@ -8,6 +8,8 @@ import com.nodecraft.nodesystem.datatypes.PlantStructure;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,6 +27,8 @@ import java.util.UUID;
     category = "flora.output"
 )
 public class DeconstructPlantNode extends BaseNode {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DeconstructPlantNode.class);
     
     // --- 节点属性 ---
     private boolean outputTrunk = true;              // 是否输出主干
@@ -199,8 +203,7 @@ public class DeconstructPlantNode extends BaseNode {
                     outputRootsValue ? "Yes" : "No");
                 
             } catch (Exception e) {
-                System.err.println("Error in Deconstruct Plant: " + e.getMessage());
-                e.printStackTrace();
+                LOGGER.error("Error in Deconstruct Plant", e);
                 deconstructInfo = "Error during deconstruction";
             }
         }
