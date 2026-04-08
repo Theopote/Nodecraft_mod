@@ -20,6 +20,8 @@ import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,6 +41,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
     category = "visualization.execute"
 )
 public class ApplyChangesNode extends BaseCustomUINode {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ApplyChangesNode.class);
 
     @NodeProperty(displayName = "Show Progress Bar", category = "Execution", order = 1)
     private boolean showProgressBar = true;
@@ -180,7 +184,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 progressPercentage = 1.0f;
                 statusMessage = "Completed";
                 if (notify) {
-                    System.out.println("ApplyChangesNode: " + status + ", " + executionTime + "ms");
+                    LOGGER.info("ApplyChangesNode: {}, {}ms", status, executionTime);
                 }
                 publishOutputs(success, operationCount, executionTime, status);
                 return;
@@ -210,14 +214,14 @@ public class ApplyChangesNode extends BaseCustomUINode {
             progressPercentage = 1.0f;
             statusMessage = "Completed";
             if (notify) {
-                System.out.println("ApplyChangesNode: " + status + ", " + executionTime + "ms");
+                LOGGER.info("ApplyChangesNode: {}, {}ms", status, executionTime);
             }
 
             publishOutputs(success, operationCount, executionTime, status);
         } catch (Exception e) {
             status = "Error: " + e.getMessage();
             statusMessage = status;
-            System.err.println("ApplyChangesNode: " + e.getMessage());
+            LOGGER.error("ApplyChangesNode execution failed", e);
             publishOutputs(success, operationCount, executionTime, status);
         } finally {
             isExecuting.set(false);
@@ -388,7 +392,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
 
                 l.addVerticalSpacing(getMediumPadding());
             } catch (Exception e) {
-                System.err.println("ApplyChangesNode UI render failed: " + e.getMessage());
+                LOGGER.error("ApplyChangesNode UI render failed", e);
             }
             return changed;
         });

@@ -8,6 +8,8 @@ import com.nodecraft.nodesystem.datatypes.PlantStructure;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Random;
 import java.util.UUID;
@@ -22,6 +24,8 @@ import java.util.UUID;
     category = "flora.modifiers"
 )
 public class AddRootsNode extends BaseNode {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AddRootsNode.class);
     
     /**
      * 根系类型枚举
@@ -161,8 +165,7 @@ public class AddRootsNode extends BaseNode {
                     rootDensityValue * 100, rootsAdded);
                 
             } catch (Exception e) {
-                System.err.println("Error in Add Roots: " + e.getMessage());
-                e.printStackTrace();
+                LOGGER.error("Error in Add Roots", e);
                 plantWithRoots = inputPlant; // 返回原始植物
                 rootInfo = "Error during root addition";
             }
