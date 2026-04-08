@@ -10,6 +10,8 @@ import com.nodecraft.nodesystem.nodes.flora.algorithms.LSystemInterpreter;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +27,8 @@ import java.util.UUID;
     category = "flora.generators"
 )
 public class BushPresetNode extends BaseNode {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(BushPresetNode.class);
     
     /**
      * 灌木类型枚举
@@ -165,8 +169,7 @@ public class BushPresetNode extends BaseNode {
             
         } catch (Exception e) {
             // 出错时输出空的植物结构
-            System.err.println("Error in Bush Preset generation: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.error("Error in Bush Preset generation", e);
             
             PlantStructure emptyPlant = new PlantStructure();
             outputValues.put(OUTPUT_PLANT_STRUCTURE_ID, emptyPlant);

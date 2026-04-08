@@ -8,6 +8,8 @@ import com.nodecraft.nodesystem.datatypes.PlantStructure;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +26,8 @@ import java.util.UUID;
     category = "flora.generators"
 )
 public class ClonePlantNode extends BaseNode {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ClonePlantNode.class);
     
     /**
      * 复制模式枚举
@@ -205,8 +209,7 @@ public class ClonePlantNode extends BaseNode {
                     mergePlantsValue ? "Yes" : "No");
                 
             } catch (Exception e) {
-                System.err.println("Error in Clone Plant: " + e.getMessage());
-                e.printStackTrace();
+                LOGGER.error("Error in Clone Plant", e);
                 cloneInfo = "Error during cloning";
             }
         }
