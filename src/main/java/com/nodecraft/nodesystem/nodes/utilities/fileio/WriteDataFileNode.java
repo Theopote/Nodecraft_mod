@@ -31,6 +31,8 @@ import java.util.UUID;
 )
 public class WriteDataFileNode extends BaseNode {
 
+    private static final Path ALLOWED_BASE_DIRECTORY = Paths.get("").toAbsolutePath().normalize();
+
     // --- 节点属性 ---
     private String filePath = ""; // 文件路径
     private String encoding = "UTF-8"; // 文件编码
@@ -181,7 +183,7 @@ public class WriteDataFileNode extends BaseNode {
         }
         
         try {
-            Path path = Paths.get(filePathToWrite);
+            Path path = resolveSafeOutputPath(filePathToWrite);
             Path parent = path.getParent();
             
             // 如果需要，创建父目录
@@ -227,7 +229,7 @@ public class WriteDataFileNode extends BaseNode {
             }
             
             success = true;
-            savedPath = filePathToWrite;
+            savedPath = path.toString();
         } catch (Exception e) {
             success = false;
             errorMessage = "写入文件时出错: " + e.getMessage();
@@ -371,6 +373,19 @@ public class WriteDataFileNode extends BaseNode {
         }
         
         return sb.toString();
+    }
+
+    private Path resolveSafeOutputPath(String rawPath) {
+        Path candidate = Paths.get(rawPath);
+        Path normalized = candidate.isAbsolute()
+                ? candidate.toAbsolutePath().normalize()
+                : ALLOWED_BASE_DIRECTORY.resolve(candidate).normalize();
+
+        if (!normalized.startsWith(ALLOWED_BASE_DIRECTORY)) {
+            throw new IllegalArgumentException("文件路径超出允许目录: " + rawPath);
+        }
+
+        return normalized;
     }
     
     /**
