@@ -59,7 +59,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
     private boolean previewSolidGeometry = true;
 
     @NodeProperty(displayName = "Placed", category = "State", order = 8)
-    private boolean placed = false;
+    private volatile boolean placed = false;
 
     @NodeProperty(displayName = "Placement Mode", category = "Placement", order = 9)
     private PlacementMode placementMode = PlacementMode.OVERWRITE;
@@ -70,16 +70,16 @@ public class GeometryViewerNode extends BaseCustomUINode {
     @NodeProperty(displayName = "Record Undo", category = "Placement", order = 11)
     private boolean recordUndo = true;
 
-    private boolean placementRequested = false;
-    private boolean placementPendingLogged = false;
-    private int lastBlockCount = 0;
-    private String statusMessage = "Waiting for input...";
+    private volatile boolean placementRequested = false;
+    private volatile boolean placementPendingLogged = false;
+    private volatile int lastBlockCount = 0;
+    private volatile String statusMessage = "Waiting for input...";
 
-    private int cachedGeometrySignature = 0;
-    private float cachedTransparency = -1f;
-    private String cachedColor = null;
-    private String cachedBlockType = null;
-    private PreviewBackend cachedPreviewBackend = null;
+    private volatile int cachedGeometrySignature = 0;
+    private volatile float cachedTransparency = -1f;
+    private volatile String cachedColor = null;
+    private volatile String cachedBlockType = null;
+    private volatile PreviewBackend cachedPreviewBackend = null;
 
     private static final String INPUT_BLOCKS_ID = "input_blocks";
     private static final String INPUT_GEOMETRY_ID = "input_geometry";

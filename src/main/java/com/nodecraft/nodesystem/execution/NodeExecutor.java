@@ -16,6 +16,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,8 +31,8 @@ public class NodeExecutor {
     private final NodeGraph graph;
     private final ExecutionContext context;
     private final Map<UUID, NodeState> nodeStates = new HashMap<>();
-    private boolean isExecuting = false;
-    private CompletableFuture<Boolean> executionFuture;
+    private final AtomicBoolean isExecuting = new AtomicBoolean(false);
+    private volatile CompletableFuture<Boolean> executionFuture;
     private Executor executorService;
     
     // 节点执行状态
@@ -66,11 +67,10 @@ public class NodeExecutor {
      * @return 返回执行结果的CompletableFuture
      */
     public CompletableFuture<Boolean> executeAsync() {
-        if (isExecuting) {
+        if (!isExecuting.compareAndSet(false, true)) {
             return CompletableFuture.completedFuture(false);
         }
-        
-        isExecuting = true;
+
         executionFuture = new CompletableFuture<>();
         
         CompletableFuture.runAsync(() -> {
@@ -81,7 +81,7 @@ public class NodeExecutor {
                 LOGGER.error("节点图执行错误", e);
                 executionFuture.completeExceptionally(e);
             } finally {
-                isExecuting = false;
+                isExecuting.set(false);
             }
         }, executorService);
         
@@ -93,18 +93,17 @@ public class NodeExecutor {
      * @return 执行成功返回true，否则为false
      */
     public boolean executeSync() {
-        if (isExecuting) {
+        if (!isExecuting.compareAndSet(false, true)) {
             return false;
         }
-        
+
         try {
-            isExecuting = true;
             return executeGraph();
         } catch (Exception e) {
             LOGGER.error("节点图执行错误", e);
             return false;
         } finally {
-            isExecuting = false;
+            isExecuting.set(false);
         }
     }
     
@@ -128,9 +127,9 @@ public class NodeExecutor {
      * 停止正在执行的操作
      */
     public void stop() {
-        if (isExecuting && executionFuture != null && !executionFuture.isDone()) {
+        if (isExecuting.get() && executionFuture != null && !executionFuture.isDone()) {
             executionFuture.cancel(true);
-            isExecuting = false;
+            isExecuting.set(false);
         }
     }
     
@@ -138,7 +137,7 @@ public class NodeExecutor {
      * 获取当前是否正在执行
      */
     public boolean isExecuting() {
-        return isExecuting;
+        return isExecuting.get();
     }
     
     /**

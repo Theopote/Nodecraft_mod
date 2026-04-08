@@ -31,8 +31,8 @@ public class ValueMonitorNode extends BaseCustomUINode {
     private static final String OUTPUT_VALUE_ID = "output_value";
 
     /** 供面板显示用，processNode 中写入 */
-    private String displayContent = "";
-    private String typeLabel = "—";
+    private volatile String displayContent = "";
+    private volatile String typeLabel = "—";
 
     public ValueMonitorNode() {
         super(UUID.randomUUID(), "visualization.debugging.value_monitor");

@@ -39,7 +39,7 @@ public class PanelNode extends BaseCustomUINode {
     @NodeProperty(displayName = "最大长度", category = "显示", order = 4)
     private int maxDisplayLength = 2000;
 
-    private String panelContent = "";
+    private volatile String panelContent = "";
 
     private static final String INPUT_DATA_ID = "input_data";
     private static final String INPUT_FORMAT_ID = "input_format";

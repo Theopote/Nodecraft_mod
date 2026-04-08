@@ -39,9 +39,9 @@ public class ExecutionTimerNode extends BaseCustomUINode {
 
     private long startTime = 0;
     private long endTime = 0;
-    private long lastExecutionTime = 0;
-    private long totalExecutionTime = 0;
-    private int executionCount = 0;
+    private volatile long lastExecutionTime = 0;
+    private volatile long totalExecutionTime = 0;
+    private volatile int executionCount = 0;
 
     private static final String INPUT_START_ID = "input_start";
     private static final String INPUT_STOP_ID = "input_stop";

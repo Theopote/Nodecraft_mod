@@ -48,8 +48,8 @@ public class SelectedRegionNode extends BaseCustomUINode {
     private static final String OUTPUT_VOLUME_ID = "output_volume";
     private static final String OUTPUT_HAS_SELECTION_ID = "output_has_selection";
 
-    private Vector3 pos1;
-    private Vector3 pos2;
+    private volatile Vector3 pos1;
+    private volatile Vector3 pos2;
 
     public SelectedRegionNode() {
         super(UUID.randomUUID(), "inputs.minecraft.selected_region");

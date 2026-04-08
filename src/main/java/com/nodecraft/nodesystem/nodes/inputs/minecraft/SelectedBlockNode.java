@@ -76,10 +76,10 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     private boolean showGhostBlock = true;
     
     // --- 核心数据状态 ---
-    private Coordinate pickedBlockPosition = null;
-    private String pickedBlockId = "minecraft:air";
-    private BlockStateData pickedBlockStateData = null;
-    private boolean hasPickedBlock = false;
+    private volatile Coordinate pickedBlockPosition = null;
+    private volatile String pickedBlockId = "minecraft:air";
+    private volatile BlockStateData pickedBlockStateData = null;
+    private volatile boolean hasPickedBlock = false;
 
     @NodeProperty(
         displayName = "Has Selection",
@@ -123,9 +123,9 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     )
 
     // --- 输入验证状态 ---
-    private String inputValidationError = null;
-    private boolean hasInputValidationWarning = false;
-    private String inputValidationWarning = null;
+    private volatile String inputValidationError = null;
+    private volatile boolean hasInputValidationWarning = false;
+    private volatile String inputValidationWarning = null;
     private transient boolean infoSectionExpanded = true;
     private transient boolean settingsSectionExpanded = false;
     private transient boolean blockStateTreeExpanded = false;
@@ -133,7 +133,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     // --- UI折叠状态（影响节点高度计算） ---
     
     // --- 预览管理 ---
-    private String currentGhostBlockPreviewId = null;
+    private volatile String currentGhostBlockPreviewId = null;
     
     // --- 输入端口 ---
     private static final String INPUT_X_ID = "input_x";
