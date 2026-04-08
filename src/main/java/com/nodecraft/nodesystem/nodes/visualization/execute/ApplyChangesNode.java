@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Applies voxelized geometry or explicit placements to the world.
@@ -61,9 +62,9 @@ public class ApplyChangesNode extends BaseCustomUINode {
     private boolean solidGeometry = true;
 
     private UUID executionId = UUID.randomUUID();
-    private boolean isExecuting = false;
-    private float progressPercentage = 0.0f;
-    private String statusMessage = "Idle";
+    private final AtomicBoolean isExecuting = new AtomicBoolean(false);
+    private volatile float progressPercentage = 0.0f;
+    private volatile String statusMessage = "Idle";
 
     private static final String INPUT_TRIGGER_ID = "input_trigger";
     private static final String INPUT_BLOCKS_ID = "input_blocks";
@@ -136,40 +137,38 @@ public class ApplyChangesNode extends BaseCustomUINode {
             return;
         }
 
-        if (isExecuting) {
+        if (!isExecuting.compareAndSet(false, true)) {
             publishOutputs(false, 0, 0, "Execution already in progress");
             return;
         }
-
-        if (context == null || context.getWorld() == null) {
-            publishOutputs(false, 0, 0, "Missing execution context");
-            return;
-        }
-
-        List<String> previewTrackingIds = resolvePreviewTrackingIds(previewTrackingIdObj, inputValues.get(INPUT_PREVIEW_IDS_ID));
-        if (!previewTrackingIds.isEmpty()) {
-            long startTime = System.currentTimeMillis();
-            int commitCount = 0;
-            for (String previewTrackingId : previewTrackingIds) {
-                if (TrackedPreviewPlacementService.getInstance().commitTrackedPreview(context.getWorld(), previewTrackingId)) {
-                    commitCount++;
-                }
+        try {
+            if (context == null || context.getWorld() == null) {
+                publishOutputs(false, 0, 0, "Missing execution context");
+                return;
             }
-            success = commitCount > 0;
-            operationCount = commitCount;
-            executionTime = (int) (System.currentTimeMillis() - startTime);
-            status = success
-                    ? "Committed " + commitCount + " tracked preview(s)"
-                    : "No tracked previews were committed";
-            publishOutputs(success, operationCount, executionTime, status);
-            return;
-        }
 
-        List<BlockPlacementData> placements = resolvePlacements(placementsObj);
-        if (!placements.isEmpty()) {
-            long startTime = System.currentTimeMillis();
-            isExecuting = true;
-            try {
+            List<String> previewTrackingIds = resolvePreviewTrackingIds(previewTrackingIdObj, inputValues.get(INPUT_PREVIEW_IDS_ID));
+            if (!previewTrackingIds.isEmpty()) {
+                long startTime = System.currentTimeMillis();
+                int commitCount = 0;
+                for (String previewTrackingId : previewTrackingIds) {
+                    if (TrackedPreviewPlacementService.getInstance().commitTrackedPreview(context.getWorld(), previewTrackingId)) {
+                        commitCount++;
+                    }
+                }
+                success = commitCount > 0;
+                operationCount = commitCount;
+                executionTime = (int) (System.currentTimeMillis() - startTime);
+                status = success
+                        ? "Committed " + commitCount + " tracked preview(s)"
+                        : "No tracked previews were committed";
+                publishOutputs(success, operationCount, executionTime, status);
+                return;
+            }
+
+            List<BlockPlacementData> placements = resolvePlacements(placementsObj);
+            if (!placements.isEmpty()) {
+                long startTime = System.currentTimeMillis();
                 progressPercentage = 0.2f;
                 statusMessage = "Applying material placements...";
                 operationCount = applyPlacementList(context, placements);
@@ -183,32 +182,23 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 if (notify) {
                     System.out.println("ApplyChangesNode: " + status + ", " + executionTime + "ms");
                 }
-            } catch (Exception e) {
-                status = "Error: " + e.getMessage();
-                statusMessage = status;
-                System.err.println("ApplyChangesNode: " + e.getMessage());
-            } finally {
-                isExecuting = false;
+                publishOutputs(success, operationCount, executionTime, status);
+                return;
             }
-            publishOutputs(success, operationCount, executionTime, status);
-            return;
-        }
 
-        BlockPosList blocks = resolveBlocks(blocksObj, geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj);
-        if (blocks.isEmpty()) {
-            publishOutputs(false, 0, 0, "No blocks or geometry to apply");
-            return;
-        }
+            BlockPosList blocks = resolveBlocks(blocksObj, geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj);
+            if (blocks.isEmpty()) {
+                publishOutputs(false, 0, 0, "No blocks or geometry to apply");
+                return;
+            }
 
-        BlockState targetState = resolveBlockState(blockType);
-        if (targetState == null) {
-            publishOutputs(false, 0, 0, "Invalid block type: " + blockType);
-            return;
-        }
+            BlockState targetState = resolveBlockState(blockType);
+            if (targetState == null) {
+                publishOutputs(false, 0, 0, "Invalid block type: " + blockType);
+                return;
+            }
 
-        long startTime = System.currentTimeMillis();
-        isExecuting = true;
-        try {
+            long startTime = System.currentTimeMillis();
             progressPercentage = 0.2f;
             statusMessage = "Applying blocks...";
             operationCount = applyUniformBlocks(context, blocks, targetState);
@@ -222,15 +212,16 @@ public class ApplyChangesNode extends BaseCustomUINode {
             if (notify) {
                 System.out.println("ApplyChangesNode: " + status + ", " + executionTime + "ms");
             }
+
+            publishOutputs(success, operationCount, executionTime, status);
         } catch (Exception e) {
             status = "Error: " + e.getMessage();
             statusMessage = status;
             System.err.println("ApplyChangesNode: " + e.getMessage());
+            publishOutputs(success, operationCount, executionTime, status);
         } finally {
-            isExecuting = false;
+            isExecuting.set(false);
         }
-
-        publishOutputs(success, operationCount, executionTime, status);
     }
 
     private void publishOutputs(boolean success, int operationCount, int executionTime, String status) {
@@ -383,7 +374,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 float progressWidth = Math.max(0.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
                 l.addVerticalSpacing(getMediumPadding());
 
-                int statusColor = isExecuting ? 0xFF44AADD : (progressPercentage >= 1.0f ? 0xFF44DD44 : 0xFF888888);
+                int statusColor = isExecuting.get() ? 0xFF44AADD : (progressPercentage >= 1.0f ? 0xFF44DD44 : 0xFF888888);
                 ImGui.pushStyleColor(ImGuiCol.Text, statusColor);
                 ImGui.text(statusMessage);
                 ImGui.popStyleColor();
@@ -446,7 +437,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
     }
 
     public boolean isExecuting() {
-        return isExecuting;
+        return isExecuting.get();
     }
 
     public void resetExecutionId() {
