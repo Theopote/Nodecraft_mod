@@ -23,9 +23,6 @@ import java.util.List;
  * 用于在世界中显示单个或多个方块的线框高亮效果。
  */
 public class BlockHighlightElement extends AbstractPreviewElement {
-    private boolean renderingDisabled = false;
-    private boolean fillRenderingDisabled = false;
-
     private volatile List<Coordinate> blockPositions = new ArrayList<>(); // 存储方块的整数坐标
     private Vector3f color = new Vector3f(1.0f, 0.8f, 0.0f); // 默认橙黄色 (RGBA)
     private Vector3f fillColor = new Vector3f(1.0f, 0.8f, 0.0f); // 填充颜色（可独立配置）
@@ -123,7 +120,7 @@ public class BlockHighlightElement extends AbstractPreviewElement {
     @Override
     public void render(MatrixStack matrices, Camera camera, float partialTicks, float globalOpacity) {
         List<Coordinate> blockPositionsSnapshot = blockPositions;
-        if (renderingDisabled || blockPositionsSnapshot.isEmpty()) {
+        if (blockPositionsSnapshot.isEmpty()) {
             return;
         }
 
@@ -169,8 +166,6 @@ public class BlockHighlightElement extends AbstractPreviewElement {
             shouldFlushImmediately = true;
         }
 
-        VertexConsumer lineVertexConsumer = vertexConsumerProvider.getBuffer(RenderLayers.lines());
-        VertexConsumer fillVertexConsumer = showFill ? vertexConsumerProvider.getBuffer(RenderLayers.debugFilledBox()) : null;
         float maxRenderDistance = PreviewRenderer.getInstance().getSettings().maxRenderDistance;
 
         // 遍历所有要高亮的方块位置
@@ -191,26 +186,26 @@ public class BlockHighlightElement extends AbstractPreviewElement {
 
             // 使用简化的方块边框渲染
             try {
-                if (showFill && !fillRenderingDisabled && fillVertexConsumer != null) {
+                if (showFill) {
+                    VertexConsumer fillVertexConsumer = vertexConsumerProvider.getBuffer(RenderLayers.debugFilledBox());
                     try {
                         renderSimpleBlockFill(matrices, cameraPos, blockPos, finalOpacity, pulseFactor, fillVertexConsumer);
                     } catch (IllegalStateException fillException) {
                         if (fillException.getMessage() != null && fillException.getMessage().contains("Not building")) {
-                            fillRenderingDisabled = true;
-                            NodeCraft.LOGGER.warn("Disabling block highlight fill for preview {} after render pipeline error: {}", getId(), fillException.getMessage());
+                            NodeCraft.LOGGER.debug("Block highlight fill skipped this frame for preview {} due to pipeline state: {}", getId(), fillException.getMessage());
                         } else {
                             throw fillException;
                         }
                     }
                 }
                 if (showOutline) {
+                    VertexConsumer lineVertexConsumer = vertexConsumerProvider.getBuffer(RenderLayers.LINES);
                     renderSimpleBlockOutline(matrices, cameraPos, blockPos, finalOpacity, pulseFactor, lineVertexConsumer);
                 }
             } catch (IllegalStateException e) {
                 if (e.getMessage() != null && e.getMessage().contains("Not building")) {
-                    renderingDisabled = true;
-                    NodeCraft.LOGGER.warn("Disabling block highlight preview {} after render pipeline error: {}", getId(), e.getMessage());
-                    break;
+                    NodeCraft.LOGGER.debug("Block highlight outline skipped this frame for preview {} due to pipeline state: {}", getId(), e.getMessage());
+                    continue;
                 }
                 throw e;
             }
@@ -370,8 +365,6 @@ public class BlockHighlightElement extends AbstractPreviewElement {
     public void cleanup() {
         // 清理资源，如方块位置列表
         blockPositions.clear();
-        // 确保从PreviewRenderer中移除此元素
-        PreviewRenderer.getInstance().hidePreview(this.id);
     }
 
     public Vector3f getColor() {
