@@ -7,10 +7,13 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.preview.PreviewManager;
+import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.Vector3;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
+import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -54,6 +57,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
     private volatile boolean selecting = false;
     private volatile boolean waitingSecondPoint = false;
     private volatile String selectionHint = "点击“开始框选”后，在世界里左键选择两个角点";
+    private volatile String completedRegionPreviewId;
 
     private final AreaSelectionCallback areaSelectionCallback = new AreaSelectionCallback();
 
@@ -66,6 +70,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
             waitingSecondPoint = false;
             selectionHint = "框选完成";
             updateOutputsFromPositions();
+            syncCompletedRegionPreview();
             invalidateCache();
             markDirty();
         }
@@ -77,6 +82,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
             selecting = true;
             waitingSecondPoint = true;
             selectionHint = "已选第一个点，请选择第二个点";
+            clearCompletedRegionPreview();
             outputValues.put(OUTPUT_POS1_ID, pos1);
             outputValues.put(OUTPUT_POS1_X_ID, (int) pos1.getX());
             outputValues.put(OUTPUT_POS1_Y_ID, (int) pos1.getY());
@@ -134,6 +140,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
         }
 
         if (pos1 == null || pos2 == null) {
+            clearCompletedRegionPreview();
             // 保留 pos1 临时状态，完整输出由 updateOutputsFromPositions 产生
             if (pos1 == null) {
                 resetOutputs();
@@ -142,6 +149,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
         }
 
         updateOutputsFromPositions();
+        syncCompletedRegionPreview();
     }
 
     @Override
@@ -290,6 +298,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
         if (NodeEditorInteractionManager.getInstance().isPendingAreaSelection(getId().toString())) {
             NodeEditorInteractionManager.getInstance().cancelAreaSelection();
         }
+        clearCompletedRegionPreview();
         pos1 = null;
         pos2 = null;
         selecting = false;
@@ -370,6 +379,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
         if (NodeEditorInteractionManager.getInstance().isPendingAreaSelection(getId().toString())) {
             NodeEditorInteractionManager.getInstance().cancelAreaSelection();
         }
+        clearCompletedRegionPreview();
     }
 
     @Override
@@ -427,13 +437,77 @@ public class SelectedRegionNode extends BaseCustomUINode {
 
             if (pos1 != null && pos2 != null) {
                 updateOutputsFromPositions();
+                syncCompletedRegionPreview();
             } else {
+                clearCompletedRegionPreview();
                 resetOutputs();
             }
 
             selecting = false;
             waitingSecondPoint = false;
             selectionHint = "点击“开始框选”后，在世界里左键选择两个角点";
+        }
+    }
+
+    private void syncCompletedRegionPreview() {
+        if (pos1 == null || pos2 == null) {
+            clearCompletedRegionPreview();
+            return;
+        }
+
+        Vec3d min = new Vec3d(
+            Math.min(pos1.getX(), pos2.getX()),
+            Math.min(pos1.getY(), pos2.getY()),
+            Math.min(pos1.getZ(), pos2.getZ())
+        );
+        Vec3d max = new Vec3d(
+            Math.max(pos1.getX(), pos2.getX()) + 1.0d,
+            Math.max(pos1.getY(), pos2.getY()) + 1.0d,
+            Math.max(pos1.getZ(), pos2.getZ()) + 1.0d
+        );
+
+        PreviewOptions options = createCompletedRegionPreviewOptions();
+        Object[] regionData = new Object[] { min, max };
+
+        if (completedRegionPreviewId == null) {
+            completedRegionPreviewId = PreviewManager.showRegionBox(getId().toString(), min, max, options);
+        } else {
+            PreviewManager.updatePreview(completedRegionPreviewId, regionData);
+            PreviewManager.updatePreviewOptions(completedRegionPreviewId, options);
+        }
+    }
+
+    private PreviewOptions createCompletedRegionPreviewOptions() {
+        NodeEditorInteractionManager manager = NodeEditorInteractionManager.getInstance();
+        boolean showFill = manager.isAreaPreviewShowFill();
+        boolean showOutline = manager.isAreaPreviewShowOutline();
+
+        if (!showFill && !showOutline) {
+            showOutline = true;
+        }
+
+        float[] outlineColor = manager.getAreaPreviewOutlineColor();
+        float[] fillColor = manager.getAreaPreviewFillColor();
+
+        PreviewOptions options = new PreviewOptions()
+            .setColor(outlineColor[0], outlineColor[1], outlineColor[2])
+            .setTintColor(fillColor[0], fillColor[1], fillColor[2])
+            .setOpacity(Math.max(0.15f, manager.getAreaPreviewOpacity()))
+            .setLineWidth(Math.max(1.5f, manager.getAreaPreviewLineWidth()))
+            .setShowFill(showFill)
+            .setShowOutline(showOutline);
+
+        if (manager.isAreaPreviewEnablePulse()) {
+            options.enablePulse();
+        }
+
+        return options;
+    }
+
+    private void clearCompletedRegionPreview() {
+        if (completedRegionPreviewId != null) {
+            PreviewManager.hidePreview(completedRegionPreviewId);
+            completedRegionPreviewId = null;
         }
     }
 }

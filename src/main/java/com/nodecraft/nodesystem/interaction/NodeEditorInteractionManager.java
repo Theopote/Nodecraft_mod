@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.interaction;
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.BlockStateData;
+import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.PreviewRenderer;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.minecraft.client.MinecraftClientController;
@@ -325,14 +326,16 @@ public class NodeEditorInteractionManager {
                     
                 } else {
                     // 选择第二个点，完成区域选择
+                    Coordinate completedStart = firstPoint;
+                    Coordinate completedEnd = hoveredBlock;
 
                     // 通知回调
-                    currentCallback.onAreaSelected(firstPoint, hoveredBlock);
+                    currentCallback.onAreaSelected(completedStart, completedEnd);
                     
                     // 成功完成交互，不触发取消回调
                     interactionState.complete();
                     
-                    NodeCraft.LOGGER.info("区域选择完成: {} 到 {}", firstPoint, hoveredBlock);
+                    NodeCraft.LOGGER.info("区域选择完成: {} 到 {}", completedStart, completedEnd);
                 }
             } else if (isRightMouseClicked) {
                 // 右键取消当前选择
@@ -347,8 +350,10 @@ public class NodeEditorInteractionManager {
             }
             
             // 更新区域预览
-            if (firstPoint != null && hoveredBlock != null && !firstPoint.equals(hoveredBlock)) {
+            if (firstPoint != null && hoveredBlock != null) {
                 updateAreaPreview(firstPoint, hoveredBlock);
+            } else {
+                clearAreaPreview();
             }
         }
         
@@ -387,18 +392,16 @@ public class NodeEditorInteractionManager {
             
             PreviewOptions options = new PreviewOptions()
                 .setColor(0.0f, 1.0f, 0.0f) // 绿色
+                .setTintColor(0.2f, 1.0f, 0.2f)
                 .setOpacity(0.8f)
-                .wireframeMode()
+                .setShowFill(true)
+                .setShowOutline(true)
                 .setLineWidth(3.0f);
-            
-            firstPointPreviewId = PreviewRenderer.getInstance().showPreview(
-                OWNER_ID, "area_first_point", point, options
-            );
+
+            firstPointPreviewId = PreviewManager.highlightBlock(OWNER_ID, point, options);
         }
         
         private void updateAreaPreview(Coordinate start, Coordinate end) {
-            clearAreaPreview();
-            
             // 计算区域的最小和最大坐标
             int minX = Math.min(start.getX(), end.getX());
             int minY = Math.min(start.getY(), end.getY());
@@ -413,7 +416,7 @@ public class NodeEditorInteractionManager {
                 .setOpacity(areaPreviewOpacity)
                 .setLineWidth(areaPreviewLineWidth)
                 .setShowFill(areaPreviewShowFill)
-                .setShowOutline(areaPreviewShowOutline)
+                .setShowOutline(areaPreviewShowOutline || !areaPreviewShowFill)
                 .setDuration(1);
 
             if (areaPreviewEnablePulse) {
@@ -422,12 +425,13 @@ public class NodeEditorInteractionManager {
 
             Vec3d min = new Vec3d(minX, minY, minZ);
             Vec3d max = new Vec3d(maxX + 1.0d, maxY + 1.0d, maxZ + 1.0d);
-            areaPreviewId = PreviewRenderer.getInstance().showPreview(
-                OWNER_ID,
-                "region_box",
-                new Object[] { min, max },
-                options
-            );
+            Object[] regionData = new Object[] { min, max };
+            if (areaPreviewId == null) {
+                areaPreviewId = PreviewManager.showRegionBox(OWNER_ID, min, max, options);
+            } else {
+                PreviewManager.updatePreview(areaPreviewId, regionData);
+                PreviewManager.updatePreviewOptions(areaPreviewId, options);
+            }
         }
         
         private void clearFirstPointPreview() {
@@ -758,6 +762,9 @@ public class NodeEditorInteractionManager {
 
     public void setAreaPreviewShowFill(boolean showFill) {
         this.areaPreviewShowFill = showFill;
+        if (!this.areaPreviewShowFill && !this.areaPreviewShowOutline) {
+            this.areaPreviewShowOutline = true;
+        }
     }
 
     public boolean isAreaPreviewShowOutline() {
@@ -766,6 +773,9 @@ public class NodeEditorInteractionManager {
 
     public void setAreaPreviewShowOutline(boolean showOutline) {
         this.areaPreviewShowOutline = showOutline;
+        if (!this.areaPreviewShowFill && !this.areaPreviewShowOutline) {
+            this.areaPreviewShowFill = true;
+        }
     }
 
     public boolean isAreaPreviewEnablePulse() {
