@@ -35,17 +35,17 @@ public class SelectionVisualFeedback {
     private volatile boolean blockHighlightShowFill = true;
     private volatile boolean blockHighlightShowOutline = true;
     private volatile boolean blockHighlightEnablePulse = true;
-    private volatile float blockHighlightLineWidth = 3.0f;
+    private volatile float blockHighlightLineWidth = 3.8f;
     private volatile float blockHighlightOpacityScale = 1.0f;
     private volatile float blockHighlightFillR = 1.0f;
-    private volatile float blockHighlightFillG = 0.8f;
-    private volatile float blockHighlightFillB = 0.0f;
+    private volatile float blockHighlightFillG = 0.85f;
+    private volatile float blockHighlightFillB = 0.2f;
     
     // 选择状态枚举
     public enum SelectionState {
-        HOVERING(1.0f, 1.0f, 0.6f, 0.6f, false),    // 悬停 - 淡黄色半透明
-        SELECTING(1.0f, 1.0f, 0.0f, 0.8f, true),    // 选择中 - 黄色脉冲
-        SELECTED(0.0f, 1.0f, 0.0f, 0.8f, true),     // 已选中 - 绿色脉冲
+        HOVERING(1.0f, 1.0f, 0.7f, 0.7f, false),    // 悬停 - 淡黄色半透明
+        SELECTING(1.0f, 0.95f, 0.2f, 0.95f, true),  // 选择中 - 亮黄脉冲
+        SELECTED(1.0f, 0.92f, 0.25f, 1.0f, true),   // 已选中 - 亮金色脉冲
         CONFIRMED(0.0f, 0.8f, 1.0f, 1.0f, false),   // 已确认 - 青色实线
         ERROR(1.0f, 0.0f, 0.0f, 0.9f, true),        // 错误 - 红色脉冲
         LOCKED(0.0f, 0.0f, 1.0f, 1.0f, false);     // 锁定 - 蓝色实线
@@ -133,6 +133,9 @@ public class SelectionVisualFeedback {
 
     public void setBlockHighlightShowFill(boolean showFill) {
         this.blockHighlightShowFill = showFill;
+        if (!this.blockHighlightShowFill && !this.blockHighlightShowOutline) {
+            this.blockHighlightShowOutline = true;
+        }
         refreshActiveBlockSelections();
     }
 
@@ -142,6 +145,9 @@ public class SelectionVisualFeedback {
 
     public void setBlockHighlightShowOutline(boolean showOutline) {
         this.blockHighlightShowOutline = showOutline;
+        if (!this.blockHighlightShowFill && !this.blockHighlightShowOutline) {
+            this.blockHighlightShowFill = true;
+        }
         refreshActiveBlockSelections();
     }
 
@@ -187,11 +193,11 @@ public class SelectionVisualFeedback {
         this.blockHighlightShowFill = true;
         this.blockHighlightShowOutline = true;
         this.blockHighlightEnablePulse = true;
-        this.blockHighlightLineWidth = 3.0f;
+        this.blockHighlightLineWidth = 3.8f;
         this.blockHighlightOpacityScale = 1.0f;
         this.blockHighlightFillR = 1.0f;
-        this.blockHighlightFillG = 0.8f;
-        this.blockHighlightFillB = 0.0f;
+        this.blockHighlightFillG = 0.85f;
+        this.blockHighlightFillB = 0.2f;
         refreshActiveBlockSelections();
     }
     

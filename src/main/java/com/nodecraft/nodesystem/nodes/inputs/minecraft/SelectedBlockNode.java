@@ -381,13 +381,11 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             updateGhostBlockPreview();
 
             // 输入坐标驱动的选中也显示方块高亮（与交互拾取保持一致）。
-            if (isNodeVisibleInGame()) {
-                SelectionVisualFeedback.getInstance().showBlockSelection(
-                    getId().toString(),
-                    position,
-                    SelectionVisualFeedback.SelectionState.SELECTED
-                );
-            }
+            SelectionVisualFeedback.getInstance().showBlockSelection(
+                getId().toString(),
+                position,
+                SelectionVisualFeedback.SelectionState.SELECTED
+            );
             updateOutputsWithPickedBlock();
             
             NodeCraft.LOGGER.debug("节点 {} 从输入坐标获取方块: {} at {}", getId(), blockId, position);
@@ -806,24 +804,16 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         // 标记节点为脏，触发重新计算
         markDirty();
         
-        // 显示选择视觉反馈 - 绿色脉冲表示成功选中
-        // 检查节点是否在游戏中可见
-        boolean nodeVisible = isNodeVisibleInGame();
-        NodeCraft.LOGGER.info("节点 {} 可见性状态: {}, 准备显示选择反馈", getId(), nodeVisible);
-
-        if (nodeVisible) {
-            try {
-                SelectionVisualFeedback.getInstance().showBlockSelection(
-                    getId().toString(),
-                    position,
-                    SelectionVisualFeedback.SelectionState.SELECTED
-                );
-                NodeCraft.LOGGER.info("节点 {} 选择视觉反馈已请求显示，位置: {}", getId(), position);
-            } catch (Exception e) {
-                NodeCraft.LOGGER.error("节点 {} 显示选择视觉反馈失败: {}", getId(), e.getMessage(), e);
-            }
-        } else {
-            NodeCraft.LOGGER.info("节点 {} 在游戏中不可见，跳过选择视觉反馈", getId());
+        // 显示选择视觉反馈（不受节点可见性开关影响，确保拾取时总有反馈）。
+        try {
+            SelectionVisualFeedback.getInstance().showBlockSelection(
+                getId().toString(),
+                position,
+                SelectionVisualFeedback.SelectionState.SELECTED
+            );
+            NodeCraft.LOGGER.info("节点 {} 选择视觉反馈已请求显示，位置: {}", getId(), position);
+        } catch (Exception e) {
+            NodeCraft.LOGGER.error("节点 {} 显示选择视觉反馈失败: {}", getId(), e.getMessage(), e);
         }
         
         // 统一更新幽灵方块预览
