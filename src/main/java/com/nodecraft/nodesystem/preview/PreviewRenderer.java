@@ -174,8 +174,11 @@ public class PreviewRenderer {
         AbstractPreviewElement element = activeElements.get(previewId);
         if (element != null) {
             int oldPriority = element.getRenderPriority();
-            
-            element.updateData(newData);
+
+            // Allow option-only updates without wiping existing element data.
+            if (newData != null) {
+                element.updateData(newData);
+            }
             if (options != null) {
                 element.updateOptions(options);
             }

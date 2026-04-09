@@ -16,12 +16,15 @@ import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
+import com.nodecraft.core.NodeCraft;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class LinesElement extends AbstractPreviewElement {
 
     private volatile List<Vec3d> points = new ArrayList<>();
+    private static final AtomicLong lastDebugLog = new AtomicLong(0);
     private Vector3f color = new Vector3f(1.0f, 0.85f, 0.2f);
     private boolean smoothCurves = false;
     private float lineWidth = 1.5f;
@@ -75,16 +78,30 @@ public class LinesElement extends AbstractPreviewElement {
     public void render(MatrixStack matrices, Camera camera, float partialTicks, float globalOpacity) {
         List<Vec3d> pointsSnapshot = points;
         if (pointsSnapshot.size() < 2) {
+            long now = System.currentTimeMillis();
+            if (now - lastDebugLog.get() > 2000L && lastDebugLog.compareAndSet(lastDebugLog.get(), now)) {
+                NodeCraft.LOGGER.info("[LinesElement] render() skipped: points.size()={}", pointsSnapshot.size());
+            }
             return;
         }
 
         float finalOpacity = opacity * globalOpacity;
         if (finalOpacity <= 0.01f) {
+            long now = System.currentTimeMillis();
+            if (now - lastDebugLog.get() > 2000L && lastDebugLog.compareAndSet(lastDebugLog.get(), now)) {
+                NodeCraft.LOGGER.info("[LinesElement] render() skipped: finalOpacity={}", finalOpacity);
+            }
             return;
         }
 
         MinecraftClient client = MinecraftClient.getInstance();
         VertexConsumerProvider provider = PreviewRenderer.getInstance().getActiveVertexConsumers();
+        {
+            long now = System.currentTimeMillis();
+            if (now - lastDebugLog.get() > 2000L && lastDebugLog.compareAndSet(lastDebugLog.get(), now)) {
+                NodeCraft.LOGGER.info("[LinesElement] render() called: points={}, provider={}, opacity={}", pointsSnapshot.size(), provider != null ? provider.getClass().getSimpleName() : "null", finalOpacity);
+            }
+        }
         VertexConsumerProvider.Immediate immediate = null;
         boolean flushImmediately = false;
         if (provider == null) {
@@ -93,7 +110,6 @@ public class LinesElement extends AbstractPreviewElement {
             flushImmediately = true;
         }
 
-        VertexConsumer vertexConsumer = provider.getBuffer(RenderLayers.lines());
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         Vec3d cameraPos = camera.getCameraPos();
 
@@ -150,6 +166,10 @@ public class LinesElement extends AbstractPreviewElement {
     public boolean shouldRender(Camera camera) {
         List<Vec3d> pointsSnapshot = points;
         if (pointsSnapshot.size() < 2 || isExpired()) {
+            long now = System.currentTimeMillis();
+            if (now - lastDebugLog.get() > 2000L && lastDebugLog.compareAndSet(lastDebugLog.get(), now)) {
+                NodeCraft.LOGGER.info("[LinesElement] shouldRender=false: points={}, expired={}", pointsSnapshot.size(), isExpired());
+            }
             return false;
         }
         float maxDistance = PreviewRenderer.getInstance().getSettings().maxRenderDistance;
