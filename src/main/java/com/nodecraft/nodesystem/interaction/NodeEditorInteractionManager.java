@@ -428,8 +428,8 @@ public class NodeEditorInteractionManager {
                 .setTintColor(areaPreviewFillR, areaPreviewFillG, areaPreviewFillB)
                 .setOpacity(areaPreviewOpacity)
                 .setLineWidth(areaPreviewLineWidth)
-                .setShowFill(true)
-                .setShowOutline(true);
+                .setShowFill(areaPreviewShowFill)
+                .setShowOutline(areaPreviewShowOutline || !areaPreviewShowFill);
 
             if (areaPreviewEnablePulse) {
                 options.enablePulse();

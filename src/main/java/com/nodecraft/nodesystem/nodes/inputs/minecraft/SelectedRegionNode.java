@@ -177,6 +177,10 @@ public class SelectedRegionNode extends BaseCustomUINode {
 
     @Override
     protected boolean renderCustomUIScaled(float width, float height, float zoom) {
+        if (pos1 != null && pos2 != null) {
+            syncCompletedRegionPreview();
+        }
+
         return layout(zoom, layout -> {
             boolean changed = false;
             boolean hasSelection = pos1 != null && pos2 != null;
@@ -489,6 +493,11 @@ public class SelectedRegionNode extends BaseCustomUINode {
 
     private PreviewOptions createCompletedRegionPreviewOptions() {
         NodeEditorInteractionManager manager = NodeEditorInteractionManager.getInstance();
+        boolean showFill = manager.isAreaPreviewShowFill();
+        boolean showOutline = manager.isAreaPreviewShowOutline();
+        if (!showFill && !showOutline) {
+            showOutline = true;
+        }
 
         float[] outlineColor = manager.getAreaPreviewOutlineColor();
         float[] fillColor = manager.getAreaPreviewFillColor();
@@ -498,8 +507,8 @@ public class SelectedRegionNode extends BaseCustomUINode {
             .setTintColor(fillColor[0], fillColor[1], fillColor[2])
             .setOpacity(Math.max(0.32f, manager.getAreaPreviewOpacity()))
             .setLineWidth(Math.max(2.2f, manager.getAreaPreviewLineWidth()))
-            .setShowFill(true)
-            .setShowOutline(true);
+            .setShowFill(showFill)
+            .setShowOutline(showOutline);
 
         if (manager.isAreaPreviewEnablePulse()) {
             options.enablePulse();
@@ -548,8 +557,6 @@ public class SelectedRegionNode extends BaseCustomUINode {
         }
 
         PreviewOptions options = createCompletedRegionPreviewOptions()
-            .setShowFill(true)
-            .setShowOutline(true)
             .setLineWidth(Math.max(2.2f, NodeEditorInteractionManager.getInstance().getAreaPreviewLineWidth()))
             .setOpacity(Math.max(0.3f, NodeEditorInteractionManager.getInstance().getAreaPreviewOpacity()));
 
