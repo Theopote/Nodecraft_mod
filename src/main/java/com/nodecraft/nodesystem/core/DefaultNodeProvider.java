@@ -47,6 +47,7 @@ public class DefaultNodeProvider implements INodeProvider {
         registry.registerCategory(new NodeRegistry.NodeCategory("data", "Data & Lists"));
         registry.registerCategory(new NodeRegistry.NodeCategory("flora", "Flora & Nature"));
         registry.registerCategory(new NodeRegistry.NodeCategory("inputs", "Inputs & Parameters"));
+        registry.registerCategory(new NodeRegistry.NodeCategory("material", "Material & Mapping"));
         registry.registerCategory(new NodeRegistry.NodeCategory("math", "Math & Logic"));
         registry.registerCategory(new NodeRegistry.NodeCategory("output", "Output & Execution"));
         registry.registerCategory(new NodeRegistry.NodeCategory("spatial", "Spatial & Geometry"));
