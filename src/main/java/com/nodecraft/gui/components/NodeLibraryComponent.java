@@ -48,7 +48,16 @@ public class NodeLibraryComponent implements EditorComponent {
         Map<String, Map<String, Integer>> categoryOrder = new HashMap<>();
 
         Map<String, Integer> previewOrder = getPreviewOrder();
-        categoryOrder.put("visualization.preview", previewOrder);
+        categoryOrder.put("output.preview", previewOrder);
+
+        Map<String, Integer> outputExecuteOrder = getOutputExecuteOrder();
+        categoryOrder.put("output.execute", outputExecuteOrder);
+
+        Map<String, Integer> outputExportOrder = getOutputExportOrder();
+        categoryOrder.put("output.export", outputExportOrder);
+
+        Map<String, Integer> outputDebugOrder = getOutputDebugOrder();
+        categoryOrder.put("output.debug", outputDebugOrder);
 
         Map<String, Integer> inputsMinecraftOrder = getInputsMinecraftOrder();
         categoryOrder.put("inputs.minecraft", inputsMinecraftOrder);
@@ -132,19 +141,40 @@ public class NodeLibraryComponent implements EditorComponent {
 
     private static @NonNull Map<String, Integer> getPreviewOrder() {
         Map<String, Integer> previewOrder = new HashMap<>();
-        previewOrder.put("visualization.preview.geometry_viewer", 0);
-        previewOrder.put("visualization.preview.preview_blocks", 1);
-        previewOrder.put("visualization.preview.preview_points", 2);
-        previewOrder.put("visualization.preview.preview_vectors", 3);
-        previewOrder.put("visualization.preview.preview_plane", 4);
-        previewOrder.put("visualization.preview.preview_frame", 5);
-        previewOrder.put("visualization.preview.preview_paths", 6);
-        previewOrder.put("visualization.preview.preview_regions", 7);
-        previewOrder.put("visualization.preview.preview_labels", 8);
-        previewOrder.put("visualization.preview.preview_surface_strip", 9);
-        previewOrder.put("visualization.preview.preview_polygon_profiles", 10);
-        previewOrder.put("visualization.preview.clear_all_previews", 11);
+        previewOrder.put("output.preview.geometry_viewer", 0);
+        previewOrder.put("output.preview.preview_blocks", 1);
+        previewOrder.put("output.preview.preview_points", 2);
+        previewOrder.put("output.preview.preview_vectors", 3);
+        previewOrder.put("output.preview.preview_plane", 4);
+        previewOrder.put("output.preview.preview_frame", 5);
+        previewOrder.put("output.preview.preview_curves", 6);
+        previewOrder.put("output.preview.preview_regions", 7);
+        previewOrder.put("output.preview.preview_labels", 8);
+        previewOrder.put("output.preview.preview_surface_strip", 9);
+        previewOrder.put("output.preview.preview_profiles", 10);
         return previewOrder;
+    }
+
+    private static @NonNull Map<String, Integer> getOutputExecuteOrder() {
+        Map<String, Integer> outputExecuteOrder = new HashMap<>();
+        outputExecuteOrder.put("output.execute.apply_changes", 0);
+        outputExecuteOrder.put("output.execute.clear_preview", 1);
+        return outputExecuteOrder;
+    }
+
+    private static @NonNull Map<String, Integer> getOutputExportOrder() {
+        Map<String, Integer> outputExportOrder = new HashMap<>();
+        outputExportOrder.put("output.export.export_schematic", 0);
+        return outputExportOrder;
+    }
+
+    private static @NonNull Map<String, Integer> getOutputDebugOrder() {
+        Map<String, Integer> outputDebugOrder = new HashMap<>();
+        outputDebugOrder.put("output.debug.value_monitor", 0);
+        outputDebugOrder.put("output.debug.print_to_chat", 1);
+        outputDebugOrder.put("output.debug.execution_timer", 2);
+        outputDebugOrder.put("output.debug.data_inspector", 3);
+        return outputDebugOrder;
     }
 
     private static @NonNull Map<String, Integer> getSpatialConstructOrder() {
@@ -269,7 +299,8 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("math", new float[]{0.3f, 0.8f, 0.3f, 1.0f});            // 绿色 - 数学运算
             CATEGORY_COLORS_FLOAT.put("spatial", new float[]{0.9f, 0.9f, 0.2f, 1.0f});         // 黄色 - 空间相关
             CATEGORY_COLORS_FLOAT.put("world", new float[]{0.2f, 0.8f, 0.8f, 1.0f});           // 青色 - 世界相关
-            CATEGORY_COLORS_FLOAT.put("visualization", new float[]{0.85f, 0.2f, 0.5f, 1.0f});  // 粉色 - 可视化
+            CATEGORY_COLORS_FLOAT.put("output", new float[]{0.85f, 0.2f, 0.5f, 1.0f});         // 粉色 - 输出执行
+            CATEGORY_COLORS_FLOAT.put("visualization", new float[]{0.85f, 0.2f, 0.5f, 1.0f});  // 兼容旧可视化
             CATEGORY_COLORS_FLOAT.put("utilities", new float[]{0.7f, 0.7f, 0.7f, 1.0f});       // 灰色 - 工具类
             CATEGORY_COLORS_FLOAT.put("flora", new float[]{0.2f, 0.6f, 0.2f, 1.0f});           // 深绿色 - 植物生成
             CATEGORY_COLORS_FLOAT.put("animation", new float[]{0.8f, 0.3f, 0.3f, 1.0f});       // 红色 - 动画
@@ -281,7 +312,8 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("Math", new float[]{0.3f, 0.8f, 0.3f, 1.0f});            // 绿色
             CATEGORY_COLORS_FLOAT.put("Spatial", new float[]{0.9f, 0.9f, 0.2f, 1.0f});         // 黄色
             CATEGORY_COLORS_FLOAT.put("World", new float[]{0.2f, 0.8f, 0.8f, 1.0f});           // 青色
-            CATEGORY_COLORS_FLOAT.put("Visualization", new float[]{0.85f, 0.2f, 0.5f, 1.0f});  // 粉色
+            CATEGORY_COLORS_FLOAT.put("Output", new float[]{0.85f, 0.2f, 0.5f, 1.0f});         // 粉色
+            CATEGORY_COLORS_FLOAT.put("Visualization", new float[]{0.85f, 0.2f, 0.5f, 1.0f});  // 兼容旧可视化
             CATEGORY_COLORS_FLOAT.put("Utilities", new float[]{0.7f, 0.7f, 0.7f, 1.0f});       // 灰色
             CATEGORY_COLORS_FLOAT.put("Flora", new float[]{0.2f, 0.6f, 0.2f, 1.0f});           // 深绿色
             CATEGORY_COLORS_FLOAT.put("Animation", new float[]{0.8f, 0.3f, 0.3f, 1.0f});       // 红色
@@ -328,8 +360,12 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("world.query", new float[]{0.55f, 1.0f, 1.0f, 1.0f});
             
             // visualization子分类
+            CATEGORY_COLORS_FLOAT.put("output.debug", new float[]{0.9f, 0.3f, 0.6f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("output.execute", new float[]{0.95f, 0.35f, 0.65f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("output.export", new float[]{0.98f, 0.45f, 0.72f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("output.preview", new float[]{1.0f, 0.4f, 0.7f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("visualization.debugging", new float[]{0.9f, 0.3f, 0.6f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("visualization.debug", new float[]{0.9f, 0.3f, 0.6f, 1.0f}); // 兼容debugging
+            CATEGORY_COLORS_FLOAT.put("visualization.debug", new float[]{0.9f, 0.3f, 0.6f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("visualization.execute", new float[]{0.95f, 0.35f, 0.65f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("visualization.preview", new float[]{1.0f, 0.4f, 0.7f, 1.0f});
             
@@ -547,9 +583,9 @@ public class NodeLibraryComponent implements EditorComponent {
         
         // 确保主要分类始终展开，即使它们是子分类
         String[] keyCategories = {
-            "inputs", "data", "math", "spatial", "world", "visualization", "utilities",
+            "inputs", "data", "math", "output", "spatial", "world", "utilities",
             "inputs.basic", "math.basic", "data.lists", "spatial.points", "world.entity", 
-            "visualization.preview", "utilities.organization"
+            "output.preview", "utilities.organization"
         };
         
         for (String key : keyCategories) {

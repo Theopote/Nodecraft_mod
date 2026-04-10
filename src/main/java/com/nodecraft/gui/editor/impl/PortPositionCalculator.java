@@ -8,8 +8,8 @@ import java.util.UUID;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.graph.NodeGraph;
-import com.nodecraft.nodesystem.nodes.visualization.execute.ApplyChangesNode;
-import com.nodecraft.nodesystem.nodes.visualization.preview.GeometryViewerNode;
+import com.nodecraft.nodesystem.nodes.output.execute.ApplyChangesNode;
+import com.nodecraft.nodesystem.nodes.output.preview.GeometryViewerNode;
 import imgui.ImGui;
 import imgui.ImVec2;
 

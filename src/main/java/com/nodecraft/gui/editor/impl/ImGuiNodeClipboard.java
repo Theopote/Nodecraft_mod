@@ -583,6 +583,7 @@ public class ImGuiNodeClipboard implements ClipboardOwner {
                 // 已知类型ID映射表
                 Map<String, String> knownTypeIdMappings = new HashMap<>();
                 knownTypeIdMappings.put("visualization.debugging.panel", "panelnode");
+                knownTypeIdMappings.put("output.debug.data_inspector", "panelnode");
                 knownTypeIdMappings.put("panel", "panelnode");
                 
                 // 检查是否有已知映射
