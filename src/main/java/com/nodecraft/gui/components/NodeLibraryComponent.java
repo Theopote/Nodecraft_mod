@@ -59,6 +59,15 @@ public class NodeLibraryComponent implements EditorComponent {
         Map<String, Integer> outputDebugOrder = getOutputDebugOrder();
         categoryOrder.put("output.debug", outputDebugOrder);
 
+        Map<String, Integer> worldReadOrder = getWorldReadOrder();
+        categoryOrder.put("world.read", worldReadOrder);
+
+        Map<String, Integer> worldWriteOrder = getWorldWriteOrder();
+        categoryOrder.put("world.write", worldWriteOrder);
+
+        Map<String, Integer> materialBasicAssignmentOrder = getMaterialBasicAssignmentOrder();
+        categoryOrder.put("material.basic_assignment", materialBasicAssignmentOrder);
+
         Map<String, Integer> inputsMinecraftOrder = getInputsMinecraftOrder();
         categoryOrder.put("inputs.minecraft", inputsMinecraftOrder);
 
@@ -175,6 +184,32 @@ public class NodeLibraryComponent implements EditorComponent {
         outputDebugOrder.put("output.debug.execution_timer", 2);
         outputDebugOrder.put("output.debug.data_inspector", 3);
         return outputDebugOrder;
+    }
+
+    private static @NonNull Map<String, Integer> getWorldReadOrder() {
+        Map<String, Integer> worldReadOrder = new HashMap<>();
+        worldReadOrder.put("world.read.get_block", 0);
+        worldReadOrder.put("world.read.get_blocks_in_region", 1);
+        worldReadOrder.put("world.read.find_blocks", 2);
+        worldReadOrder.put("world.read.get_biome", 3);
+        return worldReadOrder;
+    }
+
+    private static @NonNull Map<String, Integer> getWorldWriteOrder() {
+        Map<String, Integer> worldWriteOrder = new HashMap<>();
+        worldWriteOrder.put("world.write.set_block", 0);
+        worldWriteOrder.put("world.write.set_blocks", 1);
+        worldWriteOrder.put("world.write.fill_region", 2);
+        worldWriteOrder.put("world.write.replace_blocks", 3);
+        worldWriteOrder.put("world.write.clone_region", 4);
+        worldWriteOrder.put("world.write.clear_region", 5);
+        return worldWriteOrder;
+    }
+
+    private static @NonNull Map<String, Integer> getMaterialBasicAssignmentOrder() {
+        Map<String, Integer> materialBasicAssignmentOrder = new HashMap<>();
+        materialBasicAssignmentOrder.put("material.basic_assignment.replace_material", 0);
+        return materialBasicAssignmentOrder;
     }
 
     private static @NonNull Map<String, Integer> getSpatialConstructOrder() {
@@ -357,7 +392,12 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("world.modify", new float[]{0.45f, 1.0f, 1.0f, 1.0f});     // 兼容modification
             CATEGORY_COLORS_FLOAT.put("world.modification", new float[]{0.45f, 1.0f, 1.0f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("world.nbt", new float[]{0.5f, 1.0f, 1.0f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("world.read", new float[]{0.5f, 0.95f, 1.0f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("world.query", new float[]{0.55f, 1.0f, 1.0f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("world.write", new float[]{0.45f, 1.0f, 1.0f, 1.0f});
+
+            CATEGORY_COLORS_FLOAT.put("material", new float[]{0.8f, 0.55f, 0.2f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("material.basic_assignment", new float[]{0.88f, 0.6f, 0.24f, 1.0f});
             
             // visualization子分类
             CATEGORY_COLORS_FLOAT.put("output.debug", new float[]{0.9f, 0.3f, 0.6f, 1.0f});
@@ -583,7 +623,7 @@ public class NodeLibraryComponent implements EditorComponent {
         
         // 确保主要分类始终展开，即使它们是子分类
         String[] keyCategories = {
-            "inputs", "data", "math", "output", "spatial", "world", "utilities",
+            "inputs", "data", "material", "math", "output", "spatial", "world", "utilities",
             "inputs.basic", "math.basic", "data.lists", "spatial.points", "world.entity", 
             "output.preview", "utilities.organization"
         };

@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.world.modification;
+package com.nodecraft.nodesystem.nodes.world.write;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -20,10 +20,10 @@ import java.util.UUID;
  * Replace Blocks 节点: 在区域或坐标列表中替换指定方块。
  */
 @NodeInfo(
-    id = "world.modification.replace_blocks",
+    id = "world.write.replace_blocks",
     displayName = "替换方块",
     description = "在区域或坐标列表中替换指定方块",
-    category = "world.modification"
+    category = "world.write"
 )
 public class ReplaceBlocksNode extends BaseNode {
 
@@ -54,7 +54,7 @@ public class ReplaceBlocksNode extends BaseNode {
 
     // --- 构造函数 ---
     public ReplaceBlocksNode() {
-        super(UUID.randomUUID(), "world.modification.replace_blocks");
+        super(UUID.randomUUID(), "world.write.replace_blocks");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_REGION_ID, "Region", 

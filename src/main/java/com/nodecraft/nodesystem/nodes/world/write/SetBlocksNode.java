@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.world.modification;
+package com.nodecraft.nodesystem.nodes.world.write;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -21,10 +21,10 @@ import java.util.UUID;
  * Set Blocks 节点: 在坐标列表上批量放置方块信息(可输入方块信息列表进行一对一或列表循环)
  */
 @NodeInfo(
-    id = "world.modification.set_blocks",
+    id = "world.write.set_blocks",
     displayName = "设置方块",
     description = "在坐标列表上批量放置方块",
-    category = "world.modification"
+    category = "world.write"
 )
 public class SetBlocksNode extends BaseNode {
 
@@ -49,7 +49,7 @@ public class SetBlocksNode extends BaseNode {
 
     // --- 构造函数 ---
     public SetBlocksNode() {
-        super(UUID.randomUUID(), "world.modification.set_blocks");
+        super(UUID.randomUUID(), "world.write.set_blocks");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", 

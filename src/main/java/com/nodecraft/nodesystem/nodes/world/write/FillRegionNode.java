@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.world.modification;
+package com.nodecraft.nodesystem.nodes.world.write;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -20,10 +20,10 @@ import java.util.UUID;
  * Fill Region 节点: 用指定方块填充区域。
  */
 @NodeInfo(
-    id = "world.modification.fill_region",
+    id = "world.write.fill_region",
     displayName = "填充区域",
     description = "用指定方块填充区域",
-    category = "world.modification"
+    category = "world.write"
 )
 public class FillRegionNode extends BaseNode {
 
@@ -54,7 +54,7 @@ public class FillRegionNode extends BaseNode {
 
     // --- 构造函数 ---
     public FillRegionNode() {
-        super(UUID.randomUUID(), "world.modification.fill_region");
+        super(UUID.randomUUID(), "world.write.fill_region");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_REGION_ID, "Region", 

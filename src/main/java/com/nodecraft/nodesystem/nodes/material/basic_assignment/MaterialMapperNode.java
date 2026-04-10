@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.world.modification;
+package com.nodecraft.nodesystem.nodes.material.basic_assignment;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -21,10 +21,10 @@ import java.util.UUID;
  * downstream of geometry-producing nodes.
  */
 @NodeInfo(
-    id = "world.modification.material_mapper",
-    displayName = "Material Mapper",
+    id = "material.basic_assignment.replace_material",
+    displayName = "Replace Material",
     description = "Assigns bottom, middle, and top block types across a shape.",
-    category = "world.modification"
+    category = "material.basic_assignment"
 )
 public class MaterialMapperNode extends BaseNode {
 
@@ -43,7 +43,7 @@ public class MaterialMapperNode extends BaseNode {
     private static final String OUTPUT_PLACEMENTS_ID = "output_placements";
 
     public MaterialMapperNode() {
-        super(UUID.randomUUID(), "world.modification.material_mapper");
+        super(UUID.randomUUID(), "material.basic_assignment.replace_material");
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified abstract geometry input", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry data to materialize", NodeDataType.BOX_GEOMETRY, this));

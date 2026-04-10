@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.world.query;
+package com.nodecraft.nodesystem.nodes.world.read;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -13,10 +13,10 @@ import java.util.UUID;
  * Get Biome 节点: 获取指定坐标的生物群系名称。
  */
 @NodeInfo(
-    id = "world.query.get_biome",
+    id = "world.read.get_biome",
     displayName = "获取生物群系",
     description = "获取指定坐标的生物群系信息",
-    category = "world.query"
+    category = "world.read"
 )
 public class GetBiomeNode extends BaseNode {
 
@@ -35,7 +35,7 @@ public class GetBiomeNode extends BaseNode {
 
     // --- 构造函数 ---
     public GetBiomeNode() {
-        super(UUID.randomUUID(), "world.query.get_biome");
+        super(UUID.randomUUID(), "world.read.get_biome");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate", 

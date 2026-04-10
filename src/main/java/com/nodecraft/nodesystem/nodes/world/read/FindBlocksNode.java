@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.world.query;
+package com.nodecraft.nodesystem.nodes.world.read;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -16,10 +16,10 @@ import java.util.UUID;
  * Find Blocks 节点: 在 Region 内按 BlockInfo 条件查找 Coordinate 列表。
  */
 @NodeInfo(
-    id = "world.query.find_blocks",
+    id = "world.read.find_blocks",
     displayName = "查找方块",
     description = "在区域内按方块类型查找坐标列表",
-    category = "world.query"
+    category = "world.read"
 )
 public class FindBlocksNode extends BaseNode {
 
@@ -41,7 +41,7 @@ public class FindBlocksNode extends BaseNode {
 
     // --- 构造函数 ---
     public FindBlocksNode() {
-        super(UUID.randomUUID(), "world.query.find_blocks");
+        super(UUID.randomUUID(), "world.read.find_blocks");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_REGION_ID, "Region", 

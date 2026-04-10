@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.world.query;
+package com.nodecraft.nodesystem.nodes.world.read;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -15,10 +15,10 @@ import java.util.UUID;
  * Get Block 节点: 获取指定坐标的 MinecraftBlock 信息。
  */
 @NodeInfo(
-    id = "world.query.get_block",
+    id = "world.read.get_block",
     displayName = "获取方块",
     description = "获取指定坐标的方块信息",
-    category = "world.query"
+    category = "world.read"
 )
 public class GetBlockNode extends BaseNode {
 
@@ -37,7 +37,7 @@ public class GetBlockNode extends BaseNode {
 
     // --- 构造函数 ---
     public GetBlockNode() {
-        super(UUID.randomUUID(), "world.query.get_block");
+        super(UUID.randomUUID(), "world.read.get_block");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate", 

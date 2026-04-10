@@ -98,6 +98,18 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "visualization.debugging.print_to_chat", "output.debug.print_to_chat");
         addMovedNodeAlias(aliases, "visualization.debugging.execution_timer", "output.debug.execution_timer");
         addMovedNodeAlias(aliases, "visualization.debugging.panel", "output.debug.data_inspector");
+
+        addMovedNodeAlias(aliases, "world.query.get_block", "world.read.get_block");
+        addMovedNodeAlias(aliases, "world.query.get_blocks_in_region", "world.read.get_blocks_in_region");
+        addMovedNodeAlias(aliases, "world.query.find_blocks", "world.read.find_blocks");
+        addMovedNodeAlias(aliases, "world.query.get_biome", "world.read.get_biome");
+        addMovedNodeAlias(aliases, "world.modification.set_block", "world.write.set_block");
+        addMovedNodeAlias(aliases, "world.modification.set_blocks", "world.write.set_blocks");
+        addMovedNodeAlias(aliases, "world.modification.fill_region", "world.write.fill_region");
+        addMovedNodeAlias(aliases, "world.modification.replace_blocks", "world.write.replace_blocks");
+        addMovedNodeAlias(aliases, "world.modification.clone_region", "world.write.clone_region");
+        addMovedNodeAlias(aliases, "world.modification.remove_blocks", "world.write.clear_region");
+        addMovedNodeAlias(aliases, "world.modification.material_mapper", "material.basic_assignment.replace_material");
         return Collections.unmodifiableMap(aliases);
     }
 

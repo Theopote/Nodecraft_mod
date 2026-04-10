@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.world.modification;
+package com.nodecraft.nodesystem.nodes.world.write;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -19,10 +19,10 @@ import java.util.UUID;
  * Remove Blocks 节点: 将坐标列表中的方块设置为空气方块
  */
 @NodeInfo(
-    id = "world.modification.remove_blocks",
+    id = "world.write.clear_region",
     displayName = "移除方块",
     description = "移除指定坐标的方块",
-    category = "world.modification"
+    category = "world.write"
 )
 public class RemoveBlocksNode extends BaseNode {
 
@@ -47,7 +47,7 @@ public class RemoveBlocksNode extends BaseNode {
 
     // --- 构造函数 ---
     public RemoveBlocksNode() {
-        super(UUID.randomUUID(), "world.modification.remove_blocks");
+        super(UUID.randomUUID(), "world.write.clear_region");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", 

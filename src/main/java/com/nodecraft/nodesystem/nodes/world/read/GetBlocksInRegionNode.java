@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.world.query;
+package com.nodecraft.nodesystem.nodes.world.read;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -19,10 +19,10 @@ import java.util.UUID;
  * Get Blocks in Region 节点: 获取区域内所有方块的列表。
  */
 @NodeInfo(
-    id = "world.query.get_blocks_in_region",
+    id = "world.read.get_blocks_in_region",
     displayName = "获取区域内方块",
     description = "获取区域内所有方块的列表",
-    category = "world.query"
+    category = "world.read"
 )
 public class GetBlocksInRegionNode extends BaseNode {
 
@@ -42,7 +42,7 @@ public class GetBlocksInRegionNode extends BaseNode {
 
     // --- 构造函数 ---
     public GetBlocksInRegionNode() {
-        super(UUID.randomUUID(), "world.query.get_blocks_in_region");
+        super(UUID.randomUUID(), "world.read.get_blocks_in_region");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_REGION_ID, "Region", 

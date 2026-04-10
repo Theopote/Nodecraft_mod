@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.world.modification;
+package com.nodecraft.nodesystem.nodes.world.write;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -21,10 +21,10 @@ import java.util.UUID;
  * Clone Region 节点: 将一个区域的方块克隆到另一个位置
  */
 @NodeInfo(
-    id = "world.modification.clone_region",
+    id = "world.write.clone_region",
     displayName = "复制区域",
     description = "复制区域到另一个位置",
-    category = "world.modification"
+    category = "world.write"
 )
 public class CloneRegionNode extends BaseNode {
 
@@ -78,7 +78,7 @@ public class CloneRegionNode extends BaseNode {
 
     // --- 构造函数 ---
     public CloneRegionNode() {
-        super(UUID.randomUUID(), "world.modification.clone_region");
+        super(UUID.randomUUID(), "world.write.clone_region");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_SOURCE_REGION_ID, "Source Region", 

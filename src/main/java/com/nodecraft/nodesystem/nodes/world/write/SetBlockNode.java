@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.world.modification;
+package com.nodecraft.nodesystem.nodes.world.write;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -17,10 +17,10 @@ import java.util.UUID;
  * Set Block 节点: 在单个坐标放置指定方块。
  */
 @NodeInfo(
-    id = "world.modification.set_block",
+    id = "world.write.set_block",
     displayName = "设置单个方块",
     description = "在单个坐标放置指定方块",
-    category = "world.modification"
+    category = "world.write"
 )
 public class SetBlockNode extends BaseNode {
 
@@ -41,7 +41,7 @@ public class SetBlockNode extends BaseNode {
 
     // --- 构造函数 ---
     public SetBlockNode() {
-        super(UUID.randomUUID(), "world.modification.set_block");
+        super(UUID.randomUUID(), "world.write.set_block");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate", 
