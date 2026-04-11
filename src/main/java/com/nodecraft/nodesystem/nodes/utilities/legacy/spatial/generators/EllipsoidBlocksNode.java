@@ -1,4 +1,4 @@
-﻿package com.nodecraft.nodesystem.nodes.utilities.legacy.spatial.generators;
+package com.nodecraft.nodesystem.nodes.utilities.legacy.spatial.generators;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
