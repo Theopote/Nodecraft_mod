@@ -12,12 +12,13 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 /**
- * 鏄熷舰鐢熸垚鍣細鍦ㄦ寚瀹氬钩闈㈢敓鎴愭槦褰紙澶栧緞+鍐呭緞锛屽疄蹇冩垨杞粨锛夌殑鏂瑰潡鍧愭爣鍒楄〃銆? */
+ * Generates a 2D star polygon (filled or outline) on a selected plane.
+ */
 @NodeInfo(
     id = "spatial.generators.star_blocks",
-    displayName = "鏄熷舰",
-    description = "鐢熸垚鏄熷舰鍖哄煙鐨勫潗鏍囧垪琛?,
-    category = "spatial.generators"
+    displayName = "Star Generator",
+    description = "Generates a star-shaped block pattern with configurable points and radii.",
+    category = "utilities.legacy.spatial.generators"
 )
 public class StarBlocksNode extends BaseNode {
 
@@ -34,15 +35,15 @@ public class StarBlocksNode extends BaseNode {
 
     public StarBlocksNode() {
         super(UUID.randomUUID(), "spatial.generators.star_blocks");
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "涓績", NodeDataType.BLOCK_POS, this));
-        addInputPort(new BasePort(INPUT_OUTER_RADIUS_ID, "Outer Radius", "澶栭《鐐瑰崐寰勶紙鏍硷級", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_INNER_RADIUS_ID, "Inner Radius", "鍐呴《鐐瑰崐寰勶紙鏍硷級", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "鏄熻鏁帮紙鈮?锛?, NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "鏄熷舰涓婄殑鏂瑰潡鍧愭爣", NodeDataType.BLOCK_LIST, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Star center point", NodeDataType.BLOCK_POS, this));
+        addInputPort(new BasePort(INPUT_OUTER_RADIUS_ID, "Outer Radius", "Radius of star tips", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_INNER_RADIUS_ID, "Inner Radius", "Radius of inner vertices", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Number of star points", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Generated star blocks", NodeDataType.BLOCK_LIST, this));
     }
 
     @Override
-    public String getDescription() { return "鐢熸垚鏄熷舰鍖哄煙鐨勫潗鏍囧垪琛?; }
+    public String getDescription() { return "Generates a star-shaped block pattern with configurable points and radii."; }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {

@@ -14,12 +14,13 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * 鍗婂渾鐢熸垚鍣細鍦ㄦ寚瀹氬钩闈㈢敓鎴愬崐鍦嗭紙鍦嗗績銆佸崐寰勩€佹柟鍚戯級鐨勬柟鍧楀潗鏍囧垪琛ㄣ€? */
+ * Generates a half-circle arc on a selected plane.
+ */
 @NodeInfo(
     id = "spatial.generators.semicircle_blocks",
-    displayName = "鍗婂渾",
-    description = "鐢熸垚鍗婂渾寮т笂鐨勬柟鍧楀潗鏍囧垪琛?,
-    category = "spatial.generators"
+    displayName = "Semicircle Generator",
+    description = "Generates a semicircle arc from center and radius on a selected plane.",
+    category = "utilities.legacy.spatial.generators"
 )
 public class SemicircleBlocksNode extends BaseNode {
 
@@ -35,13 +36,13 @@ public class SemicircleBlocksNode extends BaseNode {
 
     public SemicircleBlocksNode() {
         super(UUID.randomUUID(), "spatial.generators.semicircle_blocks");
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "鍦嗗績", NodeDataType.BLOCK_POS, this));
-        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "鍗婂緞锛堟牸锛?, NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "鍗婂渾涓婄殑鏂瑰潡鍧愭爣", NodeDataType.BLOCK_LIST, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Semicircle center point", NodeDataType.BLOCK_POS, this));
+        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Semicircle radius", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Generated semicircle blocks", NodeDataType.BLOCK_LIST, this));
     }
 
     @Override
-    public String getDescription() { return "鐢熸垚鍗婂渾寮т笂鐨勬柟鍧楀潗鏍囧垪琛?; }
+    public String getDescription() { return "Generates a semicircle arc from center and radius on a selected plane."; }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
