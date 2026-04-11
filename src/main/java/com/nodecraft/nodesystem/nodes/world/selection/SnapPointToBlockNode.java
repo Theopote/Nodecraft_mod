@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.points;
+package com.nodecraft.nodesystem.nodes.world.selection;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -18,10 +18,10 @@ import java.util.UUID;
  * Explicitly converts a geometric point into a block coordinate using a chosen snap mode.
  */
 @NodeInfo(
-    id = "spatial.points.snap_point_to_block",
+    id = "world.selection.snap_point_to_block",
     displayName = "Snap Point To Block",
     description = "Explicitly snaps a geometric point onto the block grid using floor, nearest, or ceil",
-    category = "spatial.points"
+    category = "world.selection"
 )
 public class SnapPointToBlockNode extends BaseNode {
 
@@ -43,7 +43,7 @@ public class SnapPointToBlockNode extends BaseNode {
     private SnapMode snapMode = SnapMode.NEAREST;
 
     public SnapPointToBlockNode() {
-        super(UUID.randomUUID(), "spatial.points.snap_point_to_block");
+        super(UUID.randomUUID(), "world.selection.snap_point_to_block");
 
         addInputPort(new BasePort(INPUT_POINT_ID, "Point",
             "Geometric point to snap onto the block grid. Supports Point, Vector, Position, or Block Coordinate.",

@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.points;
+package com.nodecraft.nodesystem.nodes.world.query;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -18,10 +18,10 @@ import java.util.UUID;
  * Checks whether a geometric point already lies on the integer block grid.
  */
 @NodeInfo(
-    id = "spatial.points.is_grid_point",
+    id = "world.query.is_grid_point",
     displayName = "Is Grid Point",
     description = "Checks whether a geometric point already lies on the block grid without snapping",
-    category = "spatial.points"
+    category = "world.query"
 )
 public class IsGridPointNode extends BaseNode {
 
@@ -36,7 +36,7 @@ public class IsGridPointNode extends BaseNode {
     private double tolerance = 1.0E-6D;
 
     public IsGridPointNode() {
-        super(UUID.randomUUID(), "spatial.points.is_grid_point");
+        super(UUID.randomUUID(), "world.query.is_grid_point");
 
         addInputPort(new BasePort(INPUT_POINT_ID, "Point",
             "Point to test against the integer block grid. Supports Point, Vector, Position, or Block Coordinate.",

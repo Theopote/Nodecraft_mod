@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.points;
+package com.nodecraft.nodesystem.nodes.world.selection;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -18,10 +18,10 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.points.snap_point_list_to_blocks",
+    id = "world.selection.snap_points_to_blocks",
     displayName = "Snap Point List To Blocks",
     description = "Snaps a point list onto the block grid using an explicit snap mode",
-    category = "spatial.points"
+    category = "world.selection"
 )
 public class SnapPointListToBlocksNode extends BaseNode {
 
@@ -36,7 +36,7 @@ public class SnapPointListToBlocksNode extends BaseNode {
     private boolean removeDuplicates = true;
 
     public SnapPointListToBlocksNode() {
-        super(UUID.randomUUID(), "spatial.points.snap_point_list_to_blocks");
+        super(UUID.randomUUID(), "world.selection.snap_points_to_blocks");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points",
             "Collection of Point, Vector, Position, or Block Coordinate values to snap onto the block grid",

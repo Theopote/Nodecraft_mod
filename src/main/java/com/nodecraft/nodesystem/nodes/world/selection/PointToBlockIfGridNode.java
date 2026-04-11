@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.points;
+package com.nodecraft.nodesystem.nodes.world.selection;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -15,10 +15,10 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.points.point_to_block_if_grid",
+    id = "world.selection.point_to_block_if_grid",
     displayName = "Point To Block If Grid",
     description = "Strict conversion: outputs a block coordinate only when the point is already grid-aligned",
-    category = "spatial.points"
+    category = "world.selection"
 )
 public class PointToBlockIfGridNode extends BaseNode {
 
@@ -33,7 +33,7 @@ public class PointToBlockIfGridNode extends BaseNode {
     private double tolerance = 1.0E-6D;
 
     public PointToBlockIfGridNode() {
-        super(UUID.randomUUID(), "spatial.points.point_to_block_if_grid");
+        super(UUID.randomUUID(), "world.selection.point_to_block_if_grid");
 
         addInputPort(new BasePort(INPUT_POINT_ID, "Point",
             "Point to convert without snapping. Supports Point, Vector, Position, or Block Coordinate.",

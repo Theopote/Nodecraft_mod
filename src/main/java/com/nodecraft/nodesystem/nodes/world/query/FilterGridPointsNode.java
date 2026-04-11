@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.points;
+package com.nodecraft.nodesystem.nodes.world.query;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -19,10 +19,10 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.points.filter_grid_points",
+    id = "world.query.filter_grid_points",
     displayName = "Filter Grid Points",
     description = "Splits a point list into grid-aligned points and off-grid points without snapping",
-    category = "spatial.points"
+    category = "world.query"
 )
 public class FilterGridPointsNode extends BaseNode {
 
@@ -39,7 +39,7 @@ public class FilterGridPointsNode extends BaseNode {
     private double tolerance = 1.0E-6D;
 
     public FilterGridPointsNode() {
-        super(UUID.randomUUID(), "spatial.points.filter_grid_points");
+        super(UUID.randomUUID(), "world.query.filter_grid_points");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points",
             "Collection of Point, Vector, Position, or Block Coordinate values to classify against the block grid",
