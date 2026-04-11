@@ -629,7 +629,6 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("data.text", new float[]{1.0f, 0.8f, 0.4f, 1.0f});
             
             // Math subcategories.
-            CATEGORY_COLORS_FLOAT.put("math.basic", new float[]{0.4f, 0.85f, 0.4f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("math.logic", new float[]{0.45f, 0.9f, 0.45f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("math.randomness", new float[]{0.5f, 0.95f, 0.5f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("math.trigonometry", new float[]{0.55f, 1.0f, 0.55f, 1.0f});
