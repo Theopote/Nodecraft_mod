@@ -886,19 +886,19 @@ public class NodeLibraryComponent implements EditorComponent {
             if (isSubCategory) {
                 expandedCategories.put(cat.getId(), false);
             } else {
-                expandedCategories.put(cat.getId(), true);
+                expandedCategories.put(cat.getId(), false);
             }
         }
         
         // Keep the main categories expanded even when they are nested.
         String[] keyCategories = {
-            "geometry", "input", "inputs", "data", "material", "math", "output", "pattern", "reference", "spatial", "transform", "world", "utilities",
-            "input.numeric", "input.context", "input.type_selectors", "reference.points", "reference.frames", "world.selection",
+            "geometry", "input", "material", "math", "output", "pattern", "reference", "transform", "world", "utilities", "deferred", "spatial",
+            "input.numeric", "input.context", "input.type_selectors", "reference.points", "reference.vectors", "reference.planes", "reference.frames", "world.selection", "world.read", "world.query", "world.write",
             "geometry.boolean", "geometry.curves", "geometry.primitives", "geometry.profiles", "geometry.solids",
             "pattern.linear", "pattern.grid", "pattern.radial", "pattern.surface_volume_distribution",
             "transform.basic_transforms", "transform.deformations", "transform.orientation",
-            "math.scalar_math", "math.compare", "math.random", "math.trigonometry", "math.list_sequence", "deferred.math", "data.lists", "spatial.legacy", "world.entity", 
-            "output.preview", "utilities.organization"
+            "math.scalar_math", "math.compare", "math.random", "math.trigonometry", "math.list_sequence", "deferred.math", "deferred.out_of_scope", "spatial.legacy",
+            "output.preview", "output.execute", "output.export", "output.debug", "utilities.organization", "utilities.assist"
         };
         
         for (String key : keyCategories) {

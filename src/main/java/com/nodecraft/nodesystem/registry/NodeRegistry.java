@@ -330,10 +330,22 @@ public class NodeRegistry {
         if (explicitOverride != null) {
             return explicitOverride;
         }
+        if (isOutOfScopeCategory(normalizedCategoryId)) {
+            return "deferred.out_of_scope";
+        }
         if ("spatial.generators".equals(normalizedCategoryId) && isLegacyDirectOutputNode(normalizedNodeId)) {
             return "spatial.legacy";
         }
         return normalizedCategoryId;
+    }
+
+    private boolean isOutOfScopeCategory(String normalizedCategoryId) {
+        return normalizedCategoryId.startsWith("animation")
+            || normalizedCategoryId.startsWith("flora")
+            || normalizedCategoryId.startsWith("world.nbt")
+            || normalizedCategoryId.startsWith("world.inventory")
+            || normalizedCategoryId.startsWith("utilities.experimental")
+            || normalizedCategoryId.startsWith("workflow.experimental");
     }
 
     private boolean isLegacyDirectOutputNode(String normalizedNodeId) {

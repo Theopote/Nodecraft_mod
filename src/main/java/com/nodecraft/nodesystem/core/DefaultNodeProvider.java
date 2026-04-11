@@ -42,19 +42,15 @@ public class DefaultNodeProvider implements INodeProvider {
      * Registers all top-level categories exposed by the built-in provider.
      */
     private void registerMainCategories(NodeRegistry registry) {
-        // Top-level categories, kept alphabetical for readability.
-        registry.registerCategory(new NodeRegistry.NodeCategory("animation", "Animation & Effects"));
-        registry.registerCategory(new NodeRegistry.NodeCategory("data", "Data & Lists"));
-        registry.registerCategory(new NodeRegistry.NodeCategory("flora", "Flora & Nature"));
+        // Keep the mainline v1 entry focused on canonical domains.
         registry.registerCategory(new NodeRegistry.NodeCategory("geometry", "Geometry"));
         registry.registerCategory(new NodeRegistry.NodeCategory("input", "Input"));
-        registry.registerCategory(new NodeRegistry.NodeCategory("inputs", "Inputs & Parameters"));
         registry.registerCategory(new NodeRegistry.NodeCategory("material", "Material & Mapping"));
         registry.registerCategory(new NodeRegistry.NodeCategory("math", "Math & Logic"));
         registry.registerCategory(new NodeRegistry.NodeCategory("output", "Output & Execution"));
         registry.registerCategory(new NodeRegistry.NodeCategory("pattern", "Pattern"));
         registry.registerCategory(new NodeRegistry.NodeCategory("reference", "Reference"));
-        registry.registerCategory(new NodeRegistry.NodeCategory("spatial", "Spatial & Geometry"));
+        registry.registerCategory(new NodeRegistry.NodeCategory("spatial", "Legacy Compatibility"));
         registry.registerCategory(new NodeRegistry.NodeCategory("transform", "Transform"));
         registry.registerCategory(new NodeRegistry.NodeCategory("deferred", "Deferred"));
         registry.registerCategory(new NodeRegistry.NodeCategory("utilities", "Utilities & Workflow"));
@@ -97,7 +93,7 @@ public class DefaultNodeProvider implements INodeProvider {
         registry.registerCategory(new NodeRegistry.NodeCategory("math.scalar_math", "Scalar Math"));
         registry.registerCategory(new NodeRegistry.NodeCategory("math.trigonometry", "Trigonometry"));
         registry.registerCategory(new NodeRegistry.NodeCategory("deferred.math", "Deferred Math"));
-        registry.registerCategory(new NodeRegistry.NodeCategory("data.text", "Text Processing"));
+        registry.registerCategory(new NodeRegistry.NodeCategory("deferred.out_of_scope", "Out Of Scope"));
 
         // Example node implementations are intentionally not registered here.
         NodeCraft.LOGGER.info("Fallback categories registered. Example node implementations are not provided by this provider.");
