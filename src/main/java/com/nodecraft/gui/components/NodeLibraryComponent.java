@@ -30,8 +30,8 @@ import imgui.ImDrawList;
 import imgui.ImVec2;
 
 /**
- * NodeCraft编辑器节点库组件
- * 负责渲染左侧节点库面板，包含分类和搜索功能
+ * Node library panel used by the editor sidebar.
+ * Handles category grouping, search, filtering, and drag/drop entry points.
  */
 public class NodeLibraryComponent implements EditorComponent {
 
@@ -476,16 +476,16 @@ public class NodeLibraryComponent implements EditorComponent {
         return spatialLegacyOrder;
     }
 
-    // 内部常量类
+    // Internal UI constants.
     private static class NodeLibraryConstants {
         static final String PREF_DISPLAY_MODE_KEY = "node_library.display_mode";
         static final String PREF_GRID_TILE_SCALE_KEY = "node_library.grid_tile_scale";
         static final float CHILD_WINDOW_MIN_WIDTH = 50;
         static final float CHILD_WINDOW_MIN_HEIGHT = 50;
         static final float CATEGORY_INDENT = 10f;
-        static final float CATEGORY_SPACING_EXPANDED = 3f; // 减小展开类别下方的间距
+        static final float CATEGORY_SPACING_EXPANDED = 3f; // Tighter spacing below expanded categories.
         static final float CATEGORY_SPACING_COLLAPSED = 2f;
-        static final float CATEGORY_ITEM_SPACING = 2f; // 新增：类别项目之间的间距
+        static final float CATEGORY_ITEM_SPACING = 2f; // Spacing between category items.
         static final float GRID_TILE_WIDTH = 92f;
         static final float GRID_TILE_HEIGHT = 84f;
         static final float GRID_ICON_SIZE = 28f;
@@ -503,35 +503,34 @@ public class NodeLibraryComponent implements EditorComponent {
         static final int DEFAULT_CATEGORY_COLOR_INT = ImGui.colorConvertFloat4ToU32(DEFAULT_CATEGORY_COLOR_FLOAT[0], DEFAULT_CATEGORY_COLOR_FLOAT[1], DEFAULT_CATEGORY_COLOR_FLOAT[2], DEFAULT_CATEGORY_COLOR_FLOAT[3]);
 
         static {
-            // 主分类颜色配置 (RGBA float 格式) - 使用更鲜明的颜色
-            // 现在使用小写的分类ID作为键，以匹配实际使用的分类ID
-            CATEGORY_COLORS_FLOAT.put("inputs", new float[]{0.2f, 0.5f, 0.9f, 1.0f});          // 蓝色 - 输入源
-            CATEGORY_COLORS_FLOAT.put("data", new float[]{0.95f, 0.6f, 0.2f, 1.0f});           // 橙色 - 数据处理
-            CATEGORY_COLORS_FLOAT.put("math", new float[]{0.3f, 0.8f, 0.3f, 1.0f});            // 绿色 - 数学运算
-            CATEGORY_COLORS_FLOAT.put("spatial", new float[]{0.9f, 0.9f, 0.2f, 1.0f});         // 黄色 - 空间相关
-            CATEGORY_COLORS_FLOAT.put("world", new float[]{0.2f, 0.8f, 0.8f, 1.0f});           // 青色 - 世界相关
-            CATEGORY_COLORS_FLOAT.put("output", new float[]{0.85f, 0.2f, 0.5f, 1.0f});         // 粉色 - 输出执行
-            CATEGORY_COLORS_FLOAT.put("visualization", new float[]{0.85f, 0.2f, 0.5f, 1.0f});  // 兼容旧可视化
-            CATEGORY_COLORS_FLOAT.put("utilities", new float[]{0.7f, 0.7f, 0.7f, 1.0f});       // 灰色 - 工具类
-            CATEGORY_COLORS_FLOAT.put("flora", new float[]{0.2f, 0.6f, 0.2f, 1.0f});           // 深绿色 - 植物生成
-            CATEGORY_COLORS_FLOAT.put("animation", new float[]{0.8f, 0.3f, 0.3f, 1.0f});       // 红色 - 动画
-            CATEGORY_COLORS_FLOAT.put("workflow", new float[]{0.7f, 0.7f, 0.7f, 1.0f});        // 兼容utilities/workflow
+            // Top-level category colors. Lowercase IDs are the canonical lookup keys.
+            CATEGORY_COLORS_FLOAT.put("inputs", new float[]{0.2f, 0.5f, 0.9f, 1.0f});          // Blue: input sources
+            CATEGORY_COLORS_FLOAT.put("data", new float[]{0.95f, 0.6f, 0.2f, 1.0f});           // Orange: data processing
+            CATEGORY_COLORS_FLOAT.put("math", new float[]{0.3f, 0.8f, 0.3f, 1.0f});            // Green: math and logic
+            CATEGORY_COLORS_FLOAT.put("spatial", new float[]{0.9f, 0.9f, 0.2f, 1.0f});         // Yellow: legacy spatial domain
+            CATEGORY_COLORS_FLOAT.put("world", new float[]{0.2f, 0.8f, 0.8f, 1.0f});           // Cyan: world interaction
+            CATEGORY_COLORS_FLOAT.put("output", new float[]{0.85f, 0.2f, 0.5f, 1.0f});         // Pink: output and execution
+            CATEGORY_COLORS_FLOAT.put("visualization", new float[]{0.85f, 0.2f, 0.5f, 1.0f});  // Legacy visualization alias
+            CATEGORY_COLORS_FLOAT.put("utilities", new float[]{0.7f, 0.7f, 0.7f, 1.0f});       // Gray: utility nodes
+            CATEGORY_COLORS_FLOAT.put("flora", new float[]{0.2f, 0.6f, 0.2f, 1.0f});           // Dark green: flora generation
+            CATEGORY_COLORS_FLOAT.put("animation", new float[]{0.8f, 0.3f, 0.3f, 1.0f});       // Red: animation
+            CATEGORY_COLORS_FLOAT.put("workflow", new float[]{0.7f, 0.7f, 0.7f, 1.0f});        // Compatibility for utilities/workflow
             CATEGORY_COLORS_FLOAT.put("input", new float[]{0.2f, 0.5f, 0.9f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("reference", new float[]{0.95f, 0.9f, 0.25f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("transform", new float[]{0.95f, 0.55f, 0.25f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("geometry", new float[]{0.92f, 0.82f, 0.18f, 1.0f});
             
-            // 同时为首字母大写的版本添加相同的颜色（兼容性）
-            CATEGORY_COLORS_FLOAT.put("Inputs", new float[]{0.2f, 0.5f, 0.9f, 1.0f});          // 蓝色
-            CATEGORY_COLORS_FLOAT.put("Data", new float[]{0.95f, 0.6f, 0.2f, 1.0f});           // 橙色
-            CATEGORY_COLORS_FLOAT.put("Math", new float[]{0.3f, 0.8f, 0.3f, 1.0f});            // 绿色
-            CATEGORY_COLORS_FLOAT.put("Spatial", new float[]{0.9f, 0.9f, 0.2f, 1.0f});         // 黄色
-            CATEGORY_COLORS_FLOAT.put("World", new float[]{0.2f, 0.8f, 0.8f, 1.0f});           // 青色
-            CATEGORY_COLORS_FLOAT.put("Output", new float[]{0.85f, 0.2f, 0.5f, 1.0f});         // 粉色
-            CATEGORY_COLORS_FLOAT.put("Visualization", new float[]{0.85f, 0.2f, 0.5f, 1.0f});  // 兼容旧可视化
-            CATEGORY_COLORS_FLOAT.put("Utilities", new float[]{0.7f, 0.7f, 0.7f, 1.0f});       // 灰色
-            CATEGORY_COLORS_FLOAT.put("Flora", new float[]{0.2f, 0.6f, 0.2f, 1.0f});           // 深绿色
-            CATEGORY_COLORS_FLOAT.put("Animation", new float[]{0.8f, 0.3f, 0.3f, 1.0f});       // 红色
+            // Add title-case variants for compatibility with older display labels.
+            CATEGORY_COLORS_FLOAT.put("Inputs", new float[]{0.2f, 0.5f, 0.9f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("Data", new float[]{0.95f, 0.6f, 0.2f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("Math", new float[]{0.3f, 0.8f, 0.3f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("Spatial", new float[]{0.9f, 0.9f, 0.2f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("World", new float[]{0.2f, 0.8f, 0.8f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("Output", new float[]{0.85f, 0.2f, 0.5f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("Visualization", new float[]{0.85f, 0.2f, 0.5f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("Utilities", new float[]{0.7f, 0.7f, 0.7f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("Flora", new float[]{0.2f, 0.6f, 0.2f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("Animation", new float[]{0.8f, 0.3f, 0.3f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("Input", new float[]{0.2f, 0.5f, 0.9f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("Reference", new float[]{0.95f, 0.9f, 0.25f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("Transform", new float[]{0.95f, 0.55f, 0.25f, 1.0f});
@@ -729,21 +728,21 @@ public class NodeLibraryComponent implements EditorComponent {
         GRID
     }
 
-    private final List<NodeCategory> allCategories; // 所有分类
+    private final List<NodeCategory> allCategories; // All categories exposed by the registry.
     private final Map<String, Boolean> expandedCategories = new HashMap<>();
-    private List<DisplayCategory> filteredCategories; // 过滤后的分类
+    private List<DisplayCategory> filteredCategories; // Filtered categories for the current search term.
     private boolean visible = true;
     private DisplayMode displayMode = DisplayMode.LIST;
     private float gridTileSizeScale = NodeLibraryConstants.GRID_TILE_SIZE_SCALE;
 
-    // 图标管理器
+    // Icon manager.
     private final NodeIconManager iconManager = NodeIconManager.getInstance();
     
-    // 搜索管理器
+    // Search manager.
     private final NodeSearchManager searchManager = new NodeSearchManager();
     
     /**
-     * 节点选择回调接口
+     * Callback used when the user selects a node from the library.
      */
     public interface NodeSelectCallback {
         void onNodeSelected(String nodeId, String nodeTitle);
@@ -752,49 +751,47 @@ public class NodeLibraryComponent implements EditorComponent {
     private final NodeSelectCallback selectCallback;
     
     /**
-     * 构造函数
-     * @param selectCallback 节点选择回调
+     * Creates the node library component.
+     *
+     * @param selectCallback node selection callback
      */
     public NodeLibraryComponent(NodeSelectCallback selectCallback) {
         this.selectCallback = selectCallback;
-        // 直接获取NodeRegistry中的分类列表
+        // Read categories directly from the registry.
         List<NodeCategory> categoriesFromRegistry = NodeRegistry.getInstance().getAllCategories();
         
-        // 验证 NodeRegistry 返回的数据
+        // Validate registry output before building local state.
         if (categoriesFromRegistry == null || categoriesFromRegistry.isEmpty()) {
-            NodeCraft.LOGGER.warn("NodeRegistry 返回空或无效的分类列表");
-            this.allCategories = new ArrayList<>(); // 使用空列表
+            NodeCraft.LOGGER.warn("NodeRegistry returned an empty or invalid category list.");
+            this.allCategories = new ArrayList<>();
         } else {
-            // 处理分类列表，确保正确的层级关系
+            // Normalize category hierarchy so top-level and subcategory relationships stay consistent.
             List<NodeCategory> processedCategories = new ArrayList<>();
             
-            // 先找出所有的顶级分类
+            // Collect top-level categories first.
             Map<String, NodeCategory> topLevelCategories = new HashMap<>();
             for (NodeCategory cat : categoriesFromRegistry) {
                 String catId = cat.getId();
                 
-                // 判断是否为顶级分类（不包含点号）
+                // Top-level categories do not contain dots.
                 if (!catId.contains(".")) {
                     topLevelCategories.put(catId, cat);
                     processedCategories.add(cat);
                 }
             }
             
-            // 然后处理所有子分类，确保它们有正确的顶级父分类
+            // Then process subcategories and validate their parent categories.
             for (NodeCategory cat : categoriesFromRegistry) {
                 String catId = cat.getId();
                 
-                // 如果包含点号，说明是子分类
+                // Dotted IDs are treated as subcategories.
                 if (catId.contains(".") && !catId.endsWith(".")) {
-                    // 提取父分类ID
                     String parentId = catId.substring(0, catId.lastIndexOf('.'));
                     
-                    // 如果父分类存在于顶级分类中，则加入处理后的列表
                     if (topLevelCategories.containsKey(parentId)) {
                         processedCategories.add(cat);
                     } else {
-                        // 如果父分类不存在，则将该分类作为顶级分类处理
-                        NodeCraft.LOGGER.warn("子分类 {} 的父分类 {} 不存在，将其作为顶级分类处理", catId, parentId);
+                        NodeCraft.LOGGER.warn("Subcategory {} is missing parent {}. Treating it as top-level for display.", catId, parentId);
                         processedCategories.add(cat);
                     }
                 }
@@ -803,25 +800,21 @@ public class NodeLibraryComponent implements EditorComponent {
             this.allCategories = processedCategories;
         }
         
-        // 初始化过滤结果，开始时显示所有分类
+        // Show the full category list before any search input is applied.
         updateFilteredCategories("");
         
-        // 初始化分类展开状态
-        // 默认展开顶级分类，折叠子分类
+        // Expand top-level categories by default and collapse subcategories.
         for (NodeCategory cat : allCategories) {
-            // 检查是否为子分类
             boolean isSubCategory = cat.getId().contains(".") && !cat.getId().endsWith(".");
             
             if (isSubCategory) {
-                // 子分类默认折叠
                 expandedCategories.put(cat.getId(), false);
             } else {
-                // 顶级分类默认展开
                 expandedCategories.put(cat.getId(), true);
             }
         }
         
-        // 确保主要分类始终展开，即使它们是子分类
+        // Keep the main categories expanded even when they are nested.
         String[] keyCategories = {
             "geometry", "input", "inputs", "data", "material", "math", "output", "pattern", "reference", "spatial", "transform", "world", "utilities",
             "input.numeric", "input.context", "input.type_selectors", "reference.points", "reference.frames", "world.selection",
@@ -836,7 +829,7 @@ public class NodeLibraryComponent implements EditorComponent {
             expandedCategories.put(key, true);
         }
 
-        // 加载节点库显示模式偏好
+        // Restore persisted display mode preferences.
         String storedMode = UserPreferences.getString(NodeLibraryConstants.PREF_DISPLAY_MODE_KEY, DisplayMode.LIST.name());
         try {
             this.displayMode = DisplayMode.valueOf(storedMode);
@@ -850,16 +843,17 @@ public class NodeLibraryComponent implements EditorComponent {
         );
         setGridTileSizeScale(storedGridScale);
         
-        // 初始化图标管理器
+        // Initialize icon resources.
         iconManager.initialize();
     }
     
     /**
-     * 渲染节点库面板
-     * @param contentStartY 内容起始Y坐标
-     * @param nodePanelWidth 面板宽度
-     * @param contentHeight 内容高度
-     * @param windowPaddingX 窗口水平内边距
+     * Renders the node library panel.
+     *
+     * @param contentStartY content start Y
+     * @param nodePanelWidth panel width
+     * @param contentHeight content height
+     * @param windowPaddingX horizontal window padding
      */
     public void render(float contentStartY, float nodePanelWidth, float contentHeight, float windowPaddingX) {
         if (!visible) {
@@ -869,28 +863,26 @@ public class NodeLibraryComponent implements EditorComponent {
         boolean nodeLibraryChildBegin = false;
         
         try {
-            // 确保以下参数有合理值
+            // Clamp layout inputs to safe minimums.
             nodePanelWidth = Math.max(NodeLibraryConstants.CHILD_WINDOW_MIN_WIDTH, nodePanelWidth);
             contentHeight = Math.max(NodeLibraryConstants.CHILD_WINDOW_MIN_HEIGHT, contentHeight);
             
-            // 创建节点库窗口，设置边框，禁用滚动条(我们将使用内部自定义滚动)
+            // Create the child window and disable the native scrollbar.
             int windowFlags = ImGuiWindowFlags.NoScrollbar | 
                             ImGuiWindowFlags.NoMove |
                             ImGuiWindowFlags.NoResize |
                             ImGuiWindowFlags.NoCollapse |
                             ImGuiWindowFlags.NoTitleBar;
             
-            // 使用带边框的子窗口，第四个参数为true表示显示边框
             nodeLibraryChildBegin = ImGui.beginChild("nodeLibrary", nodePanelWidth, contentHeight, true, windowFlags);
             
-            // 关键修复：如果窗口未成功开始，则直接返回，不尝试渲染内容或结束窗口
             if (!nodeLibraryChildBegin) {
                 NodeCraft.LOGGER.warn("Failed to begin nodeLibrary child window");
                 return;
             }
             
             try {
-                // 设置节点库背景颜色，提高可见性
+                // Draw a distinct panel background for the node library.
                 ImDrawList drawList = ImGui.getWindowDrawList();
                 ImVec2 windowPos = ImGui.getWindowPos();
                 int nodeLibraryBgColor = ImGui.colorConvertFloat4ToU32(0.15f, 0.15f, 0.2f, MinecraftTheme.getPanelAlpha());
@@ -902,27 +894,26 @@ public class NodeLibraryComponent implements EditorComponent {
                     nodeLibraryBgColor
                 );
                 
-                // 搜索栏
+                // Search bar.
                 renderSearchBar();
                 
                 ImGui.separator();
                 ImGui.spacing();
                 
-                // 节点类别
+                // Node categories.
                 renderNodeCategories();
             } finally {
-                // 只有当窗口成功开始时才结束它
+                // Only end the child window after a successful beginChild call.
                 ImGui.endChild();
             }
         } catch (Exception e) {
-            // 错误日志保留，因为这些只在异常情况下触发，不会造成高频日志
-            NodeCraft.LOGGER.error("渲染节点库时出错: {}", e.getMessage());
+            NodeCraft.LOGGER.error("Failed to render node library: {}", e.getMessage());
             e.printStackTrace();
         }
     }
     
     /**
-     * 实现EditorComponent接口的render方法
+     * {@inheritDoc}
      */
     @Override
     public void render(float x, float y, float width, float height, float paddingX, float paddingY) {
@@ -930,29 +921,27 @@ public class NodeLibraryComponent implements EditorComponent {
     }
     
     /**
-     * 实现EditorComponent接口的init方法
+     * {@inheritDoc}
      */
     @Override
     public void init() {
-        // 节点库不需要特殊初始化
+        // No extra initialization is required here.
         if (NodeCraft.LOGGER.isDebugEnabled()) {
-            NodeCraft.LOGGER.debug("初始化节点库组件");
+            NodeCraft.LOGGER.debug("Initializing node library component");
         }
     }
     
     /**
-     * 实现EditorComponent接口的cleanup方法
+     * {@inheritDoc}
      */
     @Override
     public void cleanup() {
-        // 清理图标资源
+        // Release icon resources.
         iconManager.cleanup();
-        
-        // 节点库不需要特殊清理操作
     }
     
     /**
-     * 实现EditorComponent接口的setVisible方法
+     * {@inheritDoc}
      */
     @Override
     public void setVisible(boolean visible) {
@@ -960,7 +949,7 @@ public class NodeLibraryComponent implements EditorComponent {
     }
     
     /**
-     * 实现EditorComponent接口的isVisible方法
+     * {@inheritDoc}
      */
     @Override
     public boolean isVisible() {
@@ -994,7 +983,7 @@ public class NodeLibraryComponent implements EditorComponent {
     }
     
     /**
-     * 实现EditorComponent接口的getComponentId方法
+     * {@inheritDoc}
      */
     @Override
     public String getComponentId() {
@@ -1002,52 +991,49 @@ public class NodeLibraryComponent implements EditorComponent {
     }
     
     /**
-     * 实现EditorComponent接口的handleEvent方法
+     * {@inheritDoc}
      */
     @Override
     public boolean handleEvent(String eventType, Object data) {
-        // 默认实现不处理任何事件
+        // This component does not currently handle external events.
         return false;
     }
     
     /**
-     * 渲染搜索栏
+     * Renders the search bar.
      */
     private void renderSearchBar() {
-        // 使用搜索管理器渲染搜索栏
+        // Delegate search UI rendering to the search manager.
         boolean searchChanged = searchManager.renderSearchBar(this::updateFilteredCategories);
         
-        // 如果搜索发生变化，强制重新渲染
         if (searchChanged) {
-            NodeCraft.LOGGER.info("搜索发生变化，强制重新渲染节点库");
-            // 当前帧已经开始渲染，需要在下一帧重新过滤和渲染
-            // 在实际运行中，这个变化会在下一帧生效
+            NodeCraft.LOGGER.info("Search term changed. Node library will refresh on the next frame.");
         }
     }
     
     /**
-     * 更新过滤后的分类列表
-     * @param searchTerm 搜索关键词
+     * Updates the filtered category list for the active search term.
+     *
+     * @param searchTerm search term
      */
     private void updateFilteredCategories(String searchTerm) {
-        // 调试输出
-        NodeCraft.LOGGER.info("开始搜索处理，搜索词: '{}'", searchTerm);
+        NodeCraft.LOGGER.info("Updating node library search results for term: '{}'", searchTerm);
         
-        // 如果搜索词为空，直接显示所有分类
+        // Empty search shows all categories and nodes.
         if (searchTerm == null || searchTerm.isEmpty()) {
-            NodeCraft.LOGGER.debug("搜索词为空，显示所有分类");
+            NodeCraft.LOGGER.debug("Search term is empty. Showing all categories.");
             this.filteredCategories = this.allCategories.stream()
                 .map(cat -> new DisplayCategory(cat, new ArrayList<>(cat.getNodes())))
                 .collect(Collectors.toList());
-            NodeCraft.LOGGER.debug("过滤后分类数量 (空搜索词): {}", this.filteredCategories.size());
+            NodeCraft.LOGGER.debug("Filtered category count for empty search: {}", this.filteredCategories.size());
             return;
         }
 
-        // 对搜索词进行更宽松的处理
+        // Normalize the search term before matching.
         String processedTerm = searchTerm.toLowerCase().trim();
-        NodeCraft.LOGGER.info("处理后的搜索词: '{}'", processedTerm);
+        NodeCraft.LOGGER.info("Normalized search term: '{}'", processedTerm);
 
-        // 直接遍历所有分类和节点
+        // Scan all categories and nodes directly.
         List<DisplayCategory> searchResults = new ArrayList<>();
         Set<String> parentCategoriesToExpand = new HashSet<>();
         
@@ -1056,27 +1042,24 @@ public class NodeLibraryComponent implements EditorComponent {
             String categoryName = category.getDisplayName().toLowerCase();
             boolean categoryMatches = categoryName.contains(processedTerm) || categoryId.toLowerCase().contains(processedTerm);
             
-            // 查找匹配的节点
+            // Collect matching nodes in the current category.
             List<NodeInfo> matchingNodes = new ArrayList<>();
             for (NodeInfo node : category.getNodes()) {
-                // 检查节点是否匹配
                 if (matchesNode(node, processedTerm)) {
                     matchingNodes.add(node);
-                    NodeCraft.LOGGER.debug("节点匹配搜索词: {} ({}) in category {}", 
+                    NodeCraft.LOGGER.debug("Node matched search term: {} ({}) in category {}", 
                         node.getDisplayName(), node.getId(), categoryId);
                 }
             }
             
-            // 1. 如果分类名称匹配，保留所有节点
+            // 1. Category name matched, so keep all nodes in that category.
             if (categoryMatches) {
                 searchResults.add(new DisplayCategory(category, new ArrayList<>(category.getNodes())));
-                NodeCraft.LOGGER.debug("分类名称匹配搜索词 '{}': {} ({}), 保留所有节点", 
+                NodeCraft.LOGGER.debug("Category matched search term '{}': {} ({}), keeping all nodes", 
                     processedTerm, category.getDisplayName(), categoryId);
                 
-                // 确保展开状态
                 expandedCategories.put(categoryId, true);
                 
-                // 如果是子分类，记录父分类
                 if (categoryId.contains(".")) {
                     String parentId = categoryId.substring(0, categoryId.lastIndexOf('.'));
                     parentCategoriesToExpand.add(parentId);
@@ -1085,15 +1068,13 @@ public class NodeLibraryComponent implements EditorComponent {
                 continue;
             }
             
-            // 2. 如果有匹配的节点，保留这些节点
+            // 2. Category did not match, but some nodes did.
             if (!matchingNodes.isEmpty()) {
                 searchResults.add(new DisplayCategory(category, matchingNodes));
-                NodeCraft.LOGGER.debug("分类 {} 包含 {} 个匹配节点", categoryId, matchingNodes.size());
+                NodeCraft.LOGGER.debug("Category {} contains {} matching nodes", categoryId, matchingNodes.size());
                 
-                // 确保展开状态
                 expandedCategories.put(categoryId, true);
                 
-                // 如果是子分类，记录父分类
                 if (categoryId.contains(".")) {
                     String parentId = categoryId.substring(0, categoryId.lastIndexOf('.'));
                     parentCategoriesToExpand.add(parentId);
@@ -1101,31 +1082,28 @@ public class NodeLibraryComponent implements EditorComponent {
             }
         }
         
-        // 确保所有父分类都被展开
+        // Expand all parents of matching subcategories.
         for (String parentId : parentCategoriesToExpand) {
             expandedCategories.put(parentId, true);
-            NodeCraft.LOGGER.debug("设置父分类 {} 为展开状态", parentId);
+            NodeCraft.LOGGER.debug("Expanded parent category {}", parentId);
         }
         
-        NodeCraft.LOGGER.info("搜索 '{}' 找到 {} 个匹配的分类", processedTerm, searchResults.size());
+        NodeCraft.LOGGER.info("Search '{}' matched {} categories", processedTerm, searchResults.size());
         
         if (!searchResults.isEmpty()) {
-            // 确保顶级分类始终包含在列表中
+            // Ensure parent categories remain visible even when only child categories match.
             List<DisplayCategory> completeResults = new ArrayList<>(searchResults);
             
-            // 找出所有包含子分类但自身不在结果中的顶级分类
             for (String parentId : parentCategoriesToExpand) {
-                if (!parentId.contains(".")) { // 只处理顶级分类
-                    // 检查该分类是否已在结果中
+                if (!parentId.contains(".")) {
                     boolean alreadyIncluded = searchResults.stream()
                         .anyMatch(dc -> dc.getId().equals(parentId));
                     
                     if (!alreadyIncluded) {
-                        // 找到原始分类并添加空节点列表
                         for (NodeCategory cat : allCategories) {
                             if (cat.getId().equals(parentId)) {
                                 completeResults.add(new DisplayCategory(cat, new ArrayList<>()));
-                                NodeCraft.LOGGER.debug("添加缺失的父分类: {}", parentId);
+                                NodeCraft.LOGGER.debug("Added missing parent category {}", parentId);
                                 break;
                             }
                         }
@@ -1133,22 +1111,20 @@ public class NodeLibraryComponent implements EditorComponent {
                 }
             }
             
-            // 如果有匹配结果，使用这些结果
             this.filteredCategories = completeResults;
         } else {
-            // 如果没有匹配结果，保留所有顶级分类但不显示任何节点
-            NodeCraft.LOGGER.info("没有找到匹配项，显示空的顶级分类");
+            NodeCraft.LOGGER.info("No matches found. Showing empty top-level categories.");
             this.filteredCategories = allCategories.stream()
-                .filter(cat -> !cat.getId().contains(".")) // 只保留顶级分类
+                .filter(cat -> !cat.getId().contains("."))
                 .map(cat -> new DisplayCategory(cat, new ArrayList<>()))
                 .collect(Collectors.toList());
         }
         
-        NodeCraft.LOGGER.info("过滤后分类总数: {}", this.filteredCategories.size());
+        NodeCraft.LOGGER.info("Filtered category count: {}", this.filteredCategories.size());
     }
     
     /**
-     * 检查节点是否匹配搜索词
+     * Returns whether a node matches the current search term.
      */
     private boolean matchesNode(NodeInfo node, String searchTerm) {
         if (searchTerm == null || searchTerm.isEmpty() || node == null) {

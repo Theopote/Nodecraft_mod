@@ -16,9 +16,8 @@ import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 统一的节点注册表。
- * 负责发现、管理和实例化所有可用的节点类型。
- * 支持通过 {@link INodeProvider} SPI 进行插件化节点注册。
+ * Central registry for node metadata, categories, and instantiation.
+ * Supports discovery through {@link INodeProvider} implementations loaded via SPI.
  */
 public class NodeRegistry {
 
@@ -31,13 +30,13 @@ public class NodeRegistry {
     private volatile boolean initialized = false;
 
     private NodeRegistry() {
-        // 私有构造函数，确保单例
+        // Singleton.
     }
 
     /**
-     * 获取 NodeRegistry 的单例实例。
+     * Returns the singleton registry instance.
      *
-     * @return NodeRegistry 实例。
+     * @return registry instance
      */
     public static synchronized NodeRegistry getInstance() {
         if (instance == null) {
@@ -319,113 +318,105 @@ public class NodeRegistry {
     }
 
     /**
-     * 初始化节点注册表。
-     * 此方法会清空当前注册信息，并使用 {@link ServiceLoader} 重新加载所有 {@link INodeProvider}。
-     * 应该在应用程序启动时调用一次。
+     * Reinitializes the registry by clearing current state and reloading all {@link INodeProvider}s.
      */
     public synchronized void initialize() {
         if (initialized) {
-            NodeCraft.LOGGER.warn("NodeRegistry 已初始化，跳过重复初始化。如需重新加载，请先调用 clear()。");
+            NodeCraft.LOGGER.warn("NodeRegistry is already initialized. Call clear() before reloading providers.");
             return;
         }
 
-        NodeCraft.LOGGER.debug("开始初始化 NodeRegistry...");
-        this.clearInternal(); // 确保在初始化前清空内部状态
+        NodeCraft.LOGGER.debug("Initializing NodeRegistry...");
+        this.clearInternal(); // Ensure a clean registry state before loading providers.
 
-        // 加载所有节点提供者
+        // Load all node providers through SPI.
         ServiceLoader<INodeProvider> loader = ServiceLoader.load(INodeProvider.class);
         int providerCount = 0;
-        int initialNodes; // 用于计算每个提供者注册的节点数量
-        int initialCategories; // 用于计算每个提供者注册的分类数量
+        int initialNodes;
+        int initialCategories;
 
         for (INodeProvider provider : loader) {
             try {
-                NodeCraft.LOGGER.debug("加载节点提供者: {}", provider.getClass().getName());
-                initialNodes = nodeInfoMap.size(); // 记录调用前数量
-                initialCategories = categoryMap.size(); // 记录调用前数量
+                NodeCraft.LOGGER.debug("Loading node provider: {}", provider.getClass().getName());
+                initialNodes = nodeInfoMap.size();
+                initialCategories = categoryMap.size();
 
                 provider.registerNodes(this);
                 providerCount++;
 
-                NodeCraft.LOGGER.debug("提供者 {} 注册了 {} 个节点和 {} 个分类",
+                NodeCraft.LOGGER.debug("Provider {} registered {} nodes and {} categories",
                         provider.getClass().getSimpleName(),
                         nodeInfoMap.size() - initialNodes,
                         categoryMap.size() - initialCategories);
 
             } catch (Exception e) {
-                NodeCraft.LOGGER.error("加载节点提供者 {} 时出错: {}",
+                NodeCraft.LOGGER.error("Failed to load node provider {}: {}",
                         provider.getClass().getName(), e.getMessage(), e);
             }
         }
 
         if (providerCount == 0) {
-            NodeCraft.LOGGER.error("警告：没有找到任何节点提供者！请检查 META-INF/services/com.nodecraft.nodesystem.spi.INodeProvider 文件。");
+            NodeCraft.LOGGER.error("No node providers were found. Check META-INF/services/com.nodecraft.nodesystem.spi.INodeProvider.");
         }
 
         initialized = true;
-        NodeCraft.LOGGER.info("NodeRegistry 初始化完成。加载了 {} 个节点提供者，共注册了 {} 个类别和 {} 个节点。",
+        NodeCraft.LOGGER.info("NodeRegistry initialized. Loaded {} providers, {} categories, and {} nodes.",
                 providerCount, categoryMap.size(), nodeInfoMap.size());
     }
 
     /**
-     * 注册一个节点类别。
-     * 如果类别ID已存在，则此操作无效。
+     * Registers a node category.
      *
-     * @param category 要注册的节点类别。
+     * @param category category metadata
      */
     public synchronized void registerCategory(NodeCategory category) {
         if (category == null || category.getId() == null) {
-            NodeCraft.LOGGER.warn("尝试注册无效的节点类别 (null 或 null ID)。");
+            NodeCraft.LOGGER.warn("Attempted to register an invalid node category (null category or null ID).");
             return;
         }
 
-        // 标准化分类ID和显示名称
+        // Normalize the category ID and display name.
         String normalizedId = category.getId().toLowerCase();
         String displayName = category.getDisplayName();
         if (displayName == null || displayName.trim().isEmpty()) {
-            displayName = formatCategoryName(normalizedId); // 使用新的格式化方法
+            displayName = formatCategoryName(normalizedId);
         }
 
-        // 检查是否为子分类，并自动创建父分类
+        // Register the parent category first so the hierarchy remains valid.
         if (normalizedId.contains(".") && !normalizedId.endsWith(".")) {
             String parentId = normalizedId.substring(0, normalizedId.lastIndexOf('.'));
 
-            // 递归注册父分类，确保层级关系
-            // 避免无限循环，只注册直接父级，更上级由其父级的注册处理
             if (!categoryMap.containsKey(parentId)) {
                 NodeCategory parentCategory = new NodeCategory(parentId, formatCategoryName(parentId));
-                // 递归调用 registerCategory 确保父分类被完整处理
-                registerCategory(parentCategory); // 确保父分类也经过标准化和日志
+                registerCategory(parentCategory);
             }
         }
 
-        // 检查是否已存在
         if (categoryMap.containsKey(normalizedId)) {
-            NodeCraft.LOGGER.debug("节点类别 {} 已存在，无需重复注册。", normalizedId);
+            NodeCraft.LOGGER.debug("Node category {} already exists. Skipping duplicate registration.", normalizedId);
             return;
         }
 
-        // 创建新的分类对象
         NodeCategory newCategory = new NodeCategory(normalizedId, displayName);
         categoryMap.put(normalizedId, newCategory);
-        NodeCraft.LOGGER.debug("注册节点类别: {} (ID: {})", displayName, normalizedId);
+        NodeCraft.LOGGER.debug("Registered node category: {} (ID: {})", displayName, normalizedId);
     }
 
     /**
-     * 注册一个节点。
-     * 如果节点ID已存在，则会警告并且不进行覆盖。
-     * 如果节点所属的类别不存在，会自动创建一个默认类别。
+     * Registers a node definition.
      *
-     * @param nodeInfo 要注册的节点信息。
-     * @return 如果成功注册，则返回 true；如果节点信息无效或已存在，则返回 false。
+     * If the target category does not exist yet, it is created automatically.
+     *
+     * @param nodeInfo node metadata
+     * @return true if registration succeeds; false when the node is invalid or already registered
      */
     public synchronized boolean registerNode(NodeInfo nodeInfo) {
         if (nodeInfo == null || nodeInfo.getId() == null || nodeInfo.getNodeClass() == null) {
-            NodeCraft.LOGGER.warn("尝试注册无效的节点信息 (null, null ID, 或 null NodeClass)。");
+            NodeCraft.LOGGER.warn("Attempted to register invalid node metadata (null, null ID, or null node class).");
             return false;
         }
 
-        // 标准化节点ID
+        // Normalize the node ID before writing to the registry.
         String normalizedId = nodeInfo.getId().toLowerCase();
         String categoryId = remapCategory(normalizedId, nodeInfo.getCategoryId());
         String description = remapDescription(categoryId, nodeInfo.getDescription());
@@ -437,133 +428,131 @@ public class NodeRegistry {
                 nodeInfo.getNodeClass());
         normalizedNodeInfo.setIcon(nodeInfo.getIcon());
 
-        // 检查是否已存在
         if (nodeInfoMap.containsKey(normalizedId)) {
-            NodeCraft.LOGGER.warn("尝试重复注册节点 ID: {} (标题: {}). 跳过。",
+            NodeCraft.LOGGER.warn("Duplicate node registration attempted for ID: {} (title: {}). Skipping.",
                     normalizedId, nodeInfo.getDisplayName());
             return false;
         }
 
-        // 注册节点
         nodeInfoMap.put(normalizedId, normalizedNodeInfo);
 
-        // 确保分类存在 (调用 registerCategory 确保其父分类链也被处理)
+        // Ensure the category exists, including its parent chain.
         if (!categoryMap.containsKey(categoryId)) {
-            // 如果分类不存在，则注册它，这将自动处理父分类链
             NodeCategory newCategoryForNode = new NodeCategory(categoryId, formatCategoryName(categoryId));
-            registerCategory(newCategoryForNode); // 确保这个分类及其父类被正确注册
+            registerCategory(newCategoryForNode);
         }
 
-        // 将节点添加到分类中
         NodeCategory category = categoryMap.get(categoryId);
-        if (category != null) { // 确保分类确实存在（理论上应存在，因为上面已注册）
+        if (category != null) {
             category.addNode(normalizedNodeInfo);
-            NodeCraft.LOGGER.debug("注册节点: {} (ID: {}) 到类别 [{}]",
+            NodeCraft.LOGGER.debug("Registered node: {} (ID: {}) in category [{}]",
                     normalizedNodeInfo.getDisplayName(), normalizedId, category.getDisplayName());
             return true;
         } else {
-            NodeCraft.LOGGER.error("节点 {} (ID: {}) 注册失败：无法找到或创建分类 {}",
+            NodeCraft.LOGGER.error("Failed to register node {} (ID: {}): could not resolve category {}",
                     normalizedNodeInfo.getDisplayName(), normalizedId, categoryId);
-            nodeInfoMap.remove(normalizedId); // 回滚注册
+            nodeInfoMap.remove(normalizedId);
             return false;
         }
     }
 
     /**
-     * 根据节点类型 ID 创建一个新的节点实例。
+     * Creates a new node instance for the given node type ID.
      *
-     * @param nodeId 要创建实例的节点类型 ID。
-     * @return 新创建的 {@link INode} 实例。
-     * @throws IllegalArgumentException 如果节点 ID 未注册或节点信息缺少实现类。
-     * @throws RuntimeException         如果实例化节点时发生错误 (如构造函数问题)。
+     * @param nodeId node type ID to instantiate
+     * @return new {@link INode} instance
+     * @throws IllegalArgumentException if the node ID is unknown or has no implementation class
+     * @throws RuntimeException if instantiation fails
      */
     public INode createNodeInstance(String nodeId) {
         String resolvedNodeId = normalizeNodeId(nodeId);
         NodeInfo nodeInfo = nodeInfoMap.get(resolvedNodeId);
         if (nodeInfo == null) {
-            throw new IllegalArgumentException("未注册的节点类型 ID: " + nodeId);
+            throw new IllegalArgumentException("Unregistered node type ID: " + nodeId);
         }
 
         Class<? extends INode> nodeClass = nodeInfo.getNodeClass();
         if (nodeClass == null) {
-            // 此情况理论上不应发生，因为 registerNode 会检查 nodeClass
-            throw new IllegalArgumentException("节点类型 '" + nodeId + "' (" + nodeInfo.getDisplayName() + ") 没有关联的实现类，无法实例化。");
+            throw new IllegalArgumentException("Node type '" + nodeId + "' (" + nodeInfo.getDisplayName() + ") has no implementation class.");
         }
 
         try {
             return nodeClass.getDeclaredConstructor().newInstance();
         } catch (NoSuchMethodException e) {
-            NodeCraft.LOGGER.error("节点类 {} 缺少无参构造函数。", nodeClass.getName(), e);
-            throw new RuntimeException("节点类 " + nodeClass.getName() + " 缺少无参构造函数。", e);
+            NodeCraft.LOGGER.error("Node class {} is missing a no-argument constructor.", nodeClass.getName(), e);
+            throw new RuntimeException("Node class " + nodeClass.getName() + " is missing a no-argument constructor.", e);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-            NodeCraft.LOGGER.error("实例化节点 {} ({}) 时出错。", nodeId, nodeClass.getName(), e);
-            throw new RuntimeException("无法实例化节点 " + nodeId + ": " + e.getMessage(), e);
+            NodeCraft.LOGGER.error("Failed to instantiate node {} ({}).", nodeId, nodeClass.getName(), e);
+            throw new RuntimeException("Failed to instantiate node " + nodeId + ": " + e.getMessage(), e);
         } catch (Exception e) {
-            NodeCraft.LOGGER.error("实例化节点 {} ({}) 时发生未知错误。", nodeId, nodeClass.getName(), e);
-            throw new RuntimeException("实例化节点 " + nodeId + " 时发生未知错误: " + e.getMessage(), e);
+            NodeCraft.LOGGER.error("Unexpected error while instantiating node {} ({}).", nodeId, nodeClass.getName(), e);
+            throw new RuntimeException("Unexpected error while instantiating node " + nodeId + ": " + e.getMessage(), e);
         }
     }
 
     /**
-     * 根据 ID 获取节点类别。
+     * Returns the category for the given category ID.
      *
-     * @param categoryId 类别 ID。
-     * @return {@link NodeCategory}，如果不存在则返回 null。
+     * @param categoryId category ID
+     * @return matching {@link NodeCategory}, or null when not found
      */
     public NodeCategory getCategory(String categoryId) {
         return categoryMap.get(categoryId);
     }
 
     /**
-     * 获取所有已注册的节点类别。
-     * 列表按类别显示名称排序。
+     * Returns all registered categories sorted by display name.
      *
-     * @return 已排序的节点类别列表。
+     * @return sorted immutable category list
      */
     public List<NodeCategory> getAllCategories() {
         List<NodeCategory> sortedCategories = new ArrayList<>(categoryMap.values());
-        // 按显示名称排序
+        // Sort by display name for stable UI presentation.
         sortedCategories.sort((c1, c2) -> c1.getDisplayName().compareToIgnoreCase(c2.getDisplayName()));
-        return Collections.unmodifiableList(sortedCategories); // 返回不可修改列表
+        return Collections.unmodifiableList(sortedCategories);
     }
 
     /**
-     * 获取所有已注册节点ID的列表。
-     * @return 已注册节点ID的不可修改列表。
+     * Returns all registered node IDs.
+     *
+     * @return immutable node ID list
      */
     public List<String> getAllNodeIds() {
         return List.copyOf(nodeInfoMap.keySet());
     }
 
     /**
-     * 根据节点ID获取节点信息。
-     * @param nodeId 节点ID。
-     * @return 对应的 NodeInfo 对象，如果不存在则返回 null。
+     * Returns node metadata for the given node ID.
+     *
+     * @param nodeId node ID
+     * @return matching {@link NodeInfo}, or null when not found
      */
     public NodeInfo getNodeInfo(String nodeId) {
         return nodeInfoMap.get(normalizeNodeId(nodeId));
     }
 
     /**
-     * 获取已注册的类别数量。
-     * @return 类别数量。
+     * Returns the number of registered categories.
+     *
+     * @return category count
      */
     public int getCategoryCount() {
         return categoryMap.size();
     }
 
     /**
-     * 获取已注册的节点数量。
-     * @return 节点数量。
+     * Returns the number of registered nodes.
+     *
+     * @return node count
      */
     public int getNodeCount() {
         return nodeInfoMap.size();
     }
 
     /**
-     * 检查注册表是否已初始化。
+     * Returns whether the registry has been initialized.
      *
-     * @return 如果已调用 {@link #initialize()} 并且未被 {@link #clear()}，则返回 true。
+     * @return true after {@link #initialize()} and before {@link #clear()}
      */
     public boolean isInitialized() {
         return initialized;
@@ -572,21 +561,20 @@ public class NodeRegistry {
     private void clearInternal() {
         nodeInfoMap.clear();
         categoryMap.clear();
-        // initialized 标志由 initialize 和 clear 控制
+        // The initialized flag is managed by initialize() and clear().
     }
 
     /**
-     * 清空注册表并重置初始化状态。
-     * 在重新加载配置或插件时可能有用。
+     * Clears the registry and resets initialization state.
      */
     public synchronized void clear() {
         clearInternal();
         initialized = false;
-        NodeCraft.LOGGER.info("NodeRegistry 已清空并重置。");
+        NodeCraft.LOGGER.info("NodeRegistry cleared and reset.");
     }
 
     /**
-     * 代表一个节点类别，包含该类别下的多个节点。
+     * Represents a node category and its registered nodes.
      */
     public static class NodeCategory {
         private final String id;
@@ -594,8 +582,8 @@ public class NodeRegistry {
         private final List<NodeInfo> nodes = new ArrayList<>();
 
         public NodeCategory(String id, String displayName) {
-            this.id = Objects.requireNonNull(id, "类别 ID 不能为空");
-            this.displayName = Objects.requireNonNull(displayName, "类别显示名称不能为空");
+            this.id = Objects.requireNonNull(id, "Category ID must not be null");
+            this.displayName = Objects.requireNonNull(displayName, "Category display name must not be null");
         }
 
         public String getId() {
@@ -609,7 +597,7 @@ public class NodeRegistry {
         void addNode(NodeInfo nodeInfo) {
             if (nodeInfo != null && !nodes.contains(nodeInfo)) {
                 nodes.add(nodeInfo);
-                // 按显示名称排序节点
+                // Keep nodes sorted by display name for stable rendering.
                 nodes.sort((n1, n2) -> n1.getDisplayName().compareToIgnoreCase(n2.getDisplayName()));
             }
         }
@@ -642,14 +630,15 @@ public class NodeRegistry {
     }
 
     /**
-     * 将分类ID的一部分格式化为更好的显示名称。
-     * 支持点分式ID，例如 "inputs.basic" -> "Inputs / Basic"。
-     * @param categoryId 分类ID。
-     * @return 格式化后的显示名称。
+     * Formats a dotted category ID into a display label.
+     * Example: {@code inputs.basic -> Inputs / Basic}.
+     *
+     * @param categoryId category ID
+     * @return formatted display name
      */
     private String formatCategoryName(String categoryId) {
         if (categoryId == null || categoryId.isEmpty()) {
-            return "General"; // 或其他默认值
+            return "General";
         }
         String[] parts = categoryId.split("\\.");
         StringBuilder formatted = new StringBuilder();
@@ -658,7 +647,7 @@ public class NodeRegistry {
                 if (!formatted.isEmpty()) {
                     formatted.append(" / ");
                 }
-                // 首字母大写
+                // Title-case each category segment.
                 formatted.append(part.substring(0, 1).toUpperCase()).append(part.substring(1));
             }
         }
