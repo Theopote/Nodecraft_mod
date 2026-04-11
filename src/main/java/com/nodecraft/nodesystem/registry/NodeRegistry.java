@@ -181,6 +181,12 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "spatial.analysis.deconstruct_tetrahedron", "geometry.primitives.deconstruct_tetrahedron");
         addMovedNodeAlias(aliases, "spatial.analysis.deconstruct_prism", "geometry.primitives.deconstruct_prism");
         addMovedNodeAlias(aliases, "spatial.analysis.deconstruct_polygon_profile", "geometry.profiles.deconstruct_profile");
+        addMovedNodeAlias(aliases, "spatial.analysis.face_edge_to_path", "geometry.curves.edge_to_curve");
+        addMovedNodeAlias(aliases, "spatial.analysis.box_face_boundary_path", "geometry.curves.face_boundary_curve");
+        addMovedNodeAlias(aliases, "spatial.points.points_to_path", "geometry.curves.curve_from_points");
+        addMovedNodeAlias(aliases, "spatial.points.path_to_points", "geometry.curves.divide_curve_to_points");
+        addMovedNodeAlias(aliases, "spatial.analysis.get_points_in_region", "world.read.get_points_in_region");
+        addMovedNodeAlias(aliases, "spatial.analysis.is_point_in_region", "world.query.is_point_in_region");
         return Collections.unmodifiableMap(aliases);
     }
 

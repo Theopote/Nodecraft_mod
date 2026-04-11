@@ -95,6 +95,9 @@ public class NodeLibraryComponent implements EditorComponent {
         Map<String, Integer> geometryBooleanOrder = getGeometryBooleanOrder();
         categoryOrder.put("geometry.boolean", geometryBooleanOrder);
 
+        Map<String, Integer> geometryCurvesOrder = getGeometryCurvesOrder();
+        categoryOrder.put("geometry.curves", geometryCurvesOrder);
+
         Map<String, Integer> geometryPrimitivesOrder = getGeometryPrimitivesOrder();
         categoryOrder.put("geometry.primitives", geometryPrimitivesOrder);
 
@@ -194,6 +197,7 @@ public class NodeLibraryComponent implements EditorComponent {
         worldQueryOrder.put("world.query.get_fluid_level", 1);
         worldQueryOrder.put("world.query.is_grid_point", 2);
         worldQueryOrder.put("world.query.filter_grid_points", 3);
+        worldQueryOrder.put("world.query.is_point_in_region", 4);
         return worldQueryOrder;
     }
 
@@ -265,6 +269,15 @@ public class NodeLibraryComponent implements EditorComponent {
         geometryPrimitivesOrder.put("geometry.primitives.deconstruct_tetrahedron", 6);
         geometryPrimitivesOrder.put("geometry.primitives.deconstruct_prism", 7);
         return geometryPrimitivesOrder;
+    }
+
+    private static @NonNull Map<String, Integer> getGeometryCurvesOrder() {
+        Map<String, Integer> geometryCurvesOrder = new HashMap<>();
+        geometryCurvesOrder.put("geometry.curves.curve_from_points", 0);
+        geometryCurvesOrder.put("geometry.curves.divide_curve_to_points", 1);
+        geometryCurvesOrder.put("geometry.curves.edge_to_curve", 2);
+        geometryCurvesOrder.put("geometry.curves.face_boundary_curve", 3);
+        return geometryCurvesOrder;
     }
 
     private static @NonNull Map<String, Integer> getGeometryProfilesOrder() {
@@ -368,6 +381,7 @@ public class NodeLibraryComponent implements EditorComponent {
         worldReadOrder.put("world.read.find_blocks", 2);
         worldReadOrder.put("world.read.get_biome", 3);
         worldReadOrder.put("world.read.biome_at_player", 4);
+        worldReadOrder.put("world.read.get_points_in_region", 5);
         return worldReadOrder;
     }
 
@@ -576,6 +590,7 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("reference.vectors", new float[]{1.0f, 1.0f, 0.5f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("reference.planes", new float[]{1.0f, 1.0f, 0.55f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("geometry.boolean", new float[]{0.98f, 0.88f, 0.28f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("geometry.curves", new float[]{1.0f, 0.9f, 0.32f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("geometry.primitives", new float[]{0.96f, 0.9f, 0.34f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("geometry.profiles", new float[]{1.0f, 0.94f, 0.4f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("transform.basic_transforms", new float[]{1.0f, 0.62f, 0.32f, 1.0f});
@@ -822,7 +837,7 @@ public class NodeLibraryComponent implements EditorComponent {
         String[] keyCategories = {
             "geometry", "input", "inputs", "data", "material", "math", "output", "reference", "spatial", "transform", "world", "utilities",
             "input.numeric", "input.context", "input.type_selectors", "reference.points", "world.selection",
-            "geometry.boolean", "geometry.primitives", "geometry.profiles",
+            "geometry.boolean", "geometry.curves", "geometry.primitives", "geometry.profiles",
             "transform.basic_transforms", "transform.orientation",
             "math.basic", "math.list_sequence", "data.lists", "spatial.points", "world.entity", 
             "output.preview", "utilities.organization"
