@@ -125,6 +125,8 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "inputs.minecraft.selected_block", "world.selection.selected_block");
         addMovedNodeAlias(aliases, "inputs.minecraft.selected_region", "world.selection.selected_region");
         addMovedNodeAlias(aliases, "inputs.minecraft.biome_at_player", "world.read.biome_at_player");
+        addMovedNodeAlias(aliases, "inputs.minecraft.current_time", "input.context.current_time");
+        addMovedNodeAlias(aliases, "inputs.minecraft.dimension_info", "input.context.dimension_info");
         addMovedNodeAlias(aliases, "inputs.selectors.block_type_selector", "input.type_selectors.block_type_selector");
         addMovedNodeAlias(aliases, "inputs.sources.create_list", "math.list_sequence.create_list");
         addMovedNodeAlias(aliases, "math.vector.construct", "reference.vectors.vector");
@@ -269,6 +271,8 @@ public class NodeRegistry {
         overrides.put("spatial.voxel.difference_coords", "spatial.legacy");
         overrides.put("spatial.instancing.grow_along_normals", "spatial.legacy");
         overrides.put("spatial.instancing.grow_along_sphere_normal", "spatial.legacy");
+        overrides.put("inputs.minecraft.selected_block_sequence", "spatial.legacy");
+        overrides.put("inputs.minecraft.selected_entity", "spatial.legacy");
         return Map.copyOf(overrides);
     }
 

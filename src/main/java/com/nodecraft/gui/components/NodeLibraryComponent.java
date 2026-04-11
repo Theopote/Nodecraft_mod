@@ -134,22 +134,10 @@ public class NodeLibraryComponent implements EditorComponent {
         Map<String, Integer> mathListSequenceOrder = getMathListSequenceOrder();
         categoryOrder.put("math.list_sequence", mathListSequenceOrder);
 
-        Map<String, Integer> inputsMinecraftOrder = getInputsMinecraftOrder();
-        categoryOrder.put("inputs.minecraft", inputsMinecraftOrder);
-
         Map<String, Integer> spatialLegacyOrder = getStringIntegerMap();
         categoryOrder.put("spatial.legacy", spatialLegacyOrder);
 
         return categoryOrder;
-    }
-
-    private static @NonNull Map<String, Integer> getInputsMinecraftOrder() {
-        Map<String, Integer> inputsMinecraftOrder = new HashMap<>();
-        inputsMinecraftOrder.put("inputs.minecraft.selected_block_sequence", 0);
-        inputsMinecraftOrder.put("inputs.minecraft.selected_entity", 1);
-        inputsMinecraftOrder.put("inputs.minecraft.dimension_info", 2);
-        inputsMinecraftOrder.put("inputs.minecraft.current_time", 3);
-        return inputsMinecraftOrder;
     }
 
     private static @NonNull Map<String, Integer> getInputNumericOrder() {
@@ -168,6 +156,8 @@ public class NodeLibraryComponent implements EditorComponent {
         Map<String, Integer> inputContextOrder = new HashMap<>();
         inputContextOrder.put("input.context.player_position", 0);
         inputContextOrder.put("input.context.player_look_direction", 1);
+        inputContextOrder.put("input.context.dimension_info", 2);
+        inputContextOrder.put("input.context.current_time", 3);
         return inputContextOrder;
     }
 
@@ -481,6 +471,8 @@ public class NodeLibraryComponent implements EditorComponent {
         spatialLegacyOrder.put("spatial.voxel.difference_coords", 29);
         spatialLegacyOrder.put("spatial.instancing.grow_along_normals", 30);
         spatialLegacyOrder.put("spatial.instancing.grow_along_sphere_normal", 31);
+        spatialLegacyOrder.put("inputs.minecraft.selected_block_sequence", 32);
+        spatialLegacyOrder.put("inputs.minecraft.selected_entity", 33);
         return spatialLegacyOrder;
     }
 
@@ -842,7 +834,7 @@ public class NodeLibraryComponent implements EditorComponent {
             "geometry.boolean", "geometry.curves", "geometry.primitives", "geometry.profiles", "geometry.solids",
             "pattern.linear", "pattern.grid", "pattern.radial", "pattern.surface_volume_distribution",
             "transform.basic_transforms", "transform.deformations", "transform.orientation",
-            "math.basic", "math.list_sequence", "data.lists", "spatial.points", "world.entity", 
+            "math.basic", "math.list_sequence", "data.lists", "spatial.legacy", "world.entity", 
             "output.preview", "utilities.organization"
         };
         

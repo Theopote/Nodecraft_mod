@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.inputs.minecraft;
+package com.nodecraft.nodesystem.nodes.input.context;
 
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -15,10 +15,10 @@ import java.util.UUID;
  * 获取玩家当前维度信息的节点
  */
 @NodeInfo(
-    id = "inputs.minecraft.dimension_info",
+    id = "input.context.dimension_info",
     displayName = "维度信息",
     description = "获取玩家当前所在维度的信息",
-    category = "inputs.minecraft"
+    category = "input.context"
 )
 public class DimensionInfoNode extends BaseNode {
     
@@ -43,7 +43,7 @@ public class DimensionInfoNode extends BaseNode {
      */
     public DimensionInfoNode() {
         // 使用新的分类命名 - inputs.minecraft.dimension_info
-        super(UUID.randomUUID(), "inputs.minecraft.dimension_info");
+        super(UUID.randomUUID(), "input.context.dimension_info");
         
         // 创建并添加输出端口
         IPort dimensionIdOutput = new BasePort(OUTPUT_DIMENSION_ID, "Dimension ID", 

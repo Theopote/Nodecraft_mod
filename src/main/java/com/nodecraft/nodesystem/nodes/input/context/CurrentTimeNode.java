@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.inputs.minecraft;
+package com.nodecraft.nodesystem.nodes.input.context;
 
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -15,10 +15,10 @@ import java.util.UUID;
  * 获取游戏内当前时间的节点
  */
 @NodeInfo(
-    id = "inputs.minecraft.current_time",
+    id = "input.context.current_time",
     displayName = "当前时间",
     description = "获取当前游戏世界的时间信息",
-    category = "inputs.minecraft"
+    category = "input.context"
 )
 public class CurrentTimeNode extends BaseNode {
     
@@ -41,7 +41,7 @@ public class CurrentTimeNode extends BaseNode {
      */
     public CurrentTimeNode() {
         // 使用新的分类命名 - inputs.minecraft.current_time
-        super(UUID.randomUUID(), "inputs.minecraft.current_time");
+        super(UUID.randomUUID(), "input.context.current_time");
         
         // 创建并添加输出端口
         IPort timeTicksOutput = new BasePort(OUTPUT_TIME_TICKS_ID, "Time (Ticks)", 
