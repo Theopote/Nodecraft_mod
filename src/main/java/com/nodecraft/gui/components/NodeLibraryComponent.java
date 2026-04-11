@@ -540,7 +540,6 @@ public class NodeLibraryComponent implements EditorComponent {
             // 子分类颜色配置 - 使用略微淡化的主分类颜色
             // inputs子分类
             CATEGORY_COLORS_FLOAT.put("inputs.basic", new float[]{0.3f, 0.6f, 0.95f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("inputs.minecraft", new float[]{0.35f, 0.65f, 1.0f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("inputs.selectors", new float[]{0.4f, 0.7f, 1.0f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("inputs.sources", new float[]{0.45f, 0.75f, 1.0f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("input.numeric", new float[]{0.3f, 0.6f, 0.95f, 1.0f});
@@ -562,15 +561,10 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("math.list_sequence", new float[]{0.5f, 0.92f, 0.5f, 1.0f});
             
             // spatial子分类
-            CATEGORY_COLORS_FLOAT.put("spatial.analysis", new float[]{0.95f, 0.95f, 0.35f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("spatial.arrays", new float[]{1.0f, 1.0f, 0.4f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("spatial.construct", new float[]{1.0f, 0.95f, 0.35f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("spatial.generators", new float[]{1.0f, 1.0f, 0.45f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("spatial.legacy", new float[]{0.85f, 0.85f, 0.45f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("spatial.modeling", new float[]{1.0f, 0.98f, 0.5f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("spatial.shapes", new float[]{1.0f, 1.0f, 0.45f, 1.0f});   // 兼容generators
-            CATEGORY_COLORS_FLOAT.put("spatial.points", new float[]{1.0f, 1.0f, 0.5f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("spatial.voxel", new float[]{1.0f, 1.0f, 0.55f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("reference.points", new float[]{1.0f, 0.98f, 0.45f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("reference.vectors", new float[]{1.0f, 1.0f, 0.5f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("reference.planes", new float[]{1.0f, 1.0f, 0.55f, 1.0f});
