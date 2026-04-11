@@ -146,6 +146,9 @@ public class NodeLibraryComponent implements EditorComponent {
         Map<String, Integer> mathTrigonometryOrder = getMathTrigonometryOrder();
         categoryOrder.put("math.trigonometry", mathTrigonometryOrder);
 
+        Map<String, Integer> deferredMathOrder = getDeferredMathOrder();
+        categoryOrder.put("deferred.math", deferredMathOrder);
+
         Map<String, Integer> spatialLegacyOrder = getStringIntegerMap();
         categoryOrder.put("spatial.legacy", spatialLegacyOrder);
 
@@ -302,6 +305,12 @@ public class NodeLibraryComponent implements EditorComponent {
         mathTrigonometryOrder.put("math.trigonometry.atan", 7);
         mathTrigonometryOrder.put("math.trigonometry.pi", 8);
         return mathTrigonometryOrder;
+    }
+
+    private static @NonNull Map<String, Integer> getDeferredMathOrder() {
+        Map<String, Integer> deferredMathOrder = new HashMap<>();
+        deferredMathOrder.put("deferred.math.math_series", 0);
+        return deferredMathOrder;
     }
 
     private static @NonNull Map<String, Integer> getGeometryBooleanOrder() {
@@ -578,6 +587,7 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("world", new float[]{0.2f, 0.8f, 0.8f, 1.0f});           // Cyan: world interaction
             CATEGORY_COLORS_FLOAT.put("output", new float[]{0.85f, 0.2f, 0.5f, 1.0f});         // Pink: output and execution
             CATEGORY_COLORS_FLOAT.put("visualization", new float[]{0.85f, 0.2f, 0.5f, 1.0f});  // Legacy visualization alias
+            CATEGORY_COLORS_FLOAT.put("deferred", new float[]{0.65f, 0.65f, 0.65f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("utilities", new float[]{0.7f, 0.7f, 0.7f, 1.0f});       // Gray: utility nodes
             CATEGORY_COLORS_FLOAT.put("flora", new float[]{0.2f, 0.6f, 0.2f, 1.0f});           // Dark green: flora generation
             CATEGORY_COLORS_FLOAT.put("animation", new float[]{0.8f, 0.3f, 0.3f, 1.0f});       // Red: animation
@@ -628,6 +638,7 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("math.compare", new float[]{0.48f, 0.9f, 0.48f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("math.scalar_math", new float[]{0.42f, 0.87f, 0.42f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("math.random", new float[]{0.52f, 0.95f, 0.52f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("deferred.math", new float[]{0.72f, 0.72f, 0.72f, 1.0f});
             
             // Spatial and migrated-reference subcategories.
             CATEGORY_COLORS_FLOAT.put("spatial.arrays", new float[]{1.0f, 1.0f, 0.4f, 1.0f});
@@ -887,7 +898,7 @@ public class NodeLibraryComponent implements EditorComponent {
             "geometry.boolean", "geometry.curves", "geometry.primitives", "geometry.profiles", "geometry.solids",
             "pattern.linear", "pattern.grid", "pattern.radial", "pattern.surface_volume_distribution",
             "transform.basic_transforms", "transform.deformations", "transform.orientation",
-            "math.basic", "math.scalar_math", "math.compare", "math.random", "math.trigonometry", "math.list_sequence", "data.lists", "spatial.legacy", "world.entity", 
+            "math.scalar_math", "math.compare", "math.random", "math.trigonometry", "math.list_sequence", "deferred.math", "data.lists", "spatial.legacy", "world.entity", 
             "output.preview", "utilities.organization"
         };
         

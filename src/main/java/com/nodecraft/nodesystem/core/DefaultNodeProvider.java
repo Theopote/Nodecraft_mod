@@ -56,6 +56,7 @@ public class DefaultNodeProvider implements INodeProvider {
         registry.registerCategory(new NodeRegistry.NodeCategory("reference", "Reference"));
         registry.registerCategory(new NodeRegistry.NodeCategory("spatial", "Spatial & Geometry"));
         registry.registerCategory(new NodeRegistry.NodeCategory("transform", "Transform"));
+        registry.registerCategory(new NodeRegistry.NodeCategory("deferred", "Deferred"));
         registry.registerCategory(new NodeRegistry.NodeCategory("utilities", "Utilities & Workflow"));
         registry.registerCategory(new NodeRegistry.NodeCategory("utilities.assist", "Assist & Reroute"));
         registry.registerCategory(new NodeRegistry.NodeCategory("world", "World Interaction"));
@@ -95,7 +96,7 @@ public class DefaultNodeProvider implements INodeProvider {
         registry.registerCategory(new NodeRegistry.NodeCategory("math.random", "Random"));
         registry.registerCategory(new NodeRegistry.NodeCategory("math.scalar_math", "Scalar Math"));
         registry.registerCategory(new NodeRegistry.NodeCategory("math.trigonometry", "Trigonometry"));
-        registry.registerCategory(new NodeRegistry.NodeCategory("math.basic", "Basic Operations"));
+        registry.registerCategory(new NodeRegistry.NodeCategory("deferred.math", "Deferred Math"));
         registry.registerCategory(new NodeRegistry.NodeCategory("data.text", "Text Processing"));
 
         // Example node implementations are intentionally not registered here.

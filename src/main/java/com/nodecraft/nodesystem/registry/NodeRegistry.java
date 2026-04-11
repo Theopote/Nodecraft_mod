@@ -144,6 +144,7 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "math.basic.remap", "math.scalar_math.remap");
         addMovedNodeAlias(aliases, "math.basic.round", "math.scalar_math.round");
         addMovedNodeAlias(aliases, "math.basic.subtraction", "math.scalar_math.subtraction");
+        addMovedNodeAlias(aliases, "math.basic.series", "deferred.math.math_series");
         addMovedNodeAlias(aliases, "math.randomness.random_number", "math.random.random_number");
         addMovedNodeAlias(aliases, "math.randomness.random_list_item", "math.random.random_list_item");
         addMovedNodeAlias(aliases, "math.randomness.random_vector", "math.random.random_vector");
