@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.modeling;
+package com.nodecraft.nodesystem.nodes.geometry.solids;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -22,10 +22,10 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.modeling.loft_point_lists",
+    id = "geometry.solids.loft_from_points",
     displayName = "Loft Point Lists",
     description = "Connects two ordered point lists and emits source paths, target paths, and loft rail segments",
-    category = "spatial.modeling"
+    category = "geometry.solids"
 )
 public class LoftPointListsNode extends BaseNode {
 
@@ -51,7 +51,7 @@ public class LoftPointListsNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public LoftPointListsNode() {
-        super(UUID.randomUUID(), "spatial.modeling.loft_point_lists");
+        super(UUID.randomUUID(), "geometry.solids.loft_from_points");
 
         addInputPort(new BasePort(INPUT_SOURCE_POINTS_ID, "Source Points", "Ordered source point list", NodeDataType.LIST, this));
         addInputPort(new BasePort(INPUT_TARGET_POINTS_ID, "Target Points", "Ordered target point list", NodeDataType.LIST, this));

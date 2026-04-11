@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.modeling;
+package com.nodecraft.nodesystem.nodes.geometry.solids;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -22,10 +22,10 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.modeling.extrude_point_list",
+    id = "geometry.solids.extrude_from_points",
     displayName = "Extrude Point List",
     description = "Extrudes an ordered point list by a direction vector and emits source path, top path, and side segments",
-    category = "spatial.modeling"
+    category = "geometry.solids"
 )
 public class ExtrudePointListNode extends BaseNode {
 
@@ -45,7 +45,7 @@ public class ExtrudePointListNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ExtrudePointListNode() {
-        super(UUID.randomUUID(), "spatial.modeling.extrude_point_list");
+        super(UUID.randomUUID(), "geometry.solids.extrude_from_points");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Ordered point list to extrude", NodeDataType.LIST, this));
         addInputPort(new BasePort(INPUT_DIRECTION_ID, "Direction", "Extrusion direction vector", NodeDataType.VECTOR, this));

@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.modeling;
+package com.nodecraft.nodesystem.nodes.geometry.solids;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -16,10 +16,10 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.modeling.extrude_profile",
+    id = "geometry.solids.extrude",
     displayName = "Extrude Profile",
     description = "Extrudes a polygon profile by a direction vector into a top profile and side surface strip",
-    category = "spatial.modeling"
+    category = "geometry.solids"
 )
 public class ExtrudeProfileNode extends BaseNode {
 
@@ -35,7 +35,7 @@ public class ExtrudeProfileNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ExtrudeProfileNode() {
-        super(UUID.randomUUID(), "spatial.modeling.extrude_profile");
+        super(UUID.randomUUID(), "geometry.solids.extrude");
 
         addInputPort(new BasePort(INPUT_PROFILE_ID, "Profile", "Polygon profile to extrude", NodeDataType.POLYGON_PROFILE, this));
         addInputPort(new BasePort(INPUT_DIRECTION_ID, "Direction", "Extrusion direction vector", NodeDataType.VECTOR, this));

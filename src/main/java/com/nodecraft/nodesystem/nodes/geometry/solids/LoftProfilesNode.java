@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.modeling;
+package com.nodecraft.nodesystem.nodes.geometry.solids;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -17,10 +17,10 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.modeling.loft_profiles",
+    id = "geometry.solids.loft",
     displayName = "Loft Profiles",
     description = "Lofts two polygon profiles with matching edge counts into a side surface strip",
-    category = "spatial.modeling"
+    category = "geometry.solids"
 )
 public class LoftProfilesNode extends BaseNode {
 
@@ -37,7 +37,7 @@ public class LoftProfilesNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public LoftProfilesNode() {
-        super(UUID.randomUUID(), "spatial.modeling.loft_profiles");
+        super(UUID.randomUUID(), "geometry.solids.loft");
 
         addInputPort(new BasePort(INPUT_SOURCE_PROFILE_ID, "Source Profile", "First polygon profile", NodeDataType.POLYGON_PROFILE, this));
         addInputPort(new BasePort(INPUT_TARGET_PROFILE_ID, "Target Profile", "Second polygon profile", NodeDataType.POLYGON_PROFILE, this));

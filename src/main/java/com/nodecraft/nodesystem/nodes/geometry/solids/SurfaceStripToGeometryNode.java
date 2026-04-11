@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.modeling;
+package com.nodecraft.nodesystem.nodes.geometry.solids;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -18,10 +18,10 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.modeling.surface_strip_to_geometry",
+    id = "geometry.solids.surface_strip_to_geometry",
     displayName = "Surface Strip To Geometry",
     description = "Bridges a surface strip into reusable geometry by sampling section edges and rails as cylinders",
-    category = "spatial.modeling"
+    category = "geometry.solids"
 )
 public class SurfaceStripToGeometryNode extends BaseNode {
 
@@ -42,7 +42,7 @@ public class SurfaceStripToGeometryNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SurfaceStripToGeometryNode() {
-        super(UUID.randomUUID(), "spatial.modeling.surface_strip_to_geometry");
+        super(UUID.randomUUID(), "geometry.solids.surface_strip_to_geometry");
 
         addInputPort(new BasePort(INPUT_SURFACE_STRIP_ID, "Surface Strip", "Surface strip to convert into geometry", NodeDataType.SURFACE_STRIP, this));
 

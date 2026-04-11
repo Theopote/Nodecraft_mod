@@ -59,8 +59,8 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "spatial.generators.box_corner_size", "geometry.primitives.box_from_corner_size");
         addMovedNodeAlias(aliases, "spatial.generators.sphere_by_center_radius", "geometry.primitives.sphere");
         addMovedNodeAlias(aliases, "spatial.generators.sphere_by_diameter", "geometry.primitives.sphere_from_diameter");
-        addMovedNodeAlias(aliases, "spatial.generators.push_pull_box_face", "spatial.modeling.push_pull_box_face");
-        addMovedNodeAlias(aliases, "spatial.generators.extrude_box_face", "spatial.modeling.extrude_box_face");
+        addMovedNodeAlias(aliases, "spatial.generators.push_pull_box_face", "geometry.solids.push_pull_face");
+        addMovedNodeAlias(aliases, "spatial.generators.extrude_box_face", "geometry.solids.extrude_box_face");
         addMovedNodeAlias(aliases, "spatial.generators.grow_along_normals", "spatial.instancing.grow_along_normals");
         addMovedNodeAlias(aliases, "spatial.generators.grow_along_sphere_normal", "spatial.instancing.grow_along_sphere_normal");
 
@@ -212,6 +212,16 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "spatial.construct.polygon_by_points", "geometry.profiles.custom_profile");
         addMovedNodeAlias(aliases, "spatial.construct.prism_by_profile_vector", "geometry.solids.extrude_profile");
         addMovedNodeAlias(aliases, "spatial.construct.prism_by_base_points_vector", "geometry.solids.extrude_profile_from_points");
+        addMovedNodeAlias(aliases, "spatial.modeling.extrude_profile", "geometry.solids.extrude");
+        addMovedNodeAlias(aliases, "spatial.modeling.extrude_point_list", "geometry.solids.extrude_from_points");
+        addMovedNodeAlias(aliases, "spatial.modeling.extrude_box_face", "geometry.solids.extrude_box_face");
+        addMovedNodeAlias(aliases, "spatial.modeling.loft_profiles", "geometry.solids.loft");
+        addMovedNodeAlias(aliases, "spatial.modeling.loft_point_lists", "geometry.solids.loft_from_points");
+        addMovedNodeAlias(aliases, "spatial.modeling.sweep_profile_along_path", "geometry.solids.sweep");
+        addMovedNodeAlias(aliases, "spatial.modeling.sweep_point_list_along_path", "geometry.solids.sweep_from_points");
+        addMovedNodeAlias(aliases, "spatial.modeling.resample_polygon_profile", "geometry.profiles.resample_profile");
+        addMovedNodeAlias(aliases, "spatial.modeling.surface_strip_to_geometry", "geometry.solids.surface_strip_to_geometry");
+        addMovedNodeAlias(aliases, "spatial.modeling.push_pull_box_face", "geometry.solids.push_pull_face");
         return Collections.unmodifiableMap(aliases);
     }
 

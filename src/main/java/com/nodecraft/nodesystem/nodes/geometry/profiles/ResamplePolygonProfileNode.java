@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.modeling;
+package com.nodecraft.nodesystem.nodes.geometry.profiles;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -14,10 +14,10 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.modeling.resample_polygon_profile",
+    id = "geometry.profiles.resample_profile",
     displayName = "Resample Polygon Profile",
     description = "Resamples a polygon profile to a target edge count using perimeter-distance sampling",
-    category = "spatial.modeling"
+    category = "geometry.profiles"
 )
 public class ResamplePolygonProfileNode extends BaseNode {
 
@@ -33,7 +33,7 @@ public class ResamplePolygonProfileNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ResamplePolygonProfileNode() {
-        super(UUID.randomUUID(), "spatial.modeling.resample_polygon_profile");
+        super(UUID.randomUUID(), "geometry.profiles.resample_profile");
 
         addInputPort(new BasePort(INPUT_PROFILE_ID, "Profile", "Polygon profile to resample", NodeDataType.POLYGON_PROFILE, this));
         addInputPort(new BasePort(INPUT_EDGE_COUNT_ID, "Edge Count", "Target edge count after resampling", NodeDataType.INTEGER, this));
