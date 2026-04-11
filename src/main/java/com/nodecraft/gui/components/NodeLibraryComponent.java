@@ -313,14 +313,24 @@ public class NodeLibraryComponent implements EditorComponent {
         geometryProfilesOrder.put("geometry.profiles.rectangle_profile", 0);
         geometryProfilesOrder.put("geometry.profiles.polygon_profile", 1);
         geometryProfilesOrder.put("geometry.profiles.custom_profile", 2);
-        geometryProfilesOrder.put("geometry.profiles.deconstruct_profile", 3);
+        geometryProfilesOrder.put("geometry.profiles.resample_profile", 3);
+        geometryProfilesOrder.put("geometry.profiles.deconstruct_profile", 4);
         return geometryProfilesOrder;
     }
 
     private static @NonNull Map<String, Integer> getGeometrySolidsOrder() {
         Map<String, Integer> geometrySolidsOrder = new HashMap<>();
-        geometrySolidsOrder.put("geometry.solids.extrude_profile", 0);
-        geometrySolidsOrder.put("geometry.solids.extrude_profile_from_points", 1);
+        geometrySolidsOrder.put("geometry.solids.extrude", 0);
+        geometrySolidsOrder.put("geometry.solids.extrude_from_points", 1);
+        geometrySolidsOrder.put("geometry.solids.extrude_box_face", 2);
+        geometrySolidsOrder.put("geometry.solids.loft", 3);
+        geometrySolidsOrder.put("geometry.solids.loft_from_points", 4);
+        geometrySolidsOrder.put("geometry.solids.sweep", 5);
+        geometrySolidsOrder.put("geometry.solids.sweep_from_points", 6);
+        geometrySolidsOrder.put("geometry.solids.surface_strip_to_geometry", 7);
+        geometrySolidsOrder.put("geometry.solids.push_pull_face", 8);
+        geometrySolidsOrder.put("geometry.solids.extrude_profile", 9);
+        geometrySolidsOrder.put("geometry.solids.extrude_profile_from_points", 10);
         return geometrySolidsOrder;
     }
 
