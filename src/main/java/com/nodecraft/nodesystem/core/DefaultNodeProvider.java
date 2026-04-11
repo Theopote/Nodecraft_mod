@@ -1,48 +1,48 @@
 package com.nodecraft.nodesystem.core;
 
+import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.spi.INodeProvider;
-import com.nodecraft.core.NodeCraft;
 
 /**
- * 注册默认的NodeCraft内置节点
+ * Registers built-in NodeCraft categories and nodes.
  */
 public class DefaultNodeProvider implements INodeProvider {
 
     @Override
     public void registerNodes(NodeRegistry registry) {
-        NodeCraft.LOGGER.debug("开始注册默认节点...");
-        
+        NodeCraft.LOGGER.debug("Starting built-in node registration...");
+
         try {
-            // 注册主分类
+            // Register top-level categories first.
             registerMainCategories(registry);
-            
-            // 使用自动节点扫描器注册所有节点
+
+            // Discover and register nodes through annotation scanning.
             int nodeCount = AutoNodeScanner.scanAndRegisterNodes(registry);
-            
-            // 如果没有节点被注册，提供更详细的错误信息
+
+            // If scanning finds nothing, log diagnostics and register fallback categories.
             if (nodeCount == 0) {
-                NodeCraft.LOGGER.warn("自动节点扫描器未能注册任何节点，请检查：");
-                NodeCraft.LOGGER.warn("1. 节点类是否位于正确的包路径下 (com.nodecraft.nodesystem.nodes)");
-                NodeCraft.LOGGER.warn("2. 节点类是否正确实现了INode接口");
-                NodeCraft.LOGGER.warn("3. 节点类是否有无参构造函数");
-                NodeCraft.LOGGER.warn("4. 节点类是否有正确的包结构 (如 inputs.basic, math.logic 等)");
-                
-                // 尝试注册一些示例节点以确保功能正常
+                NodeCraft.LOGGER.warn("Auto node scanning registered no nodes. Check the following:");
+                NodeCraft.LOGGER.warn("1. Node classes are under the expected package path (com.nodecraft.nodesystem.nodes)");
+                NodeCraft.LOGGER.warn("2. Node classes correctly implement the INode interface");
+                NodeCraft.LOGGER.warn("3. Node classes expose a no-argument constructor");
+                NodeCraft.LOGGER.warn("4. Node classes use the expected package and category structure");
+
+                // Keep the editor bootable even when scanning fails.
                 registerExampleNodes(registry);
             }
-            
-            NodeCraft.LOGGER.info("注册默认节点完成，总计{}个节点", registry.getNodeCount());
+
+            NodeCraft.LOGGER.info("Built-in node registration completed. Total nodes: {}", registry.getNodeCount());
         } catch (Exception e) {
-            NodeCraft.LOGGER.error("注册默认节点时发生错误: {}", e.getMessage(), e);
+            NodeCraft.LOGGER.error("Built-in node registration failed: {}", e.getMessage(), e);
         }
     }
 
     /**
-     * 注册所有主分类
+     * Registers all top-level categories exposed by the built-in provider.
      */
     private void registerMainCategories(NodeRegistry registry) {
-        // 主分类（按字母顺序排列）
+        // Top-level categories, kept alphabetical for readability.
         registry.registerCategory(new NodeRegistry.NodeCategory("animation", "Animation & Effects"));
         registry.registerCategory(new NodeRegistry.NodeCategory("data", "Data & Lists"));
         registry.registerCategory(new NodeRegistry.NodeCategory("flora", "Flora & Nature"));
@@ -59,17 +59,17 @@ public class DefaultNodeProvider implements INodeProvider {
         registry.registerCategory(new NodeRegistry.NodeCategory("utilities", "Utilities & Workflow"));
         registry.registerCategory(new NodeRegistry.NodeCategory("utilities.assist", "Assist & Reroute"));
         registry.registerCategory(new NodeRegistry.NodeCategory("world", "World Interaction"));
-        
-        NodeCraft.LOGGER.debug("注册了9个主分类");
+
+        NodeCraft.LOGGER.debug("Registered top-level categories for the built-in provider.");
     }
-    
+
     /**
-     * 注册示例节点（仅当自动扫描失败时使用）
+     * Registers fallback subcategories used when automatic scanning fails.
      */
     private void registerExampleNodes(NodeRegistry registry) {
-        NodeCraft.LOGGER.info("注册示例节点...");
-        
-        // 注册一些子分类
+        NodeCraft.LOGGER.info("Registering fallback example categories...");
+
+        // Register representative subcategories so the editor still has a usable taxonomy.
         registry.registerCategory(new NodeRegistry.NodeCategory("input.numeric", "Numeric"));
         registry.registerCategory(new NodeRegistry.NodeCategory("input.context", "Context"));
         registry.registerCategory(new NodeRegistry.NodeCategory("input.type_selectors", "Type Selectors"));
@@ -93,9 +93,9 @@ public class DefaultNodeProvider implements INodeProvider {
         registry.registerCategory(new NodeRegistry.NodeCategory("math.list_sequence", "List / Sequence"));
         registry.registerCategory(new NodeRegistry.NodeCategory("math.basic", "Basic Operations"));
         registry.registerCategory(new NodeRegistry.NodeCategory("data.text", "Text Processing"));
-        
-        // 暂时不注册示例节点，因为没有示例实现类
-        NodeCraft.LOGGER.info("已注册示例分类，但暂不注册示例节点（没有实现类）。");
-        NodeCraft.LOGGER.info("请确保在 com.nodecraft.nodesystem.nodes 包下正确实现节点类。");
+
+        // Example node implementations are intentionally not registered here.
+        NodeCraft.LOGGER.info("Fallback categories registered. Example node implementations are not provided by this provider.");
+        NodeCraft.LOGGER.info("Ensure node classes are implemented under the com.nodecraft.nodesystem.nodes package.");
     }
-} 
+}

@@ -21,6 +21,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Legacy compatibility instancing node that grows cylinder geometry outward from sphere surface samples.
+ */
 @NodeInfo(
     id = "spatial.instancing.grow_along_sphere_normal",
     displayName = "Grow Along Sphere Normal",

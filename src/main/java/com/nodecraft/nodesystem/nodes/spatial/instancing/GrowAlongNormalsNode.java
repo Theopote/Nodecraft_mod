@@ -20,6 +20,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Legacy compatibility instancing node that grows cylinder geometry along point-normal pairs.
+ */
 @NodeInfo(
     id = "spatial.instancing.grow_along_normals",
     displayName = "Grow Along Normals",
