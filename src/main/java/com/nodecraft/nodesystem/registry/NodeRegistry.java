@@ -314,7 +314,7 @@ public class NodeRegistry {
         if (!"spatial.legacy".equals(targetCategoryId)) {
             return safeDescription;
         }
-        String prefix = "Legacy direct block output node. ";
+        String prefix = "Legacy compatibility node. ";
         return safeDescription.startsWith(prefix) ? safeDescription : prefix + safeDescription;
     }
 

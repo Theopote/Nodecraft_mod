@@ -11,23 +11,19 @@ This document defines the current rules for node ids, category placement, alias 
 
 ## Canonical Category Rules
 
-- `spatial.construct`
-  - Use for primitive definition and geometric construction.
-  - Examples: `box_center_size`, `sphere_by_center_radius`, `cylinder_by_axis_radius`
-- `spatial.analysis`
-  - Use for deconstruct, measure, query, sample, classify, and parameterization nodes.
-- `spatial.modeling`
-  - Use for shape-editing and profile/surface operations.
-  - Examples: `extrude_profile`, `loft_profiles`, `push_pull_box_face`
-- `spatial.instancing`
-  - Use for point/normal/frame driven placement and growth.
-  - Examples: `grow_along_normals`, `grow_along_sphere_normal`
-- `spatial.voxel`
-  - Use for geometry-to-block and strip-to-block bridges.
-- `visualization.preview`
-  - Use for preview-only nodes.
-- `spatial.legacy`
-  - Reserved for direct block-output legacy generator nodes.
+- Canonical ids must use the v1 taxonomy, not the pre-v1 taxonomy.
+- Current canonical top-level domains are:
+  - `input`
+  - `reference`
+  - `geometry`
+  - `transform`
+  - `pattern`
+  - `material`
+  - `world`
+  - `output`
+  - `math`
+- Old semantic domains such as `spatial.construct`, `spatial.analysis`, `spatial.modeling`, `spatial.instancing`, `spatial.voxel`, and `visualization.*` are no longer canonical homes.
+- `spatial.legacy` is a display-only compatibility bucket used by the library for deferred and legacy nodes that still need to load safely.
 
 ## Canonical ID Rules
 
@@ -42,9 +38,16 @@ This document defines the current rules for node ids, category placement, alias 
 
 ## Legacy Rules
 
-- `spatial.generators.*_blocks` is treated as the legacy direct block-output layer.
-- Legacy nodes may remain in `spatial.generators` package and still appear under `spatial.legacy` in the library.
-- Do not add new non-legacy modeling or construct nodes under `spatial.generators`.
+- `spatial.legacy` is not a canonical authoring taxonomy. It is a compatibility presentation layer.
+- Nodes may still keep old ids and packages temporarily while appearing under `spatial.legacy` in the library through category overrides.
+- Current legacy buckets include:
+  - `spatial.generators.*_blocks`
+  - deferred `spatial.analysis.*` survivors
+  - deferred `spatial.instancing.*` survivors
+  - deferred `spatial.voxel.*` survivors
+  - deferred `inputs.minecraft.*` survivors
+- Do not add new semantic modeling, construct, analysis, or world-input nodes under old domains just because `spatial.legacy` can display them.
+- Do not add new non-legacy nodes under `spatial.generators`.
 
 ## Alias Rules
 
@@ -90,7 +93,7 @@ When moving or renaming a node:
 
 ## Do Not
 
-- Do not create new semantic nodes under `spatial.generators` unless they are intentionally legacy direct block-output nodes.
+- Do not create new semantic nodes under `spatial.generators`, `spatial.analysis`, `spatial.modeling`, `spatial.instancing`, `spatial.voxel`, or `inputs.minecraft`.
 - Do not introduce new compact ids like `lineblocks` or `torusblocks` as canonical ids.
 - Do not rely on category remapping as a long-term substitute for canonical id migration.
 

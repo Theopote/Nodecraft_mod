@@ -85,10 +85,10 @@ These rows are the safest starting points because their semantics are already cl
 | `inputs.minecraft.selected_block` | `world.selection.selected_block` | `world.selection` | migrate | yes | `nodes.world.selection` | canonical home is world selection |
 | `inputs.minecraft.selected_region` | `world.selection.selected_region` | `world.selection` | migrate | yes | `nodes.world.selection` | canonical home is world selection |
 | `inputs.minecraft.biome_at_player` | `world.read.biome_at_player` | `world.read` | migrate | yes | `nodes.world.read` | factual world read |
-| `inputs.minecraft.current_time` | `deferred.world.current_time` | deferred | defer | no | unchanged | not part of current main modeling path |
-| `inputs.minecraft.dimension_info` | `deferred.world.dimension_info` | deferred | defer | no | unchanged | not part of current main modeling path |
-| `inputs.minecraft.selected_block_sequence` | `deferred.world.selected_block_sequence` | deferred | defer | no | unchanged | useful but not yet committed into v1.0 core taxonomy |
-| `inputs.minecraft.selected_entity` | `deferred.world.selected_entity` | deferred | defer | no | unchanged | entity selection excluded with entity domain |
+| `inputs.minecraft.current_time` | `input.context.current_time` | `input.context` | migrate | yes | `nodes.input.context` | retained as player/world context helper |
+| `inputs.minecraft.dimension_info` | `input.context.dimension_info` | `input.context` | migrate | yes | `nodes.input.context` | retained as player/world context helper |
+| `inputs.minecraft.selected_block_sequence` | `legacy.inputs.selected_block_sequence` | legacy | legacy | no | unchanged | deferred and displayed under `spatial.legacy` |
+| `inputs.minecraft.selected_entity` | `legacy.inputs.selected_entity` | legacy | legacy | no | unchanged | entity selection excluded from v1 core and displayed under `spatial.legacy` |
 
 ## 3.3 `inputs.selectors`
 
@@ -315,7 +315,7 @@ These rows are already listed above and are part of the same reference migration
 |---|---|---|---|---|---|---|
 | `spatial.analysis.bounding_box` | `geometry.boolean.bounding_box` | `geometry.boolean` | migrate | yes | `nodes.geometry.boolean` | geometry bounds helper pending better home |
 | `spatial.analysis.geometry_bounds` | `geometry.boolean.geometry_bounds` | `geometry.boolean` | migrate | yes | `nodes.geometry.boolean` | temporary home until dedicated analysis layer exists |
-| `spatial.analysis.geometry_info` | `deferred.geometry.geometry_info` | deferred | defer | no | unchanged | metadata inspector not essential to initial main tree |
+| `spatial.analysis.geometry_info` | `legacy.geometry.geometry_info` | legacy | legacy | no | unchanged | currently deferred and displayed under `spatial.legacy` |
 | `spatial.analysis.box_face_to_plane` | `reference.planes.block_face_plane` | `reference.planes` | migrate | yes | `nodes.reference.planes` | plane extraction |
 | `spatial.analysis.face_center_frame` | `reference.frames.frame_from_face` | `reference.frames` | migrate | yes | `nodes.reference.frames` | frame extraction |
 | `spatial.analysis.face_edge_to_path` | `geometry.curves.edge_to_curve` | `geometry.curves` | migrate | yes | `nodes.geometry.curves` | curve extraction |
@@ -343,11 +343,11 @@ These rows are already listed above and are part of the same reference migration
 | `spatial.analysis.inset_box_face` | `transform.basic_transforms.inset_face` | `transform.basic_transforms` | migrate | yes | `nodes.transform.basic_transforms` | modeling helper through transform semantics |
 | `spatial.analysis.sample_sphere_surface` | `pattern.surface_volume_distribution.sample_surface` | `pattern.surface_volume_distribution` | migrate | yes | `nodes.pattern.surface_volume_distribution` | surface sampling |
 | `spatial.analysis.scatter_on_sphere_surface` | `pattern.surface_volume_distribution.surface_scatter` | `pattern.surface_volume_distribution` | migrate | yes | `nodes.pattern.surface_volume_distribution` | surface distribution |
-| `spatial.analysis.select_sphere_band_sector` | `deferred.geometry.select_sphere_band_sector` | deferred | defer | no | unchanged | specialized analysis, not first migration batch |
-| `spatial.analysis.sphere_uv` | `deferred.geometry.sphere_uv` | deferred | defer | no | unchanged | parameterization utility, not first migration batch |
+| `spatial.analysis.select_sphere_band_sector` | `legacy.geometry.select_sphere_band_sector` | legacy | legacy | no | unchanged | deferred and displayed under `spatial.legacy` |
+| `spatial.analysis.sphere_uv` | `legacy.geometry.sphere_uv` | legacy | legacy | no | unchanged | deferred and displayed under `spatial.legacy` |
 | `spatial.analysis.sphere_surface_frame` | `reference.frames.frame_along_surface` | `reference.frames` | migrate | yes | `nodes.reference.frames` | specialized but still reference-oriented |
-| `spatial.analysis.sphere_point_info` | `deferred.geometry.sphere_point_info` | deferred | defer | no | unchanged | specialized analysis, not first migration batch |
-| `spatial.analysis.deconstruct_surface_strip` | `deferred.geometry.deconstruct_surface_strip` | deferred | defer | no | unchanged | keep until surface-strip model is stabilized |
+| `spatial.analysis.sphere_point_info` | `legacy.geometry.sphere_point_info` | legacy | legacy | no | unchanged | deferred and displayed under `spatial.legacy` |
+| `spatial.analysis.deconstruct_surface_strip` | `legacy.geometry.deconstruct_surface_strip` | legacy | legacy | no | unchanged | keep until surface-strip model is stabilized; displayed under `spatial.legacy` |
 
 ## 9. Execution Bridge and Legacy Geometry Ledger
 
