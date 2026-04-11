@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.voxel;
+package com.nodecraft.nodesystem.nodes.output.execute;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -17,10 +17,10 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.voxel.surface_strip_to_blocks",
+    id = "output.execute.bake_surface_strip_to_blocks",
     displayName = "Surface Strip To Blocks",
     description = "Approximates a surface strip as a sampled block lattice using section edges and rails",
-    category = "spatial.voxel"
+    category = "output.execute"
 )
 public class SurfaceStripToBlocksNode extends BaseNode {
 
@@ -38,7 +38,7 @@ public class SurfaceStripToBlocksNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SurfaceStripToBlocksNode() {
-        super(UUID.randomUUID(), "spatial.voxel.surface_strip_to_blocks");
+        super(UUID.randomUUID(), "output.execute.bake_surface_strip_to_blocks");
 
         addInputPort(new BasePort(INPUT_SURFACE_STRIP_ID, "Surface Strip", "Surface strip to approximate on the block grid", NodeDataType.SURFACE_STRIP, this));
 

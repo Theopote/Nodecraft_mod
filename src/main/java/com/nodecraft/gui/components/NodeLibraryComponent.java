@@ -392,6 +392,8 @@ public class NodeLibraryComponent implements EditorComponent {
         Map<String, Integer> outputExecuteOrder = new HashMap<>();
         outputExecuteOrder.put("output.execute.apply_changes", 0);
         outputExecuteOrder.put("output.execute.clear_preview", 1);
+        outputExecuteOrder.put("output.execute.bake_geometry_to_blocks", 2);
+        outputExecuteOrder.put("output.execute.bake_surface_strip_to_blocks", 3);
         return outputExecuteOrder;
     }
 

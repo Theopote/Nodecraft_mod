@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.voxel;
+package com.nodecraft.nodesystem.nodes.output.execute;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -20,10 +20,10 @@ import java.util.UUID;
  * Generic geometry voxelizer for any supported GeometryData subtype.
  */
 @NodeInfo(
-    id = "spatial.voxel.geometry_to_blocks",
+    id = "output.execute.bake_geometry_to_blocks",
     displayName = "Geometry To Blocks",
     description = "Voxelizes any supported geometry into Minecraft block coordinates",
-    category = "spatial.voxel"
+    category = "output.execute"
 )
 public class GeometryToBlocksNode extends BaseNode {
 
@@ -38,7 +38,7 @@ public class GeometryToBlocksNode extends BaseNode {
     private static final String OUTPUT_COUNT_ID = "output_count";
 
     public GeometryToBlocksNode() {
-        super(UUID.randomUUID(), "spatial.voxel.geometry_to_blocks");
+        super(UUID.randomUUID(), "output.execute.bake_geometry_to_blocks");
 
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified geometry input", NodeDataType.GEOMETRY, this));
 

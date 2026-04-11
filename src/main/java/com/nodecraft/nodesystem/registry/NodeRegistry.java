@@ -223,6 +223,8 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "spatial.modeling.surface_strip_to_geometry", "geometry.solids.surface_strip_to_geometry");
         addMovedNodeAlias(aliases, "spatial.modeling.push_pull_box_face", "geometry.solids.push_pull_face");
         addMovedNodeAlias(aliases, "spatial.modeling.twist_point_list", "transform.deformations.twist");
+        addMovedNodeAlias(aliases, "spatial.voxel.geometry_to_blocks", "output.execute.bake_geometry_to_blocks");
+        addMovedNodeAlias(aliases, "spatial.voxel.surface_strip_to_blocks", "output.execute.bake_surface_strip_to_blocks");
         return Collections.unmodifiableMap(aliases);
     }
 
