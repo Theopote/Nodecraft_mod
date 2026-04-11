@@ -12,7 +12,7 @@ import java.util.UUID;
  * ArcCos Node: Computes the arc cosine of a value (result in radians).
  */
 @NodeInfo(
-    id = "math.trigonometry.arccos",
+    id = "math.trigonometry.acos",
     displayName = "反余弦函数 (ArcCos)",
     description = "计算输入值的反余弦值（结果以弧度为单位）",
     category = "math.trigonometry"
@@ -29,7 +29,7 @@ public class ArcCosNode extends BaseNode {
 
     // --- 构造函数 ---
     public ArcCosNode() {
-        super(UUID.randomUUID(), "math.trigonometry.arccos");
+        super(UUID.randomUUID(), "math.trigonometry.acos");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Input value [-1, 1]", NodeDataType.ANY, this));

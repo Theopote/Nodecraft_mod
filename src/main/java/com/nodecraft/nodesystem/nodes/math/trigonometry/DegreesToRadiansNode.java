@@ -12,7 +12,7 @@ import java.util.UUID;
  * DegreesToRadians Node: Converts an angle from degrees to radians.
  */
 @NodeInfo(
-    id = "math.trigonometry.degrees_to_radians",
+    id = "math.trigonometry.deg_to_rad",
     displayName = "角度转弧度",
     description = "将角度从度数转换为弧度",
     category = "math.trigonometry"
@@ -27,7 +27,7 @@ public class DegreesToRadiansNode extends BaseNode {
 
     // --- 构造函数 ---
     public DegreesToRadiansNode() {
-        super(UUID.randomUUID(), "math.trigonometry.deg2rad");
+        super(UUID.randomUUID(), "math.trigonometry.deg_to_rad");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_DEGREES_ID, "Degrees", "Angle in degrees", NodeDataType.ANY, this));

@@ -140,6 +140,12 @@ public class NodeLibraryComponent implements EditorComponent {
         Map<String, Integer> mathScalarMathOrder = getMathScalarMathOrder();
         categoryOrder.put("math.scalar_math", mathScalarMathOrder);
 
+        Map<String, Integer> mathRandomOrder = getMathRandomOrder();
+        categoryOrder.put("math.random", mathRandomOrder);
+
+        Map<String, Integer> mathTrigonometryOrder = getMathTrigonometryOrder();
+        categoryOrder.put("math.trigonometry", mathTrigonometryOrder);
+
         Map<String, Integer> spatialLegacyOrder = getStringIntegerMap();
         categoryOrder.put("spatial.legacy", spatialLegacyOrder);
 
@@ -273,6 +279,29 @@ public class NodeLibraryComponent implements EditorComponent {
         mathScalarMathOrder.put("math.scalar_math.ceiling", 13);
         mathScalarMathOrder.put("math.scalar_math.round", 14);
         return mathScalarMathOrder;
+    }
+
+    private static @NonNull Map<String, Integer> getMathRandomOrder() {
+        Map<String, Integer> mathRandomOrder = new HashMap<>();
+        mathRandomOrder.put("math.random.random_number", 0);
+        mathRandomOrder.put("math.random.noise", 1);
+        mathRandomOrder.put("math.random.random_list_item", 2);
+        mathRandomOrder.put("math.random.random_vector", 3);
+        return mathRandomOrder;
+    }
+
+    private static @NonNull Map<String, Integer> getMathTrigonometryOrder() {
+        Map<String, Integer> mathTrigonometryOrder = new HashMap<>();
+        mathTrigonometryOrder.put("math.trigonometry.sin", 0);
+        mathTrigonometryOrder.put("math.trigonometry.cos", 1);
+        mathTrigonometryOrder.put("math.trigonometry.tan", 2);
+        mathTrigonometryOrder.put("math.trigonometry.deg_to_rad", 3);
+        mathTrigonometryOrder.put("math.trigonometry.rad_to_deg", 4);
+        mathTrigonometryOrder.put("math.trigonometry.asin", 5);
+        mathTrigonometryOrder.put("math.trigonometry.acos", 6);
+        mathTrigonometryOrder.put("math.trigonometry.atan", 7);
+        mathTrigonometryOrder.put("math.trigonometry.pi", 8);
+        return mathTrigonometryOrder;
     }
 
     private static @NonNull Map<String, Integer> getGeometryBooleanOrder() {
@@ -598,6 +627,7 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("math.list_sequence", new float[]{0.5f, 0.92f, 0.5f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("math.compare", new float[]{0.48f, 0.9f, 0.48f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("math.scalar_math", new float[]{0.42f, 0.87f, 0.42f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("math.random", new float[]{0.52f, 0.95f, 0.52f, 1.0f});
             
             // Spatial and migrated-reference subcategories.
             CATEGORY_COLORS_FLOAT.put("spatial.arrays", new float[]{1.0f, 1.0f, 0.4f, 1.0f});
@@ -857,7 +887,7 @@ public class NodeLibraryComponent implements EditorComponent {
             "geometry.boolean", "geometry.curves", "geometry.primitives", "geometry.profiles", "geometry.solids",
             "pattern.linear", "pattern.grid", "pattern.radial", "pattern.surface_volume_distribution",
             "transform.basic_transforms", "transform.deformations", "transform.orientation",
-            "math.basic", "math.scalar_math", "math.compare", "math.list_sequence", "data.lists", "spatial.legacy", "world.entity", 
+            "math.basic", "math.scalar_math", "math.compare", "math.random", "math.trigonometry", "math.list_sequence", "data.lists", "spatial.legacy", "world.entity", 
             "output.preview", "utilities.organization"
         };
         

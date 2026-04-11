@@ -92,7 +92,9 @@ public class DefaultNodeProvider implements INodeProvider {
         registry.registerCategory(new NodeRegistry.NodeCategory("world.selection", "Selection"));
         registry.registerCategory(new NodeRegistry.NodeCategory("math.list_sequence", "List / Sequence"));
         registry.registerCategory(new NodeRegistry.NodeCategory("math.compare", "Compare"));
+        registry.registerCategory(new NodeRegistry.NodeCategory("math.random", "Random"));
         registry.registerCategory(new NodeRegistry.NodeCategory("math.scalar_math", "Scalar Math"));
+        registry.registerCategory(new NodeRegistry.NodeCategory("math.trigonometry", "Trigonometry"));
         registry.registerCategory(new NodeRegistry.NodeCategory("math.basic", "Basic Operations"));
         registry.registerCategory(new NodeRegistry.NodeCategory("data.text", "Text Processing"));
 

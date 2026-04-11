@@ -12,7 +12,7 @@ import java.util.UUID;
  * Sine Node: Computes the sine of an angle (in radians).
  */
 @NodeInfo(
-    id = "math.trigonometry.sine",
+    id = "math.trigonometry.sin",
     displayName = "正弦函数 (Sin)",
     description = "计算角度的正弦值（输入为弧度）",
     category = "math.trigonometry"
@@ -27,7 +27,7 @@ public class SineNode extends BaseNode {
 
     // --- 构造函数 ---
     public SineNode() {
-        super(UUID.randomUUID(), "math.trigonometry.sine");
+        super(UUID.randomUUID(), "math.trigonometry.sin");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_ANGLE_ID, "Angle (rad)", "Input angle in radians", NodeDataType.ANY, this));

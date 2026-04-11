@@ -12,7 +12,7 @@ import java.util.UUID;
  * Cosine Node: Computes the cosine of an angle (in radians).
  */
 @NodeInfo(
-    id = "math.trigonometry.cosine",
+    id = "math.trigonometry.cos",
     displayName = "余弦函数 (Cos)",
     description = "计算角度的余弦值（输入为弧度）",
     category = "math.trigonometry"
@@ -27,7 +27,7 @@ public class CosineNode extends BaseNode {
 
     // --- 构造函数 ---
     public CosineNode() {
-        super(UUID.randomUUID(), "math.trigonometry.cosine");
+        super(UUID.randomUUID(), "math.trigonometry.cos");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_ANGLE_ID, "Angle (rad)", "Input angle in radians", NodeDataType.ANY, this));

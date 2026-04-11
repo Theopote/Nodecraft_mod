@@ -12,7 +12,7 @@ import java.util.UUID;
  * Tangent Node: Computes the tangent of an angle (in radians).
  */
 @NodeInfo(
-    id = "math.trigonometry.tangent",
+    id = "math.trigonometry.tan",
     displayName = "正切函数 (Tan)",
     description = "计算角度的正切值（输入为弧度）",
     category = "math.trigonometry"
@@ -27,7 +27,7 @@ public class TangentNode extends BaseNode {
 
     // --- 构造函数 ---
     public TangentNode() {
-        super(UUID.randomUUID(), "math.trigonometry.tangent");
+        super(UUID.randomUUID(), "math.trigonometry.tan");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_ANGLE_ID, "Angle (rad)", "Input angle in radians", NodeDataType.ANY, this));

@@ -12,7 +12,7 @@ import java.util.UUID;
  * ArcSin Node: Computes the arc sine of a value (result in radians).
  */
 @NodeInfo(
-    id = "math.trigonometry.arcsin",
+    id = "math.trigonometry.asin",
     displayName = "反正弦函数 (ArcSin)",
     description = "计算输入值的反正弦值（结果以弧度为单位）",
     category = "math.trigonometry"
@@ -30,7 +30,7 @@ public class ArcSinNode extends BaseNode {
 
     // --- 构造函数 ---
     public ArcSinNode() {
-        super(UUID.randomUUID(), "math.trigonometry.arcsin");
+        super(UUID.randomUUID(), "math.trigonometry.asin");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Input value [-1, 1]", NodeDataType.ANY, this));

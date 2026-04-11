@@ -12,7 +12,7 @@ import java.util.UUID;
  * ArcTan Node: Computes the arc tangent of a value (result in radians).
  */
 @NodeInfo(
-    id = "math.trigonometry.arctan",
+    id = "math.trigonometry.atan",
     displayName = "反正切函数 (ArcTan)",
     description = "计算输入值的反正切值（结果以弧度为单位）",
     category = "math.trigonometry"
@@ -27,7 +27,7 @@ public class ArcTanNode extends BaseNode {
 
     // --- 构造函数 ---
     public ArcTanNode() {
-        super(UUID.randomUUID(), "math.trigonometry.arctan");
+        super(UUID.randomUUID(), "math.trigonometry.atan");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Input value", NodeDataType.ANY, this));
