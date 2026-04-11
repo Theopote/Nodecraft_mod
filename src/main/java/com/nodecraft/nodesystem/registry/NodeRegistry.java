@@ -157,6 +157,11 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "spatial.analysis.get_box_corner", "reference.points.get_box_corner");
         addMovedNodeAlias(aliases, "spatial.analysis.get_box_face", "reference.points.get_box_face");
         addMovedNodeAlias(aliases, "spatial.analysis.get_face_edge", "reference.points.get_face_edge");
+        addMovedNodeAlias(aliases, "spatial.points.snap_point_to_block", "world.selection.snap_point_to_block");
+        addMovedNodeAlias(aliases, "spatial.points.snap_point_list_to_blocks", "world.selection.snap_points_to_blocks");
+        addMovedNodeAlias(aliases, "spatial.points.point_to_block_if_grid", "world.selection.point_to_block_if_grid");
+        addMovedNodeAlias(aliases, "spatial.points.is_grid_point", "world.query.is_grid_point");
+        addMovedNodeAlias(aliases, "spatial.points.filter_grid_points", "world.query.filter_grid_points");
         return Collections.unmodifiableMap(aliases);
     }
 

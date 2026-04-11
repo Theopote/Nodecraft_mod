@@ -80,6 +80,9 @@ public class NodeLibraryComponent implements EditorComponent {
         Map<String, Integer> worldSelectionOrder = getWorldSelectionOrder();
         categoryOrder.put("world.selection", worldSelectionOrder);
 
+        Map<String, Integer> worldQueryOrder = getWorldQueryOrder();
+        categoryOrder.put("world.query", worldQueryOrder);
+
         Map<String, Integer> referencePointsOrder = getReferencePointsOrder();
         categoryOrder.put("reference.points", referencePointsOrder);
 
@@ -164,7 +167,19 @@ public class NodeLibraryComponent implements EditorComponent {
         Map<String, Integer> worldSelectionOrder = new HashMap<>();
         worldSelectionOrder.put("world.selection.selected_block", 0);
         worldSelectionOrder.put("world.selection.selected_region", 1);
+        worldSelectionOrder.put("world.selection.snap_point_to_block", 2);
+        worldSelectionOrder.put("world.selection.snap_points_to_blocks", 3);
+        worldSelectionOrder.put("world.selection.point_to_block_if_grid", 4);
         return worldSelectionOrder;
+    }
+
+    private static @NonNull Map<String, Integer> getWorldQueryOrder() {
+        Map<String, Integer> worldQueryOrder = new HashMap<>();
+        worldQueryOrder.put("world.query.get_light_level", 0);
+        worldQueryOrder.put("world.query.get_fluid_level", 1);
+        worldQueryOrder.put("world.query.is_grid_point", 2);
+        worldQueryOrder.put("world.query.filter_grid_points", 3);
+        return worldQueryOrder;
     }
 
     private static @NonNull Map<String, Integer> getReferencePointsOrder() {
