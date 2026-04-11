@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.analysis;
+package com.nodecraft.nodesystem.nodes.pattern.surface_volume_distribution;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -22,10 +22,10 @@ import java.util.Set;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.analysis.scatter_on_sphere_surface",
+    id = "pattern.surface_volume_distribution.surface_scatter",
     displayName = "Scatter On Sphere Surface",
     description = "Scatters points on a sphere surface and outputs matching normals and optional snapped block coordinates",
-    category = "spatial.analysis"
+    category = "pattern.surface_volume_distribution"
 )
 public class ScatterOnSphereSurfaceNode extends BaseNode {
 
@@ -69,7 +69,7 @@ public class ScatterOnSphereSurfaceNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ScatterOnSphereSurfaceNode() {
-        super(UUID.randomUUID(), "spatial.analysis.scatter_on_sphere_surface");
+        super(UUID.randomUUID(), "pattern.surface_volume_distribution.surface_scatter");
 
         addInputPort(new BasePort(INPUT_SPHERE_ID, "Sphere", "Sphere geometry to scatter on", NodeDataType.SPHERE, this));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Optional scatter count override", NodeDataType.INTEGER, this));

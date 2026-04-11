@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.analysis;
+package com.nodecraft.nodesystem.nodes.pattern.surface_volume_distribution;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -18,10 +18,10 @@ import java.util.Random;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.analysis.sample_sphere_surface",
+    id = "pattern.surface_volume_distribution.sample_surface",
     displayName = "Sample Sphere Surface",
     description = "Samples points and normals on a sphere surface for scattering and growth workflows",
-    category = "spatial.analysis"
+    category = "pattern.surface_volume_distribution"
 )
 public class SampleSphereSurfaceNode extends BaseNode {
 
@@ -50,7 +50,7 @@ public class SampleSphereSurfaceNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SampleSphereSurfaceNode() {
-        super(UUID.randomUUID(), "spatial.analysis.sample_sphere_surface");
+        super(UUID.randomUUID(), "pattern.surface_volume_distribution.sample_surface");
 
         addInputPort(new BasePort(INPUT_SPHERE_ID, "Sphere", "Sphere geometry to sample", NodeDataType.SPHERE, this));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Optional sample count override", NodeDataType.INTEGER, this));

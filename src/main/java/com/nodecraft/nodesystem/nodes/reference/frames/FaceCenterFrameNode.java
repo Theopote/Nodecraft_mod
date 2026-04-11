@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.analysis;
+package com.nodecraft.nodesystem.nodes.reference.frames;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -13,10 +13,10 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.analysis.face_center_frame",
+    id = "reference.frames.frame_from_face",
     displayName = "Face Center Frame",
     description = "Builds a local frame at the center of a box face using the face plane and boundary directions",
-    category = "spatial.analysis"
+    category = "reference.frames"
 )
 public class FaceCenterFrameNode extends BaseNode {
 
@@ -32,7 +32,7 @@ public class FaceCenterFrameNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public FaceCenterFrameNode() {
-        super(UUID.randomUUID(), "spatial.analysis.face_center_frame");
+        super(UUID.randomUUID(), "reference.frames.frame_from_face");
 
         addInputPort(new BasePort(INPUT_FACE_ID, "Face", "The box face used to build the local frame", NodeDataType.BOX_FACE, this));
 

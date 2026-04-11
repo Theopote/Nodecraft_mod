@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.math.vector;
+package com.nodecraft.nodesystem.nodes.transform.orientation;
 
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -17,10 +17,10 @@ import java.util.UUID;
  * Rotate Vector Node: Rotates a vector around an axis by a given angle.
  */
 @NodeInfo(
-    id = "math.vector.rotate",
+    id = "transform.orientation.rotate_vector",
     displayName = "旋转向量",
     description = "绕指定轴旋转向量",
-    category = "math.vector"
+    category = "transform.orientation"
 )
 public class RotateVectorNode extends BaseNode {
 
@@ -34,7 +34,7 @@ public class RotateVectorNode extends BaseNode {
 
     // --- 构造函数 ---
     public RotateVectorNode() {
-        super(UUID.randomUUID(), "math.vector.rotate");
+        super(UUID.randomUUID(), "transform.orientation.rotate_vector");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_VECTOR_ID, "Vector", "Vector to rotate", NodeDataType.VECTOR, this));

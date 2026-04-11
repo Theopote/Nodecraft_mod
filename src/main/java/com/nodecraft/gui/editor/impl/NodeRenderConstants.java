@@ -53,6 +53,7 @@ public class NodeRenderConstants {
         CATEGORY_COLORS.put("spatial", DEFAULT_CATEGORY_COLOR);
         CATEGORY_COLORS.put("geometry", DEFAULT_CATEGORY_COLOR);
         CATEGORY_COLORS.put("math", DEFAULT_CATEGORY_COLOR);
+        CATEGORY_COLORS.put("pattern", DEFAULT_CATEGORY_COLOR);
         CATEGORY_COLORS.put("input", DEFAULT_CATEGORY_COLOR);
         CATEGORY_COLORS.put("inputs", DEFAULT_CATEGORY_COLOR);
         CATEGORY_COLORS.put("transform", DEFAULT_CATEGORY_COLOR);
@@ -85,6 +86,7 @@ public class NodeRenderConstants {
         if (nodeTypeId.startsWith("spatial.")) return "spatial";
         if (nodeTypeId.startsWith("geometry.")) return "geometry";
         if (nodeTypeId.startsWith("math.")) return "math";
+        if (nodeTypeId.startsWith("pattern.")) return "pattern";
         if (nodeTypeId.startsWith("input.")) return "input";
         if (nodeTypeId.startsWith("inputs.")) return "inputs";
         if (nodeTypeId.startsWith("transform.")) return "transform";

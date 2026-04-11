@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.analysis;
+package com.nodecraft.nodesystem.nodes.reference.frames;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -15,10 +15,10 @@ import org.joml.Vector3d;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.analysis.sphere_surface_frame",
+    id = "reference.frames.frame_along_surface",
     displayName = "Sphere Surface Frame",
     description = "Builds a local tangent frame on a sphere using the nearest surface point and outward normal",
-    category = "spatial.analysis"
+    category = "reference.frames"
 )
 public class SphereSurfaceFrameNode extends BaseNode {
 
@@ -37,7 +37,7 @@ public class SphereSurfaceFrameNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SphereSurfaceFrameNode() {
-        super(UUID.randomUUID(), "spatial.analysis.sphere_surface_frame");
+        super(UUID.randomUUID(), "reference.frames.frame_along_surface");
 
         addInputPort(new BasePort(INPUT_SPHERE_ID, "Sphere", "Sphere geometry to evaluate against", NodeDataType.SPHERE, this));
         addInputPort(new BasePort(INPUT_POINT_ID, "Point", "Reference point near or on the sphere surface", NodeDataType.ANY, this));

@@ -92,6 +92,9 @@ public class NodeLibraryComponent implements EditorComponent {
         Map<String, Integer> referencePlanesOrder = getReferencePlanesOrder();
         categoryOrder.put("reference.planes", referencePlanesOrder);
 
+        Map<String, Integer> referenceFramesOrder = getReferenceFramesOrder();
+        categoryOrder.put("reference.frames", referenceFramesOrder);
+
         Map<String, Integer> geometryBooleanOrder = getGeometryBooleanOrder();
         categoryOrder.put("geometry.boolean", geometryBooleanOrder);
 
@@ -103,6 +106,9 @@ public class NodeLibraryComponent implements EditorComponent {
 
         Map<String, Integer> geometryProfilesOrder = getGeometryProfilesOrder();
         categoryOrder.put("geometry.profiles", geometryProfilesOrder);
+
+        Map<String, Integer> patternSurfaceVolumeDistributionOrder = getPatternSurfaceVolumeDistributionOrder();
+        categoryOrder.put("pattern.surface_volume_distribution", patternSurfaceVolumeDistributionOrder);
 
         Map<String, Integer> transformBasicTransformsOrder = getTransformBasicTransformsOrder();
         categoryOrder.put("transform.basic_transforms", transformBasicTransformsOrder);
@@ -301,6 +307,7 @@ public class NodeLibraryComponent implements EditorComponent {
     private static @NonNull Map<String, Integer> getTransformOrientationOrder() {
         Map<String, Integer> transformOrientationOrder = new HashMap<>();
         transformOrientationOrder.put("transform.orientation.project_to_plane", 0);
+        transformOrientationOrder.put("transform.orientation.rotate_vector", 1);
         return transformOrientationOrder;
     }
 
@@ -441,6 +448,20 @@ public class NodeLibraryComponent implements EditorComponent {
         spatialAnalysisOrder.put("spatial.analysis.point_list_bounds", 14);
         spatialAnalysisOrder.put("spatial.analysis.point_list_center", 15);
         return spatialAnalysisOrder;
+    }
+
+    private static @NonNull Map<String, Integer> getReferenceFramesOrder() {
+        Map<String, Integer> referenceFramesOrder = new HashMap<>();
+        referenceFramesOrder.put("reference.frames.frame_from_face", 0);
+        referenceFramesOrder.put("reference.frames.frame_along_surface", 1);
+        return referenceFramesOrder;
+    }
+
+    private static @NonNull Map<String, Integer> getPatternSurfaceVolumeDistributionOrder() {
+        Map<String, Integer> patternSurfaceVolumeDistributionOrder = new HashMap<>();
+        patternSurfaceVolumeDistributionOrder.put("pattern.surface_volume_distribution.sample_surface", 0);
+        patternSurfaceVolumeDistributionOrder.put("pattern.surface_volume_distribution.surface_scatter", 1);
+        return patternSurfaceVolumeDistributionOrder;
     }
 
     private static @NonNull Map<String, Integer> getIntegerMap() {
@@ -589,6 +610,7 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("reference.points", new float[]{1.0f, 0.98f, 0.45f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("reference.vectors", new float[]{1.0f, 1.0f, 0.5f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("reference.planes", new float[]{1.0f, 1.0f, 0.55f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("reference.frames", new float[]{1.0f, 0.96f, 0.5f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("geometry.boolean", new float[]{0.98f, 0.88f, 0.28f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("geometry.curves", new float[]{1.0f, 0.9f, 0.32f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("geometry.primitives", new float[]{0.96f, 0.9f, 0.34f, 1.0f});
@@ -657,6 +679,9 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("General", DEFAULT_CATEGORY_COLOR_FLOAT);              // 通用默认颜色
 
             // 转换浮点颜色为ImGui使用的打包整数颜色
+            CATEGORY_COLORS_FLOAT.put("pattern", new float[]{0.98f, 0.74f, 0.22f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("Pattern", new float[]{0.98f, 0.74f, 0.22f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("pattern.surface_volume_distribution", new float[]{1.0f, 0.8f, 0.3f, 1.0f});
             for (Map.Entry<String, float[]> entry : CATEGORY_COLORS_FLOAT.entrySet()) {
                 float[] c = entry.getValue();
                 CATEGORY_COLORS_INT.put(entry.getKey(), ImGui.colorConvertFloat4ToU32(c[0], c[1], c[2], c[3]));
@@ -835,9 +860,9 @@ public class NodeLibraryComponent implements EditorComponent {
         
         // 确保主要分类始终展开，即使它们是子分类
         String[] keyCategories = {
-            "geometry", "input", "inputs", "data", "material", "math", "output", "reference", "spatial", "transform", "world", "utilities",
-            "input.numeric", "input.context", "input.type_selectors", "reference.points", "world.selection",
-            "geometry.boolean", "geometry.curves", "geometry.primitives", "geometry.profiles",
+            "geometry", "input", "inputs", "data", "material", "math", "output", "pattern", "reference", "spatial", "transform", "world", "utilities",
+            "input.numeric", "input.context", "input.type_selectors", "reference.points", "reference.frames", "world.selection",
+            "geometry.boolean", "geometry.curves", "geometry.primitives", "geometry.profiles", "pattern.surface_volume_distribution",
             "transform.basic_transforms", "transform.orientation",
             "math.basic", "math.list_sequence", "data.lists", "spatial.points", "world.entity", 
             "output.preview", "utilities.organization"

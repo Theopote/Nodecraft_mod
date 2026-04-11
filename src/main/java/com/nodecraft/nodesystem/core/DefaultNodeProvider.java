@@ -52,6 +52,7 @@ public class DefaultNodeProvider implements INodeProvider {
         registry.registerCategory(new NodeRegistry.NodeCategory("material", "Material & Mapping"));
         registry.registerCategory(new NodeRegistry.NodeCategory("math", "Math & Logic"));
         registry.registerCategory(new NodeRegistry.NodeCategory("output", "Output & Execution"));
+        registry.registerCategory(new NodeRegistry.NodeCategory("pattern", "Pattern"));
         registry.registerCategory(new NodeRegistry.NodeCategory("reference", "Reference"));
         registry.registerCategory(new NodeRegistry.NodeCategory("spatial", "Spatial & Geometry"));
         registry.registerCategory(new NodeRegistry.NodeCategory("transform", "Transform"));
@@ -75,10 +76,12 @@ public class DefaultNodeProvider implements INodeProvider {
         registry.registerCategory(new NodeRegistry.NodeCategory("reference.points", "Points"));
         registry.registerCategory(new NodeRegistry.NodeCategory("reference.vectors", "Vectors"));
         registry.registerCategory(new NodeRegistry.NodeCategory("reference.planes", "Planes"));
+        registry.registerCategory(new NodeRegistry.NodeCategory("reference.frames", "Frames"));
         registry.registerCategory(new NodeRegistry.NodeCategory("geometry.boolean", "Boolean"));
         registry.registerCategory(new NodeRegistry.NodeCategory("geometry.curves", "Curves"));
         registry.registerCategory(new NodeRegistry.NodeCategory("geometry.primitives", "Primitives"));
         registry.registerCategory(new NodeRegistry.NodeCategory("geometry.profiles", "Profiles"));
+        registry.registerCategory(new NodeRegistry.NodeCategory("pattern.surface_volume_distribution", "Surface / Volume Distribution"));
         registry.registerCategory(new NodeRegistry.NodeCategory("transform.basic_transforms", "Basic Transforms"));
         registry.registerCategory(new NodeRegistry.NodeCategory("transform.orientation", "Orientation"));
         registry.registerCategory(new NodeRegistry.NodeCategory("world.selection", "Selection"));

@@ -144,6 +144,8 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "math.vector.distance", "reference.points.distance_between_points");
         addMovedNodeAlias(aliases, "math.vector.construct_plane", "reference.planes.construct_plane");
         addMovedNodeAlias(aliases, "math.vector.construct_plane_from_points", "reference.planes.plane_from_points");
+        addMovedNodeAlias(aliases, "math.vector.rotate", "transform.orientation.rotate_vector");
+        addMovedNodeAlias(aliases, "math.vector.rotate_vector", "transform.orientation.rotate_vector");
         addMovedNodeAlias(aliases, "spatial.points.block_to_point", "reference.points.point_from_block");
         addMovedNodeAlias(aliases, "spatial.points.point_between_two_points", "reference.points.mid_point");
         addMovedNodeAlias(aliases, "spatial.points.point_along_vector", "reference.points.point_along_vector");
@@ -157,6 +159,8 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "spatial.analysis.get_box_corner", "reference.points.get_box_corner");
         addMovedNodeAlias(aliases, "spatial.analysis.get_box_face", "reference.points.get_box_face");
         addMovedNodeAlias(aliases, "spatial.analysis.get_face_edge", "reference.points.get_face_edge");
+        addMovedNodeAlias(aliases, "spatial.analysis.face_center_frame", "reference.frames.frame_from_face");
+        addMovedNodeAlias(aliases, "spatial.analysis.sphere_surface_frame", "reference.frames.frame_along_surface");
         addMovedNodeAlias(aliases, "spatial.points.snap_point_to_block", "world.selection.snap_point_to_block");
         addMovedNodeAlias(aliases, "spatial.points.snap_point_list_to_blocks", "world.selection.snap_points_to_blocks");
         addMovedNodeAlias(aliases, "spatial.points.point_to_block_if_grid", "world.selection.point_to_block_if_grid");
@@ -187,6 +191,8 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "spatial.points.path_to_points", "geometry.curves.divide_curve_to_points");
         addMovedNodeAlias(aliases, "spatial.analysis.get_points_in_region", "world.read.get_points_in_region");
         addMovedNodeAlias(aliases, "spatial.analysis.is_point_in_region", "world.query.is_point_in_region");
+        addMovedNodeAlias(aliases, "spatial.analysis.sample_sphere_surface", "pattern.surface_volume_distribution.sample_surface");
+        addMovedNodeAlias(aliases, "spatial.analysis.scatter_on_sphere_surface", "pattern.surface_volume_distribution.surface_scatter");
         return Collections.unmodifiableMap(aliases);
     }
 
