@@ -121,8 +121,8 @@ Representative node mapping:
 - `inputs.minecraft.selected_region` -> `world.selection`
 - `inputs.minecraft.selected_entity` -> deferred
 - `inputs.minecraft.selected_block_sequence` -> deferred
-- `inputs.minecraft.current_time` -> deferred
-- `inputs.minecraft.dimension_info` -> deferred
+- `inputs.minecraft.current_time` -> `input.context.current_time`
+- `inputs.minecraft.dimension_info` -> `input.context.dimension_info`
 - `inputs.minecraft.biome_at_player` -> `world.read` or deferred depending retained behavior
 - `inputs.selectors.block_type_selector` -> `input.type_selectors`
 - `inputs.selectors.item_type_selector` -> deferred
