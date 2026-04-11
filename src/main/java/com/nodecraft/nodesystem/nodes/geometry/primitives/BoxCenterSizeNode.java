@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.construct;
+package com.nodecraft.nodesystem.nodes.geometry.primitives;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -6,10 +6,10 @@ import com.nodecraft.nodesystem.core.BasePort;
 import net.minecraft.util.math.BlockPos;
 
 @NodeInfo(
-    id = "spatial.construct.box_center_size",
+    id = "geometry.primitives.box",
     displayName = "Box by Center + Size",
     description = "Generates a box from a center point and explicit X/Y/Z sizes",
-    category = "spatial.construct"
+    category = "geometry.primitives"
 )
 public class BoxCenterSizeNode extends AbstractBoxGeneratorNode {
 
@@ -23,7 +23,7 @@ public class BoxCenterSizeNode extends AbstractBoxGeneratorNode {
     private static final String INPUT_ROT_Z_ID = "input_rotation_z";
 
     public BoxCenterSizeNode() {
-        super("spatial.construct.box_center_size");
+        super("geometry.primitives.box");
 
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Center point of the box", NodeDataType.BLOCK_POS, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Optional reference plane used to orient the local X/Y/Z axes", NodeDataType.PLANE, this));

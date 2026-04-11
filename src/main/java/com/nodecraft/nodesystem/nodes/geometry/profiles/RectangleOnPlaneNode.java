@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.construct;
+package com.nodecraft.nodesystem.nodes.geometry.profiles;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -19,10 +19,10 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.construct.rectangle_on_plane",
+    id = "geometry.profiles.rectangle_profile",
     displayName = "Rectangle On Plane",
     description = "Constructs a planar rectangle from a center point, width, height, and plane",
-    category = "spatial.construct"
+    category = "geometry.profiles"
 )
 public class RectangleOnPlaneNode extends BaseNode {
 
@@ -42,7 +42,7 @@ public class RectangleOnPlaneNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public RectangleOnPlaneNode() {
-        super(UUID.randomUUID(), "spatial.construct.rectangle_on_plane");
+        super(UUID.randomUUID(), "geometry.profiles.rectangle_profile");
 
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Rectangle center point", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_WIDTH_ID, "Width", "Rectangle width along local X axis", NodeDataType.DOUBLE, this));

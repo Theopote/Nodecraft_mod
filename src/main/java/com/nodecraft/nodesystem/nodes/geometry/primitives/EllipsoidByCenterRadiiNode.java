@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.construct;
+package com.nodecraft.nodesystem.nodes.geometry.primitives;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -14,10 +14,10 @@ import org.joml.Vector3d;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.construct.ellipsoid_by_center_radii",
+    id = "geometry.primitives.ellipsoid",
     displayName = "Ellipsoid By Center Radii",
     description = "Constructs ellipsoid geometry from a center point and X/Y/Z radii",
-    category = "spatial.construct"
+    category = "geometry.primitives"
 )
 public class EllipsoidByCenterRadiiNode extends BaseNode {
 
@@ -33,7 +33,7 @@ public class EllipsoidByCenterRadiiNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public EllipsoidByCenterRadiiNode() {
-        super(UUID.randomUUID(), "spatial.construct.ellipsoid_by_center_radii");
+        super(UUID.randomUUID(), "geometry.primitives.ellipsoid");
 
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Ellipsoid center point", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_RADIUS_X_ID, "Radius X", "Ellipsoid X radius", NodeDataType.DOUBLE, this));

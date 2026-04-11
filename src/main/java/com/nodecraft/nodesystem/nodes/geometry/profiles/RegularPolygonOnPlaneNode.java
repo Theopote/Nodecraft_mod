@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.construct;
+package com.nodecraft.nodesystem.nodes.geometry.profiles;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -19,10 +19,10 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.construct.regular_polygon_on_plane",
+    id = "geometry.profiles.polygon_profile",
     displayName = "Regular Polygon On Plane",
     description = "Constructs a regular polygon from a center point, radius, side count, and plane",
-    category = "spatial.construct"
+    category = "geometry.profiles"
 )
 public class RegularPolygonOnPlaneNode extends BaseNode {
 
@@ -42,7 +42,7 @@ public class RegularPolygonOnPlaneNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public RegularPolygonOnPlaneNode() {
-        super(UUID.randomUUID(), "spatial.construct.regular_polygon_on_plane");
+        super(UUID.randomUUID(), "geometry.profiles.polygon_profile");
 
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Polygon center point", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Circumradius of the polygon", NodeDataType.DOUBLE, this));

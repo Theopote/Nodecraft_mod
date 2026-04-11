@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.construct;
+package com.nodecraft.nodesystem.nodes.geometry.primitives;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -14,10 +14,10 @@ import org.joml.Vector3d;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.construct.octahedron_by_center_size",
+    id = "geometry.primitives.octahedron",
     displayName = "Octahedron By Center Size",
     description = "Constructs octahedron geometry from a center point and vertex radius",
-    category = "spatial.construct"
+    category = "geometry.primitives"
 )
 public class OctahedronByCenterSizeNode extends BaseNode {
 
@@ -32,7 +32,7 @@ public class OctahedronByCenterSizeNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public OctahedronByCenterSizeNode() {
-        super(UUID.randomUUID(), "spatial.construct.octahedron_by_center_size");
+        super(UUID.randomUUID(), "geometry.primitives.octahedron");
 
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Octahedron center point", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_SIZE_ID, "Size", "Distance from center to vertices", NodeDataType.DOUBLE, this));

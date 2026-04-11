@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.construct;
+package com.nodecraft.nodesystem.nodes.geometry.primitives;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -14,10 +14,10 @@ import org.joml.Vector3d;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.construct.tetrahedron_by_center_edge",
+    id = "geometry.primitives.tetrahedron",
     displayName = "Tetrahedron By Center Edge",
     description = "Constructs tetrahedron geometry from a center point and edge length",
-    category = "spatial.construct"
+    category = "geometry.primitives"
 )
 public class TetrahedronByCenterEdgeNode extends BaseNode {
 
@@ -33,7 +33,7 @@ public class TetrahedronByCenterEdgeNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public TetrahedronByCenterEdgeNode() {
-        super(UUID.randomUUID(), "spatial.construct.tetrahedron_by_center_edge");
+        super(UUID.randomUUID(), "geometry.primitives.tetrahedron");
 
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Tetrahedron center point", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_EDGE_ID, "Edge Length", "Regular tetrahedron edge length", NodeDataType.DOUBLE, this));

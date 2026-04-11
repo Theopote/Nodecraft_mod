@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.construct;
+package com.nodecraft.nodesystem.nodes.geometry.profiles;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -19,10 +19,10 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.construct.polygon_by_points",
+    id = "geometry.profiles.custom_profile",
     displayName = "Polygon By Points",
     description = "Constructs a planar polygon profile from an ordered point list",
-    category = "spatial.construct"
+    category = "geometry.profiles"
 )
 public class PolygonByPointsNode extends BaseNode {
 
@@ -39,7 +39,7 @@ public class PolygonByPointsNode extends BaseNode {
     private static final double PLANAR_TOLERANCE = 1.0e-5d;
 
     public PolygonByPointsNode() {
-        super(UUID.randomUUID(), "spatial.construct.polygon_by_points");
+        super(UUID.randomUUID(), "geometry.profiles.custom_profile");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Ordered polygon points", NodeDataType.LIST, this));
 

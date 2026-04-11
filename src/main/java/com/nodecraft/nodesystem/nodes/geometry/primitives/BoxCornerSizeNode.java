@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.construct;
+package com.nodecraft.nodesystem.nodes.geometry.primitives;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -6,10 +6,10 @@ import com.nodecraft.nodesystem.core.BasePort;
 import net.minecraft.util.math.BlockPos;
 
 @NodeInfo(
-    id = "spatial.construct.box_corner_size",
+    id = "geometry.primitives.box_from_corner_size",
     displayName = "Box by Corner + Size",
     description = "Generates a box from one anchor corner and signed X/Y/Z sizes. Negative values grow in the opposite local axis direction.",
-    category = "spatial.construct"
+    category = "geometry.primitives"
 )
 public class BoxCornerSizeNode extends AbstractBoxGeneratorNode {
 
@@ -23,7 +23,7 @@ public class BoxCornerSizeNode extends AbstractBoxGeneratorNode {
     private static final String INPUT_ROT_Z_ID = "input_rotation_z";
 
     public BoxCornerSizeNode() {
-        super("spatial.construct.box_corner_size");
+        super("geometry.primitives.box_from_corner_size");
 
         addInputPort(new BasePort(INPUT_CORNER_ID, "Corner", "Anchor corner of the box", NodeDataType.BLOCK_POS, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Optional reference plane used to orient the local X/Y/Z axes", NodeDataType.PLANE, this));

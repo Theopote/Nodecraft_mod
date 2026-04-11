@@ -54,11 +54,11 @@ public class NodeRegistry {
         addAlias(aliases, "spatial.points.mirrorcoordinates", "spatial.points.mirror_coordinates");
         addAlias(aliases, "spatial.points.randomizecoordinates", "spatial.points.randomize_coordinates");
 
-        addMovedNodeAlias(aliases, "spatial.generators.box_center_size", "spatial.construct.box_center_size");
-        addMovedNodeAlias(aliases, "spatial.generators.box_corners", "spatial.construct.box_corners");
-        addMovedNodeAlias(aliases, "spatial.generators.box_corner_size", "spatial.construct.box_corner_size");
-        addMovedNodeAlias(aliases, "spatial.generators.sphere_by_center_radius", "spatial.construct.sphere_by_center_radius");
-        addMovedNodeAlias(aliases, "spatial.generators.sphere_by_diameter", "spatial.construct.sphere_by_diameter");
+        addMovedNodeAlias(aliases, "spatial.generators.box_center_size", "geometry.primitives.box");
+        addMovedNodeAlias(aliases, "spatial.generators.box_corners", "geometry.primitives.box_from_corners");
+        addMovedNodeAlias(aliases, "spatial.generators.box_corner_size", "geometry.primitives.box_from_corner_size");
+        addMovedNodeAlias(aliases, "spatial.generators.sphere_by_center_radius", "geometry.primitives.sphere");
+        addMovedNodeAlias(aliases, "spatial.generators.sphere_by_diameter", "geometry.primitives.sphere_from_diameter");
         addMovedNodeAlias(aliases, "spatial.generators.push_pull_box_face", "spatial.modeling.push_pull_box_face");
         addMovedNodeAlias(aliases, "spatial.generators.extrude_box_face", "spatial.modeling.extrude_box_face");
         addMovedNodeAlias(aliases, "spatial.generators.grow_along_normals", "spatial.instancing.grow_along_normals");
@@ -197,6 +197,21 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "spatial.arrays.grid_array", "pattern.grid.grid_array");
         addMovedNodeAlias(aliases, "spatial.arrays.polar_array", "pattern.radial.polar_array");
         addMovedNodeAlias(aliases, "spatial.arrays.populate_region", "pattern.surface_volume_distribution.populate_region");
+        addMovedNodeAlias(aliases, "spatial.construct.box_center_size", "geometry.primitives.box");
+        addMovedNodeAlias(aliases, "spatial.construct.box_corner_size", "geometry.primitives.box_from_corner_size");
+        addMovedNodeAlias(aliases, "spatial.construct.box_corners", "geometry.primitives.box_from_corners");
+        addMovedNodeAlias(aliases, "spatial.construct.sphere_by_center_radius", "geometry.primitives.sphere");
+        addMovedNodeAlias(aliases, "spatial.construct.sphere_by_diameter", "geometry.primitives.sphere_from_diameter");
+        addMovedNodeAlias(aliases, "spatial.construct.cylinder_by_axis_radius", "geometry.primitives.cylinder");
+        addMovedNodeAlias(aliases, "spatial.construct.cone_by_base_apex_radius", "geometry.primitives.cone");
+        addMovedNodeAlias(aliases, "spatial.construct.ellipsoid_by_center_radii", "geometry.primitives.ellipsoid");
+        addMovedNodeAlias(aliases, "spatial.construct.octahedron_by_center_size", "geometry.primitives.octahedron");
+        addMovedNodeAlias(aliases, "spatial.construct.tetrahedron_by_center_edge", "geometry.primitives.tetrahedron");
+        addMovedNodeAlias(aliases, "spatial.construct.rectangle_on_plane", "geometry.profiles.rectangle_profile");
+        addMovedNodeAlias(aliases, "spatial.construct.regular_polygon_on_plane", "geometry.profiles.polygon_profile");
+        addMovedNodeAlias(aliases, "spatial.construct.polygon_by_points", "geometry.profiles.custom_profile");
+        addMovedNodeAlias(aliases, "spatial.construct.prism_by_profile_vector", "geometry.solids.extrude_profile");
+        addMovedNodeAlias(aliases, "spatial.construct.prism_by_base_points_vector", "geometry.solids.extrude_profile_from_points");
         return Collections.unmodifiableMap(aliases);
     }
 

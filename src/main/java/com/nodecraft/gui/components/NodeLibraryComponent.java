@@ -107,6 +107,9 @@ public class NodeLibraryComponent implements EditorComponent {
         Map<String, Integer> geometryProfilesOrder = getGeometryProfilesOrder();
         categoryOrder.put("geometry.profiles", geometryProfilesOrder);
 
+        Map<String, Integer> geometrySolidsOrder = getGeometrySolidsOrder();
+        categoryOrder.put("geometry.solids", geometrySolidsOrder);
+
         Map<String, Integer> patternLinearOrder = getPatternLinearOrder();
         categoryOrder.put("pattern.linear", patternLinearOrder);
 
@@ -275,14 +278,24 @@ public class NodeLibraryComponent implements EditorComponent {
 
     private static @NonNull Map<String, Integer> getGeometryPrimitivesOrder() {
         Map<String, Integer> geometryPrimitivesOrder = new HashMap<>();
-        geometryPrimitivesOrder.put("geometry.primitives.deconstruct_box", 0);
-        geometryPrimitivesOrder.put("geometry.primitives.deconstruct_sphere", 1);
-        geometryPrimitivesOrder.put("geometry.primitives.deconstruct_cylinder", 2);
-        geometryPrimitivesOrder.put("geometry.primitives.deconstruct_cone", 3);
-        geometryPrimitivesOrder.put("geometry.primitives.deconstruct_ellipsoid", 4);
-        geometryPrimitivesOrder.put("geometry.primitives.deconstruct_octahedron", 5);
-        geometryPrimitivesOrder.put("geometry.primitives.deconstruct_tetrahedron", 6);
-        geometryPrimitivesOrder.put("geometry.primitives.deconstruct_prism", 7);
+        geometryPrimitivesOrder.put("geometry.primitives.box", 0);
+        geometryPrimitivesOrder.put("geometry.primitives.box_from_corner_size", 1);
+        geometryPrimitivesOrder.put("geometry.primitives.box_from_corners", 2);
+        geometryPrimitivesOrder.put("geometry.primitives.sphere", 3);
+        geometryPrimitivesOrder.put("geometry.primitives.sphere_from_diameter", 4);
+        geometryPrimitivesOrder.put("geometry.primitives.cylinder", 5);
+        geometryPrimitivesOrder.put("geometry.primitives.cone", 6);
+        geometryPrimitivesOrder.put("geometry.primitives.ellipsoid", 7);
+        geometryPrimitivesOrder.put("geometry.primitives.octahedron", 8);
+        geometryPrimitivesOrder.put("geometry.primitives.tetrahedron", 9);
+        geometryPrimitivesOrder.put("geometry.primitives.deconstruct_box", 10);
+        geometryPrimitivesOrder.put("geometry.primitives.deconstruct_sphere", 11);
+        geometryPrimitivesOrder.put("geometry.primitives.deconstruct_cylinder", 12);
+        geometryPrimitivesOrder.put("geometry.primitives.deconstruct_cone", 13);
+        geometryPrimitivesOrder.put("geometry.primitives.deconstruct_ellipsoid", 14);
+        geometryPrimitivesOrder.put("geometry.primitives.deconstruct_octahedron", 15);
+        geometryPrimitivesOrder.put("geometry.primitives.deconstruct_tetrahedron", 16);
+        geometryPrimitivesOrder.put("geometry.primitives.deconstruct_prism", 17);
         return geometryPrimitivesOrder;
     }
 
@@ -297,8 +310,18 @@ public class NodeLibraryComponent implements EditorComponent {
 
     private static @NonNull Map<String, Integer> getGeometryProfilesOrder() {
         Map<String, Integer> geometryProfilesOrder = new HashMap<>();
-        geometryProfilesOrder.put("geometry.profiles.deconstruct_profile", 0);
+        geometryProfilesOrder.put("geometry.profiles.rectangle_profile", 0);
+        geometryProfilesOrder.put("geometry.profiles.polygon_profile", 1);
+        geometryProfilesOrder.put("geometry.profiles.custom_profile", 2);
+        geometryProfilesOrder.put("geometry.profiles.deconstruct_profile", 3);
         return geometryProfilesOrder;
+    }
+
+    private static @NonNull Map<String, Integer> getGeometrySolidsOrder() {
+        Map<String, Integer> geometrySolidsOrder = new HashMap<>();
+        geometrySolidsOrder.put("geometry.solids.extrude_profile", 0);
+        geometrySolidsOrder.put("geometry.solids.extrude_profile_from_points", 1);
+        return geometrySolidsOrder;
     }
 
     private static @NonNull Map<String, Integer> getTransformBasicTransformsOrder() {
@@ -643,6 +666,7 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("geometry.curves", new float[]{1.0f, 0.9f, 0.32f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("geometry.primitives", new float[]{0.96f, 0.9f, 0.34f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("geometry.profiles", new float[]{1.0f, 0.94f, 0.4f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("geometry.solids", new float[]{0.98f, 0.86f, 0.3f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("transform.basic_transforms", new float[]{1.0f, 0.62f, 0.32f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("transform.orientation", new float[]{1.0f, 0.68f, 0.38f, 1.0f});
             
@@ -893,7 +917,7 @@ public class NodeLibraryComponent implements EditorComponent {
         String[] keyCategories = {
             "geometry", "input", "inputs", "data", "material", "math", "output", "pattern", "reference", "spatial", "transform", "world", "utilities",
             "input.numeric", "input.context", "input.type_selectors", "reference.points", "reference.frames", "world.selection",
-            "geometry.boolean", "geometry.curves", "geometry.primitives", "geometry.profiles",
+            "geometry.boolean", "geometry.curves", "geometry.primitives", "geometry.profiles", "geometry.solids",
             "pattern.linear", "pattern.grid", "pattern.radial", "pattern.surface_volume_distribution",
             "transform.basic_transforms", "transform.orientation",
             "math.basic", "math.list_sequence", "data.lists", "spatial.points", "world.entity", 
