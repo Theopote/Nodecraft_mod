@@ -61,7 +61,7 @@ From the current source scan of `src/main/java/com/nodecraft/nodesystem/nodes`:
 
 - `canonical_v1 prefix present`: many nodes are already under `input / reference / geometry / transform / pattern / material / world / output / math`
 - `old_or_legacy`: old `spatial.* / inputs.* / data.* / control.*` nodes still exist
-- `other`: out-of-scope domains such as `animation.*`, `flora.*`, `utilities.*`, and excluded world domains
+- `other`: out-of-scope domains such as `utilities.*` and excluded world domains (with `animation.*` / `flora.*` now physically removed)
 
 Important caveat:
 

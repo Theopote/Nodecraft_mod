@@ -569,12 +569,6 @@ public class NodeLibraryComponent implements EditorComponent {
         static final float CATEGORY_SPACING_EXPANDED = 3f; // Tighter spacing below expanded categories.
         static final float CATEGORY_SPACING_COLLAPSED = 2f;
         static final float CATEGORY_ITEM_SPACING = 2f; // Spacing between category items.
-        static final float GRID_TILE_WIDTH = 92f;
-        static final float GRID_TILE_HEIGHT = 84f;
-        static final float GRID_ICON_SIZE = 28f;
-        static final float GRID_TILE_SPACING_X = 8f;
-        static final float GRID_TILE_SPACING_Y = 8f;
-        static final float GRID_TILE_TEXT_PADDING = 6f;
         static final float GRID_TILE_SIZE_SCALE = 1.5f;
         static final float GRID_TILE_SIZE_SCALE_MIN = 1.0f;
         static final float GRID_TILE_SIZE_SCALE_MAX = 2.0f;
@@ -890,12 +884,8 @@ public class NodeLibraryComponent implements EditorComponent {
         // Expand top-level categories by default and collapse subcategories.
         for (NodeCategory cat : allCategories) {
             boolean isSubCategory = cat.getId().contains(".") && !cat.getId().endsWith(".");
-            
-            if (isSubCategory) {
-                expandedCategories.put(cat.getId(), false);
-            } else {
-                expandedCategories.put(cat.getId(), false);
-            }
+
+            expandedCategories.put(cat.getId(), false);
         }
         
         // Keep the main categories expanded even when they are nested.
@@ -1608,22 +1598,6 @@ public class NodeLibraryComponent implements EditorComponent {
 
             ImGui.endTooltip();
         }
-    }
-
-    private String ellipsizeText(String text, float maxWidth) {
-        if (text == null || text.isEmpty()) {
-            return "";
-        }
-        if (ImGui.calcTextSize(text).x <= maxWidth) {
-            return text;
-        }
-
-        String ellipsis = "...";
-        String candidate = text;
-        while (!candidate.isEmpty() && ImGui.calcTextSize(candidate + ellipsis).x > maxWidth) {
-            candidate = candidate.substring(0, candidate.length() - 1);
-        }
-        return candidate.isEmpty() ? ellipsis : candidate + ellipsis;
     }
 
     private List<NodeInfo> getSortedNodesForDisplay(DisplayCategory displayCategory) {

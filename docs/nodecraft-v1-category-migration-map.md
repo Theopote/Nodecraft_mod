@@ -39,7 +39,7 @@ These must be migrated node by node using the mapping rules below.
 
 ### 1.3 Excluded domains do not get forced into the v1.0 main tree
 
-If a legacy category belongs to an excluded domain, mark it as deferred instead of force-fitting it into a wrong v1.0 category.
+If a legacy category belongs to an excluded domain, mark it as deferred (or removed when physically deleted) instead of force-fitting it into a wrong v1.0 category.
 
 Excluded or deferred domains include:
 
@@ -87,8 +87,8 @@ Migration statuses in this document:
 | `data` | deferred | deferred | Not part of v1.0 main tree |
 | `control` | `math`, deferred | split | Small reusable logic subset moves, rest deferred |
 | `utilities` | deferred | deferred | Workflow-only system, not core v1.0 tree |
-| `animation` | deferred | deferred | Explicitly out of scope |
-| `flora` | deferred | deferred | Explicitly out of scope |
+| `animation` | removed | removed | Explicitly out of scope; physically removed on 2026-04-11 |
+| `flora` | removed | removed | Explicitly out of scope; physically removed on 2026-04-11 |
 
 ## 4. Detailed Old-to-New Mapping
 

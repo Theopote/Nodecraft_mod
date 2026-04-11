@@ -366,7 +366,10 @@ The following historical domains are not canonical v1.0 category ids:
 - `spatial.*`
 - `visualization.*`
 
-These may still appear in old assets, source packages, or compatibility aliases during migration.
+Status note (2026-04-11):
+
+- `animation.*` and `flora.*` were physically removed from source.
+- The remaining domains may still appear in old assets, source packages, or compatibility aliases during migration.
 
 They must not be used as the target category ids for new v1.0 work.
 
