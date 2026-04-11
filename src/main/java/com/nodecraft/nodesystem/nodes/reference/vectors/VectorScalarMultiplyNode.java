@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.math.vector;
+package com.nodecraft.nodesystem.nodes.reference.vectors;
 
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -13,10 +13,10 @@ import java.util.UUID;
  * Vector Scalar Multiply Node: 向量与标量相乘 (Vector * Scalar)
  */
 @NodeInfo(
-    id = "math.vector.scalar_multiply",
+    id = "reference.vectors.vector_scalar_multiply",
     displayName = "向量标量乘法",
     description = "向量与标量相乘 (Vector * Scalar)",
-    category = "math.vector"
+    category = "reference.vectors"
 )
 public class VectorScalarMultiplyNode extends BaseNode {
 
@@ -29,7 +29,7 @@ public class VectorScalarMultiplyNode extends BaseNode {
 
     // --- 构造函数 ---
     public VectorScalarMultiplyNode() {
-        super(UUID.randomUUID(), "math.vector.scalar_multiply");
+        super(UUID.randomUUID(), "reference.vectors.vector_scalar_multiply");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_VECTOR_ID, "Vector", "Input vector", NodeDataType.VECTOR, this));

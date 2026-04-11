@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.math.vector;
+package com.nodecraft.nodesystem.nodes.reference.vectors;
 
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -13,10 +13,10 @@ import java.util.UUID;
  * Deconstruct Vector Node: Outputs the X, Y, and Z components of a vector.
  */
 @NodeInfo(
-    id = "math.vector.deconstruct",
+    id = "reference.vectors.deconstruct_vector",
     displayName = "解构向量",
     description = "输出向量的X、Y、Z分量",
-    category = "math.vector"
+    category = "reference.vectors"
 )
 public class DeconstructVectorNode extends BaseNode {
 
@@ -30,7 +30,7 @@ public class DeconstructVectorNode extends BaseNode {
 
     // --- 构造函数 ---
     public DeconstructVectorNode() {
-        super(UUID.randomUUID(), "math.vector.deconstruct");
+        super(UUID.randomUUID(), "reference.vectors.deconstruct_vector");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_VECTOR_ID, "Vector", "Input vector", NodeDataType.VECTOR, this));

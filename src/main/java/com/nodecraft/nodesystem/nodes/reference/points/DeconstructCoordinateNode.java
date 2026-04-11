@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.math.vector;
+package com.nodecraft.nodesystem.nodes.reference.points;
 
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -13,10 +13,10 @@ import java.util.UUID;
  * Deconstruct Coordinate Node: 将方块坐标分解为X、Y、Z整数值
  */
 @NodeInfo(
-    id = "math.vector.deconstruct_coordinate",
+    id = "reference.points.deconstruct_point",
     displayName = "分解坐标",
     description = "将坐标分解为X、Y、Z分量",
-    category = "math.vector"
+    category = "reference.points"
 )
 public class DeconstructCoordinateNode extends BaseNode {
 
@@ -30,7 +30,7 @@ public class DeconstructCoordinateNode extends BaseNode {
 
     // --- 构造函数 ---
     public DeconstructCoordinateNode() {
-        super(UUID.randomUUID(), "math.vector.deconstruct_coordinate");
+        super(UUID.randomUUID(), "reference.points.deconstruct_point");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate", "Block position (integer coordinates)", NodeDataType.BLOCK_POS, this));

@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.points;
+package com.nodecraft.nodesystem.nodes.reference.planes;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -16,10 +16,10 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.points.distance_point_to_plane",
+    id = "reference.planes.distance_point_to_plane",
     displayName = "Distance Point To Plane",
     description = "Measures the absolute and signed distance from a geometric point to a plane",
-    category = "spatial.points"
+    category = "reference.planes"
 )
 public class DistancePointToPlaneNode extends BaseNode {
 
@@ -31,7 +31,7 @@ public class DistancePointToPlaneNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public DistancePointToPlaneNode() {
-        super(UUID.randomUUID(), "spatial.points.distance_point_to_plane");
+        super(UUID.randomUUID(), "reference.planes.distance_point_to_plane");
 
         addInputPort(new BasePort(INPUT_POINT_ID, "Point",
             "Point to measure. Supports Point, Vector, Position, or Block Coordinate.",

@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.math.vector;
+package com.nodecraft.nodesystem.nodes.reference.planes;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -15,10 +15,10 @@ import java.util.HashMap;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "math.vector.construct_plane",
+    id = "reference.planes.construct_plane",
     displayName = "Construct Plane",
     description = "Constructs a plane from an origin point and a normal vector",
-    category = "math.vector"
+    category = "reference.planes"
 )
 public class ConstructPlaneNode extends BaseNode {
 
@@ -29,7 +29,7 @@ public class ConstructPlaneNode extends BaseNode {
     private static final String OUTPUT_NORMALIZED_NORMAL_ID = "output_normalized_normal";
 
     public ConstructPlaneNode() {
-        super(UUID.randomUUID(), "math.vector.construct_plane");
+        super(UUID.randomUUID(), "reference.planes.construct_plane");
 
         addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "A point on the plane. Supports Point, Vector, or Block Coordinate.", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_NORMAL_ID, "Normal", "Plane normal vector", NodeDataType.VECTOR, this));

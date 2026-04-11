@@ -1,52 +1,52 @@
-package com.nodecraft.nodesystem.nodes.math.vector;
+package com.nodecraft.nodesystem.nodes.reference.vectors;
 
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
-import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
+import com.nodecraft.nodesystem.api.NodeInfo;
 
 /**
- * Normalize Vector Node: Normalizes a vector to unit length.
+ * Vector Length Node: Computes the length (magnitude) of a vector.
  */
 @NodeInfo(
-    id = "math.vector.normalize",
-    displayName = "向量归一化",
-    description = "将向量归一化为单位长度",
-    category = "math.vector"
+    id = "reference.vectors.vector_length",
+    displayName = "向量长度",
+    description = "计算向量的长度（模长）",
+    category = "reference.vectors"
 )
-public class NormalizeVectorNode extends BaseNode {
+public class VectorLengthNode extends BaseNode {
 
     // --- 输入端口 IDs ---
     private static final String INPUT_VECTOR_ID = "input_vector";
 
     // --- 输出端口 IDs ---
-    private static final String OUTPUT_NORMALIZED_ID = "output_normalized_vector";
+    private static final String OUTPUT_LENGTH_ID = "output_length";
 
     // --- 构造函数 ---
-    public NormalizeVectorNode() {
-        super(UUID.randomUUID(), "math.vector.normalize");
+    public VectorLengthNode() {
+        super(UUID.randomUUID(), "reference.vectors.vector_length");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_VECTOR_ID, "Vector", "Input vector", NodeDataType.VECTOR, this));
 
         // 创建并添加输出端口
-        addOutputPort(new BasePort(OUTPUT_NORMALIZED_ID, "Normalized", "Normalized vector", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Length of the vector", NodeDataType.DOUBLE, this));
     }
 
     // 添加 getDescription 方法
     @Override
     public String getDescription() {
-        return "Outputs the normalized (unit length) version of the input vector.";
+        return "Outputs the length (magnitude) of the input vector.";
     }
 
     // 添加 getDisplayName 方法
     @Override
     public String getDisplayName() {
-        return "Normalize Vector";
+        return "Vector Length";
     }
 
     // --- 核心逻辑 ---
@@ -60,14 +60,13 @@ public class NormalizeVectorNode extends BaseNode {
         if (val instanceof Vec3d) {
             Vec3d vector = (Vec3d) val;
             
-            // Vec3d.normalize() 处理零向量（返回零向量）
-            Vec3d normalized = vector.normalize();
+            double length = vector.length();
             
             // 设置输出值
-            outputValues.put(OUTPUT_NORMALIZED_ID, normalized);
+            outputValues.put(OUTPUT_LENGTH_ID, length);
         } else {
             // 如果输入无效
-            outputValues.put(OUTPUT_NORMALIZED_ID, Vec3d.ZERO); // 或者 null
+            outputValues.put(OUTPUT_LENGTH_ID, 0.0); // 长度为 0 或 NaN
         }
     }
 

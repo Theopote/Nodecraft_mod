@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.points;
+package com.nodecraft.nodesystem.nodes.reference.points;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -15,10 +15,10 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.points.point_along_vector",
+    id = "reference.points.point_along_vector",
     displayName = "Point Along Vector",
     description = "Creates a new point by moving a start point along a direction vector by a distance",
-    category = "spatial.points"
+    category = "reference.points"
 )
 public class PointAlongVectorNode extends BaseNode {
 
@@ -34,7 +34,7 @@ public class PointAlongVectorNode extends BaseNode {
     private boolean normalizeDirection = true;
 
     public PointAlongVectorNode() {
-        super(UUID.randomUUID(), "spatial.points.point_along_vector");
+        super(UUID.randomUUID(), "reference.points.point_along_vector");
 
         addInputPort(new BasePort(INPUT_POINT_ID, "Point",
             "Start point. Supports Point, Vector, Position, or Block Coordinate.",

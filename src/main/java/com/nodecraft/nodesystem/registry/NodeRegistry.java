@@ -127,6 +127,27 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "inputs.minecraft.biome_at_player", "world.read.biome_at_player");
         addMovedNodeAlias(aliases, "inputs.selectors.block_type_selector", "input.type_selectors.block_type_selector");
         addMovedNodeAlias(aliases, "inputs.sources.create_list", "math.list_sequence.create_list");
+        addMovedNodeAlias(aliases, "math.vector.construct", "reference.vectors.vector");
+        addMovedNodeAlias(aliases, "math.vector.cross_product", "reference.vectors.cross_product");
+        addMovedNodeAlias(aliases, "math.vector.dot_product", "reference.vectors.dot_product");
+        addMovedNodeAlias(aliases, "math.vector.normalize", "reference.vectors.normalize_vector");
+        addMovedNodeAlias(aliases, "math.vector.normalize_vector", "reference.vectors.normalize_vector");
+        addMovedNodeAlias(aliases, "math.vector.length", "reference.vectors.vector_length");
+        addMovedNodeAlias(aliases, "math.vector.addition", "reference.vectors.vector_addition");
+        addMovedNodeAlias(aliases, "math.vector.subtraction", "reference.vectors.vector_subtraction");
+        addMovedNodeAlias(aliases, "math.vector.scalar_multiply", "reference.vectors.vector_scalar_multiply");
+        addMovedNodeAlias(aliases, "math.vector.scalar_divide", "reference.vectors.vector_scalar_divide");
+        addMovedNodeAlias(aliases, "math.vector.deconstruct", "reference.vectors.deconstruct_vector");
+        addMovedNodeAlias(aliases, "math.vector.construct_coordinate", "reference.points.point_from_coordinates");
+        addMovedNodeAlias(aliases, "math.vector.deconstruct_coordinate", "reference.points.deconstruct_point");
+        addMovedNodeAlias(aliases, "math.vector.midpoint", "reference.points.mid_point");
+        addMovedNodeAlias(aliases, "math.vector.distance", "reference.points.distance_between_points");
+        addMovedNodeAlias(aliases, "math.vector.construct_plane", "reference.planes.construct_plane");
+        addMovedNodeAlias(aliases, "math.vector.construct_plane_from_points", "reference.planes.plane_from_points");
+        addMovedNodeAlias(aliases, "spatial.points.block_to_point", "reference.points.point_from_block");
+        addMovedNodeAlias(aliases, "spatial.points.point_between_two_points", "reference.points.mid_point");
+        addMovedNodeAlias(aliases, "spatial.points.point_along_vector", "reference.points.point_along_vector");
+        addMovedNodeAlias(aliases, "spatial.points.distance_point_to_plane", "reference.planes.distance_point_to_plane");
         return Collections.unmodifiableMap(aliases);
     }
 

@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.math.vector;
+package com.nodecraft.nodesystem.nodes.reference.vectors;
 
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -10,41 +10,45 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 /**
- * Dot Product Node: Computes the dot product of two vectors (A · B).
+ * Vector Addition Node: Adds two vectors (A + B).
  */
 @NodeInfo(
-    id = "math.vector.dot_product",
-    displayName = "点积",
-    description = "计算两个向量的点积（A · B）",
-    category = "math.vector"
+    id = "reference.vectors.vector_addition",
+    displayName = "向量加法 (+)",
+    description = "计算两个向量的和，输出A + B",
+    category = "reference.vectors"
 )
-public class DotProductNode extends BaseNode {
-
-    // --- 节点属性 ---
-    private String description = "计算两个向量的点积（A · B）";
+public class VectorAdditionNode extends BaseNode {
 
     // --- 输入端口 IDs ---
     private static final String INPUT_A_ID = "input_vector_a";
     private static final String INPUT_B_ID = "input_vector_b";
 
     // --- 输出端口 IDs ---
-    private static final String OUTPUT_DOT_PRODUCT_ID = "output_dot_product";
+    private static final String OUTPUT_SUM_ID = "output_vector_sum";
 
     // --- 构造函数 ---
-    public DotProductNode() {
-        super(UUID.randomUUID(), "math.vector.dot_product");
+    public VectorAdditionNode() {
+        super(UUID.randomUUID(), "reference.vectors.vector_addition");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_A_ID, "Vector A", "First vector", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_B_ID, "Vector B", "Second vector", NodeDataType.VECTOR, this));
 
         // 创建并添加输出端口
-        addOutputPort(new BasePort(OUTPUT_DOT_PRODUCT_ID, "Dot Product", "Result A · B", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_SUM_ID, "Sum Vector", "Result A + B", NodeDataType.VECTOR, this));
     }
 
+    // 添加 getDescription 方法
     @Override
     public String getDescription() {
-        return this.description;
+        return "Outputs the vector sum of A and B.";
+    }
+
+    // 添加 getDisplayName 方法
+    @Override
+    public String getDisplayName() {
+        return "Vector Addition (+)";
     }
 
     // --- 核心逻辑 ---
@@ -60,13 +64,13 @@ public class DotProductNode extends BaseNode {
             Vec3d a = (Vec3d) valA;
             Vec3d b = (Vec3d) valB;
             
-            double dotProduct = a.dotProduct(b);
+            Vec3d sum = a.add(b);
             
             // 设置输出值
-            outputValues.put(OUTPUT_DOT_PRODUCT_ID, dotProduct);
+            outputValues.put(OUTPUT_SUM_ID, sum);
         } else {
             // 如果输入无效
-            outputValues.put(OUTPUT_DOT_PRODUCT_ID, 0.0); // 或者 NaN
+            outputValues.put(OUTPUT_SUM_ID, Vec3d.ZERO); // 或者 null
         }
     }
 

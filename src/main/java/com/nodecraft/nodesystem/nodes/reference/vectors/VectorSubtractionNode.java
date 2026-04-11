@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.math.vector;
+package com.nodecraft.nodesystem.nodes.reference.vectors;
 
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -13,10 +13,10 @@ import com.nodecraft.nodesystem.api.NodeInfo;
  * Vector Subtraction Node: Subtracts vector B from vector A (A - B).
  */
 @NodeInfo(
-    id = "math.vector.subtraction",
+    id = "reference.vectors.vector_subtraction",
     displayName = "向量减法 (-)",
     description = "计算两个向量的差，输出A - B",
-    category = "math.vector"
+    category = "reference.vectors"
 )
 public class VectorSubtractionNode extends BaseNode {
 
@@ -29,7 +29,7 @@ public class VectorSubtractionNode extends BaseNode {
 
     // --- 构造函数 ---
     public VectorSubtractionNode() {
-        super(UUID.randomUUID(), "math.vector.subtraction");
+        super(UUID.randomUUID(), "reference.vectors.vector_subtraction");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_A_ID, "Vector A", "Minuend vector", NodeDataType.VECTOR, this));

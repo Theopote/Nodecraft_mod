@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.math.vector;
+package com.nodecraft.nodesystem.nodes.reference.vectors;
 
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -13,10 +13,10 @@ import java.util.UUID;
  * Vector Scalar Divide Node: 向量除以标量 (Vector / Scalar)
  */
 @NodeInfo(
-    id = "math.vector.scalar_divide",
+    id = "reference.vectors.vector_scalar_divide",
     displayName = "向量标量除法",
     description = "向量除以标量 (Vector / Scalar)",
-    category = "math.vector"
+    category = "reference.vectors"
 )
 public class VectorScalarDivideNode extends BaseNode {
 
@@ -29,7 +29,7 @@ public class VectorScalarDivideNode extends BaseNode {
 
     // --- 构造函数 ---
     public VectorScalarDivideNode() {
-        super(UUID.randomUUID(), "math.vector.scalar_divide");
+        super(UUID.randomUUID(), "reference.vectors.vector_scalar_divide");
         
         // 创建并添加输入端口
         addInputPort(new BasePort(INPUT_VECTOR_ID, "Vector", "Input vector (Dividend)", NodeDataType.VECTOR, this));

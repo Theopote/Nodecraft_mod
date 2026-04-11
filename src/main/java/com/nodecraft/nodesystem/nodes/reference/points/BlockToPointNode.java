@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.spatial.points;
+package com.nodecraft.nodesystem.nodes.reference.points;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -15,10 +15,10 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "spatial.points.block_to_point",
+    id = "reference.points.point_from_block",
     displayName = "Block To Point",
     description = "Converts a block coordinate into a geometric point for downstream geometry operations",
-    category = "spatial.points"
+    category = "reference.points"
 )
 public class BlockToPointNode extends BaseNode {
 
@@ -34,7 +34,7 @@ public class BlockToPointNode extends BaseNode {
     private boolean useBlockCenter = false;
 
     public BlockToPointNode() {
-        super(UUID.randomUUID(), "spatial.points.block_to_point");
+        super(UUID.randomUUID(), "reference.points.point_from_block");
 
         addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate",
             "Block coordinate to convert into a geometric point or block-center point",

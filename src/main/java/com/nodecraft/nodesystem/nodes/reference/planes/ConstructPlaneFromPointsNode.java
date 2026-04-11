@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.math.vector;
+package com.nodecraft.nodesystem.nodes.reference.planes;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -14,10 +14,10 @@ import java.util.HashMap;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "math.vector.construct_plane_from_points",
+    id = "reference.planes.plane_from_points",
     displayName = "Construct Plane From Points",
     description = "Constructs a plane from three non-collinear points",
-    category = "math.vector"
+    category = "reference.planes"
 )
 public class ConstructPlaneFromPointsNode extends BaseNode {
 
@@ -30,7 +30,7 @@ public class ConstructPlaneFromPointsNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ConstructPlaneFromPointsNode() {
-        super(UUID.randomUUID(), "math.vector.construct_plane_from_points");
+        super(UUID.randomUUID(), "reference.planes.plane_from_points");
 
         addInputPort(new BasePort(INPUT_POINT_A_ID, "Point A", "First point on the plane", NodeDataType.BLOCK_POS, this));
         addInputPort(new BasePort(INPUT_POINT_B_ID, "Point B", "Second point on the plane", NodeDataType.BLOCK_POS, this));

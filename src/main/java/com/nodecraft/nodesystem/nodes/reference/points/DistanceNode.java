@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.math.vector;
+package com.nodecraft.nodesystem.nodes.reference.points;
 
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -10,33 +10,33 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 /**
- * Cross Product Node: Computes the cross product of two vectors (A x B).
+ * Distance Node: 计算两个点之间的距离
  */
 @NodeInfo(
-    id = "math.vector.cross_product",
-    displayName = "叉积",
-    description = "计算两个向量的叉积（A × B）",
-    category = "math.vector"
+    id = "reference.points.distance_between_points",
+    displayName = "距离",
+    description = "计算两个点之间的距离",
+    category = "reference.points"
 )
-public class CrossProductNode extends BaseNode {
+public class DistanceNode extends BaseNode {
 
     // --- 输入端口 IDs ---
-    private static final String INPUT_A_ID = "input_vector_a";
-    private static final String INPUT_B_ID = "input_vector_b";
+    private static final String INPUT_A_ID = "input_point_a";
+    private static final String INPUT_B_ID = "input_point_b";
 
     // --- 输出端口 IDs ---
-    private static final String OUTPUT_CROSS_PRODUCT_ID = "output_cross_product";
+    private static final String OUTPUT_DISTANCE_ID = "output_distance";
 
     // --- 构造函数 ---
-    public CrossProductNode() {
-        super(UUID.randomUUID(), "math.vector.cross_product");
+    public DistanceNode() {
+        super(UUID.randomUUID(), "reference.points.distance_between_points");
         
         // 创建并添加输入端口
-        addInputPort(new BasePort(INPUT_A_ID, "Vector A", "First vector", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_B_ID, "Vector B", "Second vector", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_A_ID, "Point A", "First point", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_B_ID, "Point B", "Second point", NodeDataType.VECTOR, this));
 
         // 创建并添加输出端口
-        addOutputPort(new BasePort(OUTPUT_CROSS_PRODUCT_ID, "Cross Product", "Result A x B", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_DISTANCE_ID, "Distance", "Distance between A and B", NodeDataType.DOUBLE, this));
     }
 
     // --- 核心逻辑 ---
@@ -52,13 +52,13 @@ public class CrossProductNode extends BaseNode {
             Vec3d a = (Vec3d) valA;
             Vec3d b = (Vec3d) valB;
             
-            Vec3d crossProduct = a.crossProduct(b);
+            double distance = a.distanceTo(b);
             
             // 设置输出值
-            outputValues.put(OUTPUT_CROSS_PRODUCT_ID, crossProduct);
+            outputValues.put(OUTPUT_DISTANCE_ID, distance);
         } else {
             // 如果输入无效
-            outputValues.put(OUTPUT_CROSS_PRODUCT_ID, Vec3d.ZERO); // 或者 null
+            outputValues.put(OUTPUT_DISTANCE_ID, 0.0); // 或者 NaN
         }
     }
 
@@ -68,11 +68,11 @@ public class CrossProductNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Outputs the cross product of vectors A and B.";
+        return "Outputs the distance between point A and point B.";
     }
 
     @Override
     public String getDisplayName() {
-        return "Cross Product (x)";
+        return "Distance";
     }
 } 
