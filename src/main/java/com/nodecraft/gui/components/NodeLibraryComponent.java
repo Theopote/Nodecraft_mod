@@ -668,16 +668,9 @@ public class NodeLibraryComponent implements EditorComponent {
             
             // Subcategory colors use slightly lighter variants of their parent colors.
             // Input subcategories.
-            CATEGORY_COLORS_FLOAT.put("inputs.selectors", new float[]{0.4f, 0.7f, 1.0f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("inputs.sources", new float[]{0.45f, 0.75f, 1.0f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("input.numeric", new float[]{0.3f, 0.6f, 0.95f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("input.context", new float[]{0.35f, 0.65f, 1.0f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("input.type_selectors", new float[]{0.4f, 0.7f, 1.0f, 1.0f});
-            
-            // Data subcategories.
-            CATEGORY_COLORS_FLOAT.put("data.lists", new float[]{1.0f, 0.7f, 0.3f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("data.sequence", new float[]{1.0f, 0.75f, 0.35f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("data.text", new float[]{1.0f, 0.8f, 0.4f, 1.0f});
             
             // Math subcategories.
             CATEGORY_COLORS_FLOAT.put("math.logic", new float[]{0.45f, 0.9f, 0.45f, 1.0f});
@@ -689,11 +682,8 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("deferred.math", new float[]{0.72f, 0.72f, 0.72f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("deferred.out_of_scope", new float[]{0.68f, 0.68f, 0.68f, 1.0f});
             
-            // Spatial and migrated-reference subcategories.
-            CATEGORY_COLORS_FLOAT.put("spatial.arrays", new float[]{1.0f, 1.0f, 0.4f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("spatial.generators", new float[]{1.0f, 1.0f, 0.45f, 1.0f});
+            // Spatial legacy and migrated-reference subcategories.
             CATEGORY_COLORS_FLOAT.put("spatial.legacy", new float[]{0.85f, 0.85f, 0.45f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("spatial.shapes", new float[]{1.0f, 1.0f, 0.45f, 1.0f});   // Compatibility for old generators grouping.
             CATEGORY_COLORS_FLOAT.put("reference.points", new float[]{1.0f, 0.98f, 0.45f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("reference.vectors", new float[]{1.0f, 1.0f, 0.5f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("reference.planes", new float[]{1.0f, 1.0f, 0.55f, 1.0f});
@@ -711,8 +701,6 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("world.entity", new float[]{0.3f, 0.85f, 0.85f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("world.interaction", new float[]{0.35f, 0.9f, 0.9f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("world.inventory", new float[]{0.4f, 0.95f, 0.95f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("world.modify", new float[]{0.45f, 1.0f, 1.0f, 1.0f});     // Compatibility for old modification naming.
-            CATEGORY_COLORS_FLOAT.put("world.modification", new float[]{0.45f, 1.0f, 1.0f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("world.nbt", new float[]{0.5f, 1.0f, 1.0f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("world.read", new float[]{0.5f, 0.95f, 1.0f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("world.query", new float[]{0.55f, 1.0f, 1.0f, 1.0f});
@@ -722,18 +710,13 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("material", new float[]{0.8f, 0.55f, 0.2f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("material.basic_assignment", new float[]{0.88f, 0.6f, 0.24f, 1.0f});
             
-            // Output and legacy visualization subcategories.
+            // Output subcategories.
             CATEGORY_COLORS_FLOAT.put("output.debug", new float[]{0.9f, 0.3f, 0.6f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("output.execute", new float[]{0.95f, 0.35f, 0.65f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("output.export", new float[]{0.98f, 0.45f, 0.72f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("output.preview", new float[]{1.0f, 0.4f, 0.7f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("visualization.debugging", new float[]{0.9f, 0.3f, 0.6f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("visualization.debug", new float[]{0.9f, 0.3f, 0.6f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("visualization.execute", new float[]{0.95f, 0.35f, 0.65f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("visualization.preview", new float[]{1.0f, 0.4f, 0.7f, 1.0f});
             
-            // Utilities and workflow compatibility subcategories.
-            CATEGORY_COLORS_FLOAT.put("utilities.experimental", new float[]{0.8f, 0.8f, 0.8f, 1.0f});
+            // Utilities compatibility subcategories.
             CATEGORY_COLORS_FLOAT.put("utilities.organization", new float[]{0.9f, 0.9f, 0.9f, 1.0f});
             
             // Flora subcategories.
@@ -749,12 +732,6 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("animation.output", new float[]{0.95f, 0.5f, 0.5f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("animation.time", new float[]{1.0f, 0.55f, 0.55f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("animation.transforms", new float[]{1.0f, 0.6f, 0.6f, 1.0f});
-            
-            // Compatibility for the legacy workflow.* prefix.
-            CATEGORY_COLORS_FLOAT.put("workflow.advanced", new float[]{0.75f, 0.75f, 0.75f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("workflow.experimental", new float[]{0.8f, 0.8f, 0.8f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("workflow.fileio", new float[]{0.85f, 0.85f, 0.85f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("workflow.organization", new float[]{0.9f, 0.9f, 0.9f, 1.0f});
             
             // Compatibility for older display labels.
             CATEGORY_COLORS_FLOAT.put("Params", new float[]{0.2f, 0.5f, 0.9f, 1.0f});        // Blue

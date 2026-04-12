@@ -53,10 +53,13 @@ public class NodeRenderConstants {
         CATEGORY_COLORS.put("utilities", DEFAULT_CATEGORY_COLOR);
         CATEGORY_COLORS.put("spatial", DEFAULT_CATEGORY_COLOR);
         CATEGORY_COLORS.put("geometry", DEFAULT_CATEGORY_COLOR);
+        CATEGORY_COLORS.put("material", DEFAULT_CATEGORY_COLOR);
         CATEGORY_COLORS.put("math", DEFAULT_CATEGORY_COLOR);
         CATEGORY_COLORS.put("pattern", DEFAULT_CATEGORY_COLOR);
         CATEGORY_COLORS.put("input", DEFAULT_CATEGORY_COLOR);
         CATEGORY_COLORS.put("inputs", DEFAULT_CATEGORY_COLOR);
+        CATEGORY_COLORS.put("output", DEFAULT_CATEGORY_COLOR);
+        CATEGORY_COLORS.put("deferred", DEFAULT_CATEGORY_COLOR);
         CATEGORY_COLORS.put("transform", DEFAULT_CATEGORY_COLOR);
         CATEGORY_COLORS.put("flora", DEFAULT_CATEGORY_COLOR);
         CATEGORY_COLORS.put("data", DEFAULT_CATEGORY_COLOR);
@@ -84,10 +87,13 @@ public class NodeRenderConstants {
         // Match the known top-level category prefixes first.
         if (nodeTypeId.startsWith("world.")) return "world";
         if (nodeTypeId.startsWith("reference.")) return "reference";
+        if (nodeTypeId.startsWith("output.")) return "output";
+        if (nodeTypeId.startsWith("deferred.")) return "deferred";
         if (nodeTypeId.startsWith("visualization.")) return "visualization";
         if (nodeTypeId.startsWith("utilities.")) return "utilities";
         if (nodeTypeId.startsWith("spatial.")) return "spatial";
         if (nodeTypeId.startsWith("geometry.")) return "geometry";
+        if (nodeTypeId.startsWith("material.")) return "material";
         if (nodeTypeId.startsWith("math.")) return "math";
         if (nodeTypeId.startsWith("pattern.")) return "pattern";
         if (nodeTypeId.startsWith("input.")) return "input";
