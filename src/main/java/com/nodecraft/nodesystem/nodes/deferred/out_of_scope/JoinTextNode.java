@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.utilities.text_processing;
+package com.nodecraft.nodesystem.nodes.deferred.out_of_scope;
 
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -15,10 +15,10 @@ import java.util.UUID;
  * Join Text                                                               
  */
 @NodeInfo(
-    id = "utilities.text_processing.join",
+    id = "deferred.out_of_scope.join_text",
     displayName = "Join Text",
     description = "Joins a list of strings into a single string using a delimiter.",
-    category = "utilities.text_processing"
+    category = "deferred.out_of_scope"
 )
 public class JoinTextNode extends BaseNode {
     
@@ -35,7 +35,7 @@ public class JoinTextNode extends BaseNode {
      *                                         ?
      */
     public JoinTextNode() {
-        super(UUID.randomUUID(), "utilities.text_processing.join");
+        super(UUID.randomUUID(), "deferred.out_of_scope.join_text");
         
         //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 

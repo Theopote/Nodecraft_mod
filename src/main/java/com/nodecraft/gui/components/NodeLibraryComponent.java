@@ -363,6 +363,12 @@ public class NodeLibraryComponent implements EditorComponent {
         deferredOutOfScopeOrder.put("deferred.out_of_scope.write_data_file", 25);
         deferredOutOfScopeOrder.put("deferred.out_of_scope.write_text_file", 26);
         deferredOutOfScopeOrder.put("deferred.out_of_scope.text_panel", 27);
+        deferredOutOfScopeOrder.put("deferred.out_of_scope.concatenate_text", 28);
+        deferredOutOfScopeOrder.put("deferred.out_of_scope.find_replace_text", 29);
+        deferredOutOfScopeOrder.put("deferred.out_of_scope.format_text", 30);
+        deferredOutOfScopeOrder.put("deferred.out_of_scope.join_text", 31);
+        deferredOutOfScopeOrder.put("deferred.out_of_scope.split_text", 32);
+        deferredOutOfScopeOrder.put("deferred.out_of_scope.text_length", 33);
         return deferredOutOfScopeOrder;
     }
 

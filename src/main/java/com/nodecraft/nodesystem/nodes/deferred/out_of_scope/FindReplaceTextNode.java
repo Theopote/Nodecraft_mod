@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.utilities.text_processing;
+package com.nodecraft.nodesystem.nodes.deferred.out_of_scope;
 
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -19,10 +19,10 @@ import java.util.regex.PatternSyntaxException;
  * Find/Replace Text                                                   ?
  */
 @NodeInfo(
-    id = "utilities.text_processing.find_replace",
+    id = "deferred.out_of_scope.find_replace_text",
     displayName = "Find/Replace Text",
     description = "Finds or replaces text within a string",
-    category = "utilities.text_processing"
+    category = "deferred.out_of_scope"
 )
 public class FindReplaceTextNode extends BaseNode {
     
@@ -50,7 +50,7 @@ public class FindReplaceTextNode extends BaseNode {
      */
     public FindReplaceTextNode() {
         //                                        UID.randomUUID()              D
-        super(UUID.randomUUID(), "utilities.text_processing.find_replace");
+        super(UUID.randomUUID(), "deferred.out_of_scope.find_replace_text");
         
         //                    ?
         this.description = "Finds or replaces text within a string";

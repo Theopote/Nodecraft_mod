@@ -190,6 +190,12 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "utilities.fileio.write_data_file", "deferred.out_of_scope.write_data_file");
         addMovedNodeAlias(aliases, "utilities.fileio.write_text_file", "deferred.out_of_scope.write_text_file");
         addMovedNodeAlias(aliases, "utilities.fileio.text_panel", "deferred.out_of_scope.text_panel");
+        addMovedNodeAlias(aliases, "utilities.text_processing.concatenate", "deferred.out_of_scope.concatenate_text");
+        addMovedNodeAlias(aliases, "utilities.text_processing.find_replace", "deferred.out_of_scope.find_replace_text");
+        addMovedNodeAlias(aliases, "utilities.text_processing.format", "deferred.out_of_scope.format_text");
+        addMovedNodeAlias(aliases, "utilities.text_processing.join", "deferred.out_of_scope.join_text");
+        addMovedNodeAlias(aliases, "utilities.text_processing.split", "deferred.out_of_scope.split_text");
+        addMovedNodeAlias(aliases, "utilities.text_processing.length", "deferred.out_of_scope.text_length");
         addMovedNodeAlias(aliases, "math.trigonometry.sine", "math.trigonometry.sin");
         addMovedNodeAlias(aliases, "math.trigonometry.cosine", "math.trigonometry.cos");
         addMovedNodeAlias(aliases, "math.trigonometry.tangent", "math.trigonometry.tan");
@@ -360,7 +366,7 @@ public class NodeRegistry {
             return "utilities.data_conversion." + nodeId.substring("data.conversion.".length());
         }
         if (nodeId.startsWith("data.text.")) {
-            return "utilities.text_processing." + nodeId.substring("data.text.".length());
+            return "deferred.out_of_scope." + nodeId.substring("data.text.".length());
         }
         if (nodeId.startsWith("control.flow.")) {
             return "utilities.flow_control." + nodeId.substring("control.flow.".length());
