@@ -64,7 +64,7 @@ class ImGuiNodeClipboardMigrationTest {
               "format": "application/nodecraft-nodes+json",
               "nodes": [
                 { "id": "a", "typeId": "visualization.preview.geometry_viewer", "x": 10.0, "y": 20.0 },
-                { "id": "b", "typeId": "control.flow.branch", "x": 40.0, "y": 60.0 }
+                { "id": "b", "typeId": "logic.if", "x": 40.0, "y": 60.0 }
               ],
               "connections": []
             }

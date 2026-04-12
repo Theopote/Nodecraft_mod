@@ -1,107 +1,105 @@
 # Node ID and Category Guidelines
 
-This document defines the current rules for node ids, category placement, alias compatibility, and legacy boundaries.
+Last updated: 2026-04-12
 
-## Goals
+## Scope
 
-- Keep package path, category, and node id aligned.
-- Preserve old graphs, clipboard data, and history records through alias resolution.
-- Ensure any asset re-save writes canonical ids instead of legacy ids.
-- Prevent new nodes from reintroducing `spatial.generators.*` history debt.
+This document defines the current rules for:
 
-## Canonical Category Rules
+- canonical node ids
+- canonical category placement
+- the limited alias policy that is still allowed
 
-- Canonical ids must use the v1 taxonomy, not the pre-v1 taxonomy.
-- Current canonical top-level domains are:
-  - `input`
-  - `reference`
-  - `geometry`
-  - `transform`
-  - `pattern`
-  - `material`
-  - `world`
-  - `output`
-  - `math`
-- Old semantic domains such as `spatial.construct`, `spatial.analysis`, `spatial.modeling`, `spatial.instancing`, `spatial.voxel`, and `visualization.*` are no longer canonical homes.
-- `spatial.legacy` is a display-only compatibility bucket used by the library for deferred and legacy nodes that still need to load safely.
+The system no longer keeps removed cold-storage or legacy source trees in active code.
 
-## Canonical ID Rules
+## Canonical Taxonomy
 
-- Canonical ids must match the node's semantic category.
-  - Good: `spatial.construct.sphere_by_center_radius`
-  - Bad: `spatial.generators.sphere_by_center_radius`
-- Use lowercase snake case for the leaf name.
-  - Good: `torus_blocks`
-  - Bad: `torusblocks`
-- If a node is physically moved to a new package and category, its canonical id must move too.
-- `BaseNode` type ids and `@NodeInfo(id = ...)` must always match the same canonical id.
+Canonical nodes must live under the v1 taxonomy:
 
-## Legacy Rules
+- `input`
+- `reference`
+- `geometry`
+- `transform`
+- `pattern`
+- `material`
+- `world`
+- `output`
+- `math`
 
-- `spatial.legacy` is not a canonical authoring taxonomy. It is a compatibility presentation layer.
-- Nodes may still keep old ids and packages temporarily while appearing under `spatial.legacy` in the library through category overrides.
-- Current legacy buckets include:
-  - `spatial.generators.*_blocks`
-  - deferred `spatial.analysis.*` survivors
-  - deferred `spatial.instancing.*` survivors
-  - deferred `spatial.voxel.*` survivors
-  - deferred `inputs.minecraft.*` survivors
-- Do not add new semantic modeling, construct, analysis, or world-input nodes under old domains just because `spatial.legacy` can display them.
-- Do not add new non-legacy nodes under `spatial.generators`.
+These are the only top-level domains that should be used for new node work.
 
-## Alias Rules
+## ID Rules
 
-- Old ids must be preserved through `NodeRegistry` aliases when a node's canonical id changes.
-- There are two supported alias patterns:
-  - Explicit moved-node aliases
-    - Example: `spatial.generators.sphere_by_center_radius -> spatial.construct.sphere_by_center_radius`
-  - Compact legacy aliases
-    - Example: `spatial.generators.torusblocks -> spatial.generators.torus_blocks`
-- Aliases are maintained in:
-  - `src/main/java/com/nodecraft/nodesystem/registry/NodeRegistry.java`
+- Use lowercase dotted ids such as `geometry.solids.extrude`.
+- Use `snake_case` for the leaf name.
+- `@NodeInfo(id = ...)` and the `BaseNode` type id must always match.
+- Package path, category, and id should point to the same semantic home.
 
-## Asset Compatibility Rules
+## Category Rules
 
-- Loading must accept legacy ids through `NodeRegistry.createNodeInstance(...)`.
-- Saving, clipboard export, history snapshots, and duplicate-node flows must write canonical ids.
-- The current canonical write paths include:
-  - `src/main/java/com/nodecraft/nodesystem/graph/GraphSerializer.java`
-  - `src/main/java/com/nodecraft/gui/editor/impl/ImGuiNodeIO.java`
-  - `src/main/java/com/nodecraft/gui/editor/impl/ImGuiNodeClipboard.java`
-  - `src/main/java/com/nodecraft/gui/editor/impl/ImGuiNodeHistory.java`
-  - `src/main/java/com/nodecraft/gui/editor/impl/ImGuiNodeMenus.java`
+- A node has one canonical home.
+- Do not create new semantic nodes under old domains such as:
+  - `spatial.*`
+  - `visualization.*`
+  - `inputs.*`
+  - `data.*`
+  - `control.*`
+  - `utilities.*`
+- `utilities.assist` and `utilities.organization` are editor-side helpers, not modeling taxonomy extensions.
+
+## Alias Policy
+
+Aliases are now intentionally narrow.
+
+Keep aliases only when all of the following are true:
+
+1. The old id was widely used during this refactor.
+2. The new target is a real canonical v1 node.
+3. The alias helps bridge a direct rename, not an entire removed subsystem.
+
+Examples of acceptable alias families:
+
+- `visualization.* -> output.*`
+- `world.query/world.modification -> world.read/world.write`
+- `inputs.basic/inputs.minecraft -> input.* / world.* / reference.*`
+- `math.basic/math.randomness/math.vector -> math.* / reference.* / transform.*`
+
+Examples that should not be reintroduced:
+
+- removed cold-storage buckets
+- removed legacy compatibility buckets
+- broad `spatial.*` compatibility nets
+- broad `utilities.*`, `data.*`, or `control.flow.*` fallback systems
+
+## Save and Load Rules
+
+- Saving must write canonical ids.
+- Clipboard export must write canonical ids.
+- History snapshots must store canonical ids.
+- Alias resolution is only for loading or interpreting older ids that are still explicitly supported.
 
 ## Registration Rules
 
-- The primary registration path is annotation scanning via:
-  - `src/main/java/com/nodecraft/nodesystem/core/DefaultNodeProvider.java`
-  - `src/main/java/com/nodecraft/nodesystem/core/AutoNodeScanner.java`
-- Manual helper registrars should be considered compatibility-only, not the source of truth.
-- If a manual registrar is still kept, mark it clearly as deprecated compatibility code.
+- Annotation scanning is the primary registration path.
+- `DefaultNodeProvider` should only register real top-level and fallback canonical categories.
+- Do not keep placeholder compatibility categories alive once their source trees are gone.
 
 ## Migration Checklist
 
-When moving or renaming a node:
+When renaming or moving a node:
 
 1. Move the class to the correct package.
-2. Update `@NodeInfo(id = ...)` to the canonical id.
-3. Update the `BaseNode` constructor type id to the same canonical id.
-4. Add old-to-new alias entries in `NodeRegistry`.
-5. Update explicit library ordering in `NodeLibraryComponent` if that node is listed there.
-6. Verify save/export paths will now write the canonical id.
-7. Run `.\gradlew compileJava`.
+2. Update `@NodeInfo(id = ...)`.
+3. Update the `BaseNode` type id.
+4. Update `NodeLibraryComponent` ordering if the node is explicitly ordered.
+5. Add an alias only if the rename meets the narrow alias policy.
+6. Run `.\gradlew.bat compileJava --no-daemon`.
 
-## Do Not
+## Source of Truth
 
-- Do not create new semantic nodes under `spatial.generators`, `spatial.analysis`, `spatial.modeling`, `spatial.instancing`, `spatial.voxel`, or `inputs.minecraft`.
-- Do not introduce new compact ids like `lineblocks` or `torusblocks` as canonical ids.
-- Do not rely on category remapping as a long-term substitute for canonical id migration.
-
-## Current Source of Truth
-
-- Canonical ids and alias compatibility:
-  - `src/main/java/com/nodecraft/nodesystem/registry/NodeRegistry.java`
-- Library category ordering and presentation:
-  - `src/main/java/com/nodecraft/gui/components/NodeLibraryComponent.java`
-- Main registration flow:
-  - `src/main/java/com/nodecraft/nodesystem/core/DefaultNodeProvider.java`
+- taxonomy and alias behavior:
+  - [NodeRegistry.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/registry/NodeRegistry.java)
+- library ordering and category presentation:
+  - [NodeLibraryComponent.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/gui/components/NodeLibraryComponent.java)
+- built-in category registration:
+  - [DefaultNodeProvider.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/core/DefaultNodeProvider.java)

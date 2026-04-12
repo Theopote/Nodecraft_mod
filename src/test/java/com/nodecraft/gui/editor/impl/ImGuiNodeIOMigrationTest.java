@@ -81,7 +81,7 @@ class ImGuiNodeIOMigrationTest {
 
         SavedNode branchNode = new SavedNode();
         branchNode.nodeId = UUID.randomUUID().toString();
-        branchNode.typeId = "control.flow.branch";
+        branchNode.typeId = "logic.if";
         savedGraph.nodes.add(branchNode);
         savedGraph.nodePositions.put(branchNode.nodeId, new com.nodecraft.nodesystem.io.SavedPosition(30.0f, 40.0f));
 

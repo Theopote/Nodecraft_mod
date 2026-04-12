@@ -2,17 +2,15 @@
 
 Last updated: 2026-04-12
 
-## 1. Scope Baseline
+## Scope Baseline
 
-This document is the operational status snapshot for the current node-system refactor.
-
-The product baseline remains:
+The active refactor is still limited to:
 
 - architectural form-making
 - geometric modeling
 - world-grounded construction
 
-The canonical v1 taxonomy remains limited to:
+The canonical top-level taxonomy is:
 
 - `input`
 - `reference`
@@ -24,17 +22,17 @@ The canonical v1 taxonomy remains limited to:
 - `output`
 - `math`
 
-Out of the current v1 mainline:
+Out of scope for the current mainline:
 
 - `animation.*`
 - `flora.*`
 - `world.nbt.*`
 - `world.inventory.*`
-- experimental or out-of-scope utility systems
+- large workflow / scripting / text / file utility systems
 
-## 2. Canonical Mainline Status
+## Active Canonical Paths
 
-The following domains are now active canonical paths in code:
+The codebase currently uses these canonical v1 paths:
 
 - `input.basic`
 - `input.numeric`
@@ -76,106 +74,59 @@ The following domains are now active canonical paths in code:
 - `math.trigonometry`
 - `math.list_sequence`
 
-## 3. Deferred and Legacy Boundaries
+## Removed Compatibility Buckets
 
-Two non-mainline buckets remain valid:
+The following source trees have been physically removed:
 
-### 3.1 `deferred.*`
+- `nodes/deferred`
+- `nodes/utilities/legacy`
 
-Use `deferred.*` for nodes that are intentionally postponed and should not be treated as v1 canonical modeling nodes.
+That removal is intentional.
 
-Current active deferred buckets:
+The node system is no longer organized around cold-storage or legacy buckets. If a node does not belong to the committed v1 framework, it should not stay in the active source tree.
 
-- `deferred.math`
-- `deferred.out_of_scope`
+## Utilities Boundary
 
-Examples:
+`utilities` is no longer a parking lot.
 
-- `deferred.math.math_series`
-- file I/O helpers
-- text processing helpers
-- advanced selectors and scripting helpers
-- workflow / control helpers that are not part of the v1 modeling core
-
-### 3.2 `spatial.legacy`
-
-Use `spatial.legacy` only for backward-compatibility display and loading.
-
-This bucket is not a new feature taxonomy.
-
-It currently holds:
-
-- legacy direct block-output generator ids
-- deferred spatial analysis helpers
-- deferred instancing helpers
-- deferred voxel boolean helpers
-- a small number of deferred old Minecraft input helpers
-
-Source of truth:
-
-- [nodecraft-v1-legacy-inventory.md](/f:/development/NC/nodecraft/docs/nodecraft-v1-legacy-inventory.md)
-
-## 4. Utilities Status
-
-`utilities` is no longer a general parking lot.
-
-The temporary mixed utility domains were already split out as follows:
-
-- migrated into canonical mainline where semantics were clear
-- moved into `deferred.out_of_scope` where the system is outside v1 scope
-
-The only `utilities` domains that should still remain as actual source organization are:
+Only these editor-side utility areas should remain:
 
 - `utilities.assist`
 - `utilities.organization`
-- `utilities.legacy`
 
-This is intentional.
+They are not part of the modeling taxonomy.
 
-Any new node work should not treat `utilities` as a fallback destination.
+## Alias Policy
 
-## 5. Compatibility Strategy
+Compatibility is now limited to a small set of direct old-to-new renames handled in `NodeRegistry`.
 
-Compatibility remains supported through:
+The registry no longer acts as a broad bridge for:
 
-- explicit node id aliases in [NodeRegistry.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/registry/NodeRegistry.java)
-- selective category overrides for `spatial.legacy`
-- a small number of editor/runtime fallbacks for older graph content
+- `deferred.*`
+- removed legacy utility trees
+- large deleted subsystems
 
-Compatibility should preserve loading and migration.
+## Practical Rule Set
 
-Compatibility should not define where new nodes go.
+For future work:
 
-## 6. Practical Rule Set
+1. If a node belongs to the v1 framework, add it directly to its canonical category.
+2. If it does not belong to the framework, do not create a new holding bucket.
+3. If you still need a rename alias, keep it narrow and explicit.
+4. Do not reintroduce migration-only domains as source structure.
 
-For any future node addition or migration:
+## Verification Status
 
-1. If the node belongs to the committed v1 modeling tree, place it directly in its canonical v1 category.
-2. If the node is intentionally postponed, place it under `deferred.*`.
-3. If the node exists only to keep old graphs loadable, route it through legacy compatibility handling rather than treating it as canonical taxonomy.
-4. Do not create new mixed holding areas comparable to the old `utilities` bucket.
-
-## 7. Verification Status
-
-Current verification status as of 2026-04-12:
+Current verification status:
 
 - `.\gradlew.bat compileJava --no-daemon` passes
-- canonical category migration and recent compatibility-layer cleanup compile successfully
+- `.\gradlew.bat testClasses --no-daemon` passes
 
-What still needs separate validation later:
+## Current Source of Truth
 
-- old graph load / save compatibility
-- clipboard migration edge cases
-- runtime node-library behavior across old aliases
-
-## 8. Next-Phase Discipline
-
-The current refactor should no longer be driven by "what old folders still exist".
-
-The correct driver is:
-
-- committed v1 taxonomy
-- explicit deferred scope
-- explicit legacy compatibility scope
-
-Any future expansion beyond this baseline should be treated as a separate product-scope decision, not as unfinished v1 migration.
+- taxonomy and alias behavior:
+  - [NodeRegistry.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/registry/NodeRegistry.java)
+- library ordering and visible categories:
+  - [NodeLibraryComponent.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/gui/components/NodeLibraryComponent.java)
+- built-in category registration:
+  - [DefaultNodeProvider.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/core/DefaultNodeProvider.java)
