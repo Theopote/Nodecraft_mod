@@ -444,6 +444,7 @@ public class NodeLibraryComponent implements EditorComponent {
         geometrySolidsOrder.put("geometry.solids.push_pull_face", 8);
         geometrySolidsOrder.put("geometry.solids.extrude_profile", 9);
         geometrySolidsOrder.put("geometry.solids.extrude_profile_from_points", 10);
+        geometrySolidsOrder.put("geometry.solids.deconstruct_surface_strip", 11);
         return geometrySolidsOrder;
     }
 
@@ -608,7 +609,6 @@ public class NodeLibraryComponent implements EditorComponent {
         spatialLegacyOrder.put("spatial.analysis.select_sphere_band_sector", 21);
         spatialLegacyOrder.put("spatial.analysis.sphere_uv", 22);
         spatialLegacyOrder.put("spatial.analysis.sphere_point_info", 23);
-        spatialLegacyOrder.put("spatial.analysis.deconstruct_surface_strip", 24);
         spatialLegacyOrder.put("spatial.points.point_between_two_points", 25);
         spatialLegacyOrder.put("spatial.points.randomize_coordinates", 26);
         spatialLegacyOrder.put("spatial.voxel.union_coords", 27);
