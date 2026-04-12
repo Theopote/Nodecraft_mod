@@ -140,6 +140,20 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         return new HashSet<>(invalidatedNodeIds);
     }
 
+    private void markGraphStructureDirty() {
+        if (io == null) {
+            return;
+        }
+        invalidatedNodeIds.clear();
+        graphDirtyEpoch++;
+        io.markDirty();
+        NodeCraft.LOGGER.debug("Graph structure dirty. graphDirtyEpoch={}", graphDirtyEpoch);
+    }
+
+    public void notifyGraphStructureChanged() {
+        markGraphStructureDirty();
+    }
+
     /**
      * 初始化节点编辑器，如果当前图为空，则创建一个默认图并添加一些示例节点。
      */
@@ -471,7 +485,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         }
 
         if (moved) {
-            io.markDirty();
+            markGraphStructureDirty();
         }
     }
 
@@ -572,9 +586,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
 
         clearSelectedNodes();
         setSelectedNodeId(rerouteNodeId);
-        if (io != null) {
-            io.markDirty();
-        }
+        markGraphStructureDirty();
 
         NodeCraft.LOGGER.info("已在连接线上插入中继节点: {}({}) -> {} -> {}({})",
                 sourceNodeId, sourcePortId, rerouteNodeId, targetNodeId, targetPortId);
@@ -799,9 +811,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             currentGraph.addNode(node); // 将新创建的节点添加到图中
             nodePositions.put(node.getId(), new NodePosition(x, y));
 
-            if (io != null) {
-                io.markDirty();
-            }
+              markGraphStructureDirty();
 
             // 只有在历史记录启用时才记录历史，避免在撤销/重做操作中重复记录
             if (history != null && history.isRecording()) {
@@ -849,9 +859,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             boolean success = currentGraph.connect(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
 
             if (success) {
-                if (io != null) {
-                    io.markDirty();
-                }
+                  markGraphStructureDirty();
                 // 只有在历史记录启用时才记录历史
                 if (history != null && history.isRecording()) {
                     history.recordAddConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
@@ -940,9 +948,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             boolean result = clipboard.pasteNodes(x, y);
             if (result) {
                 NodeCraft.LOGGER.info("粘贴节点成功");
-                if (io != null) {
-                    io.markDirty();
-                }
+                markGraphStructureDirty();
             } else {
                 NodeCraft.LOGGER.error("粘贴节点失败");
             }
@@ -1183,9 +1189,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
     public boolean cutSelectedNodes() {
         boolean result = clipboard.cutSelectedNodes();
         if (result) {
-            if (io != null) {
-                io.markDirty();
-            }
+            markGraphStructureDirty();
         }
         return result;
     }
@@ -1194,9 +1198,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
     public boolean pasteNodesAt(float x, float y) {
         boolean result = clipboard.pasteNodes(x, y);
         if (result) {
-            if (io != null) {
-                io.markDirty();
-            }
+            markGraphStructureDirty();
         }
         return result;
     }
@@ -1205,9 +1207,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
     public boolean deleteSelectedNodes() {
         boolean result = clipboard.deleteSelectedNodes();
         if (result) {
-            if (io != null) {
-                io.markDirty();
-            }
+            markGraphStructureDirty();
         }
         return result;
     }
@@ -1270,12 +1270,17 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         pendingAutoPreviewVersion = -1L;
         lastAutoPreviewExecutionAt = now;
 
-        autoPreviewExecutor = new NodeExecutor(currentGraph, new ExecutionContext(world, serverPlayer));
+        java.util.Set<UUID> executionScope = hasPendingDirtyExecution && !invalidatedNodeIds.isEmpty()
+                ? new HashSet<>(invalidatedNodeIds)
+                : null;
+        autoPreviewExecutor = new NodeExecutor(currentGraph, new ExecutionContext(world, serverPlayer), executionScope);
         NodeCraft.LOGGER.debug(
-                "自动执行预览图: reason={}, dirtyVersion={}, nodes={}",
+                "自动执行预览图: reason={}, dirtyVersion={}, nodes={}, mode={}, scopeSize={}",
                 triggerReason,
                 executingVersion,
-                currentGraph.getNodes().size()
+                currentGraph.getNodes().size(),
+                executionScope == null ? "full" : "partial",
+                executionScope == null ? 0 : executionScope.size()
         );
         autoPreviewExecutor.executeAsync().thenAccept(result -> {
             if (result) {
@@ -1307,9 +1312,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
                     history.recordRemoveConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
                 }
                 currentGraph.disconnectPorts(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
-                if (io != null) {
-                    io.markDirty();
-                }
+                markGraphStructureDirty();
                 NodeCraft.LOGGER.info("成功断开连接: {}({}) -> {}({})",
                         sourceNode.getDisplayName(), sourcePortId,
                         targetNode.getDisplayName(), targetPortId);
@@ -1364,9 +1367,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             setSelectedNodeId(newNode.getId());
             NodeCraft.LOGGER.info("节点复制成功: {} -> {} (新ID: {})",
                     sourceNode.getDisplayName(), newNode.getDisplayName(), newNode.getId());
-            if (io != null) {
-                io.markDirty();
-            }
+            markGraphStructureDirty();
             // 历史记录会在 addNodeWithState 内部统一记录，这里不再手动记录
             return true;
         } else {
@@ -1468,9 +1469,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         }
         
         // 标记编辑器为脏状态
-        if (io != null) {
-            io.markDirty();
-        }
+        markGraphStructureDirty();
         
         return !wasDisabled; // 返回新状态
     }
@@ -1487,9 +1486,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         
         NodeCraft.LOGGER.debug("设置节点 {} 禁用状态: {}", nodeId, disabled);
         
-        if (io != null) {
-            io.markDirty();
-        }
+        markGraphStructureDirty();
     }
 
     @Override
@@ -1511,9 +1508,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         }
         
         // 标记编辑器为脏状态
-        if (io != null) {
-            io.markDirty();
-        }
+        markGraphStructureDirty();
         
         return !wasHidden; // 返回新状态（true=可见）
     }
@@ -1530,9 +1525,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         
         NodeCraft.LOGGER.debug("设置节点 {} 可见性: {}", nodeId, visible);
         
-        if (io != null) {
-            io.markDirty();
-        }
+        markGraphStructureDirty();
     }
 
     @Override

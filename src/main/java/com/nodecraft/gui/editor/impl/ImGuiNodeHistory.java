@@ -365,11 +365,8 @@ public class ImGuiNodeHistory {
      * 标记编辑器为脏，表示图已修改
      */
     private void markEditorDirty() {
-        if (editor instanceof ImGuiNodeEditor) {
-            ImGuiNodeIO io = editor.getNodeIO();
-            if (io != null) {
-                io.markDirty();
-            }
+        if (editor instanceof ImGuiNodeEditor nodeEditor) {
+            nodeEditor.notifyGraphStructureChanged();
         }
     }
     
