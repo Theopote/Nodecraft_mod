@@ -51,7 +51,6 @@ public class NodeRegistry {
         addAlias(aliases, "spatial.points.rotatecoordinates", "spatial.points.rotate_coordinates");
         addAlias(aliases, "spatial.points.scalecoordinates", "spatial.points.scale_coordinates");
         addAlias(aliases, "spatial.points.mirrorcoordinates", "spatial.points.mirror_coordinates");
-        addAlias(aliases, "spatial.points.randomizecoordinates", "spatial.points.randomize_coordinates");
 
         addMovedNodeAlias(aliases, "spatial.generators.box_center_size", "geometry.primitives.box");
         addMovedNodeAlias(aliases, "spatial.generators.box_corners", "geometry.primitives.box_from_corners");
@@ -60,23 +59,6 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "spatial.generators.sphere_by_diameter", "geometry.primitives.sphere_from_diameter");
         addMovedNodeAlias(aliases, "spatial.generators.push_pull_box_face", "geometry.solids.push_pull_face");
         addMovedNodeAlias(aliases, "spatial.generators.extrude_box_face", "geometry.solids.extrude_box_face");
-        addMovedNodeAlias(aliases, "spatial.generators.grow_along_normals", "spatial.instancing.grow_along_normals");
-        addMovedNodeAlias(aliases, "spatial.generators.grow_along_sphere_normal", "spatial.instancing.grow_along_sphere_normal");
-
-        addCompactLegacyAlias(aliases, "spatial.generators.line_blocks");
-        addCompactLegacyAlias(aliases, "spatial.generators.rectangle_blocks");
-        addCompactLegacyAlias(aliases, "spatial.generators.box_blocks");
-        addCompactLegacyAlias(aliases, "spatial.generators.circle_sphere_blocks");
-        addCompactLegacyAlias(aliases, "spatial.generators.cylinder_blocks");
-        addCompactLegacyAlias(aliases, "spatial.generators.polyline_blocks");
-        addCompactLegacyAlias(aliases, "spatial.generators.curve_blocks");
-        addCompactLegacyAlias(aliases, "spatial.generators.ellipsoid_blocks");
-        addCompactLegacyAlias(aliases, "spatial.generators.cone_blocks");
-        addCompactLegacyAlias(aliases, "spatial.generators.torus_blocks");
-        addCompactLegacyAlias(aliases, "spatial.generators.octahedron_blocks");
-        addCompactLegacyAlias(aliases, "spatial.generators.tetrahedron_blocks");
-        addCompactLegacyAlias(aliases, "spatial.generators.triangular_pyramid_blocks");
-        addCompactLegacyAlias(aliases, "spatial.generators.triangular_prism_blocks");
 
         addMovedNodeAlias(aliases, "visualization.preview.geometry_viewer", "output.preview.geometry_viewer");
         addMovedNodeAlias(aliases, "visualization.preview.preview_geometry", "output.preview.preview_geometry");
@@ -145,7 +127,6 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "math.basic.remap", "math.scalar_math.remap");
         addMovedNodeAlias(aliases, "math.basic.round", "math.scalar_math.round");
         addMovedNodeAlias(aliases, "math.basic.subtraction", "math.scalar_math.subtraction");
-        addMovedNodeAlias(aliases, "math.basic.series", "deferred.math.math_series");
         addMovedNodeAlias(aliases, "math.randomness.random_number", "math.random.random_number");
         addMovedNodeAlias(aliases, "math.randomness.random_list_item", "math.random.random_list_item");
         addMovedNodeAlias(aliases, "math.randomness.random_vector", "math.random.random_vector");
@@ -161,42 +142,8 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "utilities.flow_control.branch", "math.logic.if");
         addMovedNodeAlias(aliases, "utilities.flow_control.switch_select", "math.logic.switch");
         addMovedNodeAlias(aliases, "utilities.flow_control.compare", "math.compare.compare");
-        addMovedNodeAlias(aliases, "utilities.flow_control.for_each", "deferred.out_of_scope.for_each");
-        addMovedNodeAlias(aliases, "utilities.flow_control.geometry_gate", "deferred.out_of_scope.geometry_gate");
-        addMovedNodeAlias(aliases, "utilities.flow_control.geometry_merge", "deferred.out_of_scope.geometry_merge");
-        addMovedNodeAlias(aliases, "utilities.flow_control.geometry_passthrough", "deferred.out_of_scope.geometry_passthrough");
-        addMovedNodeAlias(aliases, "utilities.flow_control.geometry_switch", "deferred.out_of_scope.geometry_switch");
         addMovedNodeAlias(aliases, "utilities.data_conversion.coordinate_to_vector", "reference.points.block_to_vector");
         addMovedNodeAlias(aliases, "utilities.data_conversion.vector_to_coordinate", "world.selection.snap_vector_to_block");
-        addMovedNodeAlias(aliases, "utilities.data_conversion.number_to_boolean", "deferred.out_of_scope.number_to_boolean");
-        addMovedNodeAlias(aliases, "utilities.data_conversion.number_to_integer", "deferred.out_of_scope.number_to_integer");
-        addMovedNodeAlias(aliases, "utilities.data_conversion.text_to_value", "deferred.out_of_scope.text_to_value");
-        addMovedNodeAlias(aliases, "utilities.data_conversion.color_to_components", "deferred.out_of_scope.color_to_components");
-        addMovedNodeAlias(aliases, "utilities.data_conversion.components_to_color", "deferred.out_of_scope.components_to_color");
-        addMovedNodeAlias(aliases, "utilities.selectors.effect_type_selector", "deferred.out_of_scope.effect_type_selector");
-        addMovedNodeAlias(aliases, "utilities.selectors.entity_type_selector", "deferred.out_of_scope.entity_type_selector");
-        addMovedNodeAlias(aliases, "utilities.selectors.item_type_selector", "deferred.out_of_scope.item_type_selector");
-        addMovedNodeAlias(aliases, "utilities.selectors.sound_event_selector", "deferred.out_of_scope.sound_event_selector");
-        addMovedNodeAlias(aliases, "utilities.advanced.eval_expression", "deferred.out_of_scope.eval_expression");
-        addMovedNodeAlias(aliases, "utilities.advanced.filter_by_attribute", "deferred.out_of_scope.filter_by_attribute");
-        addMovedNodeAlias(aliases, "utilities.advanced.get_attribute", "deferred.out_of_scope.get_attribute");
-        addMovedNodeAlias(aliases, "utilities.advanced.node_group", "deferred.out_of_scope.node_group");
-        addMovedNodeAlias(aliases, "utilities.advanced.script", "deferred.out_of_scope.script");
-        addMovedNodeAlias(aliases, "utilities.advanced.set_attribute", "deferred.out_of_scope.set_attribute");
-        addMovedNodeAlias(aliases, "utilities.fileio.file_path", "deferred.out_of_scope.file_path");
-        addMovedNodeAlias(aliases, "utilities.fileio.load_graph", "deferred.out_of_scope.load_graph");
-        addMovedNodeAlias(aliases, "utilities.fileio.save_graph", "deferred.out_of_scope.save_graph");
-        addMovedNodeAlias(aliases, "utilities.fileio.read_data_file", "deferred.out_of_scope.read_data_file");
-        addMovedNodeAlias(aliases, "utilities.fileio.read_text_file", "deferred.out_of_scope.read_text_file");
-        addMovedNodeAlias(aliases, "utilities.fileio.write_data_file", "deferred.out_of_scope.write_data_file");
-        addMovedNodeAlias(aliases, "utilities.fileio.write_text_file", "deferred.out_of_scope.write_text_file");
-        addMovedNodeAlias(aliases, "utilities.fileio.text_panel", "deferred.out_of_scope.text_panel");
-        addMovedNodeAlias(aliases, "utilities.text_processing.concatenate", "deferred.out_of_scope.concatenate_text");
-        addMovedNodeAlias(aliases, "utilities.text_processing.find_replace", "deferred.out_of_scope.find_replace_text");
-        addMovedNodeAlias(aliases, "utilities.text_processing.format", "deferred.out_of_scope.format_text");
-        addMovedNodeAlias(aliases, "utilities.text_processing.join", "deferred.out_of_scope.join_text");
-        addMovedNodeAlias(aliases, "utilities.text_processing.split", "deferred.out_of_scope.split_text");
-        addMovedNodeAlias(aliases, "utilities.text_processing.length", "deferred.out_of_scope.text_length");
         addMovedNodeAlias(aliases, "math.trigonometry.sine", "math.trigonometry.sin");
         addMovedNodeAlias(aliases, "math.trigonometry.cosine", "math.trigonometry.cos");
         addMovedNodeAlias(aliases, "math.trigonometry.tangent", "math.trigonometry.tan");
@@ -325,16 +272,6 @@ public class NodeRegistry {
         addAlias(aliases, legacyId, canonicalId);
     }
 
-    private static void addCompactLegacyAlias(Map<String, String> aliases, String canonicalId) {
-        int lastDot = canonicalId.lastIndexOf('.');
-        if (lastDot < 0 || lastDot >= canonicalId.length() - 1) {
-            return;
-        }
-        String prefix = canonicalId.substring(0, lastDot + 1);
-        String leaf = canonicalId.substring(lastDot + 1);
-        addAlias(aliases, prefix + leaf.replace("_", ""), canonicalId);
-    }
-
     private static Map<String, String> createNodeCategoryOverrides() {
         return Map.of();
     }
@@ -359,34 +296,14 @@ public class NodeRegistry {
             case "data.sequence.repeat" -> {
                 return "math.list_sequence.repeat";
             }
-            case "data.sequence.series" -> {
-                return "deferred.math.math_series";
-            }
-        }
-        if (nodeId.startsWith("data.conversion.")) {
-            return "deferred.out_of_scope." + nodeId.substring("data.conversion.".length());
-        }
-        if (nodeId.startsWith("data.text.")) {
-            return "deferred.out_of_scope." + nodeId.substring("data.text.".length());
         }
         if (nodeId.startsWith("inputs.basic.")) {
             return "input.basic." + nodeId.substring("inputs.basic.".length());
-        }
-        if (nodeId.startsWith("inputs.selectors.")) {
-            return "deferred.out_of_scope." + nodeId.substring("inputs.selectors.".length());
-        }
-        if (nodeId.startsWith("inputs.sources.")) {
-            return "deferred.out_of_scope." + nodeId.substring("inputs.sources.".length());
         }
         return switch (nodeId) {
             case "control.flow.compare" -> "math.compare.compare";
             case "control.flow.branch" -> "math.logic.if";
             case "control.flow.switch", "control.flow.switch_select" -> "math.logic.switch";
-            case "control.flow.for_each" -> "deferred.out_of_scope.for_each";
-            case "control.flow.geometry_gate" -> "deferred.out_of_scope.geometry_gate";
-            case "control.flow.geometry_merge" -> "deferred.out_of_scope.geometry_merge";
-            case "control.flow.geometry_passthrough" -> "deferred.out_of_scope.geometry_passthrough";
-            case "control.flow.geometry_switch" -> "deferred.out_of_scope.geometry_switch";
             case "inputs.minecraft.selected_entity" -> "world.selection.selected_entity";
             case "inputs.minecraft.selected_block_sequence" -> "world.selection.selected_block_sequence";
             default -> nodeId;
@@ -406,30 +323,7 @@ public class NodeRegistry {
         if (isListSequenceMigrationTarget(normalizedNodeId, normalizedCategoryId)) {
             return "math.list_sequence";
         }
-        if (isOutOfScopeCategory(normalizedCategoryId)) {
-            return "deferred.out_of_scope";
-        }
-        if ("spatial.generators".equals(normalizedCategoryId) && isLegacyDirectOutputNode(normalizedNodeId)) {
-            return "spatial.legacy";
-        }
         return normalizedCategoryId;
-    }
-
-    private boolean isOutOfScopeCategory(String normalizedCategoryId) {
-        return normalizedCategoryId.startsWith("animation")
-            || normalizedCategoryId.startsWith("inputs")
-            || normalizedCategoryId.startsWith("data")
-            || normalizedCategoryId.startsWith("control.flow")
-            || normalizedCategoryId.startsWith("flora")
-            || normalizedCategoryId.startsWith("spatial.sdf")
-            || normalizedCategoryId.startsWith("world.entity")
-            || normalizedCategoryId.startsWith("world.interaction")
-            || normalizedCategoryId.startsWith("world.nbt")
-            || normalizedCategoryId.startsWith("world.inventory")
-            || normalizedCategoryId.startsWith("utilities.advanced")
-            || normalizedCategoryId.startsWith("utilities.fileio")
-            || normalizedCategoryId.startsWith("utilities.experimental")
-            || normalizedCategoryId.startsWith("workflow.experimental");
     }
 
     private boolean isListSequenceMigrationTarget(String normalizedNodeId, String normalizedCategoryId) {
@@ -438,22 +332,8 @@ public class NodeRegistry {
             || "data.sequence.repeat".equals(normalizedNodeId);
     }
 
-    private boolean isLegacyDirectOutputNode(String normalizedNodeId) {
-        return normalizedNodeId.endsWith("_blocks")
-            || normalizedNodeId.endsWith("blocks")
-            || normalizedNodeId.contains(".circle_sphere_blocks")
-            || normalizedNodeId.contains(".line_blocks")
-            || normalizedNodeId.contains(".polyline_blocks")
-            || normalizedNodeId.contains(".curve_blocks");
-    }
-
     private String remapDescription(String targetCategoryId, String description) {
-        String safeDescription = description == null ? "" : description;
-        if (!"spatial.legacy".equals(targetCategoryId)) {
-            return safeDescription;
-        }
-        String prefix = "Legacy compatibility node. ";
-        return safeDescription.startsWith(prefix) ? safeDescription : prefix + safeDescription;
+        return description == null ? "" : description;
     }
 
     /**

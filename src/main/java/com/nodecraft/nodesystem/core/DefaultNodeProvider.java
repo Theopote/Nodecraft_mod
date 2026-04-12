@@ -51,11 +51,7 @@ public class DefaultNodeProvider implements INodeProvider {
         registry.registerCategory(new NodeRegistry.NodeCategory("output", "Output & Execution"));
         registry.registerCategory(new NodeRegistry.NodeCategory("pattern", "Pattern"));
         registry.registerCategory(new NodeRegistry.NodeCategory("reference", "Reference"));
-        registry.registerCategory(new NodeRegistry.NodeCategory("spatial", "Legacy Compatibility"));
-        registry.registerCategory(new NodeRegistry.NodeCategory("spatial.legacy", "Legacy Compatibility Debt"));
         registry.registerCategory(new NodeRegistry.NodeCategory("transform", "Transform"));
-        registry.registerCategory(new NodeRegistry.NodeCategory("deferred", "Deferred"));
-        registry.registerCategory(new NodeRegistry.NodeCategory("deferred.out_of_scope", "Deferred Scope (Out Of V1)"));
         registry.registerCategory(new NodeRegistry.NodeCategory("utilities", "Utilities & Workflow"));
         registry.registerCategory(new NodeRegistry.NodeCategory("utilities.assist", "Assist & Reroute"));
         registry.registerCategory(new NodeRegistry.NodeCategory("world", "World Interaction"));
@@ -103,9 +99,6 @@ public class DefaultNodeProvider implements INodeProvider {
         registry.registerCategory(new NodeRegistry.NodeCategory("math.random", "Random"));
         registry.registerCategory(new NodeRegistry.NodeCategory("math.scalar_math", "Scalar Math"));
         registry.registerCategory(new NodeRegistry.NodeCategory("math.trigonometry", "Trigonometry"));
-        registry.registerCategory(new NodeRegistry.NodeCategory("deferred.math", "Deferred Math"));
-        registry.registerCategory(new NodeRegistry.NodeCategory("deferred.out_of_scope", "Deferred Scope (Out Of V1)"));
-        registry.registerCategory(new NodeRegistry.NodeCategory("spatial.legacy", "Legacy Compatibility Debt"));
 
         // Example node implementations are intentionally not registered here.
         NodeCraft.LOGGER.info("Fallback categories registered. Example node implementations are not provided by this provider.");
