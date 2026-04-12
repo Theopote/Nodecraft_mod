@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class NodeDataTypeConnectabilityTest {
 
@@ -53,5 +54,30 @@ class NodeDataTypeConnectabilityTest {
 
         String compatibleReason = NodeDataType.getConnectabilityRejectionReason(NodeDataType.COORDINATE, NodeDataType.BLOCK_POS);
         assertNull(compatibleReason);
+    }
+
+    @Test
+    void pointToBlockCoordinateRequiresExplicitConversionNode() {
+        assertFalse(NodeDataType.isConnectableTo(NodeDataType.POINT, NodeDataType.BLOCK_POS));
+        assertEquals(
+                TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
+                TypeConversionRegistry.classify(NodeDataType.POINT, NodeDataType.BLOCK_POS)
+        );
+    }
+
+    @Test
+    void geometryToPlacementRequiresExplicitConversionNode() {
+        assertFalse(NodeDataType.isConnectableTo(NodeDataType.GEOMETRY, NodeDataType.BLOCK_PLACEMENT_LIST));
+        assertEquals(
+                TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
+                TypeConversionRegistry.classify(NodeDataType.GEOMETRY, NodeDataType.BLOCK_PLACEMENT_LIST)
+        );
+    }
+
+    @Test
+    void explicitConversionReasonIsReturnedForSupportedButNonImplicitPairs() {
+        String reason = NodeDataType.getConnectabilityRejectionReason(NodeDataType.BOX_FACE, NodeDataType.PLANE);
+        assertNotNull(reason);
+        assertTrue(reason.contains("explicit conversion node required"));
     }
 }

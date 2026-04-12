@@ -42,7 +42,7 @@ public final class TypeConversionRegistry {
             return ConversionPolicy.IMPLICIT_SAFE;
         }
 
-        if (requiresExplicitConversion(output, input)) {
+        if (isExplicitConversionPair(output, input)) {
             return ConversionPolicy.EXPLICIT_REQUIRED;
         }
 
@@ -68,7 +68,7 @@ public final class TypeConversionRegistry {
         };
     }
 
-    private static boolean requiresExplicitConversion(NodeDataType outputType, NodeDataType inputType) {
+    private static boolean isExplicitConversionPair(NodeDataType outputType, NodeDataType inputType) {
         return isPointToBlockCoordinateConversion(outputType, inputType)
                 || isBlockFaceToPlaneConversion(outputType, inputType)
                 || isSurfaceStripToGeometryConversion(outputType, inputType)
