@@ -273,10 +273,7 @@ public class NodeLibraryComponent implements EditorComponent {
     }
 
     private static @NonNull Map<String, Integer> getMathListSequenceOrder() {
-        Map<String, Integer> mathListSequenceOrder = new HashMap<>();
-        mathListSequenceOrder.put("math.list_sequence.create_list", 0);
-        mathListSequenceOrder.put("math.list_sequence.range", 1);
-        return mathListSequenceOrder;
+        return new HashMap<>();
     }
 
     private static @NonNull Map<String, Integer> getMathCompareOrder() {

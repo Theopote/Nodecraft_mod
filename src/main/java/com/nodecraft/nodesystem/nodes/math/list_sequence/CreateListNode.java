@@ -2,11 +2,11 @@ package com.nodecraft.nodesystem.nodes.math.list_sequence;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.gui.editor.impl.ZoomHelper;
-import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.IPort;
+import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
@@ -15,60 +15,76 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
- * 列表创建节点，将多个输入项打包成一个List。
- * 提供+/-按钮来动态调整输入端口数量。
+ * Dynamic list builder node with add/remove controls for input ports.
  */
 @NodeInfo(
     id = "math.list_sequence.create_list",
-    displayName = "创建列表",
-    description = "将多个输入项打包成一个列表",
-    category = "math.list_sequence"
+    displayName = "Create List",
+    description = "Packs multiple input items into a single list.",
+    category = "math.list_sequence",
+    order = 0
 )
 public class CreateListNode extends BaseCustomUINode {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CreateListNode.class);
-    
-    @NodeProperty(displayName = "输入数量", category = "设置", order = 1,
-                  description = "列表输入端口数量")
-    private volatile int inputCount = 3;
-    
-    @NodeProperty(displayName = "允许不同类型", category = "设置", order = 2,
-                  description = "是否允许不同类型的输入")
-    private boolean allowDifferentTypes = true;
-    
     private static final String OUTPUT_LIST_ID = "output_list";
-    
+    private static final int MIN_INPUT_COUNT = 1;
+    private static final int MAX_INPUT_COUNT = 20;
+
+    @NodeProperty(
+        displayName = "Input Count",
+        category = "Settings",
+        order = 1,
+        description = "Number of dynamic list input ports."
+    )
+    private volatile int inputCount = 3;
+
+    @NodeProperty(
+        displayName = "Allow Mixed Types",
+        category = "Settings",
+        order = 2,
+        description = "Whether the node accepts mixed input types."
+    )
+    private boolean allowDifferentTypes = true;
+
     public CreateListNode() {
         super(UUID.randomUUID(), "math.list_sequence.create_list");
         rebuildInputPorts();
-        
-        addOutputPort(new BasePort(OUTPUT_LIST_ID, "List", 
-                "The resulting list containing all input items", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(
+            OUTPUT_LIST_ID,
+            "List",
+            "The resulting list containing all input items",
+            NodeDataType.LIST,
+            this
+        ));
     }
-    
+
     @Override
-    public String getDescription() { return "将多个输入项打包成一个列表"; }
-    
+    public String getDescription() {
+        return "Packs multiple input items into a single list.";
+    }
+
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Object> resultList = new ArrayList<>();
         for (int i = 0; i < inputCount; i++) {
-            Object value = inputValues.get("input_" + i);
-            if (value != null) resultList.add(value);
+            Object value = inputValues.get(inputPortId(i));
+            if (value != null) {
+                resultList.add(value);
+            }
         }
         outputValues.put(OUTPUT_LIST_ID, resultList);
     }
-    
+
     @Override
     protected float calculateUIHeight() {
-        float height = getMediumPadding();
-        height += ImGui.getFrameHeight(); // +/- 按钮行
-        height += getMediumPadding();
-        return height;
+        return getMediumPadding() + ImGui.getFrameHeight() + getMediumPadding();
     }
 
     @Override
@@ -78,100 +94,124 @@ public class CreateListNode extends BaseCustomUINode {
 
     @Override
     protected boolean renderCustomUIScaled(float width, float height, float zoom) {
-        return layout(zoom, l -> {
+        return layout(zoom, layout -> {
             boolean changed = false;
             try {
-                float availableWidth = l.getAvailableContentWidth(width);
-                l.addVerticalSpacing(getMediumPadding());
-                
-                // === +/- 按钮 ===
+                layout.addVerticalSpacing(getMediumPadding());
+
                 float buttonWidth = ZoomHelper.applyZoom(40f, zoom);
-                
-                // 减号按钮
-                boolean canRemove = inputCount > 1;
-                if (!canRemove) {
-                    ImGui.pushStyleColor(ImGuiCol.Button, 0.3f, 0.3f, 0.3f, 0.5f);
-                    ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 0.5f);
-                }
-                if (ImGui.button(" - ##remove", buttonWidth, 0) && canRemove) {
+                boolean canRemove = inputCount > MIN_INPUT_COUNT;
+                boolean canAdd = inputCount < MAX_INPUT_COUNT;
+
+                pushDisabledButtonStyle(!canRemove);
+                if (ImGui.button("-##remove", buttonWidth, 0) && canRemove) {
                     inputCount--;
                     rebuildInputPorts();
                     markDirty();
                     changed = true;
                 }
-                if (!canRemove) {
-                    ImGui.popStyleColor(2);
-                }
-                
+                popDisabledButtonStyle(!canRemove);
+
                 ImGui.sameLine();
-                
-                // 加号按钮
-                boolean canAdd = inputCount < 20;
-                if (!canAdd) {
-                    ImGui.pushStyleColor(ImGuiCol.Button, 0.3f, 0.3f, 0.3f, 0.5f);
-                    ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 0.5f);
-                }
-                if (ImGui.button(" + ##add", buttonWidth, 0) && canAdd) {
+
+                pushDisabledButtonStyle(!canAdd);
+                if (ImGui.button("+##add", buttonWidth, 0) && canAdd) {
                     inputCount++;
                     rebuildInputPorts();
                     markDirty();
                     changed = true;
                 }
-                if (!canAdd) {
-                    ImGui.popStyleColor(2);
-                }
-                
-                l.addVerticalSpacing(getMediumPadding());
+                popDisabledButtonStyle(!canAdd);
+
+                layout.addVerticalSpacing(getMediumPadding());
             } catch (Exception e) {
-                LOGGER.error("CreateListNode UI渲染失败", e);
+                LOGGER.error("Failed to render CreateListNode UI", e);
             }
             return changed;
         });
     }
-    
+
     private void rebuildInputPorts() {
         inputPorts.clear();
         for (int i = 0; i < inputCount; i++) {
-            String portId = "input_" + i;
-            IPort inputPort = new BasePort(portId, "Item " + (i + 1), 
-                    "Item to add to the list", NodeDataType.ANY, this);
+            IPort inputPort = new BasePort(
+                inputPortId(i),
+                "Item " + (i + 1),
+                "Item to add to the output list",
+                allowDifferentTypes ? NodeDataType.ANY : NodeDataType.STRING,
+                this
+            );
             addInputPort(inputPort);
         }
         invalidateCache();
     }
-    
-    public int getInputCount() { return inputCount; }
-    
+
+    private String inputPortId(int index) {
+        return "input_" + index;
+    }
+
+    private void pushDisabledButtonStyle(boolean disabled) {
+        if (!disabled) {
+            return;
+        }
+        ImGui.pushStyleColor(ImGuiCol.Button, 0.3f, 0.3f, 0.3f, 0.5f);
+        ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 0.5f);
+    }
+
+    private void popDisabledButtonStyle(boolean disabled) {
+        if (disabled) {
+            ImGui.popStyleColor(2);
+        }
+    }
+
+    public int getInputCount() {
+        return inputCount;
+    }
+
     public void setInputCount(int count) {
-        if (count > 0 && count != inputCount) {
-            inputCount = count;
+        int clamped = Math.max(MIN_INPUT_COUNT, Math.min(MAX_INPUT_COUNT, count));
+        if (clamped != inputCount) {
+            inputCount = clamped;
             rebuildInputPorts();
             markDirty();
         }
     }
-    
-    public boolean isAllowDifferentTypes() { return allowDifferentTypes; }
-    public void setAllowDifferentTypes(boolean allow) { this.allowDifferentTypes = allow; }
-    
+
+    public boolean isAllowDifferentTypes() {
+        return allowDifferentTypes;
+    }
+
+    public void setAllowDifferentTypes(boolean allow) {
+        if (this.allowDifferentTypes != allow) {
+            this.allowDifferentTypes = allow;
+            rebuildInputPorts();
+            markDirty();
+        }
+    }
+
     @Override
     public Object getNodeState() {
-        java.util.Map<String, Object> state = new java.util.HashMap<>();
+        Map<String, Object> state = new HashMap<>();
         state.put("inputCount", getInputCount());
         state.put("allowDifferentTypes", isAllowDifferentTypes());
         return state;
     }
-    
+
     @Override
     public void setNodeState(Object state) {
-        if (state instanceof java.util.Map<?, ?> m) {
-            if (m.containsKey("allowDifferentTypes")) {
-                Object v = m.get("allowDifferentTypes");
-                if (v instanceof Boolean) setAllowDifferentTypes((Boolean) v);
+        if (state instanceof Map<?, ?> map) {
+            Object allowMixed = map.get("allowDifferentTypes");
+            if (allowMixed instanceof Boolean value) {
+                this.allowDifferentTypes = value;
             }
-            if (m.containsKey("inputCount")) {
-                Object v = m.get("inputCount");
-                if (v instanceof Integer) setInputCount((Integer) v);
+
+            Object count = map.get("inputCount");
+            if (count instanceof Integer value) {
+                this.inputCount = Math.max(MIN_INPUT_COUNT, Math.min(MAX_INPUT_COUNT, value));
             }
+
+            rebuildInputPorts();
+            markDirty();
         }
     }
 }
