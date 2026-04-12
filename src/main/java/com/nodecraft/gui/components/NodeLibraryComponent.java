@@ -193,8 +193,9 @@ public class NodeLibraryComponent implements EditorComponent {
         worldSelectionOrder.put("world.selection.selected_block", 0);
         worldSelectionOrder.put("world.selection.selected_region", 1);
         worldSelectionOrder.put("world.selection.snap_point_to_block", 2);
-        worldSelectionOrder.put("world.selection.snap_points_to_blocks", 3);
-        worldSelectionOrder.put("world.selection.point_to_block_if_grid", 4);
+        worldSelectionOrder.put("world.selection.snap_vector_to_block", 3);
+        worldSelectionOrder.put("world.selection.snap_points_to_blocks", 4);
+        worldSelectionOrder.put("world.selection.point_to_block_if_grid", 5);
         return worldSelectionOrder;
     }
 
@@ -213,17 +214,18 @@ public class NodeLibraryComponent implements EditorComponent {
         referencePointsOrder.put("reference.points.point_from_coordinates", 0);
         referencePointsOrder.put("reference.points.point_from_block", 1);
         referencePointsOrder.put("reference.points.point_along_vector", 2);
-        referencePointsOrder.put("reference.points.deconstruct_point", 3);
-        referencePointsOrder.put("reference.points.mid_point", 4);
-        referencePointsOrder.put("reference.points.distance_between_points", 5);
-        referencePointsOrder.put("reference.points.closest_point", 6);
-        referencePointsOrder.put("reference.points.point_list_center", 7);
-        referencePointsOrder.put("reference.points.point_list_bounds", 8);
-        referencePointsOrder.put("reference.points.get_box_corner", 9);
-        referencePointsOrder.put("reference.points.get_box_face", 10);
-        referencePointsOrder.put("reference.points.get_face_edge", 11);
-        referencePointsOrder.put("reference.points.deconstruct_face", 12);
-        referencePointsOrder.put("reference.points.deconstruct_edge", 13);
+        referencePointsOrder.put("reference.points.block_to_vector", 3);
+        referencePointsOrder.put("reference.points.deconstruct_point", 4);
+        referencePointsOrder.put("reference.points.mid_point", 5);
+        referencePointsOrder.put("reference.points.distance_between_points", 6);
+        referencePointsOrder.put("reference.points.closest_point", 7);
+        referencePointsOrder.put("reference.points.point_list_center", 8);
+        referencePointsOrder.put("reference.points.point_list_bounds", 9);
+        referencePointsOrder.put("reference.points.get_box_corner", 10);
+        referencePointsOrder.put("reference.points.get_box_face", 11);
+        referencePointsOrder.put("reference.points.get_face_edge", 12);
+        referencePointsOrder.put("reference.points.deconstruct_face", 13);
+        referencePointsOrder.put("reference.points.deconstruct_edge", 14);
         return referencePointsOrder;
     }
 

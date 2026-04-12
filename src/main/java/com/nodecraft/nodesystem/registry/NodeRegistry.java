@@ -160,6 +160,8 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "utilities.flow_control.branch", "math.logic.if");
         addMovedNodeAlias(aliases, "utilities.flow_control.switch_select", "math.logic.switch");
         addMovedNodeAlias(aliases, "utilities.flow_control.compare", "math.compare.compare");
+        addMovedNodeAlias(aliases, "utilities.data_conversion.coordinate_to_vector", "reference.points.block_to_vector");
+        addMovedNodeAlias(aliases, "utilities.data_conversion.vector_to_coordinate", "world.selection.snap_vector_to_block");
         addMovedNodeAlias(aliases, "math.trigonometry.sine", "math.trigonometry.sin");
         addMovedNodeAlias(aliases, "math.trigonometry.cosine", "math.trigonometry.cos");
         addMovedNodeAlias(aliases, "math.trigonometry.tangent", "math.trigonometry.tan");
