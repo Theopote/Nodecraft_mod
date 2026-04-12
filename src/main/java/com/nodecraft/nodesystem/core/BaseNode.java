@@ -109,7 +109,7 @@ public abstract class BaseNode implements INode {
     @Override
     public Map<String, Object> compute(Map<String, Object> inputs) {
         refreshInputValues(inputs);
-        processNode(null);
+        processNode();
         syncOutputPorts();
         clearDirty();
         return new HashMap<>(outputValues);
@@ -132,10 +132,23 @@ public abstract class BaseNode implements INode {
         }
     }
 
+    /**
+     * Context-free execution entry point.
+     *
+     * <p>Nodes that do not need world/player context can override this method.
+     * The default behavior delegates to the context-aware variant with
+     * {@code null}.</p>
+     */
     protected void processNode() {
         processNode(null);
     }
 
+    /**
+     * Context-aware execution entry point.
+     *
+     * <p>World-aware nodes should implement this method and handle a nullable
+     * context defensively when they also support editor-side preview execution.</p>
+     */
     public abstract void processNode(ExecutionContext context);
 
     @Override
