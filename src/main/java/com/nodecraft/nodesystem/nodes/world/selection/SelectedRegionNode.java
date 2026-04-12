@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.selection;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
+import com.nodecraft.nodesystem.interaction.AreaPreviewStyleSettings;
 import com.nodecraft.nodesystem.interaction.NodeEditorInteractionManager;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -493,25 +494,25 @@ public class SelectedRegionNode extends BaseCustomUINode {
     }
 
     private PreviewOptions createCompletedRegionPreviewOptions() {
-        NodeEditorInteractionManager manager = NodeEditorInteractionManager.getInstance();
-        boolean showFill = manager.isAreaPreviewShowFill();
-        boolean showOutline = manager.isAreaPreviewShowOutline();
+        AreaPreviewStyleSettings style = NodeEditorInteractionManager.getInstance().getAreaPreviewStyle();
+        boolean showFill = style.isShowFill();
+        boolean showOutline = style.isShowOutline();
         if (!showFill && !showOutline) {
             showOutline = true;
         }
 
-        float[] outlineColor = manager.getAreaPreviewOutlineColor();
-        float[] fillColor = manager.getAreaPreviewFillColor();
+        float[] outlineColor = style.getOutlineColor();
+        float[] fillColor = style.getFillColor();
 
         PreviewOptions options = new PreviewOptions()
             .setColor(outlineColor[0], outlineColor[1], outlineColor[2])
             .setTintColor(fillColor[0], fillColor[1], fillColor[2])
-            .setOpacity(Math.max(0.32f, manager.getAreaPreviewOpacity()))
-            .setLineWidth(Math.max(2.2f, manager.getAreaPreviewLineWidth()))
+            .setOpacity(Math.max(0.32f, style.getOpacity()))
+            .setLineWidth(Math.max(2.2f, style.getLineWidth()))
             .setShowFill(showFill)
             .setShowOutline(showOutline);
 
-        if (manager.isAreaPreviewEnablePulse()) {
+        if (style.isEnablePulse()) {
             options.enablePulse();
         }
 
@@ -557,9 +558,10 @@ public class SelectedRegionNode extends BaseCustomUINode {
             }
         }
 
+        AreaPreviewStyleSettings areaStyle = NodeEditorInteractionManager.getInstance().getAreaPreviewStyle();
         PreviewOptions options = createCompletedRegionPreviewOptions()
-            .setLineWidth(Math.max(2.2f, NodeEditorInteractionManager.getInstance().getAreaPreviewLineWidth()))
-            .setOpacity(Math.max(0.3f, NodeEditorInteractionManager.getInstance().getAreaPreviewOpacity()));
+            .setLineWidth(Math.max(2.2f, areaStyle.getLineWidth()))
+            .setOpacity(Math.max(0.3f, areaStyle.getOpacity()));
 
         if (completedBlocksPreviewId == null) {
             completedBlocksPreviewId = PreviewManager.highlightBlocks(getId().toString(), blocks, options);

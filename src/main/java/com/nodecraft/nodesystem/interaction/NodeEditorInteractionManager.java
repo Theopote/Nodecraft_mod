@@ -22,8 +22,9 @@ import java.util.HashMap;
  * 节点编辑器交互编排：交互状态机、悬停高亮、每帧 update 与拾取请求 API。
  * <p>
  * 职责已拆分：{@link EditorModeCameraService}（编辑视图 / 中键视角）、
- * {@link WorldPickingService}（鼠标射线、方块 raycast、射线缓存）。
- * 本类仍负责交互模式 handler、区域预览样式与 ImGui/世界输入门控。
+ * {@link WorldPickingService}（鼠标射线、方块 raycast、射线缓存）、
+ * {@link AreaPreviewStyleSettings}（区域框选预览样式）。
+ * 本类仍负责交互模式 handler 与 ImGui/世界输入门控。
  * <p>
  * 单例，保证全局唯一交互状态。
  */
@@ -31,6 +32,7 @@ public class NodeEditorInteractionManager {
 
     private final WorldPickingService worldPicking = new WorldPickingService();
     private final EditorModeCameraService editorModeCamera = new EditorModeCameraService();
+    private final AreaPreviewStyleSettings areaPreviewStyle = new AreaPreviewStyleSettings();
 
     private Coordinate hoveredBlockCoordinate = null;
     private String hoverPreviewId = null; // 用于存储高亮预览的唯一ID
@@ -44,19 +46,6 @@ public class NodeEditorInteractionManager {
     // ================= 常量定义 =================
     private static final String OWNER_ID = "editor_interaction_manager"; // 本类作为预览拥有者的标识符
 
-    // ================= 区域选择样式设置（由“视图”菜单驱动）=================
-    private volatile boolean areaPreviewShowFill = true;
-    private volatile boolean areaPreviewShowOutline = true;
-    private volatile boolean areaPreviewEnablePulse = false;
-    private volatile float areaPreviewLineWidth = 2.6f;
-    private volatile float areaPreviewOpacity = 0.38f;
-    private volatile float areaPreviewOutlineR = 1.0f;
-    private volatile float areaPreviewOutlineG = 0.82f;
-    private volatile float areaPreviewOutlineB = 0.27f;
-    private volatile float areaPreviewFillR = 1.0f;
-    private volatile float areaPreviewFillG = 0.72f;
-    private volatile float areaPreviewFillB = 0.22f;
-    
     /**
      * 编辑器交互模式枚举
      */
@@ -397,17 +386,7 @@ public class NodeEditorInteractionManager {
             int maxY = Math.max(start.getY(), end.getY());
             int maxZ = Math.max(start.getZ(), end.getZ());
             
-            PreviewOptions options = new PreviewOptions()
-                .setColor(areaPreviewOutlineR, areaPreviewOutlineG, areaPreviewOutlineB)
-                .setTintColor(areaPreviewFillR, areaPreviewFillG, areaPreviewFillB)
-                .setOpacity(areaPreviewOpacity)
-                .setLineWidth(areaPreviewLineWidth)
-                .setShowFill(areaPreviewShowFill)
-                .setShowOutline(areaPreviewShowOutline || !areaPreviewShowFill);
-
-            if (areaPreviewEnablePulse) {
-                options.enablePulse();
-            }
+            PreviewOptions options = areaPreviewStyle.createRegionBoxPreviewOptions();
 
             Vec3d min = new Vec3d(minX, minY, minZ);
             Vec3d max = new Vec3d(maxX + 1.0d, maxY + 1.0d, maxZ + 1.0d);
@@ -693,84 +672,11 @@ public class NodeEditorInteractionManager {
         return interactionState.isInInteractionMode();
     }
 
-    public boolean isAreaPreviewShowFill() {
-        return areaPreviewShowFill;
-    }
-
-    public void setAreaPreviewShowFill(boolean showFill) {
-        this.areaPreviewShowFill = showFill;
-        if (!this.areaPreviewShowFill && !this.areaPreviewShowOutline) {
-            this.areaPreviewShowOutline = true;
-        }
-    }
-
-    public boolean isAreaPreviewShowOutline() {
-        return areaPreviewShowOutline;
-    }
-
-    public void setAreaPreviewShowOutline(boolean showOutline) {
-        this.areaPreviewShowOutline = showOutline;
-        if (!this.areaPreviewShowFill && !this.areaPreviewShowOutline) {
-            this.areaPreviewShowFill = true;
-        }
-    }
-
-    public boolean isAreaPreviewEnablePulse() {
-        return areaPreviewEnablePulse;
-    }
-
-    public void setAreaPreviewEnablePulse(boolean enablePulse) {
-        this.areaPreviewEnablePulse = enablePulse;
-    }
-
-    public float getAreaPreviewLineWidth() {
-        return areaPreviewLineWidth;
-    }
-
-    public void setAreaPreviewLineWidth(float lineWidth) {
-        this.areaPreviewLineWidth = Math.max(0.5f, Math.min(8.0f, lineWidth));
-    }
-
-    public float getAreaPreviewOpacity() {
-        return areaPreviewOpacity;
-    }
-
-    public void setAreaPreviewOpacity(float opacity) {
-        this.areaPreviewOpacity = Math.max(0.05f, Math.min(1.0f, opacity));
-    }
-
-    public float[] getAreaPreviewOutlineColor() {
-        return new float[] { areaPreviewOutlineR, areaPreviewOutlineG, areaPreviewOutlineB };
-    }
-
-    public void setAreaPreviewOutlineColor(float r, float g, float b) {
-        this.areaPreviewOutlineR = Math.max(0.0f, Math.min(1.0f, r));
-        this.areaPreviewOutlineG = Math.max(0.0f, Math.min(1.0f, g));
-        this.areaPreviewOutlineB = Math.max(0.0f, Math.min(1.0f, b));
-    }
-
-    public float[] getAreaPreviewFillColor() {
-        return new float[] { areaPreviewFillR, areaPreviewFillG, areaPreviewFillB };
-    }
-
-    public void setAreaPreviewFillColor(float r, float g, float b) {
-        this.areaPreviewFillR = Math.max(0.0f, Math.min(1.0f, r));
-        this.areaPreviewFillG = Math.max(0.0f, Math.min(1.0f, g));
-        this.areaPreviewFillB = Math.max(0.0f, Math.min(1.0f, b));
-    }
-
-    public void resetAreaPreviewStyle() {
-        this.areaPreviewShowFill = true;
-        this.areaPreviewShowOutline = true;
-        this.areaPreviewEnablePulse = false;
-        this.areaPreviewLineWidth = 2.6f;
-        this.areaPreviewOpacity = 0.38f;
-        this.areaPreviewOutlineR = 1.0f;
-        this.areaPreviewOutlineG = 0.82f;
-        this.areaPreviewOutlineB = 0.27f;
-        this.areaPreviewFillR = 1.0f;
-        this.areaPreviewFillG = 0.72f;
-        this.areaPreviewFillB = 0.22f;
+    /**
+     * 区域框选预览样式（视图菜单与节点渲染共用）。
+     */
+    public AreaPreviewStyleSettings getAreaPreviewStyle() {
+        return areaPreviewStyle;
     }
     
     // ================= 鼠标射线与世界拾取（委托 {@link WorldPickingService}）=================
