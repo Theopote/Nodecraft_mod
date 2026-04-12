@@ -1257,12 +1257,12 @@ public class NodeLibraryComponent implements EditorComponent {
                 topCategory.getNodes().isEmpty()
                     && children != null
                     && children.size() == 1
-                    && children.get(0).getId().endsWith(".legacy");
+                    && children.getFirst().getId().endsWith(".legacy");
 
             if (shouldPromoteOnlyLegacyChild) {
-                promotedTopLevelCategories.add(children.get(0));
+                promotedTopLevelCategories.add(children.getFirst());
                 childCategoriesMap.remove(topCategory.getId());
-                NodeCraft.LOGGER.debug("Promoted lone legacy child category {} to top-level display", children.get(0).getId());
+                NodeCraft.LOGGER.debug("Promoted lone legacy child category {} to top-level display", children.getFirst().getId());
             } else {
                 retainedTopLevelCategories.add(topCategory);
             }
