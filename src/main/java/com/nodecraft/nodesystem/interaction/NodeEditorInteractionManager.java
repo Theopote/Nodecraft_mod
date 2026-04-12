@@ -12,14 +12,9 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.RaycastContext;
-import net.minecraft.client.render.Camera;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.block.BlockState;
 import net.minecraft.registry.Registries;
-import org.joml.Matrix4f;
-import org.joml.Vector3f;
-import org.joml.Vector4f;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -33,12 +28,14 @@ import java.util.HashMap;
  * 4. 实时高亮反馈
  * 5. 状态管理
  * <p>
- * 单例模式，确保全局只有一个交互状态
+ * 单例模式，确保全局只有一个交互状态。
+ * 射线/方块拾取与编辑模式视角由 {@link WorldPickingService}、{@link EditorModeCameraService} 承担。
  */
 public class NodeEditorInteractionManager {
-    
-    // ================= 编辑模式状态 =================
-    private boolean isInEditorMode = false;
+
+    private final WorldPickingService worldPicking = new WorldPickingService();
+    private final EditorModeCameraService editorModeCamera = new EditorModeCameraService();
+
     private Coordinate hoveredBlockCoordinate = null;
     private String hoverPreviewId = null; // 用于存储高亮预览的唯一ID
     
@@ -47,25 +44,6 @@ public class NodeEditorInteractionManager {
     
     // ================= 交互模式处理器管理 =================
     private final Map<EditorInteractionMode, InteractionModeHandler> modeHandlers = new HashMap<>();
-    
-    // ================= 中键视角控制状态 =================
-    private boolean middleMousePressed = false;
-    private float lastMouseX = 0;
-    private float lastMouseY = 0;
-    private static final float CAMERA_SENSITIVITY = 0.3f; // 视角灵敏度
-    
-    // ================= 射线缓存优化 =================
-    private float cachedMouseX = -1;
-    private float cachedMouseY = -1;
-    private Ray cachedRay = null;
-    private float cachedCameraYaw = Float.NaN;
-    private float cachedCameraPitch = Float.NaN;
-    private static final float MOUSE_MOVEMENT_THRESHOLD = 0.1f; // 鼠标移动阈值
-    private static final float CAMERA_MOVEMENT_THRESHOLD = 0.1f; // 相机移动阈值
-    
-    // 性能统计
-    private long rayComputeCount = 0; // 射线计算次数
-    private long rayCacheHitCount = 0; // 缓存命中次数
     
     // ================= 常量定义 =================
     private static final String OWNER_ID = "editor_interaction_manager"; // 本类作为预览拥有者的标识符
@@ -681,31 +659,7 @@ public class NodeEditorInteractionManager {
      * 当打开 NodeCraft UI 时调用
      */
     public void enterEditorMode() {
-        if (isInEditorMode) {
-            NodeCraft.LOGGER.debug("已经在编辑模式中，跳过重复进入");
-            return;
-        }
-        
-        isInEditorMode = true;
-        
-        try {
-            MinecraftClient client = MinecraftClient.getInstance();
-            
-            // 解锁鼠标 - 显示鼠标光标但不暂停游戏
-            if (client.mouse != null) {
-                client.mouse.unlockCursor();
-            }
-            
-            // 激活NodeCraft模式（这会隐藏准星，禁用玩家移动等）
-            MinecraftClientController controller = MinecraftClientController.getInstance();
-            controller.activateNodeCraftMode();
-            
-            NodeCraft.LOGGER.info("进入编辑模式 - 鼠标已解锁，准星已隐藏");
-            
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("进入编辑模式时出错", e);
-            isInEditorMode = false; // 回滚状态
-        }
+        editorModeCamera.enterEditorMode();
     }
     
     /**
@@ -713,41 +667,16 @@ public class NodeEditorInteractionManager {
      * 当关闭 NodeCraft UI 时调用
      */
     public void exitEditorMode() {
-        if (!isInEditorMode) {
+        if (!editorModeCamera.isInEditorMode()) {
             NodeCraft.LOGGER.debug("不在编辑模式中，跳过退出");
             return;
         }
-        
-        isInEditorMode = false;
-        
+
         try {
-            MinecraftClient client = MinecraftClient.getInstance();
-            
-            // 清除当前悬停高亮
             clearHoveredBlockHighlight();
-            
-            // 取消任何等待中的拾取操作
             interactionState.clear();
-            
-            // 重置中键视角控制状态
-            middleMousePressed = false;
-            lastMouseX = 0;
-            lastMouseY = 0;
-            
-            // 清除射线缓存
-            invalidateRayCache();
-            
-            // 锁定鼠标 - 恢复到FPS控制模式
-            if (client.mouse != null) {
-                client.mouse.lockCursor();
-            }
-            
-            // 停用NodeCraft模式（这会恢复准星，启用玩家移动等）
-            MinecraftClientController controller = MinecraftClientController.getInstance();
-            controller.deactivateNodeCraftMode();
-            
-            NodeCraft.LOGGER.info("退出编辑模式 - 鼠标已锁定，准星已恢复");
-            
+            worldPicking.invalidateRayCache();
+            editorModeCamera.exitEditorMode();
         } catch (Exception e) {
             NodeCraft.LOGGER.error("退出编辑模式时出错", e);
         }
@@ -757,7 +686,7 @@ public class NodeEditorInteractionManager {
      * 检查是否在编辑模式中
      */
     public boolean isInEditorMode() {
-        return isInEditorMode;
+        return editorModeCamera.isInEditorMode();
     }
     
     /**
@@ -848,441 +777,18 @@ public class NodeEditorInteractionManager {
         this.areaPreviewFillB = 0.22f;
     }
     
-    // ================= 新增：鼠标射线投射 =================
+    // ================= 鼠标射线与世界拾取（委托 {@link WorldPickingService}）=================
     
     /**
-     * 将屏幕上的 2D 鼠标坐标转换为 3D 世界中的射线
-     * @param mouseX 鼠标X坐标（屏幕坐标）
-     * @param mouseY 鼠标Y坐标（屏幕坐标）
-     * @return 3D射线，如果无法计算则返回null
+     * 将屏幕上的 2D 鼠标坐标转换为 3D 世界中的射线。
      */
-    public Ray getRayFromMouse(float mouseX, float mouseY) {
-        try {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client.world == null || client.getCameraEntity() == null || client.getWindow() == null) {
-                return null;
-            }
-            
-            Camera camera = client.gameRenderer.getCamera();
-            Vec3d cameraPos = client.getCameraEntity().getCameraPosVec(1.0f);
-            
-            // 获取窗口与帧缓冲尺寸
-            int windowWidth = client.getWindow().getWidth();
-            int windowHeight = client.getWindow().getHeight();
-            int framebufferWidth = client.getWindow().getFramebufferWidth();
-            int framebufferHeight = client.getWindow().getFramebufferHeight();
-
-            if (windowWidth <= 0 || windowHeight <= 0 || framebufferWidth <= 0 || framebufferHeight <= 0) {
-                return null;
-            }
-
-            // 参考 chronoblocks：统一按帧缓冲像素进行 NDC 计算，避免缩放导致偏移
-            float mouseFramebufferX;
-            float mouseFramebufferY;
-
-            // ImGui 坐标可能是逻辑坐标，也可能已是像素坐标；做兼容处理
-            if (mouseX > windowWidth + 1.0f || mouseY > windowHeight + 1.0f) {
-                mouseFramebufferX = mouseX;
-                mouseFramebufferY = mouseY;
-            } else {
-                mouseFramebufferX = (float) (mouseX * framebufferWidth / (double) windowWidth);
-                mouseFramebufferY = (float) (mouseY * framebufferHeight / (double) windowHeight);
-            }
-            
-            // 验证鼠标坐标是否在有效范围内
-            if (mouseFramebufferX < 0 || mouseFramebufferX > framebufferWidth ||
-                mouseFramebufferY < 0 || mouseFramebufferY > framebufferHeight) {
-                mouseFramebufferX = Math.max(0.0f, Math.min(mouseFramebufferX, framebufferWidth - 1.0f));
-                mouseFramebufferY = Math.max(0.0f, Math.min(mouseFramebufferY, framebufferHeight - 1.0f));
-            }
-            
-            // 将屏幕坐标转换为归一化设备坐标 (NDC)
-            // 屏幕坐标原点在左上角，NDC原点在中心，范围[-1, 1]
-            float ndcX = (2.0f * mouseFramebufferX) / framebufferWidth - 1.0f;
-            float ndcY = 1.0f - (2.0f * mouseFramebufferY) / framebufferHeight; // Y轴翻转
-            
-            // 计算射线方向
-            Vec3d rayDirection = calculateRayDirection(ndcX, ndcY, camera);
-            
-            if (rayDirection != null) {
-                Ray ray = new Ray(cameraPos, rayDirection.normalize());
-                
-                // 调试信息
-                if (NodeCraft.LOGGER.isDebugEnabled()) {
-                    NodeCraft.LOGGER.debug("射线计算: 鼠标({}, {}) -> NDC({}, {}) -> 射线{}", 
-                        mouseX, mouseY, ndcX, ndcY, ray);
-                }
-                
-                return ray;
-            } else {
-                // 如果主要方法失败，使用备用方法
-                NodeCraft.LOGGER.warn("主要射线计算方法失败，使用备用方法");
-                return getFallbackRayFromMouse(mouseX, mouseY);
-            }
-            
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("计算鼠标射线时出错", e);
-            // 尝试备用方法
-            return getFallbackRayFromMouse(mouseX, mouseY);
-        }
-    }
-    
-    /**
-     * 备用的射线计算方法
-     * 当主要方法失败时使用，返回屏幕中心的射线
-     */
-    private Ray getFallbackRayFromMouse(float mouseX, float mouseY) {
-        try {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client.world == null || client.getCameraEntity() == null) {
-                return null;
-            }
-            
-            Camera camera = client.gameRenderer.getCamera();
-            Vec3d cameraPos = camera.getBlockPos().toCenterPos();
-            
-            // 使用屏幕中心的方向作为备用
-            Vec3d direction = Vec3d.fromPolar(camera.getPitch(), camera.getYaw()).normalize();
-            
-            NodeCraft.LOGGER.warn("使用备用射线计算方法 - 注意：这将使用屏幕中心而非鼠标位置");
-            
-            return new Ray(cameraPos, direction);
-            
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("备用射线计算方法也失败", e);
-            return null;
-        }
-    }
-    
-    /**
-     * 根据归一化设备坐标计算射线方向（精确版本）
-     * 使用Minecraft原生的投影矩阵和视图矩阵进行精确的射线计算
-     * <p>
-     * 这个实现使用矩阵逆变换来精确计算射线方向，适应不同FOV和宽高比，
-     * 比之前的近似方法更加准确和鲁棒。
-     * 
-     * @param ndcX 归一化设备坐标X (-1 到 1)
-     * @param ndcY 归一化设备坐标Y (-1 到 1)
-     * @param camera 相机对象
-     * @return 射线方向向量，如果计算失败则返回null
-     */
-    private Vec3d calculateRayDirection(float ndcX, float ndcY, Camera camera) {
-        try {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client.gameRenderer == null || client.getWindow() == null) {
-                NodeCraft.LOGGER.warn("GameRenderer或Window为null，无法计算射线方向");
-                return null;
-            }
-            
-            // 获取当前FOV
-            double fov = client.options.getFov().getValue();
-            
-            // 获取投影矩阵
-            Matrix4f projectionMatrix = client.gameRenderer.getBasicProjectionMatrix((float) fov);
-            if (projectionMatrix == null) {
-                NodeCraft.LOGGER.warn("无法获取投影矩阵");
-                return getFallbackRayDirection(ndcX, ndcY, camera);
-            }
-            
-            // 创建视图矩阵
-            Matrix4f viewMatrix = createViewMatrix(camera);
-            if (viewMatrix == null) {
-                NodeCraft.LOGGER.warn("无法创建视图矩阵");
-                return getFallbackRayDirection(ndcX, ndcY, camera);
-            }
-            
-            // 计算逆投影视图矩阵
-            Matrix4f inverseProjView = new Matrix4f(projectionMatrix);
-            inverseProjView.mul(viewMatrix);
-            
-            try {
-                inverseProjView.invert();
-            } catch (Exception e) {
-                NodeCraft.LOGGER.warn("无法计算投影视图矩阵的逆矩阵: {}", e.getMessage());
-                return getFallbackRayDirection(ndcX, ndcY, camera);
-            }
-            
-            // 将NDC坐标转换为世界空间射线方向
-            // 近平面点 (z = -1)
-            Vector4f nearPoint = new Vector4f(ndcX, ndcY, -1.0f, 1.0f);
-            nearPoint.mul(inverseProjView);
-            if (Math.abs(nearPoint.w) < 1e-6f) {
-                NodeCraft.LOGGER.warn("近平面点的w分量接近零");
-                return getFallbackRayDirection(ndcX, ndcY, camera);
-            }
-            nearPoint.div(nearPoint.w); // 透视除法
-            
-            // 远平面点 (z = 1)
-            Vector4f farPoint = new Vector4f(ndcX, ndcY, 1.0f, 1.0f);
-            farPoint.mul(inverseProjView);
-            if (Math.abs(farPoint.w) < 1e-6f) {
-                NodeCraft.LOGGER.warn("远平面点的w分量接近零");
-                return getFallbackRayDirection(ndcX, ndcY, camera);
-            }
-            farPoint.div(farPoint.w); // 透视除法
-            
-            // 计算射线方向
-            Vector3f direction = new Vector3f(
-                farPoint.x - nearPoint.x,
-                farPoint.y - nearPoint.y,
-                farPoint.z - nearPoint.z
-            );
-            
-            // 归一化方向向量
-            float length = direction.length();
-            if (length < 1e-6f) {
-                NodeCraft.LOGGER.warn("射线方向向量长度过小，无法归一化");
-                return getFallbackRayDirection(ndcX, ndcY, camera);
-            }
-            direction.normalize();
-            
-            // 转换为Minecraft的Vec3d
-            Vec3d rayDirection = new Vec3d(direction.x, direction.y, direction.z);
-            
-            // 验证结果的合理性
-            if (rayDirection.lengthSquared() < 0.1 || rayDirection.lengthSquared() > 2.0) {
-                NodeCraft.LOGGER.warn("计算出的射线方向向量长度异常: {}", rayDirection);
-                return getFallbackRayDirection(ndcX, ndcY, camera);
-            }
-            
-            if (NodeCraft.LOGGER.isDebugEnabled()) {
-                NodeCraft.LOGGER.debug("精确射线计算成功: NDC({}, {}) -> 方向{}", 
-                    ndcX, ndcY, rayDirection);
-            }
-            
-            return rayDirection;
-            
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("精确射线计算时出错，使用备用方法", e);
-            return getFallbackRayDirection(ndcX, ndcY, camera);
-        }
-    }
-    
-    /**
-     * 创建视图矩阵
-     * @param camera 相机对象
-     * @return 视图矩阵，如果创建失败则返回null
-     */
-    private Matrix4f createViewMatrix(Camera camera) {
-        try {
-            Vec3d cameraPos = camera.getBlockPos().toCenterPos();
-            float pitch = camera.getPitch();
-            float yaw = camera.getYaw();
-            
-            // 创建视图矩阵
-            Matrix4f viewMatrix = new Matrix4f();
-            
-            // 应用旋转（注意：Minecraft的坐标系统）
-            viewMatrix.rotateX((float) Math.toRadians(pitch));
-            viewMatrix.rotateY((float) Math.toRadians(yaw + 180.0f)); // +180度因为Minecraft的yaw定义
-            
-            // 应用平移
-            viewMatrix.translate((float) -cameraPos.x, (float) -cameraPos.y, (float) -cameraPos.z);
-            
-            return viewMatrix;
-            
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("创建视图矩阵时出错", e);
-            return null;
-        }
-    }
-    
-    /**
-     * 备用射线方向计算方法（简化版本）
-     * 当精确计算失败时使用
-     * 
-     * @param ndcX 归一化设备坐标X
-     * @param ndcY 归一化设备坐标Y
-     * @param camera 相机对象
-     * @return 射线方向向量
-     */
-    private Vec3d getFallbackRayDirection(float ndcX, float ndcY, Camera camera) {
-        try {
-            // 获取相机的基础方向向量
-            float pitch = camera.getPitch();
-            float yaw = camera.getYaw();
-            
-            // 获取视场角 (FOV)
-            MinecraftClient client = MinecraftClient.getInstance();
-            double fov = client.options.getFov().getValue();
-            
-            // 将FOV转换为弧度
-            double fovRadians = Math.toRadians(fov);
-            double aspectRatio = (double) client.getWindow().getWidth() / client.getWindow().getHeight();
-            
-            // 计算视场角的一半
-            double halfFovY = fovRadians / 2.0;
-            double halfFovX = Math.atan(Math.tan(halfFovY) * aspectRatio);
-            
-            // 根据NDC坐标计算偏移角度
-            double offsetYaw = ndcX * halfFovX;
-            double offsetPitch = ndcY * halfFovY;
-            
-            // 计算最终的射线方向
-            float finalPitch = (float) (Math.toRadians(pitch) - offsetPitch);
-            float finalYaw = (float) (Math.toRadians(yaw) + offsetYaw);
-            
-            // 将球坐标转换为笛卡尔坐标
-            double cosYaw = Math.cos(finalYaw);
-            double sinYaw = Math.sin(finalYaw);
-            double cosPitch = Math.cos(finalPitch);
-            double sinPitch = Math.sin(finalPitch);
-            
-            Vec3d direction = new Vec3d(
-                -sinYaw * cosPitch,
-                -sinPitch,
-                cosYaw * cosPitch
-            );
-            
-            NodeCraft.LOGGER.debug("使用备用射线计算方法");
-            return direction.normalize();
-            
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("备用射线计算也失败", e);
-            // 最后的备用方案：返回相机正前方
-            return Vec3d.fromPolar(camera.getPitch(), camera.getYaw()).normalize();
-        }
+    public WorldPickingService.Ray getRayFromMouse(float mouseX, float mouseY) {
+        return worldPicking.getRayFromMouse(mouseX, mouseY);
     }
 
-    /**
-     * 简单的射线类
-     */
-    public static class Ray {
-        public final Vec3d origin;
-        public final Vec3d direction;
-        
-        public Ray(Vec3d origin, Vec3d direction) {
-            this.origin = origin;
-            this.direction = direction;
-        }
-        
-        @Override
-        public String toString() {
-            return String.format("Ray{origin=%s, direction=%s}", origin, direction);
-        }
+    public void invalidateRayCache() {
+        worldPicking.invalidateRayCache();
     }
-
-    /**
-     * 使用给定射线进行方块拾取（优化版本）
-     * @param ray 射线对象
-     * @return 碰撞结果，如果没有碰撞则返回null
-     */
-    private BlockHitResult pickBlockWithRay(Ray ray) {
-        try {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client.world == null || client.getCameraEntity() == null || ray == null) {
-                return null;
-            }
-            
-            // 设置射线检测的最大距离
-            double maxDistance = 100.0; // 可以根据需要调整
-            Vec3d endPos = ray.origin.add(ray.direction.multiply(maxDistance));
-            
-            // 创建射线投射上下文
-            RaycastContext raycastContext = new RaycastContext(
-                ray.origin, 
-                endPos, 
-                RaycastContext.ShapeType.OUTLINE, // 只检测方块轮廓
-                RaycastContext.FluidHandling.NONE, // 不检测流体
-                client.getCameraEntity()
-            );
-            
-            // 进行射线投射
-            BlockHitResult hitResult = client.world.raycast(raycastContext);
-            
-            if (hitResult.getType() != HitResult.Type.MISS) {
-                // 调试信息：记录成功的拾取
-                if (NodeCraft.LOGGER.isDebugEnabled()) {
-                    BlockPos pos = hitResult.getBlockPos();
-                    NodeCraft.LOGGER.debug("射线拾取成功: 射线{} -> 方块({}, {}, {})", 
-                        ray, pos.getX(), pos.getY(), pos.getZ());
-                }
-                return hitResult;
-            }
-            
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("射线拾取方块时出错", e);
-        }
-        
-        return null;
-    }
-    
-    /**
-     * 获取缓存的射线或计算新射线（性能优化版本）
-     * 只有在鼠标位置或相机视角发生显著变化时才重新计算射线
-     * 
-     * @param mouseX 鼠标X坐标
-     * @param mouseY 鼠标Y坐标
-     * @return 射线对象，如果无法计算则返回null
-     */
-    private Ray getCachedOrComputeRay(float mouseX, float mouseY) {
-        try {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client.world == null || client.getCameraEntity() == null) {
-                // 清除缓存
-                invalidateRayCache();
-                return null;
-            }
-            
-            Camera camera = client.gameRenderer.getCamera();
-            float currentYaw = camera.getYaw();
-            float currentPitch = camera.getPitch();
-            
-            // 检查鼠标或相机是否发生显著变化
-            boolean mouseMoved = Math.abs(mouseX - cachedMouseX) > MOUSE_MOVEMENT_THRESHOLD || 
-                               Math.abs(mouseY - cachedMouseY) > MOUSE_MOVEMENT_THRESHOLD;
-            boolean cameraMoved = Float.isNaN(cachedCameraYaw) || Float.isNaN(cachedCameraPitch) ||
-                                Math.abs(currentYaw - cachedCameraYaw) > CAMERA_MOVEMENT_THRESHOLD || 
-                                Math.abs(currentPitch - cachedCameraPitch) > CAMERA_MOVEMENT_THRESHOLD;
-            
-            // 如果没有显著变化且有缓存，直接返回缓存的射线
-            if (!mouseMoved && !cameraMoved && cachedRay != null) {
-                rayCacheHitCount++; // 统计缓存命中
-                if (NodeCraft.LOGGER.isDebugEnabled()) {
-                    NodeCraft.LOGGER.debug("使用缓存射线: 鼠标({}, {}) 相机({}, {}) [命中次数: {}]", 
-                        mouseX, mouseY, currentYaw, currentPitch, rayCacheHitCount);
-                }
-                return cachedRay;
-            }
-            
-            // 需要重新计算射线
-            Ray newRay = getRayFromMouse(mouseX, mouseY);
-            if (newRay != null) {
-                rayComputeCount++; // 统计计算次数
-                // 更新缓存
-                cachedMouseX = mouseX;
-                cachedMouseY = mouseY;
-                cachedRay = newRay;
-                cachedCameraYaw = currentYaw;
-                cachedCameraPitch = currentPitch;
-                
-                if (NodeCraft.LOGGER.isDebugEnabled()) {
-                    NodeCraft.LOGGER.debug("重新计算射线: 鼠标({}, {}) 相机({}, {}) -> {} [计算次数: {}]", 
-                        mouseX, mouseY, currentYaw, currentPitch, newRay, rayComputeCount);
-                }
-            }
-            
-            return newRay;
-            
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("获取缓存射线时出错", e);
-            invalidateRayCache();
-            return null;
-        }
-    }
-    
-    /**
-     * 清除射线缓存
-     */
-    private void invalidateRayCache() {
-        cachedMouseX = -1;
-        cachedMouseY = -1;
-        cachedRay = null;
-        cachedCameraYaw = Float.NaN;
-        cachedCameraPitch = Float.NaN;
-        // 注意：不重置统计信息，以便跟踪整个会话的性能
-    }
-    
 
     // ================= 新增：实时更新和高亮 =================
     
@@ -1297,7 +803,7 @@ public class NodeEditorInteractionManager {
      * @param isMouseOverImGui 鼠标是否在ImGui界面上
      */
     public void update(float mouseX, float mouseY, boolean isMiddleMouseDown, boolean isLeftMouseClicked, boolean isRightMouseClicked, boolean isMouseOverImGui) {
-        if (!isInEditorMode) {
+        if (!editorModeCamera.isInEditorMode()) {
             return;
         }
         
@@ -1312,12 +818,7 @@ public class NodeEditorInteractionManager {
             boolean allowWorldInteraction = !isMouseOverImGui || interactionState.isInInteractionMode();
 
             if (allowWorldInteraction) {
-                // 检查中键视角控制
-                if (!isMouseOverImGui) {
-                    handleMiddleMouseCameraControl(mouseX, mouseY, isMiddleMouseDown);
-                } else if (middleMousePressed) {
-                    middleMousePressed = false;
-                }
+                editorModeCamera.updateMiddleMouseCamera(mouseX, mouseY, isMiddleMouseDown, !isMouseOverImGui);
                 
                 // 使用输入系统中已验证的射线换算，避免屏幕边缘拾取偏移
                 BlockHitResult hitResult = NodecraftInputSystem.raycastFromMouse();
@@ -1334,9 +835,9 @@ public class NodeEditorInteractionManager {
                 // 处理鼠标点击事件
                 handleMouseClickEvents(newHoveredBlock, hitResult, isLeftMouseClicked, isRightMouseClicked);
             } else {
-                // 鼠标在ImGui界面上时，停止中键视角控制
-                if (middleMousePressed) {
-                    middleMousePressed = false;
+                boolean wasMiddleDragging = editorModeCamera.isMiddleMouseDragging();
+                editorModeCamera.updateMiddleMouseCamera(mouseX, mouseY, isMiddleMouseDown, false);
+                if (wasMiddleDragging) {
                     NodeCraft.LOGGER.debug("鼠标移到ImGui界面上，停止视角控制");
                 }
                 
@@ -1403,82 +904,12 @@ public class NodeEditorInteractionManager {
     }
     
     /**
-     * 处理中键拖拽视角控制
-     * 只有当鼠标不在ImGui界面上时才执行
-     */
-    private void handleMiddleMouseCameraControl(float mouseX, float mouseY, boolean isMiddleMouseDown) {
-        try {
-            if (isMiddleMouseDown && !middleMousePressed) {
-                // 中键刚按下，记录初始位置
-                middleMousePressed = true;
-                lastMouseX = mouseX;
-                lastMouseY = mouseY;
-                NodeCraft.LOGGER.debug("开始视角控制 - 鼠标位置: ({}, {})", mouseX, mouseY);
-            } else if (!isMiddleMouseDown && middleMousePressed) {
-                // 中键释放
-                middleMousePressed = false;
-                NodeCraft.LOGGER.debug("结束视角控制");
-            } else if (isMiddleMouseDown) {
-                // 中键持续按下，计算鼠标移动并更新视角
-                float deltaX = mouseX - lastMouseX;
-                float deltaY = mouseY - lastMouseY;
-                
-                // 只有在移动足够明显时才更新视角，避免微小抖动
-                if (Math.abs(deltaX) > 0.5f || Math.abs(deltaY) > 0.5f) {
-                    updateCameraView(deltaX, deltaY);
-                    lastMouseX = mouseX;
-                    lastMouseY = mouseY;
-                    
-                    if (NodeCraft.LOGGER.isDebugEnabled()) {
-                        NodeCraft.LOGGER.debug("更新视角 - 偏移: ({}, {})", deltaX, deltaY);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("处理中键视角控制时出错", e);
-        }
-    }
-    
-    /**
-     * 根据鼠标移动更新相机视角
-     */
-    private void updateCameraView(float deltaX, float deltaY) {
-        try {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client.player == null) {
-                return;
-            }
-            
-            // 计算新的偏航角和俯仰角
-            float yawChange = deltaX * CAMERA_SENSITIVITY;
-            float pitchChange = deltaY * CAMERA_SENSITIVITY;
-            
-            // 获取当前视角
-            float currentYaw = client.player.getYaw();
-            float currentPitch = client.player.getPitch();
-            
-            // 应用视角变化
-            float newYaw = currentYaw + yawChange;
-            float newPitch = Math.max(-90.0f, Math.min(90.0f, currentPitch + pitchChange)); // 限制俯仰角范围
-            
-            // 设置新的视角
-            client.player.setYaw(newYaw);
-            client.player.setPitch(newPitch);
-            
-            // 注意：相机会自动跟随玩家的视角更新，无需手动同步
-            
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("更新相机视角时出错", e);
-        }
-    }
-    
-    /**
      * 处理鼠标点击事件
      */
     private void handleMouseClickEvents(Coordinate hoveredBlock, BlockHitResult hitResult, boolean isLeftMouseClicked, boolean isRightMouseClicked) {
         try {
             // 如果中键正在被按下（用于视角控制），跳过其他鼠标事件处理
-            if (middleMousePressed) {
+            if (editorModeCamera.isMiddleMouseDragging()) {
                 return;
             }
             
@@ -1538,7 +969,7 @@ public class NodeEditorInteractionManager {
      * @param callback 交互完成后的回调
      */
     public void requestInteraction(EditorInteractionMode mode, String nodeId, IInteractionCallback callback) {
-        if (!isInEditorMode) {
+        if (!editorModeCamera.isInEditorMode()) {
             NodeCraft.LOGGER.warn("不在编辑模式中，无法请求交互");
             callback.onInteractionCancelled();
             return;
