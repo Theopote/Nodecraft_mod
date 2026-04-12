@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NodeRegistryMigrationTest {
@@ -67,5 +68,27 @@ class NodeRegistryMigrationTest {
         INode node = registry.createNodeInstance("visualization.debugging.panel");
         assertNotNull(node);
         assertTrue(node.getClass().getName().endsWith(".PanelNode"));
+    }
+
+    @Test
+    void registerCategoryEnsuresParentChainIteratively() {
+        registry.clear();
+
+        registry.registerCategory(new NodeRegistry.NodeCategory(
+            "utilities.organization.advanced",
+            "Advanced"
+        ));
+
+        NodeRegistry.NodeCategory utilities = registry.getCategory("utilities");
+        NodeRegistry.NodeCategory organization = registry.getCategory("utilities.organization");
+        NodeRegistry.NodeCategory advanced = registry.getCategory("utilities.organization.advanced");
+
+        assertNotNull(utilities);
+        assertNotNull(organization);
+        assertNotNull(advanced);
+        assertEquals("Utilities", utilities.getDisplayName());
+        assertEquals("Utilities / Organization", organization.getDisplayName());
+        assertEquals("Advanced", advanced.getDisplayName());
+        assertNotSame(organization, advanced);
     }
 }

@@ -263,30 +263,21 @@ public class NodeRegistry {
             return;
         }
 
-        // Normalize the category ID and display name.
         String normalizedId = category.getId().toLowerCase();
         String displayName = category.getDisplayName();
         if (displayName == null || displayName.trim().isEmpty()) {
             displayName = formatCategoryName(normalizedId);
         }
 
-        // Register the parent category first so the hierarchy remains valid.
-        if (normalizedId.contains(".") && !normalizedId.endsWith(".")) {
-            String parentId = normalizedId.substring(0, normalizedId.lastIndexOf('.'));
+        ensureCategoryChain(normalizedId);
 
-            if (!categoryMap.containsKey(parentId)) {
-                NodeCategory parentCategory = new NodeCategory(parentId, formatCategoryName(parentId));
-                registerCategory(parentCategory);
-            }
-        }
-
-        if (categoryMap.containsKey(normalizedId)) {
+        NodeCategory existingCategory = categoryMap.get(normalizedId);
+        if (existingCategory != null) {
             NodeCraft.LOGGER.debug("Node category {} already exists. Skipping duplicate registration.", normalizedId);
             return;
         }
 
-        NodeCategory newCategory = new NodeCategory(normalizedId, displayName);
-        categoryMap.put(normalizedId, newCategory);
+        categoryMap.put(normalizedId, new NodeCategory(normalizedId, displayName));
         NodeCraft.LOGGER.debug("Registered node category: {} (ID: {})", displayName, normalizedId);
     }
 
@@ -459,6 +450,26 @@ public class NodeRegistry {
         clearInternal();
         initialized = false;
         NodeCraft.LOGGER.info("NodeRegistry cleared and reset.");
+    }
+
+    private void ensureCategoryChain(String categoryId) {
+        for (String parentId : buildParentChain(categoryId)) {
+            if (!categoryMap.containsKey(parentId)) {
+                String displayName = formatCategoryName(parentId);
+                categoryMap.put(parentId, new NodeCategory(parentId, displayName));
+                NodeCraft.LOGGER.debug("Registered node category: {} (ID: {})", displayName, parentId);
+            }
+        }
+    }
+
+    private List<String> buildParentChain(String categoryId) {
+        List<String> chain = new ArrayList<>();
+        String current = categoryId;
+        while (current != null && current.contains(".") && !current.endsWith(".")) {
+            current = current.substring(0, current.lastIndexOf('.'));
+            chain.add(0, current);
+        }
+        return chain;
     }
 
     /**
