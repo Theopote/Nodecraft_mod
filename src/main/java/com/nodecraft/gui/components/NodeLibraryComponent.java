@@ -15,6 +15,7 @@ import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.gui.node.NodeInfo;
 import com.nodecraft.gui.style.MinecraftTheme;
 import com.nodecraft.nodesystem.registry.NodeRegistry.NodeCategory;
+import com.nodecraft.gui.components.NodeCategoryPresentationMapper.CategoryPresentation;
 import com.nodecraft.gui.utils.NodeIconManager;
 import com.nodecraft.gui.utils.UserPreferences;
 import com.nodecraft.gui.components.search.NodeSearchManager;
@@ -34,11 +35,18 @@ import imgui.ImVec2;
  */
 public class NodeLibraryComponent implements EditorComponent {
 
+    private static final NodeCategoryPresentationMapper PRESENTATION_MAPPER = new NodeCategoryPresentationMapper();
+
     // Inner record for display purposes
-    private record DisplayCategory(NodeCategory originalCategory, List<NodeInfo> displayNodes) {
-        String getDisplayName() { return originalCategory.getDisplayName(); }
-        String getId() { return originalCategory.getId(); } // For ImGui IDs
-        List<NodeInfo> getNodes() { return displayNodes; } // Returns filtered nodes
+    private record DisplayCategory(CategoryPresentation presentation, List<NodeInfo> displayNodes) {
+        String getDisplayName() { return presentation.displayName(); }
+        String getId() { return presentation.displayCategoryId(); }
+        String getCanonicalCategoryId() { return presentation.canonicalCategoryId(); }
+        String getParentId() { return presentation.parentDisplayId(); }
+        String getColorKey() { return presentation.colorKey(); }
+        boolean isDefaultExpanded() { return presentation.defaultExpanded(); }
+        NodeCategory getSourceCategory() { return presentation.sourceCategory(); }
+        List<NodeInfo> getNodes() { return displayNodes; }
     }
 
     // Internal UI constants.
@@ -206,7 +214,7 @@ public class NodeLibraryComponent implements EditorComponent {
         GRID
     }
 
-    private final List<NodeCategory> allCategories; // All categories exposed by the registry.
+    private final List<CategoryPresentation> allCategories; // UI-facing presentation categories.
     private final Map<String, Boolean> expandedCategories = new HashMap<>();
     private List<DisplayCategory> filteredCategories; // Filtered categories for the current search term.
     private List<DisplayCategory> cachedTopLevelCategories = List.of();
@@ -246,64 +254,21 @@ public class NodeLibraryComponent implements EditorComponent {
             NodeCraft.LOGGER.warn("NodeRegistry returned an empty or invalid category list.");
             this.allCategories = new ArrayList<>();
         } else {
-            // Normalize category hierarchy so top-level and subcategory relationships stay consistent.
-            List<NodeCategory> processedCategories = new ArrayList<>();
-            
-            // Collect top-level categories first.
-            Map<String, NodeCategory> topLevelCategories = new HashMap<>();
-            for (NodeCategory cat : categoriesFromRegistry) {
-                String catId = cat.getId();
-                
-                // Top-level categories do not contain dots.
-                if (!catId.contains(".")) {
-                    topLevelCategories.put(catId, cat);
-                    processedCategories.add(cat);
-                }
-            }
-            
-            // Then process subcategories and validate their parent categories.
-            for (NodeCategory cat : categoriesFromRegistry) {
-                String catId = cat.getId();
-                
-                // Dotted IDs are treated as subcategories.
-                if (catId.contains(".") && !catId.endsWith(".")) {
-                    String parentId = catId.substring(0, catId.lastIndexOf('.'));
-                    
-                    if (topLevelCategories.containsKey(parentId)) {
-                        processedCategories.add(cat);
-                    } else {
-                        NodeCraft.LOGGER.warn("Subcategory {} is missing parent {}. Treating it as top-level for display.", catId, parentId);
-                        processedCategories.add(cat);
-                    }
-                }
-            }
-            
-            this.allCategories = processedCategories;
+            this.allCategories = PRESENTATION_MAPPER.mapCategories(categoriesFromRegistry);
         }
         
         // Show the full category list before any search input is applied.
         updateFilteredCategories("");
         
         // Expand top-level categories by default and collapse subcategories.
-        for (NodeCategory cat : allCategories) {
-            boolean isSubCategory = cat.getId().contains(".") && !cat.getId().endsWith(".");
-
-            expandedCategories.put(cat.getId(), false);
+        for (CategoryPresentation cat : allCategories) {
+            expandedCategories.put(cat.displayCategoryId(), false);
         }
-        
-        // Keep the main categories expanded even when they are nested.
-        String[] keyCategories = {
-            "geometry", "input", "material", "math", "output", "pattern", "reference", "transform", "world", "utilities",
-            "input.basic", "input.numeric", "input.context", "input.type_selectors", "reference.points", "reference.vectors", "reference.planes", "reference.frames", "world.selection", "world.read", "world.query", "world.write",
-            "geometry.boolean", "geometry.curves", "geometry.primitives", "geometry.profiles", "geometry.solids",
-            "pattern.linear", "pattern.grid", "pattern.radial", "pattern.surface_volume_distribution",
-            "transform.basic_transforms", "transform.deformations", "transform.orientation",
-            "math.scalar_math", "math.compare", "math.logic", "math.random", "math.trigonometry", "math.list_sequence",
-            "output.preview", "output.execute", "output.export", "output.debug", "utilities.organization", "utilities.assist"
-        };
-        
-        for (String key : keyCategories) {
-            expandedCategories.put(key, true);
+
+        for (CategoryPresentation cat : allCategories) {
+            if (cat.defaultExpanded()) {
+                expandedCategories.put(cat.displayCategoryId(), true);
+            }
         }
 
         // Restore persisted display mode preferences.
@@ -500,7 +465,7 @@ public class NodeLibraryComponent implements EditorComponent {
         if (searchTerm == null || searchTerm.isEmpty()) {
             NodeCraft.LOGGER.debug("Search term is empty. Showing all categories.");
             this.filteredCategories = this.allCategories.stream()
-                .map(cat -> new DisplayCategory(cat, new ArrayList<>(cat.getNodes())))
+                .map(cat -> new DisplayCategory(cat, new ArrayList<>(cat.sourceCategory().getNodes())))
                 .collect(Collectors.toList());
             this.categoryHierarchyCacheDirty = true;
             NodeCraft.LOGGER.debug("Filtered category count for empty search: {}", this.filteredCategories.size());
@@ -515,14 +480,14 @@ public class NodeLibraryComponent implements EditorComponent {
         List<DisplayCategory> searchResults = new ArrayList<>();
         Set<String> parentCategoriesToExpand = new HashSet<>();
         
-        for (NodeCategory category : allCategories) {
-            String categoryId = category.getId();
-            String categoryName = category.getDisplayName().toLowerCase();
+        for (CategoryPresentation category : allCategories) {
+            String categoryId = category.displayCategoryId();
+            String categoryName = category.displayName().toLowerCase();
             boolean categoryMatches = categoryName.contains(processedTerm) || categoryId.toLowerCase().contains(processedTerm);
             
             // Collect matching nodes in the current category.
             List<NodeInfo> matchingNodes = new ArrayList<>();
-            for (NodeInfo node : category.getNodes()) {
+            for (NodeInfo node : category.sourceCategory().getNodes()) {
                 if (matchesNode(node, processedTerm)) {
                     matchingNodes.add(node);
                     NodeCraft.LOGGER.debug("Node matched search term: {} ({}) in category {}", 
@@ -532,14 +497,14 @@ public class NodeLibraryComponent implements EditorComponent {
             
             // 1. Category name matched, so keep all nodes in that category.
             if (categoryMatches) {
-                searchResults.add(new DisplayCategory(category, new ArrayList<>(category.getNodes())));
+                searchResults.add(new DisplayCategory(category, new ArrayList<>(category.sourceCategory().getNodes())));
                 NodeCraft.LOGGER.debug("Category matched search term '{}': {} ({}), keeping all nodes", 
-                    processedTerm, category.getDisplayName(), categoryId);
+                    processedTerm, category.displayName(), categoryId);
                 
                 expandedCategories.put(categoryId, true);
                 
-                if (categoryId.contains(".")) {
-                    String parentId = categoryId.substring(0, categoryId.lastIndexOf('.'));
+                if (category.parentDisplayId() != null) {
+                    String parentId = category.parentDisplayId();
                     parentCategoriesToExpand.add(parentId);
                 }
                 
@@ -553,8 +518,8 @@ public class NodeLibraryComponent implements EditorComponent {
                 
                 expandedCategories.put(categoryId, true);
                 
-                if (categoryId.contains(".")) {
-                    String parentId = categoryId.substring(0, categoryId.lastIndexOf('.'));
+                if (category.parentDisplayId() != null) {
+                    String parentId = category.parentDisplayId();
                     parentCategoriesToExpand.add(parentId);
                 }
             }
@@ -578,8 +543,8 @@ public class NodeLibraryComponent implements EditorComponent {
                         .anyMatch(dc -> dc.getId().equals(parentId));
                     
                     if (!alreadyIncluded) {
-                        for (NodeCategory cat : allCategories) {
-                            if (cat.getId().equals(parentId)) {
+                        for (CategoryPresentation cat : allCategories) {
+                            if (cat.displayCategoryId().equals(parentId)) {
                                 completeResults.add(new DisplayCategory(cat, new ArrayList<>()));
                                 NodeCraft.LOGGER.debug("Added missing parent category {}", parentId);
                                 break;
@@ -593,7 +558,7 @@ public class NodeLibraryComponent implements EditorComponent {
         } else {
             NodeCraft.LOGGER.debug("No matches found. Showing empty top-level categories.");
             this.filteredCategories = allCategories.stream()
-                .filter(cat -> !cat.getId().contains("."))
+                .filter(cat -> cat.parentDisplayId() == null)
                 .map(cat -> new DisplayCategory(cat, new ArrayList<>()))
                 .collect(Collectors.toList());
         }
@@ -651,8 +616,8 @@ public class NodeLibraryComponent implements EditorComponent {
                     String categoryId = category.getId();
                     expandedCategories.put(categoryId, true);
                     
-                    if (categoryId.contains(".")) {
-                        String parentId = categoryId.substring(0, categoryId.lastIndexOf('.'));
+                    if (category.getParentId() != null) {
+                        String parentId = category.getParentId();
                         expandedCategories.put(parentId, true);
                         NodeCraft.LOGGER.debug("Forced parent category open during search: {}", parentId);
                     }
@@ -693,11 +658,11 @@ public class NodeLibraryComponent implements EditorComponent {
 
         for (DisplayCategory category : filteredCategories) {
             String id = category.getId();
+            String parentId = category.getParentId();
 
-            if (!id.contains(".")) {
+            if (parentId == null) {
                 topLevelCategories.add(category);
             } else {
-                String parentId = id.substring(0, id.lastIndexOf('.'));
                 childCategoriesMap
                     .computeIfAbsent(parentId, k -> new ArrayList<>())
                     .add(category);
@@ -760,7 +725,7 @@ public class NodeLibraryComponent implements EditorComponent {
         
         // Prefer category IDs over display names for color lookup.
         int packedColor;
-        String categoryId = displayCategory.getId();
+        String categoryId = displayCategory.getColorKey();
         
         if (NodeLibraryConstants.CATEGORY_COLORS_INT.containsKey(categoryId)) {
             packedColor = NodeLibraryConstants.CATEGORY_COLORS_INT.get(categoryId);
@@ -859,7 +824,7 @@ public class NodeLibraryComponent implements EditorComponent {
             
             for (DisplayCategory otherCategory : filteredCategories) {
                 if (otherCategory != displayCategory && 
-                    otherCategory.getId().startsWith(catId + ".")) {
+                    catId.equals(otherCategory.getParentId())) {
                     hasSubcategories = true;
                     break;
                 }
