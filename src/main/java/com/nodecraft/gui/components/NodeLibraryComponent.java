@@ -586,6 +586,7 @@ public class NodeLibraryComponent implements EditorComponent {
     private static @NonNull Map<String, Integer> getMaterialBlockStateOrder() {
         Map<String, Integer> materialBlockStateOrder = new HashMap<>();
         materialBlockStateOrder.put("material.block_state.block_state_assign", 0);
+        materialBlockStateOrder.put("material.block_state.auto_orient_blocks", 1);
         return materialBlockStateOrder;
     }
 
