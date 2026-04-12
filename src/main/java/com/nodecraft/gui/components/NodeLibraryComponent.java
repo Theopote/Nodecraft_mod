@@ -539,7 +539,9 @@ public class NodeLibraryComponent implements EditorComponent {
     }
 
     private static @NonNull Map<String, Integer> getMaterialSurfaceAgingOrder() {
-        return new HashMap<>();
+        Map<String, Integer> materialSurfaceAgingOrder = new HashMap<>();
+        materialSurfaceAgingOrder.put("material.surface_aging.weathering", 0);
+        return materialSurfaceAgingOrder;
     }
 
     private static @NonNull Map<String, Integer> getReferenceFramesOrder() {

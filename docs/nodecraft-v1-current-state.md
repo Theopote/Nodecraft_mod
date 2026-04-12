@@ -59,6 +59,7 @@ The codebase currently uses these canonical v1 paths:
 - `material.directional_mapping`
 - `material.pattern_mapping`
 - `material.block_state`
+- `material.surface_aging`
 - `world.read`
 - `world.query`
 - `world.selection`
@@ -99,6 +100,13 @@ They are not part of the modeling taxonomy.
 ## Alias Policy
 
 Compatibility is now limited to a small set of direct old-to-new renames handled in `NodeRegistry`.
+
+Those aliases are intentionally conservative:
+
+- they exist only for direct renames into canonical v1 nodes
+- they do not preserve deleted source trees
+- they do not preserve removed workflow buckets
+- they do not justify keeping cross-system semantic shims alive
 
 The registry no longer acts as a broad bridge for:
 

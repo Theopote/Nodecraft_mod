@@ -51,11 +51,14 @@ These are the only top-level domains that should be used for new node work.
 
 Aliases are now intentionally narrow.
 
+Only direct rename aliases are allowed.
+
 Keep aliases only when all of the following are true:
 
 1. The old id was widely used during this refactor.
 2. The new target is a real canonical v1 node.
-3. The alias helps bridge a direct rename, not an entire removed subsystem.
+3. The alias bridges a direct rename with the same node meaning.
+4. The alias does not recreate a removed tree, removed workflow, or removed compatibility layer.
 
 Examples of acceptable alias families:
 
@@ -70,6 +73,7 @@ Examples that should not be reintroduced:
 - removed legacy compatibility buckets
 - broad `spatial.*` compatibility nets
 - broad `utilities.*`, `data.*`, or `control.flow.*` fallback systems
+- cross-system semantic remaps where the old node meaning does not clearly match the new node
 
 ## Save and Load Rules
 
