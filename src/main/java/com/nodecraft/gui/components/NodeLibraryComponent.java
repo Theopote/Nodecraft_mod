@@ -1281,6 +1281,28 @@ public class NodeLibraryComponent implements EditorComponent {
             childList.sort((cat1, cat2) -> cat1.getDisplayName().compareToIgnoreCase(cat2.getDisplayName()));
         }
 
+        // Collapse empty compatibility wrappers such as "spatial" -> "spatial.legacy".
+        List<DisplayCategory> promotedTopLevelCategories = new ArrayList<>();
+        List<DisplayCategory> retainedTopLevelCategories = new ArrayList<>();
+        for (DisplayCategory topCategory : topLevelCategories) {
+            List<DisplayCategory> children = childCategoriesMap.get(topCategory.getId());
+            boolean shouldPromoteOnlyLegacyChild =
+                topCategory.getNodes().isEmpty()
+                    && children != null
+                    && children.size() == 1
+                    && children.get(0).getId().endsWith(".legacy");
+
+            if (shouldPromoteOnlyLegacyChild) {
+                promotedTopLevelCategories.add(children.get(0));
+                childCategoriesMap.remove(topCategory.getId());
+                NodeCraft.LOGGER.debug("Promoted lone legacy child category {} to top-level display", children.get(0).getId());
+            } else {
+                retainedTopLevelCategories.add(topCategory);
+            }
+        }
+        topLevelCategories = retainedTopLevelCategories;
+        topLevelCategories.addAll(promotedTopLevelCategories);
+        
         boolean isSearching = searchManager.getSearchTerm() != null && !searchManager.getSearchTerm().isEmpty();
 
         // In search mode, force open the categories that contain matching nodes.
