@@ -452,8 +452,7 @@ public class NodeLibraryComponent implements EditorComponent {
 
     private void rebuildPresentationCategories() {
         this.allCategories = PRESENTATION_MAPPER.mapCategories(
-            canonicalCategories,
-            NodeCategoryPresentationMapper.PresentationMode.CANONICAL
+            canonicalCategories
         );
 
         expandedCategories.clear();
