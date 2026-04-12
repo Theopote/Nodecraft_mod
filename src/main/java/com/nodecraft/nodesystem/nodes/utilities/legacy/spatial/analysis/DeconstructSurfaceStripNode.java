@@ -112,8 +112,8 @@ public class DeconstructSurfaceStripNode extends BaseNode {
             polylinePoints.add(new Vec3d(point.x, point.y, point.z));
         }
         if (closed && points.size() >= 2) {
-            Vector3d first = points.get(0);
-            Vector3d last = points.get(points.size() - 1);
+            Vector3d first = points.getFirst();
+            Vector3d last = points.getLast();
             if (!first.equals(last)) {
                 polylinePoints.add(new Vec3d(first.x, first.y, first.z));
             }

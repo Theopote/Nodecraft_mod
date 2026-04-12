@@ -315,14 +315,16 @@ public class NodeRegistry {
         if (nodeId.startsWith("data.lists.")) {
             return "math.list_sequence." + nodeId.substring("data.lists.".length());
         }
-        if ("data.sequence.range".equals(nodeId)) {
-            return "math.list_sequence.range";
-        }
-        if ("data.sequence.repeat".equals(nodeId)) {
-            return "math.list_sequence.repeat";
-        }
-        if ("data.sequence.series".equals(nodeId)) {
-            return "math.list_sequence.series";
+        switch (nodeId) {
+            case "data.sequence.range" -> {
+                return "math.list_sequence.range";
+            }
+            case "data.sequence.repeat" -> {
+                return "math.list_sequence.repeat";
+            }
+            case "data.sequence.series" -> {
+                return "math.list_sequence.series";
+            }
         }
         if (nodeId.startsWith("data.conversion.")) {
             return "utilities.data_conversion." + nodeId.substring("data.conversion.".length());
@@ -342,16 +344,12 @@ public class NodeRegistry {
         if (nodeId.startsWith("inputs.sources.")) {
             return "utilities.fileio." + nodeId.substring("inputs.sources.".length());
         }
-        if ("inputs.minecraft.selected_entity".equals(nodeId)) {
-            return "world.selection.selected_entity";
-        }
-        if ("inputs.minecraft.selected_block_sequence".equals(nodeId)) {
-            return "world.selection.selected_block_sequence";
-        }
-        if ("deferred.math.math_series".equals(nodeId)) {
-            return "math.deferred.math_series";
-        }
-        return nodeId;
+        return switch (nodeId) {
+            case "inputs.minecraft.selected_entity" -> "world.selection.selected_entity";
+            case "inputs.minecraft.selected_block_sequence" -> "world.selection.selected_block_sequence";
+            case "deferred.math.math_series" -> "math.deferred.math_series";
+            default -> nodeId;
+        };
     }
 
     public String resolveCanonicalNodeId(String nodeId) {
@@ -504,7 +502,7 @@ public class NodeRegistry {
 
     /**
      * Registers a node definition.
-     *
+     * <p>
      * If the target category does not exist yet, it is created automatically.
      *
      * @param nodeInfo node metadata
