@@ -34,18 +34,12 @@ class NodeRegistryMigrationTest {
             registry.resolveCanonicalNodeId("control.flow.compare"));
         assertEquals("math.logic.if",
             registry.resolveCanonicalNodeId("control.flow.branch"));
-        assertEquals("deferred.out_of_scope.for_each",
-            registry.resolveCanonicalNodeId("control.flow.for_each"));
-        assertEquals("deferred.out_of_scope.text_to_value",
-            registry.resolveCanonicalNodeId("data.conversion.text_to_value"));
         assertEquals("material.gradient_mapping.height_gradient_map",
             registry.resolveCanonicalNodeId("world.modification.material_mapper"));
         assertEquals("material.gradient_mapping.height_gradient_map",
             registry.resolveCanonicalNodeId("material.basic_assignment.replace_material"));
         assertEquals("math.list_sequence.range",
             registry.resolveCanonicalNodeId("data.sequence.range"));
-        assertEquals("deferred.math.math_series",
-            registry.resolveCanonicalNodeId("data.sequence.series"));
         assertEquals("math.random.random_number",
             registry.resolveCanonicalNodeId("math.randomness.random_number"));
         assertEquals("reference.vectors.vector",
@@ -72,11 +66,6 @@ class NodeRegistryMigrationTest {
         assertNotNull(ifInfo);
         assertEquals("math.logic.if", ifInfo.getId());
         assertEquals("math.logic", ifInfo.getCategoryId());
-
-        NodeInfo deferredInfo = registry.getNodeInfo("utilities.fileio.save_graph");
-        assertNotNull(deferredInfo);
-        assertEquals("deferred.out_of_scope.save_graph", deferredInfo.getId());
-        assertEquals("deferred.out_of_scope", deferredInfo.getCategoryId());
 
         NodeInfo materialInfo = registry.getNodeInfo("world.modification.material_mapper");
         assertNotNull(materialInfo);
