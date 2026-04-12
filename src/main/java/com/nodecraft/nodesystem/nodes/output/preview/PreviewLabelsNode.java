@@ -21,7 +21,8 @@ import java.util.UUID;
     id = "output.preview.preview_labels",
     displayName = "Preview Labels",
     description = "Displays a text label at a reference position",
-    category = "output.preview"
+    category = "output.preview",
+    order = 8
 )
 public class PreviewLabelsNode extends BaseNode {
 

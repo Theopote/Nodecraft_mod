@@ -20,7 +20,8 @@ import java.util.UUID;
     id = "output.execute.bake_cylinder_to_blocks",
     displayName = "Cylinder Geometry To Blocks",
     description = "Voxelizes CylinderGeometryData into Minecraft block coordinates",
-    category = "output.execute"
+    category = "output.execute",
+    order = 6
 )
 public class CylinderGeometryVoxelizerNode extends BaseNode {
 

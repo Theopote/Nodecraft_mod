@@ -21,7 +21,8 @@ import java.util.UUID;
     id = "output.preview.preview_regions",
     displayName = "Preview Region",
     description = "Previews a region boundary as a reference box",
-    category = "output.preview"
+    category = "output.preview",
+    order = 7
 )
 public class PreviewRegionsNode extends BaseNode {
 

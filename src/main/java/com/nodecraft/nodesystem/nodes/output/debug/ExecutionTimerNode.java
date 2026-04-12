@@ -23,7 +23,8 @@ import java.util.UUID;
     id = "output.debug.execution_timer",
     displayName = "执行计时器",
     description = "测量连接到此节点的计算分支所花费的时间",
-    category = "output.debug"
+    category = "output.debug",
+    order = 2
 )
 public class ExecutionTimerNode extends BaseCustomUINode {
 

@@ -40,7 +40,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
     id = "output.execute.apply_changes",
     displayName = "Apply Changes",
     description = "Applies explicit placements or voxelized geometry to the world.",
-    category = "output.execute"
+    category = "output.execute",
+    order = 0
 )
 public class ApplyChangesNode extends BaseCustomUINode {
 

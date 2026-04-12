@@ -28,7 +28,8 @@ import java.util.UUID;
     id = "output.export.export_schematic",
     displayName = "导出结构",
     description = "将方块列表导出为 NBT 结构文件（.nbt）",
-    category = "output.export"
+    category = "output.export",
+    order = 0
 )
 public class ExportSchematicNode extends BaseCustomUINode {
 

@@ -33,7 +33,8 @@ import java.util.UUID;
     id = "output.preview.geometry_viewer",
     displayName = "Geometry Viewer",
     description = "Previews geometry visually and can commit the current result into the world.",
-    category = "output.preview"
+    category = "output.preview",
+    order = 0
 )
 public class GeometryViewerNode extends BaseCustomUINode {
 

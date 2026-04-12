@@ -25,7 +25,8 @@ import java.util.UUID;
     id = "output.debug.value_monitor",
     displayName = "数据预览",
     description = "将任意输出连到输入，在面板上查看该输出的数据和类型",
-    category = "output.debug"
+    category = "output.debug",
+    order = 0
 )
 public class ValueMonitorNode extends BaseCustomUINode {
 

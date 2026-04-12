@@ -23,7 +23,8 @@ import java.util.UUID;
     id = "output.execute.bake_torus_to_blocks",
     displayName = "Torus Geometry To Blocks",
     description = "Voxelizes TorusGeometryData into Minecraft block coordinates",
-    category = "output.execute"
+    category = "output.execute",
+    order = 12
 )
 public class TorusGeometryVoxelizerNode extends BaseNode {
 

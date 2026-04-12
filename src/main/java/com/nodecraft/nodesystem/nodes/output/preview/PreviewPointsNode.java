@@ -22,7 +22,8 @@ import java.util.UUID;
     id = "output.preview.preview_points",
     displayName = "Preview Points",
     description = "Previews one or more reference points before voxelization",
-    category = "output.preview"
+    category = "output.preview",
+    order = 2
 )
 public class PreviewPointsNode extends BaseNode {
 

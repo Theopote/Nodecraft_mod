@@ -14,7 +14,8 @@ import java.util.UUID;
     id = "output.execute.clear_preview",
     displayName = "Clear Preview",
     description = "Clears all active previews in the current world",
-    category = "output.execute"
+    category = "output.execute",
+    order = 1
 )
 public class ClearAllPreviewsNode extends BaseCustomUINode {
 

@@ -20,7 +20,8 @@ import java.util.UUID;
     id = "output.preview.preview_plane",
     displayName = "Preview Plane",
     description = "Previews a plane as a square grid with axes and normal direction",
-    category = "output.preview"
+    category = "output.preview",
+    order = 4
 )
 public class PreviewPlaneNode extends BaseNode {
 

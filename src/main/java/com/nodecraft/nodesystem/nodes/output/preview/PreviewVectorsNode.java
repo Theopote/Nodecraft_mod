@@ -23,7 +23,8 @@ import java.util.UUID;
     id = "output.preview.preview_vectors",
     displayName = "Preview Vectors",
     description = "Previews vectors and directions before voxelization",
-    category = "output.preview"
+    category = "output.preview",
+    order = 3
 )
 public class PreviewVectorsNode extends BaseNode {
 

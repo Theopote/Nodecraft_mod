@@ -21,7 +21,8 @@ import java.util.UUID;
     id = "output.execute.bake_ellipsoid_to_blocks",
     displayName = "Ellipsoid Geometry To Blocks",
     description = "Voxelizes EllipsoidGeometryData into Minecraft block coordinates",
-    category = "output.execute"
+    category = "output.execute",
+    order = 8
 )
 public class EllipsoidGeometryVoxelizerNode extends BaseNode {
 

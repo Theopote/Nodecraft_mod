@@ -23,7 +23,8 @@ import java.util.UUID;
     id = "output.preview.preview_curves",
     displayName = "Preview Curves",
     description = "Previews lines, polylines and curves as reference paths",
-    category = "output.preview"
+    category = "output.preview",
+    order = 6
 )
 public class PreviewPathsNode extends BaseNode {
 

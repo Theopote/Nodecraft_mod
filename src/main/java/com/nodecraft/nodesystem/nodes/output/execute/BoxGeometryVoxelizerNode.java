@@ -23,7 +23,8 @@ import java.util.UUID;
     id = "output.execute.bake_box_to_blocks",
     displayName = "Box Geometry To Blocks",
     description = "Voxelizes BoxGeometryData into Minecraft block coordinates",
-    category = "output.execute"
+    category = "output.execute",
+    order = 4
 )
 public class BoxGeometryVoxelizerNode extends BaseNode {
 

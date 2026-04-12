@@ -20,7 +20,8 @@ import java.util.UUID;
     id = "output.execute.bake_cone_to_blocks",
     displayName = "Cone Geometry To Blocks",
     description = "Voxelizes ConeGeometryData into Minecraft block coordinates",
-    category = "output.execute"
+    category = "output.execute",
+    order = 7
 )
 public class ConeGeometryVoxelizerNode extends BaseNode {
 

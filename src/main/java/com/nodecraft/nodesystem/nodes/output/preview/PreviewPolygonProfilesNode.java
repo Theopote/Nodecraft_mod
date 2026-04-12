@@ -26,7 +26,8 @@ import java.util.UUID;
     id = "output.preview.preview_profiles",
     displayName = "Preview Profiles",
     description = "Previews polygon profile boundaries and optional normal indicators",
-    category = "output.preview"
+    category = "output.preview",
+    order = 10
 )
 public class PreviewPolygonProfilesNode extends BaseNode {
 

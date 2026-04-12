@@ -20,7 +20,8 @@ import java.util.UUID;
     id = "output.execute.bake_surface_strip_to_blocks",
     displayName = "Surface Strip To Blocks",
     description = "Approximates a surface strip as a sampled block lattice using section edges and rails",
-    category = "output.execute"
+    category = "output.execute",
+    order = 3
 )
 public class SurfaceStripToBlocksNode extends BaseNode {
 

@@ -25,7 +25,8 @@ import java.util.UUID;
     id = "output.debug.data_inspector",
     displayName = "面板",
     description = "显示连接到其输入端口的原始数据（文本形式）",
-    category = "output.debug"
+    category = "output.debug",
+    order = 3
 )
 public class PanelNode extends BaseCustomUINode {
 

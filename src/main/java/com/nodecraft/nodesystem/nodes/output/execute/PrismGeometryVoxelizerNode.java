@@ -20,7 +20,8 @@ import java.util.UUID;
     id = "output.execute.bake_prism_to_blocks",
     displayName = "Prism Geometry To Blocks",
     description = "Voxelizes PrismGeometryData into Minecraft block coordinates (supports solid and shell modes)",
-    category = "output.execute"
+    category = "output.execute",
+    order = 9
 )
 public class PrismGeometryVoxelizerNode extends BaseNode {
 

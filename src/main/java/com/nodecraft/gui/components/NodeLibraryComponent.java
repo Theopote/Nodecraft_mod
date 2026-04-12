@@ -388,52 +388,19 @@ public class NodeLibraryComponent implements EditorComponent {
     }
 
     private static @NonNull Map<String, Integer> getPreviewOrder() {
-        Map<String, Integer> previewOrder = new HashMap<>();
-        previewOrder.put("output.preview.geometry_viewer", 0);
-        previewOrder.put("output.preview.preview_blocks", 1);
-        previewOrder.put("output.preview.preview_points", 2);
-        previewOrder.put("output.preview.preview_vectors", 3);
-        previewOrder.put("output.preview.preview_plane", 4);
-        previewOrder.put("output.preview.preview_frame", 5);
-        previewOrder.put("output.preview.preview_curves", 6);
-        previewOrder.put("output.preview.preview_regions", 7);
-        previewOrder.put("output.preview.preview_labels", 8);
-        previewOrder.put("output.preview.preview_surface_strip", 9);
-        previewOrder.put("output.preview.preview_profiles", 10);
-        return previewOrder;
+        return new HashMap<>();
     }
 
     private static @NonNull Map<String, Integer> getOutputExecuteOrder() {
-        Map<String, Integer> outputExecuteOrder = new HashMap<>();
-        outputExecuteOrder.put("output.execute.apply_changes", 0);
-        outputExecuteOrder.put("output.execute.clear_preview", 1);
-        outputExecuteOrder.put("output.execute.bake_geometry_to_blocks", 2);
-        outputExecuteOrder.put("output.execute.bake_surface_strip_to_blocks", 3);
-        outputExecuteOrder.put("output.execute.bake_box_to_blocks", 4);
-        outputExecuteOrder.put("output.execute.bake_sphere_to_blocks", 5);
-        outputExecuteOrder.put("output.execute.bake_cylinder_to_blocks", 6);
-        outputExecuteOrder.put("output.execute.bake_cone_to_blocks", 7);
-        outputExecuteOrder.put("output.execute.bake_ellipsoid_to_blocks", 8);
-        outputExecuteOrder.put("output.execute.bake_prism_to_blocks", 9);
-        outputExecuteOrder.put("output.execute.bake_octahedron_to_blocks", 10);
-        outputExecuteOrder.put("output.execute.bake_tetrahedron_to_blocks", 11);
-        outputExecuteOrder.put("output.execute.bake_torus_to_blocks", 12);
-        return outputExecuteOrder;
+        return new HashMap<>();
     }
 
     private static @NonNull Map<String, Integer> getOutputExportOrder() {
-        Map<String, Integer> outputExportOrder = new HashMap<>();
-        outputExportOrder.put("output.export.export_schematic", 0);
-        return outputExportOrder;
+        return new HashMap<>();
     }
 
     private static @NonNull Map<String, Integer> getOutputDebugOrder() {
-        Map<String, Integer> outputDebugOrder = new HashMap<>();
-        outputDebugOrder.put("output.debug.value_monitor", 0);
-        outputDebugOrder.put("output.debug.print_to_chat", 1);
-        outputDebugOrder.put("output.debug.execution_timer", 2);
-        outputDebugOrder.put("output.debug.data_inspector", 3);
-        return outputDebugOrder;
+        return new HashMap<>();
     }
 
     private static @NonNull Map<String, Integer> getWorldReadOrder() {

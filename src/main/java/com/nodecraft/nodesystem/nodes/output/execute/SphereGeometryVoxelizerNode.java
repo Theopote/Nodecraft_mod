@@ -21,7 +21,8 @@ import java.util.UUID;
     id = "output.execute.bake_sphere_to_blocks",
     displayName = "Sphere Geometry To Blocks",
     description = "Voxelizes SphereData into Minecraft block coordinates",
-    category = "output.execute"
+    category = "output.execute",
+    order = 5
 )
 public class SphereGeometryVoxelizerNode extends BaseNode {
 

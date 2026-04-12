@@ -23,7 +23,8 @@ import java.util.UUID;
     id = "output.debug.print_to_chat",
     displayName = "打印到聊天",
     description = "将输入数据显示到游戏聊天框",
-    category = "output.debug"
+    category = "output.debug",
+    order = 1
 )
 public class PrintToChatNode extends BaseCustomUINode {
 

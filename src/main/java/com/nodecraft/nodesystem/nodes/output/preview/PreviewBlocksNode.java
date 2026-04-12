@@ -25,7 +25,8 @@ import java.util.UUID;
     id = "output.preview.preview_blocks",
     displayName = "Preview Blocks",
     description = "Previews block coordinates or block lists as temporary ghost blocks.",
-    category = "output.preview"
+    category = "output.preview",
+    order = 1
 )
 public class PreviewBlocksNode extends BaseCustomUINode {
 

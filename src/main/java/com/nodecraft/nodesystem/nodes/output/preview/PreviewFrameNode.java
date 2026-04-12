@@ -23,7 +23,8 @@ import java.util.UUID;
     id = "output.preview.preview_frame",
     displayName = "Preview Frame",
     description = "Previews a local coordinate frame with X, Y and Z axes",
-    category = "output.preview"
+    category = "output.preview",
+    order = 5
 )
 public class PreviewFrameNode extends BaseNode {
 

@@ -27,7 +27,8 @@ import java.util.UUID;
     id = "output.preview.preview_surface_strip",
     displayName = "Preview Surface Strip",
     description = "Previews a surface strip as section contours, rails, or a lattice overlay",
-    category = "output.preview"
+    category = "output.preview",
+    order = 9
 )
 public class PreviewSurfaceStripNode extends BaseNode {
 

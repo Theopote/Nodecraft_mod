@@ -20,7 +20,8 @@ import java.util.UUID;
     id = "output.execute.bake_octahedron_to_blocks",
     displayName = "Octahedron Geometry To Blocks",
     description = "Voxelizes OctahedronGeometryData into Minecraft block coordinates",
-    category = "output.execute"
+    category = "output.execute",
+    order = 10
 )
 public class OctahedronGeometryVoxelizerNode extends BaseNode {
 
