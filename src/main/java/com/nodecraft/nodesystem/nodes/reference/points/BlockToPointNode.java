@@ -17,7 +17,7 @@ import java.util.UUID;
 @NodeInfo(
     id = "reference.points.point_from_block",
     displayName = "Block To Point",
-    description = "Converts a block coordinate into a geometric point for downstream geometry operations",
+    description = "Explicitly converts a block coordinate into a geometric point, with optional block-center offset",
     category = "reference.points",
     order = 1
 )
@@ -62,7 +62,7 @@ public class BlockToPointNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Converts a block coordinate into a geometric point for downstream geometry operations";
+        return "Explicitly converts a block coordinate into a geometric point, with optional block-center offset";
     }
 
     @Override

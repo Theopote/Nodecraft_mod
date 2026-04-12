@@ -69,10 +69,22 @@ public final class TypeConversionRegistry {
     }
 
     private static boolean isExplicitConversionPair(NodeDataType outputType, NodeDataType inputType) {
-        return isPointToBlockCoordinateConversion(outputType, inputType)
+        return isBlockCoordinateToPointConversion(outputType, inputType)
+                || isBlockCoordinateToVectorConversion(outputType, inputType)
+                || isPointToBlockCoordinateConversion(outputType, inputType)
                 || isBlockFaceToPlaneConversion(outputType, inputType)
                 || isSurfaceStripToGeometryConversion(outputType, inputType)
                 || isGeometryToPlacementConversion(outputType, inputType);
+    }
+
+    private static boolean isBlockCoordinateToPointConversion(NodeDataType outputType, NodeDataType inputType) {
+        return (outputType == NodeDataType.BLOCK_POS || outputType == NodeDataType.COORDINATE)
+                && inputType == NodeDataType.POINT;
+    }
+
+    private static boolean isBlockCoordinateToVectorConversion(NodeDataType outputType, NodeDataType inputType) {
+        return (outputType == NodeDataType.BLOCK_POS || outputType == NodeDataType.COORDINATE)
+                && (inputType == NodeDataType.VECTOR || inputType == NodeDataType.POSITION);
     }
 
     private static boolean isPointToBlockCoordinateConversion(NodeDataType outputType, NodeDataType inputType) {
