@@ -18,7 +18,7 @@ import java.util.UUID;
 @NodeInfo(
     id = "reference.points.get_box_face",
     displayName = "Get Box Face",
-    description = "Gets a single face from box geometry by index",
+    description = "Gets a single face from box geometry by semantic name or index",
     category = "reference.points",
     order = 11
 )
@@ -32,7 +32,12 @@ public class GetBoxFaceNode extends BaseNode {
         description = "When enabled, the face index wraps around the 0-5 range")
     private boolean wrapIndex = false;
 
+    @NodeProperty(displayName = "Default Face Name", category = "Selection", order = 3,
+        description = "Fallback semantic face name when no face name input is connected")
+    private String defaultFaceName = "";
+
     private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
+    private static final String INPUT_FACE_NAME_ID = "input_face_name";
     private static final String INPUT_INDEX_ID = "input_index";
 
     private static final String OUTPUT_FACE_ID = "output_face";
@@ -44,6 +49,7 @@ public class GetBoxFaceNode extends BaseNode {
         super(UUID.randomUUID(), "reference.points.get_box_face");
 
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry to query", NodeDataType.BOX_GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_FACE_NAME_ID, "Face Name", "Semantic face name such as top, bottom, left, right, front, or back", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_INDEX_ID, "Face Index", "Face index from 0 to 5", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_FACE_ID, "Face", "Resolved box face", NodeDataType.BOX_FACE, this));
@@ -54,12 +60,13 @@ public class GetBoxFaceNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Gets a single face from box geometry by index";
+        return "Gets a single face from box geometry by semantic name or index";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_BOX_GEOMETRY_ID);
+        Object faceNameObj = inputValues.get(INPUT_FACE_NAME_ID);
         Object indexObj = inputValues.get(INPUT_INDEX_ID);
 
         BoxFaceData face = null;
@@ -67,26 +74,21 @@ public class GetBoxFaceNode extends BaseNode {
         String name = null;
         Integer resolvedIndex = null;
 
-        if (geometryObj instanceof BoxGeometryData boxGeometry && indexObj instanceof Number number) {
+        if (geometryObj instanceof BoxGeometryData boxGeometry) {
             List<BoxFaceData> faces = boxGeometry.getFaces();
-            int index = number.intValue();
-            int faceCount = faces.size();
+            BoxFaceData resolvedFace = resolveBySemanticName(faces, faceNameObj);
+            if (resolvedFace == null) {
+                resolvedFace = resolveBySemanticName(faces, defaultFaceName);
+            }
+            if (resolvedFace == null) {
+                resolvedFace = resolveByIndex(faces, indexObj);
+            }
 
-            if (faceCount > 0) {
-                if (index < 0 && allowNegativeIndex) {
-                    index = faceCount + index;
-                }
-
-                if (wrapIndex) {
-                    index = ((index % faceCount) + faceCount) % faceCount;
-                }
-
-                if (index >= 0 && index < faceCount) {
-                    face = faces.get(index);
-                    found = true;
-                    name = face.getName();
-                    resolvedIndex = index;
-                }
+            if (resolvedFace != null) {
+                face = resolvedFace;
+                found = true;
+                name = face.getName();
+                resolvedIndex = face.getIndex();
             }
         }
 
@@ -94,6 +96,66 @@ public class GetBoxFaceNode extends BaseNode {
         outputValues.put(OUTPUT_FOUND_ID, found);
         outputValues.put(OUTPUT_NAME_ID, name);
         outputValues.put(OUTPUT_RESOLVED_INDEX_ID, resolvedIndex);
+    }
+
+    private BoxFaceData resolveBySemanticName(List<BoxFaceData> faces, Object faceNameObj) {
+        if (!(faceNameObj instanceof String rawName) || rawName.isBlank()) {
+            return null;
+        }
+
+        String normalized = normalizeFaceName(rawName);
+        if (normalized == null) {
+            return null;
+        }
+
+        for (BoxFaceData face : faces) {
+            if (normalized.equals(normalizeFaceName(face.getName()))) {
+                return face;
+            }
+        }
+        return null;
+    }
+
+    private BoxFaceData resolveByIndex(List<BoxFaceData> faces, Object indexObj) {
+        if (!(indexObj instanceof Number number)) {
+            return null;
+        }
+
+        int index = number.intValue();
+        int faceCount = faces.size();
+        if (faceCount <= 0) {
+            return null;
+        }
+
+        if (index < 0 && allowNegativeIndex) {
+            index = faceCount + index;
+        }
+
+        if (wrapIndex) {
+            index = ((index % faceCount) + faceCount) % faceCount;
+        }
+
+        if (index < 0 || index >= faceCount) {
+            return null;
+        }
+
+        return faces.get(index);
+    }
+
+    private String normalizeFaceName(String name) {
+        String normalized = name.trim().toLowerCase()
+            .replace('_', ' ')
+            .replace('-', ' ');
+
+        return switch (normalized) {
+            case "top", "up", "upper" -> "top";
+            case "bottom", "down", "lower" -> "bottom";
+            case "left", "west" -> "left";
+            case "right", "east" -> "right";
+            case "front", "south" -> "front";
+            case "back", "north", "rear" -> "back";
+            default -> null;
+        };
     }
 
     public boolean isAllowNegativeIndex() {
@@ -118,11 +180,24 @@ public class GetBoxFaceNode extends BaseNode {
         }
     }
 
+    public String getDefaultFaceName() {
+        return defaultFaceName;
+    }
+
+    public void setDefaultFaceName(String defaultFaceName) {
+        String resolved = defaultFaceName == null ? "" : defaultFaceName.trim();
+        if (!this.defaultFaceName.equals(resolved)) {
+            this.defaultFaceName = resolved;
+            markDirty();
+        }
+    }
+
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
         state.put("allowNegativeIndex", allowNegativeIndex);
         state.put("wrapIndex", wrapIndex);
+        state.put("defaultFaceName", defaultFaceName);
         return state;
     }
 
@@ -137,6 +212,9 @@ public class GetBoxFaceNode extends BaseNode {
         }
         if (stateMap.get("wrapIndex") instanceof Boolean wrapIndexValue) {
             setWrapIndex(wrapIndexValue);
+        }
+        if (stateMap.get("defaultFaceName") instanceof String defaultFaceNameValue) {
+            setDefaultFaceName(defaultFaceNameValue);
         }
     }
 }
