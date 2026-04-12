@@ -226,7 +226,6 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "math.vector.rotate", "transform.orientation.rotate_vector");
         addMovedNodeAlias(aliases, "math.vector.rotate_vector", "transform.orientation.rotate_vector");
         addMovedNodeAlias(aliases, "spatial.points.block_to_point", "reference.points.point_from_block");
-        addMovedNodeAlias(aliases, "spatial.points.point_between_two_points", "reference.points.mid_point");
         addMovedNodeAlias(aliases, "spatial.points.point_along_vector", "reference.points.point_along_vector");
         addMovedNodeAlias(aliases, "spatial.points.distance_point_to_plane", "reference.planes.distance_point_to_plane");
         addMovedNodeAlias(aliases, "spatial.analysis.box_face_to_plane", "reference.planes.block_face_plane");
@@ -238,6 +237,7 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "spatial.analysis.get_box_corner", "reference.points.get_box_corner");
         addMovedNodeAlias(aliases, "spatial.analysis.get_box_face", "reference.points.get_box_face");
         addMovedNodeAlias(aliases, "spatial.analysis.get_face_edge", "reference.points.get_face_edge");
+        addMovedNodeAlias(aliases, "spatial.analysis.deconstruct_surface_strip", "geometry.solids.deconstruct_surface_strip");
         addMovedNodeAlias(aliases, "spatial.analysis.face_center_frame", "reference.frames.frame_from_face");
         addMovedNodeAlias(aliases, "spatial.analysis.sphere_surface_frame", "reference.frames.frame_along_surface");
         addMovedNodeAlias(aliases, "spatial.points.snap_point_to_block", "world.selection.snap_point_to_block");
