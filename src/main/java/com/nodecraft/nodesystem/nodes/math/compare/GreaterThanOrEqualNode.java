@@ -16,7 +16,8 @@ import java.util.UUID;
     id = "math.compare.greater_than_or_equal",
     displayName = "Greater Than or Equal (>=)",
     description = "Returns true when A is greater than or equal to B.",
-    category = "math.compare"
+    category = "math.compare",
+    order = 6
 )
 public class GreaterThanOrEqualNode extends BaseNode {
 

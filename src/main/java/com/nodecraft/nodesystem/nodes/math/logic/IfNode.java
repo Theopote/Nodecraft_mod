@@ -16,7 +16,8 @@ import java.util.UUID;
     id = "math.logic.if",
     displayName = "If",
     description = "Chooses between true and false values based on a condition.",
-    category = "math.logic"
+    category = "math.logic",
+    order = 0
 )
 public class IfNode extends BaseNode {
 

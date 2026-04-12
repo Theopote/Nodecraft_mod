@@ -16,7 +16,8 @@ import java.util.UUID;
     id = "math.compare.compare",
     displayName = "Compare",
     description = "Compares two values and outputs equality and ordering relations.",
-    category = "math.compare"
+    category = "math.compare",
+    order = 0
 )
 public class CompareNode extends BaseNode {
 

@@ -16,7 +16,8 @@ import java.util.UUID;
     id = "math.compare.greater_than",
     displayName = "Greater Than (>)",
     description = "Returns true when A is greater than B.",
-    category = "math.compare"
+    category = "math.compare",
+    order = 5
 )
 public class GreaterThanNode extends BaseNode {
 

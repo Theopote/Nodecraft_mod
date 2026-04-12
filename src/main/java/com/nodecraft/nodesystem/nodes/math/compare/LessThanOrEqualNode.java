@@ -16,7 +16,8 @@ import java.util.UUID;
     id = "math.compare.less_than_or_equal",
     displayName = "Less Than or Equal (<=)",
     description = "Returns true when A is less than or equal to B.",
-    category = "math.compare"
+    category = "math.compare",
+    order = 4
 )
 public class LessThanOrEqualNode extends BaseNode {
 

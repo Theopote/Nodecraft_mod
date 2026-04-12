@@ -17,7 +17,8 @@ import java.util.UUID;
     id = "math.compare.not_equals",
     displayName = "Not Equals (!=)",
     description = "Returns true when A does not equal B.",
-    category = "math.compare"
+    category = "math.compare",
+    order = 2
 )
 public class NotEqualsNode extends BaseNode {
 

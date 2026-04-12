@@ -16,7 +16,8 @@ import java.util.UUID;
     id = "math.logic.switch",
     displayName = "Switch",
     description = "Selects one of multiple inputs by index, with a default fallback.",
-    category = "math.logic"
+    category = "math.logic",
+    order = 1
 )
 public class SelectItemNode extends BaseNode {
 

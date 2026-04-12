@@ -17,7 +17,8 @@ import java.util.UUID;
     id = "math.compare.equals",
     displayName = "Equals (==)",
     description = "Returns true when A equals B.",
-    category = "math.compare"
+    category = "math.compare",
+    order = 1
 )
 public class EqualsNode extends BaseNode {
 

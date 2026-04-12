@@ -280,26 +280,11 @@ public class NodeLibraryComponent implements EditorComponent {
     }
 
     private static @NonNull Map<String, Integer> getMathCompareOrder() {
-        Map<String, Integer> mathCompareOrder = new HashMap<>();
-        mathCompareOrder.put("math.compare.compare", 0);
-        mathCompareOrder.put("math.compare.equals", 1);
-        mathCompareOrder.put("math.compare.not_equals", 2);
-        mathCompareOrder.put("math.compare.less_than", 3);
-        mathCompareOrder.put("math.compare.less_than_or_equal", 4);
-        mathCompareOrder.put("math.compare.greater_than", 5);
-        mathCompareOrder.put("math.compare.greater_than_or_equal", 6);
-        return mathCompareOrder;
+        return new HashMap<>();
     }
 
     private static @NonNull Map<String, Integer> getMathLogicOrder() {
-        Map<String, Integer> mathLogicOrder = new HashMap<>();
-        mathLogicOrder.put("math.logic.if", 0);
-        mathLogicOrder.put("math.logic.switch", 1);
-        mathLogicOrder.put("math.logic.and", 2);
-        mathLogicOrder.put("math.logic.or", 3);
-        mathLogicOrder.put("math.logic.not", 4);
-        mathLogicOrder.put("math.logic.xor", 5);
-        return mathLogicOrder;
+        return new HashMap<>();
     }
 
     private static @NonNull Map<String, Integer> getMathScalarMathOrder() {
