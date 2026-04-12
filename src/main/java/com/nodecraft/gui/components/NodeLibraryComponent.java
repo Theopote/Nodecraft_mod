@@ -68,6 +68,21 @@ public class NodeLibraryComponent implements EditorComponent {
         Map<String, Integer> materialBasicAssignmentOrder = getMaterialBasicAssignmentOrder();
         categoryOrder.put("material.basic_assignment", materialBasicAssignmentOrder);
 
+        Map<String, Integer> materialGradientMappingOrder = getMaterialGradientMappingOrder();
+        categoryOrder.put("material.gradient_mapping", materialGradientMappingOrder);
+
+        Map<String, Integer> materialDirectionalMappingOrder = getMaterialDirectionalMappingOrder();
+        categoryOrder.put("material.directional_mapping", materialDirectionalMappingOrder);
+
+        Map<String, Integer> materialPatternMappingOrder = getMaterialPatternMappingOrder();
+        categoryOrder.put("material.pattern_mapping", materialPatternMappingOrder);
+
+        Map<String, Integer> materialBlockStateOrder = getMaterialBlockStateOrder();
+        categoryOrder.put("material.block_state", materialBlockStateOrder);
+
+        Map<String, Integer> materialSurfaceAgingOrder = getMaterialSurfaceAgingOrder();
+        categoryOrder.put("material.surface_aging", materialSurfaceAgingOrder);
+
         Map<String, Integer> inputNumericOrder = getInputNumericOrder();
         categoryOrder.put("input.numeric", inputNumericOrder);
 
@@ -546,8 +561,30 @@ public class NodeLibraryComponent implements EditorComponent {
 
     private static @NonNull Map<String, Integer> getMaterialBasicAssignmentOrder() {
         Map<String, Integer> materialBasicAssignmentOrder = new HashMap<>();
-        materialBasicAssignmentOrder.put("material.basic_assignment.replace_material", 0);
+        materialBasicAssignmentOrder.put("material.basic_assignment.assign_block_type", 0);
         return materialBasicAssignmentOrder;
+    }
+
+    private static @NonNull Map<String, Integer> getMaterialGradientMappingOrder() {
+        Map<String, Integer> materialGradientMappingOrder = new HashMap<>();
+        materialGradientMappingOrder.put("material.gradient_mapping.height_gradient_map", 0);
+        return materialGradientMappingOrder;
+    }
+
+    private static @NonNull Map<String, Integer> getMaterialDirectionalMappingOrder() {
+        return new HashMap<>();
+    }
+
+    private static @NonNull Map<String, Integer> getMaterialPatternMappingOrder() {
+        return new HashMap<>();
+    }
+
+    private static @NonNull Map<String, Integer> getMaterialBlockStateOrder() {
+        return new HashMap<>();
+    }
+
+    private static @NonNull Map<String, Integer> getMaterialSurfaceAgingOrder() {
+        return new HashMap<>();
     }
 
     private static @NonNull Map<String, Integer> getReferenceFramesOrder() {
@@ -719,7 +756,12 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("world.write", new float[]{0.45f, 1.0f, 1.0f, 1.0f});
 
             CATEGORY_COLORS_FLOAT.put("material", new float[]{0.8f, 0.55f, 0.2f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("material.basic_assignment", new float[]{0.88f, 0.6f, 0.24f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("material.basic_assignment", new float[]{0.86f, 0.58f, 0.22f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("material.gradient_mapping", new float[]{0.93f, 0.68f, 0.26f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("material.directional_mapping", new float[]{0.9f, 0.56f, 0.3f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("material.pattern_mapping", new float[]{0.95f, 0.74f, 0.32f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("material.block_state", new float[]{0.82f, 0.5f, 0.2f, 1.0f});
+            CATEGORY_COLORS_FLOAT.put("material.surface_aging", new float[]{0.74f, 0.48f, 0.24f, 1.0f});
             
             // Output subcategories.
             CATEGORY_COLORS_FLOAT.put("output.debug", new float[]{0.9f, 0.3f, 0.6f, 1.0f});

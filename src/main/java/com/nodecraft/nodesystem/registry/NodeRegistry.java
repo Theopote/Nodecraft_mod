@@ -108,7 +108,8 @@ public class NodeRegistry {
         addMovedNodeAlias(aliases, "world.modification.replace_blocks", "world.write.replace_blocks");
         addMovedNodeAlias(aliases, "world.modification.clone_region", "world.write.clone_region");
         addMovedNodeAlias(aliases, "world.modification.remove_blocks", "world.write.clear_region");
-        addMovedNodeAlias(aliases, "world.modification.material_mapper", "material.basic_assignment.replace_material");
+        addMovedNodeAlias(aliases, "world.modification.material_mapper", "material.gradient_mapping.height_gradient_map");
+        addMovedNodeAlias(aliases, "material.basic_assignment.replace_material", "material.gradient_mapping.height_gradient_map");
         addMovedNodeAlias(aliases, "inputs.basic.integer_input", "input.numeric.integer");
         addMovedNodeAlias(aliases, "inputs.basic.float_input", "input.numeric.float");
         addMovedNodeAlias(aliases, "inputs.basic.integer_slider", "input.numeric.integer_slider");

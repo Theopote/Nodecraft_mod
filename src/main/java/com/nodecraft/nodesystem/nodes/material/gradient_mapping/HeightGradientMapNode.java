@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.material.basic_assignment;
+package com.nodecraft.nodesystem.nodes.material.gradient_mapping;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -16,17 +16,15 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Maps a coordinate set to block IDs based on relative height bands.
- * Geometry inputs are voxelized internally so the material stage can sit
- * downstream of geometry-producing nodes.
+ * Applies a simple vertical material gradient across a voxelized shape.
  */
 @NodeInfo(
-    id = "material.basic_assignment.replace_material",
-    displayName = "Replace Material",
-    description = "Assigns bottom, middle, and top block types across a shape.",
-    category = "material.basic_assignment"
+    id = "material.gradient_mapping.height_gradient_map",
+    displayName = "Height Gradient Map",
+    description = "Assigns lower, middle, and upper block types across a shape based on relative height",
+    category = "material.gradient_mapping"
 )
-public class MaterialMapperNode extends BaseNode {
+public class HeightGradientMapNode extends BaseNode {
 
     private static final String INPUT_COORDINATES_ID = "input_coordinates";
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
@@ -42,8 +40,8 @@ public class MaterialMapperNode extends BaseNode {
     private static final String OUTPUT_BLOCK_IDS_ID = "output_block_ids";
     private static final String OUTPUT_PLACEMENTS_ID = "output_placements";
 
-    public MaterialMapperNode() {
-        super(UUID.randomUUID(), "material.basic_assignment.replace_material");
+    public HeightGradientMapNode() {
+        super(UUID.randomUUID(), "material.gradient_mapping.height_gradient_map");
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified abstract geometry input", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry data to materialize", NodeDataType.BOX_GEOMETRY, this));
@@ -61,7 +59,7 @@ public class MaterialMapperNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Assigns bottom, middle, and top block types across a shape.";
+        return "Assigns lower, middle, and upper block types across a shape based on relative height";
     }
 
     @Override
@@ -94,17 +92,17 @@ public class MaterialMapperNode extends BaseNode {
         }
 
         double span = maxY - minY;
-        if (span < 1e-6) {
-            span = 1.0;
+        if (span < 1e-6d) {
+            span = 1.0d;
         }
 
         BlockPosList outputPositions = new BlockPosList();
         for (BlockPos pos : positions) {
             double t = (pos.getY() - minY) / span;
             String blockId;
-            if (t < 1.0 / 3.0) {
+            if (t < 1.0d / 3.0d) {
                 blockId = bottom;
-            } else if (t < 2.0 / 3.0) {
+            } else if (t < 2.0d / 3.0d) {
                 blockId = middle;
             } else {
                 blockId = top;
@@ -126,10 +124,23 @@ public class MaterialMapperNode extends BaseNode {
 
     private String getInputString(String portId, String fallback) {
         Object value = inputValues.get(portId);
-        return (value instanceof String && !((String) value).isEmpty()) ? (String) value : fallback;
+        return (value instanceof String text && !text.isEmpty()) ? text : fallback;
     }
 
-    private BlockPosList resolveCoordinates(Object coordsObj, Object geometryObj, Object boxGeometryObj, Object cylinderGeometryObj, Object sphereGeometryObj, Object torusGeometryObj) {
-        return GeometryVoxelizer.resolveBlocks(coordsObj, geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj, true);
+    private BlockPosList resolveCoordinates(Object coordsObj,
+                                            Object geometryObj,
+                                            Object boxGeometryObj,
+                                            Object cylinderGeometryObj,
+                                            Object sphereGeometryObj,
+                                            Object torusGeometryObj) {
+        return GeometryVoxelizer.resolveBlocks(
+            coordsObj,
+            geometryObj,
+            boxGeometryObj,
+            cylinderGeometryObj,
+            sphereGeometryObj,
+            torusGeometryObj,
+            true
+        );
     }
 }
