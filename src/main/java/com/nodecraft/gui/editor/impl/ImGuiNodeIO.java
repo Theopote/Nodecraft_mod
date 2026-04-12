@@ -49,8 +49,13 @@ public class ImGuiNodeIO {
     }
 
     private Path resolveDefaultSavePath() {
-        Path gameDir = FabricLoader.getInstance().getGameDir();
-        return gameDir.resolve("nodecraft").resolve("graphs").resolve("nodecraft_graph.json");
+        try {
+            Path gameDir = FabricLoader.getInstance().getGameDir();
+            return gameDir.resolve("nodecraft").resolve("graphs").resolve("nodecraft_graph.json");
+        } catch (IllegalStateException e) {
+            NodeCraft.LOGGER.warn("Fabric game directory is not available yet. Falling back to a local graph path.");
+            return Paths.get("nodecraft", "graphs", "nodecraft_graph.json");
+        }
     }
     
     /**
