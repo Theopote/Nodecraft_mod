@@ -23,7 +23,8 @@ import java.util.UUID;
     id = "material.block_state.block_state_assign",
     displayName = "Block State Assign",
     description = "Assigns explicit block-state properties to placements or voxelized geometry",
-    category = "material.block_state"
+    category = "material.block_state",
+    order = 0
 )
 public class BlockStateAssignNode extends BaseNode {
 

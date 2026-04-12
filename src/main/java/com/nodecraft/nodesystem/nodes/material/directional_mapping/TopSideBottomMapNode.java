@@ -24,7 +24,8 @@ import java.util.UUID;
     id = "material.directional_mapping.top_side_bottom_map",
     displayName = "Top / Side / Bottom Map",
     description = "Assigns top, side, and bottom block types across a voxelized shape using vertical exposure",
-    category = "material.directional_mapping"
+    category = "material.directional_mapping",
+    order = 0
 )
 public class TopSideBottomMapNode extends BaseNode {
 

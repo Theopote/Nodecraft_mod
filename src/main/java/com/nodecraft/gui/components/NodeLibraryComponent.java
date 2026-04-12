@@ -508,40 +508,27 @@ public class NodeLibraryComponent implements EditorComponent {
     }
 
     private static @NonNull Map<String, Integer> getMaterialBasicAssignmentOrder() {
-        Map<String, Integer> materialBasicAssignmentOrder = new HashMap<>();
-        materialBasicAssignmentOrder.put("material.basic_assignment.assign_block_type", 0);
-        return materialBasicAssignmentOrder;
+        return new HashMap<>();
     }
 
     private static @NonNull Map<String, Integer> getMaterialGradientMappingOrder() {
-        Map<String, Integer> materialGradientMappingOrder = new HashMap<>();
-        materialGradientMappingOrder.put("material.gradient_mapping.height_gradient_map", 0);
-        return materialGradientMappingOrder;
+        return new HashMap<>();
     }
 
     private static @NonNull Map<String, Integer> getMaterialDirectionalMappingOrder() {
-        Map<String, Integer> materialDirectionalMappingOrder = new HashMap<>();
-        materialDirectionalMappingOrder.put("material.directional_mapping.top_side_bottom_map", 0);
-        return materialDirectionalMappingOrder;
+        return new HashMap<>();
     }
 
     private static @NonNull Map<String, Integer> getMaterialPatternMappingOrder() {
-        Map<String, Integer> materialPatternMappingOrder = new HashMap<>();
-        materialPatternMappingOrder.put("material.pattern_mapping.checker_pattern_map", 0);
-        return materialPatternMappingOrder;
+        return new HashMap<>();
     }
 
     private static @NonNull Map<String, Integer> getMaterialBlockStateOrder() {
-        Map<String, Integer> materialBlockStateOrder = new HashMap<>();
-        materialBlockStateOrder.put("material.block_state.block_state_assign", 0);
-        materialBlockStateOrder.put("material.block_state.auto_orient_blocks", 1);
-        return materialBlockStateOrder;
+        return new HashMap<>();
     }
 
     private static @NonNull Map<String, Integer> getMaterialSurfaceAgingOrder() {
-        Map<String, Integer> materialSurfaceAgingOrder = new HashMap<>();
-        materialSurfaceAgingOrder.put("material.surface_aging.weathering", 0);
-        return materialSurfaceAgingOrder;
+        return new HashMap<>();
     }
 
     private static @NonNull Map<String, Integer> getReferenceFramesOrder() {
@@ -1636,14 +1623,10 @@ public class NodeLibraryComponent implements EditorComponent {
         List<NodeInfo> nodes = new ArrayList<>(displayCategory.getNodes());
 
         Map<String, Integer> explicitOrder = CATEGORY_NODE_ORDER.get(displayCategory.getId());
-        if (explicitOrder != null && !explicitOrder.isEmpty()) {
-            nodes.sort(Comparator
-                .comparingInt((NodeInfo node) -> explicitOrder.getOrDefault(node.getId(), Integer.MAX_VALUE))
-                .thenComparing(NodeInfo::getDisplayName, String.CASE_INSENSITIVE_ORDER));
-            return nodes;
-        }
-
-        nodes.sort(Comparator.comparing(NodeInfo::getDisplayName, String.CASE_INSENSITIVE_ORDER));
+        nodes.sort(Comparator
+            .comparingInt(NodeInfo::getOrder)
+            .thenComparingInt(node -> explicitOrder != null ? explicitOrder.getOrDefault(node.getId(), Integer.MAX_VALUE) : Integer.MAX_VALUE)
+            .thenComparing(NodeInfo::getDisplayName, String.CASE_INSENSITIVE_ORDER));
         return nodes;
     }
 

@@ -6,30 +6,35 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * 用于标记节点类并提供元数据的注解
- * 被标记的类将被自动注册到节点库中
+ * Annotation used to describe a node class for automatic registration.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface NodeInfo {
+
     /**
-     * 节点ID，如不指定则使用类名转换为小写并添加"_node"后缀
+     * Canonical node id.
      */
     String id() default "";
-    
+
     /**
-     * 节点显示名称，如不指定则使用类名的格式化版本
+     * User-facing node title.
      */
     String displayName() default "";
-    
+
     /**
-     * 节点描述
+     * Short node description.
      */
     String description() default "";
-    
+
     /**
-     * 节点分类ID，遵循格式：主分类.子分类
-     * 例如："inputs.basic", "math.logic"等
+     * Canonical category id.
      */
     String category();
-} 
+
+    /**
+     * Optional display order within the category.
+     * Lower values appear first.
+     */
+    int order() default Integer.MAX_VALUE;
+}

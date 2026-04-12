@@ -22,7 +22,8 @@ import java.util.UUID;
     id = "material.surface_aging.weathering",
     displayName = "Weathering",
     description = "Replaces part of a block set with an aged material using a deterministic weathering ratio",
-    category = "material.surface_aging"
+    category = "material.surface_aging",
+    order = 0
 )
 public class WeatheringNode extends BaseNode {
 

@@ -22,7 +22,8 @@ import java.util.UUID;
     id = "material.basic_assignment.assign_block_type",
     displayName = "Assign Block Type",
     description = "Assigns a single block type to every resolved block position",
-    category = "material.basic_assignment"
+    category = "material.basic_assignment",
+    order = 0
 )
 public class AssignBlockTypeNode extends BaseNode {
 

@@ -183,6 +183,7 @@ public class AutoNodeScanner {
             String displayName = annotation.displayName();
             String description = annotation.description();
             String category = annotation.category();
+            int order = annotation.order();
             
             // 如果ID为空，则使用类名转换后的形式
             if (id.isEmpty()) {
@@ -208,7 +209,7 @@ public class AutoNodeScanner {
             // 注册节点
             @SuppressWarnings("unchecked")
             Class<? extends INode> castedClass = (Class<? extends INode>) nodeClass;
-            com.nodecraft.gui.node.NodeInfo nodeInfo = new com.nodecraft.gui.node.NodeInfo(id, displayName, description, category, castedClass);
+            com.nodecraft.gui.node.NodeInfo nodeInfo = new com.nodecraft.gui.node.NodeInfo(id, displayName, description, category, order, castedClass);
             boolean success = registry.registerNode(nodeInfo);
             
             if (!success) {

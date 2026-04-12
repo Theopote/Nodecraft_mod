@@ -304,6 +304,7 @@ public class NodeRegistry {
                 nodeInfo.getDisplayName(),
                 description,
                 categoryId,
+                nodeInfo.getOrder(),
                 nodeInfo.getNodeClass());
         normalizedNodeInfo.setIcon(nodeInfo.getIcon());
 

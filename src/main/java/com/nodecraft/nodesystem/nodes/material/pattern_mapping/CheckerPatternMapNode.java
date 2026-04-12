@@ -22,7 +22,8 @@ import java.util.UUID;
     id = "material.pattern_mapping.checker_pattern_map",
     displayName = "Checker Pattern Map",
     description = "Assigns alternating block types across a voxelized shape using a checker pattern",
-    category = "material.pattern_mapping"
+    category = "material.pattern_mapping",
+    order = 0
 )
 public class CheckerPatternMapNode extends BaseNode {
 

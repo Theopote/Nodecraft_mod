@@ -22,7 +22,8 @@ import java.util.UUID;
     id = "material.gradient_mapping.height_gradient_map",
     displayName = "Height Gradient Map",
     description = "Assigns lower, middle, and upper block types across a shape based on relative height",
-    category = "material.gradient_mapping"
+    category = "material.gradient_mapping",
+    order = 0
 )
 public class HeightGradientMapNode extends BaseNode {
 

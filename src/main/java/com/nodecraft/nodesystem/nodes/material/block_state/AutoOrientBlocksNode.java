@@ -27,7 +27,8 @@ import java.util.UUID;
     id = "material.block_state.auto_orient_blocks",
     displayName = "Auto Orient Blocks",
     description = "Automatically assigns a facing state from the dominant direction axis",
-    category = "material.block_state"
+    category = "material.block_state",
+    order = 1
 )
 public class AutoOrientBlocksNode extends BaseNode {
 
