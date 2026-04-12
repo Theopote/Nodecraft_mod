@@ -167,15 +167,6 @@ public class NodeLibraryComponent implements EditorComponent {
         Map<String, Integer> mathTrigonometryOrder = getMathTrigonometryOrder();
         categoryOrder.put("math.trigonometry", mathTrigonometryOrder);
 
-        Map<String, Integer> deferredMathOrder = getDeferredMathOrder();
-        categoryOrder.put("deferred.math", deferredMathOrder);
-
-        Map<String, Integer> deferredOutOfScopeOrder = getDeferredOutOfScopeOrder();
-        categoryOrder.put("deferred.out_of_scope", deferredOutOfScopeOrder);
-
-        Map<String, Integer> spatialLegacyOrder = getStringIntegerMap();
-        categoryOrder.put("spatial.legacy", spatialLegacyOrder);
-
         return categoryOrder;
     }
 
@@ -221,6 +212,8 @@ public class NodeLibraryComponent implements EditorComponent {
         worldSelectionOrder.put("world.selection.snap_vector_to_block", 3);
         worldSelectionOrder.put("world.selection.snap_points_to_blocks", 4);
         worldSelectionOrder.put("world.selection.point_to_block_if_grid", 5);
+        worldSelectionOrder.put("world.selection.selected_block_sequence", 6);
+        worldSelectionOrder.put("world.selection.selected_entity", 7);
         return worldSelectionOrder;
     }
 
@@ -350,51 +343,6 @@ public class NodeLibraryComponent implements EditorComponent {
         mathTrigonometryOrder.put("math.trigonometry.atan", 7);
         mathTrigonometryOrder.put("math.trigonometry.pi", 8);
         return mathTrigonometryOrder;
-    }
-
-    private static @NonNull Map<String, Integer> getDeferredMathOrder() {
-        Map<String, Integer> deferredMathOrder = new HashMap<>();
-        deferredMathOrder.put("deferred.math.math_series", 0);
-        return deferredMathOrder;
-    }
-
-    private static @NonNull Map<String, Integer> getDeferredOutOfScopeOrder() {
-        Map<String, Integer> deferredOutOfScopeOrder = new HashMap<>();
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.number_to_boolean", 0);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.number_to_integer", 1);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.text_to_value", 2);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.color_to_components", 3);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.components_to_color", 4);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.effect_type_selector", 5);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.entity_type_selector", 6);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.item_type_selector", 7);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.sound_event_selector", 8);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.eval_expression", 9);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.filter_by_attribute", 10);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.get_attribute", 11);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.node_group", 12);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.script", 13);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.set_attribute", 14);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.for_each", 15);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.geometry_gate", 16);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.geometry_merge", 17);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.geometry_passthrough", 18);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.geometry_switch", 19);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.file_path", 20);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.load_graph", 21);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.save_graph", 22);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.read_data_file", 23);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.read_text_file", 24);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.write_data_file", 25);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.write_text_file", 26);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.text_panel", 27);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.concatenate_text", 28);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.find_replace_text", 29);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.format_text", 30);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.join_text", 31);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.split_text", 32);
-        deferredOutOfScopeOrder.put("deferred.out_of_scope.text_length", 33);
-        return deferredOutOfScopeOrder;
     }
 
     private static @NonNull Map<String, Integer> getGeometryBooleanOrder() {
@@ -627,44 +575,6 @@ public class NodeLibraryComponent implements EditorComponent {
         return patternRadialOrder;
     }
 
-    private static @NonNull Map<String, Integer> getStringIntegerMap() {
-        Map<String, Integer> spatialLegacyOrder = new HashMap<>();
-        spatialLegacyOrder.put("spatial.generators.line_blocks", 0);
-        spatialLegacyOrder.put("spatial.generators.rectangle_blocks", 1);
-        spatialLegacyOrder.put("spatial.generators.arc_blocks", 2);
-        spatialLegacyOrder.put("spatial.generators.semicircle_blocks", 3);
-        spatialLegacyOrder.put("spatial.generators.regular_polygon_blocks", 4);
-        spatialLegacyOrder.put("spatial.generators.star_blocks", 5);
-        spatialLegacyOrder.put("spatial.generators.ellipse_blocks", 6);
-        spatialLegacyOrder.put("spatial.generators.circle_sphere_blocks", 7);
-        spatialLegacyOrder.put("spatial.generators.box_blocks", 8);
-        spatialLegacyOrder.put("spatial.generators.region_box_blocks", 9);
-        spatialLegacyOrder.put("spatial.generators.cylinder_blocks", 10);
-        spatialLegacyOrder.put("spatial.generators.cone_blocks", 11);
-        spatialLegacyOrder.put("spatial.generators.ellipsoid_blocks", 12);
-        spatialLegacyOrder.put("spatial.generators.torus_blocks", 13);
-        spatialLegacyOrder.put("spatial.generators.octahedron_blocks", 14);
-        spatialLegacyOrder.put("spatial.generators.tetrahedron_blocks", 15);
-        spatialLegacyOrder.put("spatial.generators.triangular_prism_blocks", 16);
-        spatialLegacyOrder.put("spatial.generators.triangular_pyramid_blocks", 17);
-        spatialLegacyOrder.put("spatial.generators.polyline_blocks", 18);
-        spatialLegacyOrder.put("spatial.generators.curve_blocks", 19);
-        spatialLegacyOrder.put("spatial.analysis.geometry_info", 20);
-        spatialLegacyOrder.put("spatial.analysis.select_sphere_band_sector", 21);
-        spatialLegacyOrder.put("spatial.analysis.sphere_uv", 22);
-        spatialLegacyOrder.put("spatial.analysis.sphere_point_info", 23);
-        spatialLegacyOrder.put("spatial.points.point_between_two_points", 25);
-        spatialLegacyOrder.put("spatial.points.randomize_coordinates", 26);
-        spatialLegacyOrder.put("spatial.voxel.union_coords", 27);
-        spatialLegacyOrder.put("spatial.voxel.intersection_coords", 28);
-        spatialLegacyOrder.put("spatial.voxel.difference_coords", 29);
-        spatialLegacyOrder.put("spatial.instancing.grow_along_normals", 30);
-        spatialLegacyOrder.put("spatial.instancing.grow_along_sphere_normal", 31);
-        spatialLegacyOrder.put("inputs.minecraft.selected_block_sequence", 32);
-        spatialLegacyOrder.put("inputs.minecraft.selected_entity", 33);
-        return spatialLegacyOrder;
-    }
-
     // Internal UI constants.
     private static class NodeLibraryConstants {
         static final String PREF_DISPLAY_MODE_KEY = "node_library.display_mode";
@@ -734,11 +644,8 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("math.compare", new float[]{0.48f, 0.9f, 0.48f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("math.scalar_math", new float[]{0.42f, 0.87f, 0.42f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("math.random", new float[]{0.52f, 0.95f, 0.52f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("deferred.math", new float[]{0.72f, 0.72f, 0.72f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("deferred.out_of_scope", new float[]{0.68f, 0.68f, 0.68f, 1.0f});
-            
-            // Spatial legacy and migrated-reference subcategories.
-            CATEGORY_COLORS_FLOAT.put("spatial.legacy", new float[]{0.85f, 0.85f, 0.45f, 1.0f});
+
+            // Reference and geometry subcategories.
             CATEGORY_COLORS_FLOAT.put("reference.points", new float[]{1.0f, 0.98f, 0.45f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("reference.vectors", new float[]{1.0f, 1.0f, 0.5f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("reference.planes", new float[]{1.0f, 1.0f, 0.55f, 1.0f});
@@ -973,12 +880,12 @@ public class NodeLibraryComponent implements EditorComponent {
         
         // Keep the main categories expanded even when they are nested.
         String[] keyCategories = {
-            "geometry", "input", "material", "math", "output", "pattern", "reference", "transform", "world", "utilities", "deferred", "spatial",
+            "geometry", "input", "material", "math", "output", "pattern", "reference", "transform", "world", "utilities",
             "input.basic", "input.numeric", "input.context", "input.type_selectors", "reference.points", "reference.vectors", "reference.planes", "reference.frames", "world.selection", "world.read", "world.query", "world.write",
             "geometry.boolean", "geometry.curves", "geometry.primitives", "geometry.profiles", "geometry.solids",
             "pattern.linear", "pattern.grid", "pattern.radial", "pattern.surface_volume_distribution",
             "transform.basic_transforms", "transform.deformations", "transform.orientation",
-            "math.scalar_math", "math.compare", "math.logic", "math.random", "math.trigonometry", "math.list_sequence", "deferred.math", "deferred.out_of_scope", "spatial.legacy",
+            "math.scalar_math", "math.compare", "math.logic", "math.random", "math.trigonometry", "math.list_sequence",
             "output.preview", "output.execute", "output.export", "output.debug", "utilities.organization", "utilities.assist"
         };
         
@@ -1341,7 +1248,7 @@ public class NodeLibraryComponent implements EditorComponent {
             childList.sort((cat1, cat2) -> cat1.getDisplayName().compareToIgnoreCase(cat2.getDisplayName()));
         }
 
-        // Collapse empty compatibility wrappers such as "spatial" -> "spatial.legacy".
+        // Collapse empty wrapper categories that only exist to hold child groups.
         List<DisplayCategory> promotedTopLevelCategories = new ArrayList<>();
         List<DisplayCategory> retainedTopLevelCategories = new ArrayList<>();
         for (DisplayCategory topCategory : topLevelCategories) {
