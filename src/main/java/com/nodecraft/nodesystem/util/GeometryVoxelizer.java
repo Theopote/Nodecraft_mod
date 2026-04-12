@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
+import com.nodecraft.nodesystem.datatypes.DifferenceGeometryData;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.OctahedronGeometryData;
@@ -81,6 +82,9 @@ public final class GeometryVoxelizer {
         if (geometry instanceof CompositeGeometryData compositeGeometry) {
             return voxelizeComposite(compositeGeometry, fillSolid);
         }
+        if (geometry instanceof DifferenceGeometryData differenceGeometry) {
+            return voxelizeDifference(differenceGeometry, fillSolid);
+        }
         if (geometry instanceof BoxGeometryData boxGeometry) {
             return voxelizeBox(boxGeometry, fillSolid);
         }
@@ -114,6 +118,9 @@ public final class GeometryVoxelizer {
     public static @Nullable RegionData createBoundingRegion(GeometryData geometry) {
         if (geometry instanceof CompositeGeometryData compositeGeometry) {
             return createCompositeBoundingRegion(compositeGeometry);
+        }
+        if (geometry instanceof DifferenceGeometryData differenceGeometry) {
+            return createBoundingRegion(differenceGeometry.getMinuend());
         }
         if (geometry instanceof BoxGeometryData boxGeometry) {
             return boxGeometry.isOriented()
@@ -162,6 +169,20 @@ public final class GeometryVoxelizer {
         }
 
         return new BlockPosList(mergedPositions);
+    }
+
+    public static BlockPosList voxelizeDifference(DifferenceGeometryData geometry, boolean fillSolid) {
+        BlockPosList baseBlocks = voxelize(geometry.getMinuend(), fillSolid);
+        BlockPosList cutterBlocks = voxelize(geometry.getSubtrahend(), true);
+
+        Set<BlockPos> result = new LinkedHashSet<>();
+        for (BlockPos pos : baseBlocks) {
+            result.add(pos.toImmutable());
+        }
+        for (BlockPos pos : cutterBlocks) {
+            result.remove(pos);
+        }
+        return new BlockPosList(result);
     }
 
     public static @Nullable RegionData createCompositeBoundingRegion(CompositeGeometryData geometry) {
