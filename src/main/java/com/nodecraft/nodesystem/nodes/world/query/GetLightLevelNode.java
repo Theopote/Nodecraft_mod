@@ -16,7 +16,8 @@ import java.util.UUID;
     id = "world.query.get_light_level",
     displayName = "获取光照等级",
     description = "获取指定坐标的光照等级",
-    category = "world.query"
+    category = "world.query",
+    order = 0
 )
 public class GetLightLevelNode extends BaseNode {
 

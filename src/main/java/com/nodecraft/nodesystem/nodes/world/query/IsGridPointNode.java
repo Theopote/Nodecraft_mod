@@ -21,7 +21,8 @@ import java.util.UUID;
     id = "world.query.is_grid_point",
     displayName = "Is Grid Point",
     description = "Checks whether a geometric point already lies on the block grid without snapping",
-    category = "world.query"
+    category = "world.query",
+    order = 2
 )
 public class IsGridPointNode extends BaseNode {
 

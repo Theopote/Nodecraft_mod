@@ -18,7 +18,8 @@ import java.util.UUID;
     id = "world.read.biome_at_player",
     displayName = "玩家位置生物群系",
     description = "获取玩家当前位置的生物群系信息",
-    category = "world.read"
+    category = "world.read",
+    order = 4
 )
 public class BiomeAtPlayerNode extends BaseNode {
     

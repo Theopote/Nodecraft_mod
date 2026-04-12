@@ -17,7 +17,8 @@ import java.util.UUID;
     id = "world.selection.snap_vector_to_block",
     displayName = "Snap Vector To Block",
     description = "Converts a Vector3d position into a block coordinate using floor, round, or ceil snapping.",
-    category = "world.selection"
+    category = "world.selection",
+    order = 3
 )
 public class SnapVectorToBlockNode extends BaseNode {
 

@@ -18,7 +18,8 @@ import java.util.UUID;
     id = "world.read.get_block",
     displayName = "获取方块",
     description = "获取指定坐标的方块信息",
-    category = "world.read"
+    category = "world.read",
+    order = 0
 )
 public class GetBlockNode extends BaseNode {
 

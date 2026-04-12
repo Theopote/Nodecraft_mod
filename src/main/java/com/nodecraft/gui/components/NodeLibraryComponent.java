@@ -205,26 +205,11 @@ public class NodeLibraryComponent implements EditorComponent {
     }
 
     private static @NonNull Map<String, Integer> getWorldSelectionOrder() {
-        Map<String, Integer> worldSelectionOrder = new HashMap<>();
-        worldSelectionOrder.put("world.selection.selected_block", 0);
-        worldSelectionOrder.put("world.selection.selected_region", 1);
-        worldSelectionOrder.put("world.selection.snap_point_to_block", 2);
-        worldSelectionOrder.put("world.selection.snap_vector_to_block", 3);
-        worldSelectionOrder.put("world.selection.snap_points_to_blocks", 4);
-        worldSelectionOrder.put("world.selection.point_to_block_if_grid", 5);
-        worldSelectionOrder.put("world.selection.selected_block_sequence", 6);
-        worldSelectionOrder.put("world.selection.selected_entity", 7);
-        return worldSelectionOrder;
+        return new HashMap<>();
     }
 
     private static @NonNull Map<String, Integer> getWorldQueryOrder() {
-        Map<String, Integer> worldQueryOrder = new HashMap<>();
-        worldQueryOrder.put("world.query.get_light_level", 0);
-        worldQueryOrder.put("world.query.get_fluid_level", 1);
-        worldQueryOrder.put("world.query.is_grid_point", 2);
-        worldQueryOrder.put("world.query.filter_grid_points", 3);
-        worldQueryOrder.put("world.query.is_point_in_region", 4);
-        return worldQueryOrder;
+        return new HashMap<>();
     }
 
     private static @NonNull Map<String, Integer> getReferencePointsOrder() {
@@ -404,25 +389,11 @@ public class NodeLibraryComponent implements EditorComponent {
     }
 
     private static @NonNull Map<String, Integer> getWorldReadOrder() {
-        Map<String, Integer> worldReadOrder = new HashMap<>();
-        worldReadOrder.put("world.read.get_block", 0);
-        worldReadOrder.put("world.read.get_blocks_in_region", 1);
-        worldReadOrder.put("world.read.find_blocks", 2);
-        worldReadOrder.put("world.read.get_biome", 3);
-        worldReadOrder.put("world.read.biome_at_player", 4);
-        worldReadOrder.put("world.read.get_points_in_region", 5);
-        return worldReadOrder;
+        return new HashMap<>();
     }
 
     private static @NonNull Map<String, Integer> getWorldWriteOrder() {
-        Map<String, Integer> worldWriteOrder = new HashMap<>();
-        worldWriteOrder.put("world.write.set_block", 0);
-        worldWriteOrder.put("world.write.set_blocks", 1);
-        worldWriteOrder.put("world.write.fill_region", 2);
-        worldWriteOrder.put("world.write.replace_blocks", 3);
-        worldWriteOrder.put("world.write.clone_region", 4);
-        worldWriteOrder.put("world.write.clear_region", 5);
-        return worldWriteOrder;
+        return new HashMap<>();
     }
 
     private static @NonNull Map<String, Integer> getMaterialBasicAssignmentOrder() {

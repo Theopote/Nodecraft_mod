@@ -18,7 +18,8 @@ import java.util.UUID;
     id = "world.query.is_point_in_region",
     displayName = "点在区域内",
     description = "检查点是否在指定区域内",
-    category = "world.query"
+    category = "world.query",
+    order = 4
 )
 public class IsPointInRegionNode extends BaseNode {
 

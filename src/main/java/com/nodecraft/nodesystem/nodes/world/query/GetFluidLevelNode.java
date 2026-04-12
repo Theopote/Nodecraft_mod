@@ -16,7 +16,8 @@ import java.util.UUID;
     id = "world.query.get_fluid_level",
     displayName = "获取流体等级",
     description = "获取指定坐标的流体等级",
-    category = "world.query"
+    category = "world.query",
+    order = 1
 )
 public class GetFluidLevelNode extends BaseNode {
 

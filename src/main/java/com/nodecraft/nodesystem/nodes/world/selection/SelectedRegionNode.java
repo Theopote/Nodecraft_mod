@@ -26,7 +26,8 @@ import java.util.UUID;
     id = "world.selection.selected_region",
     displayName = "Selected Region",
     description = "Gets the player's selected region defined by two corner points.",
-    category = "world.selection"
+    category = "world.selection",
+    order = 1
 )
 public class SelectedRegionNode extends BaseCustomUINode {
 

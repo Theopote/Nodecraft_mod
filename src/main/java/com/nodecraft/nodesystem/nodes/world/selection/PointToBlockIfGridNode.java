@@ -18,7 +18,8 @@ import java.util.UUID;
     id = "world.selection.point_to_block_if_grid",
     displayName = "Point To Block If Grid",
     description = "Strict conversion: outputs a block coordinate only when the point is already grid-aligned",
-    category = "world.selection"
+    category = "world.selection",
+    order = 5
 )
 public class PointToBlockIfGridNode extends BaseNode {
 

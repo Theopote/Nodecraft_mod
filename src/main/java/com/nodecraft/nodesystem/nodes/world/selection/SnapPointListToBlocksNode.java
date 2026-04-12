@@ -21,7 +21,8 @@ import java.util.UUID;
     id = "world.selection.snap_points_to_blocks",
     displayName = "Snap Point List To Blocks",
     description = "Snaps a point list onto the block grid using an explicit snap mode",
-    category = "world.selection"
+    category = "world.selection",
+    order = 4
 )
 public class SnapPointListToBlocksNode extends BaseNode {
 

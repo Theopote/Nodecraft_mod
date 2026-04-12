@@ -23,7 +23,8 @@ import java.util.UUID;
     id = "world.write.fill_region",
     displayName = "填充区域",
     description = "用指定方块填充区域",
-    category = "world.write"
+    category = "world.write",
+    order = 2
 )
 public class FillRegionNode extends BaseNode {
 

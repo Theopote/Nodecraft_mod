@@ -21,7 +21,8 @@ import java.util.UUID;
     id = "world.selection.snap_point_to_block",
     displayName = "Snap Point To Block",
     description = "Explicitly snaps a geometric point onto the block grid using floor, nearest, or ceil",
-    category = "world.selection"
+    category = "world.selection",
+    order = 2
 )
 public class SnapPointToBlockNode extends BaseNode {
 

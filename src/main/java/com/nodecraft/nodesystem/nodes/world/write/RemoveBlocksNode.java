@@ -22,7 +22,8 @@ import java.util.UUID;
     id = "world.write.clear_region",
     displayName = "移除方块",
     description = "移除指定坐标的方块",
-    category = "world.write"
+    category = "world.write",
+    order = 5
 )
 public class RemoveBlocksNode extends BaseNode {
 

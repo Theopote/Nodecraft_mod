@@ -19,7 +19,8 @@ import java.util.UUID;
     id = "world.read.find_blocks",
     displayName = "查找方块",
     description = "在区域内按方块类型查找坐标列表",
-    category = "world.read"
+    category = "world.read",
+    order = 2
 )
 public class FindBlocksNode extends BaseNode {
 

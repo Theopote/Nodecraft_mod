@@ -20,7 +20,8 @@ import java.util.UUID;
     id = "world.write.set_block",
     displayName = "设置单个方块",
     description = "在单个坐标放置指定方块",
-    category = "world.write"
+    category = "world.write",
+    order = 0
 )
 public class SetBlockNode extends BaseNode {
 

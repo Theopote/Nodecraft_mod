@@ -22,7 +22,8 @@ import java.util.UUID;
     id = "world.selection.selected_entity",
     displayName = "Selected Entity",
     description = "Gets information about the entity selected by the player.",
-    category = "world.selection"
+    category = "world.selection",
+    order = 7
 )
 public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorInteractionManager.IEntityPickerCallback {
 

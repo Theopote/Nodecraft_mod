@@ -16,7 +16,8 @@ import java.util.UUID;
     id = "world.read.get_biome",
     displayName = "获取生物群系",
     description = "获取指定坐标的生物群系信息",
-    category = "world.read"
+    category = "world.read",
+    order = 3
 )
 public class GetBiomeNode extends BaseNode {
 

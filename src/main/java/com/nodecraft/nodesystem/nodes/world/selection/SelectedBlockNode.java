@@ -46,7 +46,8 @@ import org.joml.Vector3d;
     id = "world.selection.selected_block",
     displayName = "选定方块",
     description = "获取方块信息，支持交互拾取或坐标输入",
-    category = "world.selection"
+    category = "world.selection",
+    order = 0
 )
 public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerCallback {
     

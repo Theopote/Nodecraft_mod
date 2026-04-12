@@ -22,7 +22,8 @@ import java.util.UUID;
     id = "world.query.filter_grid_points",
     displayName = "Filter Grid Points",
     description = "Splits a point list into grid-aligned points and off-grid points without snapping",
-    category = "world.query"
+    category = "world.query",
+    order = 3
 )
 public class FilterGridPointsNode extends BaseNode {
 

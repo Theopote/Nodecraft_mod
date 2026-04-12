@@ -36,7 +36,8 @@ import java.util.UUID;
     id = "world.selection.selected_block_sequence",
     displayName = "Selected Block Sequence",
     description = "Collects multiple picked blocks in click order and outputs an ordered block sequence",
-    category = "world.selection"
+    category = "world.selection",
+    order = 6
 )
 public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBlockPickerCallback {
 

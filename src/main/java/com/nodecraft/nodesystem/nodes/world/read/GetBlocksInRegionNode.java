@@ -22,7 +22,8 @@ import java.util.UUID;
     id = "world.read.get_blocks_in_region",
     displayName = "获取区域内方块",
     description = "获取区域内所有方块的列表",
-    category = "world.read"
+    category = "world.read",
+    order = 1
 )
 public class GetBlocksInRegionNode extends BaseNode {
 

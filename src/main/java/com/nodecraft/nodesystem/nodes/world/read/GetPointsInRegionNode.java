@@ -19,7 +19,8 @@ import java.util.UUID;
     id = "world.read.get_points_in_region",
     displayName = "获取区域内点",
     description = "获取区域内的所有坐标点",
-    category = "world.read"
+    category = "world.read",
+    order = 5
 )
 public class GetPointsInRegionNode extends BaseNode {
 

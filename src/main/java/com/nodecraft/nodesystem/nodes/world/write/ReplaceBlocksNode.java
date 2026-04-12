@@ -23,7 +23,8 @@ import java.util.UUID;
     id = "world.write.replace_blocks",
     displayName = "替换方块",
     description = "在区域或坐标列表中替换指定方块",
-    category = "world.write"
+    category = "world.write",
+    order = 3
 )
 public class ReplaceBlocksNode extends BaseNode {
 

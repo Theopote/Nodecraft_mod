@@ -24,7 +24,8 @@ import java.util.UUID;
     id = "world.write.clone_region",
     displayName = "复制区域",
     description = "复制区域到另一个位置",
-    category = "world.write"
+    category = "world.write",
+    order = 4
 )
 public class CloneRegionNode extends BaseNode {
 
