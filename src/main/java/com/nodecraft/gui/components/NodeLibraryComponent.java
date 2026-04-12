@@ -53,7 +53,6 @@ public class NodeLibraryComponent implements EditorComponent {
     private static class NodeLibraryConstants {
         static final String PREF_DISPLAY_MODE_KEY = "node_library.display_mode";
         static final String PREF_GRID_TILE_SCALE_KEY = "node_library.grid_tile_scale";
-        static final String PREF_VIEW_MODE_KEY = "node_library.view_mode";
         static final float CHILD_WINDOW_MIN_WIDTH = 50;
         static final float CHILD_WINDOW_MIN_HEIGHT = 50;
         static final float CATEGORY_INDENT = 10f;
@@ -223,11 +222,6 @@ public class NodeLibraryComponent implements EditorComponent {
         GRID
     }
 
-    public enum CategoryViewMode {
-        CANONICAL,
-        TASK
-    }
-
     private final List<NodeCategory> canonicalCategories; // Registry categories remain the source of truth.
     private List<CategoryPresentation> allCategories; // Current UI-facing presentation categories.
     private final Map<String, Boolean> expandedCategories = new HashMap<>();
@@ -236,8 +230,7 @@ public class NodeLibraryComponent implements EditorComponent {
     private Map<String, List<DisplayCategory>> cachedChildCategoriesMap = Map.of();
     private boolean categoryHierarchyCacheDirty = true;
     private boolean visible = true;
-    private DisplayMode displayMode = DisplayMode.LIST;
-    private CategoryViewMode categoryViewMode = CategoryViewMode.CANONICAL;
+    private DisplayMode displayMode;
     private float gridTileSizeScale = NodeLibraryConstants.GRID_TILE_SIZE_SCALE;
 
     // Icon manager.
@@ -287,15 +280,8 @@ public class NodeLibraryComponent implements EditorComponent {
         );
         setGridTileSizeScale(storedGridScale);
 
-        String storedViewMode = UserPreferences.getString(NodeLibraryConstants.PREF_VIEW_MODE_KEY, CategoryViewMode.CANONICAL.name());
-        try {
-            this.categoryViewMode = CategoryViewMode.valueOf(storedViewMode);
-        } catch (IllegalArgumentException e) {
-            this.categoryViewMode = CategoryViewMode.CANONICAL;
-        }
-
+        // 彻底移除 CategoryViewMode 的持久化和恢复逻辑
         rebuildPresentationCategories();
-        
         // Initialize icon resources.
         iconManager.initialize();
     }
@@ -349,7 +335,6 @@ public class NodeLibraryComponent implements EditorComponent {
                 
                 // Search bar.
                 renderSearchBar();
-                renderViewModeControls();
                 
                 ImGui.separator();
                 ImGui.spacing();
@@ -436,19 +421,6 @@ public class NodeLibraryComponent implements EditorComponent {
         UserPreferences.setFloat(NodeLibraryConstants.PREF_GRID_TILE_SCALE_KEY, clamped);
     }
 
-    public CategoryViewMode getCategoryViewMode() {
-        return categoryViewMode;
-    }
-
-    public void setCategoryViewMode(CategoryViewMode mode) {
-        if (mode == null || this.categoryViewMode == mode) {
-            return;
-        }
-        this.categoryViewMode = mode;
-        UserPreferences.setString(NodeLibraryConstants.PREF_VIEW_MODE_KEY, mode.name());
-        rebuildPresentationCategories();
-    }
-    
     /**
      * {@inheritDoc}
      */
@@ -478,46 +450,16 @@ public class NodeLibraryComponent implements EditorComponent {
         }
     }
 
-    private void renderViewModeControls() {
-        boolean canonicalSelected = categoryViewMode == CategoryViewMode.CANONICAL;
-        boolean taskSelected = categoryViewMode == CategoryViewMode.TASK;
-
-        if (canonicalSelected) {
-            ImGui.pushStyleColor(ImGuiCol.Button, 0xFF4E7AC7);
-        }
-        if (ImGui.button("Canonical")) {
-            setCategoryViewMode(CategoryViewMode.CANONICAL);
-        }
-        if (canonicalSelected) {
-            ImGui.popStyleColor();
-        }
-
-        ImGui.sameLine();
-
-        if (taskSelected) {
-            ImGui.pushStyleColor(ImGuiCol.Button, 0xFFC77A32);
-        }
-        if (ImGui.button("Tasks")) {
-            setCategoryViewMode(CategoryViewMode.TASK);
-        }
-        if (taskSelected) {
-            ImGui.popStyleColor();
-        }
-    }
-
     private void rebuildPresentationCategories() {
         this.allCategories = PRESENTATION_MAPPER.mapCategories(
             canonicalCategories,
-            categoryViewMode == CategoryViewMode.TASK
-                ? NodeCategoryPresentationMapper.PresentationMode.TASK
-                : NodeCategoryPresentationMapper.PresentationMode.CANONICAL
+            NodeCategoryPresentationMapper.PresentationMode.CANONICAL
         );
 
         expandedCategories.clear();
         for (CategoryPresentation category : allCategories) {
             expandedCategories.put(category.displayCategoryId(), category.defaultExpanded());
         }
-
         updateFilteredCategories(searchManager.getSearchTerm());
     }
     
