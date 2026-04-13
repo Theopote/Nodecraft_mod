@@ -34,6 +34,7 @@ These are the only top-level domains that should be used for new node work.
 - Use `snake_case` for the leaf name.
 - `@NodeInfo(id = ...)` and the `BaseNode` type id must always match.
 - Package path, category, and id should point to the same semantic home.
+- When a canonical category segment is a Java keyword, keep the canonical id/category unchanged and use the nearest clear non-keyword implementation package name instead.
 
 ## Category Rules
 

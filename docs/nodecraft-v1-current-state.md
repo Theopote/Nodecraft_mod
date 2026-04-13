@@ -75,6 +75,11 @@ The codebase currently uses these canonical v1 paths:
 - `math.trigonometry`
 - `math.list_sequence`
 
+Implementation note:
+
+- canonical ids and registry categories use `geometry.boolean`
+- Java source packages cannot use the keyword `boolean`, so implementation classes remain under a non-keyword package name
+
 ## Execution Boundary
 
 `world.write` and `output.execute` are both active, but they serve different responsibilities:
