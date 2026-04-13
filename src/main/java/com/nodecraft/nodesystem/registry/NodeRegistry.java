@@ -27,6 +27,7 @@ public class NodeRegistry {
     private final Map<String, NodeInfo> nodeInfoMap = new ConcurrentHashMap<>();
     private final Map<String, NodeCategory> categoryMap = new ConcurrentHashMap<>();
     private volatile boolean initialized = false;
+    private volatile List<NodeCategory> sortedCategoriesCache = null;
 
     private NodeRegistry() {
         // Singleton.
@@ -48,119 +49,119 @@ public class NodeRegistry {
         Map<String, String> aliases = new HashMap<>();
 
         // Output migration aliases.
-        addMovedNodeAlias(aliases, "visualization.preview.geometry_viewer", "output.preview.geometry_viewer");
-        addMovedNodeAlias(aliases, "visualization.preview.preview_geometry", "output.preview.preview_geometry");
-        addMovedNodeAlias(aliases, "visualization.preview.preview_blocks", "output.preview.preview_blocks");
-        addMovedNodeAlias(aliases, "visualization.preview.preview_points", "output.preview.preview_points");
-        addMovedNodeAlias(aliases, "visualization.preview.preview_vectors", "output.preview.preview_vectors");
-        addMovedNodeAlias(aliases, "visualization.preview.preview_plane", "output.preview.preview_plane");
-        addMovedNodeAlias(aliases, "visualization.preview.preview_frame", "output.preview.preview_frame");
-        addMovedNodeAlias(aliases, "visualization.preview.preview_paths", "output.preview.preview_curves");
-        addMovedNodeAlias(aliases, "visualization.preview.preview_regions", "output.preview.preview_regions");
-        addMovedNodeAlias(aliases, "visualization.preview.preview_labels", "output.preview.preview_labels");
-        addMovedNodeAlias(aliases, "visualization.preview.preview_surface_strip", "output.preview.preview_surface_strip");
-        addMovedNodeAlias(aliases, "visualization.preview.preview_polygon_profiles", "output.preview.preview_profiles");
-        addMovedNodeAlias(aliases, "visualization.preview.clear_all_previews", "output.execute.clear_preview");
-        addMovedNodeAlias(aliases, "visualization.execute.apply_changes", "output.execute.apply_changes");
-        addMovedNodeAlias(aliases, "visualization.execute.export_schematic", "output.export.export_schematic");
-        addMovedNodeAlias(aliases, "visualization.debugging.value_monitor", "output.debug.value_monitor");
-        addMovedNodeAlias(aliases, "visualization.debugging.print_to_chat", "output.debug.print_to_chat");
-        addMovedNodeAlias(aliases, "visualization.debugging.execution_timer", "output.debug.execution_timer");
-        addMovedNodeAlias(aliases, "visualization.debugging.panel", "output.debug.data_inspector");
+        addAlias(aliases, "visualization.preview.geometry_viewer", "output.preview.geometry_viewer");
+        addAlias(aliases, "visualization.preview.preview_geometry", "output.preview.preview_geometry");
+        addAlias(aliases, "visualization.preview.preview_blocks", "output.preview.preview_blocks");
+        addAlias(aliases, "visualization.preview.preview_points", "output.preview.preview_points");
+        addAlias(aliases, "visualization.preview.preview_vectors", "output.preview.preview_vectors");
+        addAlias(aliases, "visualization.preview.preview_plane", "output.preview.preview_plane");
+        addAlias(aliases, "visualization.preview.preview_frame", "output.preview.preview_frame");
+        addAlias(aliases, "visualization.preview.preview_paths", "output.preview.preview_curves");
+        addAlias(aliases, "visualization.preview.preview_regions", "output.preview.preview_regions");
+        addAlias(aliases, "visualization.preview.preview_labels", "output.preview.preview_labels");
+        addAlias(aliases, "visualization.preview.preview_surface_strip", "output.preview.preview_surface_strip");
+        addAlias(aliases, "visualization.preview.preview_polygon_profiles", "output.preview.preview_profiles");
+        addAlias(aliases, "visualization.preview.clear_all_previews", "output.execute.clear_preview");
+        addAlias(aliases, "visualization.execute.apply_changes", "output.execute.apply_changes");
+        addAlias(aliases, "visualization.execute.export_schematic", "output.export.export_schematic");
+        addAlias(aliases, "visualization.debugging.value_monitor", "output.debug.value_monitor");
+        addAlias(aliases, "visualization.debugging.print_to_chat", "output.debug.print_to_chat");
+        addAlias(aliases, "visualization.debugging.execution_timer", "output.debug.execution_timer");
+        addAlias(aliases, "visualization.debugging.panel", "output.debug.data_inspector");
 
         // World and material migration aliases.
-        addMovedNodeAlias(aliases, "world.query.get_block", "world.read.get_block");
-        addMovedNodeAlias(aliases, "world.query.get_blocks_in_region", "world.read.get_blocks_in_region");
-        addMovedNodeAlias(aliases, "world.query.find_blocks", "world.read.find_blocks");
-        addMovedNodeAlias(aliases, "world.query.get_biome", "world.read.get_biome");
-        addMovedNodeAlias(aliases, "world.modification.set_block", "world.write.set_block");
-        addMovedNodeAlias(aliases, "world.modification.set_blocks", "world.write.set_blocks");
-        addMovedNodeAlias(aliases, "world.modification.fill_region", "world.write.fill_region");
-        addMovedNodeAlias(aliases, "world.modification.replace_blocks", "world.write.replace_blocks");
-        addMovedNodeAlias(aliases, "world.modification.clone_region", "world.write.clone_region");
-        addMovedNodeAlias(aliases, "world.modification.remove_blocks", "world.write.clear_region");
-        addMovedNodeAlias(aliases, "world.modification.material_mapper", "material.gradient_mapping.height_gradient_map");
-        addMovedNodeAlias(aliases, "material.basic_assignment.replace_material", "material.gradient_mapping.height_gradient_map");
+        addAlias(aliases, "world.query.get_block", "world.read.get_block");
+        addAlias(aliases, "world.query.get_blocks_in_region", "world.read.get_blocks_in_region");
+        addAlias(aliases, "world.query.find_blocks", "world.read.find_blocks");
+        addAlias(aliases, "world.query.get_biome", "world.read.get_biome");
+        addAlias(aliases, "world.modification.set_block", "world.write.set_block");
+        addAlias(aliases, "world.modification.set_blocks", "world.write.set_blocks");
+        addAlias(aliases, "world.modification.fill_region", "world.write.fill_region");
+        addAlias(aliases, "world.modification.replace_blocks", "world.write.replace_blocks");
+        addAlias(aliases, "world.modification.clone_region", "world.write.clone_region");
+        addAlias(aliases, "world.modification.remove_blocks", "world.write.clear_region");
+        addAlias(aliases, "world.modification.material_mapper", "material.gradient_mapping.height_gradient_map");
+        addAlias(aliases, "material.basic_assignment.replace_material", "material.gradient_mapping.height_gradient_map");
 
         // Input and reference migration aliases.
-        addMovedNodeAlias(aliases, "inputs.basic.integer_input", "input.numeric.integer");
-        addMovedNodeAlias(aliases, "inputs.basic.float_input", "input.numeric.float");
-        addMovedNodeAlias(aliases, "inputs.basic.integer_slider", "input.numeric.integer_slider");
-        addMovedNodeAlias(aliases, "inputs.basic.float_slider", "input.numeric.float_slider");
-        addMovedNodeAlias(aliases, "inputs.basic.angle_slider", "input.numeric.angle");
-        addMovedNodeAlias(aliases, "inputs.basic.circular_angle", "input.numeric.angle_picker");
-        addMovedNodeAlias(aliases, "inputs.basic.boolean_toggle", "input.numeric.boolean_toggle");
-        addMovedNodeAlias(aliases, "inputs.basic.vector_input", "reference.vectors.vector");
-        addMovedNodeAlias(aliases, "inputs.basic.coordinate_input", "reference.points.point_from_coordinates");
-        addMovedNodeAlias(aliases, "inputs.basic.plane_selector", "reference.planes.world_plane");
-        addMovedNodeAlias(aliases, "inputs.minecraft.player_position", "input.context.player_position");
-        addMovedNodeAlias(aliases, "inputs.minecraft.player_look_at", "input.context.player_look_direction");
-        addMovedNodeAlias(aliases, "inputs.minecraft.selected_block", "world.selection.selected_block");
-        addMovedNodeAlias(aliases, "inputs.minecraft.selected_region", "world.selection.selected_region");
-        addMovedNodeAlias(aliases, "inputs.minecraft.biome_at_player", "world.read.biome_at_player");
-        addMovedNodeAlias(aliases, "inputs.minecraft.current_time", "input.context.current_time");
-        addMovedNodeAlias(aliases, "inputs.minecraft.dimension_info", "input.context.dimension_info");
-        addMovedNodeAlias(aliases, "inputs.selectors.block_type_selector", "input.type_selectors.block_type_selector");
-        addMovedNodeAlias(aliases, "inputs.sources.create_list", "math.list_sequence.create_list");
+        addAlias(aliases, "inputs.basic.integer_input", "input.numeric.integer");
+        addAlias(aliases, "inputs.basic.float_input", "input.numeric.float");
+        addAlias(aliases, "inputs.basic.integer_slider", "input.numeric.integer_slider");
+        addAlias(aliases, "inputs.basic.float_slider", "input.numeric.float_slider");
+        addAlias(aliases, "inputs.basic.angle_slider", "input.numeric.angle");
+        addAlias(aliases, "inputs.basic.circular_angle", "input.numeric.angle_picker");
+        addAlias(aliases, "inputs.basic.boolean_toggle", "input.numeric.boolean_toggle");
+        addAlias(aliases, "inputs.basic.vector_input", "reference.vectors.vector");
+        addAlias(aliases, "inputs.basic.coordinate_input", "reference.points.point_from_coordinates");
+        addAlias(aliases, "inputs.basic.plane_selector", "reference.planes.world_plane");
+        addAlias(aliases, "inputs.minecraft.player_position", "input.context.player_position");
+        addAlias(aliases, "inputs.minecraft.player_look_at", "input.context.player_look_direction");
+        addAlias(aliases, "inputs.minecraft.selected_block", "world.selection.selected_block");
+        addAlias(aliases, "inputs.minecraft.selected_region", "world.selection.selected_region");
+        addAlias(aliases, "inputs.minecraft.biome_at_player", "world.read.biome_at_player");
+        addAlias(aliases, "inputs.minecraft.current_time", "input.context.current_time");
+        addAlias(aliases, "inputs.minecraft.dimension_info", "input.context.dimension_info");
+        addAlias(aliases, "inputs.selectors.block_type_selector", "input.type_selectors.block_type_selector");
+        addAlias(aliases, "inputs.sources.create_list", "math.list_sequence.create_list");
 
         // Math migration aliases.
-        addMovedNodeAlias(aliases, "math.basic.range", "math.list_sequence.range");
-        addMovedNodeAlias(aliases, "math.basic.absolute", "math.scalar_math.absolute");
-        addMovedNodeAlias(aliases, "math.basic.addition", "math.scalar_math.addition");
-        addMovedNodeAlias(aliases, "math.basic.ceiling", "math.scalar_math.ceiling");
-        addMovedNodeAlias(aliases, "math.basic.clamp", "math.scalar_math.clamp");
-        addMovedNodeAlias(aliases, "math.basic.division", "math.scalar_math.division");
-        addMovedNodeAlias(aliases, "math.basic.floor", "math.scalar_math.floor");
-        addMovedNodeAlias(aliases, "math.basic.logarithm", "math.scalar_math.logarithm");
-        addMovedNodeAlias(aliases, "math.basic.max", "math.scalar_math.max");
-        addMovedNodeAlias(aliases, "math.basic.min", "math.scalar_math.min");
-        addMovedNodeAlias(aliases, "math.basic.modulus", "math.scalar_math.modulus");
-        addMovedNodeAlias(aliases, "math.basic.multiplication", "math.scalar_math.multiplication");
-        addMovedNodeAlias(aliases, "math.basic.power", "math.scalar_math.power");
-        addMovedNodeAlias(aliases, "math.basic.remap", "math.scalar_math.remap");
-        addMovedNodeAlias(aliases, "math.basic.round", "math.scalar_math.round");
-        addMovedNodeAlias(aliases, "math.basic.subtraction", "math.scalar_math.subtraction");
-        addMovedNodeAlias(aliases, "math.randomness.random_number", "math.random.random_number");
-        addMovedNodeAlias(aliases, "math.randomness.random_list_item", "math.random.random_list_item");
-        addMovedNodeAlias(aliases, "math.randomness.random_vector", "math.random.random_vector");
-        addMovedNodeAlias(aliases, "math.randomness.noise", "math.random.noise");
-        addMovedNodeAlias(aliases, "math.logic.equals", "math.compare.equals");
-        addMovedNodeAlias(aliases, "math.logic.not_equals", "math.compare.not_equals");
-        addMovedNodeAlias(aliases, "math.logic.less_than", "math.compare.less_than");
-        addMovedNodeAlias(aliases, "math.logic.less_than_or_equal", "math.compare.less_than_or_equal");
-        addMovedNodeAlias(aliases, "math.logic.greater_than", "math.compare.greater_than");
-        addMovedNodeAlias(aliases, "math.logic.greater_than_or_equal", "math.compare.greater_than_or_equal");
-        addMovedNodeAlias(aliases, "logic.if", "math.logic.if");
-        addMovedNodeAlias(aliases, "logic.select_item", "math.logic.switch");
-        addMovedNodeAlias(aliases, "math.trigonometry.sine", "math.trigonometry.sin");
-        addMovedNodeAlias(aliases, "math.trigonometry.cosine", "math.trigonometry.cos");
-        addMovedNodeAlias(aliases, "math.trigonometry.tangent", "math.trigonometry.tan");
-        addMovedNodeAlias(aliases, "math.trigonometry.arcsin", "math.trigonometry.asin");
-        addMovedNodeAlias(aliases, "math.trigonometry.arccos", "math.trigonometry.acos");
-        addMovedNodeAlias(aliases, "math.trigonometry.arctan", "math.trigonometry.atan");
-        addMovedNodeAlias(aliases, "math.trigonometry.degrees_to_radians", "math.trigonometry.deg_to_rad");
-        addMovedNodeAlias(aliases, "math.trigonometry.deg2rad", "math.trigonometry.deg_to_rad");
-        addMovedNodeAlias(aliases, "math.trigonometry.radians_to_degrees", "math.trigonometry.rad_to_deg");
-        addMovedNodeAlias(aliases, "math.trigonometry.rad2deg", "math.trigonometry.rad_to_deg");
-        addMovedNodeAlias(aliases, "math.vector.construct", "reference.vectors.vector");
-        addMovedNodeAlias(aliases, "math.vector.cross_product", "reference.vectors.cross_product");
-        addMovedNodeAlias(aliases, "math.vector.dot_product", "reference.vectors.dot_product");
-        addMovedNodeAlias(aliases, "math.vector.normalize", "reference.vectors.normalize_vector");
-        addMovedNodeAlias(aliases, "math.vector.normalize_vector", "reference.vectors.normalize_vector");
-        addMovedNodeAlias(aliases, "math.vector.length", "reference.vectors.vector_length");
-        addMovedNodeAlias(aliases, "math.vector.addition", "reference.vectors.vector_addition");
-        addMovedNodeAlias(aliases, "math.vector.subtraction", "reference.vectors.vector_subtraction");
-        addMovedNodeAlias(aliases, "math.vector.scalar_multiply", "reference.vectors.vector_scalar_multiply");
-        addMovedNodeAlias(aliases, "math.vector.scalar_divide", "reference.vectors.vector_scalar_divide");
-        addMovedNodeAlias(aliases, "math.vector.deconstruct", "reference.vectors.deconstruct_vector");
-        addMovedNodeAlias(aliases, "math.vector.construct_coordinate", "reference.points.point_from_coordinates");
-        addMovedNodeAlias(aliases, "math.vector.deconstruct_coordinate", "reference.points.deconstruct_point");
-        addMovedNodeAlias(aliases, "math.vector.midpoint", "reference.points.mid_point");
-        addMovedNodeAlias(aliases, "math.vector.distance", "reference.points.distance_between_points");
-        addMovedNodeAlias(aliases, "math.vector.construct_plane", "reference.planes.construct_plane");
-        addMovedNodeAlias(aliases, "math.vector.construct_plane_from_points", "reference.planes.plane_from_points");
-        addMovedNodeAlias(aliases, "math.vector.rotate", "transform.orientation.rotate_vector");
-        addMovedNodeAlias(aliases, "math.vector.rotate_vector", "transform.orientation.rotate_vector");
+        addAlias(aliases, "math.basic.range", "math.list_sequence.range");
+        addAlias(aliases, "math.basic.absolute", "math.scalar_math.absolute");
+        addAlias(aliases, "math.basic.addition", "math.scalar_math.addition");
+        addAlias(aliases, "math.basic.ceiling", "math.scalar_math.ceiling");
+        addAlias(aliases, "math.basic.clamp", "math.scalar_math.clamp");
+        addAlias(aliases, "math.basic.division", "math.scalar_math.division");
+        addAlias(aliases, "math.basic.floor", "math.scalar_math.floor");
+        addAlias(aliases, "math.basic.logarithm", "math.scalar_math.logarithm");
+        addAlias(aliases, "math.basic.max", "math.scalar_math.max");
+        addAlias(aliases, "math.basic.min", "math.scalar_math.min");
+        addAlias(aliases, "math.basic.modulus", "math.scalar_math.modulus");
+        addAlias(aliases, "math.basic.multiplication", "math.scalar_math.multiplication");
+        addAlias(aliases, "math.basic.power", "math.scalar_math.power");
+        addAlias(aliases, "math.basic.remap", "math.scalar_math.remap");
+        addAlias(aliases, "math.basic.round", "math.scalar_math.round");
+        addAlias(aliases, "math.basic.subtraction", "math.scalar_math.subtraction");
+        addAlias(aliases, "math.randomness.random_number", "math.random.random_number");
+        addAlias(aliases, "math.randomness.random_list_item", "math.random.random_list_item");
+        addAlias(aliases, "math.randomness.random_vector", "math.random.random_vector");
+        addAlias(aliases, "math.randomness.noise", "math.random.noise");
+        addAlias(aliases, "math.logic.equals", "math.compare.equals");
+        addAlias(aliases, "math.logic.not_equals", "math.compare.not_equals");
+        addAlias(aliases, "math.logic.less_than", "math.compare.less_than");
+        addAlias(aliases, "math.logic.less_than_or_equal", "math.compare.less_than_or_equal");
+        addAlias(aliases, "math.logic.greater_than", "math.compare.greater_than");
+        addAlias(aliases, "math.logic.greater_than_or_equal", "math.compare.greater_than_or_equal");
+        addAlias(aliases, "logic.if", "math.logic.if");
+        addAlias(aliases, "logic.select_item", "math.logic.switch");
+        addAlias(aliases, "math.trigonometry.sine", "math.trigonometry.sin");
+        addAlias(aliases, "math.trigonometry.cosine", "math.trigonometry.cos");
+        addAlias(aliases, "math.trigonometry.tangent", "math.trigonometry.tan");
+        addAlias(aliases, "math.trigonometry.arcsin", "math.trigonometry.asin");
+        addAlias(aliases, "math.trigonometry.arccos", "math.trigonometry.acos");
+        addAlias(aliases, "math.trigonometry.arctan", "math.trigonometry.atan");
+        addAlias(aliases, "math.trigonometry.degrees_to_radians", "math.trigonometry.deg_to_rad");
+        addAlias(aliases, "math.trigonometry.deg2rad", "math.trigonometry.deg_to_rad");
+        addAlias(aliases, "math.trigonometry.radians_to_degrees", "math.trigonometry.rad_to_deg");
+        addAlias(aliases, "math.trigonometry.rad2deg", "math.trigonometry.rad_to_deg");
+        addAlias(aliases, "math.vector.construct", "reference.vectors.vector");
+        addAlias(aliases, "math.vector.cross_product", "reference.vectors.cross_product");
+        addAlias(aliases, "math.vector.dot_product", "reference.vectors.dot_product");
+        addAlias(aliases, "math.vector.normalize", "reference.vectors.normalize_vector");
+        addAlias(aliases, "math.vector.normalize_vector", "reference.vectors.normalize_vector");
+        addAlias(aliases, "math.vector.length", "reference.vectors.vector_length");
+        addAlias(aliases, "math.vector.addition", "reference.vectors.vector_addition");
+        addAlias(aliases, "math.vector.subtraction", "reference.vectors.vector_subtraction");
+        addAlias(aliases, "math.vector.scalar_multiply", "reference.vectors.vector_scalar_multiply");
+        addAlias(aliases, "math.vector.scalar_divide", "reference.vectors.vector_scalar_divide");
+        addAlias(aliases, "math.vector.deconstruct", "reference.vectors.deconstruct_vector");
+        addAlias(aliases, "math.vector.construct_coordinate", "reference.points.point_from_coordinates");
+        addAlias(aliases, "math.vector.deconstruct_coordinate", "reference.points.deconstruct_point");
+        addAlias(aliases, "math.vector.midpoint", "reference.points.mid_point");
+        addAlias(aliases, "math.vector.distance", "reference.points.distance_between_points");
+        addAlias(aliases, "math.vector.construct_plane", "reference.planes.construct_plane");
+        addAlias(aliases, "math.vector.construct_plane_from_points", "reference.planes.plane_from_points");
+        addAlias(aliases, "math.vector.rotate", "transform.orientation.rotate_vector");
+        addAlias(aliases, "math.vector.rotate_vector", "transform.orientation.rotate_vector");
 
         return Collections.unmodifiableMap(aliases);
     }
@@ -169,9 +170,7 @@ public class NodeRegistry {
         aliases.put(legacyId, canonicalId);
     }
 
-    private static void addMovedNodeAlias(Map<String, String> aliases, String legacyId, String canonicalId) {
-        addAlias(aliases, legacyId, canonicalId);
-    }
+    // addMovedNodeAlias was a no-op wrapper — callers now use addAlias directly.
 
     private String normalizeNodeId(String nodeId) {
         if (nodeId == null) {
@@ -247,6 +246,10 @@ public class NodeRegistry {
             NodeCraft.LOGGER.error("No node providers were found. Check META-INF/services/com.nodecraft.nodesystem.spi.INodeProvider.");
         }
 
+        // Sort nodes in all categories once, after all providers have registered.
+        for (NodeCategory category : categoryMap.values()) {
+            category.sealNodes();
+        }
         initialized = true;
         NodeCraft.LOGGER.info("NodeRegistry initialized. Loaded {} providers, {} categories, and {} nodes.",
                 providerCount, categoryMap.size(), nodeInfoMap.size());
@@ -278,6 +281,7 @@ public class NodeRegistry {
         }
 
         categoryMap.put(normalizedId, new NodeCategory(normalizedId, displayName));
+        invalidateCategoryCache();
         NodeCraft.LOGGER.debug("Registered node category: {} (ID: {})", displayName, normalizedId);
     }
 
@@ -386,10 +390,20 @@ public class NodeRegistry {
      * @return sorted immutable category list
      */
     public List<NodeCategory> getAllCategories() {
+        List<NodeCategory> cached = sortedCategoriesCache;
+        if (cached != null) {
+            return cached;
+        }
         List<NodeCategory> sortedCategories = new ArrayList<>(categoryMap.values());
-        // Sort by display name for stable UI presentation.
         sortedCategories.sort((c1, c2) -> c1.getDisplayName().compareToIgnoreCase(c2.getDisplayName()));
-        return Collections.unmodifiableList(sortedCategories);
+        List<NodeCategory> result = Collections.unmodifiableList(sortedCategories);
+        sortedCategoriesCache = result;
+        return result;
+    }
+
+    /** Invalidates the sorted-categories cache. Must be called whenever categoryMap changes. */
+    private void invalidateCategoryCache() {
+        sortedCategoriesCache = null;
     }
 
     /**
@@ -441,6 +455,7 @@ public class NodeRegistry {
     private void clearInternal() {
         nodeInfoMap.clear();
         categoryMap.clear();
+        invalidateCategoryCache();
         // The initialized flag is managed by initialize() and clear().
     }
 
@@ -458,6 +473,7 @@ public class NodeRegistry {
             if (!categoryMap.containsKey(parentId)) {
                 String displayName = formatCategoryName(parentId);
                 categoryMap.put(parentId, new NodeCategory(parentId, displayName));
+                invalidateCategoryCache();
                 NodeCraft.LOGGER.debug("Registered node category: {} (ID: {})", displayName, parentId);
             }
         }
@@ -497,9 +513,16 @@ public class NodeRegistry {
         void addNode(NodeInfo nodeInfo) {
             if (nodeInfo != null && !nodes.contains(nodeInfo)) {
                 nodes.add(nodeInfo);
-                // Keep nodes sorted by display name for stable rendering.
-                nodes.sort((n1, n2) -> n1.getDisplayName().compareToIgnoreCase(n2.getDisplayName()));
+                // Sorting is deferred to sealNodes(), called once after all providers finish.
             }
+        }
+
+        /**
+         * Sorts registered nodes by display name. Call once after all nodes are added
+         * rather than after every individual insertion to avoid O(N²·log N) cost.
+         */
+        void sealNodes() {
+            nodes.sort((n1, n2) -> n1.getDisplayName().compareToIgnoreCase(n2.getDisplayName()));
         }
 
         public List<NodeInfo> getNodes() {

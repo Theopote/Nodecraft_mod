@@ -81,13 +81,13 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("geometry", new float[]{0.92f, 0.82f, 0.18f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("material", new float[]{0.8f, 0.55f, 0.2f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("pattern", new float[]{0.98f, 0.74f, 0.22f, 1.0f});
-            
+
             // Subcategory colors use slightly lighter variants of their parent colors.
             CATEGORY_COLORS_FLOAT.put("input.numeric", new float[]{0.3f, 0.6f, 0.95f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("input.basic", new float[]{0.33f, 0.62f, 0.97f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("input.context", new float[]{0.35f, 0.65f, 1.0f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("input.type_selectors", new float[]{0.4f, 0.7f, 1.0f, 1.0f});
-            
+
             CATEGORY_COLORS_FLOAT.put("math.logic", new float[]{0.45f, 0.9f, 0.45f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("math.trigonometry", new float[]{0.55f, 1.0f, 0.55f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("math.list_sequence", new float[]{0.5f, 0.92f, 0.5f, 1.0f});
@@ -107,7 +107,7 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("transform.basic_transforms", new float[]{1.0f, 0.62f, 0.32f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("transform.deformations", new float[]{0.98f, 0.58f, 0.28f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("transform.orientation", new float[]{1.0f, 0.68f, 0.38f, 1.0f});
-            
+
             CATEGORY_COLORS_FLOAT.put("world.read", new float[]{0.5f, 0.95f, 1.0f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("world.query", new float[]{0.55f, 1.0f, 1.0f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("world.selection", new float[]{0.42f, 0.94f, 1.0f, 1.0f});
@@ -119,12 +119,12 @@ public class NodeLibraryComponent implements EditorComponent {
             CATEGORY_COLORS_FLOAT.put("material.pattern_mapping", new float[]{0.95f, 0.74f, 0.32f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("material.block_state", new float[]{0.82f, 0.5f, 0.2f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("material.surface_aging", new float[]{0.74f, 0.48f, 0.24f, 1.0f});
-            
+
             CATEGORY_COLORS_FLOAT.put("output.debug", new float[]{0.9f, 0.3f, 0.6f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("output.execute", new float[]{0.95f, 0.35f, 0.65f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("output.export", new float[]{0.98f, 0.45f, 0.72f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("output.preview", new float[]{1.0f, 0.4f, 0.7f, 1.0f});
-            
+
             // Utilities categories that are still intentionally exposed.
             CATEGORY_COLORS_FLOAT.put("utilities.assist", new float[]{0.82f, 0.82f, 0.82f, 1.0f});
             CATEGORY_COLORS_FLOAT.put("utilities.organization", new float[]{0.9f, 0.9f, 0.9f, 1.0f});
@@ -147,71 +147,38 @@ public class NodeLibraryComponent implements EditorComponent {
                 CATEGORY_COLORS_INT.put(entry.getKey(), ImGui.colorConvertFloat4ToU32(c[0], c[1], c[2], c[3]));
             }
         }
-        
-        // Helper for resolving the best packed color for a category name.
-        static int getPackedColor(String categoryName) {
-            // Try exact match first, preserving caller casing.
-            if (CATEGORY_COLORS_INT.containsKey(categoryName)) {
-                return CATEGORY_COLORS_INT.get(categoryName);
-            }
-            
-            // Fall back to lowercase lookup because most IDs are lowercase.
-            String lowerCaseName = categoryName.toLowerCase();
-            if (CATEGORY_COLORS_INT.containsKey(lowerCaseName)) {
-                return CATEGORY_COLORS_INT.get(lowerCaseName);
-            }
 
-            // Handle display names in the form "Parent / Child".
-            if (categoryName.contains(" / ")) {
-                String mainPart = categoryName.substring(0, categoryName.indexOf(" / "));
-                
-                String mainPartLower = mainPart.toLowerCase();
-                if (CATEGORY_COLORS_INT.containsKey(mainPartLower)) {
-                    return CATEGORY_COLORS_INT.get(mainPartLower);
-                }
-                
-                // Fall back to the original parent casing.
-                if (CATEGORY_COLORS_INT.containsKey(mainPart)) {
-                    return CATEGORY_COLORS_INT.get(mainPart);
-                }
+        /**
+         * Resolves the best-matching packed color for a category identifier.
+         * <p>
+         * Lookup order:
+         * <ol>
+         *   <li>Exact lowercase match (all canonical IDs are already lowercase).</li>
+         *   <li>Top-level prefix: {@code "math.scalar_math"} falls back to {@code "math"}.</li>
+         *   <li>Global default.</li>
+         * </ol>
+         */
+        static int getPackedColor(String categoryName) {
+            if (categoryName == null) {
+                return DEFAULT_CATEGORY_COLOR_INT;
             }
-            
-            // For dotted IDs such as math.basic, try the top-level category next.
-            if (categoryName.contains(".")) {
-                String mainCategory = categoryName.substring(0, categoryName.indexOf('.'));
-                
-                if (CATEGORY_COLORS_INT.containsKey(mainCategory)) {
-                    return CATEGORY_COLORS_INT.get(mainCategory);
-                }
-                
-                // Then try a title-cased top-level name.
-                String capitalized = mainCategory.substring(0, 1).toUpperCase() + mainCategory.substring(1);
-                if (CATEGORY_COLORS_INT.containsKey(capitalized)) {
-                    return CATEGORY_COLORS_INT.get(capitalized);
-                }
-                
-                // Finally try the exact dotted subcategory key.
-                if (CATEGORY_COLORS_INT.containsKey(categoryName)) {
-                    return CATEGORY_COLORS_INT.get(categoryName);
-                }
+            // 1. Exact lowercase match — canonical IDs are always lowercase.
+            String lower = categoryName.toLowerCase();
+            Integer exact = CATEGORY_COLORS_INT.get(lower);
+            if (exact != null) {
+                return exact;
             }
-            
-            // Use the longest matching prefix as a final fallback.
-            String bestMatch = null;
-            int bestMatchLength = 0;
-            
-            for (String key : CATEGORY_COLORS_INT.keySet()) {
-                if (categoryName.toLowerCase().startsWith(key.toLowerCase()) && key.length() > bestMatchLength) {
-                    bestMatch = key;
-                    bestMatchLength = key.length();
+            // 2. Walk up the dot-separated prefix chain: a.b.c -> a.b -> a
+            int dot = lower.lastIndexOf('.');
+            while (dot > 0) {
+                String prefix = lower.substring(0, dot);
+                Integer prefixColor = CATEGORY_COLORS_INT.get(prefix);
+                if (prefixColor != null) {
+                    return prefixColor;
                 }
+                dot = prefix.lastIndexOf('.');
             }
-            
-            if (bestMatch != null) {
-                return CATEGORY_COLORS_INT.get(bestMatch);
-            }
-            
-            // Default fallback color.
+            // 3. Global default.
             return DEFAULT_CATEGORY_COLOR_INT;
         }
     }
@@ -225,6 +192,8 @@ public class NodeLibraryComponent implements EditorComponent {
     private final List<NodeCategory> canonicalCategories; // Registry categories remain the source of truth.
     private List<CategoryPresentation> allCategories; // Current UI-facing presentation categories.
     private final Map<String, Boolean> expandedCategories = new HashMap<>();
+    /** Reusable scratch vector for color conversion — avoids one allocation per rendered category header. */
+    private final imgui.ImVec4 scratchColorVec = new imgui.ImVec4();
     private List<DisplayCategory> filteredCategories; // Filtered categories for the current search term.
     private List<DisplayCategory> cachedTopLevelCategories = List.of();
     private Map<String, List<DisplayCategory>> cachedChildCategoriesMap = Map.of();
@@ -235,19 +204,19 @@ public class NodeLibraryComponent implements EditorComponent {
 
     // Icon manager.
     private final NodeIconManager iconManager = NodeIconManager.getInstance();
-    
+
     // Search manager.
     private final NodeSearchManager searchManager = new NodeSearchManager();
-    
+
     /**
      * Callback used when the user selects a node from the library.
      */
     public interface NodeSelectCallback {
         void onNodeSelected(String nodeId, String nodeTitle);
     }
-    
+
     private final NodeSelectCallback selectCallback;
-    
+
     /**
      * Creates the node library component.
      *
@@ -257,7 +226,7 @@ public class NodeLibraryComponent implements EditorComponent {
         this.selectCallback = selectCallback;
         // Read categories directly from the registry.
         List<NodeCategory> categoriesFromRegistry = NodeRegistry.getInstance().getAllCategories();
-        
+
         // Validate registry output before building local state.
         if (categoriesFromRegistry == null || categoriesFromRegistry.isEmpty()) {
             NodeCraft.LOGGER.warn("NodeRegistry returned an empty or invalid category list.");
@@ -275,8 +244,8 @@ public class NodeLibraryComponent implements EditorComponent {
         }
 
         float storedGridScale = UserPreferences.getFloat(
-            NodeLibraryConstants.PREF_GRID_TILE_SCALE_KEY,
-            NodeLibraryConstants.GRID_TILE_SIZE_SCALE
+                NodeLibraryConstants.PREF_GRID_TILE_SCALE_KEY,
+                NodeLibraryConstants.GRID_TILE_SIZE_SCALE
         );
         setGridTileSizeScale(storedGridScale);
 
@@ -285,7 +254,7 @@ public class NodeLibraryComponent implements EditorComponent {
         // Initialize icon resources.
         iconManager.initialize();
     }
-    
+
     /**
      * Renders the node library panel.
      *
@@ -298,47 +267,47 @@ public class NodeLibraryComponent implements EditorComponent {
         if (!visible) {
             return;
         }
-        
+
         boolean nodeLibraryChildBegin = false;
-        
+
         try {
             // Clamp layout inputs to safe minimums.
             nodePanelWidth = Math.max(NodeLibraryConstants.CHILD_WINDOW_MIN_WIDTH, nodePanelWidth);
             contentHeight = Math.max(NodeLibraryConstants.CHILD_WINDOW_MIN_HEIGHT, contentHeight);
-            
+
             // Create the child window and disable the native scrollbar.
-            int windowFlags = ImGuiWindowFlags.NoScrollbar | 
-                            ImGuiWindowFlags.NoMove |
-                            ImGuiWindowFlags.NoResize |
-                            ImGuiWindowFlags.NoCollapse |
-                            ImGuiWindowFlags.NoTitleBar;
-            
+            int windowFlags = ImGuiWindowFlags.NoScrollbar |
+                    ImGuiWindowFlags.NoMove |
+                    ImGuiWindowFlags.NoResize |
+                    ImGuiWindowFlags.NoCollapse |
+                    ImGuiWindowFlags.NoTitleBar;
+
             nodeLibraryChildBegin = ImGui.beginChild("nodeLibrary", nodePanelWidth, contentHeight, true, windowFlags);
-            
+
             if (!nodeLibraryChildBegin) {
                 NodeCraft.LOGGER.warn("Failed to begin nodeLibrary child window");
                 return;
             }
-            
+
             try {
                 // Draw a distinct panel background for the node library.
                 ImDrawList drawList = ImGui.getWindowDrawList();
                 ImVec2 windowPos = ImGui.getWindowPos();
                 int nodeLibraryBgColor = ImGui.colorConvertFloat4ToU32(0.15f, 0.15f, 0.2f, MinecraftTheme.getPanelAlpha());
                 drawList.addRectFilled(
-                    windowPos.x, 
-                    windowPos.y, 
-                    windowPos.x + nodePanelWidth, 
-                    windowPos.y + contentHeight, 
-                    nodeLibraryBgColor
+                        windowPos.x,
+                        windowPos.y,
+                        windowPos.x + nodePanelWidth,
+                        windowPos.y + contentHeight,
+                        nodeLibraryBgColor
                 );
-                
+
                 // Search bar.
                 renderSearchBar();
-                
+
                 ImGui.separator();
                 ImGui.spacing();
-                
+
                 // Node categories.
                 renderNodeCategories();
             } finally {
@@ -347,10 +316,10 @@ public class NodeLibraryComponent implements EditorComponent {
             }
         } catch (Exception e) {
             NodeCraft.LOGGER.error("Failed to render node library: {}", e.getMessage());
-            e.printStackTrace();
+            NodeCraft.LOGGER.error("Failed to render node library: {}", e.getMessage(), e);
         }
     }
-    
+
     /**
      * {@inheritDoc}
      */
@@ -358,7 +327,7 @@ public class NodeLibraryComponent implements EditorComponent {
     public void render(float x, float y, float width, float height, float paddingX, float paddingY) {
         render(y, width, height, paddingX);
     }
-    
+
     /**
      * {@inheritDoc}
      */
@@ -369,7 +338,7 @@ public class NodeLibraryComponent implements EditorComponent {
             NodeCraft.LOGGER.debug("Initializing node library component");
         }
     }
-    
+
     /**
      * {@inheritDoc}
      */
@@ -378,7 +347,7 @@ public class NodeLibraryComponent implements EditorComponent {
         // Release icon resources.
         iconManager.cleanup();
     }
-    
+
     /**
      * {@inheritDoc}
      */
@@ -386,7 +355,7 @@ public class NodeLibraryComponent implements EditorComponent {
     public void setVisible(boolean visible) {
         this.visible = visible;
     }
-    
+
     /**
      * {@inheritDoc}
      */
@@ -413,7 +382,7 @@ public class NodeLibraryComponent implements EditorComponent {
 
     public void setGridTileSizeScale(float scale) {
         float clamped = Math.max(NodeLibraryConstants.GRID_TILE_SIZE_SCALE_MIN,
-            Math.min(NodeLibraryConstants.GRID_TILE_SIZE_SCALE_MAX, scale));
+                Math.min(NodeLibraryConstants.GRID_TILE_SIZE_SCALE_MAX, scale));
         if (Math.abs(this.gridTileSizeScale - clamped) < 0.001f) {
             return;
         }
@@ -428,7 +397,7 @@ public class NodeLibraryComponent implements EditorComponent {
     public String getComponentId() {
         return "nodeLibrary";
     }
-    
+
     /**
      * {@inheritDoc}
      */
@@ -437,14 +406,14 @@ public class NodeLibraryComponent implements EditorComponent {
         // This component does not currently handle external events.
         return false;
     }
-    
+
     /**
      * Renders the search bar.
      */
     private void renderSearchBar() {
         // Delegate search UI rendering to the search manager.
         boolean searchChanged = searchManager.renderSearchBar(this::updateFilteredCategories);
-        
+
         if (searchChanged) {
             NodeCraft.LOGGER.debug("Search term changed. Node library will refresh on the next frame.");
         }
@@ -452,7 +421,7 @@ public class NodeLibraryComponent implements EditorComponent {
 
     private void rebuildPresentationCategories() {
         this.allCategories = PRESENTATION_MAPPER.mapCategories(
-            canonicalCategories
+                canonicalCategories
         );
 
         expandedCategories.clear();
@@ -461,7 +430,7 @@ public class NodeLibraryComponent implements EditorComponent {
         }
         updateFilteredCategories(searchManager.getSearchTerm());
     }
-    
+
     /**
      * Updates the filtered category list for the active search term.
      *
@@ -469,13 +438,13 @@ public class NodeLibraryComponent implements EditorComponent {
      */
     private void updateFilteredCategories(String searchTerm) {
         NodeCraft.LOGGER.debug("Updating node library search results for term: '{}'", searchTerm);
-        
+
         // Empty search shows all categories and nodes.
         if (searchTerm == null || searchTerm.isEmpty()) {
             NodeCraft.LOGGER.debug("Search term is empty. Showing all categories.");
             this.filteredCategories = this.allCategories.stream()
-                .map(cat -> new DisplayCategory(cat, new ArrayList<>(cat.sourceCategory().getNodes())))
-                .collect(Collectors.toList());
+                    .map(cat -> new DisplayCategory(cat, new ArrayList<>(cat.sourceCategory().getNodes())))
+                    .collect(Collectors.toList());
             this.categoryHierarchyCacheDirty = true;
             NodeCraft.LOGGER.debug("Filtered category count for empty search: {}", this.filteredCategories.size());
             return;
@@ -488,94 +457,95 @@ public class NodeLibraryComponent implements EditorComponent {
         // Scan all categories and nodes directly.
         List<DisplayCategory> searchResults = new ArrayList<>();
         Set<String> parentCategoriesToExpand = new HashSet<>();
-        
+
         for (CategoryPresentation category : allCategories) {
             String categoryId = category.displayCategoryId();
             String categoryName = category.displayName().toLowerCase();
             boolean categoryMatches = categoryName.contains(processedTerm) || categoryId.toLowerCase().contains(processedTerm);
-            
+
             // Collect matching nodes in the current category.
             List<NodeInfo> matchingNodes = new ArrayList<>();
             for (NodeInfo node : category.sourceCategory().getNodes()) {
                 if (matchesNode(node, processedTerm)) {
                     matchingNodes.add(node);
-                    NodeCraft.LOGGER.debug("Node matched search term: {} ({}) in category {}", 
-                        node.getDisplayName(), node.getId(), categoryId);
+                    NodeCraft.LOGGER.debug("Node matched search term: {} ({}) in category {}",
+                            node.getDisplayName(), node.getId(), categoryId);
                 }
             }
-            
+
             // 1. Category name matched, so keep all nodes in that category.
             if (categoryMatches) {
                 searchResults.add(new DisplayCategory(category, new ArrayList<>(category.sourceCategory().getNodes())));
-                NodeCraft.LOGGER.debug("Category matched search term '{}': {} ({}), keeping all nodes", 
-                    processedTerm, category.displayName(), categoryId);
-                
+                NodeCraft.LOGGER.debug("Category matched search term '{}': {} ({}), keeping all nodes",
+                        processedTerm, category.displayName(), categoryId);
+
                 expandedCategories.put(categoryId, true);
-                
+
                 if (category.parentDisplayId() != null) {
                     String parentId = category.parentDisplayId();
                     parentCategoriesToExpand.add(parentId);
                 }
-                
+
                 continue;
             }
-            
+
             // 2. Category did not match, but some nodes did.
             if (!matchingNodes.isEmpty()) {
                 searchResults.add(new DisplayCategory(category, matchingNodes));
                 NodeCraft.LOGGER.debug("Category {} contains {} matching nodes", categoryId, matchingNodes.size());
-                
+
                 expandedCategories.put(categoryId, true);
-                
+
                 if (category.parentDisplayId() != null) {
                     String parentId = category.parentDisplayId();
                     parentCategoriesToExpand.add(parentId);
                 }
             }
         }
-        
+
         // Expand all parents of matching subcategories.
         for (String parentId : parentCategoriesToExpand) {
             expandedCategories.put(parentId, true);
             NodeCraft.LOGGER.debug("Expanded parent category {}", parentId);
         }
-        
+
         NodeCraft.LOGGER.debug("Search '{}' matched {} categories", processedTerm, searchResults.size());
-        
+
         if (!searchResults.isEmpty()) {
-            // Ensure parent categories remain visible even when only child categories match.
+            // Ensure top-level parent categories remain visible even when only child categories matched.
+            // Build a lookup set of already-included IDs to avoid O(n²) containment checks.
+            Set<String> includedIds = new HashSet<>();
+            for (DisplayCategory dc : searchResults) {
+                includedIds.add(dc.getId());
+            }
+            // Build a presentation-ID → CategoryPresentation index once for O(1) lookup.
+            Map<String, CategoryPresentation> presentationById = new HashMap<>();
+            for (CategoryPresentation cat : allCategories) {
+                presentationById.put(cat.displayCategoryId(), cat);
+            }
             List<DisplayCategory> completeResults = new ArrayList<>(searchResults);
-            
             for (String parentId : parentCategoriesToExpand) {
-                if (!parentId.contains(".")) {
-                    boolean alreadyIncluded = searchResults.stream()
-                        .anyMatch(dc -> dc.getId().equals(parentId));
-                    
-                    if (!alreadyIncluded) {
-                        for (CategoryPresentation cat : allCategories) {
-                            if (cat.displayCategoryId().equals(parentId)) {
-                                completeResults.add(new DisplayCategory(cat, new ArrayList<>()));
-                                NodeCraft.LOGGER.debug("Added missing parent category {}", parentId);
-                                break;
-                            }
-                        }
+                if (!parentId.contains(".") && !includedIds.contains(parentId)) {
+                    CategoryPresentation cat = presentationById.get(parentId);
+                    if (cat != null) {
+                        completeResults.add(new DisplayCategory(cat, new ArrayList<>()));
+                        NodeCraft.LOGGER.debug("Added missing parent category {}", parentId);
                     }
                 }
             }
-            
             this.filteredCategories = completeResults;
         } else {
             NodeCraft.LOGGER.debug("No matches found. Showing empty top-level categories.");
             this.filteredCategories = allCategories.stream()
-                .filter(cat -> cat.parentDisplayId() == null)
-                .map(cat -> new DisplayCategory(cat, new ArrayList<>()))
-                .collect(Collectors.toList());
+                    .filter(cat -> cat.parentDisplayId() == null)
+                    .map(cat -> new DisplayCategory(cat, new ArrayList<>()))
+                    .collect(Collectors.toList());
         }
-        
+
         this.categoryHierarchyCacheDirty = true;
         NodeCraft.LOGGER.debug("Filtered category count: {}", this.filteredCategories.size());
     }
-    
+
     /**
      * Returns whether a node matches the current search term.
      */
@@ -583,16 +553,16 @@ public class NodeLibraryComponent implements EditorComponent {
         if (searchTerm == null || searchTerm.isEmpty() || node == null) {
             return false;
         }
-        
+
         String displayName = node.getDisplayName() != null ? node.getDisplayName().toLowerCase() : "";
         String nodeId = node.getId() != null ? node.getId().toLowerCase() : "";
         String description = node.getDescription() != null ? node.getDescription().toLowerCase() : "";
-        
-        return displayName.contains(searchTerm) || 
-               nodeId.contains(searchTerm) || 
-               description.contains(searchTerm);
+
+        return displayName.contains(searchTerm) ||
+                nodeId.contains(searchTerm) ||
+                description.contains(searchTerm);
     }
-    
+
     /**
      * Renders the category list and its visible nodes.
      */
@@ -604,7 +574,7 @@ public class NodeLibraryComponent implements EditorComponent {
         if (filteredCategories.isEmpty() && !searchManager.getSearchTerm().isEmpty()) {
             searchManager.renderNoMatchesMessage();
         } else if (allCategories.isEmpty()) {
-            ImGui.textDisabled("  No nodes registered."); 
+            ImGui.textDisabled("  No nodes registered.");
             ImGui.spacing();
             ImGui.textDisabled("  Please restart the application or check logs.");
         }
@@ -615,7 +585,7 @@ public class NodeLibraryComponent implements EditorComponent {
         ensureCategoryHierarchyCache();
         List<DisplayCategory> topLevelCategories = cachedTopLevelCategories;
         Map<String, List<DisplayCategory>> childCategoriesMap = cachedChildCategoriesMap;
-        
+
         boolean isSearching = searchManager.getSearchTerm() != null && !searchManager.getSearchTerm().isEmpty();
 
         // In search mode, force open the categories that contain matching nodes.
@@ -624,7 +594,7 @@ public class NodeLibraryComponent implements EditorComponent {
                 if (!category.getNodes().isEmpty()) {
                     String categoryId = category.getId();
                     expandedCategories.put(categoryId, true);
-                    
+
                     if (category.getParentId() != null) {
                         String parentId = category.getParentId();
                         expandedCategories.put(parentId, true);
@@ -637,22 +607,22 @@ public class NodeLibraryComponent implements EditorComponent {
         // Render top-level categories first, then any visible children.
         for (DisplayCategory topCategory : topLevelCategories) {
             renderCategory(topCategory, 0, isSearching);
-            
+
             if (expandedCategories.getOrDefault(topCategory.getId(), true)) {
                 List<DisplayCategory> children = childCategoriesMap.get(topCategory.getId());
-                
+
                 if (children != null && !children.isEmpty()) {
                     ImGui.indent(NodeLibraryConstants.CATEGORY_INDENT);
-                    
+
                     for (DisplayCategory childCategory : children) {
                         renderCategory(childCategory, 1, isSearching);
                     }
-                    
+
                     ImGui.unindent(NodeLibraryConstants.CATEGORY_INDENT);
                 }
             }
         }
-        
+
         ImGui.popStyleVar();
         ImGui.endChild();
     }
@@ -673,8 +643,8 @@ public class NodeLibraryComponent implements EditorComponent {
                 topLevelCategories.add(category);
             } else {
                 childCategoriesMap
-                    .computeIfAbsent(parentId, k -> new ArrayList<>())
-                    .add(category);
+                        .computeIfAbsent(parentId, k -> new ArrayList<>())
+                        .add(category);
             }
         }
 
@@ -688,10 +658,10 @@ public class NodeLibraryComponent implements EditorComponent {
         for (DisplayCategory topCategory : topLevelCategories) {
             List<DisplayCategory> children = childCategoriesMap.get(topCategory.getId());
             boolean shouldPromoteOnlyLegacyChild =
-                topCategory.getNodes().isEmpty()
-                    && children != null
-                    && children.size() == 1
-                    && children.getFirst().getId().endsWith(".legacy");
+                    topCategory.getNodes().isEmpty()
+                            && children != null
+                            && children.size() == 1
+                            && children.getFirst().getId().endsWith(".legacy");
 
             if (shouldPromoteOnlyLegacyChild) {
                 promotedTopLevelCategories.add(children.getFirst());
@@ -712,7 +682,7 @@ public class NodeLibraryComponent implements EditorComponent {
         this.cachedChildCategoriesMap = Map.copyOf(cachedChildren);
         this.categoryHierarchyCacheDirty = false;
     }
-    
+
     /**
      * Renders a single category header and its visible nodes.
      *
@@ -723,59 +693,59 @@ public class NodeLibraryComponent implements EditorComponent {
     private void renderCategory(DisplayCategory displayCategory, int level, boolean shouldExpand) {
         // Default to expanded when a state entry is missing.
         boolean isExpanded = expandedCategories.getOrDefault(displayCategory.getId(), true);
-        
+
         boolean hasNodes = !displayCategory.getNodes().isEmpty();
-        
+
         // Matching categories stay expanded in search mode.
         if (shouldExpand && hasNodes) {
             isExpanded = true;
             expandedCategories.put(displayCategory.getId(), true);
         }
-        
+
         // Prefer category IDs over display names for color lookup.
         int packedColor;
         String categoryId = displayCategory.getColorKey();
-        
+
         if (NodeLibraryConstants.CATEGORY_COLORS_INT.containsKey(categoryId)) {
             packedColor = NodeLibraryConstants.CATEGORY_COLORS_INT.get(categoryId);
         } else {
             packedColor = NodeLibraryConstants.getPackedColor(categoryId);
         }
-        
+
         // Derive background tones from the category color.
-        imgui.ImVec4 colorVec = new imgui.ImVec4();
+        imgui.ImVec4 colorVec = scratchColorVec;
         ImGui.colorConvertU32ToFloat4(packedColor, colorVec);
         float[] color = new float[]{colorVec.x, colorVec.y, colorVec.z, colorVec.w};
-        
+
         float alphaBase = level == 0 ? 0.7f : 0.5f;
         float colorIntensity = level == 0 ? 0.7f : 0.6f;
-        
+
         // Compute colors for normal, hover, and active states.
         int bgColor = ImGui.colorConvertFloat4ToU32(
-            color[0] * colorIntensity, 
-            color[1] * colorIntensity, 
-            color[2] * colorIntensity, 
-            alphaBase);
-            
+                color[0] * colorIntensity,
+                color[1] * colorIntensity,
+                color[2] * colorIntensity,
+                alphaBase);
+
         int hoverBgColor = ImGui.colorConvertFloat4ToU32(
-            Math.min(1.0f, color[0] * 1.2f * colorIntensity), 
-            Math.min(1.0f, color[1] * 1.2f * colorIntensity), 
-            Math.min(1.0f, color[2] * 1.2f * colorIntensity), 
-            alphaBase + 0.2f);
-            
+                Math.min(1.0f, color[0] * 1.2f * colorIntensity),
+                Math.min(1.0f, color[1] * 1.2f * colorIntensity),
+                Math.min(1.0f, color[2] * 1.2f * colorIntensity),
+                alphaBase + 0.2f);
+
         int activeBgColor = ImGui.colorConvertFloat4ToU32(
-            Math.min(1.0f, color[0] * 1.3f * colorIntensity), 
-            Math.min(1.0f, color[1] * 1.3f * colorIntensity), 
-            Math.min(1.0f, color[2] * 1.3f * colorIntensity), 
-            alphaBase + 0.3f);
+                Math.min(1.0f, color[0] * 1.3f * colorIntensity),
+                Math.min(1.0f, color[1] * 1.3f * colorIntensity),
+                Math.min(1.0f, color[2] * 1.3f * colorIntensity),
+                alphaBase + 0.3f);
 
         // Styling setup.
         ImGui.pushStyleVar(imgui.flag.ImGuiStyleVar.ItemSpacing, ImGui.getStyle().getItemSpacingX(), 0);
-        
+
         // Increase text contrast against the colored headers.
         float[] saturatedColor = new float[4];
         System.arraycopy(color, 0, saturatedColor, 0, 4);
-        
+
         for (int i = 0; i < 3; i++) {
             if (saturatedColor[i] < 0.5f) {
                 saturatedColor[i] = Math.min(1.0f, saturatedColor[i] * 1.6f);
@@ -783,7 +753,7 @@ public class NodeLibraryComponent implements EditorComponent {
                 saturatedColor[i] = Math.min(1.0f, 0.8f + saturatedColor[i] * 0.2f);
             }
         }
-        
+
         float textLuminance = 0.299f * saturatedColor[0] + 0.587f * saturatedColor[1] + 0.114f * saturatedColor[2];
         int enhancedTextColor;
         if (textLuminance < 0.6f) {
@@ -791,7 +761,7 @@ public class NodeLibraryComponent implements EditorComponent {
         } else {
             enhancedTextColor = ImGui.colorConvertFloat4ToU32(saturatedColor[0], saturatedColor[1], saturatedColor[2], 1.0f);
         }
-        
+
         ImGui.pushStyleColor(ImGuiCol.Text, enhancedTextColor);
         ImGui.pushStyleColor(ImGuiCol.Header, bgColor);
         ImGui.pushStyleColor(ImGuiCol.HeaderHovered, hoverBgColor);
@@ -806,11 +776,11 @@ public class NodeLibraryComponent implements EditorComponent {
         String displayTitle = getString(displayCategory, level, categoryId);
 
         int headerFlags = ImGuiSelectableFlags.None;
-        
+
         if (shouldExpand && hasNodes) {
             ImGui.setNextItemOpen(true);
         }
-        
+
         boolean headerClicked = ImGui.collapsingHeader(displayTitle + "##header_" + displayCategory.getId(), headerFlags);
 
         if (level == 0) {
@@ -825,30 +795,18 @@ public class NodeLibraryComponent implements EditorComponent {
         // Render nodes only while the category is open.
         if (headerClicked) {
             ImGui.indent(NodeLibraryConstants.CATEGORY_INDENT);
-            
+
             ImGui.dummy(0, 2.0f);
 
-            boolean hasSubcategories = false;
-            String catId = displayCategory.getId();
-            
-            for (DisplayCategory otherCategory : filteredCategories) {
-                if (otherCategory != displayCategory && 
-                    catId.equals(otherCategory.getParentId())) {
-                    hasSubcategories = true;
-                    break;
-                }
-            }
-            
+            // Use the already-computed hierarchy cache — O(1) instead of O(n).
+            boolean hasSubcategories = cachedChildCategoriesMap.containsKey(displayCategory.getId());
+
             List<NodeInfo> nodesToRender = getSortedNodesForDisplay(displayCategory);
-            
+
             NodeCraft.LOGGER.debug("Category {} has {} nodes to render", displayCategory.getDisplayName(), nodesToRender.size());
-            
-            if (!searchManager.getSearchTerm().isEmpty()) {
-                NodeCraft.LOGGER.debug("Search mode '{}', visible nodes in category {}: {}", 
-                    searchManager.getSearchTerm(), 
-                    displayCategory.getDisplayName(), 
-                    nodesToRender.stream().map(NodeInfo::getDisplayName).collect(Collectors.joining(", ")));
-            }
+
+            // Node-list debug logging omitted: joining all display names per frame is O(n)
+            // and clutters logs during active search. Use the Value Monitor node for runtime inspection.
 
             if (nodesToRender.isEmpty() && searchManager.getSearchTerm().isEmpty() && !hasSubcategories) {
                 ImGui.textDisabled("  (No nodes in this category)");
@@ -864,8 +822,8 @@ public class NodeLibraryComponent implements EditorComponent {
             ImGui.unindent(NodeLibraryConstants.CATEGORY_INDENT);
             ImGui.dummy(0, NodeLibraryConstants.CATEGORY_SPACING_EXPANDED);
         } else {
-             // Keep a small spacer below collapsed headers for readability.
-             ImGui.dummy(0, NodeLibraryConstants.CATEGORY_SPACING_COLLAPSED);
+            // Keep a small spacer below collapsed headers for readability.
+            ImGui.dummy(0, NodeLibraryConstants.CATEGORY_SPACING_COLLAPSED);
         }
     }
 
@@ -877,7 +835,7 @@ public class NodeLibraryComponent implements EditorComponent {
             float availableWidth = ImGui.getContentRegionAvailX();
 
             boolean selected = ImGui.selectable("##node_selector_" + node.getId(), false,
-                ImGuiSelectableFlags.AllowItemOverlap, availableWidth, lineHeight);
+                    ImGuiSelectableFlags.AllowItemOverlap, availableWidth, lineHeight);
 
             ImVec2 rectMin = ImGui.getItemRectMin();
             ImDrawList drawList = ImGui.getWindowDrawList();
@@ -908,7 +866,7 @@ public class NodeLibraryComponent implements EditorComponent {
             String nodeCategory = node.getCategoryId();
 
             boolean selected = ImGui.selectable("##node_tile_" + node.getId(), false,
-                ImGuiSelectableFlags.AllowItemOverlap, tileSide, tileSide);
+                    ImGuiSelectableFlags.AllowItemOverlap, tileSide, tileSide);
 
             ImVec2 rectMin = ImGui.getItemRectMin();
             ImDrawList drawList = ImGui.getWindowDrawList();
@@ -933,39 +891,39 @@ public class NodeLibraryComponent implements EditorComponent {
 
     private void drawGridPlaceholderIcon(ImDrawList drawList, ImVec2 topLeft, float tileSide, String nodeCategory) {
         int categoryColor = NodeLibraryConstants.getPackedColor(nodeCategory);
-        imgui.ImVec4 colorVec = new imgui.ImVec4();
+        imgui.ImVec4 colorVec = scratchColorVec;
         ImGui.colorConvertU32ToFloat4(categoryColor, colorVec);
 
         int fillColor = ImGui.colorConvertFloat4ToU32(
-            colorVec.x * 0.55f,
-            colorVec.y * 0.55f,
-            colorVec.z * 0.55f,
-            0.90f
+                colorVec.x * 0.55f,
+                colorVec.y * 0.55f,
+                colorVec.z * 0.55f,
+                0.90f
         );
         int borderColor = ImGui.colorConvertFloat4ToU32(
-            Math.min(1.0f, colorVec.x * 1.15f),
-            Math.min(1.0f, colorVec.y * 1.15f),
-            Math.min(1.0f, colorVec.z * 1.15f),
-            1.0f
+                Math.min(1.0f, colorVec.x * 1.15f),
+                Math.min(1.0f, colorVec.y * 1.15f),
+                Math.min(1.0f, colorVec.z * 1.15f),
+                1.0f
         );
 
         drawList.addRectFilled(
-            topLeft.x,
-            topLeft.y,
-            topLeft.x + tileSide,
-            topLeft.y + tileSide,
-            fillColor,
-            0.0f
+                topLeft.x,
+                topLeft.y,
+                topLeft.x + tileSide,
+                topLeft.y + tileSide,
+                fillColor,
+                0.0f
         );
         drawList.addRect(
-            topLeft.x,
-            topLeft.y,
-            topLeft.x + tileSide,
-            topLeft.y + tileSide,
-            borderColor,
-            0.0f,
-            0,
-            1.0f
+                topLeft.x,
+                topLeft.y,
+                topLeft.x + tileSide,
+                topLeft.y + tileSide,
+                borderColor,
+                0.0f,
+                0,
+                1.0f
         );
     }
 
@@ -1017,8 +975,8 @@ public class NodeLibraryComponent implements EditorComponent {
     private List<NodeInfo> getSortedNodesForDisplay(DisplayCategory displayCategory) {
         List<NodeInfo> nodes = new ArrayList<>(displayCategory.getNodes());
         nodes.sort(Comparator
-            .comparingInt(NodeInfo::getOrder)
-            .thenComparing(NodeInfo::getDisplayName, String.CASE_INSENSITIVE_ORDER));
+                .comparingInt(NodeInfo::getOrder)
+                .thenComparing(NodeInfo::getDisplayName, String.CASE_INSENSITIVE_ORDER));
         return nodes;
     }
 
@@ -1048,39 +1006,39 @@ public class NodeLibraryComponent implements EditorComponent {
             yOffset = (actualLineHeight - iconSize) * 0.5f;
         }
         drawNodeIcon(drawList, new ImVec2(rectMin.x, rectMin.y + yOffset), node, nodeCategory, iconSize);
-        
+
         // Draw text only for the normal row view, not for drag previews or tooltips.
         if (iconPadding > 0) {
             // Compute text placement.
             float textStartX = rectMin.x + iconSize + iconPadding;
             float textPosY = rectMin.y + (actualLineHeight - ImGui.getTextLineHeight()) * 0.5f;
-            
+
             String searchTerm = searchManager.getSearchTerm();
             String nodeDisplayName = node.getDisplayName();
-            
+
             // Highlight matching text while searching.
             int textColor = ImGui.getColorU32(ImGuiCol.Text);
-            
+
             if (searchTerm != null && !searchTerm.isEmpty()) {
                 String lowerNodeName = nodeDisplayName.toLowerCase();
                 String lowerSearchTerm = searchTerm.toLowerCase();
-                
+
                 if (lowerNodeName.contains(lowerSearchTerm)) {
                     int highlightColor = ImGui.colorConvertFloat4ToU32(1.0f, 0.8f, 0.0f, 1.0f);
-                    
+
                     int matchStart = lowerNodeName.indexOf(lowerSearchTerm);
                     int matchEnd = matchStart + lowerSearchTerm.length();
-                    
+
                     if (matchStart > 0) {
                         String prefix = nodeDisplayName.substring(0, matchStart);
                         drawList.addText(textStartX, textPosY, textColor, prefix);
                         textStartX += ImGui.calcTextSize(prefix).x;
                     }
-                    
+
                     String highlight = nodeDisplayName.substring(matchStart, matchEnd);
                     drawList.addText(textStartX, textPosY, highlightColor, highlight);
                     textStartX += ImGui.calcTextSize(highlight).x;
-                    
+
                     if (matchEnd < nodeDisplayName.length()) {
                         String suffix = nodeDisplayName.substring(matchEnd);
                         drawList.addText(textStartX, textPosY, textColor, suffix);
@@ -1088,16 +1046,16 @@ public class NodeLibraryComponent implements EditorComponent {
                 } else {
                     // The node matched by ID or description rather than display name.
                     drawList.addText(textStartX, textPosY, textColor, nodeDisplayName);
-                    
+
                     float indicatorSize = 3.0f;
                     float indicatorX = textStartX - indicatorSize - 2.0f;
                     float indicatorY = textPosY + ImGui.getTextLineHeight() / 2.0f - indicatorSize / 2.0f;
-                    
+
                     int indicatorColor = ImGui.colorConvertFloat4ToU32(1.0f, 0.8f, 0.0f, 1.0f);
                     drawList.addRectFilled(
-                        indicatorX, indicatorY,
-                        indicatorX + indicatorSize, indicatorY + indicatorSize,
-                        indicatorColor
+                            indicatorX, indicatorY,
+                            indicatorX + indicatorSize, indicatorY + indicatorSize,
+                            indicatorColor
                     );
                 }
             } else {
@@ -1114,17 +1072,17 @@ public class NodeLibraryComponent implements EditorComponent {
         if (textureId > 0) {
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
             drawList.addImage(
-                textureId,
-                topLeft.x, topLeft.y,
-                topLeft.x + iconSize, topLeft.y + iconSize,
-                0.0f, 0.0f, 1.0f, 1.0f
+                    textureId,
+                    topLeft.x, topLeft.y,
+                    topLeft.x + iconSize, topLeft.y + iconSize,
+                    0.0f, 0.0f, 1.0f, 1.0f
             );
         } else {
             int bgColor = ImGui.colorConvertFloat4ToU32(0.7f, 0.7f, 0.7f, 0.7f);
             drawList.addRectFilled(
-                topLeft.x, topLeft.y,
-                topLeft.x + iconSize, topLeft.y + iconSize,
-                bgColor, 0.0f
+                    topLeft.x, topLeft.y,
+                    topLeft.x + iconSize, topLeft.y + iconSize,
+                    bgColor, 0.0f
             );
         }
     }
