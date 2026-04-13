@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Comparator;
+import java.util.Arrays;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -68,70 +69,23 @@ public class NodeLibraryComponent implements EditorComponent {
         static final Map<String, Integer> CATEGORY_COLORS_INT = new HashMap<>();
         static final float[] DEFAULT_CATEGORY_COLOR_FLOAT = new float[]{0.75f, 0.75f, 0.75f, 1.0f};
         static final int DEFAULT_CATEGORY_COLOR_INT = ImGui.colorConvertFloat4ToU32(DEFAULT_CATEGORY_COLOR_FLOAT[0], DEFAULT_CATEGORY_COLOR_FLOAT[1], DEFAULT_CATEGORY_COLOR_FLOAT[2], DEFAULT_CATEGORY_COLOR_FLOAT[3]);
+        static final List<String> TOP_LEVEL_CATEGORY_ORDER = List.of(
+                "input",
+                "reference",
+                "geometry",
+                "transform",
+                "pattern",
+                "material",
+                "world",
+                "output",
+                "math",
+                "utilities"
+        );
+        private static final float[] GRADIENT_START_COLOR = new float[]{0.25f, 0.55f, 0.96f, 1.0f};
+        private static final float[] GRADIENT_END_COLOR = new float[]{0.95f, 0.64f, 0.24f, 1.0f};
 
         static {
-            // Canonical top-level category colors.
-            CATEGORY_COLORS_FLOAT.put("math", new float[]{0.3f, 0.8f, 0.3f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("world", new float[]{0.2f, 0.8f, 0.8f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("output", new float[]{0.85f, 0.2f, 0.5f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("utilities", new float[]{0.7f, 0.7f, 0.7f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("input", new float[]{0.2f, 0.5f, 0.9f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("reference", new float[]{0.95f, 0.9f, 0.25f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("transform", new float[]{0.95f, 0.55f, 0.25f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("geometry", new float[]{0.92f, 0.82f, 0.18f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("material", new float[]{0.8f, 0.55f, 0.2f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("pattern", new float[]{0.98f, 0.74f, 0.22f, 1.0f});
-
-            // Subcategory colors use slightly lighter variants of their parent colors.
-            CATEGORY_COLORS_FLOAT.put("input.numeric", new float[]{0.3f, 0.6f, 0.95f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("input.basic", new float[]{0.33f, 0.62f, 0.97f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("input.context", new float[]{0.35f, 0.65f, 1.0f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("input.type_selectors", new float[]{0.4f, 0.7f, 1.0f, 1.0f});
-
-            CATEGORY_COLORS_FLOAT.put("math.logic", new float[]{0.45f, 0.9f, 0.45f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("math.trigonometry", new float[]{0.55f, 1.0f, 0.55f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("math.list_sequence", new float[]{0.5f, 0.92f, 0.5f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("math.compare", new float[]{0.48f, 0.9f, 0.48f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("math.scalar_math", new float[]{0.42f, 0.87f, 0.42f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("math.random", new float[]{0.52f, 0.95f, 0.52f, 1.0f});
-
-            CATEGORY_COLORS_FLOAT.put("reference.points", new float[]{1.0f, 0.98f, 0.45f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("reference.vectors", new float[]{1.0f, 1.0f, 0.5f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("reference.planes", new float[]{1.0f, 1.0f, 0.55f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("reference.frames", new float[]{1.0f, 0.96f, 0.5f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("geometry.boolean", new float[]{0.98f, 0.88f, 0.28f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("geometry.curves", new float[]{1.0f, 0.9f, 0.32f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("geometry.primitives", new float[]{0.96f, 0.9f, 0.34f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("geometry.profiles", new float[]{1.0f, 0.94f, 0.4f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("geometry.solids", new float[]{0.98f, 0.86f, 0.3f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("transform.basic_transforms", new float[]{1.0f, 0.62f, 0.32f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("transform.deformations", new float[]{0.98f, 0.58f, 0.28f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("transform.orientation", new float[]{1.0f, 0.68f, 0.38f, 1.0f});
-
-            CATEGORY_COLORS_FLOAT.put("world.read", new float[]{0.5f, 0.95f, 1.0f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("world.query", new float[]{0.55f, 1.0f, 1.0f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("world.selection", new float[]{0.42f, 0.94f, 1.0f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("world.write", new float[]{0.45f, 1.0f, 1.0f, 1.0f});
-
-            CATEGORY_COLORS_FLOAT.put("material.basic_assignment", new float[]{0.86f, 0.58f, 0.22f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("material.gradient_mapping", new float[]{0.93f, 0.68f, 0.26f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("material.directional_mapping", new float[]{0.9f, 0.56f, 0.3f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("material.pattern_mapping", new float[]{0.95f, 0.74f, 0.32f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("material.block_state", new float[]{0.82f, 0.5f, 0.2f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("material.surface_aging", new float[]{0.74f, 0.48f, 0.24f, 1.0f});
-
-            CATEGORY_COLORS_FLOAT.put("output.debug", new float[]{0.9f, 0.3f, 0.6f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("output.execute", new float[]{0.95f, 0.35f, 0.65f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("output.export", new float[]{0.98f, 0.45f, 0.72f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("output.preview", new float[]{1.0f, 0.4f, 0.7f, 1.0f});
-
-            // Utilities categories that are still intentionally exposed.
-            CATEGORY_COLORS_FLOAT.put("utilities.assist", new float[]{0.82f, 0.82f, 0.82f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("utilities.organization", new float[]{0.9f, 0.9f, 0.9f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("pattern.linear", new float[]{0.98f, 0.78f, 0.28f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("pattern.grid", new float[]{1.0f, 0.82f, 0.32f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("pattern.radial", new float[]{1.0f, 0.76f, 0.26f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("pattern.surface_volume_distribution", new float[]{1.0f, 0.8f, 0.3f, 1.0f});
+            registerGradientCategoryColors();
 
             // Task view colors.
             CATEGORY_COLORS_FLOAT.put("task.massing", new float[]{0.95f, 0.8f, 0.22f, 1.0f});
@@ -146,6 +100,31 @@ public class NodeLibraryComponent implements EditorComponent {
                 float[] c = entry.getValue();
                 CATEGORY_COLORS_INT.put(entry.getKey(), ImGui.colorConvertFloat4ToU32(c[0], c[1], c[2], c[3]));
             }
+        }
+
+        private static void registerGradientCategoryColors() {
+            for (int i = 0; i < TOP_LEVEL_CATEGORY_ORDER.size(); i++) {
+                String topLevelId = TOP_LEVEL_CATEGORY_ORDER.get(i);
+                float t = TOP_LEVEL_CATEGORY_ORDER.size() <= 1 ? 0.0f : (float) i / (TOP_LEVEL_CATEGORY_ORDER.size() - 1);
+                CATEGORY_COLORS_FLOAT.put(topLevelId, lerpColor(GRADIENT_START_COLOR, GRADIENT_END_COLOR, t));
+            }
+        }
+
+        private static float[] lerpColor(float[] start, float[] end, float t) {
+            float[] color = new float[4];
+            for (int i = 0; i < 4; i++) {
+                color[i] = start[i] + (end[i] - start[i]) * t;
+            }
+            return color;
+        }
+
+        private static float[] lightenColor(float[] color, float amount) {
+            float[] result = Arrays.copyOf(color, color.length);
+            result[0] = result[0] + (1.0f - result[0]) * amount;
+            result[1] = result[1] + (1.0f - result[1]) * amount;
+            result[2] = result[2] + (1.0f - result[2]) * amount;
+            result[3] = 1.0f;
+            return result;
         }
 
         /**
@@ -168,6 +147,23 @@ public class NodeLibraryComponent implements EditorComponent {
             if (exact != null) {
                 return exact;
             }
+            String topLevel = getTopLevelCategoryId(lower);
+            Integer parentColor = CATEGORY_COLORS_INT.get(topLevel);
+            if (parentColor != null) {
+                int depth = getCategoryDepth(lower);
+                if (depth <= 0) {
+                    return parentColor;
+                }
+
+                imgui.ImVec4 colorVec = new imgui.ImVec4();
+                ImGui.colorConvertU32ToFloat4(parentColor, colorVec);
+                float lightenAmount = Math.min(0.32f, 0.12f * depth);
+                float[] derived = lightenColor(new float[]{colorVec.x, colorVec.y, colorVec.z, colorVec.w}, lightenAmount);
+                int packed = ImGui.colorConvertFloat4ToU32(derived[0], derived[1], derived[2], derived[3]);
+                CATEGORY_COLORS_INT.put(lower, packed);
+                CATEGORY_COLORS_FLOAT.put(lower, derived);
+                return packed;
+            }
             // 2. Walk up the dot-separated prefix chain: a.b.c -> a.b -> a
             int dot = lower.lastIndexOf('.');
             while (dot > 0) {
@@ -180,6 +176,36 @@ public class NodeLibraryComponent implements EditorComponent {
             }
             // 3. Global default.
             return DEFAULT_CATEGORY_COLOR_INT;
+        }
+
+        static int compareTopLevelCategoryIds(String left, String right) {
+            int leftIndex = getTopLevelCategoryOrderIndex(left);
+            int rightIndex = getTopLevelCategoryOrderIndex(right);
+            if (leftIndex != rightIndex) {
+                return Integer.compare(leftIndex, rightIndex);
+            }
+            return left.compareToIgnoreCase(right);
+        }
+
+        private static int getTopLevelCategoryOrderIndex(String categoryId) {
+            String topLevel = getTopLevelCategoryId(categoryId);
+            int index = TOP_LEVEL_CATEGORY_ORDER.indexOf(topLevel);
+            return index >= 0 ? index : Integer.MAX_VALUE;
+        }
+
+        private static String getTopLevelCategoryId(String categoryId) {
+            int dot = categoryId.indexOf('.');
+            return dot >= 0 ? categoryId.substring(0, dot) : categoryId;
+        }
+
+        private static int getCategoryDepth(String categoryId) {
+            int depth = 0;
+            for (int i = 0; i < categoryId.length(); i++) {
+                if (categoryId.charAt(i) == '.') {
+                    depth++;
+                }
+            }
+            return depth;
         }
     }
 
@@ -648,7 +674,13 @@ public class NodeLibraryComponent implements EditorComponent {
             }
         }
 
-        topLevelCategories.sort((cat1, cat2) -> cat1.getDisplayName().compareToIgnoreCase(cat2.getDisplayName()));
+        topLevelCategories.sort((cat1, cat2) -> {
+            int orderCompare = NodeLibraryConstants.compareTopLevelCategoryIds(cat1.getId(), cat2.getId());
+            if (orderCompare != 0) {
+                return orderCompare;
+            }
+            return cat1.getDisplayName().compareToIgnoreCase(cat2.getDisplayName());
+        });
         for (List<DisplayCategory> childList : childCategoriesMap.values()) {
             childList.sort((cat1, cat2) -> cat1.getDisplayName().compareToIgnoreCase(cat2.getDisplayName()));
         }
