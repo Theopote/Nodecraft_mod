@@ -87,13 +87,7 @@ public class NodeLibraryComponent implements EditorComponent {
         static {
             registerGradientCategoryColors();
 
-            // Task view colors.
-            CATEGORY_COLORS_FLOAT.put("task.massing", new float[]{0.95f, 0.8f, 0.22f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("task.facade", new float[]{0.96f, 0.64f, 0.24f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("task.materials", new float[]{0.82f, 0.54f, 0.2f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("task.build", new float[]{0.94f, 0.34f, 0.62f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("task.world_tools", new float[]{0.36f, 0.88f, 0.96f, 1.0f});
-            CATEGORY_COLORS_FLOAT.put("task.advanced", new float[]{0.72f, 0.72f, 0.72f, 1.0f});
+            // ...existing code...
 
             // Convert float colors to packed ImGui colors.
             for (Map.Entry<String, float[]> entry : CATEGORY_COLORS_FLOAT.entrySet()) {
