@@ -5,5 +5,9 @@ package com.nodecraft.nodesystem.preview;
  */
 public enum PreviewBackend {
     GHOST,
+    /**
+     * World-mutating preview backend.
+     * Use only for controlled tooling where render-only previews are insufficient.
+     */
     TRACKED_WORLD
 }

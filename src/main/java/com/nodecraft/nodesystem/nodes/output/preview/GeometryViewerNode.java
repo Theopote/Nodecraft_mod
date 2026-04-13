@@ -9,7 +9,9 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.PreviewBackend;
 import com.nodecraft.nodesystem.preview.PreviewManager;
+import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.nodesystem.preview.TrackedPreviewPlacementService;
+import com.nodecraft.nodesystem.preview.elements.GhostBlockElement;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import imgui.ImGui;
@@ -22,6 +24,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -51,7 +54,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
     private boolean previewEnabled = true;
 
     @NodeProperty(displayName = "Preview Backend", category = "Display", order = 6)
-    private PreviewBackend previewBackend = PreviewBackend.TRACKED_WORLD;
+    private PreviewBackend previewBackend = PreviewBackend.GHOST;
 
     @NodeProperty(displayName = "Solid Geometry", category = "Display", order = 7)
     private boolean previewSolidGeometry = true;
@@ -132,17 +135,17 @@ public class GeometryViewerNode extends BaseCustomUINode {
 
         if (previewEnabled && blocksList != null && !blocksList.isEmpty()) {
             if (previewDirty) {
-                if (refreshTrackedPreview(context, blocksList, effectiveBlockType)) {
+                if (refreshPreview(context, blocksList, effectiveBlockType, trans)) {
                     cachePreviewState(geometrySignature, trans, color, effectiveBlockType);
                 } else {
                     cachedPreviewBackend = null;
                 }
             } else if (hasWorldContext) {
-                statusMessage = "Previewing "
-                    + TrackedPreviewPlacementService.getInstance().getTrackedCount(context.getWorld(), getId().toString())
-                    + " blocks";
+                statusMessage = buildSteadyStateStatus(context);
             } else {
-                statusMessage = "Preview waiting for execution context";
+                statusMessage = previewBackend == PreviewBackend.TRACKED_WORLD
+                    ? "Preview waiting for execution context"
+                    : "Previewing " + blockCount + " ghost blocks";
             }
         } else {
             clearAllPreviewState(context);
@@ -161,19 +164,30 @@ public class GeometryViewerNode extends BaseCustomUINode {
         cachedPreviewBackend = previewBackend;
     }
 
+    private boolean refreshPreview(
+        @Nullable ExecutionContext context,
+        BlockPosList blocksList,
+        String effectiveBlockType,
+        float trans
+    ) {
+        return previewBackend == PreviewBackend.TRACKED_WORLD
+            ? refreshTrackedPreview(context, blocksList, effectiveBlockType)
+            : refreshGhostPreview(context, blocksList, effectiveBlockType, trans);
+    }
+
     private boolean refreshTrackedPreview(@Nullable ExecutionContext context, BlockPosList blocksList, String effectiveBlockType) {
         PreviewManager.hideNodePreviews(getId().toString());
 
         if (context == null || context.getWorld() == null) {
             statusMessage = "Preview waiting for execution context";
-            NodeCraft.LOGGER.debug("GeometryViewerNode[{}] preview deferred: missing world context", getId());
+            NodeCraft.LOGGER.debug("GeometryViewerNode[{}] tracked preview deferred: missing world context", getId());
             return false;
         }
 
         BlockState trackedState = resolveBlockState(effectiveBlockType);
         if (trackedState == null) {
             statusMessage = "Invalid block type: " + effectiveBlockType;
-            NodeCraft.LOGGER.warn("GeometryViewerNode[{}] preview skipped: invalid block type {}", getId(), effectiveBlockType);
+            NodeCraft.LOGGER.warn("GeometryViewerNode[{}] tracked preview skipped: invalid block type {}", getId(), effectiveBlockType);
             return false;
         }
 
@@ -184,8 +198,61 @@ public class GeometryViewerNode extends BaseCustomUINode {
             trackedState,
             com.nodecraft.nodesystem.bake.PlacementMode.OVERWRITE
         );
-        statusMessage = "Previewing " + trackedCount + " blocks";
+        statusMessage = "Previewing " + trackedCount + " tracked blocks";
         return true;
+    }
+
+    private boolean refreshGhostPreview(
+        @Nullable ExecutionContext context,
+        BlockPosList blocksList,
+        String effectiveBlockType,
+        float trans
+    ) {
+        if (context != null && context.getWorld() != null) {
+            TrackedPreviewPlacementService.getInstance().clearTrackedPreview(context.getWorld(), getId().toString());
+        }
+
+        PreviewManager.hideNodePreviews(getId().toString());
+        List<GhostBlockElement.BlockPlacement> placements = new ArrayList<>(blocksList.size());
+        for (BlockPos pos : blocksList.getPositions()) {
+            placements.add(new GhostBlockElement.BlockPlacement(
+                net.minecraft.util.math.Vec3d.of(pos),
+                effectiveBlockType,
+                trans
+            ));
+        }
+
+        if (placements.isEmpty()) {
+            statusMessage = "Waiting for input...";
+            return false;
+        }
+
+        PreviewOptions options = new PreviewOptions()
+            .ghostBlockMode()
+            .setOpacity(trans);
+        options.showOutline = showOutline;
+
+        String previewId = PreviewManager.showGhostBlockPlacements(getId().toString(), placements, options);
+        if (previewId == null) {
+            statusMessage = "Ghost preview failed";
+            NodeCraft.LOGGER.warn("GeometryViewerNode[{}] ghost preview failed: renderer returned null", getId());
+            return false;
+        }
+
+        statusMessage = "Previewing " + placements.size() + " ghost blocks";
+        return true;
+    }
+
+    private String buildSteadyStateStatus(@Nullable ExecutionContext context) {
+        if (previewBackend == PreviewBackend.TRACKED_WORLD) {
+            if (context == null || context.getWorld() == null) {
+                return "Preview waiting for execution context";
+            }
+            return "Previewing "
+                + TrackedPreviewPlacementService.getInstance().getTrackedCount(context.getWorld(), getId().toString())
+                + " tracked blocks";
+        }
+        return "Previewing " + lastBlockCount + " ghost blocks";
     }
 
     private void clearAllPreviewState(@Nullable ExecutionContext context) {
@@ -336,7 +403,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
     }
 
     public void setPreviewBackend(PreviewBackend value) {
-        PreviewBackend sanitized = PreviewBackend.GHOST;
+        PreviewBackend sanitized = value != null ? value : PreviewBackend.GHOST;
         if (previewBackend != sanitized) {
             previewBackend = sanitized;
             markDirty();

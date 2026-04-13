@@ -20,6 +20,7 @@ import com.nodecraft.nodesystem.bake.PlacementMode;
  * Tracks temporary preview blocks placed directly into the world.
  * Clearing a tracked preview restores the previous world state.
  * This service only manages preview lifecycle and never commits builds.
+ * It is a controlled backend and should not be used as the default preview path.
  */
 public final class TrackedPreviewPlacementService {
 
