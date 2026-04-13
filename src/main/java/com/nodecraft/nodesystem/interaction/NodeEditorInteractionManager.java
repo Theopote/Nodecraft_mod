@@ -3,15 +3,11 @@ package com.nodecraft.nodesystem.interaction;
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.BlockStateData;
-import com.nodecraft.nodesystem.preview.PreviewManager;
-import com.nodecraft.nodesystem.preview.PreviewRenderer;
-import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.minecraft.client.MinecraftClientController;
 import com.nodecraft.client.input.NodecraftInputSystem;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.block.BlockState;
 import net.minecraft.registry.Registries;
@@ -30,12 +26,14 @@ import java.util.HashMap;
  */
 public class NodeEditorInteractionManager {
 
+    // ================= 常量定义 =================
+    private static final String OWNER_ID = "editor_interaction_manager"; // 本类作为预览拥有者的标识符
+
     private final WorldPickingService worldPicking = new WorldPickingService();
     private final EditorModeCameraService editorModeCamera = new EditorModeCameraService();
     private final AreaPreviewStyleSettings areaPreviewStyle = new AreaPreviewStyleSettings();
 
-    private Coordinate hoveredBlockCoordinate = null;
-    private String hoverPreviewId = null; // 用于存储高亮预览的唯一ID
+    private final HoveredBlockHighlightService hoveredBlockHighlight = new HoveredBlockHighlightService(OWNER_ID);
     
     // ================= 统一的交互状态管理 =================
     private final InteractionState interactionState = new InteractionState();
@@ -43,9 +41,6 @@ public class NodeEditorInteractionManager {
     // ================= 交互模式处理器管理 =================
     private final Map<EditorInteractionMode, InteractionModeHandler> modeHandlers = new HashMap<>();
     
-    // ================= 常量定义 =================
-    private static final String OWNER_ID = "editor_interaction_manager"; // 本类作为预览拥有者的标识符
-
     /**
      * 编辑器交互模式枚举
      */
@@ -253,173 +248,6 @@ public class NodeEditorInteractionManager {
     }
     
     /**
-     * 区域选择处理器
-     */
-    private class AreaSelectionHandler implements InteractionModeHandler {
-        private IAreaSelectionCallback currentCallback;
-        private Coordinate firstPoint = null;
-        private Coordinate lastHoverPoint = null;
-        private String firstPointPreviewId = null;
-        private String areaPreviewId = null;
-        
-        @Override
-        public void onEnter(String nodeId, IInteractionCallback callback) {
-            if (!(callback instanceof IAreaSelectionCallback)) {
-                throw new IllegalArgumentException("区域选择模式需要IAreaSelectionCallback");
-            }
-
-            this.currentCallback = (IAreaSelectionCallback) callback;
-            this.firstPoint = null;
-            this.lastHoverPoint = null;
-            
-            MinecraftClientController.getInstance().showHudMessage(getHintMessage());
-            NodeCraft.LOGGER.info("节点 {} 进入区域选择模式", nodeId);
-        }
-        
-        @Override
-        public void onUpdate(Coordinate hoveredBlock, BlockHitResult hitResult, 
-                           boolean isLeftMouseClicked, boolean isRightMouseClicked) {
-            if (hoveredBlock != null) {
-                lastHoverPoint = hoveredBlock;
-            }
-
-            if (isLeftMouseClicked && hoveredBlock != null) {
-                if (firstPoint == null) {
-                    // 选择第一个点
-                    firstPoint = hoveredBlock;
-                    currentCallback.onFirstPointSelected(firstPoint);
-                    
-                    // 显示第一个点的预览
-                    showFirstPointPreview(firstPoint);
-                    
-                    MinecraftClientController.getInstance().showHudMessage("请选择第二个点完成区域选择");
-                    NodeCraft.LOGGER.info("区域选择第一个点: {}", firstPoint);
-                    
-                } else {
-                    // 选择第二个点，完成区域选择
-                    Coordinate completedStart = firstPoint;
-                    Coordinate completedEnd = hoveredBlock;
-
-                    // 通知回调
-                    currentCallback.onAreaSelected(completedStart, completedEnd);
-                    
-                    // 成功完成交互，不触发取消回调
-                    interactionState.complete();
-                    
-                    NodeCraft.LOGGER.info("区域选择完成: {} 到 {}", completedStart, completedEnd);
-                }
-            } else if (isRightMouseClicked) {
-                // 右键取消当前选择
-                if (firstPoint != null) {
-                    clearPreviews();
-                    firstPoint = null;
-                    MinecraftClientController.getInstance().showHudMessage(getHintMessage());
-                    NodeCraft.LOGGER.info("重置区域选择");
-                } else {
-                    onCancel();
-                }
-            }
-            
-            // 更新区域预览
-            if (firstPoint != null) {
-                Coordinate previewEnd = hoveredBlock != null ? hoveredBlock : lastHoverPoint;
-                if (previewEnd != null) {
-                    updateAreaPreview(firstPoint, previewEnd);
-                }
-            } else {
-                clearAreaPreview();
-            }
-        }
-        
-        @Override
-        public void onCancel() {
-            clearPreviews();
-            if (currentCallback != null) {
-                currentCallback.onInteractionCancelled();
-            }
-            MinecraftClientController.getInstance().clearHudMessage();
-            NodeCraft.LOGGER.info("区域选择已取消");
-            currentCallback = null;
-            firstPoint = null;
-            lastHoverPoint = null;
-        }
-
-        @Override
-        public void onComplete() {
-            clearPreviews();
-            MinecraftClientController.getInstance().clearHudMessage();
-            currentCallback = null;
-            firstPoint = null;
-            lastHoverPoint = null;
-        }
-        
-        @Override
-        public String getDisplayName() {
-            return "区域选择";
-        }
-        
-        @Override
-        public String getHintMessage() {
-            return firstPoint == null ? "请左键点击选择第一个点" : "请左键点击选择第二个点，右键重置";
-        }
-        
-        private void showFirstPointPreview(Coordinate point) {
-            clearFirstPointPreview();
-            
-            PreviewOptions options = new PreviewOptions()
-                .setColor(0.0f, 1.0f, 0.0f) // 绿色
-                .setTintColor(0.2f, 1.0f, 0.2f)
-                .setOpacity(0.8f)
-                .setShowFill(true)
-                .setShowOutline(true)
-                .setLineWidth(3.0f);
-
-            firstPointPreviewId = PreviewManager.highlightBlock(OWNER_ID, point, options);
-        }
-        
-        private void updateAreaPreview(Coordinate start, Coordinate end) {
-            // 计算区域的最小和最大坐标
-            int minX = Math.min(start.getX(), end.getX());
-            int minY = Math.min(start.getY(), end.getY());
-            int minZ = Math.min(start.getZ(), end.getZ());
-            int maxX = Math.max(start.getX(), end.getX());
-            int maxY = Math.max(start.getY(), end.getY());
-            int maxZ = Math.max(start.getZ(), end.getZ());
-            
-            PreviewOptions options = areaPreviewStyle.createRegionBoxPreviewOptions();
-
-            Vec3d min = new Vec3d(minX, minY, minZ);
-            Vec3d max = new Vec3d(maxX + 1.0d, maxY + 1.0d, maxZ + 1.0d);
-            Object[] regionData = new Object[] { min, max };
-            if (areaPreviewId == null) {
-                areaPreviewId = PreviewManager.showRegionBox(OWNER_ID, min, max, options);
-            } else {
-                PreviewManager.updatePreview(areaPreviewId, regionData);
-                PreviewManager.updatePreviewOptions(areaPreviewId, options);
-            }
-        }
-        
-        private void clearFirstPointPreview() {
-            if (firstPointPreviewId != null) {
-                PreviewRenderer.getInstance().hidePreview(firstPointPreviewId);
-                firstPointPreviewId = null;
-            }
-        }
-        
-        private void clearAreaPreview() {
-            if (areaPreviewId != null) {
-                PreviewRenderer.getInstance().hidePreview(areaPreviewId);
-                areaPreviewId = null;
-            }
-        }
-        
-        private void clearPreviews() {
-            clearFirstPointPreview();
-            clearAreaPreview();
-        }
-    }
-    
-    /**
      * 实体拾取处理器
      */
     private class EntityPickingHandler implements InteractionModeHandler {
@@ -519,11 +347,6 @@ public class NodeEditorInteractionManager {
          * 清除当前交互状态
          */
         void clear() {
-            if (callback != null) {
-                callback.onInteractionCancelled();
-            }
-            
-            // 通知对应的处理器清除状态
             if (mode != EditorInteractionMode.NONE) {
                 InteractionModeHandler handler = modeHandlers.get(mode);
                 if (handler != null) {
@@ -609,7 +432,10 @@ public class NodeEditorInteractionManager {
      */
     private void initializeModeHandlers() {
         modeHandlers.put(EditorInteractionMode.BLOCK_PICKING, new BlockPickingHandler());
-        modeHandlers.put(EditorInteractionMode.AREA_SELECTION, new AreaSelectionHandler());
+        modeHandlers.put(
+            EditorInteractionMode.AREA_SELECTION,
+            new AreaSelectionInteractionHandler(areaPreviewStyle, OWNER_ID, () -> interactionState.complete())
+        );
         modeHandlers.put(EditorInteractionMode.ENTITY_PICKING, new EntityPickingHandler());
     }
     
@@ -648,7 +474,7 @@ public class NodeEditorInteractionManager {
         }
 
         try {
-            clearHoveredBlockHighlight();
+            hoveredBlockHighlight.clear();
             interactionState.clear();
             worldPicking.invalidateRayCache();
             editorModeCamera.exitEditorMode();
@@ -732,7 +558,7 @@ public class NodeEditorInteractionManager {
                 }
                 
                 // 更新高亮预览
-                updateHoveredBlockHighlight(newHoveredBlock);
+                hoveredBlockHighlight.updateHoveredBlockHighlight(newHoveredBlock);
                 
                 // 处理鼠标点击事件
                 handleMouseClickEvents(newHoveredBlock, hitResult, isLeftMouseClicked, isRightMouseClicked);
@@ -744,9 +570,7 @@ public class NodeEditorInteractionManager {
                 }
                 
                 // 清除方块高亮（鼠标在UI上时不应该高亮游戏中的方块）
-                if (hoveredBlockCoordinate != null) {
-                    clearHoveredBlockHighlight();
-                }
+                hoveredBlockHighlight.clear();
                 
                 // 清除射线缓存（鼠标在UI上时不需要缓存）
                 invalidateRayCache();
@@ -755,54 +579,6 @@ public class NodeEditorInteractionManager {
         } catch (Exception e) {
             NodeCraft.LOGGER.error("更新编辑模式状态时出错", e);
         }
-    }
-    
-    /**
-     * 更新悬停方块的高亮显示
-     */
-    private void updateHoveredBlockHighlight(Coordinate newHoveredBlock) {
-        if (java.util.Objects.equals(hoveredBlockCoordinate, newHoveredBlock)) {
-            return; // 没有变化，不需要更新
-        }
-
-        NodeCraft.LOGGER.debug("更新悬停方块高亮: {} -> {}", hoveredBlockCoordinate, newHoveredBlock);
-
-        // 隐藏旧的高亮
-        clearHoveredBlockHighlight();
-
-        // 显示新的高亮
-        if (newHoveredBlock != null) {
-            PreviewOptions options = new PreviewOptions()
-                .setColor(1.0f, 1.0f, 1.0f) // 白色
-                .setOpacity(0.8f)
-                .wireframeMode()
-                .setLineWidth(2.0f);
-
-            // 保存返回的唯一ID
-            this.hoverPreviewId = PreviewRenderer.getInstance().showPreview(
-                OWNER_ID, // 使用本类的标识符作为拥有者ID
-                "block_highlight",
-                newHoveredBlock,
-                options
-            );
-
-            if (this.hoverPreviewId == null) {
-                NodeCraft.LOGGER.warn("悬停高亮预览创建失败: PreviewRenderer.showPreview 返回 null");
-            }
-        }
-
-        hoveredBlockCoordinate = newHoveredBlock;
-    }
-    
-    /**
-     * 清除当前的悬停高亮
-     */
-    private void clearHoveredBlockHighlight() {
-        if (this.hoverPreviewId != null) {
-            PreviewRenderer.getInstance().hidePreview(this.hoverPreviewId);
-            this.hoverPreviewId = null;
-        }
-        hoveredBlockCoordinate = null;
     }
     
     /**
@@ -938,14 +714,6 @@ public class NodeEditorInteractionManager {
      */
     public void cancelCurrentInteraction() {
         if (interactionState.isInInteractionMode()) {
-            EditorInteractionMode currentMode = interactionState.getMode();
-            InteractionModeHandler handler = modeHandlers.get(currentMode);
-            
-            if (handler != null) {
-                handler.onCancel();
-            }
-            
-            // 清除状态
             interactionState.clear();
         }
     }
@@ -1014,7 +782,7 @@ public class NodeEditorInteractionManager {
             NodeCraft.LOGGER.info("强制退出所有交互模式");
             
             // 清除高亮预览
-            clearHoveredBlockHighlight();
+            hoveredBlockHighlight.clear();
             
             // 取消当前交互
             cancelCurrentInteraction();
