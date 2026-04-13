@@ -310,9 +310,9 @@ private boolean isMouseOverImGuiForInteraction(com.nodecraft.nodesystem.interact
     }
 }
 
-    private void updateGhostCamera() {
+private void updateGhostCamera() {
     if (ghostCameraManager.isEnabled()) {
-        ghostCameraManager.updateBlockHighlight();
+        // Mouse-ray interaction already renders the only highlight we want.
     }
 }
 
@@ -341,7 +341,6 @@ public void setMenuBarRenderer(MenuBarRenderer renderer) { this.menuBarRenderer 
 public void setWindowRenderer(NodecraftWindowRenderer renderer) { this.windowRenderer = renderer; }
 
 public boolean isShowMenuBar() { return showMenuBar; }
-public void setShowMenuBar(boolean show) { this.showMenuBar = show; }
 
 // 缺失的方法实现
 public boolean isMouseOverNodecraftGui(double mouseX, double mouseY) {
