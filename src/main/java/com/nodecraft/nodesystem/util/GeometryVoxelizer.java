@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.OctahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
+import com.nodecraft.nodesystem.datatypes.SquarePyramidGeometryData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.datatypes.TetrahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.TorusGeometryData;
@@ -103,6 +104,9 @@ public final class GeometryVoxelizer {
         if (geometry instanceof PrismGeometryData prismGeometry) {
             return voxelizePrism(prismGeometry, fillSolid);
         }
+        if (geometry instanceof SquarePyramidGeometryData squarePyramidGeometry) {
+            return voxelizeSquarePyramid(squarePyramidGeometry, fillSolid);
+        }
         if (geometry instanceof SphereData sphereGeometry) {
             return voxelizeSphere(sphereGeometry, fillSolid);
         }
@@ -145,6 +149,9 @@ public final class GeometryVoxelizer {
         }
         if (geometry instanceof PrismGeometryData prismGeometry) {
             return createPrismBoundingRegion(prismGeometry);
+        }
+        if (geometry instanceof SquarePyramidGeometryData squarePyramidGeometry) {
+            return createSquarePyramidBoundingRegion(squarePyramidGeometry);
         }
         if (geometry instanceof SphereData sphereGeometry) {
             return SphereBlockGenerator.createBoundingRegion(sphereGeometry);
@@ -378,6 +385,67 @@ public final class GeometryVoxelizer {
         return new BlockPosList(shellBlocks);
     }
 
+    public static BlockPosList voxelizeSquarePyramid(SquarePyramidGeometryData geometry, boolean fillSolid) {
+        RegionData region = createSquarePyramidBoundingRegion(geometry);
+        if (region == null || !region.isComplete()) {
+            return new BlockPosList();
+        }
+
+        BlockPos minCorner = region.getMinCorner();
+        BlockPos maxCorner = region.getMaxCorner();
+        if (minCorner == null || maxCorner == null) {
+            return new BlockPosList();
+        }
+
+        final double eps = 1.0e-6d;
+        final double shell = 0.75d;
+        final double half = geometry.getBaseSize() * 0.5d;
+        final double height = geometry.getHeight();
+        Vector3d baseCenter = geometry.getBaseCenter();
+        Vector3d xAxis = geometry.getXAxis();
+        Vector3d yAxis = geometry.getYAxis();
+        Vector3d normal = geometry.getNormal();
+
+        Set<BlockPos> blocks = new LinkedHashSet<>();
+        Vector3d sample = new Vector3d();
+        for (int x = minCorner.getX(); x <= maxCorner.getX(); x++) {
+            for (int y = minCorner.getY(); y <= maxCorner.getY(); y++) {
+                for (int z = minCorner.getZ(); z <= maxCorner.getZ(); z++) {
+                    sample.set(x + 0.5d, y + 0.5d, z + 0.5d);
+                    Vector3d relative = new Vector3d(sample).sub(baseCenter);
+
+                    double localX = relative.dot(xAxis);
+                    double localY = relative.dot(yAxis);
+                    double localZ = relative.dot(normal);
+                    if (localZ < -eps || localZ > height + eps) {
+                        continue;
+                    }
+
+                    double scale = 1.0d - (localZ / height);
+                    double limit = half * scale;
+                    if (Math.abs(localX) > limit + eps || Math.abs(localY) > limit + eps) {
+                        continue;
+                    }
+
+                    if (fillSolid) {
+                        blocks.add(new BlockPos(x, y, z));
+                        continue;
+                    }
+
+                    boolean nearBase = localZ <= shell;
+                    boolean nearFaceX = limit - Math.abs(localX) <= shell;
+                    boolean nearFaceY = limit - Math.abs(localY) <= shell;
+                    boolean nearApex = height - localZ <= shell;
+                    if (nearBase || nearFaceX || nearFaceY || nearApex) {
+                        blocks.add(new BlockPos(x, y, z));
+                    }
+                }
+            }
+        }
+
+        return new BlockPosList(blocks);
+    }
+
     private static Vector3d buildPrismPlaneU(List<Vector3d> baseVertices,
                                              Vector3d baseOrigin,
                                              Vector3d axis,
@@ -532,6 +600,37 @@ public final class GeometryVoxelizer {
             maxY = Math.max(maxY, point.y);
             maxZ = Math.max(maxZ, point.z);
         }
+
+        return new RegionData(
+            BlockPos.ofFloored(minX, minY, minZ),
+            BlockPos.ofFloored(maxX, maxY, maxZ)
+        );
+    }
+
+    public static RegionData createSquarePyramidBoundingRegion(SquarePyramidGeometryData geometry) {
+        double minX = Double.POSITIVE_INFINITY;
+        double minY = Double.POSITIVE_INFINITY;
+        double minZ = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+        double maxZ = Double.NEGATIVE_INFINITY;
+
+        for (Vector3d point : geometry.getBaseVertices()) {
+            minX = Math.min(minX, point.x);
+            minY = Math.min(minY, point.y);
+            minZ = Math.min(minZ, point.z);
+            maxX = Math.max(maxX, point.x);
+            maxY = Math.max(maxY, point.y);
+            maxZ = Math.max(maxZ, point.z);
+        }
+
+        Vector3d apex = geometry.getApex();
+        minX = Math.min(minX, apex.x);
+        minY = Math.min(minY, apex.y);
+        minZ = Math.min(minZ, apex.z);
+        maxX = Math.max(maxX, apex.x);
+        maxY = Math.max(maxY, apex.y);
+        maxZ = Math.max(maxZ, apex.z);
 
         return new RegionData(
             BlockPos.ofFloored(minX, minY, minZ),
