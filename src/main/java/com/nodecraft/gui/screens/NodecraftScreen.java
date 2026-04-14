@@ -369,6 +369,11 @@ public boolean isImGuiWantCaptureMouse() {
     @Override
     public boolean mouseClicked(Click click, boolean doubleClick) {
         if (!initialized) return super.mouseClicked(click, doubleClick);
+        if (click.button() != org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_MIDDLE
+                && !isImGuiWantCaptureMouse()
+                && !isMouseOverNodecraftGui(click.x(), click.y())) {
+            return false;
+        }
         return inputHandler.handleMouseClicked(click.x(), click.y(), click.button());
     }
     
