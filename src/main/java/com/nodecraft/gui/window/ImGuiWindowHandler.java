@@ -323,8 +323,7 @@ public class ImGuiWindowHandler {
                         
                         if (currentScreen instanceof com.nodecraft.gui.screens.NodecraftScreen) {
                             NodeCraft.LOGGER.info("关闭NodeCraft屏幕");
-                            ((com.nodecraft.gui.screens.NodecraftScreen) currentScreen).cleanup();
-                            net.minecraft.client.MinecraftClient.getInstance().setScreen(null);
+                            ((com.nodecraft.gui.screens.NodecraftScreen) currentScreen).requestClose();
                         }
                     } catch (Exception e) {
                         NodeCraft.LOGGER.error("强制关闭NodeCraft屏幕时出错", e);

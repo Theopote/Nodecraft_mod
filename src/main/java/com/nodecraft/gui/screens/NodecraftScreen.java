@@ -15,7 +15,6 @@ import com.nodecraft.minecraft.client.GhostCameraManager;
 
 import imgui.ImGui;
 import imgui.flag.ImGuiPopupFlags;
-import org.lwjgl.glfw.GLFW;
 
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
@@ -342,6 +341,7 @@ public boolean isShowMenuBar() { return showMenuBar; }
 public boolean isEditorDetached() { return ImGuiRenderer.getInstance().isDetachedEditorOpen(this); }
 public void detachEditorToExternalWindow() { ImGuiRenderer.getInstance().openDetachedEditorWindow(this); }
 public void attachEditorToMainWindow() { ImGuiRenderer.getInstance().closeDetachedEditorWindow(this); }
+public void requestClose() { this.closeRequested = true; }
 
 // 缺失的方法实现
 public boolean isMouseOverNodecraftGui(double mouseX, double mouseY) {
@@ -368,6 +368,10 @@ public boolean isMouseOverNodecraftGui(double mouseX, double mouseY) {
 
 public boolean isImGuiWantCaptureMouse() {
     return ImGui.getIO() != null && ImGui.getIO().getWantCaptureMouse();
+}
+
+public boolean isImGuiWantCaptureKeyboard() {
+    return ImGui.getIO() != null && ImGui.getIO().getWantCaptureKeyboard();
 }
 
     // 输入事件委托给输入处理器
@@ -414,46 +418,39 @@ public boolean isImGuiWantCaptureMouse() {
 
     @Override
     public boolean keyPressed(KeyInput keyInput) {
-        int keyCode = keyInput.key();
-        int scanCode = keyInput.scancode();
-        int modifiers = keyInput.modifiers();
         if (!initialized) {
             return super.keyPressed(keyInput);
         }
         
         // 委托给 inputHandler
-        return inputHandler.handleKeyPressed(keyCode, scanCode, modifiers);
+        return isImGuiWantCaptureKeyboard()
+            || isMouseOverNodecraftGui(
+                MinecraftClient.getInstance().mouse.getX(),
+                MinecraftClient.getInstance().mouse.getY()
+            );
     }
 
     @Override
     public boolean keyReleased(KeyInput keyInput) {
-        int keyCode = keyInput.key();
-        int scanCode = keyInput.scancode();
-        int modifiers = keyInput.modifiers();
         if (!initialized) {
             return super.keyReleased(keyInput);
         }
         
         // 委托给 inputHandler
-        return inputHandler.handleKeyReleased(keyCode, scanCode, modifiers);
+        return isImGuiWantCaptureKeyboard()
+            || isMouseOverNodecraftGui(
+                MinecraftClient.getInstance().mouse.getX(),
+                MinecraftClient.getInstance().mouse.getY()
+            );
     }
 
     @Override
     public boolean charTyped(CharInput charInput) {
-        char codePoint = (char) charInput.codepoint();
-        int modifiers = charInput.modifiers();
         if (!initialized) {
             return super.charTyped(charInput);
         }
         // 只要 ImGui 想要捕获键盘事件，就阻止事件向下传递
-        boolean wantCapture = ImGui.getIO() != null && ImGui.getIO().getWantCaptureKeyboard();
-        if (wantCapture) {
-            return true;
-        }
-        if (inputHandler.handleCharTyped(codePoint, modifiers)) {
-            return true;
-        }
-        return super.charTyped(charInput);
+        return isImGuiWantCaptureKeyboard();
     }
 
     @Override

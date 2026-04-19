@@ -29,7 +29,6 @@ import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 
 /**
  * ImGui节点编辑器实现
@@ -74,10 +73,6 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
     private final java.util.Set<UUID> disabledNodes = new HashSet<>();
     private final java.util.Set<UUID> hiddenNodes = new HashSet<>();
 
-    // 键盘按键状态追踪（用于边沿检测）
-    private boolean wasDeleteKeyDown = false;
-    private boolean wasCtrlZDown = false;
-    private boolean wasCtrlYDown = false;
     private static final long AUTO_PREVIEW_DEBOUNCE_MS = 250L;
     private static final long AUTO_PREVIEW_POLL_INTERVAL_MS = 750L;
     private long lastObservedDirtyVersion = -1L;
@@ -383,9 +378,6 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
                         mousePos.x, mousePos.y, canvasPos.x, canvasPos.y, canvasPos.x + canvasWidth, canvasPos.y + canvasHeight);
                 }
             }
-
-            // 10.5 处理键盘快捷键（直接通过ImGui/GLFW状态检测，不依赖Minecraft事件链）
-            handleKeyboardShortcutsInRenderLoop();
 
             // 11. 渲染连接预览线 (如果正在创建连接)，类型不匹配时显示红色
             if (interaction.isCreatingConnection()) {
@@ -694,59 +686,6 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             return "该连接无效";
         }
         return null;
-    }
-
-    /**
-     * 在渲染循环中直接检测键盘快捷键。
-     * 通过 GLFW 状态轮询实现，不依赖 Minecraft 的键盘事件分发链。
-     * 使用边沿检测确保每次按键只触发一次。
-     */
-    private void handleKeyboardShortcutsInRenderLoop() {
-        // 仅在 ImGui 内部控件处于活跃编辑状态时跳过快捷键处理
-        // 允许在画布聚焦时仍可触发 Delete / Ctrl+Z / Ctrl+Y
-        if (ImGui.getIO().getWantCaptureKeyboard() && ImGui.isAnyItemActive()) {
-            wasDeleteKeyDown = false;
-            wasCtrlZDown = false;
-            wasCtrlYDown = false;
-            return;
-        }
-
-        long windowHandle = net.minecraft.client.MinecraftClient.getInstance().getWindow().getHandle();
-        boolean textInputActive = ImGui.getIO().getWantTextInput() || ImGui.isAnyItemActive();
-
-        // Delete 键 - 删除选中节点
-        boolean isDeleteDown = GLFW.glfwGetKey(windowHandle, GLFW.GLFW_KEY_DELETE) == GLFW.GLFW_PRESS;
-        if (isDeleteDown && !wasDeleteKeyDown) {
-            if (!selectedNodeIds.isEmpty() && !textInputActive) {
-                NodeCraft.LOGGER.info("[渲染循环] 检测到 Delete 键，删除 {} 个选中节点", selectedNodeIds.size());
-                deleteSelectedNodes();
-            }
-        }
-        wasDeleteKeyDown = isDeleteDown;
-
-        // Ctrl+Z - 撤销
-        boolean isCtrlPressed = GLFW.glfwGetKey(windowHandle, GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS
-                || GLFW.glfwGetKey(windowHandle, GLFW.GLFW_KEY_RIGHT_CONTROL) == GLFW.GLFW_PRESS;
-        boolean isZDown = GLFW.glfwGetKey(windowHandle, GLFW.GLFW_KEY_Z) == GLFW.GLFW_PRESS;
-        boolean isCtrlZ = isCtrlPressed && isZDown;
-        if (isCtrlZ && !wasCtrlZDown) {
-            if (!textInputActive && getHistory().canUndo()) {
-                NodeCraft.LOGGER.info("[渲染循环] 检测到 Ctrl+Z，执行撤销");
-                undo();
-            }
-        }
-        wasCtrlZDown = isCtrlZ;
-
-        // Ctrl+Y - 重做
-        boolean isYDown = GLFW.glfwGetKey(windowHandle, GLFW.GLFW_KEY_Y) == GLFW.GLFW_PRESS;
-        boolean isCtrlY = isCtrlPressed && isYDown;
-        if (isCtrlY && !wasCtrlYDown) {
-            if (!textInputActive && getHistory().canRedo()) {
-                NodeCraft.LOGGER.info("[渲染循环] 检测到 Ctrl+Y，执行重做");
-                redo();
-            }
-        }
-        wasCtrlYDown = isCtrlY;
     }
 
     /**

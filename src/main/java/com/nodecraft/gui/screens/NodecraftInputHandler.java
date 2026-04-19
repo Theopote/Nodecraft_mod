@@ -21,6 +21,9 @@ import org.lwjgl.glfw.GLFW;
  */
 public class NodecraftInputHandler {
     private static final int[] POLLED_SHORTCUT_KEYS = {
+        GLFW.GLFW_KEY_DELETE,
+        GLFW.GLFW_KEY_Z,
+        GLFW.GLFW_KEY_Y,
         GLFW.GLFW_KEY_X,
         GLFW.GLFW_KEY_C,
         GLFW.GLFW_KEY_D,
@@ -238,9 +241,12 @@ public class NodecraftInputHandler {
             NodeCraft.LOGGER.debug("编辑器状态 - componentManager: {}, canvas: {}, editor: {}",
                     true, true, true);
         }
+
+        final boolean textInputActive = ImGui.getIO() != null
+            && (ImGui.getIO().getWantTextInput() || ImGui.isAnyItemActive());
         
         // 优先处理全局快捷键（撤销/重做/删除），即使ImGui想要捕获键盘也要处理
-        if (handleGlobalShortcuts(editor, keyCode, isCtrlPressed)) {
+        if (handleGlobalShortcuts(editor, keyCode, isCtrlPressed, textInputActive)) {
             return true;
         }
         
@@ -261,9 +267,12 @@ public class NodecraftInputHandler {
     /**
      * 处理全局快捷键（撤销、重做、删除）
      */
-    private boolean handleGlobalShortcuts(ImGuiNodeEditor editor, int keyCode, boolean isCtrlPressed) {
+    private boolean handleGlobalShortcuts(ImGuiNodeEditor editor, int keyCode, boolean isCtrlPressed, boolean textInputActive) {
         // 撤销：Ctrl+Z
         if (isCtrlPressed && keyCode == GLFW.GLFW_KEY_Z) {
+            if (textInputActive) {
+                return true;
+            }
             NodeCraft.LOGGER.info("触发撤销快捷键: Ctrl+Z");
             boolean canUndo = editor.getHistory().canUndo();
             if (canUndo) {
@@ -279,6 +288,9 @@ public class NodecraftInputHandler {
 
         // 重做：Ctrl+Y
         if (isCtrlPressed && keyCode == GLFW.GLFW_KEY_Y) {
+            if (textInputActive) {
+                return true;
+            }
             NodeCraft.LOGGER.info("触发重做快捷键: Ctrl+Y");
             boolean canRedo = editor.getHistory().canRedo();
             if (canRedo) {
@@ -294,6 +306,9 @@ public class NodecraftInputHandler {
         
         // 删除：Delete - 优先处理，避免被ImGui捕获
         if (keyCode == GLFW.GLFW_KEY_DELETE) {
+            if (textInputActive) {
+                return true;
+            }
             boolean hasSelection = !editor.getSelectedNodeIds().isEmpty();
             // 消费Delete键事件，避免被其他组件处理
             if (hasSelection) {

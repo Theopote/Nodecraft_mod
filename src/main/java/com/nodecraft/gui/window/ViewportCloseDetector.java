@@ -151,7 +151,7 @@ public class ViewportCloseDetector {
                 try {
                     MinecraftClient client = MinecraftClient.getInstance();
                     if (client.currentScreen instanceof com.nodecraft.gui.screens.NodecraftScreen) {
-                        client.setScreen(null);
+                        screen.requestClose();
                     }
                 } catch (Exception e) {
                     NodeCraft.LOGGER.error("关闭NodeCraft屏幕时出错", e);
@@ -177,8 +177,7 @@ public class ViewportCloseDetector {
                     if (client.currentScreen instanceof com.nodecraft.gui.screens.NodecraftScreen) {
                         com.nodecraft.gui.screens.NodecraftScreen screen = 
                             (com.nodecraft.gui.screens.NodecraftScreen) client.currentScreen;
-                        screen.cleanup();
-                        client.setScreen(null);
+                        screen.requestClose();
                         NodeCraft.LOGGER.info("NodeCraft屏幕已关闭");
                     }
                     
@@ -208,8 +207,7 @@ public class ViewportCloseDetector {
             // 强制关闭屏幕
             MinecraftClient.getInstance().execute(() -> {
                 try {
-                    screen.cleanup();
-                    MinecraftClient.getInstance().setScreen(null);
+                    screen.requestClose();
                     NodeCraft.LOGGER.info("NodeCraft屏幕已强制关闭");
                     
                     // 清理窗口管理器状态

@@ -68,8 +68,7 @@ public class GameStateMixin {
                 if (currentScreen instanceof com.nodecraft.gui.screens.NodecraftScreen nodecraftScreen) {
                     MinecraftClient.getInstance().execute(() -> {
                         try {
-                            nodecraftScreen.cleanup();
-                            client.setScreen(null);
+                            nodecraftScreen.requestClose();
                             NodeCraft.LOGGER.info("NodeCraft屏幕已在状态切换时关闭");
                         } catch (Exception e) {
                             NodeCraft.LOGGER.error("在状态切换时关闭NodeCraft屏幕出错", e);
@@ -99,9 +98,7 @@ public class GameStateMixin {
             if (client.currentScreen instanceof com.nodecraft.gui.screens.NodecraftScreen nodecraftScreen) {
                 MinecraftClient.getInstance().execute(() -> {
                     try {
-                        nodecraftScreen.closeRequested = true;
-                        nodecraftScreen.cleanup();
-                        client.setScreen(null);
+                        nodecraftScreen.requestClose();
                         NodeCraft.LOGGER.info("NodeCraft屏幕已在断开连接时强制关闭");
                     } catch (Exception e) {
                         NodeCraft.LOGGER.error("在断开连接时关闭NodeCraft屏幕出错", e);

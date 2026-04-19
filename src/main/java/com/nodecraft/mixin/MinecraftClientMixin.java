@@ -20,7 +20,7 @@ public class MinecraftClientMixin {
         // 如果当前屏幕是NodecraftScreen，在Minecraft关闭前关闭它
         if (currentScreen instanceof NodecraftScreen) {
             NodeCraft.LOGGER.info("Minecraft正在关闭，自动关闭NodeCraft窗口");
-            ((NodecraftScreen) currentScreen).cleanup();
+            ((NodecraftScreen) currentScreen).requestClose();
         }
     }
     
@@ -33,7 +33,7 @@ public class MinecraftClientMixin {
         if (currentScreen instanceof NodecraftScreen && screen != null && screen != currentScreen) {
             // 当从NodecraftScreen切换到其他屏幕时，确保它被正确关闭
             NodeCraft.LOGGER.info("从NodeCraft切换到其他屏幕，确保NodeCraft资源释放");
-            ((NodecraftScreen) currentScreen).cleanup();
+            ((NodecraftScreen) currentScreen).requestClose();
         }
     }
     
