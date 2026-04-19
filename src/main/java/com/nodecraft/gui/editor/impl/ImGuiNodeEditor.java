@@ -1378,14 +1378,6 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
     }
 
     /**
-     * 清除所有节点的自定义颜色
-     */
-    public void clearAllNodeCustomColors() {
-        nodeCustomColors.clear();
-        NodeCraft.LOGGER.debug("清除所有节点的自定义颜色");
-    }
-
-    /**
      * 获取所有节点自定义颜色的映射
      * @return 节点颜色映射的副本
      */
