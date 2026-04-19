@@ -383,7 +383,6 @@ public class LayoutRenderer {
         if (showNodePanel && nodePanel != null) {
             LayoutDimensions nodePanelDims = layoutManager.getComputedLayout(nodePanel);
             if (nodePanelDims != null) {
-                nodePanelRight = nodePanelDims.x() + nodePanelDims.width();
 
                 // 绘制左侧分隔线 - 不再绘制任何分隔线，仅在实际拖拽时设置光标样式
                 if (isDraggingLeftSplitter || isHoveringLeftSplitter) {

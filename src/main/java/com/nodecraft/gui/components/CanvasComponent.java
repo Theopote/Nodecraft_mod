@@ -1017,21 +1017,6 @@ public class CanvasComponent implements EditorComponent {
         }
     }
 
-    /**
-     * 获取画布X轴偏移量
-     * @return X轴偏移量
-     */
-    public float getCanvasOffsetX() {
-        return canvasOffsetX;
-    }
-    
-    /**
-     * 获取画布Y轴偏移量
-     * @return Y轴偏移量
-     */
-    public float getCanvasOffsetY() {
-        return canvasOffsetY;
-    }
     
     /**
      * 获取画布缩放比例

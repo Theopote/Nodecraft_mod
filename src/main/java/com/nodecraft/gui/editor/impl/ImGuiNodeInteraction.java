@@ -112,7 +112,6 @@ public class ImGuiNodeInteraction {
     public String getSourcePortId() { return sourcePortId; }
     public float getPortHighlightAnimationTimer() { return portHighlightAnimationTimer; }
     public boolean shouldShowPortHighlight() { return shouldShowPortHighlight; }
-    public boolean isPanningCanvas() { return currentState == InteractionState.PANNING_CANVAS; }
     public UUID getDraggingNodeId() { return draggingNodeId; } // Added getter for draggingNodeId
 
 

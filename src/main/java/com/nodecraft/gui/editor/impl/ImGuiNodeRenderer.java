@@ -43,10 +43,6 @@ public class ImGuiNodeRenderer {
         this.portCalculator = new PortPositionCalculator(editor);
     }
 
-    public void drawGrid(ImDrawList drawList, ImVec2 canvasTopLeft, float canvasViewWidth, float canvasViewHeight) {
-        NodeDrawingUtils.drawGrid(drawList, canvasTopLeft, canvasViewWidth, canvasViewHeight, editor);
-    }
-
     public void renderNodesDirect(ImDrawList drawList, ImVec2 canvasPos, NodeGraph graph,
                                   Map<UUID, NodePosition> nodePositions, Map<UUID, Map<String, ImVec2>> portScreenPositions,
                                   java.util.Set<UUID> selectedNodeIds) {
@@ -260,7 +256,6 @@ public class ImGuiNodeRenderer {
             borderColor = cache.adjustAlphaCached(borderColor, 0.6f);
         }
 
-        float scaledNodeHorizontalPadding = NodeRenderConstants.NODE_HORIZONTAL_PADDING * canvasZoom;
         float scaledNodeVerticalPadding = NodeRenderConstants.NODE_VERTICAL_PADDING * canvasZoom;
         float scaledPortCircleToTextPadding = NodeRenderConstants.PORT_CIRCLE_TO_TEXT_PADDING * canvasZoom;
         float portRadiusScaled = NodeRenderConstants.PORT_RADIUS_UNSCALED * canvasZoom;
@@ -353,7 +348,6 @@ public class ImGuiNodeRenderer {
                 nodeScreenX, nodeScreenY, finalNodeWidthScaled, finalNodeHeightScaled);
 
         if (selectedNodeIds.contains(nodeId)) {
-            float selectionBorderThickness = 3.0f * canvasZoom;
             float selectionCornerRadius = 7.0f * canvasZoom;
             drawList.addRect(nodeScreenX - 2, nodeScreenY - 2,
                     nodeScreenX + finalNodeWidthScaled + 2, nodeScreenY + finalNodeHeightScaled + 2,
@@ -840,8 +834,7 @@ public class ImGuiNodeRenderer {
     private void drawDashedRect(ImDrawList drawList, float x1, float y1, float x2, float y2,
                                int color, float rounding, float thickness, float dashLength, float gapLength) {
         // 简化实现：绘制多个短线段来模拟虚线效果
-        float totalDashCycle = dashLength + gapLength;
-        
+
         // 绘制上边
         drawDashedLine(drawList, x1, y1, x2, y1, color, thickness, dashLength, gapLength);
         // 绘制右边
