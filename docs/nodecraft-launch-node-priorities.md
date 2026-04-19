@@ -348,6 +348,7 @@
 - `material.gradient_mapping.noise_material`
 - `geometry.curves.arc`
 - `geometry.curves.bezier`
+- `output.preview.preview_curves` 增强
 
 对应代码：
 - [ShellNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/geometry/solids/ShellNode.java)
@@ -356,3 +357,4 @@
 - [NoiseMaterialNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/material/gradient_mapping/NoiseMaterialNode.java)
 - [ArcNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/geometry/curves/ArcNode.java)
 - [BezierNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/geometry/curves/BezierNode.java)
+- [PreviewPathsNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/output/preview/PreviewPathsNode.java)

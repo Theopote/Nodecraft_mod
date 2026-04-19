@@ -6,14 +6,20 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.nodesystem.util.Color;
 import com.nodecraft.nodesystem.util.Curve;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3d;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +39,8 @@ public class PreviewPathsNode extends BaseNode {
     private static final String INPUT_CURVE_ID = "input_curve";
     private static final String INPUT_POINTS_ID = "input_points";
     private static final String OUTPUT_SUCCESS_ID = "output_success";
-    private static final String OUTPUT_PREVIEW_ID_ID = "output_preview_id";
+    private static final String OUTPUT_PREVIEW_IDS_ID = "output_preview_ids";
+    private static final String OUTPUT_PREVIEW_COUNT_ID = "output_preview_count";
 
     @NodeProperty(displayName = "Preview Enabled", category = "Preview", order = 1)
     private boolean previewEnabled = true;
@@ -61,9 +68,10 @@ public class PreviewPathsNode extends BaseNode {
         addInputPort(new BasePort(INPUT_LINE_ID, "Line", "Single straight segment to preview", NodeDataType.LINE, this));
         addInputPort(new BasePort(INPUT_POLYLINE_ID, "Polyline", "Multi-segment path to preview", NodeDataType.POLYLINE, this));
         addInputPort(new BasePort(INPUT_CURVE_ID, "Curve", "Sampled curve path to preview", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Fallback ordered point list used as a path", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Paths / Points", "Fallback path list or ordered point list used as preview input", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether the preview was shown", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_PREVIEW_ID_ID, "Preview ID", "Active preview identifier", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_PREVIEW_IDS_ID, "Preview IDs", "Active preview identifiers", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PREVIEW_COUNT_ID, "Preview Count", "Number of rendered path previews", NodeDataType.INTEGER, this));
     }
 
     @Override
@@ -73,23 +81,11 @@ public class PreviewPathsNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object previewData = null;
-
-        if (inputValues.get(INPUT_LINE_ID) instanceof LineData line) {
-            previewData = line;
-        } else if (inputValues.get(INPUT_POLYLINE_ID) instanceof PolylineData polyline) {
-            previewData = polyline;
-        } else if (inputValues.get(INPUT_CURVE_ID) instanceof Curve curve) {
-            previewData = curve;
-        } else if (inputValues.get(INPUT_POINTS_ID) instanceof List<?> list) {
-            previewData = list;
-        }
-
-        boolean success = false;
-        String previewId = null;
+        List<Object> previewItems = resolvePreviewItems();
+        List<String> previewIds = new ArrayList<>();
         if (!previewEnabled) {
             PreviewManager.hideNodePreviews(getId().toString());
-        } else if (previewData != null) {
+        } else if (!previewItems.isEmpty()) {
             Color parsedColor = Color.fromHex(pathColor);
             PreviewManager.hideNodePreviews(getId().toString());
             PreviewOptions options = new PreviewOptions()
@@ -99,12 +95,17 @@ public class PreviewPathsNode extends BaseNode {
             options.smoothCurves = smoothCurves;
             options.showArrows = showDirection;
             options.arrowSize = Math.max(0.05f, arrowSize);
-            previewId = PreviewManager.showPaths(getId().toString(), previewData, options);
-            success = previewId != null;
+            for (Object previewItem : previewItems) {
+                String previewId = PreviewManager.showPaths(getId().toString(), previewItem, options);
+                if (previewId != null) {
+                    previewIds.add(previewId);
+                }
+            }
         }
 
-        outputValues.put(OUTPUT_SUCCESS_ID, success);
-        outputValues.put(OUTPUT_PREVIEW_ID_ID, previewId);
+        outputValues.put(OUTPUT_SUCCESS_ID, !previewIds.isEmpty());
+        outputValues.put(OUTPUT_PREVIEW_IDS_ID, List.copyOf(previewIds));
+        outputValues.put(OUTPUT_PREVIEW_COUNT_ID, previewIds.size());
     }
 
     @Override
@@ -145,5 +146,82 @@ public class PreviewPathsNode extends BaseNode {
                 smoothCurves = bool;
             }
         }
+    }
+
+    private List<Object> resolvePreviewItems() {
+        List<Object> previewItems = new ArrayList<>();
+
+        if (inputValues.get(INPUT_LINE_ID) instanceof LineData line) {
+            previewItems.add(line);
+        }
+        if (inputValues.get(INPUT_POLYLINE_ID) instanceof PolylineData polyline) {
+            previewItems.add(polyline);
+        }
+        if (inputValues.get(INPUT_CURVE_ID) instanceof Curve curve) {
+            previewItems.add(curve);
+        }
+
+        Object pointsObj = inputValues.get(INPUT_POINTS_ID);
+        if (pointsObj instanceof List<?> list && !list.isEmpty()) {
+            if (isPointList(list)) {
+                PolylineData polyline = createPolylineFromPoints(list);
+                if (polyline != null) {
+                    previewItems.add(polyline);
+                }
+            } else {
+                for (Object entry : list) {
+                    if (entry instanceof LineData || entry instanceof PolylineData || entry instanceof Curve) {
+                        previewItems.add(entry);
+                    } else if (entry instanceof List<?> nested && isPointList(nested)) {
+                        PolylineData polyline = createPolylineFromPoints(nested);
+                        if (polyline != null) {
+                            previewItems.add(polyline);
+                        }
+                    }
+                }
+            }
+        }
+
+        return previewItems;
+    }
+
+    private boolean isPointList(Collection<?> list) {
+        if (list.size() < 2) {
+            return false;
+        }
+        for (Object entry : list) {
+            if (resolveVec(entry) == null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private @Nullable PolylineData createPolylineFromPoints(Collection<?> list) {
+        List<Vec3d> points = new ArrayList<>(list.size());
+        for (Object entry : list) {
+            Vec3d point = resolveVec(entry);
+            if (point != null) {
+                points.add(point);
+            }
+        }
+        return points.size() >= 2 ? new PolylineData(points) : null;
+    }
+
+    private @Nullable Vec3d resolveVec(Object value) {
+        if (value instanceof PointData pointData) {
+            Vector3d p = pointData.getPosition();
+            return new Vec3d(p.x, p.y, p.z);
+        }
+        if (value instanceof Vector3d vector) {
+            return new Vec3d(vector.x, vector.y, vector.z);
+        }
+        if (value instanceof BlockPos blockPos) {
+            return new Vec3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
+        }
+        if (value instanceof Vec3d vec) {
+            return vec;
+        }
+        return null;
     }
 }
