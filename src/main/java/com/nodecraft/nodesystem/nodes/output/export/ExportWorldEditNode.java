@@ -21,11 +21,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Exports placements to a Sponge schematic file that WorldEdit can import.
@@ -147,9 +143,18 @@ public class ExportWorldEditNode extends BaseCustomUINode {
         int[] paletteIndices = new int[volume];
         for (BlockPlacementData placement : placements) {
             BlockPos pos = placement.pos();
-            int x = pos.getX() - bounds.minX();
-            int y = pos.getY() - bounds.minY();
-            int z = pos.getZ() - bounds.minZ();
+            int x = 0;
+            if (pos != null) {
+                x = pos.getX() - bounds.minX();
+            }
+            int y = 0;
+            if (pos != null) {
+                y = pos.getY() - bounds.minY();
+            }
+            int z = 0;
+            if (pos != null) {
+                z = pos.getZ() - bounds.minZ();
+            }
             int linearIndex = x + y * width + z * width * height;
             paletteIndices[linearIndex] = palette.indexByState().getOrDefault(Palette.keyFor(placement), 0);
         }
@@ -254,12 +259,24 @@ public class ExportWorldEditNode extends BaseCustomUINode {
 
             for (BlockPlacementData placement : placements) {
                 BlockPos pos = placement.pos();
-                minX = Math.min(minX, pos.getX());
-                minY = Math.min(minY, pos.getY());
-                minZ = Math.min(minZ, pos.getZ());
-                maxX = Math.max(maxX, pos.getX());
-                maxY = Math.max(maxY, pos.getY());
-                maxZ = Math.max(maxZ, pos.getZ());
+                if (pos != null) {
+                    minX = Math.min(minX, pos.getX());
+                }
+                if (pos != null) {
+                    minY = Math.min(minY, pos.getY());
+                }
+                if (pos != null) {
+                    minZ = Math.min(minZ, pos.getZ());
+                }
+                if (pos != null) {
+                    maxX = Math.max(maxX, pos.getX());
+                }
+                if (pos != null) {
+                    maxY = Math.max(maxY, pos.getY());
+                }
+                if (pos != null) {
+                    maxZ = Math.max(maxZ, pos.getZ());
+                }
             }
             return new Bounds(minX, minY, minZ, maxX, maxY, maxZ);
         }
@@ -297,12 +314,12 @@ public class ExportWorldEditNode extends BaseCustomUINode {
         }
 
         static String keyFor(BlockPlacementData placement) {
-            if (placement.stateData() == null || placement.stateData().isEmpty()) {
+            if (placement.stateData() == null || Objects.requireNonNull(placement.stateData()).isEmpty()) {
                 return placement.blockId();
             }
 
             StringBuilder builder = new StringBuilder(placement.blockId()).append('[');
-            placement.stateData().entrySet().stream()
+            Objects.requireNonNull(placement.stateData()).entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .forEachOrdered(entry -> {
                     if (builder.charAt(builder.length() - 1) != '[') {
