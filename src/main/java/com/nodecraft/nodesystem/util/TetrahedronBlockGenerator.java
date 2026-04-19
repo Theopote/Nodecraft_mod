@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.TetrahedronGeometryData;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
+import org.jspecify.annotations.NonNull;
 
 public final class TetrahedronBlockGenerator {
 
@@ -33,21 +34,7 @@ public final class TetrahedronBlockGenerator {
         }
 
         Vector3d center = geometry.getCenter();
-        double edgeLength = geometry.getEdgeLength();
-        double circumR = edgeLength * Math.sqrt(6.0d) / 4.0d;
-
-        double h = circumR;
-        double hBottom = circumR / 3.0d;
-        double frontZ = 2.0d * circumR * Math.sqrt(2.0d) / 3.0d;
-        double backZ = -circumR * Math.sqrt(2.0d) / 3.0d;
-        double sideX = circumR * Math.sqrt(6.0d) / 3.0d;
-
-        double[][] vertices = {
-            {0.0d, h, 0.0d},
-            {0.0d, -hBottom, frontZ},
-            {-sideX, -hBottom, backZ},
-            {sideX, -hBottom, backZ}
-        };
+        double[][] vertices = getDoubles(geometry);
 
         int[][] faces = {{1, 2, 3}, {0, 3, 2}, {0, 1, 3}, {0, 2, 1}};
         double[][] normals = new double[4][3];
@@ -95,5 +82,23 @@ public final class TetrahedronBlockGenerator {
                 }
             }
         }
+    }
+
+    private static double[] @NonNull [] getDoubles(TetrahedronGeometryData geometry) {
+        double edgeLength = geometry.getEdgeLength();
+        double circumR = edgeLength * Math.sqrt(6.0d) / 4.0d;
+
+        double h = circumR;
+        double hBottom = circumR / 3.0d;
+        double frontZ = 2.0d * circumR * Math.sqrt(2.0d) / 3.0d;
+        double backZ = -circumR * Math.sqrt(2.0d) / 3.0d;
+        double sideX = circumR * Math.sqrt(6.0d) / 3.0d;
+
+        return new double[][]{
+            {0.0d, h, 0.0d},
+            {0.0d, -hBottom, frontZ},
+            {-sideX, -hBottom, backZ},
+            {sideX, -hBottom, backZ}
+        };
     }
 }

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.util;
 
 import net.minecraft.util.math.BlockPos;
+import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -101,7 +102,7 @@ public class BlockPosList implements Iterable<BlockPos> {
     }
     
     @Override
-    public Iterator<BlockPos> iterator() {
+    public @NonNull Iterator<BlockPos> iterator() {
         return positions.iterator();
     }
     

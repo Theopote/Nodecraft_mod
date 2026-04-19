@@ -14,7 +14,7 @@ import java.util.ArrayList;
 /**
  * 选择视觉反馈管理器 (重构版)
  * 基于现有的 PreviewManager 系统，提供语义化的选择反馈API
- * 
+ * <p>
  * 这个类作为现有预览系统的语义层封装，提供：
  * 1. 统一的选择状态管理
  * 2. 标准化的视觉样式
@@ -318,8 +318,10 @@ public class SelectionVisualFeedback {
                 nodeId, positions.size(), state, previewId);
                 
         } catch (Exception e) {
-            NodeCraft.LOGGER.error("显示多方块选择反馈失败: 节点={}, 方块数量={}, 状态={}", 
-                nodeId, positions.size(), state, e);
+            if (positions != null) {
+                NodeCraft.LOGGER.error("显示多方块选择反馈失败: 节点={}, 方块数量={}, 状态={}",
+                    nodeId, positions.size(), state, e);
+            }
         }
     }
     

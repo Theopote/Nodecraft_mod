@@ -1,7 +1,6 @@
 package com.nodecraft;
 
 import com.nodecraft.core.NodeCraft;
-import com.nodecraft.core.item.ModItems;
 import net.fabricmc.fabric.api.datagen.v1.DataGeneratorEntrypoint;
 import net.fabricmc.fabric.api.datagen.v1.FabricDataGenerator;
 

@@ -100,9 +100,9 @@ public class Vec3 {
         long xBits = Double.doubleToLongBits(x);
         long yBits = Double.doubleToLongBits(y);
         long zBits = Double.doubleToLongBits(z);
-        result = 31 * result + (int) (xBits ^ (xBits >>> 32));
-        result = 31 * result + (int) (yBits ^ (yBits >>> 32));
-        result = 31 * result + (int) (zBits ^ (zBits >>> 32));
+        result = 31 * result + Long.hashCode(xBits);
+        result = 31 * result + Long.hashCode(yBits);
+        result = 31 * result + Long.hashCode(zBits);
         return result;
     }
 } 

@@ -126,7 +126,7 @@ public final class SurfaceStripBridge {
         if (geometries.isEmpty()) {
             return null;
         }
-        return geometries.size() == 1 ? geometries.get(0) : new CompositeGeometryData(geometries);
+        return geometries.size() == 1 ? geometries.getFirst() : new CompositeGeometryData(geometries);
     }
 
     public static @Nullable RegionData createBoundingRegion(SurfaceStripData surfaceStrip) {
@@ -238,7 +238,7 @@ public final class SurfaceStripBridge {
             addLineBlocks(blockSet, points.get(i), points.get(i + 1));
         }
         if (closed) {
-            addLineBlocks(blockSet, points.get(points.size() - 1), points.get(0));
+            addLineBlocks(blockSet, points.getLast(), points.getFirst());
         }
     }
 
@@ -275,7 +275,7 @@ public final class SurfaceStripBridge {
             addCylinder(geometries, points.get(i), points.get(i + 1), radius);
         }
         if (closed) {
-            addCylinder(geometries, points.get(points.size() - 1), points.get(0), radius);
+            addCylinder(geometries, points.getLast(), points.getFirst(), radius);
         }
     }
 
