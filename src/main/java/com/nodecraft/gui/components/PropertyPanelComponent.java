@@ -94,7 +94,7 @@ public class PropertyPanelComponent implements EditorComponent {
     private boolean visible = true;
     private INode selectedNode = null;
     private final PropertyInspector propertyInspector = new PropertyInspector();
-    private final PropertyEditorState editorState = new PropertyEditorState();
+    private final PropertyEditorState editorState;
 
     // 缓存: Class -> List<PropertyDescriptor>
     private final Map<Class<?>, List<PropertyDescriptor>> propertyCache = new ConcurrentHashMap<>(); // 使用ConcurrentHashMap
@@ -122,6 +122,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
     // 可以提供一个接受NodeGraphProvider的构造函数，实现依赖注入
     public PropertyPanelComponent() {
+        this.editorState = new PropertyEditorState(tempValues, propertiesBeingEdited, errorCounts);
         // 使用默认的graphProvider
     }
 

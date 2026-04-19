@@ -9,9 +9,23 @@ import java.util.concurrent.ConcurrentHashMap;
 final class PropertyEditorState {
     private static final long EDIT_LOCK_TIMEOUT_MS = 2000;
 
-    private final Map<String, Object> tempValues = new ConcurrentHashMap<>();
-    private final Map<String, Long> propertiesBeingEdited = new ConcurrentHashMap<>();
-    private final Map<String, Integer> errorCounts = new ConcurrentHashMap<>();
+    private final Map<String, Object> tempValues;
+    private final Map<String, Long> propertiesBeingEdited;
+    private final Map<String, Integer> errorCounts;
+
+    PropertyEditorState() {
+        this(new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), new ConcurrentHashMap<>());
+    }
+
+    PropertyEditorState(
+            Map<String, Object> tempValues,
+            Map<String, Long> propertiesBeingEdited,
+            Map<String, Integer> errorCounts
+    ) {
+        this.tempValues = tempValues;
+        this.propertiesBeingEdited = propertiesBeingEdited;
+        this.errorCounts = errorCounts;
+    }
 
     Map<String, Object> getTempValues() {
         return tempValues;
