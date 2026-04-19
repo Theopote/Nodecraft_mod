@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.datatypes.ColorData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
+import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PlantStructure;
 import com.nodecraft.nodesystem.datatypes.OctahedronGeometryData;
@@ -32,6 +33,8 @@ import com.nodecraft.nodesystem.nodes.utilities.assist.SignalForkNode;
 import com.nodecraft.nodesystem.nodes.utilities.assist.SignalMergeNode;
 import com.nodecraft.nodesystem.nodes.utilities.assist.TagRelayNode;
 import com.nodecraft.nodesystem.util.Vec3; // 确保 Vec3 可用
+import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
 import imgui.ImGui;
@@ -1190,6 +1193,101 @@ public class PropertyPanelComponent implements EditorComponent {
             ImGui.text("End: " + formatVec3d(line.getEnd()));
             ImGui.text("Direction: " + formatVec3d(line.getDirection()));
             ImGui.text(String.format("Length: %.2f", line.getLength()));
+        } catch (Throwable e) {
+            panel.handlePropertyError(prop, e);
+        }
+    };
+
+    private static final PropertyRenderer GEOMETRY_RENDERER = (panel, node, prop, isDisabled) -> {
+        try {
+            Object value = prop.getter.invoke(node);
+            if (value == null) {
+                ImGui.textDisabled("(绌?");
+                return;
+            }
+
+            PropertyRenderer fallbackGeometryRenderer = panel.getRendererForType(GeometryData.class);
+            PropertyRenderer delegate = panel.getRendererForType(value.getClass());
+            if (delegate != null && delegate != fallbackGeometryRenderer) {
+                delegate.render(panel, node, prop, isDisabled);
+                return;
+            }
+
+            ImGui.text("Type: " + value.getClass().getSimpleName());
+            ImGui.textWrapped(value.toString());
+        } catch (Throwable e) {
+            panel.handlePropertyError(prop, e);
+        }
+    };
+
+    private static final PropertyRenderer CURVE_RENDERER = (panel, node, prop, isDisabled) -> {
+        try {
+            Curve curve = (Curve) prop.getter.invoke(node);
+            if (curve == null) {
+                ImGui.textDisabled("(绌?");
+                return;
+            }
+
+            ImGui.text("Type: " + curve.getCurveType());
+            ImGui.text("Control Points: " + curve.size());
+            ImGui.text("Resolution: " + curve.getResolution());
+            ImGui.text("Sample Points: " + curve.getSamplePoints().size());
+        } catch (Throwable e) {
+            panel.handlePropertyError(prop, e);
+        }
+    };
+
+    private static final PropertyRenderer BLOCK_POS_LIST_RENDERER = (panel, node, prop, isDisabled) -> {
+        try {
+            BlockPosList positions = (BlockPosList) prop.getter.invoke(node);
+            if (positions == null) {
+                ImGui.textDisabled("(绌?");
+                return;
+            }
+
+            ImGui.text("Count: " + positions.size());
+            List<BlockPos> preview = positions.getPositions();
+            if (!preview.isEmpty()) {
+                ImGui.text("First: " + formatBlockPos(preview.getFirst()));
+            }
+            if (preview.size() > 1) {
+                ImGui.text("Last: " + formatBlockPos(preview.getLast()));
+            }
+        } catch (Throwable e) {
+            panel.handlePropertyError(prop, e);
+        }
+    };
+
+    private static final PropertyRenderer PLANT_BLOCK_RENDERER = (panel, node, prop, isDisabled) -> {
+        try {
+            PlantStructure.PlantBlock block = (PlantStructure.PlantBlock) prop.getter.invoke(node);
+            if (block == null) {
+                ImGui.textDisabled("(绌?");
+                return;
+            }
+
+            ImGui.text("Position: " + formatBlockPos(block.getPosition()));
+            ImGui.text("Block Type: " + block.getBlockType());
+            ImGui.text(String.format("Thickness: %.2f", block.getThickness()));
+            ImGui.text("Properties: " + block.getProperties().size());
+        } catch (Throwable e) {
+            panel.handlePropertyError(prop, e);
+        }
+    };
+
+    private static final PropertyRenderer LIST_RENDERER = (panel, node, prop, isDisabled) -> {
+        try {
+            Object value = prop.getter.invoke(node);
+            if (!(value instanceof List<?> list)) {
+                if (value == null) {
+                    ImGui.textDisabled("(绌?");
+                } else {
+                    ImGui.textWrapped(value.toString());
+                }
+                return;
+            }
+
+            panel.renderList(list, prop.displayName);
         } catch (Throwable e) {
             panel.handlePropertyError(prop, e);
         }
@@ -3022,6 +3120,11 @@ public class PropertyPanelComponent implements EditorComponent {
         registerRenderer(BoundingBoxData.class, BOUNDING_BOX_RENDERER);
         registerRenderer(SphereData.class, SPHERE_RENDERER);
         registerRenderer(LineData.class, LINE_RENDERER);
+        registerRenderer(GeometryData.class, GEOMETRY_RENDERER);
+        registerRenderer(Curve.class, CURVE_RENDERER);
+        registerRenderer(BlockPosList.class, BLOCK_POS_LIST_RENDERER);
+        registerRenderer(PlantStructure.PlantBlock.class, PLANT_BLOCK_RENDERER);
+        registerRenderer(List.class, LIST_RENDERER);
     }
 
     /**
