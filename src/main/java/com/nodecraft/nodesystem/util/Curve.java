@@ -142,15 +142,9 @@ public class Curve {
             return getLinearSamples();
         }
         
-        for (int i = 0; i < controlPoints.size() - 2; i += 2) {
-            Vec3d p0 = controlPoints.get(i);
-            Vec3d p1 = controlPoints.get(i + 1);
-            Vec3d p2 = controlPoints.get(i + 2);
-            
-            for (int j = 0; j < resolution; j++) {
-                float t = j / (float) (resolution - 1);
-                samples.add(quadraticBezier(p0, p1, p2, t));
-            }
+        for (int j = 0; j < resolution; j++) {
+            float t = j / (float) (resolution - 1);
+            samples.add(deCasteljau(controlPoints, t));
         }
         
         return samples;
@@ -197,5 +191,17 @@ public class Curve {
         double z = mt2 * p0.z + 2 * mt * t * p1.z + t2 * p2.z;
         
         return new Vec3d(x, y, z);
+    }
+
+    private Vec3d deCasteljau(List<Vec3d> points, float t) {
+        List<Vec3d> working = new ArrayList<>(points);
+        while (working.size() > 1) {
+            List<Vec3d> next = new ArrayList<>(working.size() - 1);
+            for (int i = 0; i < working.size() - 1; i++) {
+                next.add(lerpVec3d(working.get(i), working.get(i + 1), t));
+            }
+            working = next;
+        }
+        return working.get(0);
     }
 } 
