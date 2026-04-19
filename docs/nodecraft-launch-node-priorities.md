@@ -317,16 +317,17 @@
 
 这批首发 P1 已基本收口。下一轮建议转入后续增强项，优先顺序：
 
-1. `output.export.export_litematic`
-2. `output.export.export_worldedit`
-3. `utilities.fileio.read_image`
+1. `output.export.export_worldedit`
+2. `utilities.fileio.read_image`
 
 ### 已完成的当前批次 P2
 
 本轮已经补实并通过 `compileJava` 验证的节点如下：
 
 - `geometry.boolean.intersection`
+- `output.export.export_litematic`
 
 对应代码：
 - [IntersectionNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/geometry/boolops/IntersectionNode.java)
 - [IntersectionGeometryData.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/datatypes/IntersectionGeometryData.java)
+- [ExportLitematicNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/output/export/ExportLitematicNode.java)
