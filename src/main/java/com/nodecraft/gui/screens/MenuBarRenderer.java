@@ -477,6 +477,7 @@ public class MenuBarRenderer {
 
 
             // 菜单栏最右侧窗口控制按钮（最小化、最大化、关闭）
+            if (false) {
             float buttonWidth = 24.0f;
             float spacing = 2.0f;
             float rightEdgeX = ImGui.getWindowWidth();
@@ -540,6 +541,7 @@ public class MenuBarRenderer {
                 closeAction.run();
             }
 
+            }
             ImGui.endMenuBar();
         }
     }

@@ -364,7 +364,7 @@ public boolean isMouseOverNodecraftGui(double mouseX, double mouseY) {
             return true;
         }
 
-        boolean imguiWantsMouse = ImGui.getIO().getWantCaptureMouse();
+        boolean imguiWantsMouse = isImGuiWantCaptureMouse();
         boolean inWindowBounds = (mouseX >= windowX && mouseX <= windowX + windowWidth &&
                                 mouseY >= windowY && mouseY <= windowY + windowHeight);
         return imguiWantsMouse || inWindowBounds;
@@ -375,7 +375,12 @@ public boolean isMouseOverNodecraftGui(double mouseX, double mouseY) {
 }
 
 public boolean isImGuiWantCaptureMouse() {
-    return ImGui.getIO() != null && ImGui.getIO().getWantCaptureMouse();
+    return isSplitterInputLocked()
+        || (ImGui.getIO() != null && ImGui.getIO().getWantCaptureMouse());
+}
+
+public boolean isSplitterInputLocked() {
+    return layoutRenderer != null && layoutRenderer.isDraggingSplitter();
 }
 
 public boolean isImGuiWantCaptureKeyboard() {

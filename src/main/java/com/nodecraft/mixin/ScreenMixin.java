@@ -22,7 +22,7 @@ public class ScreenMixin {
     
     @Inject(method = "close", at = @At("HEAD"), cancellable = true)
     private void onClose(CallbackInfo ci) {
-        if ((Object) this instanceof NodecraftScreen screen) {
+        if ((Object) this instanceof NodecraftScreen) {
             NodeCraft.LOGGER.info("Screen.close()方法被调用，确保Nodecraft资源正确清理");
             MinecraftClient.getInstance().setScreen(null);
             ci.cancel();

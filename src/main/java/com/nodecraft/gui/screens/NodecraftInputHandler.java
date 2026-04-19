@@ -75,7 +75,7 @@ public class NodecraftInputHandler {
     }
 
     public boolean handleMouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        if (ImGui.getIO() != null && ImGui.getIO().getWantCaptureMouse()) {
+        if (parentScreen.isImGuiWantCaptureMouse()) {
             return true;
         }
 

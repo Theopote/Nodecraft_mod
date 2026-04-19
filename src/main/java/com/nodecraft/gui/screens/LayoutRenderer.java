@@ -76,6 +76,10 @@ public class LayoutRenderer {
      * @param delta 渲染 delta
      */
     public void render(DrawContext vanillaContext, int mouseX, int mouseY, float delta) {
+        renderImGuiOnly(delta);
+    }
+
+    public void renderImGuiOnly(float delta) {
         try {
             // 获取可用内容区域
             final float contentStartX = ImGui.getWindowContentRegionMinX();
@@ -109,7 +113,6 @@ public class LayoutRenderer {
 
             if (isDragging) {
                 // 在拖拽过程中强制捕获所有鼠标输入
-                ImGui.getIO().setWantCaptureMouse(true);
 
                 // 防止触发任何其他鼠标事件
                 ImGui.setMouseCursor(ImGuiMouseCursor.ResizeEW);
@@ -204,7 +207,6 @@ public class LayoutRenderer {
             ImGui.setMouseCursor(ImGuiMouseCursor.ResizeEW);
 
             // 关键修改：禁用窗口拖动
-            ImGui.getIO().setWantCaptureMouse(true);
 
             // 显示调试信息
             if (debugSplitter) {
@@ -216,7 +218,6 @@ public class LayoutRenderer {
             if (!ImGui.isMouseDown(ImGuiMouseButton.Left)) {
                 isDraggingLeftSplitter = false;
                 isDraggingRightSplitter = false;
-                ImGui.getIO().setWantCaptureMouse(false); // 释放鼠标捕获
                 NodeCraft.LOGGER.info("结束拖拽分隔线: 最终节点面板比例={}, 画布比例={}, 属性面板比例={}",
                         layoutConfig.nodePanelRatio(), layoutConfig.canvasRatio(), layoutConfig.propertyPanelRatio());
                 return;
@@ -317,7 +318,6 @@ public class LayoutRenderer {
                 initialCanvasRatio = layoutConfig.canvasRatio();
 
                 // 非常重要：强制捕获鼠标，阻止所有其他鼠标事件
-                ImGui.getIO().setWantCaptureMouse(true);
 
                 NodeCraft.LOGGER.info("开始拖拽左侧分隔线: 初始位置={}, 节点面板比例={}, 画布比例={}",
                         dragStartX, initialNodePanelRatio, initialCanvasRatio);
@@ -343,7 +343,6 @@ public class LayoutRenderer {
                 initialCanvasRatio = layoutConfig.canvasRatio();
 
                 // 非常重要：强制捕获鼠标，阻止所有其他鼠标事件
-                ImGui.getIO().setWantCaptureMouse(true);
 
                 NodeCraft.LOGGER.info("开始拖拽右侧分隔线: 初始位置={}, 属性面板比例={}, 画布比例={}",
                         dragStartX, initialPropertyPanelRatio, initialCanvasRatio);

@@ -35,8 +35,6 @@ public final class DetachedEditorWindow {
     private boolean leftMouseReleasedThisFrame;
     private boolean rightMouseReleasedThisFrame;
     private boolean middleMouseReleasedThisFrame;
-    private boolean detachedFocused;
-    private boolean detachedHovered;
 
     public boolean isDetached(final NodecraftScreen screen) {
         return windowHandle != 0 && attachedScreen == screen;
@@ -79,7 +77,11 @@ public final class DetachedEditorWindow {
         final int[] posY = new int[1];
         final int[] width = new int[1];
         final int[] height = new int[1];
-        pickWindowPlacement(posX, posY, width, height);
+        final int[] workareaX = new int[1];
+        final int[] workareaY = new int[1];
+        final int[] workareaWidth = new int[1];
+        final int[] workareaHeight = new int[1];
+        pickWindowPlacement(posX, posY, width, height, workareaX, workareaY, workareaWidth, workareaHeight);
 
         GLFW.glfwDefaultWindowHints();
         GLFW.glfwWindowHint(GLFW.GLFW_VISIBLE, GLFW.GLFW_FALSE);
@@ -96,6 +98,7 @@ public final class DetachedEditorWindow {
 
         try {
             GLFW.glfwMakeContextCurrent(windowHandle);
+            GLFW.glfwSetWindowSize(windowHandle, width[0], height[0]);
             GLFW.glfwSetWindowPos(windowHandle, posX[0], posY[0]);
             GLFW.glfwSwapInterval(0);
 
@@ -111,11 +114,11 @@ public final class DetachedEditorWindow {
             leftMouseReleasedThisFrame = false;
             rightMouseReleasedThisFrame = false;
             middleMouseReleasedThisFrame = false;
-            detachedFocused = false;
-            detachedHovered = false;
-
             ImGuiRenderer.getInstance().bindPlatformBackendToWindow(windowHandle);
             GLFW.glfwShowWindow(windowHandle);
+            fitWindowFrameIntoWorkarea(posX, posY, width, height, workareaX, workareaY, workareaWidth, workareaHeight);
+            GLFW.glfwSetWindowSize(windowHandle, width[0], height[0]);
+            GLFW.glfwSetWindowPos(windowHandle, posX[0], posY[0]);
             GLFW.glfwFocusWindow(windowHandle);
             NodeCraft.LOGGER.info("Detached editor window opened: {}", windowHandle);
         } catch (Exception e) {
@@ -128,7 +131,16 @@ public final class DetachedEditorWindow {
         }
     }
 
-    private void pickWindowPlacement(final int[] posX, final int[] posY, final int[] width, final int[] height) {
+    private void pickWindowPlacement(
+        final int[] posX,
+        final int[] posY,
+        final int[] width,
+        final int[] height,
+        final int[] workareaX,
+        final int[] workareaY,
+        final int[] workareaWidth,
+        final int[] workareaHeight
+    ) {
         final PointerBuffer monitors = GLFW.glfwGetMonitors();
         long targetMonitor = 0;
 
@@ -139,15 +151,65 @@ public final class DetachedEditorWindow {
         }
 
         if (targetMonitor != 0) {
-            GLFW.glfwGetMonitorWorkarea(targetMonitor, posX, posY, width, height);
-            width[0] = Math.max(960, width[0]);
-            height[0] = Math.max(640, height[0]);
+            GLFW.glfwGetMonitorWorkarea(targetMonitor, workareaX, workareaY, workareaWidth, workareaHeight);
+
+            final int monitorWorkareaX = workareaX[0];
+            final int monitorWorkareaY = workareaY[0];
+            final int monitorWorkareaWidth = Math.max(1, workareaWidth[0]);
+            final int monitorWorkareaHeight = Math.max(1, workareaHeight[0]);
+            final int desiredWidth = 1440;
+            final int desiredHeight = 900;
+            final int minWidth = 960;
+            final int minHeight = 640;
+
+            width[0] = Math.max(Math.min(minWidth, monitorWorkareaWidth), Math.min(desiredWidth, monitorWorkareaWidth));
+            height[0] = Math.max(Math.min(minHeight, monitorWorkareaHeight), Math.min(desiredHeight, monitorWorkareaHeight));
+            posX[0] = monitorWorkareaX + Math.max(0, (monitorWorkareaWidth - width[0]) / 2);
+            posY[0] = monitorWorkareaY + Math.max(0, (monitorWorkareaHeight - height[0]) / 2);
         } else {
             posX[0] = 80;
             posY[0] = 80;
             width[0] = 1440;
             height[0] = 900;
+            workareaX[0] = posX[0];
+            workareaY[0] = posY[0];
+            workareaWidth[0] = width[0];
+            workareaHeight[0] = height[0];
         }
+    }
+
+    private void fitWindowFrameIntoWorkarea(
+        final int[] posX,
+        final int[] posY,
+        final int[] width,
+        final int[] height,
+        final int[] workareaX,
+        final int[] workareaY,
+        final int[] workareaWidth,
+        final int[] workareaHeight
+    ) {
+        final int[] frameLeft = new int[1];
+        final int[] frameTop = new int[1];
+        final int[] frameRight = new int[1];
+        final int[] frameBottom = new int[1];
+        GLFW.glfwGetWindowFrameSize(windowHandle, frameLeft, frameTop, frameRight, frameBottom);
+
+        final int maxClientWidth = Math.max(1, workareaWidth[0] - frameLeft[0] - frameRight[0]);
+        final int maxClientHeight = Math.max(1, workareaHeight[0] - frameTop[0] - frameBottom[0]);
+
+        width[0] = Math.min(width[0], maxClientWidth);
+        height[0] = Math.min(height[0], maxClientHeight);
+
+        final int outerWidth = width[0] + frameLeft[0] + frameRight[0];
+        final int outerHeight = height[0] + frameTop[0] + frameBottom[0];
+
+        // GLFW window position is the client-area top-left, not the outer frame top-left.
+        // Offset by the frame metrics so the native title bar stays inside the monitor workarea.
+        posX[0] = workareaX[0] + frameLeft[0] + Math.max(0, (workareaWidth[0] - outerWidth) / 2);
+        posY[0] = workareaY[0] + frameTop[0] + Math.max(0, (workareaHeight[0] - outerHeight) / 2);
+
+        posX[0] = Math.max(workareaX[0] + frameLeft[0], posX[0]);
+        posY[0] = Math.max(workareaY[0] + frameTop[0], posY[0]);
     }
 
     public void prepareFrame(final ImGuiIO io) {
