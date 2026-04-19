@@ -223,27 +223,6 @@ public class ViewportCloseDetector {
     }
     
     /**
-     * 手动触发窗口关闭
-     */
-    public void forceCloseWindow() {
-        try {
-            NodeCraft.LOGGER.info("手动触发NodeCraft窗口关闭");
-            
-            // 设置窗口关闭标志
-            windowOpen.set(false);
-            
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client.currentScreen instanceof com.nodecraft.gui.screens.NodecraftScreen nodecraftScreen) {
-
-                onWindowCloseRequested(nodecraftScreen);
-            }
-            
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("手动关闭窗口时出错", e);
-        }
-    }
-    
-    /**
      * 重置检测器状态
      */
     public void reset() {

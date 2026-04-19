@@ -286,7 +286,7 @@ public class NodecraftInputHandler {
                 return true;
             }
 
-            if (keyCode == GLFW.GLFW_KEY_F5 && isShiftPressed) {
+            if (keyCode == GLFW.GLFW_KEY_F5) {
                 NodeCraft.LOGGER.info("触发停止执行快捷键: Shift+F5");
                 menuBar.stopExecution();
                 return true;

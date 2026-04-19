@@ -63,6 +63,8 @@ public class NodecraftScreen extends Screen {
     
     // 用于跟踪分隔线拖拽状态，以优化布局更新
     private boolean wasDraggingSplitter = false;
+    private boolean previousWorldLeftMouseDown = false;
+    private boolean previousWorldRightMouseDown = false;
 
     /**
      * 构造Nodecraft编辑器界面
@@ -183,9 +185,7 @@ private void renderErrorMessage(DrawContext context) {
 
 private void handleCloseRequest() {
     NodeCraft.LOGGER.info("检测到closeRequested标志，立即关闭Nodecraft窗口");
-    MinecraftClient.getInstance().execute(() -> {
-        MinecraftClient.getInstance().setScreen(null);
-    });
+    MinecraftClient.getInstance().execute(() -> MinecraftClient.getInstance().setScreen(null));
 }
 
 private void updateInteractionManager() {
@@ -197,8 +197,12 @@ private void updateInteractionManager() {
             float imGuiMouseX = ImGui.getIO().getMousePosX();
             float imGuiMouseY = ImGui.getIO().getMousePosY();
             boolean isMiddleMouseDown = ImGui.isMouseDown(2); // 2 = 中键
-            boolean isLeftMouseClicked = ImGui.isMouseClicked(0); // 0 = 左键
-            boolean isRightMouseClicked = ImGui.isMouseClicked(1); // 1 = 右键
+            boolean isLeftMouseClicked = interactionManager.isInInteractionMode()
+                ? pollWorldMouseClicked(org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT)
+                : ImGui.isMouseClicked(0); // 0 = 左键
+            boolean isRightMouseClicked = interactionManager.isInInteractionMode()
+                ? pollWorldMouseClicked(org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_RIGHT)
+                : ImGui.isMouseClicked(1); // 1 = 右键
             
             // 检查鼠标是否在ImGui界面上，但在交互模式下需要特殊处理
             boolean isMouseOverImGui = isMouseOverImGuiForInteraction(interactionManager);
@@ -221,6 +225,39 @@ private void updateInteractionManager() {
     } catch (Exception e) {
         NodeCraft.LOGGER.error("更新交互管理器时出错: {}", e.getMessage(), e);
     }
+}
+
+private boolean pollWorldMouseClicked(int button) {
+    MinecraftClient client = MinecraftClient.getInstance();
+    if (client == null || client.getWindow() == null) {
+        previousWorldLeftMouseDown = false;
+        previousWorldRightMouseDown = false;
+        return false;
+    }
+
+    long windowHandle = client.getWindow().getHandle();
+    if (windowHandle == 0L) {
+        previousWorldLeftMouseDown = false;
+        previousWorldRightMouseDown = false;
+        return false;
+    }
+
+    boolean currentDown = org.lwjgl.glfw.GLFW.glfwGetMouseButton(windowHandle, button)
+        == org.lwjgl.glfw.GLFW.GLFW_PRESS;
+
+    if (button == org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+        boolean clicked = currentDown && !previousWorldLeftMouseDown;
+        previousWorldLeftMouseDown = currentDown;
+        return clicked;
+    }
+
+    if (button == org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+        boolean clicked = currentDown && !previousWorldRightMouseDown;
+        previousWorldRightMouseDown = currentDown;
+        return clicked;
+    }
+
+    return false;
 }
 
 /**

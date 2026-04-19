@@ -407,8 +407,7 @@ public class CanvasComponent implements EditorComponent {
             NodeCraft.LOGGER.debug("画布双击: 位置=({}, {})", io.getMousePosX(), io.getMousePosY());
             // 检查是否点击在空白处 (通过委托给nodeEditor检查)
             boolean isOverNode = false;
-            if (nodeEditor instanceof ImGuiNodeEditor) {
-                ImGuiNodeEditor editor = (ImGuiNodeEditor)nodeEditor;
+            if (nodeEditor instanceof ImGuiNodeEditor editor) {
                 isOverNode = editor.isMouseOverAnyNode(io.getMousePosX(), io.getMousePosY(), canvasScreenPos);
             }
             
@@ -442,10 +441,8 @@ public class CanvasComponent implements EditorComponent {
     private void renderEditorContent() {
         try {
             // 构造函数已确保 nodeEditor 不为 null
-            if (nodeEditor instanceof com.nodecraft.gui.editor.impl.ImGuiNodeEditor) {
+            if (nodeEditor instanceof ImGuiNodeEditor imguiEditor) {
                 // 同步画布状态到ImGuiNodeEditor
-                com.nodecraft.gui.editor.impl.ImGuiNodeEditor imguiEditor = 
-                    (com.nodecraft.gui.editor.impl.ImGuiNodeEditor) nodeEditor;
                 imguiEditor.setCanvasView(canvasZoom, canvasOffsetX, canvasOffsetY);
             }
             
@@ -487,9 +484,8 @@ public class CanvasComponent implements EditorComponent {
                     NodeCraft.LOGGER.debug("接收到拖放数据，类型: {}", payload.getClass().getName());
                     
                     String nodeId;
-                    if (payload instanceof byte[]) {
+                    if (payload instanceof byte[] payloadBytes) {
                         // 如果是字节数组，转换为字符串
-                        byte[] payloadBytes = (byte[]) payload;
                         nodeId = new String(payloadBytes, java.nio.charset.StandardCharsets.UTF_8);
                         NodeCraft.LOGGER.debug("将字节数组[{}字节]转换为字符串: {}", payloadBytes.length, nodeId);
                     } else if (payload instanceof String) {
@@ -620,8 +616,7 @@ public class CanvasComponent implements EditorComponent {
         this.showGrid = showGrid;
         
         // 将网格显示状态传递给编辑器实例
-        if (nodeEditor instanceof ImGuiNodeEditor) {
-            ImGuiNodeEditor editor = (ImGuiNodeEditor) nodeEditor;
+        if (nodeEditor instanceof ImGuiNodeEditor editor) {
             editor.setShowGrid(showGrid);
         }
         
@@ -635,10 +630,7 @@ public class CanvasComponent implements EditorComponent {
     public boolean isShowGrid() {
         return showGrid;
     }
-    
-    /**
-     * 重置画布视图
-     */
+
     /**
      * 重置画布视图到默认状态 (1.0f 缩放, (0,0) 偏移)。
      * 这是 "重置视图" 菜单项应该调用的功能。
@@ -667,7 +659,7 @@ public class CanvasComponent implements EditorComponent {
      * 这是 "适应内容" 菜单项应该调用的功能。
      */
     public void fitToContent() {
-        if (nodeEditor == null || !(nodeEditor instanceof ImGuiNodeEditor)) {
+        if (!(nodeEditor instanceof ImGuiNodeEditor)) {
             resetCanvasView(); // 如果无法适应，则回退到默认视图
             return;
         }
@@ -710,13 +702,7 @@ public class CanvasComponent implements EditorComponent {
             maxY = Math.max(maxY, pos.y + nodeHeight);
             hasValidNode = true;
         }
-        
-        if (!hasValidNode) { // 如果所有节点都没有有效位置/尺寸，也重置视图
-            resetCanvasView();
-            NodeCraft.LOGGER.info("画布已重置（节点数据无效或为空）");
-            return;
-        }
-        
+
         // 先计算初始内容边界
         float initialContentWidth = maxX - minX;
         float initialContentHeight = maxY - minY;
@@ -838,8 +824,7 @@ public class CanvasComponent implements EditorComponent {
         }
         
         // 将显示模式传递给编辑器
-        if (nodeEditor instanceof ImGuiNodeEditor) {
-            ImGuiNodeEditor editor = (ImGuiNodeEditor) nodeEditor;
+        if (nodeEditor instanceof ImGuiNodeEditor editor) {
             editor.setNodeDisplayMode(nodeDisplayMode.ordinal());
         }
     }
@@ -860,8 +845,7 @@ public class CanvasComponent implements EditorComponent {
         this.nodeDisplayMode = mode;
         
         // 将显示模式传递给编辑器
-        if (nodeEditor instanceof ImGuiNodeEditor) {
-            ImGuiNodeEditor editor = (ImGuiNodeEditor) nodeEditor;
+        if (nodeEditor instanceof ImGuiNodeEditor editor) {
             editor.setNodeDisplayMode(nodeDisplayMode.ordinal());
         }
     }
@@ -874,8 +858,7 @@ public class CanvasComponent implements EditorComponent {
         NodeCraft.LOGGER.info("节点预览: {}", showNodePreviews ? "开启" : "关闭");
         
         // 将预览状态传递给编辑器
-        if (nodeEditor instanceof ImGuiNodeEditor) {
-            ImGuiNodeEditor editor = (ImGuiNodeEditor) nodeEditor;
+        if (nodeEditor instanceof ImGuiNodeEditor editor) {
             editor.setShowNodePreviews(showNodePreviews);
         }
     }

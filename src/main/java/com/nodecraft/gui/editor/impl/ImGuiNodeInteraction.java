@@ -116,10 +116,6 @@ public class ImGuiNodeInteraction {
     public UUID getDraggingNodeId() { return draggingNodeId; } // Added getter for draggingNodeId
 
 
-    // --- Setter 方法 ---
-    public void setBoxSelectStart(NodePosition start) { this.boxSelectStart = start; }
-    public void setBoxSelectEnd(NodePosition end) { this.boxSelectEnd = end; }
-
     /**
      * 设置框选状态。
      * @param isBoxSelecting true 表示开始框选，false 表示结束框选。
