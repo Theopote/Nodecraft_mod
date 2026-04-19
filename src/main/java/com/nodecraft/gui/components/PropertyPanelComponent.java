@@ -34,6 +34,7 @@ import com.nodecraft.nodesystem.nodes.utilities.assist.SignalMergeNode;
 import com.nodecraft.nodesystem.nodes.utilities.assist.TagRelayNode;
 import com.nodecraft.nodesystem.util.Vec3; // 确保 Vec3 可用
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.Color;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
@@ -1129,6 +1130,47 @@ public class PropertyPanelComponent implements EditorComponent {
 
             if (!isReadOnly && changed) {
                 panel.applyPropertyValue(node, prop, new ColorData(values[0], values[1], values[2], values[3]));
+            }
+
+            panel.errorCounts.remove(prop.name);
+        } catch (Throwable e) {
+            panel.handlePropertyError(prop, e);
+        }
+    };
+
+    private static final PropertyRenderer NODE_COLOR_RENDERER = (panel, node, prop, isDisabled) -> {
+        if (isDisabled) {
+            ImGui.textDisabled("(宸茬鐢?");
+            return;
+        }
+
+        try {
+            Color color = (Color) prop.getter.invoke(node);
+            if (color == null) {
+                ImGui.textDisabled("(绌?");
+                return;
+            }
+
+            boolean isReadOnly = prop.setter == null;
+            String tempKey = panel.getTempValueKey(node, prop.name + "_node_color");
+            float[] values = (float[]) panel.tempValues.computeIfAbsent(
+                    tempKey, k -> new float[]{color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()});
+
+            if (!panel.isPropertyBeingEdited(node, prop.name)) {
+                values[0] = color.getRed();
+                values[1] = color.getGreen();
+                values[2] = color.getBlue();
+                values[3] = color.getAlpha();
+            }
+
+            if (isReadOnly) ImGui.beginDisabled();
+            boolean changed = ImGui.colorEdit4("##" + prop.name, values);
+            if (ImGui.isItemActive()) panel.markPropertyBeingEdited(node, prop.name);
+            if (ImGui.isItemDeactivated()) panel.markPropertyEditingFinished(node, prop.name);
+            if (isReadOnly) ImGui.endDisabled();
+
+            if (!isReadOnly && changed) {
+                panel.applyPropertyValue(node, prop, new Color(values[0], values[1], values[2], values[3]));
             }
 
             panel.errorCounts.remove(prop.name);
@@ -3116,6 +3158,7 @@ public class PropertyPanelComponent implements EditorComponent {
         registerRenderer(Vector3d.class, VECTOR3D_RENDERER);
         registerRenderer(BlockPos.class, BLOCK_POS_RENDERER);
         registerRenderer(ColorData.class, COLOR_RENDERER);
+        registerRenderer(Color.class, NODE_COLOR_RENDERER);
         registerRenderer(PointData.class, POINT_RENDERER);
         registerRenderer(BoundingBoxData.class, BOUNDING_BOX_RENDERER);
         registerRenderer(SphereData.class, SPHERE_RENDERER);
