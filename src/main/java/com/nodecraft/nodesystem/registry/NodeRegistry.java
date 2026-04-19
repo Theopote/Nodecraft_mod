@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.spi.INodeProvider;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -189,6 +190,9 @@ public class NodeRegistry {
         NodeCategory category = categoryMap.get(categoryId);
         if (category != null) {
             category.addNode(normalizedNodeInfo);
+            if (initialized) {
+                category.sealNodes();
+            }
             NodeCraft.LOGGER.debug("Registered node: {} (ID: {}) in category [{}]",
                     normalizedNodeInfo.getDisplayName(), normalizedId, category.getDisplayName());
             return true;
@@ -353,9 +357,14 @@ public class NodeRegistry {
      * Represents a node category and its registered nodes.
      */
     public static class NodeCategory {
+        private static final Comparator<NodeInfo> NODE_ORDER =
+                Comparator.comparingInt(NodeInfo::getOrder)
+                        .thenComparing(NodeInfo::getDisplayName, String.CASE_INSENSITIVE_ORDER);
+
         private final String id;
         private final String displayName;
         private final List<NodeInfo> nodes = new ArrayList<>();
+        private volatile List<NodeInfo> sealedNodes = List.of();
 
         public NodeCategory(String id, String displayName) {
             this.id = Objects.requireNonNull(id, "Category ID must not be null");
@@ -373,20 +382,21 @@ public class NodeRegistry {
         void addNode(NodeInfo nodeInfo) {
             if (nodeInfo != null && !nodes.contains(nodeInfo)) {
                 nodes.add(nodeInfo);
-                // Sorting is deferred to sealNodes(), called once after all providers finish.
+                sealedNodes = List.copyOf(nodes);
             }
         }
 
         /**
-         * Sorts registered nodes by display name. Call once after all nodes are added
-         * rather than after every individual insertion to avoid O(N²·log N) cost.
+         * Sorts registered nodes by explicit order, then display name.
+         * Call once after all nodes are added to avoid repeated full re-sorts during startup registration.
          */
         void sealNodes() {
-            nodes.sort((n1, n2) -> n1.getDisplayName().compareToIgnoreCase(n2.getDisplayName()));
+            nodes.sort(NODE_ORDER);
+            sealedNodes = List.copyOf(nodes);
         }
 
         public List<NodeInfo> getNodes() {
-            return Collections.unmodifiableList(nodes);
+            return sealedNodes;
         }
 
         public boolean isEmpty() {
