@@ -49,10 +49,10 @@ import imgui.flag.ImGuiTreeNodeFlags;
 import imgui.type.ImBoolean;
 import imgui.type.ImInt;
 import imgui.type.ImString;
-
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -93,6 +93,8 @@ public class PropertyPanelComponent implements EditorComponent {
 
     private boolean visible = true;
     private INode selectedNode = null;
+    private final PropertyInspector propertyInspector = new PropertyInspector();
+    private final PropertyEditorState editorState = new PropertyEditorState();
 
     // 缓存: Class -> List<PropertyDescriptor>
     private final Map<Class<?>, List<PropertyDescriptor>> propertyCache = new ConcurrentHashMap<>(); // 使用ConcurrentHashMap
@@ -131,7 +133,7 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     // 内部类：属性描述符
-    private static class PropertyDescriptor {
+    static class PropertyDescriptor {
         final String name; // 属性的规范名称, e.g., "nodeName"
         final String displayName; // UI显示的名称, e.g., "Node Name"
         final Class<?> type;
@@ -172,7 +174,7 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     // 接口：方法访问器
-    private interface MethodAccessor {
+    interface MethodAccessor {
         Object invoke(Object obj, Object... args) throws Throwable; // 统一为 Throwable，因为 MethodHandle.invoke 可以抛出任意 Throwable
         Class<?> getReturnType();
         Class<?>[] getParameterTypes();
@@ -1667,7 +1669,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
         renderAssistNodeControls();
 
-        List<PropertyDescriptor> properties = getPropertiesForNode(selectedNode.getClass()).stream()
+        List<PropertyDescriptor> properties = propertyInspector.getPropertiesForNode(selectedNode.getClass()).stream()
                 .filter(prop -> !HIDDEN_NODE_PROPERTIES.contains(prop.name))
                 .toList();
         if (properties.isEmpty()) {
@@ -1873,7 +1875,8 @@ public class PropertyPanelComponent implements EditorComponent {
                 String uniqueId = selectedNode.getId().toString() + "_" + prop.name;
                 ImGui.pushID(uniqueId);
                 ImGui.pushItemWidth(-1.0f);
-                prop.renderer.render(this, selectedNode, prop, isDisabled);
+                PropertyRenderer renderer = prop.renderer != null ? prop.renderer : getRendererForType(prop.type);
+                renderer.render(this, selectedNode, prop, isDisabled);
                 ImGui.popItemWidth();
                 ImGui.popID();
             }
