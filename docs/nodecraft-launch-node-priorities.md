@@ -338,3 +338,12 @@
 - [ExportWorldEditNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/output/export/ExportWorldEditNode.java)
 - [ReadImageNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/utilities/fileio/ReadImageNode.java)
 - [RevolveProfileNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/geometry/solids/RevolveProfileNode.java)
+
+### 已完成的新增 P2
+
+本轮继续补实并准备验证的节点如下：
+
+- `geometry.solids.shell`
+
+对应代码：
+- [ShellNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/geometry/solids/ShellNode.java)
