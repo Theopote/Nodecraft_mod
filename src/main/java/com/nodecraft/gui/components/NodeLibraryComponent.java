@@ -45,11 +45,8 @@ public class NodeLibraryComponent implements EditorComponent {
     private record DisplayCategory(CategoryPresentation presentation, List<NodeInfo> displayNodes) {
         String getDisplayName() { return presentation.displayName(); }
         String getId() { return presentation.displayCategoryId(); }
-        String getCanonicalCategoryId() { return presentation.canonicalCategoryId(); }
         String getParentId() { return presentation.parentDisplayId(); }
         String getColorKey() { return presentation.colorKey(); }
-        boolean isDefaultExpanded() { return presentation.defaultExpanded(); }
-        NodeCategory getSourceCategory() { return presentation.sourceCategory(); }
         List<NodeInfo> getNodes() { return displayNodes; }
     }
 
