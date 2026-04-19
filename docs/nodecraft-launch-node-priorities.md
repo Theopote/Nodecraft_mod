@@ -300,6 +300,7 @@
 - `material.block_state.stair_shape`
 - `input.type_selectors.entity_type_selector`
 - `input.type_selectors.item_type_selector`
+- `output.export.export_schematic` 增强
 
 对应代码：
 - [GetHeightmapNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/world/read/GetHeightmapNode.java)
@@ -310,9 +311,13 @@
 - [StairShapeNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/material/block_state/StairShapeNode.java)
 - [EntityTypeSelectorNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/input/type_selectors/EntityTypeSelectorNode.java)
 - [ItemTypeSelectorNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/input/type_selectors/ItemTypeSelectorNode.java)
+- [ExportSchematicNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/output/export/ExportSchematicNode.java)
 
-### 当前建议的下一批 P1
+### 当前建议的下一批 P1 / P2
 
-按建筑工作流收益和实现耦合度，建议下一轮按下面顺序继续：
+这批首发 P1 已基本收口。下一轮建议转入后续增强项，优先顺序：
 
-1. `output.export.export_schematic` 增强
+1. `geometry.solids.boolean_intersection`
+2. `output.export.export_litematic`
+3. `output.export.export_worldedit`
+4. `utilities.fileio.read_image`
