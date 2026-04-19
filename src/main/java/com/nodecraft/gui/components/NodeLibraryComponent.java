@@ -4,12 +4,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Comparator;
 import java.util.Arrays;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -65,8 +68,8 @@ public class NodeLibraryComponent implements EditorComponent {
         static final float GRID_TILE_SIZE_SCALE_MAX = 2.0f;
         static final String DRAG_DROP_PAYLOAD_TYPE = "DND_NODE_FROM_LIBRARY";
 
-        static final Map<String, float[]> CATEGORY_COLORS_FLOAT = new HashMap<>();
-        static final Map<String, Integer> CATEGORY_COLORS_INT = new HashMap<>();
+        static final Map<String, float[]> CATEGORY_COLORS_FLOAT = buildGradientCategoryColors();
+        static final ConcurrentMap<String, Integer> CATEGORY_COLORS_INT = buildPackedCategoryColors(CATEGORY_COLORS_FLOAT);
         static final float[] DEFAULT_CATEGORY_COLOR_FLOAT = new float[]{0.75f, 0.75f, 0.75f, 1.0f};
         static final int DEFAULT_CATEGORY_COLOR_INT = ImGui.colorConvertFloat4ToU32(DEFAULT_CATEGORY_COLOR_FLOAT[0], DEFAULT_CATEGORY_COLOR_FLOAT[1], DEFAULT_CATEGORY_COLOR_FLOAT[2], DEFAULT_CATEGORY_COLOR_FLOAT[3]);
         static final List<String> TOP_LEVEL_CATEGORY_ORDER = List.of(
@@ -84,22 +87,23 @@ public class NodeLibraryComponent implements EditorComponent {
         private static final float[] GRADIENT_START_COLOR = new float[]{0.25f, 0.55f, 0.96f, 1.0f};
         private static final float[] GRADIENT_END_COLOR = new float[]{0.95f, 0.64f, 0.24f, 1.0f};
 
-        static {
-            registerGradientCategoryColors();
-
-            // Convert float colors to packed ImGui colors.
-            for (Map.Entry<String, float[]> entry : CATEGORY_COLORS_FLOAT.entrySet()) {
-                float[] c = entry.getValue();
-                CATEGORY_COLORS_INT.put(entry.getKey(), ImGui.colorConvertFloat4ToU32(c[0], c[1], c[2], c[3]));
-            }
-        }
-
-        private static void registerGradientCategoryColors() {
+        private static Map<String, float[]> buildGradientCategoryColors() {
+            Map<String, float[]> colors = new HashMap<>();
             for (int i = 0; i < TOP_LEVEL_CATEGORY_ORDER.size(); i++) {
                 String topLevelId = TOP_LEVEL_CATEGORY_ORDER.get(i);
                 float t = TOP_LEVEL_CATEGORY_ORDER.size() <= 1 ? 0.0f : (float) i / (TOP_LEVEL_CATEGORY_ORDER.size() - 1);
-                CATEGORY_COLORS_FLOAT.put(topLevelId, lerpColor(GRADIENT_START_COLOR, GRADIENT_END_COLOR, t));
+                colors.put(topLevelId, lerpColor(GRADIENT_START_COLOR, GRADIENT_END_COLOR, t));
             }
+            return Map.copyOf(colors);
+        }
+
+        private static ConcurrentMap<String, Integer> buildPackedCategoryColors(Map<String, float[]> floatColors) {
+            ConcurrentMap<String, Integer> packedColors = new ConcurrentHashMap<>();
+            for (Map.Entry<String, float[]> entry : floatColors.entrySet()) {
+                float[] c = entry.getValue();
+                packedColors.put(entry.getKey(), ImGui.colorConvertFloat4ToU32(c[0], c[1], c[2], c[3]));
+            }
+            return packedColors;
         }
 
         private static float[] lerpColor(float[] start, float[] end, float t) {
@@ -134,7 +138,7 @@ public class NodeLibraryComponent implements EditorComponent {
                 return DEFAULT_CATEGORY_COLOR_INT;
             }
             // 1. Exact lowercase match — canonical IDs are always lowercase.
-            String lower = categoryName.toLowerCase();
+            String lower = categoryName.toLowerCase(Locale.ROOT);
             Integer exact = CATEGORY_COLORS_INT.get(lower);
             if (exact != null) {
                 return exact;
@@ -151,10 +155,8 @@ public class NodeLibraryComponent implements EditorComponent {
                 ImGui.colorConvertU32ToFloat4(parentColor, colorVec);
                 float lightenAmount = Math.min(0.32f, 0.12f * depth);
                 float[] derived = lightenColor(new float[]{colorVec.x, colorVec.y, colorVec.z, colorVec.w}, lightenAmount);
-                int packed = ImGui.colorConvertFloat4ToU32(derived[0], derived[1], derived[2], derived[3]);
-                CATEGORY_COLORS_INT.put(lower, packed);
-                CATEGORY_COLORS_FLOAT.put(lower, derived);
-                return packed;
+                return CATEGORY_COLORS_INT.computeIfAbsent(lower,
+                        ignored -> ImGui.colorConvertFloat4ToU32(derived[0], derived[1], derived[2], derived[3]));
             }
             // 2. Walk up the dot-separated prefix chain: a.b.c -> a.b -> a
             int dot = lower.lastIndexOf('.');
