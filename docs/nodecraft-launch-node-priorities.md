@@ -315,9 +315,11 @@
 
 ### 当前建议的下一批 P1 / P2
 
-这批首发 P1 已基本收口。下一轮建议转入后续增强项，优先顺序：
+这批首发 P1 与当前优先的 P2 已基本收口。下一轮建议转入进一步增强项，例如：
 
-1. `utilities.fileio.read_image`
+1. `geometry.solids.shell`
+2. `geometry.solids.thicken_surface`
+3. `material.gradient_mapping.noise_material`
 
 ### 已完成的当前批次 P2
 
@@ -326,9 +328,13 @@
 - `geometry.boolean.intersection`
 - `output.export.export_litematic`
 - `output.export.export_worldedit`
+- `utilities.fileio.read_image`
+- `geometry.solids.revolve`
 
 对应代码：
 - [IntersectionNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/geometry/boolops/IntersectionNode.java)
 - [IntersectionGeometryData.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/datatypes/IntersectionGeometryData.java)
 - [ExportLitematicNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/output/export/ExportLitematicNode.java)
 - [ExportWorldEditNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/output/export/ExportWorldEditNode.java)
+- [ReadImageNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/utilities/fileio/ReadImageNode.java)
+- [RevolveProfileNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/geometry/solids/RevolveProfileNode.java)
