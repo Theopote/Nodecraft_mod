@@ -69,7 +69,7 @@ public class NodeLibraryComponent implements EditorComponent {
         static final String DRAG_DROP_PAYLOAD_TYPE = "DND_NODE_FROM_LIBRARY";
 
         static final Map<String, float[]> CATEGORY_COLORS_FLOAT = buildGradientCategoryColors();
-        static final ConcurrentMap<String, Integer> CATEGORY_COLORS_INT = buildPackedCategoryColors(CATEGORY_COLORS_FLOAT);
+        static final ConcurrentMap<String, Integer> CATEGORY_COLORS_INT = buildPackedCategoryColors();
         static final float[] DEFAULT_CATEGORY_COLOR_FLOAT = new float[]{0.75f, 0.75f, 0.75f, 1.0f};
         static final int DEFAULT_CATEGORY_COLOR_INT = ImGui.colorConvertFloat4ToU32(DEFAULT_CATEGORY_COLOR_FLOAT[0], DEFAULT_CATEGORY_COLOR_FLOAT[1], DEFAULT_CATEGORY_COLOR_FLOAT[2], DEFAULT_CATEGORY_COLOR_FLOAT[3]);
         static final List<String> TOP_LEVEL_CATEGORY_ORDER = List.of(
@@ -89,27 +89,29 @@ public class NodeLibraryComponent implements EditorComponent {
 
         private static Map<String, float[]> buildGradientCategoryColors() {
             Map<String, float[]> colors = new HashMap<>();
-            for (int i = 0; i < TOP_LEVEL_CATEGORY_ORDER.size(); i++) {
-                String topLevelId = TOP_LEVEL_CATEGORY_ORDER.get(i);
-                float t = TOP_LEVEL_CATEGORY_ORDER.size() <= 1 ? 0.0f : (float) i / (TOP_LEVEL_CATEGORY_ORDER.size() - 1);
-                colors.put(topLevelId, lerpColor(GRADIENT_START_COLOR, GRADIENT_END_COLOR, t));
+            if (TOP_LEVEL_CATEGORY_ORDER != null) {
+                for (int i = 0; i < TOP_LEVEL_CATEGORY_ORDER.size(); i++) {
+                    String topLevelId = TOP_LEVEL_CATEGORY_ORDER.get(i);
+                    float t = TOP_LEVEL_CATEGORY_ORDER.size() <= 1 ? 0.0f : (float) i / (TOP_LEVEL_CATEGORY_ORDER.size() - 1);
+                    colors.put(topLevelId, lerpColor(t));
+                }
             }
             return Map.copyOf(colors);
         }
 
-        private static ConcurrentMap<String, Integer> buildPackedCategoryColors(Map<String, float[]> floatColors) {
+        private static ConcurrentMap<String, Integer> buildPackedCategoryColors() {
             ConcurrentMap<String, Integer> packedColors = new ConcurrentHashMap<>();
-            for (Map.Entry<String, float[]> entry : floatColors.entrySet()) {
+            for (Map.Entry<String, float[]> entry : NodeLibraryConstants.CATEGORY_COLORS_FLOAT.entrySet()) {
                 float[] c = entry.getValue();
                 packedColors.put(entry.getKey(), ImGui.colorConvertFloat4ToU32(c[0], c[1], c[2], c[3]));
             }
             return packedColors;
         }
 
-        private static float[] lerpColor(float[] start, float[] end, float t) {
+        private static float[] lerpColor(float t) {
             float[] color = new float[4];
             for (int i = 0; i < 4; i++) {
-                color[i] = start[i] + (end[i] - start[i]) * t;
+                color[i] = NodeLibraryConstants.GRADIENT_START_COLOR[i] + (NodeLibraryConstants.GRADIENT_END_COLOR[i] - NodeLibraryConstants.GRADIENT_START_COLOR[i]) * t;
             }
             return color;
         }
@@ -288,7 +290,7 @@ public class NodeLibraryComponent implements EditorComponent {
             return;
         }
 
-        boolean nodeLibraryChildBegin = false;
+        boolean nodeLibraryChildBegin;
 
         try {
             // Clamp layout inputs to safe minimums.
@@ -656,7 +658,6 @@ public class NodeLibraryComponent implements EditorComponent {
         List<DisplayCategory> topLevelCategories = new ArrayList<>();
 
         for (DisplayCategory category : filteredCategories) {
-            String id = category.getId();
             String parentId = category.getParentId();
 
             if (parentId == null) {
@@ -883,7 +884,6 @@ public class NodeLibraryComponent implements EditorComponent {
         // Use frame height as the 1x baseline for grid tiles.
         float tileSide = ImGui.getFrameHeight() * gridTileSizeScale;
         float spacingX = listLikeSpacing;
-        float spacingY = listLikeSpacing;
         float availableWidth = Math.max(tileSide, ImGui.getContentRegionAvailX());
         int columns = Math.max(1, (int) ((availableWidth + spacingX) / (tileSide + spacingX)));
 
