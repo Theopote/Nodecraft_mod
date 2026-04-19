@@ -297,6 +297,7 @@
 - `material.basic_assignment.block_palette`
 - `pattern.linear.along_path`
 - `pattern.grid.facade_grid`
+- `material.block_state.stair_shape`
 
 对应代码：
 - [GetHeightmapNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/world/read/GetHeightmapNode.java)
@@ -304,12 +305,12 @@
 - [BlockPaletteNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/material/basic_assignment/BlockPaletteNode.java)
 - [AlongPathNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/pattern/linear/AlongPathNode.java)
 - [FacadeGridNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/pattern/grid/FacadeGridNode.java)
+- [StairShapeNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/material/block_state/StairShapeNode.java)
 
 ### 当前建议的下一批 P1
 
 按建筑工作流收益和实现耦合度，建议下一轮按下面顺序继续：
 
-1. `material.block_state.stair_shape`
-2. `input.type_selectors.entity_type_selector`
-3. `input.type_selectors.item_type_selector`
-4. `output.export.export_schematic` 增强
+1. `input.type_selectors.entity_type_selector`
+2. `input.type_selectors.item_type_selector`
+3. `output.export.export_schematic` 增强
