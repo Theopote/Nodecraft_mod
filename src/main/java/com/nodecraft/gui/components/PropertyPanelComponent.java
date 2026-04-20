@@ -1504,9 +1504,10 @@ public class PropertyPanelComponent implements EditorComponent {
             ImGui.tableSetupColumn("Value", ImGuiTableColumnFlags.WidthStretch);
             ImGui.tableHeadersRow();
 
-            props.sort(Comparator.comparingInt((PropertyDescriptor p) -> p.order).thenComparing(p -> p.displayName));
+            List<PropertyDescriptor> sortedProps = new ArrayList<>(props);
+            sortedProps.sort(Comparator.comparingInt((PropertyDescriptor p) -> p.order).thenComparing(p -> p.displayName));
 
-            for (PropertyDescriptor prop : props) {
+            for (PropertyDescriptor prop : sortedProps) {
                 boolean isDisabled = errorCounts.getOrDefault(prop.name, 0) >= NodeConstants.ERROR_THRESHOLD;
 
                 ImGui.tableNextRow();
