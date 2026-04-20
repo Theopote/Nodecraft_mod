@@ -1925,29 +1925,14 @@ public class PropertyPanelComponent implements EditorComponent {
      * 清理当前选中节点的临时值
      */
     private void clearCurrentNodeTempValues() {
-        if (editorState != null) {
-            editorState.clearForNode(selectedNode);
-            return;
-        }
         editorState.clearForNode(selectedNode);
-
-        // 只清理当前选中节点的临时值
-
-        // 清理编辑状态
-
-        errorCounts.clear(); // 清理当前节点的错误计数
     }
 
     /**
      * 清理所有临时值
      */
     private void clearAllTempValues() {
-        if (editorState != null) {
-            editorState.clearAll();
-            return;
-        }
         editorState.clearAll();
-        errorCounts.clear(); // 清空所有错误计数
     }
 
     /**
@@ -2784,14 +2769,7 @@ public class PropertyPanelComponent implements EditorComponent {
      * @param propName 属性名
      */
     private void markPropertyBeingEdited(INode node, String propName) {
-        if (editorState != null) {
-            editorState.markPropertyBeingEdited(node, propName);
-            return;
-        }
         editorState.markPropertyBeingEdited(node, propName);
-        String key = getTempValueKey(node, propName);
-        propertiesBeingEdited.put(key, System.currentTimeMillis());
-        NodeCraft.LOGGER.trace("属性 {} 标记为正在编辑。", key);
     }
 
     /**
@@ -2802,7 +2780,6 @@ public class PropertyPanelComponent implements EditorComponent {
     private void markPropertyEditingFinished(INode node, String propName) {
         editorState.markPropertyEditingFinished(node, propName);
         String key = getTempValueKey(node, propName);
-        propertiesBeingEdited.remove(key);
         NodeCraft.LOGGER.trace("属性 {} 标记为编辑完成。", key);
     }
 
@@ -2813,19 +2790,7 @@ public class PropertyPanelComponent implements EditorComponent {
      * @return 是否正在被编辑
      */
     private boolean isPropertyBeingEdited(INode node, String propName) {
-        if (true) return editorState.isPropertyBeingEdited(node, propName);
-        String key = getTempValueKey(node, propName);
-        Long timestamp = propertiesBeingEdited.get(key);
-        if (timestamp == null) {
-            return false;
-        }
-        // 检查是否过期
-        if (System.currentTimeMillis() - timestamp > EDIT_LOCK_TIMEOUT) {
-            propertiesBeingEdited.remove(key); // 移除过期锁
-            NodeCraft.LOGGER.debug("属性 {} 的编辑锁已过期并移除。", key);
-            return false;
-        }
-        return true;
+        return editorState.isPropertyBeingEdited(node, propName);
     }
 
     /**
@@ -2834,15 +2799,6 @@ public class PropertyPanelComponent implements EditorComponent {
      */
     private void checkAndCleanExpiredEditLocks() {
         editorState.checkAndCleanExpiredEditLocks();
-        long currentTime = System.currentTimeMillis();
-        // 使用迭代器安全地移除 Map 中的元素
-        propertiesBeingEdited.entrySet().removeIf(entry -> {
-            boolean expired = (currentTime - entry.getValue()) > EDIT_LOCK_TIMEOUT;
-            if (expired) {
-                NodeCraft.LOGGER.debug("清理过期编辑锁: {}", entry.getKey());
-            }
-            return expired;
-        });
     }
 
     // 修改为使用节点ID和属性名作为键
