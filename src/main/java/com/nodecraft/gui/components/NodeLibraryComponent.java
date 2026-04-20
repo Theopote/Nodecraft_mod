@@ -17,7 +17,6 @@ import java.util.concurrent.ConcurrentMap;
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.gui.node.NodeInfo;
-import com.nodecraft.gui.style.MinecraftTheme;
 import com.nodecraft.nodesystem.registry.NodeRegistry.NodeCategory;
 import com.nodecraft.gui.components.NodeCategoryPresentationMapper.CategoryPresentation;
 import com.nodecraft.gui.utils.NodeIconManager;
@@ -304,7 +303,8 @@ public class NodeLibraryComponent implements EditorComponent {
                     ImGuiWindowFlags.NoCollapse |
                     ImGuiWindowFlags.NoTitleBar;
 
-            nodeLibraryChildBegin = ImGui.beginChild("nodeLibrary", nodePanelWidth, contentHeight, true, windowFlags);
+            // 外层 LayoutRenderer 已提供 child 背景（ChildBg）；这里不再叠加第二层底色，避免文字发灰
+            nodeLibraryChildBegin = ImGui.beginChild("nodeLibrary", nodePanelWidth, contentHeight, false, windowFlags);
 
             if (!nodeLibraryChildBegin) {
                 NodeCraft.LOGGER.warn("Failed to begin nodeLibrary child window");
@@ -312,18 +312,6 @@ public class NodeLibraryComponent implements EditorComponent {
             }
 
             try {
-                // Draw a distinct panel background for the node library.
-                ImDrawList drawList = ImGui.getWindowDrawList();
-                ImVec2 windowPos = ImGui.getWindowPos();
-                int nodeLibraryBgColor = ImGui.colorConvertFloat4ToU32(0.15f, 0.15f, 0.2f, MinecraftTheme.getPanelAlpha());
-                drawList.addRectFilled(
-                        windowPos.x,
-                        windowPos.y,
-                        windowPos.x + nodePanelWidth,
-                        windowPos.y + contentHeight,
-                        nodeLibraryBgColor
-                );
-
                 // Search bar.
                 renderSearchBar();
 
