@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**275**
+- **节点总数**：**278**
 - **分类总数**：**45**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -13,7 +13,7 @@
 | `geometry.boolean` | 5 |
 | `geometry.curves` | 10 |
 | `geometry.primitives` | 19 |
-| `geometry.profiles` | 5 |
+| `geometry.profiles` | 6 |
 | `geometry.solids` | 16 |
 | `input.basic` | 2 |
 | `input.context` | 4 |
@@ -38,12 +38,12 @@
 | `pattern.grid` | 2 |
 | `pattern.linear` | 2 |
 | `pattern.radial` | 1 |
-| `pattern.surface_volume_distribution` | 3 |
+| `pattern.surface_volume_distribution` | 4 |
 | `reference.frames` | 2 |
 | `reference.planes` | 5 |
 | `reference.points` | 16 |
 | `reference.vectors` | 11 |
-| `transform.basic_transforms` | 8 |
+| `transform.basic_transforms` | 9 |
 | `transform.deformations` | 1 |
 | `transform.orientation` | 2 |
 | `utilities.assist` | 4 |
@@ -110,7 +110,7 @@
 | Deconstruct Tetrahedron | `geometry.primitives.deconstruct_tetrahedron` | Extracts center, edge length, vertices, bounds, and analytical values from tetrahedron geometry | `DeconstructTetrahedronNode` |
 | Deconstruct Prism | `geometry.primitives.deconstruct_prism` | Extracts base polygon, top polygon, extrusion, side surface strip, and bounds from prism geometry | `DeconstructPrismNode` |
 
-## geometry.profiles（5）
+## geometry.profiles（6）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -119,6 +119,7 @@
 | Polygon By Points | `geometry.profiles.custom_profile` | Constructs a planar polygon profile from an ordered point list | `PolygonByPointsNode` |
 | Resample Polygon Profile | `geometry.profiles.resample_profile` | Resamples a polygon profile to a target edge count using perimeter-distance sampling | `ResamplePolygonProfileNode` |
 | Deconstruct Polygon Profile | `geometry.profiles.deconstruct_profile` | Extracts points, boundary, plane, center, perimeter, and area from a polygon profile | `DeconstructPolygonProfileNode` |
+| Convex Hull 2D On Plane | `geometry.profiles.convex_hull_plane` | Projects points into a plane, computes their 2D convex hull, and outputs a closed polygon profile | `ConvexHull2DOnPlaneNode` |
 
 ## geometry.solids（16）
 
@@ -381,13 +382,14 @@
 |---|---|---|---|
 | 极坐标阵列 | `pattern.radial.polar_array` | 将坐标列表绕中心点重复旋转排列 | `PolarArrayNode` |
 
-## pattern.surface_volume_distribution（3）
+## pattern.surface_volume_distribution（4）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | 区域填充 | `pattern.surface_volume_distribution.populate_region` | 在指定区域内随机或均匀生成坐标列表 | `PopulateRegionNode` |
 | Sample Sphere Surface | `pattern.surface_volume_distribution.sample_surface` | Samples points and normals on a sphere surface for scattering and growth workflows | `SampleSphereSurfaceNode` |
 | Scatter On Sphere Surface | `pattern.surface_volume_distribution.surface_scatter` | Scatters points on a sphere surface and outputs matching normals and optional snapped block coordinates | `ScatterOnSphereSurfaceNode` |
+| Poisson Disk On Plane | `pattern.surface_volume_distribution.poisson_disk_plane` | Samples points on a plane inside a UV rectangle with minimum separation using rejection sampling | `PoissonDiskOnPlaneNode` |
 
 ## reference.frames（2）
 
@@ -443,7 +445,7 @@
 | 向量标量除法 | `reference.vectors.vector_scalar_divide` | 向量除以标量 (Vector / Scalar) | `VectorScalarDivideNode` |
 | Angle Between Vectors | `reference.vectors.angle_between` | Angle between two vectors in radians and degrees; optional reference vector yields a signed angle | `AngleBetweenVectorsNode` |
 
-## transform.basic_transforms（8）
+## transform.basic_transforms（9）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -455,6 +457,7 @@
 | Offset Box Face | `transform.basic_transforms.offset_face` | Offsets a box face along its normal without modifying the source box geometry | `OffsetBoxFaceNode` |
 | Inset Box Face | `transform.basic_transforms.inset_face` | Creates an inset or outset reference face boundary from a box face without modifying the source box | `InsetBoxFaceNode` |
 | Mirror Geometry About Plane | `transform.basic_transforms.mirror_geometry_plane` | Mirrors analytic geometry about a plane (recursive for composites and boolean geometry nodes) | `MirrorGeometryAboutPlaneNode` |
+| Mirror Vector List About Plane | `transform.basic_transforms.mirror_vector_list_plane` | Mirrors each point in a list about a plane and outputs Vector3d positions | `MirrorVectorListAboutPlaneNode` |
 
 ## transform.deformations（1）
 
@@ -488,7 +491,7 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Block List Morphology | `utilities.morphology.block_list_morphology` | Dilates or erodes a block list using Manhattan-1 (6-neighbor) morphology iterations | `BlockListMorphologyNode` |
+| Block List Morphology | `utilities.morphology.block_list_morphology` | Dilates or erodes a block list using 6- or 26-neighbor morphology iterations (Connectivity property) | `BlockListMorphologyNode` |
 
 ## utilities.organization（3）
 
