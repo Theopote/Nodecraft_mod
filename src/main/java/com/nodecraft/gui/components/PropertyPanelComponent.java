@@ -161,7 +161,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
     // 函数式接口：属性渲染器
     @FunctionalInterface
-    private interface PropertyRenderer {
+    interface PropertyRenderer {
         /**
          * 渲染属性的UI控件.
          * @param panel 当前属性面板实例 (用于访问 tempValues 等)
@@ -1806,32 +1806,6 @@ public class PropertyPanelComponent implements EditorComponent {
         }
     }
 
-    private String normalizePropertyCategory(String category) {
-        if (category == null) {
-            return "";
-        }
-        String trimmed = category.trim();
-        if (trimmed.isEmpty()) {
-            return "";
-        }
-        return switch (trimmed) {
-            case "精度", "数值", "鏁板€?" -> "数值";
-            case "UI设置", "UI璁剧疆" -> "UI设置";
-            case "范围", "鑼冨洿" -> "范围";
-            default -> trimmed;
-        };
-    }
-
-    private String formatPropertyCategory(String category) {
-        String normalized = normalizePropertyCategory(category);
-        return switch (normalized) {
-            case "UI设置" -> "UI Settings";
-            case "数值" -> "Values";
-            case "范围" -> "Range";
-            default -> formatSingleWord(normalized);
-        };
-    }
-
     private void renderPropertyGroup(List<PropertyDescriptor> props, String categoryInternalName) {
         if (ImGui.beginTable("propertiesTable_" + categoryInternalName, 2,
                 ImGuiTableFlags.Resizable | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersOuter)) {
@@ -2656,12 +2630,6 @@ public class PropertyPanelComponent implements EditorComponent {
         NodeCraft.LOGGER.info("Preview region: {}", region);
     }
 
-    // 清除节点预览
-    private void clearNodePreview() {
-        if (selectedNode == null) return;
-
-        NodeCraft.LOGGER.info("Clear node preview: {}", selectedNode.getId());
-    }
 
     private Map<String, Object> collectConnectedInputs(NodeGraph graph, INode node, Set<UUID> visiting) {
         Map<String, Object> inputs = new HashMap<>();
@@ -3152,7 +3120,7 @@ public class PropertyPanelComponent implements EditorComponent {
             throw new IllegalArgumentException("类型和渲染器都不能为null");
         }
 
-        RENDERER_REGISTRY.put(type, renderer);
+        PropertyRendererRegistry.registerRenderer(type, renderer);
         NodeCraft.LOGGER.debug("已注册属性渲染器: {}", type.getName());
     }
 
@@ -3163,7 +3131,7 @@ public class PropertyPanelComponent implements EditorComponent {
      */
     private PropertyRenderer getRendererForType(Class<?> type) {
         // 1. 直接检查是否有精确匹配的渲染器
-        PropertyRenderer renderer = RENDERER_REGISTRY.get(type);
+        PropertyRenderer renderer = PropertyRendererRegistry.getRendererForType(type, ENUM_RENDERER);
         if (renderer != null) {
             return renderer;
         }
