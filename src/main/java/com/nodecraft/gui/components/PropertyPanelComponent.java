@@ -59,7 +59,6 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.RecordComponent;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap; // 用于多线程安全的缓存
-import java.util.stream.Collectors;
 
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -1517,6 +1516,10 @@ public class PropertyPanelComponent implements EditorComponent {
             }
         }
     }
+    private boolean usePropertyRendererRegistry() {
+        return true;
+    }
+
     /**
      * 获取节点所属的分类名称
      * @param typeId 节点类型ID
@@ -1675,25 +1678,20 @@ public class PropertyPanelComponent implements EditorComponent {
             return;
         }
 
-        Map<String, List<PropertyDescriptor>> groupedProperties = properties.stream()
-                .collect(Collectors.groupingBy(prop -> PropertyCategoryFormatter.normalize(prop.category)));
+        PropertySectionOrganizer.OrganizedProperties organizedProperties =
+                PropertySectionOrganizer.organize(properties);
 
-        if (groupedProperties.containsKey("")) {
-            List<PropertyDescriptor> uncategorizedProps = groupedProperties.remove("");
-            renderPropertyGroup(uncategorizedProps, "General");
+        if (!organizedProperties.generalProperties().isEmpty()) {
+            renderPropertyGroup(organizedProperties.generalProperties(), "General");
         }
 
-        List<String> categories = new ArrayList<>(groupedProperties.keySet());
-        categories.sort(Comparator.naturalOrder());
-
-        for (String category : categories) {
-            String formattedCategory = PropertyCategoryFormatter.format(category);
-            if (!formattedCategory.isEmpty()) {
+        for (PropertySectionOrganizer.PropertySection section : organizedProperties.sections()) {
+            if (!section.displayName().isEmpty()) {
                 ImGui.pushStyleColor(ImGuiCol.Text, 0.72f, 0.76f, 0.82f, 1.0f);
-                boolean open = ImGui.collapsingHeader(formattedCategory, ImGuiTreeNodeFlags.DefaultOpen);
+                boolean open = ImGui.collapsingHeader(section.displayName(), ImGuiTreeNodeFlags.DefaultOpen);
                 ImGui.popStyleColor();
                 if (open) {
-                    renderPropertyGroup(groupedProperties.get(category), category);
+                    renderPropertyGroup(section.properties(), section.categoryKey());
                 }
             }
         }
@@ -3130,6 +3128,9 @@ public class PropertyPanelComponent implements EditorComponent {
      * @return 对应的渲染器，如果没有注册则返回null
      */
     private PropertyRenderer getRendererForType(Class<?> type) {
+        if (usePropertyRendererRegistry()) {
+            return PropertyRendererRegistry.getRendererForType(type, ENUM_RENDERER);
+        }
         // 1. 直接检查是否有精确匹配的渲染器
         PropertyRenderer renderer = PropertyRendererRegistry.getRendererForType(type, ENUM_RENDERER);
         if (renderer != null) {
