@@ -2808,6 +2808,9 @@ public class PropertyPanelComponent implements EditorComponent {
 
     private List<PropertyDescriptor> getPropertiesForNode(Class<?> nodeClass) {
         // 从缓存获取，如果不存在则计算并存入
+        if (propertyInspector != null) {
+            return propertyInspector.getPropertiesForNode(nodeClass);
+        }
         return propertyCache.computeIfAbsent(nodeClass, clazz -> {
             List<PropertyDescriptor> descriptors = new ArrayList<>();
             Map<String, Method> getters = new HashMap<>();
