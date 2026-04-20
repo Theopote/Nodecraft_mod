@@ -38,7 +38,8 @@ final class PropertyRendererRegistry {
                 ImGui.endDisabled();
             }
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            NodeCraft.LOGGER.error("Failed to render property '{}'", prop.name, e);
+            ImGui.textColored(1.0f, 0.2f, 0.2f, 1.0f, "Error rendering property");
         }
     };
 
