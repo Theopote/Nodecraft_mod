@@ -1500,51 +1500,59 @@ public class PropertyPanelComponent implements EditorComponent {
     private void renderPropertyGroup(List<PropertyDescriptor> props, String categoryInternalName) {
         if (ImGui.beginTable("propertiesTable_" + categoryInternalName, 2,
                 ImGuiTableFlags.Resizable | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersOuter)) {
-            ImGui.tableSetupColumn("Property", ImGuiTableColumnFlags.WidthFixed, ImGui.getContentRegionAvailX() * 0.32f);
-            ImGui.tableSetupColumn("Value", ImGuiTableColumnFlags.WidthStretch);
-            ImGui.tableHeadersRow();
+            try {
+                ImGui.tableSetupColumn("Property", ImGuiTableColumnFlags.WidthFixed, ImGui.getContentRegionAvailX() * 0.32f);
+                ImGui.tableSetupColumn("Value", ImGuiTableColumnFlags.WidthStretch);
+                ImGui.tableHeadersRow();
 
-            List<PropertyDescriptor> sortedProps = new ArrayList<>(props);
-            sortedProps.sort(Comparator.comparingInt((PropertyDescriptor p) -> p.order).thenComparing(p -> p.displayName));
+                List<PropertyDescriptor> sortedProps = new ArrayList<>(props);
+                sortedProps.sort(Comparator.comparingInt((PropertyDescriptor p) -> p.order).thenComparing(p -> p.displayName));
 
-            for (PropertyDescriptor prop : sortedProps) {
-                boolean isDisabled = errorCounts.getOrDefault(prop.name, 0) >= NodeConstants.ERROR_THRESHOLD;
+                for (PropertyDescriptor prop : sortedProps) {
+                    boolean isDisabled = errorCounts.getOrDefault(prop.name, 0) >= NodeConstants.ERROR_THRESHOLD;
 
-                ImGui.tableNextRow();
-                ImGui.tableSetColumnIndex(0);
-                ImGui.text(prop.displayName);
-                if (ImGui.isItemHovered()) {
-                    StringBuilder tooltip = new StringBuilder();
-                    if (prop.description != null && !prop.description.isEmpty()) {
-                        tooltip.append(prop.description);
-                    }
-                    if (prop.setter == null) {
-                        if (!tooltip.isEmpty()) {
-                            tooltip.append("\n");
+                    ImGui.tableNextRow();
+                    ImGui.tableSetColumnIndex(0);
+                    ImGui.text(prop.displayName);
+                    if (ImGui.isItemHovered()) {
+                        StringBuilder tooltip = new StringBuilder();
+                        if (prop.description != null && !prop.description.isEmpty()) {
+                            tooltip.append(prop.description);
                         }
-                        tooltip.append("Read-only property");
-                    }
-                    if (isDisabled) {
-                        if (!tooltip.isEmpty()) {
-                            tooltip.append("\n");
+                        if (prop.setter == null) {
+                            if (!tooltip.isEmpty()) {
+                                tooltip.append("\n");
+                            }
+                            tooltip.append("Read-only property");
                         }
-                        tooltip.append("Temporarily disabled after repeated errors. Reselect the node to reset it.");
+                        if (isDisabled) {
+                            if (!tooltip.isEmpty()) {
+                                tooltip.append("\n");
+                            }
+                            tooltip.append("Temporarily disabled after repeated errors. Reselect the node to reset it.");
+                        }
+                        if (!tooltip.isEmpty()) {
+                            ImGui.setTooltip(tooltip.toString());
+                        }
                     }
-                    if (!tooltip.isEmpty()) {
-                        ImGui.setTooltip(tooltip.toString());
+
+                    ImGui.tableSetColumnIndex(1);
+                    String uniqueId = selectedNode.getId().toString() + "_" + prop.name;
+                    ImGui.pushID(uniqueId);
+                    ImGui.pushItemWidth(-1.0f);
+                    try {
+                        PropertyRenderer renderer = prop.renderer != null ? prop.renderer : getRendererForType(prop.type);
+                        renderer.render(this, selectedNode, prop, isDisabled);
+                    } catch (Throwable e) {
+                        handlePropertyError(prop, e);
+                    } finally {
+                        ImGui.popItemWidth();
+                        ImGui.popID();
                     }
                 }
-
-                ImGui.tableSetColumnIndex(1);
-                String uniqueId = selectedNode.getId().toString() + "_" + prop.name;
-                ImGui.pushID(uniqueId);
-                ImGui.pushItemWidth(-1.0f);
-                PropertyRenderer renderer = prop.renderer != null ? prop.renderer : getRendererForType(prop.type);
-                renderer.render(this, selectedNode, prop, isDisabled);
-                ImGui.popItemWidth();
-                ImGui.popID();
+            } finally {
+                ImGui.endTable();
             }
-            ImGui.endTable();
         }
     }
     private void renderActionButtons() {
