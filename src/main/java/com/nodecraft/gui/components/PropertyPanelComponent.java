@@ -1927,6 +1927,10 @@ public class PropertyPanelComponent implements EditorComponent {
      * 清理当前选中节点的临时值
      */
     private void clearCurrentNodeTempValues() {
+        if (editorState != null) {
+            editorState.clearForNode(selectedNode);
+            return;
+        }
         editorState.clearForNode(selectedNode);
 
         // 只清理当前选中节点的临时值
@@ -1940,6 +1944,10 @@ public class PropertyPanelComponent implements EditorComponent {
      * 清理所有临时值
      */
     private void clearAllTempValues() {
+        if (editorState != null) {
+            editorState.clearAll();
+            return;
+        }
         editorState.clearAll();
         errorCounts.clear(); // 清空所有错误计数
     }
@@ -2778,6 +2786,10 @@ public class PropertyPanelComponent implements EditorComponent {
      * @param propName 属性名
      */
     private void markPropertyBeingEdited(INode node, String propName) {
+        if (editorState != null) {
+            editorState.markPropertyBeingEdited(node, propName);
+            return;
+        }
         editorState.markPropertyBeingEdited(node, propName);
         String key = getTempValueKey(node, propName);
         propertiesBeingEdited.put(key, System.currentTimeMillis());
@@ -2790,6 +2802,10 @@ public class PropertyPanelComponent implements EditorComponent {
      * @param propName 属性名
      */
     private void markPropertyEditingFinished(INode node, String propName) {
+        if (editorState != null) {
+            editorState.markPropertyEditingFinished(node, propName);
+            return;
+        }
         editorState.markPropertyEditingFinished(node, propName);
         String key = getTempValueKey(node, propName);
         propertiesBeingEdited.remove(key);
@@ -2803,6 +2819,7 @@ public class PropertyPanelComponent implements EditorComponent {
      * @return 是否正在被编辑
      */
     private boolean isPropertyBeingEdited(INode node, String propName) {
+        if (true) return editorState.isPropertyBeingEdited(node, propName);
         String key = getTempValueKey(node, propName);
         Long timestamp = propertiesBeingEdited.get(key);
         if (timestamp == null) {
@@ -2822,6 +2839,10 @@ public class PropertyPanelComponent implements EditorComponent {
      * 定期调用，移除所有超时的编辑锁
      */
     private void checkAndCleanExpiredEditLocks() {
+        if (editorState != null) {
+            editorState.checkAndCleanExpiredEditLocks();
+            return;
+        }
         editorState.checkAndCleanExpiredEditLocks();
         long currentTime = System.currentTimeMillis();
         // 使用迭代器安全地移除 Map 中的元素
@@ -2836,7 +2857,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
     // 修改为使用节点ID和属性名作为键
     private String getTempValueKey(INode node, String propName) {
-        return node.getId().toString() + "_" + propName;
+        return editorState.getTempValueKey(node, propName);
     }
 
     private List<PropertyDescriptor> getPropertiesForNode(Class<?> nodeClass) {
