@@ -1928,14 +1928,10 @@ public class PropertyPanelComponent implements EditorComponent {
      */
     private void clearCurrentNodeTempValues() {
         editorState.clearForNode(selectedNode);
-        if (selectedNode == null) return;
 
         // 只清理当前选中节点的临时值
-        String nodeIdPrefix = selectedNode.getId().toString() + "_";
-        tempValues.entrySet().removeIf(entry -> entry.getKey().startsWith(nodeIdPrefix));
 
         // 清理编辑状态
-        propertiesBeingEdited.entrySet().removeIf(entry -> entry.getKey().startsWith(nodeIdPrefix));
 
         errorCounts.clear(); // 清理当前节点的错误计数
     }
