@@ -301,7 +301,7 @@ public class NodeLibraryComponent implements EditorComponent {
                     ImGuiWindowFlags.NoTitleBar;
 
             // 外层 LayoutRenderer 已提供 child 背景（ChildBg）；这里不再叠加第二层底色，避免文字发灰
-            nodeLibraryChildBegin = ImGui.beginChild("nodeLibrary", nodePanelWidth, contentHeight, false, windowFlags);
+            nodeLibraryChildBegin = ImGui.beginChild("nodeLibrary", nodePanelWidth, contentHeight, true, windowFlags);
 
             if (!nodeLibraryChildBegin) {
                 NodeCraft.LOGGER.warn("Failed to begin nodeLibrary child window");
