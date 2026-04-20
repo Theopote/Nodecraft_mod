@@ -2,7 +2,6 @@ package com.nodecraft.gui.components;
 
 import com.nodecraft.core.NodeCraft; // For logging
 import com.nodecraft.nodesystem.api.INode;
-import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.datatypes.LSystemRule;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
@@ -1488,7 +1487,7 @@ public class PropertyPanelComponent implements EditorComponent {
     }
     private void renderNodeInfo() {
         String typeId = selectedNode.getTypeId();
-        String categoryName = getCategoryNameForNode(typeId);
+        String categoryName = NodeStatusPresenter.getCategoryNameForNode(typeId);
 
         ImGui.text("Name: " + selectedNode.getDisplayName());
         ImGui.text("Category: " + categoryName);
@@ -1503,8 +1502,8 @@ public class PropertyPanelComponent implements EditorComponent {
         ImGui.text("Status: ");
         ImGui.sameLine();
 
-        String nodeStatus = getNodeStatus();
-        ImVec4 statusColor = getStatusColor(nodeStatus);
+        String nodeStatus = NodeStatusPresenter.getNodeStatus(selectedNode);
+        ImVec4 statusColor = NodeStatusPresenter.getStatusColor(nodeStatus);
 
         ImGui.textColored(statusColor.x, statusColor.y, statusColor.z, statusColor.w, nodeStatus);
 
@@ -1514,156 +1513,11 @@ public class PropertyPanelComponent implements EditorComponent {
             if (ImGui.isItemHovered()) {
                 ImGui.beginTooltip();
                 ImGui.pushTextWrapPos(ImGui.getFontSize() * 22.0f);
-                ImGui.textUnformatted(getNodeStatusMessage());
+                ImGui.textUnformatted(NodeStatusPresenter.getNodeStatusMessage(nodeStatus));
                 ImGui.popTextWrapPos();
                 ImGui.endTooltip();
             }
         }
-    }
-    /**
-     * 获取节点所属的分类名称
-     * @param typeId 节点类型ID
-     * @return 分类显示名称
-     */
-    private String getCategoryNameForNode(String typeId) {
-        if (typeId == null || typeId.isEmpty()) {
-            return "Unknown";
-        }
-
-        // 从typeId中提取分类部分
-        String categoryId = "";
-        int firstDotIndex = typeId.indexOf('.');
-        if (firstDotIndex != -1) {
-            categoryId = typeId.substring(0, firstDotIndex);
-        }
-
-        try {
-            // 获取NodeRegistry实例
-            com.nodecraft.nodesystem.registry.NodeRegistry registry = com.nodecraft.nodesystem.registry.NodeRegistry.getInstance();
-            if (registry != null) {
-                // 尝试获取分类对象
-                com.nodecraft.nodesystem.registry.NodeRegistry.NodeCategory category = registry.getCategory(categoryId);
-                if (category != null) {
-                    // 返回分类的显示名称
-                    return category.getDisplayName();
-                }
-            }
-        } catch (Exception e) {
-            // 如果发生错误，记录日志并使用备用格式化
-            NodeCraft.LOGGER.error("Failed to resolve node category: {}", e.getMessage());
-        }
-
-        // 如果无法通过注册表获取分类，则进行简单格式化
-        if (!categoryId.isEmpty()) {
-            return formatSingleWord(categoryId); // 使用 formatSingleWord 来格式化一级分类
-        }
-
-        // 回退：尝试使用类型ID的第一部分作为分类
-        String[] parts = typeId.split("\\.");
-        return parts.length > 0 ? formatSingleWord(parts[0]) : "Uncategorized";
-    }
-
-    /**
-     * 格式化单个单词（例如，将 "my_category" 格式化为 "My Category"）
-     */
-    private String formatSingleWord(String word) {
-        if (word == null || word.isEmpty()) {
-            return "";
-        }
-        // 将下划线替换为空格，然后转换为驼峰式（每个单词首字母大写）
-        String[] parts = word.split("_");
-        StringBuilder formatted = new StringBuilder();
-        for (String part : parts) {
-            if (!part.isEmpty()) {
-                formatted.append(Character.toUpperCase(part.charAt(0)));
-                formatted.append(part.substring(1).toLowerCase());
-                formatted.append(" "); // 每个单词后添加空格
-            }
-        }
-        return formatted.toString().trim(); // 去掉尾部空格
-    }
-
-    // 获取节点状态 (示例实现，需要根据实际节点系统修改)
-    private String getNodeStatus() {
-        if (selectedNode == null) return "Unselected";
-
-        try {
-            Method getErrorMethod = selectedNode.getClass().getMethod("getErrorState");
-            Object errorState = getErrorMethod.invoke(selectedNode);
-            if (errorState instanceof String && !((String) errorState).isEmpty()) {
-                return "Error";
-            }
-            if (errorState instanceof Boolean && (Boolean) errorState) {
-                return "Error";
-            }
-        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {
-        }
-
-        boolean hasOutputPorts = !selectedNode.getOutputPorts().isEmpty();
-        boolean allOutputsConnected = true;
-        if (hasOutputPorts) {
-            for (IPort port : selectedNode.getOutputPorts()) {
-                if (!port.isConnected()) {
-                    allOutputsConnected = false;
-                    break;
-                }
-            }
-            if (!allOutputsConnected) {
-                return "Warning";
-            }
-        }
-
-        boolean hasInputPorts = !selectedNode.getInputPorts().isEmpty();
-        boolean allInputsReady = true;
-        if (hasInputPorts) {
-            for (IPort port : selectedNode.getInputPorts()) {
-                if (!port.isConnected() && port.getValue() == null) {
-                    allInputsReady = false;
-                    break;
-                }
-            }
-            if (!allInputsReady) {
-                return "Warning";
-            }
-        }
-
-        if (selectedNode instanceof BaseNode) {
-            Object nodeState = selectedNode.getNodeState();
-            if (nodeState instanceof Map<?, ?> stateMap && stateMap.containsKey("status")) {
-                Object status = stateMap.get("status");
-                if (status instanceof String statusString) {
-                    if (statusString.equals("calculating")) return "Calculating";
-                    if (statusString.equals("disabled")) return "Disabled";
-                }
-            }
-        }
-
-        return "Ready";
-    }
-
-    private String getNodeStatusMessage() {
-        String status = getNodeStatus();
-
-        return switch (status) {
-            case "Error" -> "The node failed to evaluate and could not produce a valid result.";
-            case "Warning" -> "The node has missing links or incomplete input/output state.";
-            case "Calculating" -> "The node is currently evaluating.";
-            case "Disabled" -> "The node is disabled and will not participate in execution.";
-            case "Ready" -> "The node is ready.";
-            case "Unselected" -> "No node is currently selected.";
-            default -> "Unknown node status.";
-        };
-    }
-
-    private ImVec4 getStatusColor(String status) {
-        return switch (status) {
-            case "Error" -> new ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
-            case "Warning" -> new ImVec4(1.0f, 0.9f, 0.3f, 1.0f);
-            case "Calculating" -> new ImVec4(0.3f, 0.7f, 1.0f, 1.0f);
-            case "Disabled" -> new ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
-            case "Ready" -> new ImVec4(0.3f, 0.9f, 0.3f, 1.0f);
-            default -> new ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-        };
     }
     private void renderNodeProperties() {
         if (selectedNode == null) return;
