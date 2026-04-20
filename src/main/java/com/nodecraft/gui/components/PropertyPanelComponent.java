@@ -1516,10 +1516,6 @@ public class PropertyPanelComponent implements EditorComponent {
             }
         }
     }
-    private boolean usePropertyRendererRegistry() {
-        return true;
-    }
-
     /**
      * 获取节点所属的分类名称
      * @param typeId 节点类型ID
@@ -3030,40 +3026,6 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     // 渲染器注册表：类型 -> 渲染器
-    private static final Map<Class<?>, PropertyRenderer> RENDERER_REGISTRY = new HashMap<>();
-
-    // 回退渲染器，用于处理没有专门渲染器的类型
-    private static final PropertyRenderer FALLBACK_RENDERER = (panel, node, prop, isDisabled) -> {
-        try {
-            Object value = prop.getter.invoke(node);
-            if (value == null) {
-                ImGui.textDisabled("(空)");
-                return;
-            }
-
-            // 对只读属性进行禁用处理
-            boolean isReadOnly = prop.setter == null || isDisabled;
-            if (isReadOnly) ImGui.beginDisabled();
-
-            ImGui.text(value.toString());
-
-            // 对于集合类型，显示大小信息
-            if (value instanceof Collection<?> collection) {
-                ImGui.sameLine();
-                ImGui.textDisabled("(" + collection.size() + " 项)");
-            } else if (value instanceof Map<?,?> map) {
-                ImGui.sameLine();
-                ImGui.textDisabled("(" + map.size() + " 键值对)");
-            }
-
-            if (isReadOnly) ImGui.endDisabled();
-
-        } catch (Throwable e) { // 捕获 Throwable
-            panel.handlePropertyError(prop, e);
-        }
-    };
-
-    // 静态初始化代码块，注册默认渲染器
     static {
         // 注册基本类型渲染器
         registerRenderer(boolean.class, BOOLEAN_RENDERER);
@@ -3128,31 +3090,7 @@ public class PropertyPanelComponent implements EditorComponent {
      * @return 对应的渲染器，如果没有注册则返回null
      */
     private PropertyRenderer getRendererForType(Class<?> type) {
-        if (usePropertyRendererRegistry()) {
-            return PropertyRendererRegistry.getRendererForType(type, ENUM_RENDERER);
-        }
-        // 1. 直接检查是否有精确匹配的渲染器
-        PropertyRenderer renderer = PropertyRendererRegistry.getRendererForType(type, ENUM_RENDERER);
-        if (renderer != null) {
-            return renderer;
-        }
-
-        // 2. 如果是枚举类型，返回枚举渲染器
-        if (type.isEnum()) {
-            return ENUM_RENDERER;
-        }
-
-        // 3. 尝试为子类找到合适的渲染器（处理继承关系）
-        // 遍历所有已注册的渲染器，看是否有其 Key 是给定 Type 的父类或接口
-        for (Map.Entry<Class<?>, PropertyRenderer> entry : RENDERER_REGISTRY.entrySet()) {
-            if (entry.getKey().isAssignableFrom(type)) {
-                // 找到了匹配的父类渲染器
-                return entry.getValue();
-            }
-        }
-
-        // 4. 对于没有注册渲染器的类型，返回回退渲染器
-        return FALLBACK_RENDERER;
+        return PropertyRendererRegistry.getRendererForType(type, ENUM_RENDERER);
     }
 
     private String extractPropertyName(String methodName, String prefix) {
