@@ -127,54 +127,6 @@ public class PropertyPanelComponent implements EditorComponent {
         }
     }
 
-    // 内部类：属性描述符
-    static class PropertyDescriptor {
-        final String name; // 属性的规范名称, e.g., "nodeName"
-        final String displayName; // UI显示的名称, e.g., "Node Name"
-        final Class<?> type;
-        final MethodAccessor getter;
-        final MethodAccessor setter; // Setter可以为null，表示只读属性
-        final PropertyRenderer renderer;
-        final String description; // 属性描述，用于工具提示
-        final String category; // 属性分类
-        final int order; // 排序顺序
-        // boolean disabled; // 禁用状态由 errorCounts 和当前节点选择决定，不存储在描述符中
-
-        PropertyDescriptor(String name, String displayName, Class<?> type, MethodAccessor getter, MethodAccessor setter,
-                           PropertyRenderer renderer, String description, String category, int order) {
-            this.name = name;
-            this.displayName = displayName;
-            this.type = type;
-            this.getter = getter;
-            this.setter = setter;
-            this.renderer = renderer;
-            this.description = description;
-            this.category = category;
-            this.order = order;
-            // this.disabled = false; // 移除此字段
-        }
-    }
-
-    // 函数式接口：属性渲染器
-    @FunctionalInterface
-    interface PropertyRenderer {
-        /**
-         * 渲染属性的UI控件.
-         * @param panel 当前属性面板实例 (用于访问 tempValues 等)
-         * @param node 当前选中的节点
-         * @param prop 当前属性的描述符
-         * @param isDisabled 当前属性是否因为错误而被禁用
-         */
-        void render(PropertyPanelComponent panel, INode node, PropertyDescriptor prop, boolean isDisabled);
-    }
-
-    // 接口：方法访问器
-    interface MethodAccessor {
-        Object invoke(Object obj, Object... args) throws Throwable; // 统一为 Throwable，因为 MethodHandle.invoke 可以抛出任意 Throwable
-        Class<?> getReturnType();
-        Class<?>[] getParameterTypes();
-    }
-
     // --- 各种类型的渲染器实现 ---
     private static final PropertyRenderer BOOLEAN_RENDERER = (panel, node, prop, isDisabled) -> {
         if (isDisabled) {

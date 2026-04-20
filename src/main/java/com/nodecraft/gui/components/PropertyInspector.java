@@ -1,8 +1,6 @@
 package com.nodecraft.gui.components;
 
 import com.nodecraft.core.NodeCraft;
-import com.nodecraft.gui.components.PropertyPanelComponent.MethodAccessor;
-import com.nodecraft.gui.components.PropertyPanelComponent.PropertyDescriptor;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;

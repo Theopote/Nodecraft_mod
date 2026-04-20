@@ -9,9 +9,9 @@ import java.util.Map;
 
 final class PropertyRendererRegistry {
 
-    private static final Map<Class<?>, PropertyPanelComponent.PropertyRenderer> REGISTRY = new HashMap<>();
+    private static final Map<Class<?>, PropertyRenderer> REGISTRY = new HashMap<>();
 
-    private static final PropertyPanelComponent.PropertyRenderer FALLBACK_RENDERER = (panel, node, prop, isDisabled) -> {
+    private static final PropertyRenderer FALLBACK_RENDERER = (panel, node, prop, isDisabled) -> {
         try {
             Object value = prop.getter.invoke(node);
             if (value == null) {
@@ -46,7 +46,7 @@ final class PropertyRendererRegistry {
     private PropertyRendererRegistry() {
     }
 
-    static void registerRenderer(Class<?> type, PropertyPanelComponent.PropertyRenderer renderer) {
+    static void registerRenderer(Class<?> type, PropertyRenderer renderer) {
         if (type == null || renderer == null) {
             throw new IllegalArgumentException("type and renderer must not be null");
         }
@@ -55,11 +55,11 @@ final class PropertyRendererRegistry {
         NodeCraft.LOGGER.debug("Registered property renderer: {}", type.getName());
     }
 
-    static PropertyPanelComponent.PropertyRenderer getRendererForType(
+    static PropertyRenderer getRendererForType(
             Class<?> type,
-            PropertyPanelComponent.PropertyRenderer enumRenderer
+            PropertyRenderer enumRenderer
     ) {
-        PropertyPanelComponent.PropertyRenderer renderer = REGISTRY.get(type);
+        PropertyRenderer renderer = REGISTRY.get(type);
         if (renderer != null) {
             return renderer;
         }
@@ -68,7 +68,7 @@ final class PropertyRendererRegistry {
             return enumRenderer;
         }
 
-        for (Map.Entry<Class<?>, PropertyPanelComponent.PropertyRenderer> entry : REGISTRY.entrySet()) {
+        for (Map.Entry<Class<?>, PropertyRenderer> entry : REGISTRY.entrySet()) {
             if (entry.getKey().isAssignableFrom(type)) {
                 return entry.getValue();
             }

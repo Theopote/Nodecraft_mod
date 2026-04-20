@@ -11,11 +11,11 @@ final class PropertySectionOrganizer {
     private PropertySectionOrganizer() {
     }
 
-    static OrganizedProperties organize(List<PropertyPanelComponent.PropertyDescriptor> properties) {
-        Map<String, List<PropertyPanelComponent.PropertyDescriptor>> groupedProperties = properties.stream()
+    static OrganizedProperties organize(List<PropertyDescriptor> properties) {
+        Map<String, List<PropertyDescriptor>> groupedProperties = properties.stream()
                 .collect(Collectors.groupingBy(prop -> PropertyCategoryFormatter.normalize(prop.category)));
 
-        List<PropertyPanelComponent.PropertyDescriptor> generalProperties = List.of();
+        List<PropertyDescriptor> generalProperties = List.of();
         if (groupedProperties.containsKey("")) {
             generalProperties = List.copyOf(groupedProperties.remove(""));
         }
@@ -35,7 +35,7 @@ final class PropertySectionOrganizer {
     }
 
     record OrganizedProperties(
-            List<PropertyPanelComponent.PropertyDescriptor> generalProperties,
+            List<PropertyDescriptor> generalProperties,
             List<PropertySection> sections
     ) {
     }
@@ -43,7 +43,7 @@ final class PropertySectionOrganizer {
     record PropertySection(
             String categoryKey,
             String displayName,
-            List<PropertyPanelComponent.PropertyDescriptor> properties
+            List<PropertyDescriptor> properties
     ) {
     }
 }
