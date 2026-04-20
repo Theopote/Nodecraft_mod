@@ -1970,7 +1970,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
                                 for (IPort sourcePort : sourceNode.getOutputPorts()) {
                                     if (sourcePort.getId().equals(sourcePortId)) {
-                                        Object value = resolveNodeOutput(graph, sourceNode, sourcePortId, new HashSet<>());
+                                        Object value = NodeOutputResolver.resolveNodeOutput(graph, sourceNode, sourcePortId);
                                         ImGui.textWrapped(PropertyValueFormatter.formatValuePreview(value));
                                         if (ImGui.isItemHovered()) {
                                             ImGui.setTooltip(PropertyValueFormatter.formatValueDetails(value, "Input Data"));
@@ -2023,7 +2023,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
                 NodeGraph graph = getNodeGraph();
                 Object value = graph != null
-                        ? resolveNodeOutput(graph, selectedNode, port.getId(), new HashSet<>())
+                        ? NodeOutputResolver.resolveNodeOutput(graph, selectedNode, port.getId())
                         : selectedNode.getOutput(port.getId());
                 if (value != null) {
                     ImGui.textWrapped(PropertyValueFormatter.formatValuePreview(value));
@@ -2363,99 +2363,6 @@ public class PropertyPanelComponent implements EditorComponent {
         if (selectedNode == null) return;
         NodeCraft.LOGGER.info("Preview region: {}", region);
     }
-
-
-    private Map<String, Object> collectConnectedInputs(NodeGraph graph, INode node, Set<UUID> visiting) {
-        Map<String, Object> inputs = new HashMap<>();
-        if (graph == null || node == null) {
-            return inputs;
-        }
-
-        Map<String, IPort> inputPortsById = new HashMap<>();
-        for (IPort port : node.getInputPorts()) {
-            inputPortsById.put(port.getId(), port);
-        }
-
-        for (NodeGraph.Connection connection : graph.getConnections()) {
-            if (connection.targetNode.getId().equals(node.getId())) {
-                Object value = resolveNodeOutput(graph, connection.sourceNode, connection.sourcePort.getId(), visiting);
-                mergeCollectedInput(inputs, inputPortsById.get(connection.targetPort.getId()), value);
-            }
-        }
-        return inputs;
-    }
-
-    private void mergeCollectedInput(Map<String, Object> inputs, IPort targetPort, Object value) {
-        if (targetPort == null) {
-            return;
-        }
-
-        String portId = targetPort.getId();
-        if (targetPort.allowsMultipleIncomingConnections()) {
-            List<Object> values = null;
-            Object existing = inputs.get(portId);
-            if (existing instanceof List<?> existingList) {
-                values = new ArrayList<>(existingList);
-            }
-            if (values == null) {
-                values = new ArrayList<>();
-                if (existing != null) {
-                    values.add(existing);
-                }
-            }
-            values.add(value);
-            inputs.put(portId, values);
-            return;
-        }
-
-        inputs.put(portId, value);
-    }
-
-    private Object resolveNodeOutput(NodeGraph graph, INode node, String outputPortId, Set<UUID> visiting) {
-        if (node == null || outputPortId == null) {
-            return null;
-        }
-
-        if (visiting.contains(node.getId())) {
-            Object cached = node.getOutput(outputPortId);
-            return cached != null ? cached : getPortValue(node, outputPortId, false);
-        }
-
-        boolean hasIncomingConnections = false;
-        for (NodeGraph.Connection connection : graph.getConnections()) {
-            if (connection.targetNode.getId().equals(node.getId())) {
-                hasIncomingConnections = true;
-                break;
-            }
-        }
-
-        if (hasIncomingConnections) {
-            visiting.add(node.getId());
-            try {
-                Map<String, Object> inputs = collectConnectedInputs(graph, node, visiting);
-                for (IPort port : node.getInputPorts()) {
-                    inputs.putIfAbsent(port.getId(), port.getValue());
-                }
-                node.compute(inputs);
-            } finally {
-                visiting.remove(node.getId());
-            }
-        }
-
-        Object value = node.getOutput(outputPortId);
-        return value != null ? value : getPortValue(node, outputPortId, false);
-    }
-
-    private Object getPortValue(INode node, String portId, boolean inputPort) {
-        List<IPort> ports = inputPort ? node.getInputPorts() : node.getOutputPorts();
-        for (IPort port : ports) {
-            if (port.getId().equals(portId)) {
-                return port.getValue();
-            }
-        }
-        return null;
-    }
-
     // 记录节点性能数据的字段
     private double lastExecutionTime = 0;
     private double averageExecutionTime = 0;

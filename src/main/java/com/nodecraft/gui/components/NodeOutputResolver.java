@@ -1,0 +1,112 @@
+package com.nodecraft.gui.components;
+
+import com.nodecraft.nodesystem.api.INode;
+import com.nodecraft.nodesystem.api.IPort;
+import com.nodecraft.nodesystem.graph.NodeGraph;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+final class NodeOutputResolver {
+
+    private NodeOutputResolver() {
+    }
+
+    static Object resolveNodeOutput(NodeGraph graph, INode node, String outputPortId) {
+        return resolveNodeOutput(graph, node, outputPortId, new java.util.HashSet<>());
+    }
+
+    private static Map<String, Object> collectConnectedInputs(NodeGraph graph, INode node, Set<UUID> visiting) {
+        Map<String, Object> inputs = new HashMap<>();
+        if (graph == null || node == null) {
+            return inputs;
+        }
+
+        Map<String, IPort> inputPortsById = new HashMap<>();
+        for (IPort port : node.getInputPorts()) {
+            inputPortsById.put(port.getId(), port);
+        }
+
+        for (NodeGraph.Connection connection : graph.getConnections()) {
+            if (connection.targetNode.getId().equals(node.getId())) {
+                Object value = resolveNodeOutput(graph, connection.sourceNode, connection.sourcePort.getId(), visiting);
+                mergeCollectedInput(inputs, inputPortsById.get(connection.targetPort.getId()), value);
+            }
+        }
+        return inputs;
+    }
+
+    private static void mergeCollectedInput(Map<String, Object> inputs, IPort targetPort, Object value) {
+        if (targetPort == null) {
+            return;
+        }
+
+        String portId = targetPort.getId();
+        if (targetPort.allowsMultipleIncomingConnections()) {
+            List<Object> values = null;
+            Object existing = inputs.get(portId);
+            if (existing instanceof List<?> existingList) {
+                values = new ArrayList<>(existingList);
+            }
+            if (values == null) {
+                values = new ArrayList<>();
+                if (existing != null) {
+                    values.add(existing);
+                }
+            }
+            values.add(value);
+            inputs.put(portId, values);
+            return;
+        }
+
+        inputs.put(portId, value);
+    }
+
+    private static Object resolveNodeOutput(NodeGraph graph, INode node, String outputPortId, Set<UUID> visiting) {
+        if (node == null || outputPortId == null) {
+            return null;
+        }
+
+        if (visiting.contains(node.getId())) {
+            Object cached = node.getOutput(outputPortId);
+            return cached != null ? cached : getPortValue(node, outputPortId, false);
+        }
+
+        boolean hasIncomingConnections = false;
+        for (NodeGraph.Connection connection : graph.getConnections()) {
+            if (connection.targetNode.getId().equals(node.getId())) {
+                hasIncomingConnections = true;
+                break;
+            }
+        }
+
+        if (hasIncomingConnections) {
+            visiting.add(node.getId());
+            try {
+                Map<String, Object> inputs = collectConnectedInputs(graph, node, visiting);
+                for (IPort port : node.getInputPorts()) {
+                    inputs.putIfAbsent(port.getId(), port.getValue());
+                }
+                node.compute(inputs);
+            } finally {
+                visiting.remove(node.getId());
+            }
+        }
+
+        Object value = node.getOutput(outputPortId);
+        return value != null ? value : getPortValue(node, outputPortId, false);
+    }
+
+    private static Object getPortValue(INode node, String portId, boolean inputPort) {
+        List<IPort> ports = inputPort ? node.getInputPorts() : node.getOutputPorts();
+        for (IPort port : ports) {
+            if (port.getId().equals(portId)) {
+                return port.getValue();
+            }
+        }
+        return null;
+    }
+}
