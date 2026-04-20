@@ -41,6 +41,9 @@ public class NodeLibraryComponent implements EditorComponent {
 
     private static final NodeCategoryPresentationMapper PRESENTATION_MAPPER = new NodeCategoryPresentationMapper();
 
+    /** 与属性面板 {@code PropertyPanelComponent} 分组标题一致的文字色 */
+    private static final int SECTION_HEADER_TEXT_COLOR = ImGui.colorConvertFloat4ToU32(0.72f, 0.76f, 0.82f, 1.0f);
+
     // Inner record for display purposes
     private record DisplayCategory(CategoryPresentation presentation, List<NodeInfo> displayNodes) {
         String getDisplayName() { return presentation.displayName(); }
@@ -715,81 +718,20 @@ public class NodeLibraryComponent implements EditorComponent {
      * @param shouldExpand whether the category should be forced open
      */
     private void renderCategory(DisplayCategory displayCategory, int level, boolean shouldExpand) {
-        // Default to expanded when a state entry is missing.
-        boolean isExpanded = expandedCategories.getOrDefault(displayCategory.getId(), true);
-
         boolean hasNodes = !displayCategory.getNodes().isEmpty();
 
         // Matching categories stay expanded in search mode.
         if (shouldExpand && hasNodes) {
-            isExpanded = true;
             expandedCategories.put(displayCategory.getId(), true);
         }
 
-        // Prefer category IDs over display names for color lookup.
-        int packedColor;
         String categoryId = displayCategory.getColorKey();
-
-        if (NodeLibraryConstants.CATEGORY_COLORS_INT.containsKey(categoryId)) {
-            packedColor = NodeLibraryConstants.CATEGORY_COLORS_INT.get(categoryId);
-        } else {
-            packedColor = NodeLibraryConstants.getPackedColor(categoryId);
-        }
-
-        // Derive background tones from the category color.
-        imgui.ImVec4 colorVec = scratchColorVec;
-        ImGui.colorConvertU32ToFloat4(packedColor, colorVec);
-        float[] color = new float[]{colorVec.x, colorVec.y, colorVec.z, colorVec.w};
-
-        float alphaBase = level == 0 ? 0.7f : 0.5f;
-        float colorIntensity = level == 0 ? 0.7f : 0.6f;
-
-        // Compute colors for normal, hover, and active states.
-        int bgColor = ImGui.colorConvertFloat4ToU32(
-                color[0] * colorIntensity,
-                color[1] * colorIntensity,
-                color[2] * colorIntensity,
-                alphaBase);
-
-        int hoverBgColor = ImGui.colorConvertFloat4ToU32(
-                Math.min(1.0f, color[0] * 1.2f * colorIntensity),
-                Math.min(1.0f, color[1] * 1.2f * colorIntensity),
-                Math.min(1.0f, color[2] * 1.2f * colorIntensity),
-                alphaBase + 0.2f);
-
-        int activeBgColor = ImGui.colorConvertFloat4ToU32(
-                Math.min(1.0f, color[0] * 1.3f * colorIntensity),
-                Math.min(1.0f, color[1] * 1.3f * colorIntensity),
-                Math.min(1.0f, color[2] * 1.3f * colorIntensity),
-                alphaBase + 0.3f);
 
         // Styling setup.
         ImGui.pushStyleVar(imgui.flag.ImGuiStyleVar.ItemSpacing, ImGui.getStyle().getItemSpacingX(), 0);
 
-        // Increase text contrast against the colored headers.
-        float[] saturatedColor = new float[4];
-        System.arraycopy(color, 0, saturatedColor, 0, 4);
-
-        for (int i = 0; i < 3; i++) {
-            if (saturatedColor[i] < 0.5f) {
-                saturatedColor[i] = Math.min(1.0f, saturatedColor[i] * 1.6f);
-            } else {
-                saturatedColor[i] = Math.min(1.0f, 0.8f + saturatedColor[i] * 0.2f);
-            }
-        }
-
-        float textLuminance = 0.299f * saturatedColor[0] + 0.587f * saturatedColor[1] + 0.114f * saturatedColor[2];
-        int enhancedTextColor;
-        if (textLuminance < 0.6f) {
-            enhancedTextColor = ImGui.colorConvertFloat4ToU32(1.0f, 1.0f, 1.0f, 1.0f);
-        } else {
-            enhancedTextColor = ImGui.colorConvertFloat4ToU32(saturatedColor[0], saturatedColor[1], saturatedColor[2], 1.0f);
-        }
-
-        ImGui.pushStyleColor(ImGuiCol.Text, enhancedTextColor);
-        ImGui.pushStyleColor(ImGuiCol.Header, bgColor);
-        ImGui.pushStyleColor(ImGuiCol.HeaderHovered, hoverBgColor);
-        ImGui.pushStyleColor(ImGuiCol.HeaderActive, activeBgColor);
+        // 与属性面板一致：分组标题使用浅蓝灰文字；Header 背景使用主题默认（MinecraftTheme 的蓝色系 Header）
+        ImGui.pushStyleColor(ImGuiCol.Text, SECTION_HEADER_TEXT_COLOR);
 
         // Give top-level categories a little more visual weight.
         if (level == 0) {
@@ -810,7 +752,7 @@ public class NodeLibraryComponent implements EditorComponent {
         if (level == 0) {
             ImGui.popStyleVar();
         }
-        ImGui.popStyleColor(4);
+        ImGui.popStyleColor();
         ImGui.popStyleVar();
 
         // Persist the latest expansion state.
