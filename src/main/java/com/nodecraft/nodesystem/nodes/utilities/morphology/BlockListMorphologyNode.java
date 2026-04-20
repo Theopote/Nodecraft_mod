@@ -16,12 +16,12 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Morphological dilate or erode on a block set using a 6-connected voxel structuring element.
+ * Morphological dilate or erode on a block set using 6- or 26-connected voxel neighborhoods.
  */
 @NodeInfo(
     id = "utilities.morphology.block_list_morphology",
     displayName = "Block List Morphology",
-    description = "Dilates or erodes a block list using Manhattan-1 (6-neighbor) morphology iterations",
+    description = "Dilates or erodes a block list using 6- or 26-neighbor morphology iterations (Connectivity property)",
     category = "utilities.morphology",
     order = 0
 )
@@ -32,18 +32,44 @@ public class BlockListMorphologyNode extends BaseNode {
         ERODE
     }
 
+    public enum Connectivity {
+        SIX,
+        TWENTY_SIX
+    }
+
     private static final int[][] D6 = {
         {1, 0, 0}, {-1, 0, 0},
         {0, 1, 0}, {0, -1, 0},
         {0, 0, 1}, {0, 0, -1}
     };
 
+    private static final int[][] D26 = buildD26();
+
     @NodeProperty(displayName = "Operation", category = "Morphology", order = 1)
     private MorphOp operation = MorphOp.DILATE;
 
-    @NodeProperty(displayName = "Iterations", category = "Morphology", order = 2,
-        description = "Number of 6-neighbor dilate/erode iterations to apply")
+    @NodeProperty(displayName = "Connectivity", category = "Morphology", order = 2,
+        description = "6-neighbor (Manhattan-1) or 26-neighbor (Chebyshev-1 cube) structuring element")
+    private Connectivity connectivity = Connectivity.SIX;
+
+    @NodeProperty(displayName = "Iterations", category = "Morphology", order = 3,
+        description = "Number of dilate/erode iterations to apply")
     private int iterations = 1;
+
+    private static int[][] buildD26() {
+        java.util.List<int[]> list = new java.util.ArrayList<>(26);
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    if (dx == 0 && dy == 0 && dz == 0) {
+                        continue;
+                    }
+                    list.add(new int[] {dx, dy, dz});
+                }
+            }
+        }
+        return list.toArray(new int[0][]);
+    }
 
     private static final String INPUT_BLOCKS_ID = "input_blocks";
     private static final String INPUT_ITERATIONS_ID = "input_iterations";
@@ -76,7 +102,7 @@ public class BlockListMorphologyNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Dilates or erodes a block list using Manhattan-1 (6-neighbor) morphology iterations";
+        return "Dilates or erodes a block list using 6- or 26-neighbor morphology iterations";
     }
 
     @Override
@@ -105,11 +131,13 @@ public class BlockListMorphologyNode extends BaseNode {
             current.add(p.toImmutable());
         }
 
+        int[][] offsets = connectivity == Connectivity.TWENTY_SIX ? D26 : D6;
+
         for (int i = 0; i < iters; i++) {
             if (operation == MorphOp.DILATE) {
-                current = dilateOnce(current);
+                current = dilateOnce(current, offsets);
             } else {
-                current = erodeOnce(current);
+                current = erodeOnce(current, offsets);
             }
         }
 
@@ -119,22 +147,22 @@ public class BlockListMorphologyNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
-    private static Set<BlockPos> dilateOnce(Set<BlockPos> input) {
+    private static Set<BlockPos> dilateOnce(Set<BlockPos> input, int[][] offsets) {
         Set<BlockPos> out = new LinkedHashSet<>(input);
         for (BlockPos p : input) {
-            for (int[] d : D6) {
+            for (int[] d : offsets) {
                 out.add(new BlockPos(p.getX() + d[0], p.getY() + d[1], p.getZ() + d[2]).toImmutable());
             }
         }
         return out;
     }
 
-    private static Set<BlockPos> erodeOnce(Set<BlockPos> input) {
+    private static Set<BlockPos> erodeOnce(Set<BlockPos> input, int[][] offsets) {
         Set<BlockPos> set = new HashSet<>(input);
         Set<BlockPos> out = new LinkedHashSet<>();
         for (BlockPos p : input) {
             boolean keep = true;
-            for (int[] d : D6) {
+            for (int[] d : offsets) {
                 BlockPos q = new BlockPos(p.getX() + d[0], p.getY() + d[1], p.getZ() + d[2]).toImmutable();
                 if (!set.contains(q)) {
                     keep = false;
@@ -166,10 +194,20 @@ public class BlockListMorphologyNode extends BaseNode {
         markDirty();
     }
 
+    public Connectivity getConnectivity() {
+        return connectivity;
+    }
+
+    public void setConnectivity(Connectivity connectivity) {
+        this.connectivity = connectivity == null ? Connectivity.SIX : connectivity;
+        markDirty();
+    }
+
     @Override
     public Object getNodeState() {
         return java.util.Map.of(
             "operation", operation.name(),
+            "connectivity", connectivity.name(),
             "iterations", iterations
         );
     }
@@ -181,6 +219,14 @@ public class BlockListMorphologyNode extends BaseNode {
             if (op instanceof String s) {
                 try {
                     setOperation(MorphOp.valueOf(s));
+                } catch (IllegalArgumentException ignored) {
+                    // keep default
+                }
+            }
+            Object conn = map.get("connectivity");
+            if (conn instanceof String cs) {
+                try {
+                    setConnectivity(Connectivity.valueOf(cs));
                 } catch (IllegalArgumentException ignored) {
                     // keep default
                 }
