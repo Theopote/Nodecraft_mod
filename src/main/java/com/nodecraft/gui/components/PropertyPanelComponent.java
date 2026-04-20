@@ -3,7 +3,6 @@ package com.nodecraft.gui.components;
 import com.nodecraft.core.NodeCraft; // For logging
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
-import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.datatypes.LSystemRule;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
@@ -49,16 +48,10 @@ import imgui.flag.ImGuiTreeNodeFlags;
 import imgui.type.ImBoolean;
 import imgui.type.ImInt;
 import imgui.type.ImString;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Field;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.RecordComponent;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap; // 用于多线程安全的缓存
+import java.util.concurrent.ConcurrentHashMap;
 
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -67,13 +60,6 @@ import org.joml.Vector3d;
 public class PropertyPanelComponent implements EditorComponent {
 
     private static final String COMPONENT_ID = "property_panel";
-    private static final String GET_PREFIX = "get";
-    private static final String IS_PREFIX = "is";
-    private static final String SET_PREFIX = "set";
-    private static final Set<Class<?>> SYSTEM_DECLARING_CLASSES = Set.of(
-            INode.class,
-            BaseNode.class
-    );
     private static final Set<String> HIDDEN_NODE_PROPERTIES = Set.of(
             "cachedHeight",
             "cachedMinWidth",
@@ -95,14 +81,12 @@ public class PropertyPanelComponent implements EditorComponent {
     private final PropertyInspector propertyInspector = new PropertyInspector();
     private final PropertyEditorState editorState;
 
-    // 缓存: Class -> List<PropertyDescriptor>
-    private final Map<Class<?>, List<PropertyDescriptor>> propertyCache = new ConcurrentHashMap<>(); // 使用ConcurrentHashMap
     // 临时值存储, Key: nodeId_propertyName
-    private final Map<String, Object> tempValues = new ConcurrentHashMap<>(); // 使用ConcurrentHashMap
+    private final Map<String, Object> tempValues = new ConcurrentHashMap<>();
 
     // 正在编辑的属性集合：Key: nodeId_propertyName -> 最后活跃时间戳
     // 用于防止节点计算覆盖用户正在输入的值，并支持精确的超时清理
-    private final Map<String, Long> propertiesBeingEdited = new ConcurrentHashMap<>(); // 使用ConcurrentHashMap
+    private final Map<String, Long> propertiesBeingEdited = new ConcurrentHashMap<>();
 
     // 错误计数器：属性名 -> 错误次数 (针对当前 selectedNode 的属性)
     private final Map<String, Integer> errorCounts = new HashMap<>(); // 每次 selectedNode 切换时重置
@@ -1434,7 +1418,6 @@ public class PropertyPanelComponent implements EditorComponent {
         NodeCraft.LOGGER.debug("PropertyPanelComponent cleaned up");
         clearAllTempValues();
         propertyInspector.clearCache();
-        propertyCache.clear(); // 清空所有缓存
         // 移除未保存更改相关的清理
         selectedNode = null;
     }
@@ -1944,222 +1927,6 @@ public class PropertyPanelComponent implements EditorComponent {
         NodeGraph getCurrentGraph();
     }
 
-    // 创建getter访问器 - 使用MethodHandle改进性能
-    private static MethodAccessor createFieldGetter(Field field) {
-        try {
-            return new FieldHandleGetter(field);
-        } catch (Throwable e) { // 捕获 Throwable
-            NodeCraft.LOGGER.warn("创建MethodHandle getter for field {} 失败, 回退到传统反射: {}", field.getName(), e.getMessage());
-            return new FieldGetter(field);
-        }
-    }
-
-    // 创建setter访问器 - 使用MethodHandle改进性能
-    private static MethodAccessor createFieldSetter(Field field) {
-        if (false) return null;
-        try {
-            return new FieldHandleSetter(field);
-        } catch (Throwable e) { // 捕获 Throwable
-            NodeCraft.LOGGER.warn("创建MethodHandle setter for field {} 失败, 回退到传统反射: {}", field.getName(), e.getMessage());
-            return new FieldSetter(field);
-        }
-    }
-
-    // 使用MethodHandle实现的Method访问器
-    private static class MethodHandleAccessorImpl implements MethodAccessor { // 重命名为 Impl 以避免与 MethodWrapper 混淆
-        private final MethodHandle handle;
-        private final Class<?> returnType;
-        private final Class<?>[] parameterTypes;
-
-        public MethodHandleAccessorImpl(Method method) {
-            try {
-                // 获取方法的MethodHandle
-                MethodHandles.Lookup lookup = MethodHandles.lookup();
-                // setAccessible(true) 是为了访问非公共方法，MethodHandle 默认不检查
-                method.setAccessible(true); // 确保 MethodHandle 也能访问私有/保护方法
-                handle = lookup.unreflect(method);
-
-                // 保存返回类型和参数类型
-                returnType = method.getReturnType();
-                parameterTypes = method.getParameterTypes();
-            } catch (IllegalAccessException e) {
-                // 如果 MethodHandle 无法创建 (例如安全管理器限制)，抛出 RuntimeException
-                throw new RuntimeException("Failed to create MethodHandle for " + method, e);
-            }
-        }
-
-    @Override
-        public Object invoke(Object obj, Object... args) throws Throwable { // 统一为 Throwable
-            if (args == null || args.length == 0) {
-                return handle.invoke(obj);
-            } else if (args.length == 1) {
-                // 对于单个参数的情况，直接传递参数值，避免数组包装问题
-                return handle.invoke(obj, args[0]);
-            } else {
-                // 对于多个参数的情况，使用 invokeWithArguments
-                Object[] invokeArgs = new Object[args.length + 1];
-                invokeArgs[0] = obj;
-                System.arraycopy(args, 0, invokeArgs, 1, args.length);
-                return handle.invokeWithArguments(invokeArgs);
-            }
-        }
-
-    @Override
-        public Class<?> getReturnType() {
-            return returnType;
-        }
-
-    @Override
-        public Class<?>[] getParameterTypes() {
-            return parameterTypes;
-        }
-    }
-
-    // 使用MethodHandle实现的Field Getter访问器
-    private static class FieldHandleGetter implements MethodAccessor {
-        private final MethodHandle getter;
-        private final Class<?> fieldType;
-
-        public FieldHandleGetter(Field field) {
-            try {
-                MethodHandles.Lookup lookup = MethodHandles.lookup();
-                field.setAccessible(true); // 确保 MethodHandle 也能访问私有字段
-                getter = lookup.unreflectGetter(field);
-                fieldType = field.getType();
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException("Failed to create MethodHandle getter for field " + field, e);
-            }
-        }
-
-    @Override
-        public Object invoke(Object obj, Object... args) throws Throwable {
-            return getter.invoke(obj);
-        }
-
-    @Override
-        public Class<?> getReturnType() {
-            return fieldType;
-        }
-
-    @Override
-        public Class<?>[] getParameterTypes() {
-            return new Class<?>[0];
-        }
-    }
-
-    // 使用MethodHandle实现的Field Setter访问器
-    private static class FieldHandleSetter implements MethodAccessor {
-        private final MethodHandle setter;
-        private final Class<?> fieldType;
-
-        public FieldHandleSetter(Field field) {
-            try {
-                MethodHandles.Lookup lookup = MethodHandles.lookup();
-                field.setAccessible(true); // 确保 MethodHandle 也能访问私有字段
-                setter = lookup.unreflectSetter(field);
-                fieldType = field.getType();
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException("Failed to create MethodHandle setter for field " + field, e);
-            }
-        }
-
-    @Override
-        public Object invoke(Object obj, Object... args) throws Throwable {
-            if (args == null || args.length == 0) {
-                throw new IllegalArgumentException("Setter requires a value argument");
-            }
-            setter.invoke(obj, args[0]);
-            return null; // Setter方法没有返回值
-        }
-
-    @Override
-        public Class<?> getReturnType() {
-            return void.class;
-        }
-
-    @Override
-        public Class<?>[] getParameterTypes() {
-            return new Class<?>[] { fieldType };
-        }
-    }
-
-    // 方法访问器包装器 (使用MethodHandle，作为首选)
-    private static class MethodWrapper implements MethodAccessor {
-        private final MethodHandleAccessorImpl methodHandleAccessor;
-
-        public MethodWrapper(Method method) {
-            methodHandleAccessor = new MethodHandleAccessorImpl(method);
-        }
-
-    @Override
-        public Object invoke(Object obj, Object... args) throws Throwable {
-            return methodHandleAccessor.invoke(obj, args);
-        }
-
-    @Override
-        public Class<?> getReturnType() {
-            return methodHandleAccessor.getReturnType();
-        }
-
-    @Override
-        public Class<?>[] getParameterTypes() {
-            return methodHandleAccessor.getParameterTypes();
-        }
-    }
-
-    // 字段Getter访问器 (传统反射实现，作为后备)
-    private static class FieldGetter implements MethodAccessor {
-        private final Field field;
-
-        public FieldGetter(Field field) {
-            this.field = field;
-            field.setAccessible(true);
-        }
-
-    @Override
-        public Object invoke(Object obj, Object... args) throws IllegalAccessException {
-            return field.get(obj);
-        }
-
-    @Override
-        public Class<?> getReturnType() {
-            return field.getType();
-        }
-
-    @Override
-        public Class<?>[] getParameterTypes() {
-            return new Class<?>[0];
-        }
-    }
-
-    // 字段Setter访问器 (传统反射实现，作为后备)
-    private static class FieldSetter implements MethodAccessor {
-        private final Field field;
-
-        public FieldSetter(Field field) {
-            this.field = field;
-            field.setAccessible(true);
-        }
-
-    @Override
-        public Object invoke(Object obj, Object... args) throws IllegalAccessException {
-            if (args != null && args.length > 0) {
-                field.set(obj, args[0]);
-            }
-            return null;
-        }
-
-    @Override
-        public Class<?> getReturnType() {
-            return void.class;
-        }
-
-    @Override
-        public Class<?>[] getParameterTypes() {
-            return new Class<?>[] { field.getType() };
-        }
-    }
-
     // 新增：渲染输入端口信息
     private void renderInputPorts() {
         List<IPort> inputPorts = selectedNode.getInputPorts();
@@ -2204,9 +1971,9 @@ public class PropertyPanelComponent implements EditorComponent {
                                 for (IPort sourcePort : sourceNode.getOutputPorts()) {
                                     if (sourcePort.getId().equals(sourcePortId)) {
                                         Object value = resolveNodeOutput(graph, sourceNode, sourcePortId, new HashSet<>());
-                                        ImGui.textWrapped(formatValuePreview(value));
+                                        ImGui.textWrapped(PropertyValueFormatter.formatValuePreview(value));
                                         if (ImGui.isItemHovered()) {
-                                            ImGui.setTooltip(formatValueDetails(value, "Input Data"));
+                                            ImGui.setTooltip(PropertyValueFormatter.formatValueDetails(value, "Input Data"));
                                         }
                                         break;
                                     }
@@ -2216,9 +1983,9 @@ public class PropertyPanelComponent implements EditorComponent {
                     }
                 } else {
                     Object value = port.getValue();
-                    ImGui.textWrapped(formatValuePreview(value));
+                    ImGui.textWrapped(PropertyValueFormatter.formatValuePreview(value));
                     if (ImGui.isItemHovered()) {
-                        ImGui.setTooltip(formatValueDetails(value, "Default Value"));
+                        ImGui.setTooltip(PropertyValueFormatter.formatValueDetails(value, "Default Value"));
                     }
                 }
             }
@@ -2259,15 +2026,15 @@ public class PropertyPanelComponent implements EditorComponent {
                         ? resolveNodeOutput(graph, selectedNode, port.getId(), new HashSet<>())
                         : selectedNode.getOutput(port.getId());
                 if (value != null) {
-                    ImGui.textWrapped(formatValuePreview(value));
+                    ImGui.textWrapped(PropertyValueFormatter.formatValuePreview(value));
                     if (ImGui.isItemHovered()) {
-                        ImGui.setTooltip(formatValueDetails(value, "Output Data"));
+                        ImGui.setTooltip(PropertyValueFormatter.formatValueDetails(value, "Output Data"));
                     }
                 } else {
                     value = port.getValue();
-                    ImGui.textWrapped(formatValuePreview(value));
+                    ImGui.textWrapped(PropertyValueFormatter.formatValuePreview(value));
                     if (ImGui.isItemHovered()) {
-                        ImGui.setTooltip(formatValueDetails(value, "Current Value"));
+                        ImGui.setTooltip(PropertyValueFormatter.formatValueDetails(value, "Current Value"));
                     }
                 }
 
@@ -2296,33 +2063,6 @@ public class PropertyPanelComponent implements EditorComponent {
         }
     }
 
-    private String formatValuePreview(Object value) {
-        if (value == null) {
-            return "(empty)";
-        }
-
-        String preview = switch (value) {
-            case Collection<?> collection -> "Collection (" + collection.size() + ")";
-            case Map<?, ?> map -> "Map (" + map.size() + ")";
-            case Vec3 vec -> String.format("Vec3(%.2f, %.2f, %.2f)", vec.getX(), vec.getY(), vec.getZ());
-            default -> value.toString();
-        };
-
-        return preview.length() > 96 ? preview.substring(0, 93) + "..." : preview;
-    }
-
-    private String formatValueDetails(Object value, String label) {
-        if (value == null) {
-            return label + ": (empty)";
-        }
-
-        String typeName = value.getClass().getSimpleName();
-        String rendered = value.toString();
-        if (rendered.length() > 600) {
-            rendered = rendered.substring(0, 597) + "...";
-        }
-        return label + "\nType: " + typeName + "\nValue: " + rendered;
-    }
     private void renderPortData(Object value, String label) {
         if (value == null) {
             ImGui.textDisabled("(empty)");
@@ -2767,262 +2507,7 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     private List<PropertyDescriptor> getPropertiesForNode(Class<?> nodeClass) {
-        // 从缓存获取，如果不存在则计算并存入
-        if (propertyInspector != null) {
-            return propertyInspector.getPropertiesForNode(nodeClass);
-        }
-        return propertyCache.computeIfAbsent(nodeClass, clazz -> {
-            List<PropertyDescriptor> descriptors = new ArrayList<>();
-            Map<String, Method> getters = new HashMap<>();
-            Map<String, Method> setters = new HashMap<>();
-
-            // 1. 处理标记有@NodeProperty注解的字段
-            processAnnotatedFields(clazz, descriptors);
-
-            // 2. 处理标记有@NodeProperty注解的方法
-            processAnnotatedMethods(clazz, descriptors);
-
-            // 3. 回退到JavaBean命名约定的方法查找
-            // 遍历当前类和所有父类的公共方法
-            Class<?> currentClass = clazz;
-            while (currentClass != null && !currentClass.equals(Object.class)) {
-                for (Method method : currentClass.getMethods()) {
-                    // 过滤掉 Object 类的方法
-                    if (method.getDeclaringClass().equals(Object.class)) {
-                        continue;
-                    }
-                    if (SYSTEM_DECLARING_CLASSES.contains(method.getDeclaringClass())) {
-                        continue;
-                    }
-
-                    String methodName = method.getName();
-                    if (method.getParameterCount() == 0) { // Potential getter
-                        if (methodName.startsWith(GET_PREFIX) && methodName.length() > GET_PREFIX.length()) {
-                            getters.put(extractPropertyName(methodName, GET_PREFIX), method);
-                        } else if (methodName.startsWith(IS_PREFIX) && methodName.length() > IS_PREFIX.length() &&
-                                (method.getReturnType().equals(boolean.class) || method.getReturnType().equals(Boolean.class))) {
-                            getters.put(extractPropertyName(methodName, IS_PREFIX), method);
-                        }
-                    } else if (method.getParameterCount() == 1 && methodName.startsWith(SET_PREFIX) &&
-                            method.getReturnType().equals(void.class)) { // Potential setter
-                        setters.put(extractPropertyName(methodName, SET_PREFIX), method);
-                    }
-                }
-                if (currentClass.isRecord()) {
-                    for (RecordComponent component : currentClass.getRecordComponents()) {
-                        Method accessor = component.getAccessor();
-                        if (accessor != null && !SYSTEM_DECLARING_CLASSES.contains(accessor.getDeclaringClass())) {
-                            getters.putIfAbsent(component.getName(), accessor);
-                        }
-                    }
-                }
-                currentClass = currentClass.getSuperclass();
-            }
-
-            // 3.2 匹配 getter 和 setter，创建 PropertyDescriptor
-            for (Map.Entry<String, Method> getterEntry : getters.entrySet()) {
-                String propertyName = getterEntry.getKey();
-                Method getterMethod = getterEntry.getValue();
-
-                // 跳过已经由注解处理的属性，避免重复
-                if (descriptors.stream().anyMatch(d -> d.name.equals(propertyName))) {
-                    continue;
-                }
-
-                Method setterMethod = setters.get(propertyName); // 尝试找到对应的setter
-
-                // 验证setter参数类型是否与getter返回类型匹配 (setter可以为null，表示只读)
-                // 且 setter 必须是公共的且非静态
-                if (setterMethod != null &&
-                        (Modifier.isStatic(setterMethod.getModifiers()) ||
-                                !Modifier.isPublic(setterMethod.getModifiers()) ||
-                                !setterMethod.getParameterTypes()[0].isAssignableFrom(getterMethod.getReturnType()))) {
-                    NodeCraft.LOGGER.trace("属性 {} 的setter方法类型或修饰符不匹配，或不是公共非静态方法，将视为只读。", propertyName);
-                    setterMethod = null; // 将其视为只读
-                }
-
-                Class<?> type = getterMethod.getReturnType();
-                PropertyRenderer renderer = getRendererForType(type);
-
-                // 创建Method包装器
-                MethodAccessor getter = new MethodWrapper(getterMethod);
-                MethodAccessor setter = setterMethod != null ? new MethodWrapper(setterMethod) : null;
-
-                descriptors.add(new PropertyDescriptor(
-                        propertyName,
-                        formatPropertyName(propertyName), // 格式化属性名
-                        type,
-                        getter,
-                        setter,
-                        renderer,
-                        null, // 没有来自注解的描述
-                        "", // 默认分类为空字符串
-                        100 // 默认排序
-                ));
-            }
-
-            // 替换按照分类和order排序的代码段
-            descriptors.sort((p1, p2) -> {
-                // 先按分类排序 (空字符串分类排在最前面)
-                int catComp = p1.category.compareTo(p2.category);
-                if (catComp != 0) return catComp;
-
-                // 再按order排序
-                int orderComp = Integer.compare(p1.order, p2.order);
-                if (orderComp != 0) return orderComp;
-
-                // 最后按显示名称排序
-                return p1.displayName.compareTo(p2.displayName);
-            });
-
-            return descriptors;
-        });
-    }
-
-    // 处理带有@NodeProperty注解的字段
-    private void processAnnotatedFields(Class<?> clazz, List<PropertyDescriptor> descriptors) {
-        // 遍历当前类和所有父类的字段
-        Class<?> currentClass = clazz;
-        while (currentClass != null && !currentClass.equals(Object.class)) {
-            for (Field field : currentClass.getDeclaredFields()) { // 只获取声明的字段
-                NodeProperty annotation = field.getAnnotation(NodeProperty.class);
-                if (annotation != null) {
-                    String propertyName = field.getName();
-
-                    // 严格验证字段修饰符
-                    int modifiers = field.getModifiers();
-                    if (Modifier.isStatic(modifiers)) {
-                        NodeCraft.LOGGER.error("无效的@NodeProperty注解用法: 静态字段 '{}' 在类 '{}' 中。注解将被忽略。",
-                                propertyName, currentClass.getName());
-                        continue;
-                    }
-
-                    // final 字段必须标记为 readOnly
-                    if (Modifier.isFinal(modifiers) && !annotation.readOnly()) {
-                        NodeCraft.LOGGER.warn("@NodeProperty注解在final字段 '{}' 上未标记为readOnly，将强制视为只读。",
-                                propertyName);
-                    }
-
-                    String displayName = annotation.displayName().isEmpty()
-                            ? formatPropertyName(propertyName)
-                            : annotation.displayName();
-
-                    PropertyRenderer renderer = getRendererForType(field.getType());
-
-                    // 创建field getter和setter的Method包装
-                    MethodAccessor getter = createFieldGetter(field);
-                    MethodAccessor setter = (annotation.readOnly() || Modifier.isFinal(modifiers))
-                            ? null
-                            : createFieldSetter(field); // false 表示不是 readOnly
-
-                    descriptors.add(new PropertyDescriptor(
-                            propertyName,
-                            displayName,
-                            field.getType(),
-                            getter,
-                            setter,
-                            renderer,
-                            annotation.description(),
-                            annotation.category(),
-                            annotation.order()
-                    ));
-                }
-            }
-            currentClass = currentClass.getSuperclass(); // 继续检查父类
-        }
-    }
-
-    // 处理带有@NodeProperty注解的方法
-    private void processAnnotatedMethods(Class<?> clazz, List<PropertyDescriptor> descriptors) {
-        // 遍历当前类和所有父类的公共方法
-        Class<?> currentClass = clazz;
-        while (currentClass != null && !currentClass.equals(Object.class)) {
-            for (Method method : currentClass.getDeclaredMethods()) { // 只获取声明的方法
-                NodeProperty annotation = method.getAnnotation(NodeProperty.class);
-                if (annotation != null) {
-                    String methodName = method.getName();
-
-                    // 严格验证方法类型和修饰符
-                    int modifiers = method.getModifiers();
-                    if (Modifier.isStatic(modifiers)) {
-                        NodeCraft.LOGGER.error("无效的@NodeProperty注解用法: 静态方法 '{}' 在类 '{}' 中。注解将被忽略。",
-                                methodName, currentClass.getName());
-                        continue;
-                    }
-
-                    // 方法必须是getter（无参数且有返回值）
-                    if (method.getParameterCount() != 0) {
-                        NodeCraft.LOGGER.error("无效的@NodeProperty注解用法: 方法 '{}' 有参数。只有无参数的getter方法才能使用此注解。",
-                                methodName);
-                        continue;
-                    }
-
-                    if (method.getReturnType().equals(void.class)) {
-                        NodeCraft.LOGGER.error("无效的@NodeProperty注解用法: 方法 '{}' 返回void。只有有返回值的getter方法才能使用此注解。",
-                                methodName);
-                        continue;
-                    }
-
-                    String propertyName;
-                    // 如果方法名不是标准的getter命名，发出警告并使用方法名作为属性名
-                    if (methodName.startsWith(GET_PREFIX) && methodName.length() > GET_PREFIX.length()) {
-                        propertyName = extractPropertyName(methodName, GET_PREFIX);
-                    } else if (methodName.startsWith(IS_PREFIX) && methodName.length() > IS_PREFIX.length() &&
-                            (method.getReturnType().equals(boolean.class) || method.getReturnType().equals(Boolean.class))) {
-                        propertyName = extractPropertyName(methodName, IS_PREFIX);
-                    } else {
-                        propertyName = methodName; // 非标准getter命名
-                        NodeCraft.LOGGER.warn("方法 '{}' 使用了@NodeProperty注解但不遵循标准的getter命名规范。使用方法名作为属性名。", methodName);
-                    }
-
-                    String displayName = annotation.displayName().isEmpty()
-                            ? formatPropertyName(propertyName)
-                            : annotation.displayName();
-
-                    Class<?> type = method.getReturnType();
-                    PropertyRenderer renderer = getRendererForType(type);
-
-                    // 查找对应的setter
-                    Method setterMethod = null;
-                    if (!annotation.readOnly()) {
-                        String setterName = SET_PREFIX + propertyName.substring(0, 1).toUpperCase() + propertyName.substring(1);
-                        try {
-                            setterMethod = currentClass.getMethod(setterName, type); // 尝试在当前类中找
-
-                            // 验证setter的修饰符和参数类型
-                            if (Modifier.isStatic(setterMethod.getModifiers()) ||
-                                    !Modifier.isPublic(setterMethod.getModifiers()) ||
-                                    setterMethod.getParameterTypes().length != 1 ||
-                                    !setterMethod.getParameterTypes()[0].equals(type)) { // 严格匹配参数类型
-                                NodeCraft.LOGGER.warn("属性 '{}' 的setter方法 '{}' 类型或修饰符不匹配，将视为只读。",
-                                        propertyName, setterName);
-                                setterMethod = null;
-                            }
-                        } catch (NoSuchMethodException e) {
-                            // 没有找到匹配的setter，记录一个debug日志但继续（属性将是只读的）
-                            NodeCraft.LOGGER.debug("属性 '{}' 未找到对应的setter方法 '{}'，将作为只读属性处理。",
-                                    propertyName, setterName);
-                        }
-                    }
-
-                    MethodAccessor getter = new MethodWrapper(method);
-                    MethodAccessor setter = setterMethod != null ? new MethodWrapper(setterMethod) : null;
-
-                    descriptors.add(new PropertyDescriptor(
-                            propertyName,
-                            displayName,
-                            type,
-                            getter,
-                            setter,
-                            renderer,
-                            annotation.description(),
-                            annotation.category(),
-                            annotation.order()
-                    ));
-                }
-            }
-            currentClass = currentClass.getSuperclass(); // 继续检查父类
-        }
+        return propertyInspector.getPropertiesForNode(nodeClass);
     }
 
     // 渲染器注册表：类型 -> 渲染器
@@ -3091,100 +2576,6 @@ public class PropertyPanelComponent implements EditorComponent {
      */
     private PropertyRenderer getRendererForType(Class<?> type) {
         return PropertyRendererRegistry.getRendererForType(type, ENUM_RENDERER);
-    }
-
-    private String extractPropertyName(String methodName, String prefix) {
-        String name = methodName.substring(prefix.length());
-        if (name.isEmpty()) return "";
-
-        // JavaBean规范:
-        // 1. 如果第一个和第二个字符都是大写，保持第一个字符大写 (getURL -> URL)
-        // 2. 如果第一个字符是大写，第二个字符是小写，将第一个字符转为小写 (getName -> name)
-        // 3. 如果第一个字符是小写，保持原样 (getaValue -> aValue)
-
-        if (name.length() == 1) {
-            // 单个字符的情况
-            return name.toLowerCase();
-        }
-
-        char firstChar = name.charAt(0);
-        char secondChar = name.charAt(1);
-
-        // 情况1: 连续大写 (getURL -> URL)
-        if (Character.isUpperCase(firstChar) && Character.isUpperCase(secondChar)) {
-            return name;
-        }
-        // 情况2: 首字母大写，第二个字母小写 (getName -> name)
-        else if (Character.isUpperCase(firstChar) && Character.isLowerCase(secondChar)) {
-            return Character.toLowerCase(firstChar) + name.substring(1);
-        }
-        // 情况3: 首字母小写 (getaValue -> aValue)
-        else {
-            return name;
-        }
-    }
-
-    private String formatPropertyName(String propertyName) {
-        if (propertyName == null || propertyName.isEmpty()) return "";
-
-        StringBuilder result = new StringBuilder();
-
-        // 特殊处理：如果前两个字母都是大写，保持整个词大写
-        // 例如：URL -> URL，而不是 "U R L"
-        if (propertyName.length() >= 2 &&
-                Character.isUpperCase(propertyName.charAt(0)) &&
-                Character.isUpperCase(propertyName.charAt(1))) {
-
-            // 查找连续大写字母的结束位置
-            int upperCaseEnd = 2;
-            while (upperCaseEnd < propertyName.length() &&
-                    Character.isUpperCase(propertyName.charAt(upperCaseEnd))) {
-                upperCaseEnd++;
-            }
-
-            // 第一个单词是全大写缩写
-            if (upperCaseEnd == propertyName.length()) {
-                // 全部是大写，直接返回
-                return propertyName;
-            } else {
-                // 添加缩写部分
-                result.append(propertyName, 0, upperCaseEnd);
-
-                // 添加空格，除非下一个字符是特殊字符
-                char nextChar = propertyName.charAt(upperCaseEnd);
-                if (Character.isLetterOrDigit(nextChar)) {
-                    result.append(' ');
-                }
-
-                // 处理剩余部分
-                propertyName = propertyName.substring(upperCaseEnd);
-                // 如果剩余部分以小写开头，将其首字母大写
-                if (Character.isLowerCase(propertyName.charAt(0))) {
-                    propertyName = Character.toUpperCase(propertyName.charAt(0)) + propertyName.substring(1);
-                }
-            }
-        } else {
-            // 普通处理：首字母大写
-            result.append(Character.toUpperCase(propertyName.charAt(0)));
-            propertyName = propertyName.substring(1);
-        }
-
-        // 处理剩余部分
-        for (int i = 0; i < propertyName.length(); i++) {
-            char c = propertyName.charAt(i);
-
-            // 在大写字母前且前一个字符不是大写字母时添加空格
-            // (处理驼峰如 myValue -> My Value, TCPValue -> TCP Value)
-            if (Character.isUpperCase(c) &&
-                    (i > 0 && !Character.isUpperCase(propertyName.charAt(i - 1))) &&
-                    (i + 1 < propertyName.length() && Character.isLowerCase(propertyName.charAt(i + 1)))) {
-                result.append(' ');
-            }
-
-            result.append(c);
-        }
-
-        return result.toString();
     }
 
     @Override
