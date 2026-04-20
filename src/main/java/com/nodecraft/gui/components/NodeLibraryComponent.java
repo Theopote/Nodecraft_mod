@@ -40,9 +40,6 @@ public class NodeLibraryComponent implements EditorComponent {
 
     private static final NodeCategoryPresentationMapper PRESENTATION_MAPPER = new NodeCategoryPresentationMapper();
 
-    /** 与属性面板 {@code PropertyPanelComponent} 分组标题一致的文字色 */
-    private static final int SECTION_HEADER_TEXT_COLOR = ImGui.colorConvertFloat4ToU32(0.72f, 0.76f, 0.82f, 1.0f);
-
     // Inner record for display purposes
     private record DisplayCategory(CategoryPresentation presentation, List<NodeInfo> displayNodes) {
         String getDisplayName() { return presentation.displayName(); }
@@ -584,9 +581,9 @@ public class NodeLibraryComponent implements EditorComponent {
         if (filteredCategories.isEmpty() && !searchManager.getSearchTerm().isEmpty()) {
             searchManager.renderNoMatchesMessage();
         } else if (allCategories.isEmpty()) {
-            ImGui.textDisabled("  No nodes registered.");
+            ImGui.text("  No nodes registered.");
             ImGui.spacing();
-            ImGui.textDisabled("  Please restart the application or check logs.");
+            ImGui.text("  Please restart the application or check logs.");
         }
 
         // Control vertical spacing between categories.
@@ -718,9 +715,6 @@ public class NodeLibraryComponent implements EditorComponent {
         // Styling setup.
         ImGui.pushStyleVar(imgui.flag.ImGuiStyleVar.ItemSpacing, ImGui.getStyle().getItemSpacingX(), 0);
 
-        // 与属性面板一致：分组标题使用浅蓝灰文字；Header 背景使用主题默认（MinecraftTheme 的蓝色系 Header）
-        ImGui.pushStyleColor(ImGuiCol.Text, SECTION_HEADER_TEXT_COLOR);
-
         // Give top-level categories a little more visual weight.
         if (level == 0) {
             ImGui.pushStyleVar(imgui.flag.ImGuiStyleVar.FramePadding, 4, 6);
@@ -740,7 +734,6 @@ public class NodeLibraryComponent implements EditorComponent {
         if (level == 0) {
             ImGui.popStyleVar();
         }
-        ImGui.popStyleColor();
         ImGui.popStyleVar();
 
         // Persist the latest expansion state.
@@ -763,7 +756,7 @@ public class NodeLibraryComponent implements EditorComponent {
             // and clutters logs during active search. Use the Value Monitor node for runtime inspection.
 
             if (nodesToRender.isEmpty() && searchManager.getSearchTerm().isEmpty() && !hasSubcategories) {
-                ImGui.textDisabled("  (No nodes in this category)");
+                ImGui.text("  (No nodes in this category)");
             } else if (nodesToRender.isEmpty() && !searchManager.getSearchTerm().isEmpty()) {
                 // Category name matched, but there are no visible nodes to draw.
             } else {
@@ -910,7 +903,7 @@ public class NodeLibraryComponent implements EditorComponent {
             ImGui.sameLine();
             ImGui.textUnformatted(node.getDisplayName());
 
-            ImGui.textDisabled(node.getId());
+            ImGui.text(node.getId());
 
             String description = node.getDescription() != null ? node.getDescription() : "";
             if (!description.isEmpty()) {
@@ -919,7 +912,7 @@ public class NodeLibraryComponent implements EditorComponent {
             }
 
             ImGui.separator();
-            ImGui.textDisabled("Category: " + displayCategory.getDisplayName());
+            ImGui.text("Category: " + displayCategory.getDisplayName());
 
             ImGui.endTooltip();
         }

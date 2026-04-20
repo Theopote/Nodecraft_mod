@@ -221,19 +221,19 @@ public class NodeSearchManager {
      */
     public void renderNoMatchesMessage() {
         if (!lastSearchTerm.isEmpty()) {
-            ImGui.textDisabled("  没有找到匹配的节点");
+            ImGui.text("  没有找到匹配的节点");
             
             // 显示更详细的搜索建议
             ImGui.spacing();
-            ImGui.textDisabled("  搜索提示:");
-            ImGui.bullet(); ImGui.textDisabled("尝试使用不同的关键词");
-            ImGui.bullet(); ImGui.textDisabled("使用节点名称的一部分");
-            ImGui.bullet(); ImGui.textDisabled("查看分类名称");
+            ImGui.text("  搜索提示:");
+            ImGui.bullet(); ImGui.text("尝试使用不同的关键词");
+            ImGui.bullet(); ImGui.text("使用节点名称的一部分");
+            ImGui.bullet(); ImGui.text("查看分类名称");
             
             // 如果搜索词较长，建议使用短词
             if (lastSearchTerm.length() > 3) {
                 ImGui.spacing();
-                ImGui.textDisabled("  搜索词可能过于具体，尝试使用更短的词");
+                ImGui.text("  搜索词可能过于具体，尝试使用更短的词");
             }
         }
     }
