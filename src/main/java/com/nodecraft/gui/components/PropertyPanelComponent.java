@@ -1639,11 +1639,6 @@ public class PropertyPanelComponent implements EditorComponent {
         if (selectedNode == null) return;
         NodeCraft.LOGGER.info("Preview region: {}", region);
     }
-    // 记录节点性能数据的字段
-    private double lastExecutionTime = 0;
-    private double averageExecutionTime = 0;
-    private int executionCount = 0;
-
     // 添加这些方法来管理属性编辑状态
 
     /**
@@ -1795,11 +1790,5 @@ public class PropertyPanelComponent implements EditorComponent {
                 return true;
         }
         return false;
-    }
-
-    // 定义 NodeConstants 类
-    private static class NodeConstants {
-        // 错误阈值，超过此值则禁用属性渲染
-        private static final int ERROR_THRESHOLD = 3;
     }
 }
