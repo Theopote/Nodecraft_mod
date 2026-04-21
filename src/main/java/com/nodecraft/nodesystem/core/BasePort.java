@@ -27,6 +27,7 @@ public class BasePort implements IPort {
     private final NodeDataType dataType;
     private final INode node;
     private final boolean allowMultipleIncomingConnections;
+    private final boolean required;
     private Direction direction = Direction.UNASSIGNED;
     private boolean isConnected = false;
     private IPort connectedPort = null;
@@ -34,17 +35,23 @@ public class BasePort implements IPort {
     private Object value;
 
     public BasePort(String id, String displayName, String description, NodeDataType dataType, INode node) {
-        this(id, displayName, description, dataType, node, false);
+        this(id, displayName, description, dataType, node, false, true);
     }
 
     public BasePort(String id, String displayName, String description, NodeDataType dataType, INode node,
                     boolean allowMultipleIncomingConnections) {
+        this(id, displayName, description, dataType, node, allowMultipleIncomingConnections, true);
+    }
+
+    public BasePort(String id, String displayName, String description, NodeDataType dataType, INode node,
+                    boolean allowMultipleIncomingConnections, boolean required) {
         this.id = id;
         this.displayName = displayName;
         this.description = description;
         this.dataType = dataType;
         this.node = node;
         this.allowMultipleIncomingConnections = allowMultipleIncomingConnections;
+        this.required = required;
         initializeDefaultValue();
     }
 
@@ -96,6 +103,11 @@ public class BasePort implements IPort {
     @Override
     public boolean allowsMultipleIncomingConnections() {
         return allowMultipleIncomingConnections;
+    }
+
+    @Override
+    public boolean isRequired() {
+        return required;
     }
 
     @Override

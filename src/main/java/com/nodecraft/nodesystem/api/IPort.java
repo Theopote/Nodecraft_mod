@@ -78,4 +78,12 @@ public interface IPort {
     default boolean allowsMultipleIncomingConnections() {
         return false;
     }
+
+    /**
+     * 输入端口是否为必填。
+     * 默认必填；节点可将某些输入端口标记为可选以避免状态误报。
+     */
+    default boolean isRequired() {
+        return true;
+    }
 } 

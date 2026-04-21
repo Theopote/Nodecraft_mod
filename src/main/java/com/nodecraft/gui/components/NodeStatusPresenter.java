@@ -63,19 +63,10 @@ final class NodeStatusPresenter {
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {
         }
 
-        boolean hasOutputPorts = !node.getOutputPorts().isEmpty();
-        if (hasOutputPorts) {
-            for (IPort port : node.getOutputPorts()) {
-                if (!port.isConnected()) {
-                    return "Warning";
-                }
-            }
-        }
-
         boolean hasInputPorts = !node.getInputPorts().isEmpty();
         if (hasInputPorts) {
             for (IPort port : node.getInputPorts()) {
-                if (!port.isConnected() && port.getValue() == null) {
+                if (isRequiredInputPort(port) && !port.isConnected() && port.getValue() == null) {
                     return "Warning";
                 }
             }
@@ -102,7 +93,7 @@ final class NodeStatusPresenter {
     static String getNodeStatusMessage(String status) {
         return switch (status) {
             case "Error" -> "The node failed to evaluate and could not produce a valid result.";
-            case "Warning" -> "The node has missing links or incomplete input/output state.";
+            case "Warning" -> "The node has missing required inputs.";
             case "Calculating" -> "The node is currently evaluating.";
             case "Disabled" -> "The node is disabled and will not participate in execution.";
             case "Ready" -> "The node is ready.";
@@ -137,5 +128,25 @@ final class NodeStatusPresenter {
             }
         }
         return formatted.toString().trim();
+    }
+
+    private static boolean isRequiredInputPort(IPort port) {
+        if (port == null) {
+            return false;
+        }
+        if (!port.isRequired()) {
+            return false;
+        }
+        String displayName = port.getDisplayName();
+        String description = port.getDescription();
+        return !containsOptionalMarker(displayName) && !containsOptionalMarker(description);
+    }
+
+    private static boolean containsOptionalMarker(String text) {
+        if (text == null || text.isEmpty()) {
+            return false;
+        }
+        String lower = text.toLowerCase();
+        return lower.contains("optional") || text.contains("可选");
     }
 }

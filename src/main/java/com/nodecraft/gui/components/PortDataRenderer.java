@@ -10,6 +10,13 @@ import java.util.List;
 import java.util.Map;
 
 final class PortDataRenderer {
+    static {
+        PortDataRendererRegistry.registerPredicate(PortDataRenderer::isBlockInfoLikeStatic, (renderer, value) -> renderer.renderBlockInfo(value));
+        PortDataRendererRegistry.registerPredicate(PortDataRenderer::isMinecraftBlockLikeStatic, (renderer, value) -> renderer.renderMinecraftBlock(value));
+        PortDataRendererRegistry.registerPredicate(PortDataRenderer::isItemStackLikeStatic, (renderer, value) -> renderer.renderItemStack(value));
+        PortDataRendererRegistry.registerPredicate(PortDataRenderer::isRegionLikeStatic, (renderer, value) -> renderer.renderRegion(value));
+        PortDataRendererRegistry.registerPredicate(PortDataRenderer::isNbtLikeStatic, (renderer, value) -> renderer.renderNBT(value));
+    }
 
     interface Actions {
         void copyToClipboard(String text);
@@ -36,7 +43,6 @@ final class PortDataRenderer {
         String treeNodeId = "portData_" + label + "_" + value.hashCode();
         if (ImGui.treeNodeEx(treeNodeId, imgui.flag.ImGuiTreeNodeFlags.SpanAvailWidth)) {
             try {
-                String className = value.getClass().getSimpleName();
                 if (value instanceof String || value instanceof Number || value instanceof Boolean) {
                     ImGui.text(label + ": " + value);
                 } else if (value instanceof List<?> list) {
@@ -45,16 +51,8 @@ final class PortDataRenderer {
                     renderMap(map, label);
                 } else if (value instanceof Vec3 vec) {
                     renderVec3(vec, label);
-                } else if (className.equals("BlockInfo")) {
-                    renderBlockInfo(value);
-                } else if (className.equals("MinecraftBlock")) {
-                    renderMinecraftBlock(value);
-                } else if (className.equals("ItemStack")) {
-                    renderItemStack(value);
-                } else if (className.equals("Region")) {
-                    renderRegion(value);
-                } else if (className.equals("CompoundTag") || className.equals("CompoundNBT")) {
-                    renderNBT(value);
+                } else if (PortDataRendererRegistry.render(this, value)) {
+                    // Rendered by typed/custom registry entry.
                 } else {
                     ImGui.text(label + ": " + value);
                 }
@@ -280,5 +278,40 @@ final class PortDataRenderer {
             ImGui.textColored(1.0f, 0.3f, 0.3f, 1.0f, "Failed to read NBT data: " + e.getMessage());
             NodeCraft.LOGGER.debug("Failed to render NBT data", e);
         }
+    }
+
+    private static boolean isBlockInfoLikeStatic(Object value) {
+        return hasMethods(value, "getId", "getName", "getPosition");
+    }
+
+    private static boolean isMinecraftBlockLikeStatic(Object value) {
+        return hasMethods(value, "getId", "getName");
+    }
+
+    private static boolean isItemStackLikeStatic(Object value) {
+        return hasMethods(value, "getItem", "getCount");
+    }
+
+    private static boolean isRegionLikeStatic(Object value) {
+        return hasMethods(value, "getMin", "getMax", "getBlockCount");
+    }
+
+    private static boolean isNbtLikeStatic(Object value) {
+        String className = value.getClass().getName();
+        return className.endsWith(".nbt.CompoundTag")
+            || className.endsWith(".nbt.NbtCompound")
+            || className.endsWith(".nbt.CompoundNBT");
+    }
+
+    private static boolean hasMethods(Object value, String... methodNames) {
+        Class<?> type = value.getClass();
+        for (String methodName : methodNames) {
+            try {
+                type.getMethod(methodName);
+            } catch (NoSuchMethodException e) {
+                return false;
+            }
+        }
+        return true;
     }
 }

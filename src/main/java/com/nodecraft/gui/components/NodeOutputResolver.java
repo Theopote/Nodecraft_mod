@@ -11,15 +11,16 @@ import java.util.Set;
 import java.util.UUID;
 
 final class NodeOutputResolver {
+    private static final int MAX_RESOLVE_DEPTH = 20;
 
     private NodeOutputResolver() {
     }
 
     static Object resolveNodeOutput(NodeGraph graph, INode node, String outputPortId) {
-        return resolveNodeOutput(graph, node, outputPortId, new java.util.HashSet<>());
+        return resolveNodeOutput(graph, node, outputPortId, new java.util.HashSet<>(), 0);
     }
 
-    private static Map<String, Object> collectConnectedInputs(NodeGraph graph, INode node, Set<UUID> visiting) {
+    private static Map<String, Object> collectConnectedInputs(NodeGraph graph, INode node, Set<UUID> visiting, int depth) {
         Map<String, Object> inputs = new HashMap<>();
         if (graph == null || node == null) {
             return inputs;
@@ -32,7 +33,7 @@ final class NodeOutputResolver {
 
         for (NodeGraph.Connection connection : graph.getConnections()) {
             if (connection.targetNode.getId().equals(node.getId())) {
-                Object value = resolveNodeOutput(graph, connection.sourceNode, connection.sourcePort.getId(), visiting);
+                Object value = resolveNodeOutput(graph, connection.sourceNode, connection.sourcePort.getId(), visiting, depth + 1);
                 mergeCollectedInput(inputs, inputPortsById.get(connection.targetPort.getId()), value);
             }
         }
@@ -65,9 +66,14 @@ final class NodeOutputResolver {
         inputs.put(portId, value);
     }
 
-    private static Object resolveNodeOutput(NodeGraph graph, INode node, String outputPortId, Set<UUID> visiting) {
+    private static Object resolveNodeOutput(NodeGraph graph, INode node, String outputPortId, Set<UUID> visiting, int depth) {
         if (node == null || outputPortId == null) {
             return null;
+        }
+
+        if (depth > MAX_RESOLVE_DEPTH) {
+            Object cached = node.getOutput(outputPortId);
+            return cached != null ? cached : getPortValue(node, outputPortId, false);
         }
 
         if (visiting.contains(node.getId())) {
@@ -86,7 +92,7 @@ final class NodeOutputResolver {
         if (hasIncomingConnections) {
             visiting.add(node.getId());
             try {
-                Map<String, Object> inputs = collectConnectedInputs(graph, node, visiting);
+                Map<String, Object> inputs = collectConnectedInputs(graph, node, visiting, depth);
                 for (IPort port : node.getInputPorts()) {
                     inputs.putIfAbsent(port.getId(), port.getValue());
                 }
