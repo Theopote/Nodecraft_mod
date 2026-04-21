@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**295**
+- **节点总数**：**299**
 - **分类总数**：**46**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -36,10 +36,10 @@
 | `output.execute` | 15 |
 | `output.export` | 3 |
 | `output.preview` | 12 |
-| `pattern.grid` | 2 |
-| `pattern.linear` | 2 |
-| `pattern.radial` | 1 |
-| `pattern.surface_volume_distribution` | 4 |
+| `pattern.grid` | 3 |
+| `pattern.linear` | 3 |
+| `pattern.radial` | 2 |
+| `pattern.surface_volume_distribution` | 5 |
 | `reference.frames` | 2 |
 | `reference.planes` | 5 |
 | `reference.points` | 16 |
@@ -382,33 +382,37 @@
 | Preview Profiles | `output.preview.preview_profiles` | Previews polygon profile boundaries and optional normal indicators | `PreviewPolygonProfilesNode` |
 | Preview Geometry | `output.preview.preview_geometry` | Previews analytic geometry directly (semi-transparent fill + outline) before voxelization | `PreviewGeometryNode` |
 
-## pattern.grid（2）
+## pattern.grid（3）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | 网格阵列 | `pattern.grid.grid_array` | 在平面或三维网格上重复坐标列表 | `GridArrayNode` |
 | Facade Grid | `pattern.grid.facade_grid` | Generates facade cell centers and boundaries on a box face | `FacadeGridNode` |
+| Hex Grid | `pattern.grid.hex_grid` | Repeats coordinates on a hexagonal lattice (X/Z) with configurable spacing and orientation | `HexGridNode` |
 
-## pattern.linear（2）
+## pattern.linear（3）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | 线性阵列 | `pattern.linear.linear_array` | 将坐标列表沿直线方向重复排列 | `LinearArrayNode` |
 | Along Path | `pattern.linear.along_path` | Repeats a block pattern at each resolved path point from a line, polyline, curve, or point list | `AlongPathNode` |
+| Staggered Array | `pattern.linear.staggered_array` | Repeats coordinates in rows with parity-controlled staggering, optional alternate row height, and optional envelope clipping | `StaggeredArrayNode` |
 
-## pattern.radial（1）
+## pattern.radial（2）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | 极坐标阵列 | `pattern.radial.polar_array` | 将坐标列表绕中心点重复旋转排列 | `PolarArrayNode` |
+| Spiral Array | `pattern.radial.spiral_array` | Repeats coordinates along a spiral path around a center point with optional tangent alignment | `SpiralArrayNode` |
 
-## pattern.surface_volume_distribution（4）
+## pattern.surface_volume_distribution（5）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | 区域填充 | `pattern.surface_volume_distribution.populate_region` | 在指定区域内随机或均匀生成坐标列表 | `PopulateRegionNode` |
 | Sample Sphere Surface | `pattern.surface_volume_distribution.sample_surface` | Samples points and normals on a sphere surface for scattering and growth workflows | `SampleSphereSurfaceNode` |
 | Scatter On Sphere Surface | `pattern.surface_volume_distribution.surface_scatter` | Scatters points on a sphere surface and outputs matching normals and optional snapped block coordinates | `ScatterOnSphereSurfaceNode` |
+| Scatter On Geometry Surface | `pattern.surface_volume_distribution.scatter_geometry_surface` | Scatters points on voxelized geometry surfaces with random or blue-noise approximation and spacing fallback controls | `ScatterOnGeometrySurfaceNode` |
 | Poisson Disk On Plane | `pattern.surface_volume_distribution.poisson_disk_plane` | Samples points on a plane inside a UV rectangle with minimum separation using rejection sampling | `PoissonDiskOnPlaneNode` |
 
 ## reference.frames（2）
