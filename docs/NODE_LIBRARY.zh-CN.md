@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**285**
+- **节点总数**：**292**
 - **分类总数**：**46**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -21,10 +21,10 @@
 | `input.type_selectors` | 5 |
 | `material.basic_assignment` | 2 |
 | `material.block_state` | 3 |
-| `material.directional_mapping` | 1 |
-| `material.gradient_mapping` | 2 |
-| `material.pattern_mapping` | 1 |
-| `material.surface_aging` | 1 |
+| `material.directional_mapping` | 2 |
+| `material.gradient_mapping` | 3 |
+| `material.pattern_mapping` | 4 |
+| `material.surface_aging` | 3 |
 | `math.compare` | 7 |
 | `math.sequence` | 3 |
 | `math.list` | 16 |
@@ -201,30 +201,37 @@
 | Auto Orient Blocks | `material.block_state.auto_orient_blocks` | Automatically assigns a facing state from the dominant direction axis | `AutoOrientBlocksNode` |
 | Stair Shape | `material.block_state.stair_shape` | Assigns stair facing, half, and inner/outer corner shape states | `StairShapeNode` |
 
-## material.directional_mapping（1）
+## material.directional_mapping（2）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Top / Side / Bottom Map | `material.directional_mapping.top_side_bottom_map` | Assigns top, side, and bottom block types across a voxelized shape using vertical exposure | `TopSideBottomMapNode` |
+| Slope Map | `material.directional_mapping.slope_map` | Assigns flat/slope/steep materials using local height difference per X/Z column. | `SlopeMapNode` |
 
-## material.gradient_mapping（2）
+## material.gradient_mapping（3）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Height Gradient Map | `material.gradient_mapping.height_gradient_map` | Assigns lower, middle, and upper block types across a shape based on relative height | `HeightGradientMapNode` |
 | Noise Material | `material.gradient_mapping.noise_material` | Assigns block types across placements or geometry using deterministic 3D noise bands | `NoiseMaterialNode` |
+| Gradient Ramp Map | `material.gradient_mapping.gradient_ramp_map` | Assigns block types by height using a custom multi-stop ramp list. | `GradientRampMapNode` |
 
-## material.pattern_mapping（1）
+## material.pattern_mapping（4）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Checker Pattern Map | `material.pattern_mapping.checker_pattern_map` | Assigns alternating block types across a voxelized shape using a checker pattern | `CheckerPatternMapNode` |
+| Stripe Pattern Map | `material.pattern_mapping.stripe_pattern_map` | Assigns alternating stripe materials along a selected axis. | `StripePatternMapNode` |
+| Brick Pattern Map | `material.pattern_mapping.brick_pattern_map` | Assigns two materials using a staggered brick-like pattern in X/Z. | `BrickPatternMapNode` |
+| Grid Pattern Map | `material.pattern_mapping.grid_pattern_map` | Assigns frame/fill materials using a regular X/Z grid interval. | `GridPatternMapNode` |
 
-## material.surface_aging（1）
+## material.surface_aging（3）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Weathering | `material.surface_aging.weathering` | Replaces part of a block set with an aged material using a deterministic weathering ratio | `WeatheringNode` |
+| Moss Growth | `material.surface_aging.moss_growth` | Applies moss material preferentially to upward-facing/exposed blocks. | `MossGrowthNode` |
+| Crack Pattern | `material.surface_aging.crack_pattern` | Adds deterministic crack lines by replacing sparse diagonal bands. | `CrackPatternNode` |
 
 ## math.compare（7）
 
