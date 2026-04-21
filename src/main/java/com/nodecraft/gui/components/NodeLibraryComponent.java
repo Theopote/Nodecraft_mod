@@ -39,6 +39,7 @@ import imgui.ImVec2;
 public class NodeLibraryComponent implements EditorComponent {
 
     private static final NodeCategoryPresentationMapper PRESENTATION_MAPPER = new NodeCategoryPresentationMapper();
+    private static final boolean SHOW_DEPRECATED_NODES = false;
 
     // Inner record for display purposes
     private record DisplayCategory(CategoryPresentation presentation, List<NodeInfo> displayNodes) {
@@ -450,7 +451,7 @@ public class NodeLibraryComponent implements EditorComponent {
         if (searchTerm == null || searchTerm.isEmpty()) {
             NodeCraft.LOGGER.debug("Search term is empty. Showing all categories.");
             this.filteredCategories = this.allCategories.stream()
-                    .map(cat -> new DisplayCategory(cat, new ArrayList<>(cat.sourceCategory().getNodes())))
+                    .map(cat -> new DisplayCategory(cat, getVisibleNodes(cat.sourceCategory().getNodes())))
                     .collect(Collectors.toList());
             this.categoryHierarchyCacheDirty = true;
             NodeCraft.LOGGER.debug("Filtered category count for empty search: {}", this.filteredCategories.size());
@@ -473,6 +474,9 @@ public class NodeLibraryComponent implements EditorComponent {
             // Collect matching nodes in the current category.
             List<NodeInfo> matchingNodes = new ArrayList<>();
             for (NodeInfo node : category.sourceCategory().getNodes()) {
+                if (isDeprecatedNode(node)) {
+                    continue;
+                }
                 if (matchesNode(node, processedTerm)) {
                     matchingNodes.add(node);
                     NodeCraft.LOGGER.debug("Node matched search term: {} ({}) in category {}",
@@ -482,7 +486,7 @@ public class NodeLibraryComponent implements EditorComponent {
 
             // 1. Category name matched, so keep all nodes in that category.
             if (categoryMatches) {
-                searchResults.add(new DisplayCategory(category, new ArrayList<>(category.sourceCategory().getNodes())));
+                searchResults.add(new DisplayCategory(category, getVisibleNodes(category.sourceCategory().getNodes())));
                 NodeCraft.LOGGER.debug("Category matched search term '{}': {} ({}), keeping all nodes",
                         processedTerm, category.displayName(), categoryId);
 
@@ -669,19 +673,16 @@ public class NodeLibraryComponent implements EditorComponent {
         List<DisplayCategory> retainedTopLevelCategories = new ArrayList<>();
         for (DisplayCategory topCategory : topLevelCategories) {
             List<DisplayCategory> children = childCategoriesMap.get(topCategory.getId());
-            boolean shouldPromoteOnlyLegacyChild =
-                    topCategory.getNodes().isEmpty()
-                            && children != null
-                            && children.size() == 1
-                            && children.getFirst().getId().endsWith(".legacy");
-
-            if (shouldPromoteOnlyLegacyChild) {
-                promotedTopLevelCategories.add(children.getFirst());
-                childCategoriesMap.remove(topCategory.getId());
-                NodeCraft.LOGGER.debug("Promoted lone legacy child category {} to top-level display", children.getFirst().getId());
-            } else {
-                retainedTopLevelCategories.add(topCategory);
+            if (topCategory.getNodes().isEmpty() && children != null && children.size() == 1) {
+                DisplayCategory promotedChild = children.get(0);
+                if (promotedChild.getId().endsWith(".legacy")) {
+                    promotedTopLevelCategories.add(promotedChild);
+                    childCategoriesMap.remove(topCategory.getId());
+                    NodeCraft.LOGGER.debug("Promoted lone legacy child category {} to top-level display", promotedChild.getId());
+                    continue;
+                }
             }
+            retainedTopLevelCategories.add(topCategory);
         }
 
         retainedTopLevelCategories.addAll(promotedTopLevelCategories);
@@ -924,6 +925,22 @@ public class NodeLibraryComponent implements EditorComponent {
                 .comparingInt(NodeInfo::getOrder)
                 .thenComparing(NodeInfo::getDisplayName, String.CASE_INSENSITIVE_ORDER));
         return nodes;
+    }
+
+    private List<NodeInfo> getVisibleNodes(List<NodeInfo> nodes) {
+        if (SHOW_DEPRECATED_NODES || nodes == null || nodes.isEmpty()) {
+            return nodes == null ? new ArrayList<>() : new ArrayList<>(nodes);
+        }
+        return nodes.stream()
+                .filter(node -> !isDeprecatedNode(node))
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    private static boolean isDeprecatedNode(NodeInfo node) {
+        if (SHOW_DEPRECATED_NODES || node == null || node.getNodeClass() == null) {
+            return false;
+        }
+        return node.getNodeClass().isAnnotationPresent(Deprecated.class);
     }
 
     private static String getString(DisplayCategory displayCategory, int level, String categoryId) {

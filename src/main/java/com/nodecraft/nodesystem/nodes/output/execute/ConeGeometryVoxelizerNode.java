@@ -23,6 +23,7 @@ import java.util.UUID;
     category = "output.execute",
     order = 7
 )
+@Deprecated
 public class ConeGeometryVoxelizerNode extends BaseNode {
 
     @NodeProperty(displayName = "Fill Cone", category = "Shape", order = 1)

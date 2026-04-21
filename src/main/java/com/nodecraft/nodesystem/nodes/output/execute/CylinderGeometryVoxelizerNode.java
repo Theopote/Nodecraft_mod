@@ -23,6 +23,7 @@ import java.util.UUID;
     category = "output.execute",
     order = 6
 )
+@Deprecated
 public class CylinderGeometryVoxelizerNode extends BaseNode {
 
     @NodeProperty(displayName = "Fill Cylinder", category = "Shape", order = 1)

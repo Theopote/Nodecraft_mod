@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
+ * @deprecated Use GeometryToBlocksNode (output.execute.bake_geometry_to_blocks) for all GeometryData-based bake workflows.
  * Converts box geometry into block coordinates.
  */
 @NodeInfo(
@@ -26,6 +27,7 @@ import java.util.UUID;
     category = "output.execute",
     order = 4
 )
+@Deprecated
 public class BoxGeometryVoxelizerNode extends BaseNode {
 
     @NodeProperty(displayName = "Fill Box", category = "Shape", order = 1,

@@ -20,6 +20,7 @@ import java.util.UUID;
     category = "output.execute",
     order = 11
 )
+@Deprecated
 public class TetrahedronGeometryVoxelizerNode extends BaseNode {
 
     private static final String INPUT_TETRAHEDRON_GEOMETRY_ID = "input_tetrahedron_geometry";

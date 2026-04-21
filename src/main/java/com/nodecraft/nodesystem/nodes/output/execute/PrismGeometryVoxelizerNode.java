@@ -23,6 +23,7 @@ import java.util.UUID;
     category = "output.execute",
     order = 9
 )
+@Deprecated
 public class PrismGeometryVoxelizerNode extends BaseNode {
 
     @NodeProperty(displayName = "Fill Prism", category = "Shape", order = 1)

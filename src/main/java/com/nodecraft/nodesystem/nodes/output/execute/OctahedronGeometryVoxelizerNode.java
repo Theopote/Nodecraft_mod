@@ -23,6 +23,7 @@ import java.util.UUID;
     category = "output.execute",
     order = 10
 )
+@Deprecated
 public class OctahedronGeometryVoxelizerNode extends BaseNode {
 
     @NodeProperty(displayName = "Fill Octahedron", category = "Shape", order = 1)

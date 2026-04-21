@@ -24,6 +24,7 @@ import java.util.UUID;
     category = "output.execute",
     order = 5
 )
+@Deprecated
 public class SphereGeometryVoxelizerNode extends BaseNode {
 
     public enum VoxelMode {

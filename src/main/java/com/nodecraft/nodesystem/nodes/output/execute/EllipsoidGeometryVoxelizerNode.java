@@ -24,6 +24,7 @@ import java.util.UUID;
     category = "output.execute",
     order = 8
 )
+@Deprecated
 public class EllipsoidGeometryVoxelizerNode extends BaseNode {
 
     public enum VoxelMode {

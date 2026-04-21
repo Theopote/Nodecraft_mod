@@ -329,15 +329,15 @@
 | Bake Geometry To Blocks | `output.execute.bake_geometry_to_blocks` | Bakes any supported geometry into Minecraft block coordinates for final execution | `GeometryToBlocksNode` |
 | Undo Last Bake | `output.execute.undo_last_bake` | Reverts the most recent recorded bake or apply-changes operation | `UndoLastBakeNode` |
 | Bake Surface Strip To Blocks | `output.execute.bake_surface_strip_to_blocks` | Bakes a surface strip into block coordinates for final execution | `SurfaceStripToBlocksNode` |
-| Bake Box To Blocks | `output.execute.bake_box_to_blocks` | Bakes box geometry into Minecraft block coordinates for final execution | `BoxGeometryVoxelizerNode` |
-| Bake Sphere To Blocks | `output.execute.bake_sphere_to_blocks` | Bakes sphere geometry into Minecraft block coordinates for final execution | `SphereGeometryVoxelizerNode` |
-| Bake Cylinder To Blocks | `output.execute.bake_cylinder_to_blocks` | Bakes cylinder geometry into Minecraft block coordinates for final execution | `CylinderGeometryVoxelizerNode` |
-| Bake Cone To Blocks | `output.execute.bake_cone_to_blocks` | Bakes cone geometry into Minecraft block coordinates for final execution | `ConeGeometryVoxelizerNode` |
-| Bake Ellipsoid To Blocks | `output.execute.bake_ellipsoid_to_blocks` | Bakes ellipsoid geometry into Minecraft block coordinates for final execution | `EllipsoidGeometryVoxelizerNode` |
-| Bake Prism To Blocks | `output.execute.bake_prism_to_blocks` | Bakes prism geometry into Minecraft block coordinates for final execution | `PrismGeometryVoxelizerNode` |
-| Bake Octahedron To Blocks | `output.execute.bake_octahedron_to_blocks` | Bakes octahedron geometry into Minecraft block coordinates for final execution | `OctahedronGeometryVoxelizerNode` |
-| Bake Tetrahedron To Blocks | `output.execute.bake_tetrahedron_to_blocks` | Bakes tetrahedron geometry into Minecraft block coordinates for final execution | `TetrahedronGeometryVoxelizerNode` |
-| Bake Torus To Blocks | `output.execute.bake_torus_to_blocks` | Bakes torus geometry into Minecraft block coordinates for final execution | `TorusGeometryVoxelizerNode` |
+| Bake Box To Blocks | `output.execute.bake_box_to_blocks` | [Deprecated] Use Bake Geometry To Blocks (`output.execute.bake_geometry_to_blocks`) for new graphs. | `BoxGeometryVoxelizerNode` |
+| Bake Sphere To Blocks | `output.execute.bake_sphere_to_blocks` | [Deprecated] Use Bake Geometry To Blocks (`output.execute.bake_geometry_to_blocks`) for new graphs. | `SphereGeometryVoxelizerNode` |
+| Bake Cylinder To Blocks | `output.execute.bake_cylinder_to_blocks` | [Deprecated] Use Bake Geometry To Blocks (`output.execute.bake_geometry_to_blocks`) for new graphs. | `CylinderGeometryVoxelizerNode` |
+| Bake Cone To Blocks | `output.execute.bake_cone_to_blocks` | [Deprecated] Use Bake Geometry To Blocks (`output.execute.bake_geometry_to_blocks`) for new graphs. | `ConeGeometryVoxelizerNode` |
+| Bake Ellipsoid To Blocks | `output.execute.bake_ellipsoid_to_blocks` | [Deprecated] Use Bake Geometry To Blocks (`output.execute.bake_geometry_to_blocks`) for new graphs. | `EllipsoidGeometryVoxelizerNode` |
+| Bake Prism To Blocks | `output.execute.bake_prism_to_blocks` | [Deprecated] Use Bake Geometry To Blocks (`output.execute.bake_geometry_to_blocks`) for new graphs. | `PrismGeometryVoxelizerNode` |
+| Bake Octahedron To Blocks | `output.execute.bake_octahedron_to_blocks` | [Deprecated] Use Bake Geometry To Blocks (`output.execute.bake_geometry_to_blocks`) for new graphs. | `OctahedronGeometryVoxelizerNode` |
+| Bake Tetrahedron To Blocks | `output.execute.bake_tetrahedron_to_blocks` | [Deprecated] Use Bake Geometry To Blocks (`output.execute.bake_geometry_to_blocks`) for new graphs. | `TetrahedronGeometryVoxelizerNode` |
+| Bake Torus To Blocks | `output.execute.bake_torus_to_blocks` | [Deprecated] Use Bake Geometry To Blocks (`output.execute.bake_geometry_to_blocks`) for new graphs. | `TorusGeometryVoxelizerNode` |
 | Merge Block Placements | `output.execute.merge_block_placements` | Concatenates multiple block placement lists into one execution-ready placement list | `MergeBlockPlacementsNode` |
 
 ## output.export（3）
@@ -566,3 +566,4 @@
 - 本文档由源码中的 `@NodeInfo` 元数据自动汇总生成。
 - 若某类节点缺少 `@NodeInfo`，会按包路径推断分类 ID，并按类名生成默认展示名。
 - 需要更完整的中文说明时，可在对应节点类的 `@NodeInfo.description` 中补充。
+- Bake 节点弃用/移除计划：`docs/bake-node-deprecation-plan.md`。

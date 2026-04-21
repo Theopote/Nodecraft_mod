@@ -14,6 +14,7 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.graph.GraphSerializer;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
@@ -181,17 +182,23 @@ public class ImGuiNodeIO {
 
             SavedGraph savedGraph = gson.fromJson(json, SavedGraph.class);
 
-            if (savedGraph == null) {
-                lastOperationError = "加载失败：无法解析 JSON 文件。";
-                NodeCraft.LOGGER.error("{}", lastOperationError);
-                return false;
-            }
-
             if (savedGraph.nodes == null) {
                 savedGraph.nodes = new ArrayList<>();
             }
             if (savedGraph.connections == null) {
                 savedGraph.connections = new ArrayList<>();
+            }
+
+            GraphSerializer.MigrationReport migrationReport = GraphSerializer.migrateDeprecatedBakeNodes(savedGraph);
+            if (migrationReport.hasChanges()) {
+                NodeCraft.LOGGER.warn(
+                    "加载图时已自动迁移 {} 个已弃用 Bake 节点到 output.execute.bake_geometry_to_blocks，类型: {}",
+                    migrationReport.migratedNodeCount(),
+                    migrationReport.migratedTypeIds()
+                );
+                for (String note : migrationReport.notes()) {
+                    NodeCraft.LOGGER.warn("Bake 节点迁移提示: {}", note);
+                }
             }
 
             // 创建新图
@@ -282,6 +289,20 @@ public class ImGuiNodeIO {
             if (skippedUnknownNodeTypes > 0) {
                 lastOperationError = "已部分加载：" + skippedUnknownNodeTypes + " 个节点类型未注册，已跳过。";
                 NodeCraft.LOGGER.warn("{}", lastOperationError);
+            }
+            if (migrationReport.hasChanges()) {
+                String deprecatedSummary = String.join(", ", migrationReport.migratedTypeIds());
+                String deprecatedWarning = "已自动迁移 " + migrationReport.migratedNodeCount()
+                    + " 个已弃用 Bake 节点到 output.execute.bake_geometry_to_blocks（类型: " + deprecatedSummary + "）。请保存以写回新格式。";
+                if (!migrationReport.notes().isEmpty()) {
+                    deprecatedWarning = deprecatedWarning + " 注意: " + String.join(" | ", migrationReport.notes());
+                }
+                if (lastOperationError == null || lastOperationError.isBlank()) {
+                    lastOperationError = deprecatedWarning;
+                } else {
+                    lastOperationError = lastOperationError + "；" + deprecatedWarning;
+                }
+                markDirty();
             }
 
             NodeCraft.LOGGER.info("节点图成功从文件加载: {}", filePath);
