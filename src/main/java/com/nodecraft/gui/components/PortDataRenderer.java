@@ -11,11 +11,14 @@ import java.util.Map;
 
 final class PortDataRenderer {
     static {
-        PortDataRendererRegistry.registerPredicate(PortDataRenderer::isBlockInfoLikeStatic, (renderer, value) -> renderer.renderBlockInfo(value));
-        PortDataRendererRegistry.registerPredicate(PortDataRenderer::isMinecraftBlockLikeStatic, (renderer, value) -> renderer.renderMinecraftBlock(value));
-        PortDataRendererRegistry.registerPredicate(PortDataRenderer::isItemStackLikeStatic, (renderer, value) -> renderer.renderItemStack(value));
-        PortDataRendererRegistry.registerPredicate(PortDataRenderer::isRegionLikeStatic, (renderer, value) -> renderer.renderRegion(value));
-        PortDataRendererRegistry.registerPredicate(PortDataRenderer::isNbtLikeStatic, (renderer, value) -> renderer.renderNBT(value));
+        PortDataRendererRegistry.registerType(Vec3.class, (renderer, value, label) -> renderer.renderVec3((Vec3) value, label), 100);
+        PortDataRendererRegistry.registerType(List.class, (renderer, value, label) -> renderer.renderList((List<?>) value, label), 95);
+        PortDataRendererRegistry.registerType(Map.class, (renderer, value, label) -> renderer.renderMap((Map<?, ?>) value, label), 94);
+        PortDataRendererRegistry.registerPredicate(PortDataRenderer::isBlockInfoLikeStatic, (renderer, value, label) -> renderer.renderBlockInfo(value), 90);
+        PortDataRendererRegistry.registerPredicate(PortDataRenderer::isMinecraftBlockLikeStatic, (renderer, value, label) -> renderer.renderMinecraftBlock(value), 80);
+        PortDataRendererRegistry.registerPredicate(PortDataRenderer::isItemStackLikeStatic, (renderer, value, label) -> renderer.renderItemStack(value), 70);
+        PortDataRendererRegistry.registerPredicate(PortDataRenderer::isRegionLikeStatic, (renderer, value, label) -> renderer.renderRegion(value), 60);
+        PortDataRendererRegistry.registerPredicate(PortDataRenderer::isNbtLikeStatic, (renderer, value, label) -> renderer.renderNBT(value), 50);
     }
 
     interface Actions {
@@ -45,13 +48,7 @@ final class PortDataRenderer {
             try {
                 if (value instanceof String || value instanceof Number || value instanceof Boolean) {
                     ImGui.text(label + ": " + value);
-                } else if (value instanceof List<?> list) {
-                    renderList(list, label);
-                } else if (value instanceof Map<?, ?> map) {
-                    renderMap(map, label);
-                } else if (value instanceof Vec3 vec) {
-                    renderVec3(vec, label);
-                } else if (PortDataRendererRegistry.render(this, value)) {
+                } else if (PortDataRendererRegistry.render(this, value, label)) {
                     // Rendered by typed/custom registry entry.
                 } else {
                     ImGui.text(label + ": " + value);
