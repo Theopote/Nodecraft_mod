@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **301**
+- Total nodes: **303**
 - Total categories: **46**
 
 ## Category Statistics
@@ -53,7 +53,7 @@
 | `world.query` | 7 |
 | `world.read` | 10 |
 | `world.selection` | 8 |
-| `world.write` | 14 |
+| `world.write` | 16 |
 
 ## geometry.architectural_primitives (1)
 
@@ -567,7 +567,7 @@
 | Selected Block Sequence | `world.selection.selected_block_sequence` | Collects multiple picked blocks in click order and outputs an ordered block sequence | `SelectedBlockSequenceNode` |
 | Selected Entity | `world.selection.selected_entity` | Gets information about the entity selected by the player. | `SelectedEntityNode` |
 
-## world.write (14)
+## world.write (16)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -585,6 +585,8 @@
 | 传送实体 | `world.write.entity_teleport` | 传送实体 | `EntityTeleportNode` |
 | 移除实体 | `world.write.remove_entities` | 移除实体 | `RemoveEntitiesNode` |
 | Undo Last World Write | `world.write.undo_last_write` | Reverts the most recent recorded world.write block placement operation | `UndoLastWorldWriteNode` |
+| Peek Last World Write Undo | `world.write.peek_last_undo` | Inspects the latest world.write undo record and outputs affected count and region bounds | `PeekLastWorldWriteUndoNode` |
+| Clear World Write Undo History | `world.write.clear_undo_history` | Clears all recorded world.write undo history entries | `ClearWorldWriteUndoHistoryNode` |
 
 ## Notes
 

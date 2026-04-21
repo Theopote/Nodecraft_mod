@@ -46,6 +46,10 @@ public final class WorldWriteHistoryService {
         return undoStack.size();
     }
 
+    public synchronized void clear() {
+        undoStack.clear();
+    }
+
     public static final class UndoRecord {
         private final List<BlockPos> positions = new ArrayList<>();
         private final List<BlockState> previousStates = new ArrayList<>();
