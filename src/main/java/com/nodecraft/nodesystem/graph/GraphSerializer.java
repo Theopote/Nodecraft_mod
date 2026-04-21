@@ -65,6 +65,9 @@ public class GraphSerializer {
         "math.list_sequence.series",
         "math.list_sequence.repeat"
     );
+    private static final Map<String, String> LEGACY_NODE_TYPE_REMAP = Map.of(
+        "input.numeric.boolean_toggle", "input.basic.boolean_toggle"
+    );
     
     private GraphSerializer() {
         // 工具类，不允许实例化
@@ -350,6 +353,9 @@ public class GraphSerializer {
     }
 
     private static String remapLegacyMathListSequenceNodeTypeId(String oldTypeId) {
+        if (LEGACY_NODE_TYPE_REMAP.containsKey(oldTypeId)) {
+            return LEGACY_NODE_TYPE_REMAP.get(oldTypeId);
+        }
         if (!oldTypeId.startsWith("math.list_sequence.")) {
             return oldTypeId;
         }

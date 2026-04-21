@@ -20,6 +20,7 @@ public enum NodeDataType {
     BOOLEAN("boolean", "Boolean", Boolean.class),
 
     FLOAT("float", "Float", Float.class),
+    NUMERIC_RANGE("numeric_range", "Numeric Range", NumericRangeData.class),
 
     POINT("point", "Point", PointData.class),
     VECTOR("vector", "Vector", Vector3d.class),

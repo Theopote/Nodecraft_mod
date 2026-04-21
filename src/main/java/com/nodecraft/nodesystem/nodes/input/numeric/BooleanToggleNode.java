@@ -19,10 +19,10 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "input.numeric.boolean_toggle",
-    displayName = "布尔开关",
+    id = "input.basic.boolean_toggle",
+    displayName = "Boolean Toggle",
     description = "提供一个可以切换的布尔值开关控制",
-    category = "input.numeric",
+    category = "input.basic",
     order = 6
 )
 public class BooleanToggleNode extends BaseCustomUINode {
@@ -46,7 +46,7 @@ public class BooleanToggleNode extends BaseCustomUINode {
     private boolean showStateText = true;
 
     public BooleanToggleNode() {
-        super(UUID.randomUUID(), "input.numeric.boolean_toggle");
+        super(UUID.randomUUID(), "input.basic.boolean_toggle");
         IPort valueOutput = new BasePort(OUTPUT_VALUE_ID, "Value", "当前布尔值", NodeDataType.BOOLEAN, this);
         addOutputPort(valueOutput);
         updateOutput();

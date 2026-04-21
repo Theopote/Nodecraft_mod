@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **281**
+- Total nodes: **285**
 - Total categories: **46**
 
 ## Category Statistics
@@ -14,10 +14,10 @@
 | `geometry.primitives` | 19 |
 | `geometry.profiles` | 8 |
 | `geometry.solids` | 17 |
-| `input.basic` | 2 |
+| `input.basic` | 3 |
 | `input.context` | 4 |
-| `input.numeric` | 7 |
-| `input.type_selectors` | 3 |
+| `input.numeric` | 8 |
+| `input.type_selectors` | 5 |
 | `material.basic_assignment` | 2 |
 | `material.block_state` | 3 |
 | `material.directional_mapping` | 1 |
@@ -145,12 +145,13 @@
 | Shrinkwrap Points On Surface Strip | `geometry.solids.shrinkwrap_points_surface_strip` | Projects each query point to the closest location on the surface strip triangle mesh | `ShrinkwrapPointsOnSurfaceStripNode` |
 | Shrinkwrap Points To Voxel Geometry | `geometry.solids.shrinkwrap_points_voxel_geometry` | Voxelizes geometry to blocks, then snaps each query point to the nearest voxel block center (shell when fill is off); distinct from triangle strip shrinkwrap | `ShrinkwrapPointsToVoxelGeometryNode` |
 
-## input.basic (2)
+## input.basic (3)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Text Input | `input.basic.text_input` | Allows entering single-line or multi-line text. | `TextInputNode` |
 | Color Picker | `input.basic.color_picker` | Allows selecting a color value with RGB and alpha support. | `ColorPickerNode` |
+| Boolean Toggle | `input.basic.boolean_toggle` | Provides a toggle control that outputs a boolean value | `BooleanToggleNode` |
 
 ## input.context (4)
 
@@ -161,7 +162,7 @@
 | Dimension Info | `input.context.dimension_info` | Gets the current dimension and basic dimension traits from the active Minecraft world. | `DimensionInfoNode` |
 | Current Time | `input.context.current_time` | Gets the current time and weather state from the active Minecraft world. | `CurrentTimeNode` |
 
-## input.numeric (7)
+## input.numeric (8)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -171,15 +172,18 @@
 | 浮点数滑动条 | `input.numeric.float_slider` | 输出一个可通过滑动条调节的浮点数。 | `FloatSliderNode` |
 | 角度滑动条 | `input.numeric.angle` | 输出一个可通过滑动条调节的角度值，支持度和弧度输出。 | `AngleSliderNode` |
 | 圆形角度选择器 | `input.numeric.angle_picker` | 通过圆形表盘选择角度，同时输出度和弧度。 | `CircularAngleNode` |
-| 布尔开关 | `input.numeric.boolean_toggle` | 提供一个可以切换的布尔值开关控制 | `BooleanToggleNode` |
+| Vector Input | `input.numeric.vector_input` | Inputs a 3D vector and outputs vector + X/Y/Z components. | `VectorInputNode` |
+| Range Input | `input.numeric.range` | Defines a numeric interval and outputs min/max/span plus a range object. | `RangeInputNode` |
 
-## input.type_selectors (3)
+## input.type_selectors (5)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Block Type Selector | `input.type_selectors.block_type_selector` | Searches and selects a Minecraft block type. | `BlockTypeSelectorNode` |
 | Entity Type Selector | `input.type_selectors.entity_type_selector` | Searches and selects a Minecraft entity type. | `EntityTypeSelectorNode` |
 | Item Type Selector | `input.type_selectors.item_type_selector` | Searches and selects a Minecraft item type. | `ItemTypeSelectorNode` |
+| Biome Selector | `input.type_selectors.biome_selector` | Selects a biome id for biome-aware generation workflows. | `BiomeSelectorNode` |
+| Block State Selector | `input.type_selectors.block_state_selector` | Builds block-state key/value data from a compact properties string. | `BlockStateSelectorNode` |
 
 ## material.basic_assignment (2)
 
