@@ -31,35 +31,6 @@ public class GraphSerializer {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(GraphSerializer.class);
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Set<String> DEPRECATED_BAKE_NODE_TYPE_IDS = Set.of(
-        "output.execute.bake_box_to_blocks",
-        "output.execute.bake_sphere_to_blocks",
-        "output.execute.bake_cylinder_to_blocks",
-        "output.execute.bake_cone_to_blocks",
-        "output.execute.bake_ellipsoid_to_blocks",
-        "output.execute.bake_prism_to_blocks",
-        "output.execute.bake_octahedron_to_blocks",
-        "output.execute.bake_tetrahedron_to_blocks",
-        "output.execute.bake_torus_to_blocks"
-    );
-    private static final String GEOMETRY_BAKE_TYPE_ID = "output.execute.bake_geometry_to_blocks";
-    private static final String GEOMETRY_INPUT_PORT_ID = "input_geometry";
-    private static final Set<String> PASSTHROUGH_OUTPUT_PORT_IDS = Set.of(
-        "output_blocks",
-        "output_region",
-        "output_count"
-    );
-    private static final Map<String, String> LEGACY_INPUT_PORT_TO_GEOMETRY_PORT = Map.of(
-        "input_box_geometry", GEOMETRY_INPUT_PORT_ID,
-        "input_sphere_geometry", GEOMETRY_INPUT_PORT_ID,
-        "input_cylinder_geometry", GEOMETRY_INPUT_PORT_ID,
-        "input_cone_geometry", GEOMETRY_INPUT_PORT_ID,
-        "input_ellipsoid_geometry", GEOMETRY_INPUT_PORT_ID,
-        "input_prism_geometry", GEOMETRY_INPUT_PORT_ID,
-        "input_octahedron_geometry", GEOMETRY_INPUT_PORT_ID,
-        "input_tetrahedron_geometry", GEOMETRY_INPUT_PORT_ID,
-        "input_torus_geometry", GEOMETRY_INPUT_PORT_ID
-    );
     private static final Set<String> LEGACY_MATH_SEQUENCE_NODE_TYPE_IDS = Set.of(
         "math.list_sequence.range",
         "math.list_sequence.series",
@@ -175,7 +146,7 @@ public class GraphSerializer {
                 migrationReport.migratedTypeIds()
             );
             for (String note : migrationReport.notes()) {
-                LOGGER.warn("Bake 节点迁移提示: {}", note);
+                LOGGER.warn("节点迁移提示: {}", note);
             }
         }
         
@@ -223,80 +194,6 @@ public class GraphSerializer {
         }
         
         return graph;
-    }
-
-    /**
-     * 收集保存图中出现的已弃用 Bake 节点类型（去重并保持首次出现顺序）。
-     */
-    public static List<String> collectDeprecatedBakeNodeTypes(SavedGraph savedGraph) {
-        if (savedGraph == null || savedGraph.nodes == null || savedGraph.nodes.isEmpty()) {
-            return List.of();
-        }
-
-        Set<String> found = new LinkedHashSet<>();
-        for (SavedNode savedNode : savedGraph.nodes) {
-            if (savedNode != null && DEPRECATED_BAKE_NODE_TYPE_IDS.contains(savedNode.typeId)) {
-                found.add(savedNode.typeId);
-            }
-        }
-        return List.copyOf(found);
-    }
-
-    /**
-     * 将已弃用的类型专属 Bake 节点迁移为通用 Geometry Bake 节点，并重写连接端口。
-     */
-    public static MigrationReport migrateDeprecatedBakeNodes(SavedGraph savedGraph) {
-        if (savedGraph == null || savedGraph.nodes == null || savedGraph.nodes.isEmpty()) {
-            return MigrationReport.empty();
-        }
-
-        Map<String, String> migratedNodeTypeByNodeId = new HashMap<>();
-        Set<String> migratedTypeIds = new LinkedHashSet<>();
-        List<String> notes = new ArrayList<>();
-        int migratedNodeCount = 0;
-
-        for (SavedNode savedNode : savedGraph.nodes) {
-            if (savedNode == null || savedNode.typeId == null || !DEPRECATED_BAKE_NODE_TYPE_IDS.contains(savedNode.typeId)) {
-                continue;
-            }
-
-            String originalTypeId = savedNode.typeId;
-            savedNode.typeId = GEOMETRY_BAKE_TYPE_ID;
-            savedNode.state = migrateBakeNodeState(originalTypeId, savedNode.state, notes);
-            migratedNodeTypeByNodeId.put(savedNode.nodeId, originalTypeId);
-            migratedTypeIds.add(originalTypeId);
-            migratedNodeCount++;
-        }
-
-        if (migratedNodeCount == 0) {
-            return MigrationReport.empty();
-        }
-
-        if (savedGraph.connections != null) {
-            for (SavedConnection connection : savedGraph.connections) {
-                if (connection == null) {
-                    continue;
-                }
-                String sourceOriginalType = migratedNodeTypeByNodeId.get(connection.sourceNodeId);
-                if (sourceOriginalType != null && !PASSTHROUGH_OUTPUT_PORT_IDS.contains(connection.sourcePortId)) {
-                    notes.add("节点 " + connection.sourceNodeId + " 输出端口 " + connection.sourcePortId
-                        + " 无法映射到通用 Bake 节点，连接可能需要手工修复。");
-                }
-
-                String targetOriginalType = migratedNodeTypeByNodeId.get(connection.targetNodeId);
-                if (targetOriginalType != null) {
-                    String mappedPort = LEGACY_INPUT_PORT_TO_GEOMETRY_PORT.get(connection.targetPortId);
-                    if (mappedPort != null) {
-                        connection.targetPortId = mappedPort;
-                    } else if (!GEOMETRY_INPUT_PORT_ID.equals(connection.targetPortId)) {
-                        notes.add("节点 " + connection.targetNodeId + " 输入端口 " + connection.targetPortId
-                            + " 无法映射到通用 Bake 节点，连接可能需要手工修复。");
-                    }
-                }
-            }
-        }
-
-        return new MigrationReport(migratedNodeCount, List.copyOf(migratedTypeIds), List.copyOf(notes));
     }
 
     /**
@@ -350,49 +247,6 @@ public class GraphSerializer {
         return LEGACY_MATH_SEQUENCE_NODE_TYPE_IDS.contains(oldTypeId)
             ? oldTypeId.replace("math.list_sequence.", "math.sequence.")
             : oldTypeId.replace("math.list_sequence.", "math.list.");
-    }
-
-    private static Object migrateBakeNodeState(String originalTypeId, Object state, List<String> notes) {
-        if (!(state instanceof Map<?, ?> sourceState)) {
-            return state;
-        }
-
-        Map<String, Object> migrated = new HashMap<>();
-        if (sourceState.get("fillGeometry") instanceof Boolean fillGeometry) {
-            migrated.put("fillGeometry", fillGeometry);
-            return migrated;
-        }
-
-        String[] legacyFillKeys = {
-            "fillBox", "fillCone", "fillCylinder", "fillEllipsoid",
-            "fillOctahedron", "fillPrism", "fillTetrahedron", "fillTorus"
-        };
-        for (String fillKey : legacyFillKeys) {
-            if (sourceState.get(fillKey) instanceof Boolean fillValue) {
-                migrated.put("fillGeometry", fillValue);
-                return migrated;
-            }
-        }
-
-        if ("output.execute.bake_sphere_to_blocks".equals(originalTypeId)) {
-            if (sourceState.get("fillSphere") instanceof Boolean fillSphere) {
-                migrated.put("fillGeometry", fillSphere);
-                return migrated;
-            }
-            Object voxelMode = sourceState.get("voxelMode");
-            if (voxelMode instanceof String modeText) {
-                boolean isShell = "SHELL".equalsIgnoreCase(modeText.trim());
-                migrated.put("fillGeometry", !isShell);
-                if (sourceState.get("shellThickness") instanceof Number shellThickness
-                    && Double.compare(shellThickness.doubleValue(), 1.0d) != 0) {
-                    notes.add("球体 Bake 节点 shellThickness=" + shellThickness
-                        + " 不能被通用 Bake 完全表达，已按 fill/shell 语义迁移。");
-                }
-                return migrated;
-            }
-        }
-
-        return state;
     }
 
     public record MigrationReport(int migratedNodeCount, List<String> migratedTypeIds, List<String> notes) {
