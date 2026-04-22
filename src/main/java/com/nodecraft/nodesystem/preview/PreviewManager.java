@@ -69,22 +69,6 @@ public final class PreviewManager {
         return RENDERER.showPreview(nodeId, "block_highlight", positions, options);
     }
 
-    // Ghost blocks
-
-    public static String showGhostBlocks(String nodeId, List<Coordinate> positions) {
-        return showGhostBlocks(nodeId, positions, new PreviewOptions().ghostBlockMode().setOpacity(0.5f));
-    }
-
-    public static String showGhostBlocks(String nodeId, List<Coordinate> positions, PreviewOptions options) {
-        if (positions == null || positions.isEmpty()) {
-            hideNodePreviews(nodeId);
-            return null;
-        }
-        PreviewBlocksPayload payload = PreviewPayloadAdapters.fromCoordinates(positions, "minecraft:stone");
-        PreviewStyle style = PreviewStyle.fromLegacyGhostOptions(options, 0.5f);
-        return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
-    }
-
     /**
      * v1 unified entry: dispatches on {@link PreviewKind} and {@link PreviewBackend}.
      * Implements {@link PreviewKind#BLOCKS} (GHOST + TRACKED_WORLD), {@link PreviewKind#POINTS},

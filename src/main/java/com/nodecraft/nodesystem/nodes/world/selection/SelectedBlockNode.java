@@ -14,11 +14,17 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.interaction.IBlockPickerCallback;
 import com.nodecraft.nodesystem.interaction.NodeEditorInteractionManager;
+import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.nodesystem.preview.PreviewRenderer;
+import com.nodecraft.nodesystem.preview.protocol.PreviewBlock;
+import com.nodecraft.nodesystem.preview.protocol.PreviewBlocksPayload;
+import com.nodecraft.nodesystem.preview.protocol.PreviewKind;
+import com.nodecraft.nodesystem.preview.protocol.PreviewStyle;
 import com.nodecraft.nodesystem.visual.SelectionVisualFeedback;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
 import org.jetbrains.annotations.Nullable;
+import java.util.List;
 import java.util.UUID;
 import java.util.Map;
 import java.util.HashMap;
@@ -906,9 +912,18 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 // 先隐藏之前的预览
                 hideGhostBlockPreview();
                 
-                // 显示新的预览
+                PreviewBlocksPayload payload = new PreviewBlocksPayload(List.of(
+                    new PreviewBlock(
+                        pickedBlockPosition.getX(),
+                        pickedBlockPosition.getY(),
+                        pickedBlockPosition.getZ(),
+                        pickedBlockId
+                    )
+                ));
+                PreviewStyle style = PreviewStyle.forGhostBlocks(1.0f, 1.0f, 1.0f, 0.5f, false, "original", 2.0f, 0.1f, 0);
+                PreviewOptions options = style.toPreviewOptions(PreviewKind.BLOCKS);
                 currentGhostBlockPreviewId = PreviewRenderer.getInstance()
-                        .showGhostBlock(getId().toString(), pickedBlockPosition, pickedBlockId, 0.5f);
+                        .showPreview(getId().toString(), "ghost_block", payload, options);
                 
                 if (currentGhostBlockPreviewId != null) {
                     NodeCraft.LOGGER.debug("节点 {} 幽灵方块预览已显示: {} at {}, 预览ID: {}", 
@@ -934,7 +949,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     private void hideGhostBlockPreview() {
         if (currentGhostBlockPreviewId != null) {
             try {
-                PreviewRenderer.getInstance().hideGhostBlock(currentGhostBlockPreviewId);
+                PreviewRenderer.getInstance().hidePreview(currentGhostBlockPreviewId);
                 NodeCraft.LOGGER.debug("节点 {} 幽灵方块预览已隐藏: {}", getId(), currentGhostBlockPreviewId);
             } catch (NullPointerException e) {
                 NodeCraft.LOGGER.error("节点 {} 隐藏幽灵方块预览失败: 空指针异常 - PreviewRenderer为null", getId(), e);

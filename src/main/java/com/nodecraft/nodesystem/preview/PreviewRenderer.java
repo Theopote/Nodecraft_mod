@@ -1,10 +1,6 @@
 package com.nodecraft.nodesystem.preview;
 
 import com.nodecraft.core.NodeCraft;
-import com.nodecraft.nodesystem.preview.protocol.PreviewBlock;
-import com.nodecraft.nodesystem.preview.protocol.PreviewBlocksPayload;
-import com.nodecraft.nodesystem.preview.protocol.PreviewKind;
-import com.nodecraft.nodesystem.preview.protocol.PreviewStyle;
 import com.nodecraft.nodesystem.preview.elements.*;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.*;
@@ -469,35 +465,6 @@ public class PreviewRenderer {
             counts.put(type, counts.getOrDefault(type, 0) + 1);
         }
         return counts;
-    }
-
-    // ================= SelectedBlockNode 兼容方法 =================
-    
-    /**
-     * 显示幽灵方块预览（SelectedBlockNode 等）：数据层已使用 {@link com.nodecraft.nodesystem.preview.protocol.PreviewBlocksPayload}，
-     * 避免把 Map 等隐式协议塞进 {@code GhostBlockElement}（v1.1 回归组 D）。
-     */
-    public String showGhostBlock(String nodeId, com.nodecraft.nodesystem.util.Coordinate position, String blockId, float opacity) {
-        PreviewBlocksPayload payload = new PreviewBlocksPayload(List.of(
-            new PreviewBlock(position.getX(), position.getY(), position.getZ(), blockId)
-        ));
-        PreviewStyle style = PreviewStyle.forGhostBlocks(1.0f, 1.0f, 1.0f, opacity, false, "original", 2.0f, 0.1f, 0);
-        PreviewOptions options = style.toPreviewOptions(PreviewKind.BLOCKS);
-        return showPreview(nodeId, "ghost_block", payload, options);
-    }
-    
-    /**
-     * 隐藏幽灵方块预览 - 为了兼容 SelectedBlockNode
-     */
-    public void hideGhostBlock(String elementId) {
-        hidePreview(elementId);
-    }
-    
-    /**
-     * 根据节点ID移除所有相关的预览元素 - 为了兼容 SelectedBlockNode
-     */
-    public void removeAllPreviewsByNodeId(String nodeId) {
-        hidePreviewsByNode(nodeId);
     }
     
     /**
