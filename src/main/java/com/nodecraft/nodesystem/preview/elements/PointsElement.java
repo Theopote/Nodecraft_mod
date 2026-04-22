@@ -103,7 +103,7 @@ public class PointsElement extends AbstractPreviewElement {
             drawCross(vertexConsumer, matrix, point.subtract(cameraPos), pointSize, finalOpacity);
         }
 
-        if (flushImmediately && immediate != null) {
+        if (flushImmediately) {
             immediate.draw();
         }
     }

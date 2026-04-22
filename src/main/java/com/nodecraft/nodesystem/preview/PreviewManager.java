@@ -93,7 +93,7 @@ public final class PreviewManager {
             return null;
         }
         PreviewBlocksPayload payload = PreviewPayloadAdapters.fromGhostBlockPlacements(placements);
-        float fallbackOpacity = placements.get(0).opacity();
+        float fallbackOpacity = placements.getFirst().opacity();
         PreviewStyle style = PreviewStyle.fromLegacyGhostOptions(options, fallbackOpacity);
         return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
     }
@@ -184,9 +184,9 @@ public final class PreviewManager {
                 TrackedPreviewPlacementService.getInstance().clearTrackedPreview(ctx.getWorld(), nodeId);
                 return nodeId + ":tracked:cleared";
             }
-            BlockState state = resolveBlockStateForPreview(cells.get(0).blockId());
+            BlockState state = resolveBlockStateForPreview(cells.getFirst().blockId());
             if (state == null) {
-                NodeCraft.LOGGER.warn("PreviewManager.showPreview TRACKED_WORLD: invalid block id {}", cells.get(0).blockId());
+                NodeCraft.LOGGER.warn("PreviewManager.showPreview TRACKED_WORLD: invalid block id {}", cells.getFirst().blockId());
                 return null;
             }
             List<BlockPos> positions = PreviewPayloadAdapters.toBlockPosList(blocksPayload);

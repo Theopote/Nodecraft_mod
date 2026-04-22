@@ -319,7 +319,7 @@ public class PortPositionCalculator {
             }
 
             String portId = port.getId();
-            boolean isLegacyInput = false;
+            boolean isLegacyInput;
 
             if (node instanceof GeometryViewerNode) {
                 isLegacyInput =
