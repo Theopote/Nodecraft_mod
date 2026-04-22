@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.preview.elements;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.preview.AbstractPreviewElement;
+import com.nodecraft.nodesystem.preview.GhostBlockPlacement;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.nodesystem.preview.PreviewRenderer;
 import com.nodecraft.nodesystem.util.Coordinate;
@@ -85,7 +86,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
     
     /**
      * 处理输入数据，支持单个对象或对象列表
-     * 支持的数据类型：Coordinate, BlockData, BlockPlacement, Map
+     * 支持的数据类型：{@link GhostBlockPlacement}, Coordinate, BlockData, Map；未知布局时尝试反射字段 {@code position}/{@code blockId}。
      */
     @Override
     protected void processData(Object data) {
@@ -98,7 +99,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
             }
             if (nextBlocks.isEmpty() && !list.isEmpty()) {
                 Object first = list.get(0);
-                NodeCraft.LOGGER.warn(
+                NodeCraft.LOGGER.info(
                     "GhostBlockElement processData: list had {} items but none became BlockData; firstType={}",
                     list.size(),
                     first == null ? "null" : first.getClass().getName()
@@ -119,13 +120,13 @@ public class GhostBlockElement extends AbstractPreviewElement {
         if (item == null) {
             return;
         }
-        if (item instanceof Coordinate coord) {
+        if (item instanceof GhostBlockPlacement placement) {
+            target.add(new BlockData(placement.position(), placement.blockId()));
+        } else if (item instanceof Coordinate coord) {
             Vec3d pos = new Vec3d(coord.getX(), coord.getY(), coord.getZ());
             target.add(new BlockData(pos, "minecraft:stone")); // 默认石头
         } else if (item instanceof BlockData blockData) {
             target.add(blockData);
-        } else if (item instanceof BlockPlacement placement) {
-            target.add(new BlockData(placement.position, placement.blockId));
         } else if (item instanceof Map<?, ?> map) {
             // 处理来自 SelectedBlockNode 的数据格式
             processMapData(target, map);
@@ -144,13 +145,53 @@ public class GhostBlockElement extends AbstractPreviewElement {
             Field idField = c.getField("blockId");
             Object posObj = posField.get(item);
             Object idObj = idField.get(item);
-            if (posObj instanceof Vec3d pos && idObj instanceof String blockId) {
+            Vec3d pos = toLocalVec3d(posObj);
+            String blockId = idObj instanceof String s ? s : idObj != null ? idObj.toString() : null;
+            if (pos != null && blockId != null && !blockId.isEmpty()) {
                 target.add(new BlockData(pos, blockId));
                 return true;
             }
         } catch (NoSuchFieldException | IllegalAccessException ignored) {
         }
         return false;
+    }
+
+    /**
+     * 将任意 ClassLoader 下的 Vec3d 兼容对象转为当前模块使用的 {@link Vec3d}。
+     */
+    private static Vec3d toLocalVec3d(Object posObj) {
+        if (posObj == null) {
+            return null;
+        }
+        if (posObj instanceof Vec3d v) {
+            return v;
+        }
+        Class<?> pc = posObj.getClass();
+        if (!"Vec3d".equals(pc.getSimpleName())) {
+            return null;
+        }
+        try {
+            try {
+                double x = ((Number) pc.getMethod("x").invoke(posObj)).doubleValue();
+                double y = ((Number) pc.getMethod("y").invoke(posObj)).doubleValue();
+                double z = ((Number) pc.getMethod("z").invoke(posObj)).doubleValue();
+                return new Vec3d(x, y, z);
+            } catch (NoSuchMethodException ignored) {
+                try {
+                    double x = ((Number) pc.getMethod("getX").invoke(posObj)).doubleValue();
+                    double y = ((Number) pc.getMethod("getY").invoke(posObj)).doubleValue();
+                    double z = ((Number) pc.getMethod("getZ").invoke(posObj)).doubleValue();
+                    return new Vec3d(x, y, z);
+                } catch (NoSuchMethodException ignored2) {
+                    double x = pc.getField("x").getDouble(posObj);
+                    double y = pc.getField("y").getDouble(posObj);
+                    double z = pc.getField("z").getDouble(posObj);
+                    return new Vec3d(x, y, z);
+                }
+            }
+        } catch (ReflectiveOperationException | ClassCastException ignored) {
+        }
+        return null;
     }
     
     /**
@@ -637,31 +678,6 @@ public class GhostBlockElement extends AbstractPreviewElement {
         public String toString() {
             return String.format("BlockData{pos=%.1f,%.1f,%.1f, block=%s}", 
                 position.x, position.y, position.z, blockId);
-        }
-    }
-    
-    /**
-     * 方块放置数据
-     */
-    public static class BlockPlacement {
-        public final Vec3d position;
-        public final String blockId;
-        public final float opacity;
-        
-        public BlockPlacement(Vec3d position, String blockId) {
-            this(position, blockId, 0.5f);
-        }
-        
-        public BlockPlacement(Vec3d position, String blockId, float opacity) {
-            this.position = position;
-            this.blockId = blockId;
-            this.opacity = Math.max(0.0f, Math.min(1.0f, opacity));
-        }
-        
-        @Override
-        public String toString() {
-            return String.format("BlockPlacement{pos=%.1f,%.1f,%.1f, block=%s, opacity=%.2f}", 
-                position.x, position.y, position.z, blockId, opacity);
         }
     }
 } 

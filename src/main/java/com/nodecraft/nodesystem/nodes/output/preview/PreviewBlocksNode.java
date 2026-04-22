@@ -6,9 +6,9 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.preview.GhostBlockPlacement;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
-import com.nodecraft.nodesystem.preview.elements.GhostBlockElement;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.Coordinate;
 import net.minecraft.util.math.BlockPos;
@@ -85,7 +85,7 @@ public class PreviewBlocksNode extends BaseCustomUINode {
         if (!previewEnabled) {
             PreviewManager.hideNodePreviews(getId().toString());
         } else {
-            List<GhostBlockElement.BlockPlacement> placements = new ArrayList<>();
+            List<GhostBlockPlacement> placements = new ArrayList<>();
             collectPlacements(blocksObj, effectiveBlockType, placements);
             collectPlacements(coordsObj, effectiveBlockType, placements);
 
@@ -116,10 +116,10 @@ public class PreviewBlocksNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_BLOCK_COUNT_ID, blockCount);
     }
 
-    private void collectPlacements(Object source, String effectiveBlockType, List<GhostBlockElement.BlockPlacement> out) {
+    private void collectPlacements(Object source, String effectiveBlockType, List<GhostBlockPlacement> out) {
         if (source instanceof BlockPosList blockPosList) {
             for (BlockPos pos : blockPosList.getPositions()) {
-                out.add(new GhostBlockElement.BlockPlacement(
+                out.add(new GhostBlockPlacement(
                         new Vec3d(pos.getX(), pos.getY(), pos.getZ()),
                         effectiveBlockType,
                         transparency
@@ -130,7 +130,7 @@ public class PreviewBlocksNode extends BaseCustomUINode {
 
         if (source instanceof List<?> list) {
             for (Object item : list) {
-                GhostBlockElement.BlockPlacement placement = toPlacement(item, effectiveBlockType);
+                GhostBlockPlacement placement = toPlacement(item, effectiveBlockType);
                 if (placement != null) {
                     out.add(placement);
                 }
@@ -138,22 +138,22 @@ public class PreviewBlocksNode extends BaseCustomUINode {
             return;
         }
 
-        GhostBlockElement.BlockPlacement placement = toPlacement(source, effectiveBlockType);
+        GhostBlockPlacement placement = toPlacement(source, effectiveBlockType);
         if (placement != null) {
             out.add(placement);
         }
     }
 
-    private GhostBlockElement.BlockPlacement toPlacement(Object value, String effectiveBlockType) {
+    private GhostBlockPlacement toPlacement(Object value, String effectiveBlockType) {
         if (value instanceof Coordinate coordinate) {
-            return new GhostBlockElement.BlockPlacement(
+            return new GhostBlockPlacement(
                     new Vec3d(coordinate.getX(), coordinate.getY(), coordinate.getZ()),
                     effectiveBlockType,
                     transparency
             );
         }
         if (value instanceof BlockPos pos) {
-            return new GhostBlockElement.BlockPlacement(
+            return new GhostBlockPlacement(
                     new Vec3d(pos.getX(), pos.getY(), pos.getZ()),
                     effectiveBlockType,
                     transparency

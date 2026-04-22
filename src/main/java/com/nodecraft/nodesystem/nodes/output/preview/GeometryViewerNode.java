@@ -9,9 +9,9 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.PreviewBackend;
 import com.nodecraft.nodesystem.preview.PreviewManager;
+import com.nodecraft.nodesystem.preview.GhostBlockPlacement;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.nodesystem.preview.TrackedPreviewPlacementService;
-import com.nodecraft.nodesystem.preview.elements.GhostBlockElement;
 import com.nodecraft.nodesystem.util.Color;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
@@ -21,6 +21,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -219,13 +220,9 @@ public class GeometryViewerNode extends BaseCustomUINode {
         }
 
         PreviewManager.hideNodePreviews(getId().toString());
-        List<GhostBlockElement.BlockPlacement> placements = new ArrayList<>(blocksList.size());
+        List<GhostBlockPlacement> placements = new ArrayList<>(blocksList.size());
         for (BlockPos pos : blocksList.getPositions()) {
-            placements.add(new GhostBlockElement.BlockPlacement(
-                net.minecraft.util.math.Vec3d.of(pos),
-                effectiveBlockType,
-                trans
-            ));
+            placements.add(new GhostBlockPlacement(Vec3d.of(pos), effectiveBlockType, trans));
         }
 
         if (placements.isEmpty()) {

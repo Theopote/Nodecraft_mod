@@ -1,7 +1,6 @@
 package com.nodecraft.nodesystem.preview;
 
 import com.nodecraft.core.NodeCraft;
-import com.nodecraft.nodesystem.preview.elements.GhostBlockElement;
 import com.nodecraft.nodesystem.util.Coordinate;
 import net.minecraft.util.math.Vec3d;
 
@@ -56,7 +55,7 @@ public final class PreviewManager {
 
     public static String showGhostBlockPlacements(
             String nodeId,
-            List<GhostBlockElement.BlockPlacement> placements,
+            List<GhostBlockPlacement> placements,
             PreviewOptions options
     ) {
         return RENDERER.showPreview(nodeId, "ghost_block", placements, options);
