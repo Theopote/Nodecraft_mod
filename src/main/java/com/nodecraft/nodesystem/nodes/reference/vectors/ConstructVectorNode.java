@@ -12,8 +12,8 @@ import java.util.UUID;
 
 @NodeInfo(
     id = "reference.vectors.construct_vector",
-    displayName = "Construct Vector",
-    description = "Builds a vector from X, Y, Z numeric inputs.",
+    displayName = "构建向量",
+    description = "通过 X / Y / Z 数值输入构建向量，并输出 Vector / X / Y / Z",
     category = "reference.vectors",
     order = 1
 )
@@ -31,19 +31,19 @@ public class ConstructVectorNode extends BaseNode {
     public ConstructVectorNode() {
         super(UUID.randomUUID(), "reference.vectors.construct_vector");
 
-        addInputPort(new BasePort(INPUT_X_ID, "X", "X component input", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_Y_ID, "Y", "Y component input", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_Z_ID, "Z", "Z component input", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_X_ID, "X", "X 分量输入", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_Y_ID, "Y", "Y 分量输入", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_Z_ID, "Z", "Z 分量输入", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "Constructed vector", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X component output", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y component output", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z component output", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "构建后的向量", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X 分量输出", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y 分量输出", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z 分量输出", NodeDataType.DOUBLE, this));
     }
 
     @Override
     public String getDescription() {
-        return "Builds a vector from X, Y, Z inputs and outputs Vector / X / Y / Z.";
+        return "通过 X / Y / Z 输入构建向量，并输出 Vector / X / Y / Z。";
     }
 
     @Override

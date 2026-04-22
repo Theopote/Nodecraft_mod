@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **308**
+- Total nodes: **310**
 - Total categories: **43**
 
 ## Category Statistics
@@ -40,8 +40,8 @@
 | `pattern.surface_volume_distribution` | 7 |
 | `reference.frames` | 4 |
 | `reference.planes` | 6 |
-| `reference.points` | 16 |
-| `reference.vectors` | 11 |
+| `reference.points` | 17 |
+| `reference.vectors` | 12 |
 | `transform.basic_transforms` | 9 |
 | `transform.deformations` | 4 |
 | `transform.orientation` | 2 |
@@ -428,11 +428,12 @@
 | Distance Point To Plane | `reference.planes.distance_point_to_plane` | Measures the absolute and signed distance from a geometric point to a plane | `DistancePointToPlaneNode` |
 | Box Face To Plane | `reference.planes.block_face_plane` | Explicitly converts a box face into its supporting plane and related face frame data | `BoxFaceToPlaneNode` |
 
-## reference.points (16)
+## reference.points (17)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | 坐标输入 | `reference.points.point_from_coordinates` | 输入一个整数坐标，并同时输出 Coordinate / Block Pos / X / Y / Z | `CoordinateInputNode` |
+| 构建坐标 | `reference.points.construct_coordinate` | 通过 X / Y / Z 数值输入构建坐标，并输出 Coordinate / Block Pos / X / Y / Z | `ConstructCoordinateNode` |
 | Block To Point | `reference.points.point_from_block` | Explicitly converts a block coordinate into a geometric point, with optional block-center offset | `BlockToPointNode` |
 | Point Along Vector | `reference.points.point_along_vector` | Creates a new point by moving a start point along a direction vector by a distance | `PointAlongVectorNode` |
 | Block To Vector | `reference.points.block_to_vector` | Explicitly converts a block coordinate into a Vector3d position, with optional block-center offset. | `BlockToVectorNode` |
@@ -449,11 +450,12 @@
 | Deconstruct Face Edge | `reference.points.deconstruct_edge` | Extracts endpoints, midpoint, direction, vector, and length from a face edge | `DeconstructFaceEdgeNode` |
 | Project Point To Polyline | `reference.points.project_to_polyline` | Projects a point onto the closest location on a polyline or line segment | `ProjectPointToPolylineNode` |
 
-## reference.vectors (11)
+## reference.vectors (12)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | 向量输入 | `reference.vectors.vector` | 输入一个三维向量，并同时输出 X / Y / Z 分量 | `VectorInputNode` |
+| 构建向量 | `reference.vectors.construct_vector` | 通过 X / Y / Z 数值输入构建向量，并输出 Vector / X / Y / Z | `ConstructVectorNode` |
 | 解构向量 | `reference.vectors.deconstruct_vector` | 输出向量的X、Y、Z分量 | `DeconstructVectorNode` |
 | 向量归一化 | `reference.vectors.normalize_vector` | 将向量归一化为单位长度 | `NormalizeVectorNode` |
 | 叉积 | `reference.vectors.cross_product` | 计算两个向量的叉积（A × B） | `CrossProductNode` |

@@ -12,8 +12,8 @@ import java.util.UUID;
 
 @NodeInfo(
     id = "reference.points.construct_coordinate",
-    displayName = "Construct Coordinate",
-    description = "Builds a coordinate from X, Y, Z numeric inputs.",
+    displayName = "构建坐标",
+    description = "通过 X / Y / Z 数值输入构建坐标，并输出 Coordinate / Block Pos / X / Y / Z",
     category = "reference.points",
     order = 1
 )
@@ -32,20 +32,20 @@ public class ConstructCoordinateNode extends BaseNode {
     public ConstructCoordinateNode() {
         super(UUID.randomUUID(), "reference.points.construct_coordinate");
 
-        addInputPort(new BasePort(INPUT_X_ID, "X", "X component input", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_Y_ID, "Y", "Y component input", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_Z_ID, "Z", "Z component input", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_X_ID, "X", "X 分量输入", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_Y_ID, "Y", "Y 分量输入", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_Z_ID, "Z", "Z 分量输入", NodeDataType.INTEGER, this));
 
-        addOutputPort(new BasePort(OUTPUT_COORDINATE_ID, "Coordinate", "Constructed coordinate", NodeDataType.COORDINATE, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCK_POS_ID, "Block Pos", "Constructed block position", NodeDataType.BLOCK_POS, this));
-        addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X component output", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y component output", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z component output", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_COORDINATE_ID, "Coordinate", "构建后的坐标", NodeDataType.COORDINATE, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCK_POS_ID, "Block Pos", "构建后的方块坐标", NodeDataType.BLOCK_POS, this));
+        addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X 分量输出", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y 分量输出", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z 分量输出", NodeDataType.INTEGER, this));
     }
 
     @Override
     public String getDescription() {
-        return "Builds a coordinate from X, Y, Z inputs and outputs Coordinate / Block Pos / X / Y / Z.";
+        return "通过 X / Y / Z 输入构建坐标，并输出 Coordinate / Block Pos / X / Y / Z。";
     }
 
     @Override
