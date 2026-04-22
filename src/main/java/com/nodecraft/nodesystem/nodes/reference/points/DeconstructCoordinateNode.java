@@ -14,7 +14,7 @@ import java.util.UUID;
  */
 @NodeInfo(
     id = "reference.points.deconstruct_point",
-    displayName = "分解坐标",
+    displayName = "Deconstruct Coordinate",
     description = "将坐标分解为X、Y、Z分量",
     category = "reference.points",
     order = 4
