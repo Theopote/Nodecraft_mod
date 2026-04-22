@@ -32,8 +32,8 @@ import java.util.List;
 
 /**
  * High-level helper API for preview rendering.
- * <p>统一入口为 {@link #showPreview(PreviewRequest)}；{@code showGhostBlockPlacements}、{@code showPaths} 等旧 API
- * 为兼容层，内部尽量转调协议类型（v1.1 清单 §11）。新节点请直接构造 {@link com.nodecraft.nodesystem.preview.protocol.PreviewRequest}。
+ * <p>统一入口为 {@link #showPreview(PreviewRequest)}；{@code showPaths} 等便捷方法内部转调协议类型。
+ * 新节点请直接构造 {@link com.nodecraft.nodesystem.preview.protocol.PreviewRequest}。
  */
 public final class PreviewManager {
 
@@ -82,21 +82,6 @@ public final class PreviewManager {
         }
         PreviewBlocksPayload payload = PreviewPayloadAdapters.fromCoordinates(positions, "minecraft:stone");
         PreviewStyle style = PreviewStyle.fromLegacyGhostOptions(options, 0.5f);
-        return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
-    }
-
-    public static String showGhostBlockPlacements(
-            String nodeId,
-            List<GhostBlockPlacement> placements,
-            PreviewOptions options
-    ) {
-        if (placements == null || placements.isEmpty()) {
-            hideNodePreviews(nodeId);
-            return null;
-        }
-        PreviewBlocksPayload payload = PreviewPayloadAdapters.fromGhostBlockPlacements(placements);
-        float fallbackOpacity = placements.getFirst().opacity();
-        PreviewStyle style = PreviewStyle.fromLegacyGhostOptions(options, fallbackOpacity);
         return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
     }
 
@@ -475,7 +460,12 @@ public final class PreviewManager {
         if (curve != null) {
             return showCurve(nodeId, curve, options);
         }
-        return RENDERER.showPreview(nodeId, "paths", pathData, options);
+        NodeCraft.LOGGER.warn(
+            "PreviewManager.showPaths: unsupported pathData type {}, hiding node previews",
+            pathData.getClass().getName()
+        );
+        hideNodePreviews(nodeId);
+        return null;
     }
 
     public static String showTextLabels(String nodeId, Object labelData, PreviewOptions options) {

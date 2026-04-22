@@ -2,7 +2,6 @@ package com.nodecraft.nodesystem.preview.protocol;
 
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
-import com.nodecraft.nodesystem.preview.GhostBlockPlacement;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.Curve;
@@ -14,8 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Phase A 兼容层：把旧输入集中转换为 v1 {@link PreviewPayload}，避免在 {@code GhostBlockElement} 等处散落猜类型逻辑。
- * <p><b>注意：</b>不是第二套永久协议——新节点应直接产出协议类型；此处仅服务迁移与外部旧调用，后续应逐步收缩。
+ * 将节点域类型（坐标、折线等）集中转换为 v1 {@link PreviewPayload}；
+ * 渲染侧（如 {@link com.nodecraft.nodesystem.preview.elements.GhostBlockElement}）只消费协议载荷。
  */
 public final class PreviewPayloadAdapters {
 
@@ -31,21 +30,6 @@ public final class PreviewPayloadAdapters {
             if (pos != null) {
                 blocks.add(new PreviewBlock(pos.getX(), pos.getY(), pos.getZ(), blockId));
             }
-        }
-        return new PreviewBlocksPayload(blocks);
-    }
-
-    public static PreviewBlocksPayload fromGhostBlockPlacements(List<GhostBlockPlacement> placements) {
-        if (placements == null || placements.isEmpty()) {
-            return new PreviewBlocksPayload(List.of());
-        }
-        List<PreviewBlock> blocks = new ArrayList<>(placements.size());
-        for (GhostBlockPlacement p : placements) {
-            if (p == null) {
-                continue;
-            }
-            var pos = p.position();
-            blocks.add(new PreviewBlock(pos.x, pos.y, pos.z, p.blockId()));
         }
         return new PreviewBlocksPayload(blocks);
     }
@@ -154,6 +138,9 @@ public final class PreviewPayloadAdapters {
      */
     @Nullable
     public static PreviewCurvePayload tryCurvePayloadFromPreviewSource(Object previewItem) {
+        if (previewItem instanceof PreviewCurvePayload curvePayload) {
+            return curvePayload;
+        }
         if (previewItem instanceof LineData line) {
             return curveFromLineData(line, false);
         }
@@ -166,6 +153,18 @@ public final class PreviewPayloadAdapters {
                 return null;
             }
             return previewCurveFromWorldPoints(samples, false);
+        }
+        if (previewItem instanceof List<?> rawList) {
+            List<Vec3d> pts = new ArrayList<>(rawList.size());
+            for (Object o : rawList) {
+                if (o instanceof Vec3d v) {
+                    pts.add(v);
+                }
+            }
+            if (pts.size() >= 2) {
+                return previewCurveFromWorldPoints(pts, false);
+            }
+            return null;
         }
         return null;
     }

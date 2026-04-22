@@ -2,12 +2,10 @@ package com.nodecraft.nodesystem.preview.elements;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.preview.AbstractPreviewElement;
-import com.nodecraft.nodesystem.preview.GhostBlockPlacement;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.nodesystem.preview.protocol.PreviewBlock;
 import com.nodecraft.nodesystem.preview.protocol.PreviewBlocksPayload;
 import com.nodecraft.nodesystem.preview.PreviewRenderer;
-import com.nodecraft.nodesystem.util.Coordinate;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
@@ -22,22 +20,14 @@ import net.minecraft.world.World;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-import java.lang.reflect.Field;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 幽灵方块预览元素 (完善版)
  * 用于显示半透明的方块预览，支持原始纹理渲染
- * <p><b>Preview 协议 v1.1（方块）</b>
- * <ul>
- *   <li><b>Phase A（当前）</b>：优先消费 {@link com.nodecraft.nodesystem.preview.protocol.PreviewBlocksPayload}；
- *       仍保留 Coordinate / Map / {@link com.nodecraft.nodesystem.preview.GhostBlockPlacement} / 反射等兼容路径，
- *       仅供旧调用方与 {@link com.nodecraft.nodesystem.preview.PreviewRenderer} 直传数据过渡，新代码一律走协议。</li>
- *   <li><b>Phase B（计划）</b>：在主要调用方全部迁移后，删除猜类型与反射分支，仅保留 {@code PreviewBlocksPayload}。</li>
- * </ul>
+ * <p><b>Preview 协议（方块）</b>：仅接受 {@link com.nodecraft.nodesystem.preview.protocol.PreviewBlocksPayload}，
+ * 由 {@link com.nodecraft.nodesystem.preview.PreviewManager} / {@link com.nodecraft.nodesystem.preview.PreviewRenderer} 保证类型边界。
  * <p>
  * 性能优化：
  * - 避免在渲染循环中重复获取设置，将 maxRenderDistance 在循环外获取一次
@@ -94,136 +84,23 @@ public class GhostBlockElement extends AbstractPreviewElement {
     }
     
     /**
-     * 处理输入数据，支持单个对象或对象列表
-     * 支持的数据类型：{@link PreviewBlocksPayload}（v1 首选）、{@link GhostBlockPlacement}、Coordinate、BlockData、Map；未知布局时尝试反射字段 {@code position}/{@code blockId}。
+     * 仅解析 {@link PreviewBlocksPayload}。
      */
     @Override
     protected void processData(Object data) {
-        if (data instanceof PreviewBlocksPayload payload) {
-            List<BlockData> nextBlocks = new ArrayList<>(payload.getBlocks().size());
-            for (PreviewBlock b : payload.getBlocks()) {
-                nextBlocks.add(new BlockData(new Vec3d(b.x(), b.y(), b.z()), b.blockId()));
-            }
-            blocks = nextBlocks;
+        if (!(data instanceof PreviewBlocksPayload payload)) {
+            NodeCraft.LOGGER.warn(
+                "GhostBlockElement expected PreviewBlocksPayload but got {}",
+                data == null ? "null" : data.getClass().getName()
+            );
+            blocks = List.of();
             return;
         }
-
-        // --- COMPAT: 旧式输入（非 PreviewBlocksPayload）。新节点禁止依赖此路径；见类头 Phase A/B 说明。 ---
-        List<BlockData> nextBlocks = new ArrayList<>();
-        
-        if (data instanceof List<?> list) {
-            // 处理列表数据
-            for (Object item : list) {
-                processDataItem(nextBlocks, item);
-            }
-            if (nextBlocks.isEmpty() && !list.isEmpty()) {
-                Object first = list.getFirst();
-                NodeCraft.LOGGER.info(
-                    "GhostBlockElement processData: list had {} items but none became BlockData; firstType={}",
-                    list.size(),
-                    first == null ? "null" : first.getClass().getName()
-                );
-            }
-        } else {
-            // 处理单个数据项
-            processDataItem(nextBlocks, data);
+        List<BlockData> nextBlocks = new ArrayList<>(payload.getBlocks().size());
+        for (PreviewBlock b : payload.getBlocks()) {
+            nextBlocks.add(new BlockData(new Vec3d(b.x(), b.y(), b.z()), b.blockId()));
         }
-
         blocks = nextBlocks;
-    }
-    
-    /**
-     * 处理单个数据项，使用模式匹配简化类型检查
-     */
-    private void processDataItem(List<BlockData> target, Object item) {
-        if (item == null) {
-            return;
-        }
-        if (item instanceof GhostBlockPlacement placement) {
-            target.add(new BlockData(placement.position(), placement.blockId()));
-        } else if (item instanceof Coordinate coord) {
-            Vec3d pos = new Vec3d(coord.getX(), coord.getY(), coord.getZ());
-            target.add(new BlockData(pos, "minecraft:stone")); // 默认石头
-        } else if (item instanceof BlockData blockData) {
-            target.add(blockData);
-        } else if (item instanceof Map<?, ?> map) {
-            // 处理来自 SelectedBlockNode 的数据格式
-            processMapData(target, map);
-        } else if (tryAddPlacementLikePublicFields(target, item)) {
-            // 例如另一 ClassLoader 下的 GhostBlockElement$BlockPlacement：instanceof 失败但字段布局相同
-        }
-    }
-
-    /**
-     * 当 {@code instanceof} 因类加载器隔离失败时，仍可根据公开字段识别“方块放置”载荷。
-     */
-    private boolean tryAddPlacementLikePublicFields(List<BlockData> target, Object item) {
-        try {
-            Class<?> c = item.getClass();
-            Field posField = c.getField("position");
-            Field idField = c.getField("blockId");
-            Object posObj = posField.get(item);
-            Object idObj = idField.get(item);
-            Vec3d pos = toLocalVec3d(posObj);
-            String blockId = idObj instanceof String s ? s : idObj != null ? idObj.toString() : null;
-            if (pos != null && blockId != null && !blockId.isEmpty()) {
-                target.add(new BlockData(pos, blockId));
-                return true;
-            }
-        } catch (NoSuchFieldException | IllegalAccessException ignored) {
-        }
-        return false;
-    }
-
-    /**
-     * 将任意 ClassLoader 下的 Vec3d 兼容对象转为当前模块使用的 {@link Vec3d}。
-     */
-    private static Vec3d toLocalVec3d(Object posObj) {
-        if (posObj == null) {
-            return null;
-        }
-        if (posObj instanceof Vec3d v) {
-            return v;
-        }
-        Class<?> pc = posObj.getClass();
-        if (!"Vec3d".equals(pc.getSimpleName())) {
-            return null;
-        }
-        try {
-            try {
-                double x = ((Number) pc.getMethod("x").invoke(posObj)).doubleValue();
-                double y = ((Number) pc.getMethod("y").invoke(posObj)).doubleValue();
-                double z = ((Number) pc.getMethod("z").invoke(posObj)).doubleValue();
-                return new Vec3d(x, y, z);
-            } catch (NoSuchMethodException ignored) {
-                try {
-                    double x = ((Number) pc.getMethod("getX").invoke(posObj)).doubleValue();
-                    double y = ((Number) pc.getMethod("getY").invoke(posObj)).doubleValue();
-                    double z = ((Number) pc.getMethod("getZ").invoke(posObj)).doubleValue();
-                    return new Vec3d(x, y, z);
-                } catch (NoSuchMethodException ignored2) {
-                    double x = pc.getField("x").getDouble(posObj);
-                    double y = pc.getField("y").getDouble(posObj);
-                    double z = pc.getField("z").getDouble(posObj);
-                    return new Vec3d(x, y, z);
-                }
-            }
-        } catch (ReflectiveOperationException | ClassCastException ignored) {
-        }
-        return null;
-    }
-    
-    /**
-     * 处理 Map 类型的数据，提取位置和方块ID信息
-     */
-    private void processMapData(List<BlockData> target, Map<?, ?> map) {
-        Object positionObj = map.get("position");
-        Object blockIdObj = map.get("blockId");
-        
-        if (positionObj instanceof Coordinate coord && blockIdObj instanceof String blockId) {
-            Vec3d pos = new Vec3d(coord.getX(), coord.getY(), coord.getZ());
-            target.add(new BlockData(pos, blockId));
-        }
     }
     
     @Override

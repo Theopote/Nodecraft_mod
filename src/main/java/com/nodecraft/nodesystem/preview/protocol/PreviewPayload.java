@@ -14,12 +14,4 @@ public interface PreviewPayload {
     default int getVersion() {
         return 1;
     }
-
-    /**
-     * @deprecated 使用 {@link #getVersion()}；保留别名以免外部工具按旧名扫描。
-     */
-    @Deprecated
-    default int protocolVersion() {
-        return getVersion();
-    }
 }
