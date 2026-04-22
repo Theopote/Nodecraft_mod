@@ -8,8 +8,10 @@ import com.nodecraft.nodesystem.preview.protocol.PreviewBlocksPayload;
 import com.nodecraft.nodesystem.preview.protocol.PreviewKind;
 import com.nodecraft.nodesystem.preview.protocol.PreviewPayload;
 import com.nodecraft.nodesystem.preview.protocol.PreviewPayloadAdapters;
+import com.nodecraft.nodesystem.preview.protocol.PreviewPointsPayload;
 import com.nodecraft.nodesystem.preview.protocol.PreviewRequest;
 import com.nodecraft.nodesystem.preview.protocol.PreviewStyle;
+import com.nodecraft.nodesystem.preview.protocol.PreviewVectorsPayload;
 import com.nodecraft.nodesystem.util.Coordinate;
 import net.minecraft.block.BlockState;
 import net.minecraft.registry.Registries;
@@ -65,7 +67,13 @@ public final class PreviewManager {
     }
 
     public static String showGhostBlocks(String nodeId, List<Coordinate> positions, PreviewOptions options) {
-        return RENDERER.showPreview(nodeId, "ghost_block", positions, options);
+        if (positions == null || positions.isEmpty()) {
+            hideNodePreviews(nodeId);
+            return null;
+        }
+        PreviewBlocksPayload payload = PreviewPayloadAdapters.fromCoordinates(positions, "minecraft:stone");
+        PreviewStyle style = PreviewStyle.fromLegacyGhostOptions(options, 0.5f);
+        return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
     }
 
     public static String showGhostBlockPlacements(
@@ -85,66 +93,126 @@ public final class PreviewManager {
 
     /**
      * v1 unified entry: dispatches on {@link PreviewKind} and {@link PreviewBackend}.
-     * Currently implements {@link PreviewKind#BLOCKS} for GHOST and TRACKED_WORLD.
+     * Implements {@link PreviewKind#BLOCKS} (GHOST + TRACKED_WORLD), {@link PreviewKind#POINTS} and
+     * {@link PreviewKind#VECTORS} (GHOST only).
      */
     @Nullable
     public static String showPreview(PreviewRequest request) {
         try {
             String nodeId = request.ownerNodeId();
             PreviewPayload payload = request.payload();
-            PreviewOptions opts = request.style().toPreviewOptions();
+            PreviewKind kind = payload.getKind();
+            PreviewOptions opts = request.style().toPreviewOptions(kind);
 
-            if (payload.getKind() != PreviewKind.BLOCKS || !(payload instanceof PreviewBlocksPayload blocksPayload)) {
+            if (request.backend() != PreviewBackend.GHOST && kind != PreviewKind.BLOCKS) {
                 NodeCraft.LOGGER.warn(
-                    "PreviewManager.showPreview: unsupported payload kind={} type={}",
-                    payload.getKind(),
-                    payload.getClass().getName()
+                    "PreviewManager.showPreview: backend {} not supported for kind {}",
+                    request.backend(),
+                    kind
                 );
                 return null;
             }
 
-            hideNodePreviews(nodeId);
             ExecutionContext ctx = request.executionContext();
 
-            if (request.backend() == PreviewBackend.GHOST) {
-                if (ctx != null && ctx.getWorld() != null) {
-                    TrackedPreviewPlacementService.getInstance().clearTrackedPreview(ctx.getWorld(), nodeId);
+            return switch (kind) {
+                case BLOCKS -> showPreviewBlocks(request, nodeId, payload, opts, ctx);
+                case POINTS -> showPreviewPoints(nodeId, payload, opts);
+                case VECTORS -> showPreviewVectors(nodeId, payload, opts);
+                default -> {
+                    NodeCraft.LOGGER.warn(
+                        "PreviewManager.showPreview: unsupported payload kind={} type={}",
+                        kind,
+                        payload.getClass().getName()
+                    );
+                    yield null;
                 }
-                return RENDERER.showPreview(nodeId, "ghost_block", blocksPayload, opts);
-            }
-
-            if (request.backend() == PreviewBackend.TRACKED_WORLD) {
-                if (ctx == null || ctx.getWorld() == null) {
-                    NodeCraft.LOGGER.warn("PreviewManager.showPreview TRACKED_WORLD: missing execution context / world");
-                    return null;
-                }
-                List<PreviewBlock> cells = blocksPayload.getBlocks();
-                if (cells.isEmpty()) {
-                    TrackedPreviewPlacementService.getInstance().clearTrackedPreview(ctx.getWorld(), nodeId);
-                    return nodeId + ":tracked:cleared";
-                }
-                BlockState state = resolveBlockStateForPreview(cells.get(0).blockId());
-                if (state == null) {
-                    NodeCraft.LOGGER.warn("PreviewManager.showPreview TRACKED_WORLD: invalid block id {}", cells.get(0).blockId());
-                    return null;
-                }
-                List<BlockPos> positions = PreviewPayloadAdapters.toBlockPosList(blocksPayload);
-                int placed = TrackedPreviewPlacementService.getInstance().updateTrackedPreview(
-                    ctx.getWorld(),
-                    nodeId,
-                    new ArrayList<>(positions),
-                    state,
-                    PlacementMode.OVERWRITE
-                );
-                return nodeId + ":tracked:" + placed;
-            }
-
-            NodeCraft.LOGGER.warn("PreviewManager.showPreview: unsupported backend {}", request.backend());
-            return null;
+            };
         } catch (Exception e) {
             NodeCraft.LOGGER.error("PreviewManager.showPreview failed: nodeId={}", request.ownerNodeId(), e);
             return null;
         }
+    }
+
+    @Nullable
+    private static String showPreviewBlocks(
+        PreviewRequest request,
+        String nodeId,
+        PreviewPayload payload,
+        PreviewOptions opts,
+        @Nullable ExecutionContext ctx
+    ) {
+        if (!(payload instanceof PreviewBlocksPayload blocksPayload)) {
+            NodeCraft.LOGGER.warn(
+                "PreviewManager.showPreview BLOCKS: wrong concrete type {}",
+                payload.getClass().getName()
+            );
+            return null;
+        }
+
+        hideNodePreviews(nodeId);
+
+        if (request.backend() == PreviewBackend.GHOST) {
+            if (ctx != null && ctx.getWorld() != null) {
+                TrackedPreviewPlacementService.getInstance().clearTrackedPreview(ctx.getWorld(), nodeId);
+            }
+            return RENDERER.showPreview(nodeId, "ghost_block", blocksPayload, opts);
+        }
+
+        if (request.backend() == PreviewBackend.TRACKED_WORLD) {
+            if (ctx == null || ctx.getWorld() == null) {
+                NodeCraft.LOGGER.warn("PreviewManager.showPreview TRACKED_WORLD: missing execution context / world");
+                return null;
+            }
+            List<PreviewBlock> cells = blocksPayload.getBlocks();
+            if (cells.isEmpty()) {
+                TrackedPreviewPlacementService.getInstance().clearTrackedPreview(ctx.getWorld(), nodeId);
+                return nodeId + ":tracked:cleared";
+            }
+            BlockState state = resolveBlockStateForPreview(cells.get(0).blockId());
+            if (state == null) {
+                NodeCraft.LOGGER.warn("PreviewManager.showPreview TRACKED_WORLD: invalid block id {}", cells.get(0).blockId());
+                return null;
+            }
+            List<BlockPos> positions = PreviewPayloadAdapters.toBlockPosList(blocksPayload);
+            int placed = TrackedPreviewPlacementService.getInstance().updateTrackedPreview(
+                ctx.getWorld(),
+                nodeId,
+                new ArrayList<>(positions),
+                state,
+                PlacementMode.OVERWRITE
+            );
+            return nodeId + ":tracked:" + placed;
+        }
+
+        NodeCraft.LOGGER.warn("PreviewManager.showPreview BLOCKS: unsupported backend {}", request.backend());
+        return null;
+    }
+
+    @Nullable
+    private static String showPreviewPoints(String nodeId, PreviewPayload payload, PreviewOptions opts) {
+        if (!(payload instanceof PreviewPointsPayload pointsPayload)) {
+            return null;
+        }
+        if (pointsPayload.getPoints().isEmpty()) {
+            hideNodePreviews(nodeId);
+            return null;
+        }
+        hideNodePreviews(nodeId);
+        return RENDERER.showPreview(nodeId, "points", pointsPayload, opts);
+    }
+
+    @Nullable
+    private static String showPreviewVectors(String nodeId, PreviewPayload payload, PreviewOptions opts) {
+        if (!(payload instanceof PreviewVectorsPayload vectorsPayload)) {
+            return null;
+        }
+        if (vectorsPayload.getVectors().isEmpty()) {
+            hideNodePreviews(nodeId);
+            return null;
+        }
+        hideNodePreviews(nodeId);
+        return RENDERER.showPreview(nodeId, "vectors", vectorsPayload, opts);
     }
 
     @Nullable
@@ -179,7 +247,13 @@ public final class PreviewManager {
     }
 
     public static String showPoints(String nodeId, List<Coordinate> points, PreviewOptions options) {
-        return RENDERER.showPreview(nodeId, "points", points, options);
+        if (points == null || points.isEmpty()) {
+            hideNodePreviews(nodeId);
+            return null;
+        }
+        PreviewPointsPayload payload = PreviewPayloadAdapters.previewPointsFromCoordinates(points);
+        PreviewStyle style = PreviewStyle.fromLegacyPointOptions(options);
+        return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
     }
 
     // Vectors
@@ -194,8 +268,13 @@ public final class PreviewManager {
             List<Vec3d> startPoints,
             PreviewOptions options
     ) {
-        Object[] vectorData = {vectors, startPoints};
-        return RENDERER.showPreview(nodeId, "vectors", vectorData, options);
+        if (vectors == null || startPoints == null || vectors.isEmpty() || startPoints.isEmpty()) {
+            hideNodePreviews(nodeId);
+            return null;
+        }
+        PreviewVectorsPayload payload = PreviewPayloadAdapters.previewVectorsFromVecLists(vectors, startPoints);
+        PreviewStyle style = PreviewStyle.fromLegacyVectorOptions(options);
+        return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
     }
 
     // Plane / frame / path / labels

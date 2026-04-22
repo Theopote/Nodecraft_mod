@@ -1,6 +1,10 @@
 package com.nodecraft.nodesystem.preview;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.nodesystem.preview.protocol.PreviewBlock;
+import com.nodecraft.nodesystem.preview.protocol.PreviewBlocksPayload;
+import com.nodecraft.nodesystem.preview.protocol.PreviewKind;
+import com.nodecraft.nodesystem.preview.protocol.PreviewStyle;
 import com.nodecraft.nodesystem.preview.elements.*;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.*;
@@ -473,15 +477,12 @@ public class PreviewRenderer {
      * 显示幽灵方块预览 - 为了兼容 SelectedBlockNode
      */
     public String showGhostBlock(String nodeId, com.nodecraft.nodesystem.util.Coordinate position, String blockId, float opacity) {
-        PreviewOptions options = new PreviewOptions();
-        options.opacity = opacity;
-        
-        // 创建包含方块ID信息的数据对象
-        Map<String, Object> data = new HashMap<>();
-        data.put("position", position);
-        data.put("blockId", blockId);
-        
-        return showPreview(nodeId, "ghost_block", data, options);
+        PreviewBlocksPayload payload = new PreviewBlocksPayload(List.of(
+            new PreviewBlock(position.getX(), position.getY(), position.getZ(), blockId)
+        ));
+        PreviewStyle style = PreviewStyle.forGhostBlocks(1.0f, 1.0f, 1.0f, opacity, false, "original", 2.0f, 0.1f, 0);
+        PreviewOptions options = style.toPreviewOptions(PreviewKind.BLOCKS);
+        return showPreview(nodeId, "ghost_block", payload, options);
     }
     
     /**

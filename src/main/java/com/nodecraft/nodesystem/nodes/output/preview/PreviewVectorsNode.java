@@ -80,6 +80,8 @@ public class PreviewVectorsNode extends BaseNode {
             options.showArrows = showArrows;
             previewId = PreviewManager.showVectors(getId().toString(), vectors, starts, options);
             success = previewId != null;
+        } else {
+            PreviewManager.hideNodePreviews(getId().toString());
         }
 
         outputValues.put(OUTPUT_SUCCESS_ID, success);

@@ -3,6 +3,8 @@ package com.nodecraft.nodesystem.preview.elements;
 import com.nodecraft.nodesystem.preview.AbstractPreviewElement;
 import com.nodecraft.nodesystem.preview.PreviewRenderer;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
+import com.nodecraft.nodesystem.preview.protocol.PreviewVector;
+import com.nodecraft.nodesystem.preview.protocol.PreviewVectorsPayload;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.RenderLayers;
@@ -47,6 +49,16 @@ public class VectorsElement extends AbstractPreviewElement {
     protected void processData(Object data) {
         List<Vec3d> nextVectors = new ArrayList<>();
         List<Vec3d> nextStartPoints = new ArrayList<>();
+
+        if (data instanceof PreviewVectorsPayload payload) {
+            for (PreviewVector v : payload.getVectors()) {
+                nextVectors.add(new Vec3d(v.dirX(), v.dirY(), v.dirZ()));
+                nextStartPoints.add(new Vec3d(v.originX(), v.originY(), v.originZ()));
+            }
+            vectors = nextVectors;
+            startPoints = nextStartPoints;
+            return;
+        }
 
         if (data instanceof Object[] array && array.length >= 2
             && array[0] instanceof List<?> vectorList

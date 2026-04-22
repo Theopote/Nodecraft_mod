@@ -3,6 +3,8 @@ package com.nodecraft.nodesystem.preview.elements;
 import com.nodecraft.nodesystem.preview.AbstractPreviewElement;
 import com.nodecraft.nodesystem.preview.PreviewRenderer;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
+import com.nodecraft.nodesystem.preview.protocol.PreviewPoint;
+import com.nodecraft.nodesystem.preview.protocol.PreviewPointsPayload;
 import com.nodecraft.nodesystem.util.Coordinate;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
@@ -38,6 +40,15 @@ public class PointsElement extends AbstractPreviewElement {
 
     @Override
     protected void processData(Object data) {
+        if (data instanceof PreviewPointsPayload payload) {
+            List<Vec3d> nextPoints = new ArrayList<>(payload.getPoints().size());
+            for (PreviewPoint p : payload.getPoints()) {
+                nextPoints.add(new Vec3d(p.x(), p.y(), p.z()));
+            }
+            points = nextPoints;
+            return;
+        }
+
         List<Vec3d> nextPoints = new ArrayList<>();
 
         if (data instanceof List<?> list) {

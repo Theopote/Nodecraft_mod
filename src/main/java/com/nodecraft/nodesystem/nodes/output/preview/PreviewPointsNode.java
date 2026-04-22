@@ -67,11 +67,12 @@ public class PreviewPointsNode extends BaseNode {
         if (!previewEnabled) {
             PreviewManager.hideNodePreviews(getId().toString());
         } else if (!points.isEmpty()) {
-            PreviewManager.hideNodePreviews(getId().toString());
             PreviewOptions options = PreviewOptions.createPoints().setDuration(duration);
             options.pointSize = pointSize;
             previewId = PreviewManager.showPoints(getId().toString(), points, options);
             success = previewId != null;
+        } else {
+            PreviewManager.hideNodePreviews(getId().toString());
         }
 
         outputValues.put(OUTPUT_SUCCESS_ID, success);

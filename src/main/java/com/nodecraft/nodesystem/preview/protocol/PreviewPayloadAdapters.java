@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.preview.GhostBlockPlacement;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.Coordinate;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -63,5 +64,37 @@ public final class PreviewPayloadAdapters {
             out.add(BlockPos.ofFloored(b.x(), b.y(), b.z()));
         }
         return out;
+    }
+
+    /**
+     * Same convention as {@code PointsElement} for {@link Coordinate}: cell center in world space.
+     */
+    public static PreviewPointsPayload previewPointsFromCoordinates(List<Coordinate> coords) {
+        if (coords == null || coords.isEmpty()) {
+            return new PreviewPointsPayload(List.of());
+        }
+        List<PreviewPoint> pts = new ArrayList<>(coords.size());
+        for (Coordinate c : coords) {
+            if (c != null) {
+                pts.add(new PreviewPoint(c.getX() + 0.5d, c.getY() + 0.5d, c.getZ() + 0.5d));
+            }
+        }
+        return new PreviewPointsPayload(pts);
+    }
+
+    public static PreviewVectorsPayload previewVectorsFromVecLists(List<Vec3d> directions, List<Vec3d> origins) {
+        if (directions == null || origins == null) {
+            return new PreviewVectorsPayload(List.of());
+        }
+        int n = Math.min(directions.size(), origins.size());
+        List<PreviewVector> vectors = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            Vec3d d = directions.get(i);
+            Vec3d s = origins.get(i);
+            if (d != null && s != null) {
+                vectors.add(new PreviewVector(s.x, s.y, s.z, d.x, d.y, d.z));
+            }
+        }
+        return new PreviewVectorsPayload(vectors);
     }
 }
