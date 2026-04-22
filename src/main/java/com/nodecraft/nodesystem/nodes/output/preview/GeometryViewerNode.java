@@ -237,6 +237,9 @@ public class GeometryViewerNode extends BaseCustomUINode {
         options.setColor(parsedColor.getRed(), parsedColor.getGreen(), parsedColor.getBlue());
         options.showOutline = showOutline;
 
+        NodeCraft.LOGGER.info("GeometryViewerNode[{}] ghost request: placements={}, blockType={}, opacity={}, outline={}",
+            getId(), placements.size(), effectiveBlockType, trans, showOutline);
+
         String previewId = PreviewManager.showGhostBlockPlacements(getId().toString(), placements, options);
         if (previewId == null) {
             statusMessage = "Ghost preview failed";
@@ -244,6 +247,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
             return false;
         }
 
+        NodeCraft.LOGGER.info("GeometryViewerNode[{}] ghost preview created: previewId={}", getId(), previewId);
         statusMessage = "Previewing " + placements.size() + " ghost blocks";
         return true;
     }

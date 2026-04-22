@@ -55,13 +55,17 @@ public class GhostBlockElement extends AbstractPreviewElement {
     private String textureMode = "original"; // "original", "solid_color", "wireframe"
     private boolean useOriginalTexture = true;
     private float ghostOpacity = 0.5f; // 幽灵方块的透明度
+    private long lastRenderInfoLogMs = 0L;
     
 
     public GhostBlockElement(String id, String ownerNodeId, Object data, PreviewOptions options) {
         super(id, ownerNodeId, data, options);
         this.renderPriority = 20; // 较低优先级，在线框之后渲染
         
-        // 从选项中读取设置
+        // 从选项中读取设置（与 RegionBoxElement 一致：主色用 color，着色用 tintColor 覆盖）
+        if (options.color != null) {
+            this.tintColor = new Vector3f(options.color);
+        }
         if (options.tintColor != null) {
             this.tintColor = new Vector3f(options.tintColor);
         }
@@ -150,6 +154,13 @@ public class GhostBlockElement extends AbstractPreviewElement {
             return;
         }
         
+        long now = System.currentTimeMillis();
+        if (now - lastRenderInfoLogMs > 1000L) {
+            lastRenderInfoLogMs = now;
+            NodeCraft.LOGGER.info("GhostBlockElement render tick: ownerNode={}, mode={}, blocks={}, opacity={}, maxDistance={}",
+                ownerNodeId, textureMode, blocksSnapshot.size(), finalOpacity, maxRenderDistance);
+        }
+
         // 根据纹理模式选择渲染方法
         switch (textureMode) {
             case "solid_color":
@@ -185,68 +196,50 @@ public class GhostBlockElement extends AbstractPreviewElement {
                                        List<BlockData> blocksSnapshot,
                                        float maxRenderDistance) {
         MinecraftClient client = MinecraftClient.getInstance();
-        Vec3d cameraPos = camera.getBlockPos().toCenterPos();
-        
-        // 使用简化的渲染方法，直接使用 Tessellator
-        // 注意：不需要设置渲染状态，因为通用状态已由 PreviewRenderer 设置
-        VertexConsumerProvider vertexConsumers = resolveVertexConsumers(client);
-        VertexConsumer vertexConsumer = vertexConsumers.getBuffer(RenderLayers.debugFilledBox());
-        
+        Vec3d cameraPos = camera.getCameraPos();
+        DrawContext draw = beginDraw(client);
+        VertexConsumer vertexConsumer = draw.provider().getBuffer(RenderLayers.debugFilledBox());
+        Matrix4f matrix = matrices.peek().getPositionMatrix();
+
         for (BlockData blockData : blocksSnapshot) {
-            // 检查渲染距离
             double distance = cameraPos.distanceTo(blockData.position);
             if (distance > maxRenderDistance) {
                 continue;
             }
-            
+
             BlockPos blockPos = new BlockPos(
                 (int) Math.floor(blockData.position.x),
                 (int) Math.floor(blockData.position.y),
                 (int) Math.floor(blockData.position.z)
             );
-            
-            // 获取方块状态
+
             BlockState blockState = getBlockState(blockData.blockId);
             if (blockState.isAir()) {
                 continue;
             }
-            
-            // 计算相对位置
-            double renderX = blockData.position.x - cameraPos.x;
-            double renderY = blockData.position.y - cameraPos.y;
-            double renderZ = blockData.position.z - cameraPos.z;
-            
-            matrices.push();
-            matrices.translate(renderX, renderY, renderZ);
-            
+
+            float minX = (float) (blockData.position.x - cameraPos.x);
+            float minY = (float) (blockData.position.y - cameraPos.y);
+            float minZ = (float) (blockData.position.z - cameraPos.z);
+            float maxX = minX + 1.0f;
+            float maxY = minY + 1.0f;
+            float maxZ = minZ + 1.0f;
+
             try {
-                // 使用简化的纹理渲染方法
-                // 获取方块的基本颜色信息
                 int color = MinecraftClient.getInstance().getBlockColors().getColor(blockState, world, blockPos, 0);
                 float r = ((color >> 16) & 0xFF) / 255.0f;
                 float g = ((color >> 8) & 0xFF) / 255.0f;
                 float b = (color & 0xFF) / 255.0f;
-                
-                // 应用着色和透明度
                 r = Math.min(1.0f, r * tintColor.x());
                 g = Math.min(1.0f, g * tintColor.y());
                 b = Math.min(1.0f, b * tintColor.z());
 
-                Matrix4f matrix = matrices.peek().getPositionMatrix();
-                
-                // 渲染立方体的6个面，使用方块的原始颜色
-                renderCubeFaces(vertexConsumer, matrix, 0, 0, 0, r, g, b, opacity);
-                
+                drawFilledAxisAlignedBox(vertexConsumer, matrix, minX, minY, minZ, maxX, maxY, maxZ, r, g, b, opacity);
             } catch (Exception e) {
                 NodeCraft.LOGGER.warn("渲染幽灵方块失败: {}, 位置: {}", blockData.blockId, blockPos, e);
             }
-            
-            matrices.pop();
         }
-        flushIfImmediate(vertexConsumers);
-        
-        // 渲染完成，无需额外的绘制命令
-        // 注意：不需要恢复渲染状态，因为没有修改任何特有状态
+        endDraw(draw);
     }
     
     /**
@@ -261,42 +254,38 @@ public class GhostBlockElement extends AbstractPreviewElement {
                                   float opacity,
                                   List<BlockData> blocksSnapshot,
                                   float maxRenderDistance) {
-        Vec3d cameraPos = camera.getBlockPos().toCenterPos();
-        
-        // 设置此方法特有的渲染状态
-        
+        Vec3d cameraPos = camera.getCameraPos();
         MinecraftClient client = MinecraftClient.getInstance();
-        VertexConsumerProvider vertexConsumers = resolveVertexConsumers(client);
-        VertexConsumer vertexConsumer = vertexConsumers.getBuffer(RenderLayers.debugFilledBox());
+        DrawContext draw = beginDraw(client);
+        VertexConsumer vertexConsumer = draw.provider().getBuffer(RenderLayers.debugFilledBox());
         Matrix4f matrix = matrices.peek().getPositionMatrix();
-        
+
         float r = tintColor.x();
         float g = tintColor.y();
         float b = tintColor.z();
 
         for (BlockData blockData : blocksSnapshot) {
-            // 检查渲染距离
             double distance = cameraPos.distanceTo(blockData.position);
             if (distance > maxRenderDistance) {
                 continue;
             }
-            
-            // 检查方块是否为空气（健壮性优化）
+
             BlockState blockState = getBlockState(blockData.blockId);
             if (blockState.isAir()) {
                 continue;
             }
-            
-            // 计算相对位置
-            float renderX = (float) (blockData.position.x - cameraPos.x);
-            float renderY = (float) (blockData.position.y - cameraPos.y);
-            float renderZ = (float) (blockData.position.z - cameraPos.z);
-            
-            // 渲染立方体的6个面
-            renderCubeFaces(vertexConsumer, matrix, renderX, renderY, renderZ, r, g, b, opacity);
+
+            float minX = (float) (blockData.position.x - cameraPos.x);
+            float minY = (float) (blockData.position.y - cameraPos.y);
+            float minZ = (float) (blockData.position.z - cameraPos.z);
+            float maxX = minX + 1.0f;
+            float maxY = minY + 1.0f;
+            float maxZ = minZ + 1.0f;
+
+            drawFilledAxisAlignedBox(vertexConsumer, matrix, minX, minY, minZ, maxX, maxY, maxZ, r, g, b, opacity);
         }
-        
-        flushIfImmediate(vertexConsumers);
+
+        endDraw(draw);
     }
     
     /**
@@ -311,13 +300,10 @@ public class GhostBlockElement extends AbstractPreviewElement {
                                  float opacity,
                                  List<BlockData> blocksSnapshot,
                                  float maxRenderDistance) {
-        Vec3d cameraPos = camera.getBlockPos().toCenterPos();
-        
-        // 设置此方法特有的渲染状态
-        
+        Vec3d cameraPos = camera.getCameraPos();
         MinecraftClient client = MinecraftClient.getInstance();
-        VertexConsumerProvider vertexConsumers = resolveVertexConsumers(client);
-        VertexConsumer vertexConsumer = vertexConsumers.getBuffer(RenderLayers.lines());
+        DrawContext draw = beginDraw(client);
+        VertexConsumer vertexConsumer = draw.provider().getBuffer(RenderLayers.lines());
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         
         float r = tintColor.x();
@@ -371,64 +357,110 @@ public class GhostBlockElement extends AbstractPreviewElement {
             }
         }
         
-        flushIfImmediate(vertexConsumers);
+        endDraw(draw);
     }
 
-    private VertexConsumerProvider resolveVertexConsumers(MinecraftClient client) {
+    private record DrawContext(VertexConsumerProvider provider, VertexConsumerProvider.Immediate ownImmediate, boolean flushAfter) {
+    }
+
+    private DrawContext beginDraw(MinecraftClient client) {
         VertexConsumerProvider active = PreviewRenderer.getInstance().getActiveVertexConsumers();
         if (active != null) {
-            return active;
+            return new DrawContext(active, null, false);
         }
-        return client.getBufferBuilders().getEntityVertexConsumers();
+        VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
+        return new DrawContext(immediate, immediate, true);
     }
 
-    private void flushIfImmediate(VertexConsumerProvider provider) {
-        if (provider instanceof VertexConsumerProvider.Immediate immediate) {
-            immediate.draw();
+    private void endDraw(DrawContext ctx) {
+        if (ctx.flushAfter() && ctx.ownImmediate() != null) {
+            ctx.ownImmediate().draw();
         }
     }
-    
 
-    
-    /**
-     * 渲染立方体的6个面
-     */
-    private void renderCubeFaces(VertexConsumer vertexConsumer, Matrix4f matrix, float x, float y, float z, float r, float g, float b, float a) {
-        // 底面 (Y = 0)
-        vertexConsumer.vertex(matrix, x, y, z).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y, z).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y, z + 1).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x, y, z + 1).color(r, g, b, a);
-        
-        // 顶面 (Y = 1)
-        vertexConsumer.vertex(matrix, x, y + 1, z + 1).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y + 1, z + 1).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y + 1, z).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x, y + 1, z).color(r, g, b, a);
-        
-        // 北面 (Z = 0)
-        vertexConsumer.vertex(matrix, x, y, z).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x, y + 1, z).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y + 1, z).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y, z).color(r, g, b, a);
-        
-        // 南面 (Z = 1)
-        vertexConsumer.vertex(matrix, x + 1, y, z + 1).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y + 1, z + 1).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x, y + 1, z + 1).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x, y, z + 1).color(r, g, b, a);
-        
-        // 西面 (X = 0)
-        vertexConsumer.vertex(matrix, x, y, z + 1).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x, y + 1, z + 1).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x, y + 1, z).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x, y, z).color(r, g, b, a);
-        
-        // 东面 (X = 1)
-        vertexConsumer.vertex(matrix, x + 1, y, z).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y + 1, z).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y + 1, z + 1).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y, z + 1).color(r, g, b, a);
+    private void drawFilledAxisAlignedBox(
+        VertexConsumer vertexConsumer,
+        Matrix4f matrix,
+        float minX,
+        float minY,
+        float minZ,
+        float maxX,
+        float maxY,
+        float maxZ,
+        float r,
+        float g,
+        float b,
+        float a
+    ) {
+        quad(vertexConsumer, matrix, minX, minY, minZ, maxX, minY, minZ, maxX, minY, maxZ, minX, minY, maxZ, r, g, b, a);
+        quad(vertexConsumer, matrix, minX, maxY, minZ, maxX, maxY, minZ, maxX, maxY, maxZ, minX, maxY, maxZ, r, g, b, a);
+        quad(vertexConsumer, matrix, minX, minY, minZ, maxX, minY, minZ, maxX, maxY, minZ, minX, maxY, minZ, r, g, b, a);
+        quad(vertexConsumer, matrix, minX, minY, maxZ, maxX, minY, maxZ, maxX, maxY, maxZ, minX, maxY, maxZ, r, g, b, a);
+        quad(vertexConsumer, matrix, minX, minY, minZ, minX, minY, maxZ, minX, maxY, maxZ, minX, maxY, minZ, r, g, b, a);
+        quad(vertexConsumer, matrix, maxX, minY, minZ, maxX, minY, maxZ, maxX, maxY, maxZ, maxX, maxY, minZ, r, g, b, a);
+    }
+
+    private void quad(
+        VertexConsumer vertexConsumer,
+        Matrix4f matrix,
+        float x1,
+        float y1,
+        float z1,
+        float x2,
+        float y2,
+        float z2,
+        float x3,
+        float y3,
+        float z3,
+        float x4,
+        float y4,
+        float z4,
+        float r,
+        float g,
+        float b,
+        float alpha
+    ) {
+        Vector3f normal = new Vector3f(
+            ((y2 - y1) * (z3 - z1)) - ((z2 - z1) * (y3 - y1)),
+            ((z2 - z1) * (x3 - x1)) - ((x2 - x1) * (z3 - z1)),
+            ((x2 - x1) * (y3 - y1)) - ((y2 - y1) * (x3 - x1))
+        );
+        if (normal.lengthSquared() < 1.0e-8f) {
+            normal.set(0.0f, 1.0f, 0.0f);
+        } else {
+            normal.normalize();
+        }
+
+        fullBrightVertex(vertexConsumer, matrix, x1, y1, z1, r, g, b, alpha, normal);
+        fullBrightVertex(vertexConsumer, matrix, x2, y2, z2, r, g, b, alpha, normal);
+        fullBrightVertex(vertexConsumer, matrix, x3, y3, z3, r, g, b, alpha, normal);
+        fullBrightVertex(vertexConsumer, matrix, x4, y4, z4, r, g, b, alpha, normal);
+
+        Vector3f opposite = new Vector3f(normal).mul(-1.0f);
+        fullBrightVertex(vertexConsumer, matrix, x4, y4, z4, r, g, b, alpha, opposite);
+        fullBrightVertex(vertexConsumer, matrix, x3, y3, z3, r, g, b, alpha, opposite);
+        fullBrightVertex(vertexConsumer, matrix, x2, y2, z2, r, g, b, alpha, opposite);
+        fullBrightVertex(vertexConsumer, matrix, x1, y1, z1, r, g, b, alpha, opposite);
+    }
+
+    private void fullBrightVertex(
+        VertexConsumer vertexConsumer,
+        Matrix4f matrix,
+        float x,
+        float y,
+        float z,
+        float r,
+        float g,
+        float b,
+        float alpha,
+        Vector3f normal
+    ) {
+        vertexConsumer.vertex(matrix, x, y, z)
+            .color(r, g, b, alpha)
+            .texture(0.5f, 0.5f)
+            .overlay(OverlayTexture.DEFAULT_UV)
+            .light(LightmapTextureManager.MAX_LIGHT_COORDINATE)
+            .normal(normal.x, normal.y, normal.z);
     }
     
     /**
@@ -466,7 +498,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
         }
         
         // 检查距离 - 在循环外获取一次最大渲染距离
-        Vec3d cameraPos = camera.getBlockPos().toCenterPos();
+        Vec3d cameraPos = camera.getCameraPos();
         float maxDistance = PreviewRenderer.getInstance().getSettings().maxRenderDistance;
         
         for (BlockData block : blocks) {

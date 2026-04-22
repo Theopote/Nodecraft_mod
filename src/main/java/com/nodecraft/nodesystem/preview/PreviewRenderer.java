@@ -153,6 +153,10 @@ public class PreviewRenderer {
 
                 NodeCraft.LOGGER.debug("预览元素创建成功: ID={}, 类型={}, 活跃元素数量={}",
                     previewId, element.getClass().getSimpleName(), activeElements.size());
+                if ("ghost_block".equalsIgnoreCase(previewType) || "geometry_surface".equalsIgnoreCase(previewType)) {
+                    NodeCraft.LOGGER.info("PreviewRenderer created preview: node={}, type={}, id={}, element={}, activeCount={}",
+                        ownerNodeId, previewType, previewId, element.getClass().getSimpleName(), activeElements.size());
+                }
 
                 return previewId;
             } else {
