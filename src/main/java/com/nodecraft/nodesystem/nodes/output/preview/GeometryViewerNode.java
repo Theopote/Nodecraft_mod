@@ -120,6 +120,11 @@ public class GeometryViewerNode extends BaseCustomUINode {
         float trans = (transparencyObj instanceof Number value)
             ? Math.max(0f, Math.min(1f, value.floatValue()))
             : transparency;
+        // Editor-side port resolution (e.g. NodeOutputResolver.compute without full graph) can feed 0.0f for
+        // FLOAT inputs; alternating with graph runs leaves a fully transparent ghost preview and no render logs.
+        if (previewBackend == PreviewBackend.GHOST && trans <= 0.01f) {
+            trans = transparency;
+        }
         String effectiveBlockType = (blockTypeObj instanceof String value) ? value : blockType;
         boolean hasWorldContext = context != null && context.getWorld() != null;
 

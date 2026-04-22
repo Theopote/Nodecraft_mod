@@ -19,6 +19,8 @@ import net.minecraft.world.World;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
+import java.lang.reflect.Field;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +58,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
     private boolean useOriginalTexture = true;
     private float ghostOpacity = 0.5f; // 幽灵方块的透明度
     private long lastRenderInfoLogMs = 0L;
+    private long lastShouldRenderSkipLogMs = 0L;
     
 
     public GhostBlockElement(String id, String ownerNodeId, Object data, PreviewOptions options) {
@@ -93,6 +96,14 @@ public class GhostBlockElement extends AbstractPreviewElement {
             for (Object item : list) {
                 processDataItem(nextBlocks, item);
             }
+            if (nextBlocks.isEmpty() && !list.isEmpty()) {
+                Object first = list.get(0);
+                NodeCraft.LOGGER.warn(
+                    "GhostBlockElement processData: list had {} items but none became BlockData; firstType={}",
+                    list.size(),
+                    first == null ? "null" : first.getClass().getName()
+                );
+            }
         } else {
             // 处理单个数据项
             processDataItem(nextBlocks, data);
@@ -105,6 +116,9 @@ public class GhostBlockElement extends AbstractPreviewElement {
      * 处理单个数据项，使用模式匹配简化类型检查
      */
     private void processDataItem(List<BlockData> target, Object item) {
+        if (item == null) {
+            return;
+        }
         if (item instanceof Coordinate coord) {
             Vec3d pos = new Vec3d(coord.getX(), coord.getY(), coord.getZ());
             target.add(new BlockData(pos, "minecraft:stone")); // 默认石头
@@ -115,7 +129,28 @@ public class GhostBlockElement extends AbstractPreviewElement {
         } else if (item instanceof Map<?, ?> map) {
             // 处理来自 SelectedBlockNode 的数据格式
             processMapData(target, map);
+        } else if (tryAddPlacementLikePublicFields(target, item)) {
+            // 例如另一 ClassLoader 下的 GhostBlockElement$BlockPlacement：instanceof 失败但字段布局相同
         }
+    }
+
+    /**
+     * 当 {@code instanceof} 因类加载器隔离失败时，仍可根据公开字段识别“方块放置”载荷。
+     */
+    private boolean tryAddPlacementLikePublicFields(List<BlockData> target, Object item) {
+        try {
+            Class<?> c = item.getClass();
+            Field posField = c.getField("position");
+            Field idField = c.getField("blockId");
+            Object posObj = posField.get(item);
+            Object idObj = idField.get(item);
+            if (posObj instanceof Vec3d pos && idObj instanceof String blockId) {
+                target.add(new BlockData(pos, blockId));
+                return true;
+            }
+        } catch (NoSuchFieldException | IllegalAccessException ignored) {
+        }
+        return false;
     }
     
     /**
@@ -140,7 +175,15 @@ public class GhostBlockElement extends AbstractPreviewElement {
         
         // 计算最终透明度
         float finalOpacity = ghostOpacity * globalOpacity;
-        
+
+        long now = System.currentTimeMillis();
+        if (now - lastRenderInfoLogMs > 1000L) {
+            lastRenderInfoLogMs = now;
+            NodeCraft.LOGGER.info("GhostBlockElement render tick: ownerNode={}, mode={}, blocks={}, ghostOpacity={}, globalOpacity={}, finalOpacity={}, maxDistance={}",
+                ownerNodeId, textureMode, blocksSnapshot.size(), ghostOpacity, globalOpacity, finalOpacity,
+                PreviewRenderer.getInstance().getSettings().maxRenderDistance);
+        }
+
         if (finalOpacity <= 0.01f) {
             return;
         }
@@ -152,13 +195,6 @@ public class GhostBlockElement extends AbstractPreviewElement {
         if (world == null) {
             NodeCraft.LOGGER.warn("世界为空，无法渲染幽灵方块");
             return;
-        }
-        
-        long now = System.currentTimeMillis();
-        if (now - lastRenderInfoLogMs > 1000L) {
-            lastRenderInfoLogMs = now;
-            NodeCraft.LOGGER.info("GhostBlockElement render tick: ownerNode={}, mode={}, blocks={}, opacity={}, maxDistance={}",
-                ownerNodeId, textureMode, blocksSnapshot.size(), finalOpacity, maxRenderDistance);
         }
 
         // 根据纹理模式选择渲染方法
@@ -489,25 +525,55 @@ public class GhostBlockElement extends AbstractPreviewElement {
     @Override
     public boolean shouldRender(Camera camera) {
         if (blocks.isEmpty()) {
+            logShouldRenderSkip(camera, "empty_blocks", Double.NaN);
             return false;
         }
         
         // 检查是否过期
         if (isExpired()) {
+            logShouldRenderSkip(camera, "expired", Double.NaN);
             return false;
         }
         
         // 检查距离 - 在循环外获取一次最大渲染距离
         Vec3d cameraPos = camera.getCameraPos();
         float maxDistance = PreviewRenderer.getInstance().getSettings().maxRenderDistance;
-        
+        double nearest = Double.MAX_VALUE;
         for (BlockData block : blocks) {
-            if (cameraPos.distanceTo(block.position) <= maxDistance) {
+            double d = cameraPos.distanceTo(block.position);
+            if (d < nearest) {
+                nearest = d;
+            }
+            if (d <= maxDistance) {
                 return true;
             }
         }
-        
+
+        logShouldRenderSkip(camera, "beyond_max_distance", nearest);
         return false;
+    }
+
+    private void logShouldRenderSkip(Camera camera, String reason, double nearestDistance) {
+        long now = System.currentTimeMillis();
+        if (now - lastShouldRenderSkipLogMs < 2000L) {
+            return;
+        }
+        lastShouldRenderSkipLogMs = now;
+        Vec3d cam = camera.getCameraPos();
+        BlockData sample = blocks.isEmpty() ? null : blocks.get(0);
+        if ("beyond_max_distance".equals(reason) && sample != null) {
+            NodeCraft.LOGGER.info(
+                "GhostBlockElement shouldRender=false: ownerNode={}, reason={}, blockCount={}, maxDistance={}, nearest={}, cam=({},{},{}), samplePos=({},{},{})",
+                ownerNodeId, reason, blocks.size(),
+                PreviewRenderer.getInstance().getSettings().maxRenderDistance,
+                Double.isFinite(nearestDistance) ? nearestDistance : -1.0,
+                cam.x, cam.y, cam.z,
+                sample.position.x, sample.position.y, sample.position.z
+            );
+        } else {
+            NodeCraft.LOGGER.info("GhostBlockElement shouldRender=false: ownerNode={}, reason={}, blockCount={}, cam=({},{},{})",
+                ownerNodeId, reason, blocks.size(), cam.x, cam.y, cam.z);
+        }
     }
     
     @Override
