@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **303**
+- Total nodes: **308**
 - Total categories: **43**
 
 ## Category Statistics
@@ -37,9 +37,9 @@
 | `pattern.grid` | 3 |
 | `pattern.linear` | 3 |
 | `pattern.radial` | 2 |
-| `pattern.surface_volume_distribution` | 5 |
-| `reference.frames` | 2 |
-| `reference.planes` | 5 |
+| `pattern.surface_volume_distribution` | 7 |
+| `reference.frames` | 4 |
+| `reference.planes` | 6 |
 | `reference.points` | 16 |
 | `reference.vectors` | 11 |
 | `transform.basic_transforms` | 9 |
@@ -396,30 +396,35 @@
 | 极坐标阵列 | `pattern.radial.polar_array` | 将坐标列表绕中心点重复旋转排列 | `PolarArrayNode` |
 | Spiral Array | `pattern.radial.spiral_array` | Repeats coordinates along a spiral path around a center point with optional tangent alignment | `SpiralArrayNode` |
 
-## pattern.surface_volume_distribution (5)
+## pattern.surface_volume_distribution (7)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | 区域填充 | `pattern.surface_volume_distribution.populate_region` | 在指定区域内随机或均匀生成坐标列表 | `PopulateRegionNode` |
 | Sample Sphere Surface | `pattern.surface_volume_distribution.sample_surface` | Samples points and normals on a sphere surface for scattering and growth workflows | `SampleSphereSurfaceNode` |
+| Sample Geometry Surface | `pattern.surface_volume_distribution.sample_geometry_surface` | Samples points from voxelized geometry surfaces using density or explicit count | `SampleGeometrySurfaceNode` |
 | Scatter On Sphere Surface | `pattern.surface_volume_distribution.surface_scatter` | Scatters points on a sphere surface and outputs matching normals and optional snapped block coordinates | `ScatterOnSphereSurfaceNode` |
 | Scatter On Geometry Surface | `pattern.surface_volume_distribution.scatter_geometry_surface` | Scatters points on voxelized geometry surfaces with random or blue-noise approximation and spacing fallback controls | `ScatterOnGeometrySurfaceNode` |
+| Scatter On Surface Strip | `pattern.surface_volume_distribution.scatter_surface_strip` | Scatters points on a surface strip by random section interpolation with optional spacing | `ScatterOnSurfaceStripNode` |
 | Poisson Disk On Plane | `pattern.surface_volume_distribution.poisson_disk_plane` | Samples points on a plane inside a UV rectangle with minimum separation using rejection sampling | `PoissonDiskOnPlaneNode` |
 
-## reference.frames (2)
+## reference.frames (4)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Face Center Frame | `reference.frames.frame_from_face` | Builds a local frame at the center of a box face using the face plane and boundary directions | `FaceCenterFrameNode` |
 | Sphere Surface Frame | `reference.frames.frame_along_surface` | Builds a local tangent frame on a sphere using the nearest surface point and outward normal | `SphereSurfaceFrameNode` |
+| World Frame | `reference.frames.world_frame` | Outputs the world coordinate frame origin and axis vectors | `WorldFrameNode` |
+| Transform Frame | `reference.frames.transform_frame` | Applies translation, rotation, and uniform scale to an input frame | `TransformFrameNode` |
 
-## reference.planes (5)
+## reference.planes (6)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | World Plane | `reference.planes.world_plane` | Creates a standard XY, YZ, or XZ world plane with a configurable origin | `PlaneSelectorNode` |
 | Construct Plane | `reference.planes.construct_plane` | Constructs a plane from an origin point and a normal vector | `ConstructPlaneNode` |
 | Construct Plane From Points | `reference.planes.plane_from_points` | Constructs a plane from three non-collinear points | `ConstructPlaneFromPointsNode` |
+| Offset Plane | `reference.planes.offset_plane` | Offsets a plane along its normal by a signed distance | `OffsetPlaneNode` |
 | Distance Point To Plane | `reference.planes.distance_point_to_plane` | Measures the absolute and signed distance from a geometric point to a plane | `DistancePointToPlaneNode` |
 | Box Face To Plane | `reference.planes.block_face_plane` | Explicitly converts a box face into its supporting plane and related face frame data | `BoxFaceToPlaneNode` |
 
@@ -576,3 +581,27 @@
 - For nodes without `@NodeInfo`, metadata is inferred from class name and package path.
 - To improve node docs quality, fill `description` in each `@NodeInfo` annotation.
 - Deprecated bake-node retirement plan: `docs/bake-node-deprecation-plan.md`.
+
+## Minimal Wiring Examples
+
+- `Sample Geometry Surface` -> `Assign Block Type` -> `Apply Changes`
+  - `geometry.solids.loft` / `geometry.boolean.union` -> `pattern.surface_volume_distribution.sample_geometry_surface.input_geometry`
+  - `sample_geometry_surface.output_blocks` -> `material.basic_assignment.assign_block_type.input_coordinates`
+  - `input.type_selectors.block_type_selector.output_block_id` -> `assign_block_type.input_block_type`
+  - `assign_block_type.output_placements` -> `output.execute.apply_changes.input_block_placements`
+
+- `Scatter On Surface Strip` (Sweep/Loft workflow)
+  - `geometry.solids.sweep` / `geometry.solids.loft` -> `pattern.surface_volume_distribution.scatter_surface_strip.input_surface_strip`
+  - `scatter_surface_strip.output_points` -> `output.preview.preview_points.input_points`
+  - or `scatter_surface_strip.output_blocks` -> `assign_block_type.input_coordinates` -> `apply_changes`
+
+- `Offset Plane` (parallel sections)
+  - `reference.planes.construct_plane.output_plane` -> `reference.planes.offset_plane.input_plane`
+  - `input.numeric.float.output_value` -> `offset_plane.input_distance`
+  - `offset_plane.output_plane` -> downstream profile/sweep/construct nodes that accept `PLANE`
+
+- `World Frame` + `Transform Frame`
+  - `reference.frames.world_frame.output_origin/x_axis/y_axis/z_axis` -> `reference.frames.transform_frame` matching inputs
+  - optional: `reference.vectors.vector` -> `transform_frame.input_translation`
+  - optional: angle nodes -> `transform_frame.input_rotation_x/y/z`
+  - `transform_frame.output_plane` -> `output.preview.preview_frame.input_plane` (or any frame/plane consumer)
