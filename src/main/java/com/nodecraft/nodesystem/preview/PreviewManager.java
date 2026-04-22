@@ -5,7 +5,9 @@ import com.nodecraft.nodesystem.bake.PlacementMode;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.protocol.PreviewBlock;
 import com.nodecraft.nodesystem.preview.protocol.PreviewBlocksPayload;
+import com.nodecraft.nodesystem.preview.protocol.PreviewCurvePayload;
 import com.nodecraft.nodesystem.preview.protocol.PreviewKind;
+import com.nodecraft.nodesystem.preview.protocol.PreviewRegionPayload;
 import com.nodecraft.nodesystem.preview.protocol.PreviewPayload;
 import com.nodecraft.nodesystem.preview.protocol.PreviewPayloadAdapters;
 import com.nodecraft.nodesystem.preview.protocol.PreviewPointsPayload;
@@ -93,8 +95,8 @@ public final class PreviewManager {
 
     /**
      * v1 unified entry: dispatches on {@link PreviewKind} and {@link PreviewBackend}.
-     * Implements {@link PreviewKind#BLOCKS} (GHOST + TRACKED_WORLD), {@link PreviewKind#POINTS} and
-     * {@link PreviewKind#VECTORS} (GHOST only).
+     * Implements {@link PreviewKind#BLOCKS} (GHOST + TRACKED_WORLD), {@link PreviewKind#POINTS},
+     * {@link PreviewKind#VECTORS}, {@link PreviewKind#REGIONS}, {@link PreviewKind#CURVES} (GHOST only).
      */
     @Nullable
     public static String showPreview(PreviewRequest request) {
@@ -119,6 +121,8 @@ public final class PreviewManager {
                 case BLOCKS -> showPreviewBlocks(request, nodeId, payload, opts, ctx);
                 case POINTS -> showPreviewPoints(nodeId, payload, opts);
                 case VECTORS -> showPreviewVectors(nodeId, payload, opts);
+                case REGIONS -> showPreviewRegions(nodeId, payload, opts);
+                case CURVES -> showPreviewCurves(nodeId, payload, opts);
                 default -> {
                     NodeCraft.LOGGER.warn(
                         "PreviewManager.showPreview: unsupported payload kind={} type={}",
@@ -216,6 +220,40 @@ public final class PreviewManager {
     }
 
     @Nullable
+    private static String showPreviewRegions(String nodeId, PreviewPayload payload, PreviewOptions opts) {
+        if (!(payload instanceof PreviewRegionPayload regionPayload)) {
+            return null;
+        }
+        hideNodePreviews(nodeId);
+        return RENDERER.showPreview(nodeId, "region_box", regionPayload, opts);
+    }
+
+    @Nullable
+    private static String showPreviewCurves(String nodeId, PreviewPayload payload, PreviewOptions opts) {
+        if (!(payload instanceof PreviewCurvePayload curvePayload)) {
+            return null;
+        }
+        if (curvePayload.getPoints().size() < 2) {
+            hideNodePreviews(nodeId);
+            return null;
+        }
+        hideNodePreviews(nodeId);
+        return RENDERER.showPreview(nodeId, "paths", curvePayload, opts);
+    }
+
+    /**
+     * Polyline-style path preview using v1 {@link PreviewCurvePayload}.
+     */
+    public static String showCurve(String nodeId, PreviewCurvePayload payload, PreviewOptions options) {
+        if (payload == null || payload.getPoints().size() < 2) {
+            hideNodePreviews(nodeId);
+            return null;
+        }
+        PreviewStyle style = PreviewStyle.fromLegacyPathOptions(options);
+        return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
+    }
+
+    @Nullable
     private static BlockState resolveBlockStateForPreview(String blockId) {
         if (blockId == null || blockId.isEmpty()) {
             return null;
@@ -236,8 +274,9 @@ public final class PreviewManager {
     }
 
     public static String showRegionBox(String nodeId, Vec3d min, Vec3d max, PreviewOptions options) {
-        Object[] regionData = {min, max};
-        return RENDERER.showPreview(nodeId, "region_box", regionData, options);
+        PreviewRegionPayload payload = PreviewPayloadAdapters.regionFromBoxCorners(min, max);
+        PreviewStyle style = PreviewStyle.fromLegacyRegionOptions(options);
+        return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
     }
 
     // Points

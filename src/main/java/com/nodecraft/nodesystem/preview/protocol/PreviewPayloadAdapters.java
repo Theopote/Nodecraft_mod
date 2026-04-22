@@ -82,6 +82,19 @@ public final class PreviewPayloadAdapters {
         return new PreviewPointsPayload(pts);
     }
 
+    /**
+     * Inclusive block corners from axis-aligned box corners in world space:
+     * {@code minCorner} is the inclusive min block corner; {@code maxCornerExclusive} is the exclusive max corner
+     * (same convention as {@link com.nodecraft.nodesystem.preview.PreviewManager#showRegionBox}).
+     */
+    public static PreviewRegionPayload regionFromBoxCorners(Vec3d minCorner, Vec3d maxCornerExclusive) {
+        BlockPos minB = BlockPos.ofFloored(minCorner.x, minCorner.y, minCorner.z);
+        int maxX = Math.max(minB.getX(), (int) Math.ceil(maxCornerExclusive.x) - 1);
+        int maxY = Math.max(minB.getY(), (int) Math.ceil(maxCornerExclusive.y) - 1);
+        int maxZ = Math.max(minB.getZ(), (int) Math.ceil(maxCornerExclusive.z) - 1);
+        return new PreviewRegionPayload(minB.getX(), minB.getY(), minB.getZ(), maxX, maxY, maxZ);
+    }
+
     public static PreviewVectorsPayload previewVectorsFromVecLists(List<Vec3d> directions, List<Vec3d> origins) {
         if (directions == null || origins == null) {
             return new PreviewVectorsPayload(List.of());
@@ -96,5 +109,18 @@ public final class PreviewPayloadAdapters {
             }
         }
         return new PreviewVectorsPayload(vectors);
+    }
+
+    public static PreviewCurvePayload previewCurveFromWorldPoints(List<Vec3d> worldPoints, boolean closed) {
+        if (worldPoints == null || worldPoints.isEmpty()) {
+            return new PreviewCurvePayload(List.of(), closed);
+        }
+        List<PreviewPoint> pts = new ArrayList<>(worldPoints.size());
+        for (Vec3d v : worldPoints) {
+            if (v != null) {
+                pts.add(new PreviewPoint(v.x, v.y, v.z));
+            }
+        }
+        return new PreviewCurvePayload(pts, closed);
     }
 }
