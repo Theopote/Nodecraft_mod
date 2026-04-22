@@ -7,8 +7,12 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.GhostBlockPlacement;
+import com.nodecraft.nodesystem.preview.PreviewBackend;
 import com.nodecraft.nodesystem.preview.PreviewManager;
-import com.nodecraft.nodesystem.preview.PreviewOptions;
+import com.nodecraft.nodesystem.preview.protocol.PreviewBlocksPayload;
+import com.nodecraft.nodesystem.preview.protocol.PreviewPayloadAdapters;
+import com.nodecraft.nodesystem.preview.protocol.PreviewRequest;
+import com.nodecraft.nodesystem.preview.protocol.PreviewStyle;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.Coordinate;
 import net.minecraft.util.math.BlockPos;
@@ -90,24 +94,29 @@ public class PreviewBlocksNode extends BaseCustomUINode {
             collectPlacements(coordsObj, effectiveBlockType, placements);
 
             blockCount = placements.size();
-            PreviewManager.hideNodePreviews(getId().toString());
 
             if (!placements.isEmpty()) {
-                PreviewOptions options = new PreviewOptions()
-                        .ghostBlockMode()
-                        .setOpacity(transparency)
-                        .setDuration(duration);
-                options.showOutline = showOutline;
-
-                String newPreviewId = PreviewManager.showGhostBlockPlacements(
-                        getId().toString(),
-                        placements,
-                        options
+                PreviewBlocksPayload payload = PreviewPayloadAdapters.fromGhostBlockPlacements(placements);
+                PreviewStyle style = PreviewStyle.forGhostBlocks(
+                        1.0f,
+                        1.0f,
+                        1.0f,
+                        transparency,
+                        showOutline,
+                        null,
+                        2.0f,
+                        0.1f,
+                        duration * 20
+                );
+                String newPreviewId = PreviewManager.showPreview(
+                        new PreviewRequest(getId().toString(), payload, style, PreviewBackend.GHOST, context)
                 );
                 if (newPreviewId != null) {
                     previewId = UUID.nameUUIDFromBytes(newPreviewId.getBytes());
                     success = true;
                 }
+            } else {
+                PreviewManager.hideNodePreviews(getId().toString());
             }
         }
 
