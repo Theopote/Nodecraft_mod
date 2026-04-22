@@ -1,10 +1,14 @@
 package com.nodecraft.nodesystem.preview.protocol;
 
+import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.preview.GhostBlockPlacement;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.Coordinate;
+import com.nodecraft.nodesystem.util.Curve;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -122,5 +126,46 @@ public final class PreviewPayloadAdapters {
             }
         }
         return new PreviewCurvePayload(pts, closed);
+    }
+
+    public static PreviewCurvePayload curveFromLineData(LineData line, boolean closed) {
+        Vec3d a = line.getStart();
+        Vec3d b = line.getEnd();
+        return new PreviewCurvePayload(
+            List.of(
+                new PreviewPoint(a.x, a.y, a.z),
+                new PreviewPoint(b.x, b.y, b.z)
+            ),
+            closed
+        );
+    }
+
+    public static PreviewCurvePayload curveFromPolylineData(PolylineData polyline, boolean closed) {
+        List<PreviewPoint> pts = new ArrayList<>(polyline.getPointCount());
+        for (Vec3d v : polyline.getPoints()) {
+            pts.add(new PreviewPoint(v.x, v.y, v.z));
+        }
+        return new PreviewCurvePayload(pts, closed);
+    }
+
+    /**
+     * Maps Preview Curves node inputs to a v1 curve payload, or {@code null} if unsupported or too few points.
+     */
+    @Nullable
+    public static PreviewCurvePayload tryCurvePayloadFromPreviewSource(Object previewItem) {
+        if (previewItem instanceof LineData line) {
+            return curveFromLineData(line, false);
+        }
+        if (previewItem instanceof PolylineData poly) {
+            return curveFromPolylineData(poly, false);
+        }
+        if (previewItem instanceof Curve curve) {
+            List<Vec3d> samples = curve.getSamplePoints();
+            if (samples == null || samples.size() < 2) {
+                return null;
+            }
+            return previewCurveFromWorldPoints(samples, false);
+        }
+        return null;
     }
 }

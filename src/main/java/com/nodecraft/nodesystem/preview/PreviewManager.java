@@ -258,6 +258,31 @@ public final class PreviewManager {
     }
 
     /**
+     * Multiple path/curve previews for one node: {@link #hideNodePreviews} once, then each {@link PreviewCurvePayload}
+     * as {@code paths} (same element as legacy {@link #showPaths}).
+     */
+    public static List<String> showPathCurves(String nodeId, List<PreviewCurvePayload> curves, PreviewOptions options) {
+        if (curves == null || curves.isEmpty()) {
+            hideNodePreviews(nodeId);
+            return List.of();
+        }
+        hideNodePreviews(nodeId);
+        PreviewStyle style = PreviewStyle.fromLegacyPathOptions(options);
+        PreviewOptions opts = style.toPreviewOptions(PreviewKind.CURVES);
+        List<String> ids = new ArrayList<>();
+        for (PreviewCurvePayload c : curves) {
+            if (c == null || c.getPoints().size() < 2) {
+                continue;
+            }
+            String id = RENDERER.showPreview(nodeId, "paths", c, opts);
+            if (id != null) {
+                ids.add(id);
+            }
+        }
+        return ids;
+    }
+
+    /**
      * Multiple geometry-surface previews for one node: clears node previews once, then registers each payload.
      */
     public static List<String> showGeometrySurfaces(String nodeId, List<GeometryData> geometries, PreviewOptions options) {

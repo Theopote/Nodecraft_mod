@@ -11,6 +11,8 @@ import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
+import com.nodecraft.nodesystem.preview.protocol.PreviewCurvePayload;
+import com.nodecraft.nodesystem.preview.protocol.PreviewPayloadAdapters;
 import com.nodecraft.nodesystem.util.Color;
 import com.nodecraft.nodesystem.util.Curve;
 import net.minecraft.util.math.BlockPos;
@@ -87,7 +89,6 @@ public class PreviewPathsNode extends BaseNode {
             PreviewManager.hideNodePreviews(getId().toString());
         } else if (!previewItems.isEmpty()) {
             Color parsedColor = Color.fromHex(pathColor);
-            PreviewManager.hideNodePreviews(getId().toString());
             PreviewOptions options = new PreviewOptions()
                 .setColor(parsedColor.getRed(), parsedColor.getGreen(), parsedColor.getBlue())
                 .setLineWidth(Math.max(0.25f, lineWidth))
@@ -95,12 +96,16 @@ public class PreviewPathsNode extends BaseNode {
             options.smoothCurves = smoothCurves;
             options.showArrows = showDirection;
             options.arrowSize = Math.max(0.05f, arrowSize);
+            List<PreviewCurvePayload> curves = new ArrayList<>();
             for (Object previewItem : previewItems) {
-                String previewId = PreviewManager.showPaths(getId().toString(), previewItem, options);
-                if (previewId != null) {
-                    previewIds.add(previewId);
+                PreviewCurvePayload payload = PreviewPayloadAdapters.tryCurvePayloadFromPreviewSource(previewItem);
+                if (payload != null) {
+                    curves.add(payload);
                 }
             }
+            previewIds.addAll(PreviewManager.showPathCurves(getId().toString(), curves, options));
+        } else {
+            PreviewManager.hideNodePreviews(getId().toString());
         }
 
         outputValues.put(OUTPUT_SUCCESS_ID, !previewIds.isEmpty());
