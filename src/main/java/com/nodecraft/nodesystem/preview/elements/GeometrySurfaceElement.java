@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.datatypes.*;
 import com.nodecraft.nodesystem.preview.AbstractPreviewElement;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.nodesystem.preview.PreviewRenderer;
+import com.nodecraft.nodesystem.preview.protocol.PreviewGeometryPayload;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.RenderLayers;
@@ -88,6 +89,14 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
     }
 
     private void collectGeometry(Object data, List<GeometryData> target) {
+        if (data == null) {
+            return;
+        }
+        if (data instanceof PreviewGeometryPayload payload) {
+            collectGeometry(payload.getGeometry(), target);
+            return;
+        }
+
         if (data instanceof GeometryData geometry) {
             collectSingleGeometry(geometry, target);
             return;

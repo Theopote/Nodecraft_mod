@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.datatypes.*;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
-import com.nodecraft.nodesystem.preview.PreviewRenderer;
 import com.nodecraft.nodesystem.util.Color;
 import com.nodecraft.nodesystem.util.SurfaceStripBridge;
 import org.jetbrains.annotations.Nullable;
@@ -111,9 +110,9 @@ public class PreviewGeometryNode extends BaseNode {
             : (geometries.size() == 1 ? geometries.getFirst() : new CompositeGeometryData(geometries));
         List<String> previewIds = new ArrayList<>();
 
-        PreviewManager.hideNodePreviews(getId().toString());
-
-        if (previewEnabled && !geometries.isEmpty()) {
+        if (!previewEnabled) {
+            PreviewManager.hideNodePreviews(getId().toString());
+        } else if (!geometries.isEmpty()) {
             Color parsed = Color.fromHex(fillColor);
             PreviewOptions options = new PreviewOptions()
                 .setColor(parsed.getRed(), parsed.getGreen(), parsed.getBlue())
@@ -125,17 +124,9 @@ public class PreviewGeometryNode extends BaseNode {
                 .setDuration(Math.max(1, duration));
             options.particleDensity = Math.max(8, Math.min(64, quality));
 
-            for (GeometryData previewGeometry : geometries) {
-                String previewId = PreviewRenderer.getInstance().showPreview(
-                    getId().toString(),
-                    "geometry_surface",
-                    previewGeometry,
-                    options
-                );
-                if (previewId != null) {
-                    previewIds.add(previewId);
-                }
-            }
+            previewIds.addAll(PreviewManager.showGeometrySurfaces(getId().toString(), geometries, options));
+        } else {
+            PreviewManager.hideNodePreviews(getId().toString());
         }
 
         outputValues.put(OUTPUT_SUCCESS_ID, !previewIds.isEmpty());
