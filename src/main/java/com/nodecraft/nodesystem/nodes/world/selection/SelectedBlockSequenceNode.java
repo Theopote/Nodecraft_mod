@@ -15,6 +15,8 @@ import com.nodecraft.nodesystem.interaction.NodeEditorInteractionManager;
 import com.nodecraft.minecraft.client.MinecraftClientController;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
+import com.nodecraft.nodesystem.preview.protocol.PreviewCurvePayload;
+import com.nodecraft.nodesystem.preview.protocol.PreviewPayloadAdapters;
 import com.nodecraft.nodesystem.visual.SelectionVisualFeedback;
 import com.nodecraft.nodesystem.util.Color;
 import com.nodecraft.nodesystem.util.BlockPosList;
@@ -307,10 +309,11 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
         options.renderPriority = 30;
 
         PolylineData polylineData = new PolylineData(points);
+        PreviewCurvePayload curvePayload = PreviewPayloadAdapters.curveFromPolylineData(polylineData, false);
         if (pathPreviewId == null) {
-            pathPreviewId = PreviewManager.showPaths(getId().toString(), polylineData, options);
+            pathPreviewId = PreviewManager.showCurve(getId().toString(), curvePayload, options);
         } else {
-            PreviewManager.updatePreview(pathPreviewId, polylineData);
+            PreviewManager.updatePreview(pathPreviewId, curvePayload);
             PreviewManager.updatePreviewOptions(pathPreviewId, options);
         }
 

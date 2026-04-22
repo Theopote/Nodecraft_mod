@@ -11,6 +11,8 @@ import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
+import com.nodecraft.nodesystem.preview.protocol.PreviewCurvePayload;
+import com.nodecraft.nodesystem.preview.protocol.PreviewPayloadAdapters;
 import com.nodecraft.nodesystem.util.Color;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -89,23 +91,26 @@ public class PreviewPolygonProfilesNode extends BaseNode {
         }
 
         PreviewOptions boundaryOptions = buildOptions(Color.fromHex(boundaryColor));
+        List<PreviewCurvePayload> boundaries = new ArrayList<>();
         for (PolygonProfileData profile : profiles) {
-            PolylineData boundary = profile.getBoundary();
-            String previewId = PreviewManager.showPaths(getId().toString(), boundary, boundaryOptions);
-            if (previewId != null) {
-                previewIds.add(previewId);
+            PreviewCurvePayload payload = PreviewPayloadAdapters.tryCurvePayloadFromPreviewSource(profile.getBoundary());
+            if (payload != null) {
+                boundaries.add(payload);
             }
         }
+        previewIds.addAll(PreviewManager.showPathCurves(getId().toString(), boundaries, boundaryOptions, false));
 
         if (showNormals) {
             PreviewOptions normalOptions = buildOptions(Color.fromHex(normalColor));
+            List<PreviewCurvePayload> normals = new ArrayList<>();
             for (PolygonProfileData profile : profiles) {
                 LineData normalLine = buildNormalLine(profile);
-                String previewId = PreviewManager.showPaths(getId().toString(), normalLine, normalOptions);
-                if (previewId != null) {
-                    previewIds.add(previewId);
+                PreviewCurvePayload payload = PreviewPayloadAdapters.tryCurvePayloadFromPreviewSource(normalLine);
+                if (payload != null) {
+                    normals.add(payload);
                 }
             }
+            previewIds.addAll(PreviewManager.showPathCurves(getId().toString(), normals, normalOptions, false));
         }
 
         outputValues.put(OUTPUT_SUCCESS_ID, !previewIds.isEmpty());

@@ -11,6 +11,8 @@ import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
+import com.nodecraft.nodesystem.preview.protocol.PreviewCurvePayload;
+import com.nodecraft.nodesystem.preview.protocol.PreviewPayloadAdapters;
 import com.nodecraft.nodesystem.util.Color;
 import com.nodecraft.nodesystem.util.SurfaceStripBridge;
 import net.minecraft.util.math.Vec3d;
@@ -88,23 +90,27 @@ public class PreviewSurfaceStripNode extends BaseNode {
         if (mode.includeSectionEdges()) {
             Color parsedSectionColor = Color.fromHex(sectionColor);
             PreviewOptions options = buildOptions(parsedSectionColor);
+            List<PreviewCurvePayload> sectionCurves = new ArrayList<>();
             for (PolylineData sectionPath : buildSectionPaths(surfaceStrip)) {
-                String previewId = PreviewManager.showPaths(getId().toString(), sectionPath, options);
-                if (previewId != null) {
-                    previewIds.add(previewId);
+                PreviewCurvePayload payload = PreviewPayloadAdapters.tryCurvePayloadFromPreviewSource(sectionPath);
+                if (payload != null) {
+                    sectionCurves.add(payload);
                 }
             }
+            previewIds.addAll(PreviewManager.showPathCurves(getId().toString(), sectionCurves, options, false));
         }
 
         if (mode.includeRails()) {
             Color parsedRailColor = Color.fromHex(railColor);
             PreviewOptions options = buildOptions(parsedRailColor);
+            List<PreviewCurvePayload> railCurves = new ArrayList<>();
             for (LineData railSegment : buildRailSegments(surfaceStrip)) {
-                String previewId = PreviewManager.showPaths(getId().toString(), railSegment, options);
-                if (previewId != null) {
-                    previewIds.add(previewId);
+                PreviewCurvePayload payload = PreviewPayloadAdapters.tryCurvePayloadFromPreviewSource(railSegment);
+                if (payload != null) {
+                    railCurves.add(payload);
                 }
             }
+            previewIds.addAll(PreviewManager.showPathCurves(getId().toString(), railCurves, options, false));
         }
 
         outputValues.put(OUTPUT_SUCCESS_ID, !previewIds.isEmpty());

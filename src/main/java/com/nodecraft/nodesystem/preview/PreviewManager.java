@@ -265,15 +265,29 @@ public final class PreviewManager {
     }
 
     /**
-     * Multiple path/curve previews for one node: {@link #hideNodePreviews} once, then each {@link PreviewCurvePayload}
-     * as {@code paths} (same element as legacy {@link #showPaths}).
+     * Multiple path/curve previews for one node: optionally {@link #hideNodePreviews} first, then each
+     * {@link PreviewCurvePayload} as {@code paths}. Use {@code replaceNodePreviews=false} after an initial
+     * manual clear to append another batch (e.g. section paths then rail segments with different styles).
      */
     public static List<String> showPathCurves(String nodeId, List<PreviewCurvePayload> curves, PreviewOptions options) {
+        return showPathCurves(nodeId, curves, options, true);
+    }
+
+    public static List<String> showPathCurves(
+        String nodeId,
+        List<PreviewCurvePayload> curves,
+        PreviewOptions options,
+        boolean replaceNodePreviews
+    ) {
         if (curves == null || curves.isEmpty()) {
-            hideNodePreviews(nodeId);
+            if (replaceNodePreviews) {
+                hideNodePreviews(nodeId);
+            }
             return List.of();
         }
-        hideNodePreviews(nodeId);
+        if (replaceNodePreviews) {
+            hideNodePreviews(nodeId);
+        }
         PreviewStyle style = PreviewStyle.fromLegacyPathOptions(options);
         PreviewOptions opts = style.toPreviewOptions(PreviewKind.CURVES);
         List<String> ids = new ArrayList<>();
@@ -451,6 +465,14 @@ public final class PreviewManager {
     }
 
     public static String showPaths(String nodeId, Object pathData, PreviewOptions options) {
+        if (pathData == null) {
+            hideNodePreviews(nodeId);
+            return null;
+        }
+        PreviewCurvePayload curve = PreviewPayloadAdapters.tryCurvePayloadFromPreviewSource(pathData);
+        if (curve != null) {
+            return showCurve(nodeId, curve, options);
+        }
         return RENDERER.showPreview(nodeId, "paths", pathData, options);
     }
 
