@@ -16,9 +16,9 @@ import java.util.UUID;
  *                                                                        ?
  */
 @NodeInfo(
-    id = "math.list_sequence.range_legacy",
+    id = "math.list.range_legacy",
     displayName = "Sequence Range (Legacy)",
-    description = "Deprecated legacy range node. Use Range (math.list_sequence.range) instead.",
+    description = "Deprecated legacy range node. Use Range (math.sequence.range) instead.",
     category = "math.list",
     order = 999
 )
@@ -42,7 +42,7 @@ public class SequenceRangeNode extends BaseNode {
      */
     public SequenceRangeNode() {
         //                                        UID.randomUUID()              D
-        super(UUID.randomUUID(), "math.list_sequence.range_legacy");
+        super(UUID.randomUUID(), "math.list.range_legacy");
         
         //                    ?
         this.description = "Generates a sequence of numbers within a specified range";

@@ -66,7 +66,9 @@ public class GraphSerializer {
         "math.list_sequence.repeat"
     );
     private static final Map<String, String> LEGACY_NODE_TYPE_REMAP = Map.of(
-        "input.numeric.boolean_toggle", "input.basic.boolean_toggle"
+        "input.numeric.boolean_toggle", "input.basic.boolean_toggle",
+        "math.list_sequence.range", "math.sequence.range",
+        "math.list_sequence.range_legacy", "math.list.range_legacy"
     );
     
     private GraphSerializer() {

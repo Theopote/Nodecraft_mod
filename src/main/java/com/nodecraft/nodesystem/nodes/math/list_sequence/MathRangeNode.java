@@ -16,7 +16,7 @@ import java.util.UUID;
  * Generates a numeric range from Start to End using Step.
  */
 @NodeInfo(
-    id = "math.list_sequence.range",
+    id = "math.sequence.range",
     displayName = "Range",
     description = "Generates a numeric sequence from Start to End using Step.",
     category = "math.sequence",
@@ -32,7 +32,7 @@ public class MathRangeNode extends BaseNode {
     private final String description;
 
     public MathRangeNode() {
-        super(UUID.randomUUID(), "math.list_sequence.range");
+        super(UUID.randomUUID(), "math.sequence.range");
         this.description = "Generates a sequence of numbers from Start to End with Step.";
 
         addInputPort(new BasePort(INPUT_START_ID, "Start", "The starting number of the range", NodeDataType.ANY, this));
