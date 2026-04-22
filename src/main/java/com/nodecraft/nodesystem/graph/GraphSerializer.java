@@ -279,30 +279,4 @@ public class GraphSerializer {
         String json = Files.readString(filePath, StandardCharsets.UTF_8);
         return fromJsonToGraph(json);
     }
-    
-    /**
-     * 获取旧节点ID到新节点实例的映射（用于需要恢复编辑器位置等外部状态的场景）
-     * @param savedGraph 保存的图数据
-     * @param graph 已重建的节点图
-     * @return 旧 nodeId (String) → 新节点实例的映射
-     */
-    public static Map<String, BaseNode> buildNodeIdMapping(SavedGraph savedGraph, NodeGraph graph) {
-        Map<String, BaseNode> mapping = new HashMap<>();
-        if (savedGraph == null || savedGraph.nodes == null || graph == null) return mapping;
-        
-        // 按 typeId 和节点图中的顺序匹配
-        var graphNodes = graph.getNodes();
-        int graphIndex = 0;
-        for (SavedNode savedNode : savedGraph.nodes) {
-            if (graphIndex < graphNodes.size()) {
-                INode node = graphNodes.get(graphIndex);
-                if (node instanceof BaseNode baseNode) {
-                    mapping.put(savedNode.nodeId, baseNode);
-                }
-                graphIndex++;
-            }
-        }
-        
-        return mapping;
-    }
 }

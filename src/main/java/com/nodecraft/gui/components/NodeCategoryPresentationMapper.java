@@ -29,7 +29,7 @@ public final class NodeCategoryPresentationMapper {
 
     private static final Set<String> DEFAULT_EXPANDED_DISPLAY_IDS = Set.of(
         "geometry", "input", "material", "math", "output", "pattern", "reference", "transform", "world", "utilities",
-        "input.basic", "input.numeric", "input.context", "input.type_selectors",
+        "input.values", "input.numeric", "input.context", "input.type_selectors",
         "reference.points", "reference.vectors", "reference.planes", "reference.frames",
         "world.selection", "world.read", "world.query", "world.write",
         "geometry.boolean", "geometry.curves", "geometry.primitives", "geometry.profiles", "geometry.solids", "geometry.architectural_primitives",

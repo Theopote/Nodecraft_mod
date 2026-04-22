@@ -14,7 +14,7 @@
 | `geometry.primitives` | 19 |
 | `geometry.profiles` | 9 |
 | `geometry.solids` | 17 |
-| `input.basic` | 3 |
+| `input.values` | 3 |
 | `input.context` | 4 |
 | `input.numeric` | 8 |
 | `input.type_selectors` | 5 |
@@ -138,7 +138,7 @@
 | Shrinkwrap Points On Surface Strip | `geometry.solids.shrinkwrap_points_surface_strip` | Projects each query point to the closest location on the surface strip triangle mesh | `ShrinkwrapPointsOnSurfaceStripNode` |
 | Shrinkwrap Points To Voxel Geometry | `geometry.solids.shrinkwrap_points_voxel_geometry` | Voxelizes geometry to blocks, then snaps each query point to the nearest voxel block center (shell when fill is off); distinct from triangle strip shrinkwrap | `ShrinkwrapPointsToVoxelGeometryNode` |
 
-## input.basic（3）
+## input.values（3）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
