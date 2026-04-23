@@ -44,7 +44,7 @@ import java.util.UUID;
 )
 public class GeometryViewerNode extends BaseCustomUINode {
     public enum GhostRenderMode {
-        ORIGINAL("original"),
+        BLOCK_COLOR("original"),
         SOLID_COLOR("solid_color"),
         WIREFRAME("wireframe");
 
@@ -61,9 +61,10 @@ public class GeometryViewerNode extends BaseCustomUINode {
         public static GhostRenderMode fromState(@Nullable String value) {
             String mode = value != null ? value.trim().toLowerCase() : "";
             return switch (mode) {
+                case "original", "block_color" -> BLOCK_COLOR;
                 case "solid_color" -> SOLID_COLOR;
                 case "wireframe" -> WIREFRAME;
-                default -> ORIGINAL;
+                default -> BLOCK_COLOR;
             };
         }
     }
@@ -90,7 +91,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
     private boolean previewSolidGeometry = true;
 
     @NodeProperty(displayName = "Ghost Render Mode", category = "Display", order = 8)
-    private GhostRenderMode ghostRenderMode = GhostRenderMode.ORIGINAL;
+    private GhostRenderMode ghostRenderMode = GhostRenderMode.BLOCK_COLOR;
 
     private volatile int lastBlockCount = 0;
     private volatile String statusMessage = "Waiting for input...";
@@ -551,7 +552,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
     }
 
     public void setGhostRenderMode(GhostRenderMode value) {
-        GhostRenderMode sanitized = value != null ? value : GhostRenderMode.ORIGINAL;
+        GhostRenderMode sanitized = value != null ? value : GhostRenderMode.BLOCK_COLOR;
         if (ghostRenderMode != sanitized) {
             ghostRenderMode = sanitized;
             markDirty();

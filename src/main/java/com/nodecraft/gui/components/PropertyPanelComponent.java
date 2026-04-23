@@ -26,6 +26,7 @@ import com.nodecraft.nodesystem.datatypes.TorusGeometryData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.nodes.output.preview.GeometryViewerNode;
 import com.nodecraft.nodesystem.util.Vec3; // 确保 Vec3 可用
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.Color;
@@ -1483,6 +1484,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
         List<PropertyDescriptor> properties = getPropertiesForNode(selectedNode.getClass()).stream()
                 .filter(prop -> !HIDDEN_NODE_PROPERTIES.contains(prop.name))
+                .filter(prop -> shouldDisplayProperty(selectedNode, prop))
                 .toList();
         if (properties.isEmpty()) {
             ImGui.textDisabled("No editable properties");
@@ -1700,6 +1702,13 @@ public class PropertyPanelComponent implements EditorComponent {
     // 修改为使用节点ID和属性名作为键
     private String getTempValueKey(INode node, String propName) {
         return editorState.getTempValueKey(node, propName);
+    }
+
+    private boolean shouldDisplayProperty(INode node, PropertyDescriptor prop) {
+        if (node instanceof GeometryViewerNode geometryViewerNode && "ghostRenderMode".equals(prop.name)) {
+            return geometryViewerNode.getPreviewBackend() == com.nodecraft.nodesystem.preview.PreviewBackend.GHOST;
+        }
+        return true;
     }
 
     private boolean shouldUseColorPickerForStringProperty(PropertyDescriptor prop, String value) {
