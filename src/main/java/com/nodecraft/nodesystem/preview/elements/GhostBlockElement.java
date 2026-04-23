@@ -207,9 +207,6 @@ public class GhostBlockElement extends AbstractPreviewElement {
                 float r = ((color >> 16) & 0xFF) / 255.0f;
                 float g = ((color >> 8) & 0xFF) / 255.0f;
                 float b = (color & 0xFF) / 255.0f;
-                r = Math.min(1.0f, r * tintColor.x());
-                g = Math.min(1.0f, g * tintColor.y());
-                b = Math.min(1.0f, b * tintColor.z());
 
                 drawFilledAxisAlignedBox(vertexConsumer, matrix, minX, minY, minZ, maxX, maxY, maxZ, r, g, b, opacity);
             } catch (Exception e) {
