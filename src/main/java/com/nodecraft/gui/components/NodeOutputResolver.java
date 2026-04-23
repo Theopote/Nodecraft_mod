@@ -1,5 +1,6 @@
 package com.nodecraft.gui.components;
 
+import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.graph.NodeGraph;
@@ -67,7 +68,7 @@ final class NodeOutputResolver {
     }
 
     private static Object resolveNodeOutput(NodeGraph graph, INode node, String outputPortId, Set<UUID> visiting, int depth) {
-        if (node == null || outputPortId == null) {
+        if (graph == null || node == null || outputPortId == null) {
             return null;
         }
 
@@ -96,7 +97,21 @@ final class NodeOutputResolver {
                 for (IPort port : node.getInputPorts()) {
                     inputs.putIfAbsent(port.getId(), port.getValue());
                 }
-                node.compute(inputs);
+                try {
+                    node.compute(inputs);
+                } catch (Exception e) {
+                    // Property panel resolves outputs in UI render path; swallow node compute failures here
+                    // so one bad node does not corrupt ImGui stack state.
+                    NodeCraft.LOGGER.error(
+                        "NodeOutputResolver safe-compute failed: nodeType={}, nodeId={}, outputPort={}",
+                        node.getClass().getSimpleName(),
+                        node.getId(),
+                        outputPortId,
+                        e
+                    );
+                    Object cached = node.getOutput(outputPortId);
+                    return cached != null ? cached : getPortValue(node, outputPortId, false);
+                }
             } finally {
                 visiting.remove(node.getId());
             }

@@ -130,7 +130,8 @@ public class GeometryViewerNode extends BaseCustomUINode {
         if (previewBackend == PreviewBackend.GHOST && trans <= 0.01f) {
             trans = transparency;
         }
-        String effectiveBlockType = (blockTypeObj instanceof String value) ? value : blockType;
+        String requestedBlockType = (blockTypeObj instanceof String value) ? value : blockType;
+        String effectiveBlockType = sanitizeBlockType(requestedBlockType);
         boolean hasWorldContext = context != null && context.getWorld() != null;
 
         BlockPosList blocksList = resolveBlocks(blocksObj, geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj);
@@ -181,6 +182,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
         String effectiveBlockType,
         float trans
     ) {
+        try {
         if (previewBackend == PreviewBackend.TRACKED_WORLD) {
             BlockState trackedState = resolveBlockState(effectiveBlockType);
             if (trackedState == null) {
@@ -245,6 +247,29 @@ public class GeometryViewerNode extends BaseCustomUINode {
             statusMessage = "Previewing " + trackedCount + " tracked blocks";
         }
         return true;
+        } catch (Exception e) {
+            statusMessage = "Preview error";
+            NodeCraft.LOGGER.error(
+                "GeometryViewerNode[{}] refreshPreview failed: blockType={}, backend={}",
+                getId(),
+                effectiveBlockType,
+                previewBackend,
+                e
+            );
+            return false;
+        }
+    }
+
+    private String sanitizeBlockType(@Nullable String requestedBlockType) {
+        String candidate = requestedBlockType != null ? requestedBlockType.trim() : "";
+        if (!candidate.isEmpty()) {
+            return candidate;
+        }
+        String fallback = blockType != null ? blockType.trim() : "";
+        if (!fallback.isEmpty()) {
+            return fallback;
+        }
+        return "minecraft:stone";
     }
 
     private String buildSteadyStateStatus(@Nullable ExecutionContext context) {
