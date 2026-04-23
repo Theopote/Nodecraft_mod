@@ -40,6 +40,7 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
     private Vector3f lineColor;
     private boolean showFill = true;
     private boolean showOutline = true;
+    private float lineWidth = 2.0f;
     private float lineAlphaScale = 0.95f;
     private volatile long lastVisibilityLogAtMs = 0L;
 
@@ -65,6 +66,13 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
         if (options.showOutline != null) {
             this.showOutline = options.showOutline;
         }
+        if (options.lineWidth != null) {
+            this.lineWidth = Math.max(0.25f, options.lineWidth);
+        }
+
+        // AbstractPreviewElement invokes processData() inside super(...), but subclass field initializers run
+        // afterwards and can reset mesh/bounds fields. Reprocess once here to keep final state consistent.
+        processData(data);
     }
 
     @Override
@@ -584,10 +592,12 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
 
         consumer.vertex((float) start.x, (float) start.y, (float) start.z)
             .color(color.x(), color.y(), color.z(), alpha)
-            .normal(normal.x, normal.y, normal.z);
+            .normal(normal.x, normal.y, normal.z)
+            .lineWidth(Math.max(0.25f, lineWidth));
         consumer.vertex((float) end.x, (float) end.y, (float) end.z)
             .color(color.x(), color.y(), color.z(), alpha)
-            .normal(normal.x, normal.y, normal.z);
+            .normal(normal.x, normal.y, normal.z)
+            .lineWidth(Math.max(0.25f, lineWidth));
     }
 
     @Override
