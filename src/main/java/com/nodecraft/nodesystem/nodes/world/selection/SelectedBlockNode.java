@@ -1463,13 +1463,10 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             restoreFloatSetting(stateMap, "maxDistance", this::setMaxDistance, 1.0f, 1000.0f);
             restoreBooleanSetting(stateMap, "includeFluids", this::setIncludeFluids);
             
-            // showBlockPreview: 优先新 key，兼容读取旧 key。
+            // showBlockPreview: 只读取新 key，保持状态键统一。
             if (stateMap.get("showBlockPreview") instanceof Boolean showPreview) {
                 this.showBlockPreview = showPreview;
                 NodeCraft.LOGGER.debug("节点 {} 恢复 showBlockPreview: {}", getId(), showPreview);
-            } else if (stateMap.get("showGhostBlock") instanceof Boolean showGhost) {
-                this.showBlockPreview = showGhost;
-                NodeCraft.LOGGER.debug("节点 {} 兼容恢复旧键 showGhostBlock: {}", getId(), showGhost);
             }
             
             // 恢复拾取的方块信息
