@@ -75,12 +75,12 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     private boolean includeFluids = false;
 
     @NodeProperty(
-        displayName = "Show Ghost Block",
+        displayName = "Show Block Preview",
         category = "Preview",
         order = 3,
-        description = "Whether the selected block should show a ghost preview in the world."
+        description = "Whether the selected block should show a preview in the world."
     )
-    private boolean showGhostBlock = true;
+    private boolean showBlockPreview = true;
     
     // --- 核心数据状态 ---
     private volatile Coordinate pickedBlockPosition = null;
@@ -384,8 +384,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 NodeCraft.LOGGER.debug("节点 {} 输入坐标方块验证警告: {}", getId(), blockValidation.getMessage());
             }
             
-            // 更新幽灵方块预览
-            updateGhostBlockPreview();
+            // 更新方块预览
+            refreshBlockPreview();
 
             // 输入坐标驱动的选中也显示方块高亮（与交互拾取保持一致）。
             SelectionVisualFeedback.getInstance().showBlockSelection(
@@ -413,8 +413,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             this.pickedBlockId = "minecraft:air";
             this.pickedBlockStateData = null;
             
-            // 隐藏幽灵方块预览
-            hideGhostBlockPreview();
+            // 隐藏方块预览
+            clearBlockPreview();
 
             // 同步清理输入坐标驱动的方块高亮。
             SelectionVisualFeedback.getInstance().clearFeedback(getId().toString());
@@ -823,8 +823,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             NodeCraft.LOGGER.error("节点 {} 显示选择视觉反馈失败: {}", getId(), e.getMessage(), e);
         }
         
-        // 统一更新幽灵方块预览
-        updateGhostBlockPreview();
+        // 统一更新方块预览
+        refreshBlockPreview();
         
         NodeCraft.LOGGER.info("节点 {} 接收到拾取的方块: {} at {}", getId(), blockId, position);
         if (NodeCraft.LOGGER.isDebugEnabled()) {
@@ -859,8 +859,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         // 清除选择视觉反馈
         SelectionVisualFeedback.getInstance().clearFeedback(getId().toString());
         
-        // 隐藏幽灵方块预览
-        hideGhostBlockPreview();
+        // 隐藏方块预览
+        clearBlockPreview();
         resetOutputs();
         
         markDirty();
@@ -874,18 +874,18 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
      * - 如果节点被设置为 "Hide in Game"，则不显示任何预览
      * - 只有当节点在游戏中可见时，才根据其他条件显示预览
      */
-    private void updateGhostBlockPreview() {
+    private void refreshBlockPreview() {
         try {
             // 检查节点是否在游戏中可见
             if (!isNodeVisibleInGame()) {
-                hideGhostBlockPreview();
+                clearBlockPreview();
                 return;
             }
             
-            if (showGhostBlock && hasPickedBlock && pickedBlockPosition != null && pickedBlockId != null) {
-                showGhostBlockPreview();
+            if (showBlockPreview && hasPickedBlock && pickedBlockPosition != null && pickedBlockId != null) {
+                createBlockPreview();
             } else {
-                hideGhostBlockPreview();
+                clearBlockPreview();
             }
         } catch (NullPointerException | IllegalArgumentException e) {
             NodeCraft.LOGGER.error("节点 {} 更新幽灵方块预览失败: {} - {}", getId(), 
@@ -899,7 +899,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         }
     }
     
-    private void showGhostBlockPreview() {
+    private void createBlockPreview() {
         if (pickedBlockPosition != null && pickedBlockId != null) {
             try {
                 // 检查世界状态，确保预览可以正常显示
@@ -910,7 +910,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 }
                 
                 // 先隐藏之前的预览
-                hideGhostBlockPreview();
+                clearBlockPreview();
                 
                 PreviewBlocksPayload payload = new PreviewBlocksPayload(List.of(
                     new PreviewBlock(
@@ -933,20 +933,20 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                         getId(), pickedBlockId, pickedBlockPosition);
                 }
             } catch (NullPointerException e) {
-                NodeCraft.LOGGER.error("节点 {} 显示幽灵方块预览失败: 空指针异常 - PreviewRenderer或方块数据为null", getId(), e);
+                NodeCraft.LOGGER.error("节点 {} 显示方块预览失败: 空指针异常 - PreviewRenderer或方块数据为null", getId(), e);
                 currentGhostBlockPreviewId = null;
             } catch (IllegalArgumentException e) {
-                NodeCraft.LOGGER.error("节点 {} 显示幽灵方块预览失败: 参数异常 - 无效的方块ID: {}", getId(), pickedBlockId, e);
+                NodeCraft.LOGGER.error("节点 {} 显示方块预览失败: 参数异常 - 无效的方块ID: {}", getId(), pickedBlockId, e);
                 currentGhostBlockPreviewId = null;
             } catch (Exception e) {
-                NodeCraft.LOGGER.error("节点 {} 显示幽灵方块预览失败: {} - {}", getId(), 
+                NodeCraft.LOGGER.error("节点 {} 显示方块预览失败: {} - {}", getId(), 
                     e.getClass().getSimpleName(), e.getMessage(), e);
                 currentGhostBlockPreviewId = null;
             }
         }
     }
     
-    private void hideGhostBlockPreview() {
+    private void clearBlockPreview() {
         if (currentGhostBlockPreviewId != null) {
             try {
                 PreviewRenderer.getInstance().hidePreview(currentGhostBlockPreviewId);
@@ -1220,9 +1220,9 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 }
                 addVerticalSpacing(getSmallPadding(), zoom);
                 
-                // 显示幽灵方块选项
-                if (ImGui.checkbox("显示幽灵方块##ghostBlock", showGhostBlock)) {
-                    setShowGhostBlock(!showGhostBlock);
+                // 显示方块预览选项
+                if (ImGui.checkbox("显示方块预览##blockPreview", showBlockPreview)) {
+                    setShowBlockPreview(!showBlockPreview);
                     changed = true;
                 }
 
@@ -1266,8 +1266,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             NodeCraft.LOGGER.error("节点 {} UI渲染失败: 空指针异常 - 可能的原因: 未初始化的组件或数据", getId(), e);
             // 在调试模式下提供更多上下文信息
             if (NodeCraft.LOGGER.isDebugEnabled()) {
-                NodeCraft.LOGGER.debug("节点状态: hasPickedBlock={}, pickedBlockPosition={}, showGhostBlock={}", 
-                    hasPickedBlock, pickedBlockPosition, showGhostBlock);
+                NodeCraft.LOGGER.debug("节点状态: hasPickedBlock={}, pickedBlockPosition={}, showBlockPreview={}", 
+                    hasPickedBlock, pickedBlockPosition, showBlockPreview);
             }
         } catch (IllegalStateException e) {
             NodeCraft.LOGGER.error("节点 {} UI渲染失败: 非法状态异常 - ImGui可能未正确初始化", getId(), e);
@@ -1330,7 +1330,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
      * 
      * 2. 状态变更规则：
      *    - 任何影响节点状态的设置变化都应该调用 markDirty()
-     *    - 包括：maxDistance、includeFluids、useHandItem、showGhostBlock
+     *    - 包括：maxDistance、includeFluids、useHandItem、showBlockPreview
      *    - 确保状态序列化、反序列化和下游节点更新正常工作
      * 
      * 3. 一致性原则：
@@ -1363,15 +1363,15 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         }
     }
 
-    public void setShowGhostBlock(boolean showGhostBlock) {
-        if (this.showGhostBlock != showGhostBlock) {
-            this.showGhostBlock = showGhostBlock;
+    public void setShowBlockPreview(boolean showBlockPreview) {
+        if (this.showBlockPreview != showBlockPreview) {
+            this.showBlockPreview = showBlockPreview;
             
             // 统一调用预览更新方法
-            updateGhostBlockPreview();
+            refreshBlockPreview();
             
             // 统一调用markDirty()确保节点状态变化被正确跟踪
-            // 虽然showGhostBlock主要影响UI显示，但它是节点状态的一部分
+            // 虽然showBlockPreview主要影响UI显示，但它是节点状态的一部分
             // 保持与其他设置方法的一致性，确保状态序列化和下游更新正常工作
             markDirty();
         }
@@ -1387,7 +1387,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             // 直接保存设置为顶级属性，与@NodeProperty机制兼容
             state.put("maxDistance", maxDistance);
             state.put("includeFluids", includeFluids);
-            state.put("showGhostBlock", showGhostBlock);
+            state.put("showBlockPreview", showBlockPreview);
             
             // 保存拾取的方块信息
             if (hasPickedBlock && pickedBlockPosition != null) {
@@ -1426,7 +1426,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             fallbackState.put("maxDistance", 100.0f);
             fallbackState.put("includeFluids", false);
             fallbackState.put("useHandItem", false);
-            fallbackState.put("showGhostBlock", true);
+            fallbackState.put("showBlockPreview", true);
             return fallbackState;
         }
         
@@ -1463,17 +1463,20 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             restoreFloatSetting(stateMap, "maxDistance", this::setMaxDistance, 1.0f, 1000.0f);
             restoreBooleanSetting(stateMap, "includeFluids", this::setIncludeFluids);
             
-            // showGhostBlock 特殊处理：直接设置字段避免触发预览更新
-            if (stateMap.get("showGhostBlock") instanceof Boolean showGhost) {
-                this.showGhostBlock = showGhost;
-                NodeCraft.LOGGER.debug("节点 {} 恢复 showGhostBlock: {}", getId(), showGhost);
+            // showBlockPreview: 优先新 key，兼容读取旧 key。
+            if (stateMap.get("showBlockPreview") instanceof Boolean showPreview) {
+                this.showBlockPreview = showPreview;
+                NodeCraft.LOGGER.debug("节点 {} 恢复 showBlockPreview: {}", getId(), showPreview);
+            } else if (stateMap.get("showGhostBlock") instanceof Boolean showGhost) {
+                this.showBlockPreview = showGhost;
+                NodeCraft.LOGGER.debug("节点 {} 兼容恢复旧键 showGhostBlock: {}", getId(), showGhost);
             }
             
             // 恢复拾取的方块信息
             restorePickedBlockData(stateMap);
             
-            // 状态恢复完成后，统一更新幽灵方块预览
-            updateGhostBlockPreview();
+            // 状态恢复完成后，统一更新方块预览
+            refreshBlockPreview();
             
             markDirty(); // 确保节点状态恢复后能够触发更新
             
