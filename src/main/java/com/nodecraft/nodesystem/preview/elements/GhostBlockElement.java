@@ -203,10 +203,10 @@ public class GhostBlockElement extends AbstractPreviewElement {
             float maxZ = minZ + 1.0f;
 
             try {
-                int color = MinecraftClient.getInstance().getBlockColors().getColor(blockState, world, blockPos, 0);
-                float r = ((color >> 16) & 0xFF) / 255.0f;
-                float g = ((color >> 8) & 0xFF) / 255.0f;
-                float b = (color & 0xFF) / 255.0f;
+                float[] rgb = resolveOriginalColor(world, blockPos, blockState);
+                float r = rgb[0];
+                float g = rgb[1];
+                float b = rgb[2];
 
                 drawFilledAxisAlignedBox(vertexConsumer, matrix, minX, minY, minZ, maxX, maxY, maxZ, r, g, b, opacity);
             } catch (Exception e) {
@@ -214,6 +214,20 @@ public class GhostBlockElement extends AbstractPreviewElement {
             }
         }
         endDraw(draw);
+    }
+
+    private float[] resolveOriginalColor(World world, BlockPos blockPos, BlockState blockState) {
+        int color = MinecraftClient.getInstance().getBlockColors().getColor(blockState, world, blockPos, 0);
+
+        // Many blocks are not tint-driven and return -1 here. Use map color fallback instead of pure white.
+        if (color == -1) {
+            color = blockState.getMapColor(world, blockPos).color;
+        }
+
+        float r = ((color >> 16) & 0xFF) / 255.0f;
+        float g = ((color >> 8) & 0xFF) / 255.0f;
+        float b = (color & 0xFF) / 255.0f;
+        return new float[]{r, g, b};
     }
     
     /**
