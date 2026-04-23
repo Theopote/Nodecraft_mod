@@ -37,7 +37,7 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
     private double boundsRadius = 0.0d;
 
     private Vector3f fillColor = new Vector3f(0.30f, 0.84f, 1.0f);
-    private Vector3f lineColor = new Vector3f(0.04f, 0.16f, 0.22f);
+    private Vector3f lineColor;
     private boolean showFill = true;
     private boolean showOutline = true;
     private float lineAlphaScale = 0.95f;
@@ -404,8 +404,8 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
             return;
         }
 
-        Vec3d base0 = toVec3d(base.get(0));
-        Vec3d top0 = toVec3d(top.get(0));
+        Vec3d base0 = toVec3d(base.getFirst());
+        Vec3d top0 = toVec3d(top.getFirst());
 
         for (int i = 1; i < n - 1; i++) {
             builder.addTriangle(base0, toVec3d(base.get(i + 1)), toVec3d(base.get(i)));
@@ -595,6 +595,7 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
         if (isExpired()) {
             return false;
         }
+        ensureBoundsForVisibility();
         double distance = camera.getCameraPos().distanceTo(boundsCenter);
         float maxDistance = PreviewRenderer.getInstance().getSettings().maxRenderDistance;
         boolean visibleByDistance = distance <= maxDistance + boundsRadius;
@@ -602,11 +603,14 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
         if (!visibleByDistance && now - lastVisibilityLogAtMs > 2000L) {
             lastVisibilityLogAtMs = now;
             NodeCraft.LOGGER.info(
-                "GeometrySurfaceElement[{}] shouldRender=false: distance={}, maxDistance={}, radius={}, cam=({}, {}, {}), center=({}, {}, {})",
+                "GeometrySurfaceElement[{}:{}] shouldRender=false: distance={}, maxDistance={}, radius={}, triangles={}, segments={}, cam=({}, {}, {}), center=({}, {}, {})",
                 getOwnerNodeId(),
+                getId(),
                 distance,
                 maxDistance,
                 boundsRadius,
+                triangles.size(),
+                segments.size(),
                 camera.getCameraPos().x,
                 camera.getCameraPos().y,
                 camera.getCameraPos().z,
@@ -616,6 +620,45 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
             );
         }
         return visibleByDistance;
+    }
+
+    private void ensureBoundsForVisibility() {
+        if (boundsRadius > 0.0d) {
+            return;
+        }
+
+        List<Triangle> trianglesSnapshot = triangles;
+        List<Segment> segmentsSnapshot = segments;
+        if (trianglesSnapshot.isEmpty() && segmentsSnapshot.isEmpty()) {
+            return;
+        }
+
+        MeshBuilder rebuild = new MeshBuilder();
+        for (Triangle triangle : trianglesSnapshot) {
+            rebuild.include(triangle.a);
+            rebuild.include(triangle.b);
+            rebuild.include(triangle.c);
+        }
+        for (Segment segment : segmentsSnapshot) {
+            rebuild.include(segment.start);
+            rebuild.include(segment.end);
+        }
+
+        Vec3d recomputedCenter = rebuild.computeCenter();
+        double recomputedRadius = rebuild.computeRadius(recomputedCenter);
+        if (recomputedRadius > 0.0d) {
+            boundsCenter = recomputedCenter;
+            boundsRadius = recomputedRadius;
+            NodeCraft.LOGGER.info(
+                "GeometrySurfaceElement[{}:{}] repaired bounds: center=({}, {}, {}), radius={}",
+                getOwnerNodeId(),
+                getId(),
+                boundsCenter.x,
+                boundsCenter.y,
+                boundsCenter.z,
+                boundsRadius
+            );
+        }
     }
 
     @Override
