@@ -1705,8 +1705,15 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     private boolean shouldDisplayProperty(INode node, PropertyDescriptor prop) {
-        if (node instanceof GeometryViewerNode geometryViewerNode && "ghostRenderMode".equals(prop.name)) {
-            return geometryViewerNode.getPreviewBackend() == com.nodecraft.nodesystem.preview.PreviewBackend.GHOST;
+        if (node instanceof GeometryViewerNode geometryViewerNode) {
+            boolean isGhostBackend = geometryViewerNode.getPreviewBackend() == com.nodecraft.nodesystem.preview.PreviewBackend.GHOST;
+            if ("ghostRenderMode".equals(prop.name)) {
+                return isGhostBackend;
+            }
+            if ("ghostOutlineColor".equals(prop.name)) {
+                return isGhostBackend
+                    && geometryViewerNode.getGhostRenderMode() == GeometryViewerNode.GhostRenderMode.SOLID_COLOR;
+            }
         }
         return true;
     }

@@ -53,7 +53,9 @@ import java.util.List;
 public class GhostBlockElement extends AbstractPreviewElement {
     
     private volatile List<BlockData> blocks = new ArrayList<>();
-    private Vector3f tintColor = new Vector3f(0.2f, 0.7f, 1.0f); // 默认天蓝色
+    private Vector3f fillColor = new Vector3f(0.2f, 0.7f, 1.0f); // 默认天蓝色
+    private Vector3f outlineColor = new Vector3f(0.1f, 0.1f, 0.1f);
+    private boolean showOutline = true;
     private String textureMode = "original"; // "original", "solid_color", "wireframe"
     private boolean useOriginalTexture = true;
     private float ghostOpacity = 0.5f; // 幽灵方块的透明度
@@ -67,10 +69,14 @@ public class GhostBlockElement extends AbstractPreviewElement {
         
         // 从选项中读取设置（与 RegionBoxElement 一致：主色用 color，着色用 tintColor 覆盖）
         if (options.color != null) {
-            this.tintColor = new Vector3f(options.color);
+            this.fillColor = new Vector3f(options.color);
         }
+        this.outlineColor = new Vector3f(fillColor).mul(0.25f);
         if (options.tintColor != null) {
-            this.tintColor = new Vector3f(options.tintColor);
+            this.outlineColor = new Vector3f(options.tintColor);
+        }
+        if (options.showOutline != null) {
+            this.showOutline = options.showOutline;
         }
         if (options.textureMode != null) {
             this.textureMode = options.textureMode;
@@ -245,13 +251,14 @@ public class GhostBlockElement extends AbstractPreviewElement {
         Vec3d cameraPos = camera.getCameraPos();
         MinecraftClient client = MinecraftClient.getInstance();
         DrawContext draw = beginDraw(client);
-        VertexConsumer vertexConsumer = draw.provider().getBuffer(RenderLayers.debugFilledBox());
+        VertexConsumer fillConsumer = draw.provider().getBuffer(RenderLayers.debugFilledBox());
         Matrix4f matrix = matrices.peek().getPositionMatrix();
 
-        float r = tintColor.x();
-        float g = tintColor.y();
-        float b = tintColor.z();
+        float r = fillColor.x();
+        float g = fillColor.y();
+        float b = fillColor.z();
 
+        // Pass 1: filled boxes
         for (BlockData blockData : blocksSnapshot) {
             double distance = cameraPos.distanceTo(blockData.position);
             if (distance > maxRenderDistance) {
@@ -270,7 +277,46 @@ public class GhostBlockElement extends AbstractPreviewElement {
             float maxY = minY + 1.0f;
             float maxZ = minZ + 1.0f;
 
-            drawFilledAxisAlignedBox(vertexConsumer, matrix, minX, minY, minZ, maxX, maxY, maxZ, r, g, b, opacity);
+            drawFilledAxisAlignedBox(fillConsumer, matrix, minX, minY, minZ, maxX, maxY, maxZ, r, g, b, opacity);
+        }
+
+        // Pass 2: outlines (optional)
+        if (showOutline) {
+            VertexConsumer outlineConsumer = draw.provider().getBuffer(RenderLayers.lines());
+            float outlineAlpha = Math.min(1.0f, opacity * 0.95f);
+            for (BlockData blockData : blocksSnapshot) {
+                double distance = cameraPos.distanceTo(blockData.position);
+                if (distance > maxRenderDistance) {
+                    continue;
+                }
+
+                BlockState blockState = getBlockState(blockData.blockId);
+                if (blockState.isAir()) {
+                    continue;
+                }
+
+                float minX = (float) (blockData.position.x - cameraPos.x);
+                float minY = (float) (blockData.position.y - cameraPos.y);
+                float minZ = (float) (blockData.position.z - cameraPos.z);
+                float maxX = minX + 1.0f;
+                float maxY = minY + 1.0f;
+                float maxZ = minZ + 1.0f;
+
+                drawWireframeBox(
+                    outlineConsumer,
+                    matrix,
+                    minX,
+                    minY,
+                    minZ,
+                    maxX,
+                    maxY,
+                    maxZ,
+                    outlineColor.x(),
+                    outlineColor.y(),
+                    outlineColor.z(),
+                    outlineAlpha
+                );
+            }
         }
 
         endDraw(draw);
@@ -294,9 +340,9 @@ public class GhostBlockElement extends AbstractPreviewElement {
         VertexConsumer vertexConsumer = draw.provider().getBuffer(RenderLayers.lines());
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         
-        float r = tintColor.x();
-        float g = tintColor.y();
-        float b = tintColor.z();
+        float r = outlineColor.x();
+        float g = outlineColor.y();
+        float b = outlineColor.z();
 
         // 立方体的顶点
         Vec3d[] vertices = {
@@ -431,6 +477,60 @@ public class GhostBlockElement extends AbstractPreviewElement {
         fullBrightVertex(vertexConsumer, matrix, x1, y1, z1, r, g, b, alpha, opposite);
     }
 
+    private void drawWireframeBox(
+        VertexConsumer vertexConsumer,
+        Matrix4f matrix,
+        float minX,
+        float minY,
+        float minZ,
+        float maxX,
+        float maxY,
+        float maxZ,
+        float r,
+        float g,
+        float b,
+        float alpha
+    ) {
+        edge(vertexConsumer, matrix, minX, minY, minZ, maxX, minY, minZ, r, g, b, alpha);
+        edge(vertexConsumer, matrix, maxX, minY, minZ, maxX, maxY, minZ, r, g, b, alpha);
+        edge(vertexConsumer, matrix, maxX, maxY, minZ, minX, maxY, minZ, r, g, b, alpha);
+        edge(vertexConsumer, matrix, minX, maxY, minZ, minX, minY, minZ, r, g, b, alpha);
+
+        edge(vertexConsumer, matrix, minX, minY, maxZ, maxX, minY, maxZ, r, g, b, alpha);
+        edge(vertexConsumer, matrix, maxX, minY, maxZ, maxX, maxY, maxZ, r, g, b, alpha);
+        edge(vertexConsumer, matrix, maxX, maxY, maxZ, minX, maxY, maxZ, r, g, b, alpha);
+        edge(vertexConsumer, matrix, minX, maxY, maxZ, minX, minY, maxZ, r, g, b, alpha);
+
+        edge(vertexConsumer, matrix, minX, minY, minZ, minX, minY, maxZ, r, g, b, alpha);
+        edge(vertexConsumer, matrix, maxX, minY, minZ, maxX, minY, maxZ, r, g, b, alpha);
+        edge(vertexConsumer, matrix, maxX, maxY, minZ, maxX, maxY, maxZ, r, g, b, alpha);
+        edge(vertexConsumer, matrix, minX, maxY, minZ, minX, maxY, maxZ, r, g, b, alpha);
+    }
+
+    private void edge(
+        VertexConsumer vertexConsumer,
+        Matrix4f matrix,
+        float x1,
+        float y1,
+        float z1,
+        float x2,
+        float y2,
+        float z2,
+        float r,
+        float g,
+        float b,
+        float alpha
+    ) {
+        vertexConsumer.vertex(matrix, x1, y1, z1)
+            .color(r, g, b, alpha)
+            .normal(0.0f, 1.0f, 0.0f)
+            .lineWidth(1.5f);
+        vertexConsumer.vertex(matrix, x2, y2, z2)
+            .color(r, g, b, alpha)
+            .normal(0.0f, 1.0f, 0.0f)
+            .lineWidth(1.5f);
+    }
+
     private void fullBrightVertex(
         VertexConsumer vertexConsumer,
         Matrix4f matrix,
@@ -540,11 +640,11 @@ public class GhostBlockElement extends AbstractPreviewElement {
     }
     
     public Vector3f getTintColor() {
-        return new Vector3f(tintColor);
+        return new Vector3f(fillColor);
     }
     
     public void setTintColor(Vector3f tintColor) {
-        this.tintColor = new Vector3f(tintColor);
+        this.fillColor = new Vector3f(tintColor);
     }
     
     public String getTextureMode() {

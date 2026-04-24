@@ -62,6 +62,23 @@ public final class PreviewStyle {
         return new PreviewStyle(red, green, blue, red, green, blue, opacity, showOutline, textureMode, lineWidth, pointSize, durationTicks);
     }
 
+    public static PreviewStyle forGhostBlocksWithOutline(
+        float fillRed,
+        float fillGreen,
+        float fillBlue,
+        float outlineRed,
+        float outlineGreen,
+        float outlineBlue,
+        float opacity,
+        boolean showOutline,
+        String textureMode,
+        float lineWidth,
+        float pointSize,
+        int durationTicks
+    ) {
+        return new PreviewStyle(fillRed, fillGreen, fillBlue, outlineRed, outlineGreen, outlineBlue, opacity, showOutline, textureMode, lineWidth, pointSize, durationTicks);
+    }
+
     /**
      * Best-effort mapping from legacy {@link PreviewOptions} used by transitional APIs.
      */
@@ -321,6 +338,7 @@ public final class PreviewStyle {
     private PreviewOptions toGhostBlockPreviewOptions() {
         PreviewOptions o = new PreviewOptions().ghostBlockMode().setOpacity(opacity);
         o.setColor(red, green, blue);
+        o.setTintColor(fillRed, fillGreen, fillBlue);
         if (textureMode != null && !textureMode.isEmpty()) {
             o.textureMode = textureMode;
             if ("solid_color".equals(textureMode) || "wireframe".equals(textureMode)) {

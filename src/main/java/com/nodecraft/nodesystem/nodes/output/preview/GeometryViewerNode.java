@@ -72,10 +72,13 @@ public class GeometryViewerNode extends BaseCustomUINode {
     @NodeProperty(displayName = "Preview Color", category = "Display", order = 1)
     private String previewColor = "#4CAF50";
 
-    @NodeProperty(displayName = "Transparency", category = "Display", order = 2)
+    @NodeProperty(displayName = "Outline Color", category = "Display", order = 2)
+    private String ghostOutlineColor = "#1A1A1A";
+
+    @NodeProperty(displayName = "Transparency", category = "Display", order = 3)
     private float transparency = 0.4f;
 
-    @NodeProperty(displayName = "Show Outline", category = "Display", order = 3)
+    @NodeProperty(displayName = "Show Outline", category = "Display", order = 4)
     private boolean showOutline = true;
 
     @NodeProperty(displayName = "Block Type", category = "Preview", order = 4)
@@ -99,6 +102,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
     private volatile int cachedGeometrySignature = 0;
     private volatile float cachedTransparency = -1f;
     private volatile String cachedColor = null;
+    private volatile String cachedOutlineColor = null;
     private volatile String cachedBlockType = null;
     private volatile PreviewBackend cachedPreviewBackend = null;
     private volatile GhostRenderMode cachedGhostRenderMode = null;
@@ -151,6 +155,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
         Object transparencyObj = inputValues.get(INPUT_TRANSPARENCY_ID);
 
         String color = (colorObj instanceof String value) ? value : previewColor;
+        String outlineColor = ghostOutlineColor;
         float trans = (transparencyObj instanceof Number value)
             ? Math.max(0f, Math.min(1f, value.floatValue()))
             : transparency;
@@ -171,14 +176,15 @@ public class GeometryViewerNode extends BaseCustomUINode {
         boolean previewDirty = geometrySignature != cachedGeometrySignature
             || trans != cachedTransparency
             || !Objects.equals(color, cachedColor)
+            || !Objects.equals(outlineColor, cachedOutlineColor)
             || !Objects.equals(effectiveBlockType, cachedBlockType)
             || cachedPreviewBackend != previewBackend
             || cachedGhostRenderMode != ghostRenderMode;
 
         if (previewEnabled && blocksList != null && !blocksList.isEmpty()) {
             if (previewDirty) {
-                if (refreshPreview(context, blocksList, effectiveBlockType, trans, color)) {
-                    cachePreviewState(geometrySignature, trans, color, effectiveBlockType);
+                if (refreshPreview(context, blocksList, effectiveBlockType, trans, color, outlineColor)) {
+                    cachePreviewState(geometrySignature, trans, color, outlineColor, effectiveBlockType);
                 } else {
                     cachedPreviewBackend = null;
                 }
@@ -205,10 +211,11 @@ public class GeometryViewerNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_COUNT_ID, blockCount);
     }
 
-    private void cachePreviewState(int geometrySignature, float trans, String color, String effectiveBlockType) {
+    private void cachePreviewState(int geometrySignature, float trans, String color, String outlineColor, String effectiveBlockType) {
         cachedGeometrySignature = geometrySignature;
         cachedTransparency = trans;
         cachedColor = color;
+        cachedOutlineColor = outlineColor;
         cachedBlockType = effectiveBlockType;
         cachedPreviewBackend = previewBackend;
         cachedGhostRenderMode = ghostRenderMode;
@@ -219,7 +226,8 @@ public class GeometryViewerNode extends BaseCustomUINode {
         BlockPosList blocksList,
         String effectiveBlockType,
         float trans,
-        String colorHex
+        String colorHex,
+        String outlineColorHex
     ) {
         try {
         if (previewBackend == PreviewBackend.TRACKED_WORLD) {
@@ -238,13 +246,16 @@ public class GeometryViewerNode extends BaseCustomUINode {
         }
 
         String effectiveColorHex = (colorHex != null && !colorHex.isBlank()) ? colorHex.trim() : previewColor;
+        String effectiveOutlineColorHex = (outlineColorHex != null && !outlineColorHex.isBlank()) ? outlineColorHex.trim() : ghostOutlineColor;
         Color parsedColor = Color.fromHex(effectiveColorHex);
-        // Use "original" texture mode: matches other working ghost previews (e.g. SelectedBlockNode) and
-        // avoids solid_color + debugFilledBox batching issues in world render where nothing appeared.
-        PreviewStyle style = PreviewStyle.forGhostBlocks(
+        Color parsedOutlineColor = Color.fromHex(effectiveOutlineColorHex);
+        PreviewStyle style = PreviewStyle.forGhostBlocksWithOutline(
             parsedColor.getRed(),
             parsedColor.getGreen(),
             parsedColor.getBlue(),
+            parsedOutlineColor.getRed(),
+            parsedOutlineColor.getGreen(),
+            parsedOutlineColor.getBlue(),
             trans,
             showOutline,
             ghostRenderMode.textureMode(),
@@ -330,6 +341,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
         cachedGeometrySignature = 0;
         cachedTransparency = -1f;
         cachedColor = null;
+        cachedOutlineColor = null;
         cachedBlockType = null;
         cachedPreviewBackend = null;
         cachedGhostRenderMode = null;
@@ -425,6 +437,17 @@ public class GeometryViewerNode extends BaseCustomUINode {
         }
     }
 
+    public String getGhostOutlineColor() {
+        return ghostOutlineColor;
+    }
+
+    public void setGhostOutlineColor(String value) {
+        if (value != null) {
+            ghostOutlineColor = value;
+            markDirty();
+        }
+    }
+
     public float getTransparency() {
         return transparency;
     }
@@ -502,6 +525,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
     public @Nullable Object getNodeState() {
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("previewColor", previewColor);
+        state.put("ghostOutlineColor", ghostOutlineColor);
         state.put("transparency", transparency);
         state.put("showOutline", showOutline);
         state.put("blockType", blockType);
@@ -520,6 +544,9 @@ public class GeometryViewerNode extends BaseCustomUINode {
 
         if (map.get("previewColor") instanceof String value) {
             setPreviewColor(value);
+        }
+        if (map.get("ghostOutlineColor") instanceof String value) {
+            setGhostOutlineColor(value);
         }
         if (map.get("transparency") instanceof Number value) {
             setTransparency(value.floatValue());
