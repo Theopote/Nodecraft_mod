@@ -56,6 +56,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
     private Vector3f fillColor = new Vector3f(0.2f, 0.7f, 1.0f); // 默认天蓝色
     private Vector3f outlineColor = new Vector3f(0.1f, 0.1f, 0.1f);
     private boolean showOutline = true;
+    private float outlineLineWidth = 1.5f;
     private String textureMode = "original"; // "original", "solid_color", "wireframe"
     private boolean useOriginalTexture = true;
     private float ghostOpacity = 0.5f; // 幽灵方块的透明度
@@ -77,6 +78,9 @@ public class GhostBlockElement extends AbstractPreviewElement {
         }
         if (options.showOutline != null) {
             this.showOutline = options.showOutline;
+        }
+        if (options.lineWidth != null) {
+            this.outlineLineWidth = Math.max(0.25f, options.lineWidth);
         }
         if (options.textureMode != null) {
             this.textureMode = options.textureMode;
@@ -524,11 +528,11 @@ public class GhostBlockElement extends AbstractPreviewElement {
         vertexConsumer.vertex(matrix, x1, y1, z1)
             .color(r, g, b, alpha)
             .normal(0.0f, 1.0f, 0.0f)
-            .lineWidth(1.5f);
+            .lineWidth(outlineLineWidth);
         vertexConsumer.vertex(matrix, x2, y2, z2)
             .color(r, g, b, alpha)
             .normal(0.0f, 1.0f, 0.0f)
-            .lineWidth(1.5f);
+            .lineWidth(outlineLineWidth);
     }
 
     private void fullBrightVertex(

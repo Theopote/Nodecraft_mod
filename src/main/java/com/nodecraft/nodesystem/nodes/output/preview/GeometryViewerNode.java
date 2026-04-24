@@ -247,6 +247,10 @@ public class GeometryViewerNode extends BaseCustomUINode {
 
         String effectiveColorHex = (colorHex != null && !colorHex.isBlank()) ? colorHex.trim() : previewColor;
         String effectiveOutlineColorHex = (outlineColorHex != null && !outlineColorHex.isBlank()) ? outlineColorHex.trim() : ghostOutlineColor;
+        if (ghostRenderMode == GhostRenderMode.WIREFRAME || ghostRenderMode == GhostRenderMode.BLOCK_COLOR) {
+            // In non-solid modes, use Preview Color as line color so the visible color control remains intuitive.
+            effectiveOutlineColorHex = effectiveColorHex;
+        }
         Color parsedColor = Color.fromHex(effectiveColorHex);
         Color parsedOutlineColor = Color.fromHex(effectiveOutlineColorHex);
         PreviewStyle style = PreviewStyle.forGhostBlocksWithOutline(
