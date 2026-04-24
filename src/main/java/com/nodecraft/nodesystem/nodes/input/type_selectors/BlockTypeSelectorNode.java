@@ -10,6 +10,8 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import imgui.ImGui;
 import imgui.flag.ImGuiInputTextFlags;
 import imgui.flag.ImGuiStyleVar;
+import imgui.flag.ImGuiTableColumnFlags;
+import imgui.flag.ImGuiTableFlags;
 import imgui.flag.ImGuiWindowFlags;
 import imgui.type.ImString;
 import net.minecraft.registry.Registries;
@@ -44,10 +46,10 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
     };
     private static final int POPUP_PAGE_SIZE = 18;
     /** 弹窗推荐尺寸（每次打开时用 Appearing 应用，避免 ini 里残留过小的窗口） */
-    private static final float POPUP_WIDTH = 560.0f;
-    private static final float POPUP_HEIGHT = 620.0f;
+    private static final float POPUP_WIDTH = 440.0f;
+    private static final float POPUP_HEIGHT = 600.0f;
     /** 弹窗最小尺寸，防止分类 + 列表被压到不可见 */
-    private static final float POPUP_MIN_WIDTH = 440.0f;
+    private static final float POPUP_MIN_WIDTH = 380.0f;
     private static final float POPUP_MIN_HEIGHT = 480.0f;
     private static final String BLOCK_PICKER_POPUP_KEY = "block_picker";
     private static final String CATEGORY_ALL = "all";
@@ -172,30 +174,14 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
         }
 
         try {
-            // 略增内边距与间距，减轻弹窗边缘对控件的裁剪感
-            ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, 12.0f, 10.0f);
-            ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, 8.0f, 7.0f);
+            // 与面板边缘留出足够边距；略增控件间距，避免贴边观感
+            ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, 16.0f, 14.0f);
+            ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, 8.0f, 8.0f);
             try {
             ImGui.text("Select Block");
             ImGui.separator();
 
-            // 搜索独占一行全宽，避免与右侧按钮同一行导致输入框超出可视区
-            float searchWidth = ImGui.getContentRegionAvail().x;
-            ImGui.pushItemWidth(searchWidth);
-            if (ImGui.inputTextWithHint("##block_picker_search", "Search block id...", searchBuffer, ImGuiInputTextFlags.None)) {
-                updateFilteredList(searchBuffer.get());
-            }
-            ImGui.popItemWidth();
-
-            if (ImGui.smallButton("All##scope_all")) {
-                minecraftOnly = false;
-                updateFilteredList(searchBuffer.get());
-            }
-            ImGui.sameLine();
-            if (ImGui.smallButton("Minecraft##scope_vanilla")) {
-                minecraftOnly = true;
-                updateFilteredList(searchBuffer.get());
-            }
+            renderSearchScopeRow();
 
             ImGui.separator();
             renderCategorySelector();
@@ -277,6 +263,42 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
             endScopedPopup();
         }
         return changed;
+    }
+
+    /**
+     * 搜索框与 All / Minecraft 同一行：用表格分配列宽，避免输入框占满整行后挤出边界。
+     */
+    private void renderSearchScopeRow() {
+        float fp = ImGui.getStyle().getFramePaddingX() * 2f;
+        float inner = ImGui.getStyle().getItemInnerSpacingX();
+        float reserve = ImGui.calcTextSize("All").x + ImGui.calcTextSize("Minecraft").x + fp * 2f + inner + 20f;
+        float avail = ImGui.getContentRegionAvail().x;
+        float scopeColW = Math.min(Math.max(reserve, 118f), avail * 0.45f);
+
+        if (!ImGui.beginTable("##block_search_scope", 2,
+                ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.NoBordersInBody)) {
+            return;
+        }
+        ImGui.tableSetupColumn("search", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.tableSetupColumn("scope", ImGuiTableColumnFlags.WidthFixed, scopeColW);
+        ImGui.tableNextRow();
+        ImGui.tableSetColumnIndex(0);
+        ImGui.pushItemWidth(-1.0f);
+        if (ImGui.inputTextWithHint("##block_picker_search", "Search block id...", searchBuffer, ImGuiInputTextFlags.None)) {
+            updateFilteredList(searchBuffer.get());
+        }
+        ImGui.popItemWidth();
+        ImGui.tableSetColumnIndex(1);
+        if (ImGui.smallButton("All##scope_all")) {
+            minecraftOnly = false;
+            updateFilteredList(searchBuffer.get());
+        }
+        ImGui.sameLine(0f, inner);
+        if (ImGui.smallButton("Minecraft##scope_vanilla")) {
+            minecraftOnly = true;
+            updateFilteredList(searchBuffer.get());
+        }
+        ImGui.endTable();
     }
 
     private void renderCategorySelector() {
