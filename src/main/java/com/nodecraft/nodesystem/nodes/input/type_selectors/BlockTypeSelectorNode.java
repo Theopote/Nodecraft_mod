@@ -45,6 +45,15 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
     private static final float POPUP_WIDTH = 400.0f;
     private static final float POPUP_HEIGHT = 500.0f;
     private static final String BLOCK_PICKER_POPUP_KEY = "block_picker";
+    private static final String CATEGORY_ALL = "all";
+    private static final String CATEGORY_STONE = "stone";
+    private static final String CATEGORY_WOOD = "wood";
+    private static final String CATEGORY_NATURAL = "natural";
+    private static final String CATEGORY_DECOR = "decor";
+    private static final String CATEGORY_REDSTONE = "redstone";
+    private static final String CATEGORY_FUNCTIONAL = "functional";
+    private static final String CATEGORY_NETHER_END = "nether_end";
+    private static final String CATEGORY_MODDED = "modded";
 
     @NodeProperty(
         displayName = "Selected Block",
@@ -74,6 +83,7 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
     private transient volatile int currentPage = 0;
     private transient volatile boolean blockRegistryReady = true;
     private transient volatile boolean registryErrorLogged = false;
+    private transient volatile String selectedCategory = CATEGORY_ALL;
 
     public BlockTypeSelectorNode() {
         super(UUID.randomUUID(), "input.type_selectors.block_type_selector");
@@ -174,6 +184,9 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
             }
 
             ImGui.separator();
+            renderCategorySelector();
+            ImGui.separator();
+
             for (int i = 0; i < QUICK_BLOCKS.length; i++) {
                 String quickBlock = QUICK_BLOCKS[i];
                 String quickLabel = quickBlock.split(":", 2)[1];
@@ -249,6 +262,42 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
         return changed;
     }
 
+    private void renderCategorySelector() {
+        String[][] categories = {
+                {CATEGORY_ALL, "All"},
+                {CATEGORY_STONE, "Stone"},
+                {CATEGORY_WOOD, "Wood"},
+                {CATEGORY_NATURAL, "Natural"},
+                {CATEGORY_DECOR, "Decor"},
+                {CATEGORY_REDSTONE, "Redstone"},
+                {CATEGORY_FUNCTIONAL, "Functional"},
+                {CATEGORY_NETHER_END, "Nether/End"},
+                {CATEGORY_MODDED, "Modded"}
+        };
+
+        ImGui.text("Category:");
+        for (int i = 0; i < categories.length; i++) {
+            String categoryKey = categories[i][0];
+            String categoryLabel = categories[i][1];
+            if (i > 0 && i % 3 != 0) {
+                ImGui.sameLine();
+            }
+
+            boolean isSelected = categoryKey.equals(selectedCategory);
+            if (isSelected) {
+                ImGui.pushStyleColor(imgui.flag.ImGuiCol.Button, 0.26f, 0.44f, 0.62f, 1.0f);
+                ImGui.pushStyleColor(imgui.flag.ImGuiCol.ButtonHovered, 0.30f, 0.50f, 0.70f, 1.0f);
+            }
+            if (ImGui.smallButton(categoryLabel + "##category_" + categoryKey)) {
+                selectedCategory = categoryKey;
+                updateFilteredList(searchBuffer.get());
+            }
+            if (isSelected) {
+                ImGui.popStyleColor(2);
+            }
+        }
+    }
+
     private String buildCompactLabel() {
         String display = selectedBlock;
         if (display.length() > 26) {
@@ -306,6 +355,9 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
             if (minecraftOnly && !isMinecraft) {
                 continue;
             }
+            if (!matchesCategory(fullId)) {
+                continue;
+            }
             if (searchText.isEmpty() || fullId.toLowerCase(Locale.ROOT).contains(searchText)) {
                 nextFilteredBlocks.add(fullId);
             }
@@ -320,6 +372,9 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
                 if (minecraftOnly && !isMinecraft) {
                     continue;
                 }
+                if (!matchesCategory(quickBlock)) {
+                    continue;
+                }
                 if (searchText.isEmpty() || quickBlock.toLowerCase(Locale.ROOT).contains(searchText)) {
                     nextFilteredBlocks.add(quickBlock);
                 }
@@ -328,6 +383,62 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
 
         currentPage = 0;
         filteredBlocks = nextFilteredBlocks;
+    }
+
+    private boolean matchesCategory(String fullId) {
+        if (CATEGORY_ALL.equals(selectedCategory)) {
+            return true;
+        }
+
+        String namespace = "minecraft";
+        String path = fullId;
+        String[] parts = fullId.split(":", 2);
+        if (parts.length == 2) {
+            namespace = parts[0];
+            path = parts[1];
+        }
+
+        if (CATEGORY_MODDED.equals(selectedCategory)) {
+            return !"minecraft".equals(namespace);
+        }
+        if (!"minecraft".equals(namespace)) {
+            return false;
+        }
+
+        return switch (selectedCategory) {
+            case CATEGORY_STONE -> containsAny(path,
+                    "stone", "deepslate", "cobble", "granite", "diorite", "andesite", "tuff",
+                    "basalt", "calcite", "dripstone", "blackstone", "sandstone", "ore", "brick");
+            case CATEGORY_WOOD -> containsAny(path,
+                    "oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "bamboo",
+                    "planks", "_log", "_wood", "stripped", "_stairs", "_slab", "_fence",
+                    "_door", "_trapdoor", "_button", "_pressure_plate");
+            case CATEGORY_NATURAL -> containsAny(path,
+                    "dirt", "grass", "mud", "clay", "sand", "gravel", "snow", "ice", "leaves", "sapling",
+                    "flower", "mushroom", "cactus", "vine", "bamboo", "wheat", "carrot", "potato", "melon", "pumpkin");
+            case CATEGORY_DECOR -> containsAny(path,
+                    "glass", "wool", "carpet", "terracotta", "concrete", "banner", "lantern", "glowstone",
+                    "candle", "amethyst", "shelf", "pot", "bed");
+            case CATEGORY_REDSTONE -> containsAny(path,
+                    "redstone", "repeater", "comparator", "observer", "piston", "lever", "button",
+                    "pressure_plate", "rail", "hopper", "dispenser", "dropper", "daylight", "tripwire",
+                    "target", "note_block", "sculk_sensor");
+            case CATEGORY_FUNCTIONAL -> containsAny(path,
+                    "crafting", "furnace", "chest", "barrel", "anvil", "enchant", "beacon", "lectern",
+                    "loom", "smithing", "grindstone", "cartography", "brewing", "spawner", "bell");
+            case CATEGORY_NETHER_END -> containsAny(path,
+                    "nether", "crimson", "warped", "soul", "basalt", "blackstone", "quartz", "end_", "chorus", "purpur");
+            default -> true;
+        };
+    }
+
+    private boolean containsAny(String text, String... keywords) {
+        for (String keyword : keywords) {
+            if (text.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void setSelectedBlock(String blockId) {
@@ -423,7 +534,9 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
     public Object getNodeState() {
         return Map.of(
             "selectedBlock", getSelectedBlock(),
-            "allowModded", isAllowModded()
+            "allowModded", isAllowModded(),
+            "selectedCategory", selectedCategory,
+            "minecraftOnly", minecraftOnly
         );
     }
 
@@ -433,9 +546,27 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
             if (map.get("allowModded") instanceof Boolean bool) {
                 setAllowModded(bool);
             }
+            if (map.get("minecraftOnly") instanceof Boolean onlyMinecraft) {
+                minecraftOnly = onlyMinecraft;
+            }
+            if (map.get("selectedCategory") instanceof String category) {
+                selectedCategory = sanitizeCategory(category);
+            }
             if (map.get("selectedBlock") instanceof String value) {
                 setSelectedBlock(value);
             }
+            updateFilteredList(searchBuffer.get());
         }
+    }
+
+    private String sanitizeCategory(String category) {
+        if (category == null || category.isBlank()) {
+            return CATEGORY_ALL;
+        }
+        return switch (category) {
+            case CATEGORY_ALL, CATEGORY_STONE, CATEGORY_WOOD, CATEGORY_NATURAL, CATEGORY_DECOR,
+                 CATEGORY_REDSTONE, CATEGORY_FUNCTIONAL, CATEGORY_NETHER_END, CATEGORY_MODDED -> category;
+            default -> CATEGORY_ALL;
+        };
     }
 }
