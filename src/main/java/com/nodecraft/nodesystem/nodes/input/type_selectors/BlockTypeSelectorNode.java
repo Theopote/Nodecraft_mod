@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import imgui.ImGui;
 import imgui.flag.ImGuiInputTextFlags;
+import imgui.flag.ImGuiStyleVar;
 import imgui.flag.ImGuiWindowFlags;
 import imgui.type.ImString;
 import net.minecraft.registry.Registries;
@@ -171,14 +172,21 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
         }
 
         try {
+            // 略增内边距与间距，减轻弹窗边缘对控件的裁剪感
+            ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, 12.0f, 10.0f);
+            ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, 8.0f, 7.0f);
+            try {
             ImGui.text("Select Block");
             ImGui.separator();
 
+            // 搜索独占一行全宽，避免与右侧按钮同一行导致输入框超出可视区
+            float searchWidth = ImGui.getContentRegionAvail().x;
+            ImGui.pushItemWidth(searchWidth);
             if (ImGui.inputTextWithHint("##block_picker_search", "Search block id...", searchBuffer, ImGuiInputTextFlags.None)) {
                 updateFilteredList(searchBuffer.get());
             }
+            ImGui.popItemWidth();
 
-            ImGui.sameLine();
             if (ImGui.smallButton("All##scope_all")) {
                 minecraftOnly = false;
                 updateFilteredList(searchBuffer.get());
@@ -209,11 +217,12 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
 
             ImGui.text(String.format("Results: %d", total));
             // 用剩余可用高度显式分配列表区，避免负高度在头部内容变多时算错导致列表被压扁
-            float footerReserve = ImGui.getFrameHeightWithSpacing() + ImGui.getStyle().getItemSpacingY() * 2.0f;
+            float footerReserve = ImGui.getFrameHeightWithSpacing() * 1.35f + ImGui.getStyle().getItemSpacingY() * 2.0f + 6.0f;
             float listHeight = ImGui.getContentRegionAvail().y - footerReserve;
             listHeight = Math.max(160.0f, listHeight);
             float listWidth = ImGui.getContentRegionAvail().x;
-            ImGui.beginChild("##block_picker_list", listWidth, listHeight, true, ImGuiWindowFlags.AlwaysVerticalScrollbar);
+            // 列表子窗口不画边框，减少一层内边距/裁剪观感
+            ImGui.beginChild("##block_picker_list", listWidth, listHeight, false, ImGuiWindowFlags.AlwaysVerticalScrollbar);
             try {
                 if (snapshot.isEmpty()) {
                     if (!blockRegistryReady) {
@@ -261,6 +270,9 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
             if (ImGui.button("Close##close_block_picker")) {
                 ImGui.closeCurrentPopup();
             }
+            } finally {
+                ImGui.popStyleVar(2);
+            }
         } finally {
             endScopedPopup();
         }
@@ -281,16 +293,20 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
         };
 
         ImGui.text("Category:");
-        float stripHeight = ImGui.getFrameHeightWithSpacing() + ImGui.getStyle().getFramePadding().y * 2.0f + 2.0f;
-        float stripWidth = ImGui.getContentRegionAvail().x;
-        ImGui.beginChild("##block_cat_strip", stripWidth, stripHeight, false, ImGuiWindowFlags.HorizontalScrollbar);
-        for (int i = 0; i < categories.length; i++) {
-            if (i > 0) {
+        // 固定两行：上行 ceil(n/2)，下行剩余，避免横向子窗口裁剪
+        int n = categories.length;
+        int firstRowCount = (n + 1) / 2;
+        renderCategoryButtonRow(categories, 0, firstRowCount);
+        renderCategoryButtonRow(categories, firstRowCount, n);
+    }
+
+    private void renderCategoryButtonRow(String[][] categories, int fromInclusive, int toExclusive) {
+        for (int i = fromInclusive; i < toExclusive; i++) {
+            if (i > fromInclusive) {
                 ImGui.sameLine();
             }
             String categoryKey = categories[i][0];
             String categoryLabel = categories[i][1];
-
             boolean isSelected = categoryKey.equals(selectedCategory);
             if (isSelected) {
                 ImGui.pushStyleColor(imgui.flag.ImGuiCol.Button, 0.26f, 0.44f, 0.62f, 1.0f);
@@ -304,28 +320,31 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
                 ImGui.popStyleColor(2);
             }
         }
-        ImGui.endChild();
     }
 
-    /** 单行横向滚动，避免窄窗口下换行把列表区挤没 */
+    /** 两行快捷块，每行 4 个 */
     private boolean renderQuickBlockStrip() {
         boolean quickChanged = false;
         ImGui.text("Quick:");
-        float stripHeight = ImGui.getFrameHeightWithSpacing() + ImGui.getStyle().getFramePadding().y * 2.0f + 2.0f;
-        float stripWidth = ImGui.getContentRegionAvail().x;
-        ImGui.beginChild("##block_quick_strip", stripWidth, stripHeight, false, ImGuiWindowFlags.HorizontalScrollbar);
-        for (int i = 0; i < QUICK_BLOCKS.length; i++) {
-            if (i > 0) {
-                ImGui.sameLine();
+        int perRow = 4;
+        for (int row = 0; row < 2; row++) {
+            int start = row * perRow;
+            if (start >= QUICK_BLOCKS.length) {
+                break;
             }
-            String quickBlock = QUICK_BLOCKS[i];
-            String quickLabel = quickBlock.split(":", 2)[1];
-            if (ImGui.smallButton(quickLabel + "##quick_" + i)) {
-                setSelectedBlock(quickBlock);
-                quickChanged = true;
+            int end = Math.min(start + perRow, QUICK_BLOCKS.length);
+            for (int i = start; i < end; i++) {
+                if (i > start) {
+                    ImGui.sameLine();
+                }
+                String quickBlock = QUICK_BLOCKS[i];
+                String quickLabel = quickBlock.split(":", 2)[1];
+                if (ImGui.smallButton(quickLabel + "##quick_" + i)) {
+                    setSelectedBlock(quickBlock);
+                    quickChanged = true;
+                }
             }
         }
-        ImGui.endChild();
         return quickChanged;
     }
 
