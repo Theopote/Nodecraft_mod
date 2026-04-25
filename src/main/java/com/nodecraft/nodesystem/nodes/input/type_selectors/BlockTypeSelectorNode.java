@@ -55,6 +55,7 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
     private static final float POPUP_WINDOW_PADDING_Y = 3.0f;
     private static final float POPUP_ITEM_SPACING_X = 4.0f;
     private static final float POPUP_ITEM_SPACING_Y = 3.0f;
+    private static final float POPUP_SCROLLBAR_SIZE = 14.0f;
     /** 区块之间的垂直留白 */
     private static final float POPUP_SECTION_GAP = 2.0f;
     /** 列表与底栏（分页+关闭）之间的预留 */
@@ -181,31 +182,24 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
 
     private boolean renderBlockPickerPopup(float zoom) {
         boolean changed = false;
+        imgui.ImGui imguiInstance = new imgui.ImGui();
 
-        // 弹窗应保持默认屏幕像素尺寸，不受画布 zoom 的全局字体缩放影响。
-        float savedFontScale = ImGui.getIO().getFontGlobalScale();
-        ImGui.getIO().setFontGlobalScale(1.0f);
-        float safeZoom = Math.max(0.1f, zoom);
-        float inverseZoom = 1.0f / safeZoom;
-
-        // 限制最小窗口，避免分类/快捷栏把列表挤没
+        // Keep popup layout in screen-pixel space (no inverse zoom compensation).
         ImGui.setNextWindowSizeConstraints(POPUP_MIN_WIDTH, POPUP_MIN_HEIGHT, 4096.0f, 4096.0f);
-        // 宽高均 0：由内容与 SizeConstraints 决定尺寸，避免固定高度大于实际内容时在底部留大块空白
-        ImGui.setNextWindowSize(0.0f, 0.0f, imgui.flag.ImGuiCond.Appearing);
-        // WindowPadding 必须在 BeginPopupModal 之前 push，否则弹窗已按默认 padding 创建，内容会紧贴左/上边缘
+        ImGui.setNextWindowSize(POPUP_MIN_WIDTH, POPUP_MIN_HEIGHT, imgui.flag.ImGuiCond.Appearing);
         ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, POPUP_WINDOW_PADDING_X, POPUP_WINDOW_PADDING_Y);
         ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, POPUP_ITEM_SPACING_X, POPUP_ITEM_SPACING_Y);
-        ImGui.pushStyleVar(ImGuiStyleVar.FramePadding, ImGui.getStyle().getFramePaddingX() * inverseZoom, ImGui.getStyle().getFramePaddingY() * inverseZoom);
-        ImGui.pushStyleVar(ImGuiStyleVar.ItemInnerSpacing, ImGui.getStyle().getItemInnerSpacingX() * inverseZoom, ImGui.getStyle().getItemInnerSpacingY() * inverseZoom);
-        ImGui.pushStyleVar(ImGuiStyleVar.ScrollbarSize, ImGui.getStyle().getScrollbarSize() * inverseZoom);
+        ImGui.pushStyleVar(ImGuiStyleVar.ScrollbarSize, POPUP_SCROLLBAR_SIZE);
         try {
-            int popupFlags = ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoResize;
+            // Important: window font scale is absolute, not multiplicative.
+            // Use 1.0f here to neutralize inherited node zoom.
+            imguiInstance.setWindowFontScale(1.0f);
+            int popupFlags = ImGuiWindowFlags.NoResize;
             if (!beginScopedPopupModal(BLOCK_PICKER_POPUP_KEY, "Select Block", popupFlags)) {
                 return false;
             }
             try {
-            // 当前窗口会继承 CustomUIRenderer 的 window font scale，这里反向抵消。
-            new imgui.ImGui().setWindowFontScale(inverseZoom);
+            imguiInstance.setWindowFontScale(1.0f);
             renderSearchScopeRow();
 
             popupSectionGap();
@@ -282,11 +276,11 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
                 ImGui.closeCurrentPopup();
             }
             } finally {
+                imguiInstance.setWindowFontScale(1.0f);
                 endScopedPopup();
             }
         } finally {
-            ImGui.popStyleVar(5);
-            ImGui.getIO().setFontGlobalScale(savedFontScale);
+            ImGui.popStyleVar(3);
         }
         return changed;
     }
