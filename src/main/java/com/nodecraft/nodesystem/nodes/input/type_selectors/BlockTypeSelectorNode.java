@@ -148,7 +148,7 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
                     if (ImGui.button(compactLabel + "##open_block_picker", availableWidth, 0)) {
                         ensureBlockCatalogReady();
                         updateFilteredList(searchBuffer.get());
-                        openScopedPopup(BLOCK_PICKER_POPUP_KEY);
+                        openScopedPopup(BLOCK_PICKER_POPUP_KEY, "Select Block");
                     }
                 } finally {
                     layout.popStyleVar();
@@ -171,19 +171,16 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
         boolean changed = false;
         // 限制最小窗口，避免分类/快捷栏把列表挤没；Appearing 在每次弹出时给足默认尺寸
         ImGui.setNextWindowSizeConstraints(POPUP_MIN_WIDTH, POPUP_MIN_HEIGHT, 4096.0f, 4096.0f);
-        // 固定宽度；高度由内容决定（AlwaysAutoResize），避免固定 600px 时底部大块空白
-        ImGui.setNextWindowSize(POPUP_WIDTH, 0.0f, imgui.flag.ImGuiCond.Appearing);
-        // WindowPadding 必须在 BeginPopup 之前 push，否则弹窗已按默认 padding 创建，内容会紧贴左/上边缘
+        // 固定宽高（不用 AlwaysAutoResize），避免首帧内容区过窄导致按钮极小，以及每帧重算宽度产生「由宽变窄」的观感
+        ImGui.setNextWindowSize(POPUP_WIDTH, POPUP_MIN_HEIGHT, imgui.flag.ImGuiCond.Appearing);
+        // WindowPadding 必须在 BeginPopupModal 之前 push，否则弹窗已按默认 padding 创建，内容会紧贴左/上边缘
         ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, 8.0f, 8.0f);
         ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, 8.0f, 8.0f);
         try {
-            if (!beginScopedPopup(BLOCK_PICKER_POPUP_KEY, ImGuiWindowFlags.AlwaysAutoResize)) {
+            if (!beginScopedPopupModal(BLOCK_PICKER_POPUP_KEY, "Select Block", 0)) {
                 return false;
             }
             try {
-            ImGui.text("Select Block");
-            ImGui.separator();
-
             renderSearchScopeRow();
 
             ImGui.separator();

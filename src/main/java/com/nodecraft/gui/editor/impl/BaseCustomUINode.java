@@ -1617,12 +1617,33 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
     }
 
     /**
+     * 构建带短标题的 Popup 名称：标题栏只显示 {@code titleBarText}，ImGui 内部 ID 仍为 {@link #buildScopedPopupId(String)}。
+     * Dear ImGui 规则：{@code visible##hidden} 中 {@code ##} 之后不参与标题栏展示。
+     */
+    protected final String buildScopedPopupLabel(String popupKey, String titleBarText) {
+        if (titleBarText == null || titleBarText.isBlank()) {
+            return buildScopedPopupId(popupKey);
+        }
+        return titleBarText + "##" + buildScopedPopupId(popupKey);
+    }
+
+    /**
      * 打开当前节点作用域下的 Popup。
      *
      * @param popupKey 弹层业务键
      */
     protected final void openScopedPopup(String popupKey) {
         ImGui.openPopup(buildScopedPopupId(popupKey));
+    }
+
+    /**
+     * 打开带标题栏短名称的 Popup（与 {@link #beginScopedPopupModal(String, String, int)} 使用同一套名称）。
+     *
+     * @param popupKey 弹层业务键
+     * @param titleBarText 模态窗口标题栏显示文案
+     */
+    protected final void openScopedPopup(String popupKey, String titleBarText) {
+        ImGui.openPopup(buildScopedPopupLabel(popupKey, titleBarText));
     }
 
     /**
@@ -1644,6 +1665,19 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
      */
     protected final boolean beginScopedPopup(String popupKey, int windowFlags) {
         return ImGui.beginPopup(buildScopedPopupId(popupKey), windowFlags);
+    }
+
+    /**
+     * 开始渲染模态 Popup（背景不可交互，避免点击穿透到画布等下层内容）。
+     * 与 {@link #openScopedPopup(String, String)} 配合使用，结束仍用 {@link #endScopedPopup()}。
+     *
+     * @param popupKey 弹层业务键
+     * @param titleBarText 标题栏短名称；内部 ID 见 {@link #buildScopedPopupLabel(String, String)}
+     * @param windowFlags Dear ImGui 窗口标志
+     * @return true 表示 Popup 已打开并进入渲染作用域
+     */
+    protected final boolean beginScopedPopupModal(String popupKey, String titleBarText, int windowFlags) {
+        return ImGui.beginPopupModal(buildScopedPopupLabel(popupKey, titleBarText), windowFlags);
     }
 
     /**
