@@ -56,6 +56,10 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
     private static final float POPUP_ITEM_SPACING_X = 4.0f;
     private static final float POPUP_ITEM_SPACING_Y = 3.0f;
     private static final float POPUP_SCROLLBAR_SIZE = 14.0f;
+    private static final float POPUP_FRAME_PADDING_X = 4.0f;
+    private static final float POPUP_FRAME_PADDING_Y = 3.0f;
+    private static final float POPUP_FRAME_BORDER_SIZE = 1.0f;
+    private static final float POPUP_FRAME_ROUNDING = 0.0f;
     /** 区块之间的垂直留白 */
     private static final float POPUP_SECTION_GAP = 2.0f;
     /** 列表与底栏（分页+关闭）之间的预留 */
@@ -190,6 +194,9 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
         ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, POPUP_WINDOW_PADDING_X, POPUP_WINDOW_PADDING_Y);
         ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, POPUP_ITEM_SPACING_X, POPUP_ITEM_SPACING_Y);
         ImGui.pushStyleVar(ImGuiStyleVar.ScrollbarSize, POPUP_SCROLLBAR_SIZE);
+        ImGui.pushStyleVar(ImGuiStyleVar.FramePadding, POPUP_FRAME_PADDING_X, POPUP_FRAME_PADDING_Y);
+        ImGui.pushStyleVar(ImGuiStyleVar.FrameBorderSize, POPUP_FRAME_BORDER_SIZE);
+        ImGui.pushStyleVar(ImGuiStyleVar.FrameRounding, POPUP_FRAME_ROUNDING);
         try {
             // Important: window font scale is absolute, not multiplicative.
             // Use 1.0f here to neutralize inherited node zoom.
@@ -280,7 +287,7 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
                 endScopedPopup();
             }
         } finally {
-            ImGui.popStyleVar(3);
+            ImGui.popStyleVar(6);
         }
         return changed;
     }
