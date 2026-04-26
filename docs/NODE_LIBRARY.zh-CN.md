@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**423**
+- **节点总数**：**430**
 - **分类总数**：**51**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -56,10 +56,10 @@
 | `utilities.organization` | 7 |
 | `utilities.organization.graph_io` | 2 |
 | `variable` | 4 |
-| `world.query` | 7 |
-| `world.read` | 10 |
-| `world.selection` | 8 |
-| `world.write` | 16 |
+| `world.query` | 10 |
+| `world.read` | 12 |
+| `world.selection` | 9 |
+| `world.write` | 17 |
 
 ## flow.control（3）
 
@@ -678,7 +678,7 @@
 | Variable List | `variable.list` | Lists variables currently available in the execution scope. | `VariableListNode` |
 | Frame Local Variable | `variable.frame_local` | Reads or writes variables in an isolated frame-local namespace. | `FrameLocalVariableNode` |
 
-## world.query（7）
+## world.query（10）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -687,10 +687,13 @@
 | Is Grid Point | `world.query.is_grid_point` | Checks whether a geometric point already lies on the block grid without snapping | `IsGridPointNode` |
 | Filter Grid Points | `world.query.filter_grid_points` | Splits a point list into grid-aligned points and off-grid points without snapping | `FilterGridPointsNode` |
 | Point In Region | `world.query.is_point_in_region` | 检查点是否在指定区域内 | `IsPointInRegionNode` |
+| Raycast | `world.query.raycast` | Casts a ray in world space and returns nearest block/entity hit information. | `RaycastNode` |
+| Flood Fill | `world.query.flood_fill` | Runs BFS flood fill from a seed block using 6 or 26-neighbor connectivity. | `FloodFillNode` |
+| Get Neighbor Blocks | `world.query.get_neighbors` | Returns 6 or 26 neighboring blocks around a center position. | `GetNeighborBlocksNode` |
 | Get Entities In Region | `world.query.get_entities_in_region` | Gets entities inside a region with optional filtering | `GetEntitiesInRegionNode` |
 | Get Entity | `world.query.get_entity` | 根据实体ID或选择器获取实体信息 | `GetEntityNode` |
 
-## world.read（10）
+## world.read（12）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -703,9 +706,11 @@
 | Get Heightmap | `world.read.get_heightmap` | Reads the top Y value for each X/Z column inside a region | `GetHeightmapNode` |
 | Get Surface Blocks | `world.read.get_surface_blocks` | Gets the top visible block for each X/Z column inside a region | `GetSurfaceBlocksNode` |
 | Scan Region By Type | `world.read.scan_region_by_type` | Scans a region and returns per-block-type counts for analysis and conditional building | `ScanRegionByTypeNode` |
+| Get Block NBT | `world.read.get_block_nbt` | Reads full block-entity NBT data at a block position. | `GetBlockNbtNode` |
+| Get Entity NBT | `world.read.get_entity_nbt` | Reads full entity NBT data from an entity object, UUID, or nearest type query. | `GetEntityNbtNode` |
 | Read Sign Text | `world.read.read_sign_text` | Reads text from a sign block entity | `ReadSignTextNode` |
 
-## world.selection（8）
+## world.selection（9）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -716,9 +721,10 @@
 | Snap Point List To Blocks | `world.selection.snap_points_to_blocks` | Snaps a point list onto the block grid using an explicit snap mode | `SnapPointListToBlocksNode` |
 | Point To Block If Grid | `world.selection.point_to_block_if_grid` | Strict conversion: outputs a block coordinate only when the point is already grid-aligned | `PointToBlockIfGridNode` |
 | Selected Block Sequence | `world.selection.selected_block_sequence` | Collects multiple picked blocks in click order and outputs an ordered block sequence | `SelectedBlockSequenceNode` |
+| Multi-Region Selection | `world.selection.multi_region` | Aggregates multiple non-contiguous region selections into a region list. | `MultiRegionSelectionNode` |
 | Selected Entity | `world.selection.selected_entity` | Gets information about the entity selected by the player. | `SelectedEntityNode` |
 
-## world.write（16）
+## world.write（17）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -728,6 +734,7 @@
 | Replace Blocks | `world.write.replace_blocks` | 在区域或坐标列表中替换指定方块 | `ReplaceBlocksNode` |
 | Clone Region | `world.write.clone_region` | 复制区域到另一个位置 | `CloneRegionNode` |
 | Clear Blocks | `world.write.clear_region` | Clears blocks at explicit coordinates by replacing them with air | `RemoveBlocksNode` |
+| Set Block NBT | `world.write.set_block_nbt` | Writes NBT data to a block entity at a target position. | `SetBlockNbtNode` |
 | Undo Last World Write | `world.write.undo_last_write` | Reverts the most recent recorded world.write block placement operation | `UndoLastWorldWriteNode` |
 | Peek Last World Write Undo | `world.write.peek_last_undo` | Inspects the latest world.write undo record and outputs affected count and region bounds | `PeekLastWorldWriteUndoNode` |
 | Clear World Write Undo History | `world.write.clear_undo_history` | Clears all recorded world.write undo history entries | `ClearWorldWriteUndoHistoryNode` |
