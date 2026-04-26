@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**336**
+- **节点总数**：**341**
 - **分类总数**：**43**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -10,9 +10,9 @@
 | 分类 ID | 节点数 |
 |---|---:|
 | `geometry.boolean` | 19 |
-| `geometry.curves` | 16 |
+| `geometry.curves` | 17 |
 | `geometry.primitives` | 19 |
-| `geometry.profiles` | 15 |
+| `geometry.profiles` | 19 |
 | `geometry.solids` | 17 |
 | `input.values` | 3 |
 | `input.context` | 4 |
@@ -77,7 +77,7 @@
 | SDF Blend Material Mask | `geometry.boolean.sdf_blend_material_mask` | Maps SDF distance values to smooth 0..1 blend weights and inside/outside booleans | `SdfBlendMaterialMaskNode` |
 | SDF Domain Warp | `geometry.boolean.sdf_domain_warp` | Applies coordinate-space noise warping before sampling an input SDF | `SdfDomainWarpNode` |
 
-## geometry.curves（16）
+## geometry.curves（17）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -97,6 +97,7 @@
 | Curve Rebuild By Length | `geometry.curves.rebuild_curve_length` | Rebuilds a curve/path to uniform arc-length samples using spacing, or using a total point count (count wins when both are provided) | `CurveRebuildByLengthNode` |
 | Curve Evaluate | `geometry.curves.evaluate_curve` | Evaluates a curve/path at normalized parameter t and outputs point, tangent, normal, and binormal | `CurveEvaluateNode` |
 | Curve Frame Along Path | `geometry.curves.frame_along_path` | Generates local frames along a curve/path using count or spacing, outputting origins, axes, and planes per sample | `CurveFrameAlongPathNode` |
+| Parabola On Plane | `geometry.curves.parabola_curve` | Builds a sampled parabola on a plane from vertex, curvature, x-range, and segment count | `ParabolaOnPlaneNode` |
 
 ## geometry.primitives（19）
 
@@ -122,7 +123,7 @@
 | Deconstruct Tetrahedron | `geometry.primitives.deconstruct_tetrahedron` | Extracts center, edge length, vertices, bounds, and analytical values from tetrahedron geometry | `DeconstructTetrahedronNode` |
 | Deconstruct Prism | `geometry.primitives.deconstruct_prism` | Extracts base polygon, top polygon, extrusion, side surface strip, and bounds from prism geometry | `DeconstructPrismNode` |
 
-## geometry.profiles（15）
+## geometry.profiles（19）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -140,6 +141,10 @@
 | Annulus On Plane | `geometry.profiles.annulus_profile` | Constructs annulus boundaries from center, inner/outer radii, plane, and segment count | `AnnulusOnPlaneNode` |
 | Rounded Rectangle On Plane | `geometry.profiles.rounded_rectangle_profile` | Constructs a rounded-rectangle profile from center, width, height, corner radius, and plane | `RoundedRectangleOnPlaneNode` |
 | Star Polygon On Plane | `geometry.profiles.star_polygon_profile` | Constructs a star polygon profile from center, inner/outer radii, point count, and plane | `StarPolygonOnPlaneNode` |
+| SemiCircle On Plane | `geometry.profiles.semicircle_profile` | Constructs a semicircle profile from center, radius, plane, and segment count | `SemiCircleOnPlaneNode` |
+| Rhombus On Plane | `geometry.profiles.rhombus_profile` | Constructs a rhombus profile from center, horizontal diagonal, vertical diagonal, and plane | `RhombusOnPlaneNode` |
+| Capsule On Plane | `geometry.profiles.capsule_profile` | Constructs a capsule (stadium) profile from center, length, radius, and plane | `CapsuleOnPlaneNode` |
+| Heart On Plane | `geometry.profiles.heart_profile` | Constructs a heart profile from center, width, height, plane, and segment count | `HeartOnPlaneNode` |
 | Window Array | `geometry.architectural_primitives.window_array` | Generates a rectangular array of inset window opening boxes on a box face | `WindowArrayNode` |
 
 ## geometry.solids（17）
