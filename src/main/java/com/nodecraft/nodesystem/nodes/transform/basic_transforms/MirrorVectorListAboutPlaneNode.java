@@ -25,7 +25,7 @@ import java.util.UUID;
     displayName = "Mirror Vector List About Plane",
     description = "Mirrors each point in a list about a plane and outputs Vector3d positions",
     category = "transform.basic_transforms",
-    order = 8
+    order = 10
 )
 public class MirrorVectorListAboutPlaneNode extends BaseNode {
 

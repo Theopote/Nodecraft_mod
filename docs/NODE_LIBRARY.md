@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **359**
+- Total nodes: **360**
 - Total categories: **44**
 
 ## Category Statistics
@@ -43,7 +43,7 @@
 | `reference.planes` | 6 |
 | `reference.points` | 17 |
 | `reference.vectors` | 12 |
-| `transform.basic_transforms` | 9 |
+| `transform.basic_transforms` | 10 |
 | `transform.deformations` | 4 |
 | `transform.orientation` | 2 |
 | `utilities.assist` | 5 |
@@ -522,7 +522,7 @@
 | 向量标量除法 | `reference.vectors.vector_scalar_divide` | 向量除以标量 (Vector / Scalar) | `VectorScalarDivideNode` |
 | Angle Between Vectors | `reference.vectors.angle_between` | Angle between two vectors in radians and degrees; optional reference vector yields a signed angle | `AngleBetweenVectorsNode` |
 
-## transform.basic_transforms (9)
+## transform.basic_transforms (10)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -534,6 +534,7 @@
 | Offset Box Face | `transform.basic_transforms.offset_face` | Offsets a box face along its normal without modifying the source box geometry | `OffsetBoxFaceNode` |
 | Inset Box Face | `transform.basic_transforms.inset_face` | Creates an inset or outset reference face boundary from a box face without modifying the source box | `InsetBoxFaceNode` |
 | Mirror Geometry About Plane | `transform.basic_transforms.mirror_geometry_plane` | Mirrors analytic geometry about a plane (recursive for composites and boolean geometry nodes) | `MirrorGeometryAboutPlaneNode` |
+| Transform Geometry | `transform.basic_transforms.transform_geometry` | Applies translation, Euler XYZ rotation, and uniform scale to analytic geometry (primitives, composites, booleans, SDF wrappers) | `TransformGeometryNode` |
 | Mirror Vector List About Plane | `transform.basic_transforms.mirror_vector_list_plane` | Mirrors each point in a list about a plane and outputs Vector3d positions | `MirrorVectorListAboutPlaneNode` |
 
 ## transform.deformations (4)
