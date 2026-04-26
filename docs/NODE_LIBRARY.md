@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **394**
+- Total nodes: **396**
 - Total categories: **51**
 
 ## Category Statistics
@@ -52,7 +52,7 @@
 | `transform.deformations` | 7 |
 | `transform.orientation` | 2 |
 | `utilities.assist` | 5 |
-| `utilities.organization` | 5 |
+| `utilities.organization` | 7 |
 | `utilities.organization.graph_io` | 2 |
 | `variable` | 4 |
 | `world.query` | 7 |
@@ -622,12 +622,14 @@
 | Signal Merge | `utilities.assist.signal_merge` | 将两路输入按优先级汇聚为一路输出 | `SignalMergeNode` |
 | Tag Relay | `utilities.assist.tag_relay` | 用于标注语义的中继节点，输入输出保持透传 | `TagRelayNode` |
 
-## utilities.organization (5)
+## utilities.organization (7)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Read Image | `utilities.fileio.read_image` | Reads a local image file and outputs dimensions, colors, and grayscale samples | `ReadImageNode` |
 | Subgraph | `utilities.organization.subgraph` | Executes a referenced subgraph with named input/output mapping. | `SubgraphNode` |
+| Subgraph Register | `utilities.organization.subgraph_register` | Registers a subgraph reference into execution context for Subgraph calls. | `SubgraphRegisterNode` |
+| Node Preset | `utilities.organization.preset` | Saves, loads, and deletes named node presets in execution context. | `NodePresetNode` |
 | Align Nodes | `utilities.organization.align_nodes` | 对齐选中的节点 | `AlignNodesNode` |
 | Comment | `utilities.organization.comment` | 在画布上添加文本注释 | `CommentNode` |
 | Group | `utilities.organization.group` | 将选中的节点打包成一个可视化组 | `GroupNode` |

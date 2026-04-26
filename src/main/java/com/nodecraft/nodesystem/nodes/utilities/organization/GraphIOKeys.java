@@ -7,8 +7,8 @@ final class GraphIOKeys {
     static final String SUBGRAPH_CALLS_KEY = "__nodecraft.subgraph.calls";
     static final String SUBGRAPH_REGISTRY_KEY = "__nodecraft.subgraph.registry";
     static final String SUBGRAPH_CALL_STACK_KEY = "__nodecraft.subgraph.call_stack";
+    static final String NODE_PRESETS_KEY = "__nodecraft.node_presets";
 
     private GraphIOKeys() {
     }
 }
-
