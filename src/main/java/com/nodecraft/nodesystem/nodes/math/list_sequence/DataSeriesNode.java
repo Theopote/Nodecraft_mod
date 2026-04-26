@@ -16,7 +16,7 @@ import java.util.UUID;
  *                               ?
  */
 @NodeInfo(
-    id = "math.list_sequence.series",
+    id = "math.sequence.series",
     displayName = "Data Series",
     description = "Generates a series of numbers with constant increment",
     category = "math.sequence"
@@ -42,7 +42,7 @@ public class DataSeriesNode extends BaseNode {
      */
     public DataSeriesNode() {
         //           - data.sequence.series
-        super(UUID.randomUUID(), "math.list_sequence.series");
+        super(UUID.randomUUID(), "math.sequence.series");
         
         //          
         IPort startInput = new BasePort(INPUT_START_ID, "Start", 

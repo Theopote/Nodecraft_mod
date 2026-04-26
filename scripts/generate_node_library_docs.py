@@ -19,7 +19,11 @@ def collect_nodes():
             continue
         class_name = class_match.group(1)
 
-        anno = re.search(r"@NodeInfo\s*\((.*?)\)\s*public\s+class", text, re.S)
+        anno = re.search(
+            r"@NodeInfo\s*\((.*?)\)\s*(?:@\w+(?:\s*\([^)]*\))?\s*)*public\s+class",
+            text,
+            re.S,
+        )
         fields = {}
         if anno:
             body = anno.group(1)
@@ -46,6 +50,11 @@ def collect_nodes():
             order = int(order_raw)
         except ValueError:
             order = 2147483647
+
+        # Keep docs aligned with runtime registry behavior:
+        # deprecated output.execute.bake_* nodes are intentionally hidden from registration.
+        if "@Deprecated" in text and node_id.startswith("output.execute.bake_"):
+            continue
 
         entries.append(
             {

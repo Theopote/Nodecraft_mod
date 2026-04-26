@@ -16,10 +16,10 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "math.list_sequence.zip",
+    id = "math.list.zip",
     displayName = "Zip Lists",
     description = "Pairs two lists by index and outputs tuples as entry maps.",
-    category = "math.list_sequence",
+    category = "math.list",
     order = 19
 )
 public class ZipListsNode extends BaseNode {
@@ -40,7 +40,7 @@ public class ZipListsNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ZipListsNode() {
-        super(UUID.randomUUID(), "math.list_sequence.zip");
+        super(UUID.randomUUID(), "math.list.zip");
 
         addInputPort(new BasePort(INPUT_LEFT_ID, "Left", "Left list", NodeDataType.LIST, this));
         addInputPort(new BasePort(INPUT_RIGHT_ID, "Right", "Right list", NodeDataType.LIST, this));
@@ -138,3 +138,4 @@ public class ZipListsNode extends BaseNode {
         }
     }
 }
+

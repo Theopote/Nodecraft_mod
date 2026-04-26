@@ -18,10 +18,10 @@ import java.util.Set;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "math.list_sequence.deduplicate",
+    id = "math.list.deduplicate",
     displayName = "Deduplicate List",
     description = "Removes duplicate values from a list while preserving order.",
-    category = "math.list_sequence",
+    category = "math.list",
     order = 20
 )
 public class DeduplicateListNode extends BaseNode {
@@ -38,7 +38,7 @@ public class DeduplicateListNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public DeduplicateListNode() {
-        super(UUID.randomUUID(), "math.list_sequence.deduplicate");
+        super(UUID.randomUUID(), "math.list.deduplicate");
 
         addInputPort(new BasePort(INPUT_LIST_ID, "List", "List to deduplicate", NodeDataType.LIST, this));
 
@@ -120,3 +120,4 @@ public class DeduplicateListNode extends BaseNode {
         }
     }
 }
+

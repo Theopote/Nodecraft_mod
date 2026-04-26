@@ -18,7 +18,7 @@ import java.util.UUID;
  *                                                         
  */
 @NodeInfo(
-    id = "math.list_sequence.sort_list",
+    id = "math.list.sort_list",
     displayName = "Sort List",
     description = "Sorts elements of a list",
     category = "math.list"
@@ -57,7 +57,7 @@ public class SortListNode extends BaseNode {
      */
     public SortListNode() {
         //                    ?- data.lists.sort_list
-        super(UUID.randomUUID(), "math.list_sequence.sort_list");
+        super(UUID.randomUUID(), "math.list.sort_list");
         
         //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 

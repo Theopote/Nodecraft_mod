@@ -18,7 +18,7 @@ import java.util.UUID;
  *                                                  ?
  */
 @NodeInfo(
-    id = "math.list_sequence.shuffle_list",
+    id = "math.list.shuffle_list",
     displayName = "Shuffle List",
     description = "Randomly reorders elements in a list",
     category = "math.list"
@@ -40,7 +40,7 @@ public class ShuffleListNode extends BaseNode {
      */
     public ShuffleListNode() {
         //                                        UID.randomUUID()              D
-        super(UUID.randomUUID(), "math.list_sequence.shuffle_list");
+        super(UUID.randomUUID(), "math.list.shuffle_list");
         
         //                    ?
         this.description = "Randomly reorders elements in a list";

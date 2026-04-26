@@ -24,7 +24,7 @@ import java.util.UUID;
  * Dynamic list builder node with add/remove controls for input ports.
  */
 @NodeInfo(
-    id = "math.list_sequence.create_list",
+    id = "math.list.create_list",
     displayName = "Create List",
     description = "Packs multiple input items into a single list.",
     category = "math.list",
@@ -54,7 +54,7 @@ public class CreateListNode extends BaseCustomUINode {
     private boolean allowDifferentTypes = true;
 
     public CreateListNode() {
-        super(UUID.randomUUID(), "math.list_sequence.create_list");
+        super(UUID.randomUUID(), "math.list.create_list");
         rebuildInputPorts();
         addOutputPort(new BasePort(
             OUTPUT_LIST_ID,
@@ -215,3 +215,4 @@ public class CreateListNode extends BaseCustomUINode {
         }
     }
 }
+

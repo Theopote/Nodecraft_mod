@@ -16,7 +16,7 @@ import java.util.UUID;
  *                                                                                  ?
  */
 @NodeInfo(
-    id = "math.list_sequence.filter_list",
+    id = "math.list.filter_list",
     displayName = "Filter List",
     description = "Filters a list based on boolean conditions",
     category = "math.list"
@@ -39,7 +39,7 @@ public class FilterListNode extends BaseNode {
      */
     public FilterListNode() {
         //                                        UID.randomUUID()              D
-        super(UUID.randomUUID(), "math.list_sequence.filter_list");
+        super(UUID.randomUUID(), "math.list.filter_list");
         
         //                    ?
         this.description = "Filters a list based on boolean conditions";

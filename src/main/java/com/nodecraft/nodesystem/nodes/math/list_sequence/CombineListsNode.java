@@ -16,7 +16,7 @@ import java.util.UUID;
  *                                                                                   ?
  */
 @NodeInfo(
-    id = "math.list_sequence.combine_lists",
+    id = "math.list.combine_lists",
     displayName = "Combine Lists",
     description = "Combines multiple lists into a single list by index.",
     category = "math.list"
@@ -37,7 +37,7 @@ public class CombineListsNode extends BaseNode {
      */
     public CombineListsNode() {
         //                                        UID.randomUUID()              D
-        super(UUID.randomUUID(), "math.list_sequence.combine_lists");
+        super(UUID.randomUUID(), "math.list.combine_lists");
         
         //                    ?
         this.description = "Combines multiple lists into a single list by index";

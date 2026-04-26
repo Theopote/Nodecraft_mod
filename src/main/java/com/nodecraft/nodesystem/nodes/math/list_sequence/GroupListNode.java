@@ -18,7 +18,7 @@ import java.util.UUID;
  *                                                                       ?
  */
 @NodeInfo(
-    id = "math.list_sequence.group_list",
+    id = "math.list.group_list",
     displayName = "Group List",
     description = "Groups items in a list based on a key list",
     category = "math.list"
@@ -41,7 +41,7 @@ public class GroupListNode extends BaseNode {
      */
     public GroupListNode() {
         //                                        UID.randomUUID()              D
-        super(UUID.randomUUID(), "math.list_sequence.group_list");
+        super(UUID.randomUUID(), "math.list.group_list");
         
         //                    ?
         this.description = "Groups items in a list based on a key list";

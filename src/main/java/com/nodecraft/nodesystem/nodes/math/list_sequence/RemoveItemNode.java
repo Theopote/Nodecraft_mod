@@ -17,7 +17,7 @@ import java.util.UUID;
  *                                                                                
  */
 @NodeInfo(
-    id = "math.list_sequence.remove_item",
+    id = "math.list.remove_item",
     displayName = "Remove Item",
     description = "Removes an item from a list by index or value",
     category = "math.list"
@@ -43,7 +43,7 @@ public class RemoveItemNode extends BaseNode {
      */
     public RemoveItemNode() {
         //                                        UID.randomUUID()              D
-        super(UUID.randomUUID(), "math.list_sequence.remove_item");
+        super(UUID.randomUUID(), "math.list.remove_item");
         
         //                    ?
         this.description = "Removes an item from a list by index or value";

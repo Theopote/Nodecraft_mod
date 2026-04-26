@@ -16,7 +16,7 @@ import java.util.UUID;
  *                                                                        ?
  */
 @NodeInfo(
-    id = "math.list_sequence.repeat",
+    id = "math.sequence.repeat",
     displayName = "Repeat",
     description = "Repeats a single data item or list multiple times",
     category = "math.sequence"
@@ -38,7 +38,7 @@ public class RepeatNode extends BaseNode {
      */
     public RepeatNode() {
         //                                        UID.randomUUID()              D
-        super(UUID.randomUUID(), "math.list_sequence.repeat");
+        super(UUID.randomUUID(), "math.sequence.repeat");
         
         //                    ?
         this.description = "Repeats a single data item or list multiple times";

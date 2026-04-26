@@ -16,7 +16,7 @@ import java.util.UUID;
     id = "utilities.organization.graph_input",
     displayName = "Graph Input",
     description = "Defines a named graph-level input with optional override and default fallback.",
-    category = "utilities.organization.graph_io",
+    category = "utilities.organization",
     order = 0
 )
 public class GraphInputNode extends BaseNode {

@@ -17,7 +17,7 @@ import java.util.UUID;
  *                                                        ?
  */
 @NodeInfo(
-    id = "math.list_sequence.reverse_list",
+    id = "math.list.reverse_list",
     displayName = "Reverse List",
     description = "Reverses the order of elements in a list.",
     category = "math.list"
@@ -34,7 +34,7 @@ public class ReverseListNode extends BaseNode {
      */
     public ReverseListNode() {
         //                                        UID.randomUUID()              D
-        super(UUID.randomUUID(), "math.list_sequence.reverse_list");
+        super(UUID.randomUUID(), "math.list.reverse_list");
         
         //                    ?
         this.description = "Reverses the order of elements in a list";

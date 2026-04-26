@@ -1,8 +1,8 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **445**
-- Total categories: **51**
+- Total nodes: **436**
+- Total categories: **50**
 
 ## Category Statistics
 
@@ -27,15 +27,14 @@
 | `material.surface_aging` | 3 |
 | `math.compare` | 7 |
 | `math.fields` | 11 |
-| `math.list` | 20 |
-| `math.list_sequence` | 3 |
+| `math.list` | 23 |
 | `math.logic` | 6 |
 | `math.random` | 4 |
 | `math.scalar_math` | 21 |
 | `math.sequence` | 3 |
 | `math.trigonometry` | 14 |
 | `output.debug` | 4 |
-| `output.execute` | 15 |
+| `output.execute` | 6 |
 | `output.export` | 4 |
 | `output.preview` | 12 |
 | `pattern.grid` | 4 |
@@ -52,8 +51,8 @@
 | `transform.deformations` | 8 |
 | `transform.orientation` | 3 |
 | `utilities.assist` | 7 |
-| `utilities.organization` | 7 |
-| `utilities.organization.graph_io` | 2 |
+| `utilities.fileio` | 1 |
+| `utilities.organization` | 8 |
 | `variable` | 4 |
 | `world.query` | 10 |
 | `world.read` | 12 |
@@ -336,38 +335,33 @@
 | Vector Field Sample Point | `math.fields.vector_sample_point` | Samples a vector field at a point. | `VectorFieldSamplePointNode` |
 | Vector Field Sample Points | `math.fields.vector_sample_points` | Samples a vector field for each query point and outputs a vector list. | `VectorFieldSamplePointsNode` |
 
-## math.list (20)
+## math.list (23)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Create List | `math.list_sequence.create_list` | Packs multiple input items into a single list. | `CreateListNode` |
+| Create List | `math.list.create_list` | Packs multiple input items into a single list. | `CreateListNode` |
+| Zip Lists | `math.list.zip` | Pairs two lists by index and outputs tuples as entry maps. | `ZipListsNode` |
+| Deduplicate List | `math.list.deduplicate` | Removes duplicate values from a list while preserving order. | `DeduplicateListNode` |
 | List Statistics | `math.list.statistics` | Computes min, max, sum, average, and median for a numeric list. | `ListStatisticsNode` |
 | Map List | `math.list.map_list` | Applies a scalar operation to each numeric item in a list. | `MapListNode` |
 | Reduce List | `math.list.reduce` | Reduces a list into a single value using a selected operation. | `ReduceListNode` |
 | Chunk List | `math.list.chunk` | Splits a list into fixed-size chunks. | `ChunkListNode` |
 | Transpose List of Lists | `math.list.transpose` | Transposes a list of lists by swapping rows and columns. | `TransposeListNode` |
-| Combine Lists | `math.list_sequence.combine_lists` | Combines multiple lists into a single list by index. | `CombineListsNode` |
-| Dispatch List | `math.list_sequence.dispatch_list` | Splits a list into two based on boolean conditions | `DispatchListNode` |
-| Filter List | `math.list_sequence.filter_list` | Filters a list based on boolean conditions | `FilterListNode` |
-| Flatten List | `math.list_sequence.flatten_list` | Flattens a nested list structure into a single-level list | `FlattenListNode` |
-| Get Item | `math.list_sequence.get_item` | Gets an item from a list at a specified index. | `GetItemNode` |
-| Group List | `math.list_sequence.group_list` | Groups items in a list based on a key list | `GroupListNode` |
-| Insert Item | `math.list_sequence.insert_item` | Inserts an item into a list at a specified index | `InsertItemNode` |
-| List Length | `math.list_sequence.list_length` | Returns the number of items in a list. | `ListLengthNode` |
-| Remove Item | `math.list_sequence.remove_item` | Removes an item from a list by index or value | `RemoveItemNode` |
-| Reverse List | `math.list_sequence.reverse_list` | Reverses the order of elements in a list. | `ReverseListNode` |
-| Set Item | `math.list_sequence.set_item` | Sets an item in a list at a specified index | `SetItemNode` |
-| Shuffle List | `math.list_sequence.shuffle_list` | Randomly reorders elements in a list | `ShuffleListNode` |
-| Sort List | `math.list_sequence.sort_list` | Sorts elements of a list | `SortListNode` |
-| Sub List | `math.list_sequence.sub_list` | Gets a portion of a list between start and end indexes. | `SubListNode` |
-
-## math.list_sequence (3)
-
-| Node Name | Node ID | Description | Class |
-|---|---|---|---|
-| Zip Lists | `math.list_sequence.zip` | Pairs two lists by index and outputs tuples as entry maps. | `ZipListsNode` |
-| Deduplicate List | `math.list_sequence.deduplicate` | Removes duplicate values from a list while preserving order. | `DeduplicateListNode` |
-| Sequence Range | `sequencerange_node` | - | `SequenceRangeNode` |
+| Sequence Range (Legacy) | `math.list.range_legacy` | Deprecated legacy range node. Use Range (math.sequence.range) instead. | `SequenceRangeNode` |
+| Combine Lists | `math.list.combine_lists` | Combines multiple lists into a single list by index. | `CombineListsNode` |
+| Dispatch List | `math.list.dispatch_list` | Splits a list into two based on boolean conditions | `DispatchListNode` |
+| Filter List | `math.list.filter_list` | Filters a list based on boolean conditions | `FilterListNode` |
+| Flatten List | `math.list.flatten_list` | Flattens a nested list structure into a single-level list | `FlattenListNode` |
+| Get Item | `math.list.get_item` | Gets an item from a list at a specified index. | `GetItemNode` |
+| Group List | `math.list.group_list` | Groups items in a list based on a key list | `GroupListNode` |
+| Insert Item | `math.list.insert_item` | Inserts an item into a list at a specified index | `InsertItemNode` |
+| List Length | `math.list.list_length` | Returns the number of items in a list. | `ListLengthNode` |
+| Remove Item | `math.list.remove_item` | Removes an item from a list by index or value | `RemoveItemNode` |
+| Reverse List | `math.list.reverse_list` | Reverses the order of elements in a list. | `ReverseListNode` |
+| Set Item | `math.list.set_item` | Sets an item in a list at a specified index | `SetItemNode` |
+| Shuffle List | `math.list.shuffle_list` | Randomly reorders elements in a list | `ShuffleListNode` |
+| Sort List | `math.list.sort_list` | Sorts elements of a list | `SortListNode` |
+| Sub List | `math.list.sub_list` | Gets a portion of a list between start and end indexes. | `SubListNode` |
 
 ## math.logic (6)
 
@@ -420,8 +414,8 @@
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Range | `math.sequence.range` | Generates a numeric sequence from Start to End using Step. | `MathRangeNode` |
-| Data Series | `math.list_sequence.series` | Generates a series of numbers with constant increment | `DataSeriesNode` |
-| Repeat | `math.list_sequence.repeat` | Repeats a single data item or list multiple times | `RepeatNode` |
+| Data Series | `math.sequence.series` | Generates a series of numbers with constant increment | `DataSeriesNode` |
+| Repeat | `math.sequence.repeat` | Repeats a single data item or list multiple times | `RepeatNode` |
 
 ## math.trigonometry (14)
 
@@ -451,7 +445,7 @@
 | Execution Timer | `output.debug.execution_timer` | 测量连接到此节点的计算分支所花费的时间 | `ExecutionTimerNode` |
 | Panel | `output.debug.data_inspector` | 显示连接到其输入端口的原始数据（文本形式） | `PanelNode` |
 
-## output.execute (15)
+## output.execute (6)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -461,15 +455,6 @@
 | Undo Last Bake | `output.execute.undo_last_bake` | Reverts the most recent recorded bake or apply-changes operation | `UndoLastBakeNode` |
 | Bake Surface Strip To Blocks | `output.execute.bake_surface_strip_to_blocks` | Bakes a surface strip into block coordinates for final execution | `SurfaceStripToBlocksNode` |
 | Merge Block Placements | `output.execute.merge_block_placements` | Concatenates multiple block placement lists into one execution-ready placement list | `MergeBlockPlacementsNode` |
-| Box Geometry Voxelizer | `boxgeometryvoxelizer_node` | - | `BoxGeometryVoxelizerNode` |
-| Cone Geometry Voxelizer | `conegeometryvoxelizer_node` | - | `ConeGeometryVoxelizerNode` |
-| Cylinder Geometry Voxelizer | `cylindergeometryvoxelizer_node` | - | `CylinderGeometryVoxelizerNode` |
-| Ellipsoid Geometry Voxelizer | `ellipsoidgeometryvoxelizer_node` | - | `EllipsoidGeometryVoxelizerNode` |
-| Octahedron Geometry Voxelizer | `octahedrongeometryvoxelizer_node` | - | `OctahedronGeometryVoxelizerNode` |
-| Prism Geometry Voxelizer | `prismgeometryvoxelizer_node` | - | `PrismGeometryVoxelizerNode` |
-| Sphere Geometry Voxelizer | `spheregeometryvoxelizer_node` | - | `SphereGeometryVoxelizerNode` |
-| Tetrahedron Geometry Voxelizer | `tetrahedrongeometryvoxelizer_node` | - | `TetrahedronGeometryVoxelizerNode` |
-| Torus Geometry Voxelizer | `torusgeometryvoxelizer_node` | - | `TorusGeometryVoxelizerNode` |
 
 ## output.export (4)
 
@@ -664,24 +649,24 @@
 | Signal Merge | `utilities.assist.signal_merge` | 将两路输入按优先级汇聚为一路输出 | `SignalMergeNode` |
 | Tag Relay | `utilities.assist.tag_relay` | 用于标注语义的中继节点，输入输出保持透传 | `TagRelayNode` |
 
-## utilities.organization (7)
+## utilities.fileio (1)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Read Image | `utilities.fileio.read_image` | Reads a local image file and outputs dimensions, colors, and grayscale samples | `ReadImageNode` |
+
+## utilities.organization (8)
+
+| Node Name | Node ID | Description | Class |
+|---|---|---|---|
+| Graph Input | `utilities.organization.graph_input` | Defines a named graph-level input with optional override and default fallback. | `GraphInputNode` |
+| Graph Output | `utilities.organization.graph_output` | Defines a named graph-level output and publishes it into execution context. | `GraphOutputNode` |
 | Subgraph | `utilities.organization.subgraph` | Executes a referenced subgraph with named input/output mapping. | `SubgraphNode` |
 | Subgraph Register | `utilities.organization.subgraph_register` | Registers a subgraph reference into execution context for Subgraph calls. | `SubgraphRegisterNode` |
 | Node Preset | `utilities.organization.preset` | Saves, loads, and deletes named node presets in execution context. | `NodePresetNode` |
 | Align Nodes | `utilities.organization.align_nodes` | 对齐选中的节点 | `AlignNodesNode` |
 | Comment | `utilities.organization.comment` | 在画布上添加文本注释 | `CommentNode` |
 | Group | `utilities.organization.group` | 将选中的节点打包成一个可视化组 | `GroupNode` |
-
-## utilities.organization.graph_io (2)
-
-| Node Name | Node ID | Description | Class |
-|---|---|---|---|
-| Graph Input | `utilities.organization.graph_input` | Defines a named graph-level input with optional override and default fallback. | `GraphInputNode` |
-| Graph Output | `utilities.organization.graph_output` | Defines a named graph-level output and publishes it into execution context. | `GraphOutputNode` |
 
 ## variable (4)
 

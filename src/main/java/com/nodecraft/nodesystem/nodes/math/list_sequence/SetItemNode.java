@@ -16,7 +16,7 @@ import java.util.UUID;
  *                                                                           ?
  */
 @NodeInfo(
-    id = "math.list_sequence.set_item",
+    id = "math.list.set_item",
     displayName = "Set Item",
     description = "Sets an item in a list at a specified index",
     category = "math.list"
@@ -41,7 +41,7 @@ public class SetItemNode extends BaseNode {
      */
     public SetItemNode() {
         //                                        UID.randomUUID()              D
-        super(UUID.randomUUID(), "math.list_sequence.set_item");
+        super(UUID.randomUUID(), "math.list.set_item");
         
         //                    ?
         this.description = "Sets an item in a list at a specified index";

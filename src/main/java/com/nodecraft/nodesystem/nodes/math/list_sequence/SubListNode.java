@@ -16,7 +16,7 @@ import java.util.UUID;
  *                                          ?
  */
 @NodeInfo(
-    id = "math.list_sequence.sub_list",
+    id = "math.list.sub_list",
     displayName = "Sub List",
     description = "Gets a portion of a list between start and end indexes.",
     category = "math.list"
@@ -39,7 +39,7 @@ public class SubListNode extends BaseNode {
      */
     public SubListNode() {
         //                                        UID.randomUUID()              D
-        super(UUID.randomUUID(), "math.list_sequence.sub_list");
+        super(UUID.randomUUID(), "math.list.sub_list");
         
         //                    ?
         this.description = "Gets a portion of a list between start and end indexes";

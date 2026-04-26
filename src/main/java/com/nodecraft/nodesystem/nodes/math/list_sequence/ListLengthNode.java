@@ -15,7 +15,7 @@ import java.util.UUID;
  *                                                                     ?
  */
 @NodeInfo(
-    id = "math.list_sequence.list_length",
+    id = "math.list.list_length",
     displayName = "List Length",
     description = "Returns the number of items in a list.",
     category = "math.list"
@@ -32,7 +32,7 @@ public class ListLengthNode extends BaseNode {
      */
     public ListLengthNode() {
         //                                        UID.randomUUID()              D
-        super(UUID.randomUUID(), "math.list_sequence.list_length");
+        super(UUID.randomUUID(), "math.list.list_length");
         
         //                    ?
         this.description = "Returns the number of items in a list";

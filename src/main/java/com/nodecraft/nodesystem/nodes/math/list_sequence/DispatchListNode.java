@@ -16,7 +16,7 @@ import java.util.UUID;
  *                                                                                     ?
  */
 @NodeInfo(
-    id = "math.list_sequence.dispatch_list",
+    id = "math.list.dispatch_list",
     displayName = "Dispatch List",
     description = "Splits a list into two based on boolean conditions",
     category = "math.list"
@@ -39,7 +39,7 @@ public class DispatchListNode extends BaseNode {
      */
     public DispatchListNode() {
         //                                        UID.randomUUID()              D
-        super(UUID.randomUUID(), "math.list_sequence.dispatch_list");
+        super(UUID.randomUUID(), "math.list.dispatch_list");
         
         //                    ?
         this.description = "Splits a list into two based on boolean conditions";

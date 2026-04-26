@@ -15,7 +15,7 @@ import java.util.UUID;
  *                                                                             ?
  */
 @NodeInfo(
-    id = "math.list_sequence.get_item",
+    id = "math.list.get_item",
     displayName = "Get Item",
     description = "Gets an item from a list at a specified index.",
     category = "math.list"
@@ -38,7 +38,7 @@ public class GetItemNode extends BaseNode {
      */
     public GetItemNode() {
         //                    ?- data.lists.get_item
-        super(UUID.randomUUID(), "math.list_sequence.get_item");
+        super(UUID.randomUUID(), "math.list.get_item");
         
         //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 

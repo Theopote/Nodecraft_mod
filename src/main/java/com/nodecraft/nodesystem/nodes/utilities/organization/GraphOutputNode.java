@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
     id = "utilities.organization.graph_output",
     displayName = "Graph Output",
     description = "Defines a named graph-level output and publishes it into execution context.",
-    category = "utilities.organization.graph_io",
+    category = "utilities.organization",
     order = 1
 )
 public class GraphOutputNode extends BaseNode {

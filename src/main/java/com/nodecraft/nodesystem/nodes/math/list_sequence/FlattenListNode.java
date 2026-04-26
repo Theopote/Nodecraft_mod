@@ -16,7 +16,7 @@ import java.util.UUID;
  *                                                                       ?
  */
 @NodeInfo(
-    id = "math.list_sequence.flatten_list",
+    id = "math.list.flatten_list",
     displayName = "Flatten List",
     description = "Flattens a nested list structure into a single-level list",
     category = "math.list"
@@ -38,7 +38,7 @@ public class FlattenListNode extends BaseNode {
      */
     public FlattenListNode() {
         //                    ?- data.lists.flatten_list
-        super(UUID.randomUUID(), "math.list_sequence.flatten_list");
+        super(UUID.randomUUID(), "math.list.flatten_list");
         
         //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
