@@ -40,6 +40,8 @@ public class PreviewGeometryNode extends BaseNode {
     private static final String INPUT_PRISM_GEOMETRY_ID = "input_prism_geometry";
     private static final String INPUT_TETRAHEDRON_GEOMETRY_ID = "input_tetrahedron_geometry";
     private static final String INPUT_OCTAHEDRON_GEOMETRY_ID = "input_octahedron_geometry";
+    private static final String INPUT_ICOSAHEDRON_GEOMETRY_ID = "input_icosahedron_geometry";
+    private static final String INPUT_DODECAHEDRON_GEOMETRY_ID = "input_dodecahedron_geometry";
     private static final String INPUT_SURFACE_STRIP_ID = "input_surface_strip";
 
     private static final String OUTPUT_SUCCESS_ID = "output_success";
@@ -100,6 +102,8 @@ public class PreviewGeometryNode extends BaseNode {
         addInputPort(new BasePort(INPUT_PRISM_GEOMETRY_ID, "Prism Geometry", "Prism geometry data", NodeDataType.PRISM_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_TETRAHEDRON_GEOMETRY_ID, "Tetrahedron Geometry", "Tetrahedron geometry data", NodeDataType.TETRAHEDRON_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_OCTAHEDRON_GEOMETRY_ID, "Octahedron Geometry", "Octahedron geometry data", NodeDataType.OCTAHEDRON_GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_ICOSAHEDRON_GEOMETRY_ID, "Icosahedron Geometry", "Regular icosahedron geometry data", NodeDataType.ICOSAHEDRON_GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_DODECAHEDRON_GEOMETRY_ID, "Dodecahedron Geometry", "Regular dodecahedron geometry data", NodeDataType.DODECAHEDRON_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SURFACE_STRIP_ID, "Surface Strip", "Surface strip approximated into preview geometry", NodeDataType.SURFACE_STRIP, this));
 
         addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether preview is active", NodeDataType.BOOLEAN, this));
@@ -222,6 +226,8 @@ public class PreviewGeometryNode extends BaseNode {
         collectGeometryInput(inputValues.get(INPUT_PRISM_GEOMETRY_ID), geometries);
         collectGeometryInput(inputValues.get(INPUT_TETRAHEDRON_GEOMETRY_ID), geometries);
         collectGeometryInput(inputValues.get(INPUT_OCTAHEDRON_GEOMETRY_ID), geometries);
+        collectGeometryInput(inputValues.get(INPUT_ICOSAHEDRON_GEOMETRY_ID), geometries);
+        collectGeometryInput(inputValues.get(INPUT_DODECAHEDRON_GEOMETRY_ID), geometries);
 
         Object surfaceStripObj = inputValues.get(INPUT_SURFACE_STRIP_ID);
         if (surfaceStripObj instanceof SurfaceStripData surfaceStrip) {

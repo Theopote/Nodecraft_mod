@@ -717,7 +717,9 @@ public class ImGuiNodeRenderer {
                         "input_hemisphere_geometry".equals(portId) ||
                         "input_prism_geometry".equals(portId) ||
                         "input_tetrahedron_geometry".equals(portId) ||
-                        "input_octahedron_geometry".equals(portId);
+                        "input_octahedron_geometry".equals(portId) ||
+                        "input_icosahedron_geometry".equals(portId) ||
+                        "input_dodecahedron_geometry".equals(portId);
             } else if (node instanceof ApplyChangesNode) {
                 isLegacyInput =
                         "input_box_geometry".equals(portId) ||

@@ -7,8 +7,10 @@ import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.DifferenceGeometryData;
+import com.nodecraft.nodesystem.datatypes.DodecahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
+import com.nodecraft.nodesystem.datatypes.IcosahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.IntersectionGeometryData;
 import com.nodecraft.nodesystem.datatypes.OctahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
@@ -114,6 +116,12 @@ public final class GeometryVoxelizer {
         if (geometry instanceof OctahedronGeometryData octahedronGeometry) {
             return voxelizeOctahedron(octahedronGeometry, fillSolid);
         }
+        if (geometry instanceof IcosahedronGeometryData icosahedronGeometry) {
+            return voxelizeIcosahedron(icosahedronGeometry, fillSolid);
+        }
+        if (geometry instanceof DodecahedronGeometryData dodecahedronGeometry) {
+            return voxelizeDodecahedron(dodecahedronGeometry, fillSolid);
+        }
         if (geometry instanceof PrismGeometryData prismGeometry) {
             return voxelizePrism(prismGeometry, fillSolid);
         }
@@ -171,6 +179,12 @@ public final class GeometryVoxelizer {
         }
         if (geometry instanceof OctahedronGeometryData octahedronGeometry) {
             return OctahedronBlockGenerator.createBoundingRegion(octahedronGeometry);
+        }
+        if (geometry instanceof IcosahedronGeometryData icosahedronGeometry) {
+            return IcosahedronBlockGenerator.createBoundingRegion(icosahedronGeometry);
+        }
+        if (geometry instanceof DodecahedronGeometryData dodecahedronGeometry) {
+            return DodecahedronBlockGenerator.createBoundingRegion(dodecahedronGeometry);
         }
         if (geometry instanceof PrismGeometryData prismGeometry) {
             return createPrismBoundingRegion(prismGeometry);
@@ -629,6 +643,20 @@ public final class GeometryVoxelizer {
         BlockPosList blocks = new BlockPosList();
         RegionData region = OctahedronBlockGenerator.createBoundingRegion(geometry);
         OctahedronBlockGenerator.populateOctahedron(blocks, region, geometry, fillSolid);
+        return blocks;
+    }
+
+    public static BlockPosList voxelizeIcosahedron(IcosahedronGeometryData geometry, boolean fillSolid) {
+        BlockPosList blocks = new BlockPosList();
+        RegionData region = IcosahedronBlockGenerator.createBoundingRegion(geometry);
+        IcosahedronBlockGenerator.populateIcosahedron(blocks, region, geometry);
+        return blocks;
+    }
+
+    public static BlockPosList voxelizeDodecahedron(DodecahedronGeometryData geometry, boolean fillSolid) {
+        BlockPosList blocks = new BlockPosList();
+        RegionData region = DodecahedronBlockGenerator.createBoundingRegion(geometry);
+        DodecahedronBlockGenerator.populateDodecahedron(blocks, region, geometry);
         return blocks;
     }
 

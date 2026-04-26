@@ -1,0 +1,99 @@
+package com.nodecraft.nodesystem.nodes.geometry.primitives;
+
+import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.DodecahedronGeometryData;
+import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.execution.ExecutionContext;
+import net.minecraft.util.math.BlockPos;
+import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3d;
+
+import java.util.UUID;
+
+@NodeInfo(
+    id = "geometry.primitives.dodecahedron",
+    displayName = "Dodecahedron By Center Edge",
+    description = "Constructs a regular dodecahedron from a center point and edge length",
+    category = "geometry.primitives",
+    order = 24
+)
+public class DodecahedronByCenterEdgeNode extends BaseNode {
+
+    private static final String INPUT_CENTER_ID = "input_center";
+    private static final String INPUT_EDGE_LENGTH_ID = "input_edge_length";
+
+    private static final String OUTPUT_DODECAHEDRON_ID = "output_dodecahedron";
+    private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
+    private static final String OUTPUT_CENTER_ID = "output_center";
+    private static final String OUTPUT_EDGE_LENGTH_ID = "output_edge_length";
+    private static final String OUTPUT_VERTICES_ID = "output_vertices";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+
+    public DodecahedronByCenterEdgeNode() {
+        super(UUID.randomUUID(), "geometry.primitives.dodecahedron");
+
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Dodecahedron center point", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_EDGE_LENGTH_ID, "Edge Length", "Length of each edge", NodeDataType.DOUBLE, this));
+
+        addOutputPort(new BasePort(OUTPUT_DODECAHEDRON_ID, "Dodecahedron", "Constructed dodecahedron geometry", NodeDataType.DODECAHEDRON_GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved center", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_EDGE_LENGTH_ID, "Edge Length", "Resolved edge length", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_VERTICES_ID, "Vertices", "World-space vertices", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a dodecahedron could be constructed", NodeDataType.BOOLEAN, this));
+    }
+
+    @Override
+    public String getDescription() {
+        return "Constructs a regular dodecahedron from a center point and edge length";
+    }
+
+    @Override
+    public void processNode(@Nullable ExecutionContext context) {
+        Vector3d center = resolvePoint(inputValues.get(INPUT_CENTER_ID));
+        Object edgeObj = inputValues.get(INPUT_EDGE_LENGTH_ID);
+        if (center == null || !(edgeObj instanceof Number edgeNum)) {
+            writeEmptyOutputs();
+            return;
+        }
+
+        double edge = edgeNum.doubleValue();
+        if (!Double.isFinite(edge) || edge <= 0.0d) {
+            writeEmptyOutputs();
+            return;
+        }
+
+        DodecahedronGeometryData dodecahedron = new DodecahedronGeometryData(center, edge);
+        outputValues.put(OUTPUT_DODECAHEDRON_ID, dodecahedron);
+        outputValues.put(OUTPUT_GEOMETRY_ID, dodecahedron);
+        outputValues.put(OUTPUT_CENTER_ID, center);
+        outputValues.put(OUTPUT_EDGE_LENGTH_ID, edge);
+        outputValues.put(OUTPUT_VERTICES_ID, dodecahedron.getVertices());
+        outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    private void writeEmptyOutputs() {
+        outputValues.put(OUTPUT_DODECAHEDRON_ID, null);
+        outputValues.put(OUTPUT_GEOMETRY_ID, null);
+        outputValues.put(OUTPUT_CENTER_ID, null);
+        outputValues.put(OUTPUT_EDGE_LENGTH_ID, 0.0d);
+        outputValues.put(OUTPUT_VERTICES_ID, java.util.List.of());
+        outputValues.put(OUTPUT_VALID_ID, false);
+    }
+
+    private Vector3d resolvePoint(Object value) {
+        if (value instanceof PointData pointData) {
+            return pointData.getPosition();
+        }
+        if (value instanceof Vector3d vector) {
+            return new Vector3d(vector);
+        }
+        if (value instanceof BlockPos blockPos) {
+            return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
+        }
+        return null;
+    }
+}

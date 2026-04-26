@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.preview.elements;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.datatypes.*;
+import com.nodecraft.nodesystem.util.PlatonicSolidTables;
 import com.nodecraft.nodesystem.preview.AbstractPreviewElement;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.nodesystem.preview.PreviewRenderer;
@@ -168,6 +169,31 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
             appendTetrahedron(builder, tetrahedron);
         } else if (geometry instanceof OctahedronGeometryData octahedron) {
             appendOctahedron(builder, octahedron);
+        } else if (geometry instanceof IcosahedronGeometryData icosahedron) {
+            appendIndexedTriangleMesh(builder, icosahedron.getVertices(), PlatonicSolidTables.icosahedronTriangleIndices());
+        } else if (geometry instanceof DodecahedronGeometryData dodecahedron) {
+            appendIndexedTriangleMesh(builder, dodecahedron.getVertices(), PlatonicSolidTables.dodecahedronTriangleIndices());
+        }
+    }
+
+    private void appendIndexedTriangleMesh(MeshBuilder builder, List<Vector3d> vertices, int[] triangleIndices) {
+        if (vertices == null || triangleIndices == null) {
+            return;
+        }
+        for (int i = 0; i + 2 < triangleIndices.length; i += 3) {
+            int ia = triangleIndices[i];
+            int ib = triangleIndices[i + 1];
+            int ic = triangleIndices[i + 2];
+            if (ia < 0 || ib < 0 || ic < 0 || ia >= vertices.size() || ib >= vertices.size() || ic >= vertices.size()) {
+                continue;
+            }
+            Vec3d a = toVec3d(vertices.get(ia));
+            Vec3d b = toVec3d(vertices.get(ib));
+            Vec3d c = toVec3d(vertices.get(ic));
+            builder.addTriangle(a, b, c);
+            builder.addSegment(a, b);
+            builder.addSegment(b, c);
+            builder.addSegment(c, a);
         }
     }
 

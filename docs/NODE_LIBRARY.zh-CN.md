@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**371**
+- **节点总数**：**375**
 - **分类总数**：**46**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -11,7 +11,7 @@
 |---|---:|
 | `geometry.boolean` | 19 |
 | `geometry.curves` | 18 |
-| `geometry.primitives` | 24 |
+| `geometry.primitives` | 28 |
 | `geometry.profiles` | 25 |
 | `geometry.solids` | 17 |
 | `input.values` | 3 |
@@ -103,7 +103,7 @@
 | Parabola On Plane | `geometry.curves.parabola_curve` | Builds a sampled parabola on a plane from vertex, curvature, x-range, and segment count | `ParabolaOnPlaneNode` |
 | Infinity Curve On Plane | `geometry.curves.infinity_curve` | Builds a sampled figure-eight (lemniscate-like) curve on a plane | `InfinityCurveOnPlaneNode` |
 
-## geometry.primitives（24）
+## geometry.primitives（28）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -119,6 +119,8 @@
 | Ellipsoid By Center Radii | `geometry.primitives.ellipsoid` | Constructs ellipsoid geometry from a center point and X/Y/Z radii | `EllipsoidByCenterRadiiNode` |
 | Hemisphere By Center Axis Radius | `geometry.primitives.hemisphere` | Constructs a solid hemisphere (sphere ∩ half-space; flat face through center, dome along axis) | `HemisphereByCenterAxisRadiusNode` |
 | Octahedron By Center Size | `geometry.primitives.octahedron` | Constructs octahedron geometry from a center point and vertex radius | `OctahedronByCenterSizeNode` |
+| Icosahedron By Center Edge | `geometry.primitives.icosahedron` | Constructs a regular icosahedron from a center point and edge length | `IcosahedronByCenterEdgeNode` |
+| Dodecahedron By Center Edge | `geometry.primitives.dodecahedron` | Constructs a regular dodecahedron from a center point and edge length | `DodecahedronByCenterEdgeNode` |
 | Tetrahedron By Center Edge | `geometry.primitives.tetrahedron` | Constructs tetrahedron geometry from a center point and edge length | `TetrahedronByCenterEdgeNode` |
 | Deconstruct Box Geometry | `geometry.primitives.deconstruct_box` | Extracts center, half extents, orientation, corners, and faces from box geometry | `DeconstructBoxGeometryNode` |
 | Square Pyramid | `geometry.primitives.square_pyramid` | Constructs square pyramid geometry from a base center, base size, height, and plane | `SquarePyramidNode` |
@@ -129,6 +131,8 @@
 | Deconstruct Ellipsoid | `geometry.primitives.deconstruct_ellipsoid` | Extracts center, radii, bounds, volume, and approximate surface area from ellipsoid geometry | `DeconstructEllipsoidNode` |
 | Deconstruct Hemisphere | `geometry.primitives.deconstruct_hemisphere` | Extracts center, axis, radius, curved/flat/total surface area, volume, and bounds from hemisphere geometry | `DeconstructHemisphereNode` |
 | Deconstruct Octahedron | `geometry.primitives.deconstruct_octahedron` | Extracts center, size, vertices, bounds, and analytical values from octahedron geometry | `DeconstructOctahedronNode` |
+| Deconstruct Icosahedron | `geometry.primitives.deconstruct_icosahedron` | Extracts center, edge length, circumradius, vertices, surface area, volume, and bounds from icosahedron geometry | `DeconstructIcosahedronNode` |
+| Deconstruct Dodecahedron | `geometry.primitives.deconstruct_dodecahedron` | Extracts center, edge length, circumradius, vertices, surface area, volume, and bounds from dodecahedron geometry | `DeconstructDodecahedronNode` |
 | Deconstruct Tetrahedron | `geometry.primitives.deconstruct_tetrahedron` | Extracts center, edge length, vertices, bounds, and analytical values from tetrahedron geometry | `DeconstructTetrahedronNode` |
 | Deconstruct Prism | `geometry.primitives.deconstruct_prism` | Extracts base polygon, top polygon, extrusion, side surface strip, and bounds from prism geometry | `DeconstructPrismNode` |
 

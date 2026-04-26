@@ -142,6 +142,8 @@ public final class TypeConversionRegistry {
                 || type == NodeDataType.ELLIPSOID_GEOMETRY
                 || type == NodeDataType.HEMISPHERE_GEOMETRY
                 || type == NodeDataType.OCTAHEDRON_GEOMETRY
+                || type == NodeDataType.ICOSAHEDRON_GEOMETRY
+                || type == NodeDataType.DODECAHEDRON_GEOMETRY
                 || type == NodeDataType.PRISM_GEOMETRY
                 || type == NodeDataType.SPHERE
                 || type == NodeDataType.TETRAHEDRON_GEOMETRY

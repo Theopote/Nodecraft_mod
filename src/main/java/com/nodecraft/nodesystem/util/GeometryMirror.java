@@ -6,8 +6,10 @@ import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
+import com.nodecraft.nodesystem.datatypes.DodecahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.DifferenceGeometryData;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
+import com.nodecraft.nodesystem.datatypes.IcosahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.IntersectionGeometryData;
 import com.nodecraft.nodesystem.datatypes.OctahedronGeometryData;
@@ -153,6 +155,12 @@ public final class GeometryMirror {
         }
         if (geometry instanceof TetrahedronGeometryData tet) {
             return new TetrahedronGeometryData(mirrorPoint(tet.getCenter(), plane), tet.getEdgeLength());
+        }
+        if (geometry instanceof IcosahedronGeometryData ico) {
+            return new IcosahedronGeometryData(mirrorPoint(ico.getCenter(), plane), ico.getEdgeLength());
+        }
+        if (geometry instanceof DodecahedronGeometryData dod) {
+            return new DodecahedronGeometryData(mirrorPoint(dod.getCenter(), plane), dod.getEdgeLength());
         }
         return null;
     }

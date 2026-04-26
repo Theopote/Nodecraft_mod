@@ -10,7 +10,9 @@ import com.nodecraft.nodesystem.datatypes.ColorData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
+import com.nodecraft.nodesystem.datatypes.IcosahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
+import com.nodecraft.nodesystem.datatypes.DodecahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
@@ -935,6 +937,38 @@ public class PropertyPanelComponent implements EditorComponent {
             ImGui.text("Center: " + formatVector3d(hemisphere.getCenter()));
             ImGui.text("Axis: " + formatVector3d(hemisphere.getAxis()));
             ImGui.text(String.format("Radius: %.2f", hemisphere.getRadius()));
+        } catch (Throwable e) {
+            panel.handlePropertyError(prop, e);
+        }
+    };
+
+    private static final PropertyRenderer ICOSAHEDRON_GEOMETRY_RENDERER = (panel, node, prop, isDisabled) -> {
+        try {
+            IcosahedronGeometryData icosa = (IcosahedronGeometryData) prop.getter.invoke(node);
+            if (icosa == null) {
+                ImGui.textDisabled("(绌?");
+                return;
+            }
+            ImGui.text("Center: " + formatVector3d(icosa.getCenter()));
+            ImGui.text(String.format("Edge Length: %.2f", icosa.getEdgeLength()));
+            ImGui.text(String.format("Circumradius: %.2f", icosa.getCircumradius()));
+            ImGui.text("Vertices: " + icosa.getVertices().size());
+        } catch (Throwable e) {
+            panel.handlePropertyError(prop, e);
+        }
+    };
+
+    private static final PropertyRenderer DODECAHEDRON_GEOMETRY_RENDERER = (panel, node, prop, isDisabled) -> {
+        try {
+            DodecahedronGeometryData dod = (DodecahedronGeometryData) prop.getter.invoke(node);
+            if (dod == null) {
+                ImGui.textDisabled("(绌?");
+                return;
+            }
+            ImGui.text("Center: " + formatVector3d(dod.getCenter()));
+            ImGui.text(String.format("Edge Length: %.2f", dod.getEdgeLength()));
+            ImGui.text(String.format("Circumradius: %.2f", dod.getCircumradius()));
+            ImGui.text("Vertices: " + dod.getVertices().size());
         } catch (Throwable e) {
             panel.handlePropertyError(prop, e);
         }
@@ -1871,6 +1905,8 @@ public class PropertyPanelComponent implements EditorComponent {
         registerRenderer(CylinderGeometryData.class, CYLINDER_GEOMETRY_RENDERER);
         registerRenderer(EllipsoidGeometryData.class, ELLIPSOID_GEOMETRY_RENDERER);
         registerRenderer(OctahedronGeometryData.class, OCTAHEDRON_RENDERER);
+        registerRenderer(IcosahedronGeometryData.class, ICOSAHEDRON_GEOMETRY_RENDERER);
+        registerRenderer(DodecahedronGeometryData.class, DODECAHEDRON_GEOMETRY_RENDERER);
         registerRenderer(TorusGeometryData.class, TORUS_GEOMETRY_RENDERER);
         registerRenderer(Vector3d.class, VECTOR3D_RENDERER);
         registerRenderer(BlockPos.class, BLOCK_POS_RENDERER);

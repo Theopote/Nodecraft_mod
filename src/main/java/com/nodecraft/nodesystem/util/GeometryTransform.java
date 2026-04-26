@@ -4,7 +4,9 @@ import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
+import com.nodecraft.nodesystem.datatypes.DodecahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
+import com.nodecraft.nodesystem.datatypes.IcosahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.DifferenceGeometryData;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
@@ -243,6 +245,12 @@ public final class GeometryTransform {
         }
         if (geometry instanceof TetrahedronGeometryData tet) {
             return new TetrahedronGeometryData(transformPoint(tet.getCenter(), t, r, s), tet.getEdgeLength() * s);
+        }
+        if (geometry instanceof IcosahedronGeometryData ico) {
+            return new IcosahedronGeometryData(transformPoint(ico.getCenter(), t, r, s), ico.getEdgeLength() * s);
+        }
+        if (geometry instanceof DodecahedronGeometryData dod) {
+            return new DodecahedronGeometryData(transformPoint(dod.getCenter(), t, r, s), dod.getEdgeLength() * s);
         }
         if (geometry instanceof SdfGeometryData sdfGeom) {
             SignedDistanceFieldData sdf = sdfGeom.getSdf();

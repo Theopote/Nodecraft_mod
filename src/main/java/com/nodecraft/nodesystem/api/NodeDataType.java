@@ -40,6 +40,8 @@ public enum NodeDataType {
     ELLIPSOID_GEOMETRY("ellipsoid_geometry", "Ellipsoid Geometry", EllipsoidGeometryData.class),
     HEMISPHERE_GEOMETRY("hemisphere_geometry", "Hemisphere Geometry", HemisphereGeometryData.class),
     OCTAHEDRON_GEOMETRY("octahedron_geometry", "Octahedron Geometry", OctahedronGeometryData.class),
+    ICOSAHEDRON_GEOMETRY("icosahedron_geometry", "Icosahedron Geometry", IcosahedronGeometryData.class),
+    DODECAHEDRON_GEOMETRY("dodecahedron_geometry", "Dodecahedron Geometry", DodecahedronGeometryData.class),
     POLYGON_PROFILE("polygon_profile", "Polygon Profile", PolygonProfileData.class),
     PRISM_GEOMETRY("prism_geometry", "Prism Geometry", PrismGeometryData.class),
     TETRAHEDRON_GEOMETRY("tetrahedron_geometry", "Tetrahedron Geometry", TetrahedronGeometryData.class),
