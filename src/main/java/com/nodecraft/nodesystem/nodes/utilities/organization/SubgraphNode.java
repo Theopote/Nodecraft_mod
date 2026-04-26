@@ -14,9 +14,11 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -46,17 +48,30 @@ public class SubgraphNode extends BaseNode {
     @NodeProperty(displayName = "Max Call Depth", category = "Subgraph", order = 5)
     private int maxCallDepth = 8;
 
+    @NodeProperty(displayName = "Additional Input Keys", category = "Subgraph", order = 6)
+    private String additionalInputKeys = "";
+
+    @NodeProperty(displayName = "Additional Output Keys", category = "Subgraph", order = 7)
+    private String additionalOutputKeys = "";
+
+    @NodeProperty(displayName = "Emit Debug Trace", category = "Subgraph", order = 8)
+    private boolean emitDebugTrace = true;
+
     private static final String INPUT_SUBGRAPH_REF_ID = "input_subgraph_ref";
     private static final String INPUT_SUBGRAPH_GRAPH_ID = "input_subgraph_graph";
     private static final String INPUT_VALUE_ID = "input_value";
     private static final String INPUT_INPUTS_ID = "input_inputs";
     private static final String INPUT_OUTPUTS_ID = "input_outputs";
+    private static final String INPUT_INPUT_KEYS_ID = "input_input_keys";
+    private static final String INPUT_OUTPUT_KEYS_ID = "input_output_keys";
     private static final String INPUT_ENABLED_ID = "input_enabled";
 
     private static final String OUTPUT_VALUE_ID = "output_value";
     private static final String OUTPUT_INPUTS_ID = "output_inputs";
     private static final String OUTPUT_OUTPUTS_ID = "output_outputs";
+    private static final String OUTPUT_MAPPED_OUTPUTS_ID = "output_mapped_outputs";
     private static final String OUTPUT_METADATA_ID = "output_metadata";
+    private static final String OUTPUT_DEBUG_TRACE_ID = "output_debug_trace";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SubgraphNode() {
@@ -67,12 +82,16 @@ public class SubgraphNode extends BaseNode {
         addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Primary passthrough input", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_INPUTS_ID, "Inputs", "Optional input mapping object", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_OUTPUTS_ID, "Outputs", "Optional mapped output object from external executor", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_INPUT_KEYS_ID, "Input Keys", "Optional input key list override", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_OUTPUT_KEYS_ID, "Output Keys", "Optional output key list override", NodeDataType.LIST, this));
         addInputPort(new BasePort(INPUT_ENABLED_ID, "Enabled", "Disables subgraph execution when false", NodeDataType.BOOLEAN, this));
 
         addOutputPort(new BasePort(OUTPUT_VALUE_ID, "Value", "Resolved output value", NodeDataType.ANY, this));
         addOutputPort(new BasePort(OUTPUT_INPUTS_ID, "Inputs", "Resolved input map passed to subgraph", NodeDataType.ANY, this));
         addOutputPort(new BasePort(OUTPUT_OUTPUTS_ID, "Outputs", "Resolved output map from subgraph", NodeDataType.ANY, this));
+        addOutputPort(new BasePort(OUTPUT_MAPPED_OUTPUTS_ID, "Mapped Outputs", "Resolved output map restricted to requested output keys", NodeDataType.ANY, this));
         addOutputPort(new BasePort(OUTPUT_METADATA_ID, "Metadata", "Subgraph invocation metadata", NodeDataType.ANY, this));
+        addOutputPort(new BasePort(OUTPUT_DEBUG_TRACE_ID, "Debug Trace", "Debug messages for subgraph mapping/execution", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether subgraph mapping/execution succeeded", NodeDataType.BOOLEAN, this));
     }
 
@@ -88,17 +107,22 @@ public class SubgraphNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
+        List<Object> debugTrace = new ArrayList<>();
         boolean enabled = !Boolean.FALSE.equals(inputValues.get(INPUT_ENABLED_ID));
         String resolvedSubgraphRef = resolveSubgraphRef(inputValues.get(INPUT_SUBGRAPH_REF_ID));
         Object primaryValue = inputValues.get(INPUT_VALUE_ID);
+        debugTrace.add("enabled=" + enabled);
+        debugTrace.add("subgraphRef=" + (resolvedSubgraphRef == null ? "" : resolvedSubgraphRef));
 
         if (!enabled) {
-            writeResult(primaryValue, Map.of(), Map.of(), buildMetadata(resolvedSubgraphRef, false, false, "disabled", null), true);
+            debugTrace.add("mode=disabled");
+            writeResult(primaryValue, Map.of(), Map.of(), Map.of(), buildMetadata(resolvedSubgraphRef, false, false, "disabled", null), debugTrace, true);
             return;
         }
 
         if (resolvedSubgraphRef == null || resolvedSubgraphRef.isBlank()) {
-            writeResult(primaryValue, Map.of(), Map.of(), buildMetadata("", false, false, "invalid_ref", null), false);
+            debugTrace.add("mode=invalid_ref");
+            writeResult(primaryValue, Map.of(), Map.of(), Map.of(), buildMetadata("", false, false, "invalid_ref", null), debugTrace, false);
             return;
         }
 
@@ -107,6 +131,18 @@ public class SubgraphNode extends BaseNode {
 
         String resolvedInputKey = resolveInputKey();
         String resolvedOutputKey = resolveOutputKey();
+        List<String> inputKeys = resolveRequestedKeys(
+            resolvedInputKey,
+            additionalInputKeys,
+            inputValues.get(INPUT_INPUT_KEYS_ID)
+        );
+        List<String> outputKeys = resolveRequestedKeys(
+            resolvedOutputKey,
+            additionalOutputKeys,
+            inputValues.get(INPUT_OUTPUT_KEYS_ID)
+        );
+        debugTrace.add("inputKeys=" + inputKeys);
+        debugTrace.add("outputKeys=" + outputKeys);
 
         Object mappedInputValue = inputMap.containsKey(resolvedInputKey)
             ? inputMap.get(resolvedInputKey)
@@ -114,11 +150,22 @@ public class SubgraphNode extends BaseNode {
 
         Map<String, Object> resolvedInputs = new LinkedHashMap<>(inputMap);
         resolvedInputs.putIfAbsent(resolvedInputKey, mappedInputValue);
+        for (String key : inputKeys) {
+            if (resolvedInputs.containsKey(key)) {
+                continue;
+            }
+            if (resolvedInputKey.equals(key)) {
+                resolvedInputs.put(key, mappedInputValue);
+            } else {
+                resolvedInputs.put(key, null);
+            }
+        }
 
         NodeGraph subgraph = resolveSubgraphGraph(context, resolvedSubgraphRef, inputValues.get(INPUT_SUBGRAPH_GRAPH_ID));
         if (subgraph == null) {
             boolean hadExternalOutput = outputMap.containsKey(resolvedOutputKey);
-            Object resolvedOutputValue = resolveOutputValueWithoutExecution(outputMap, resolvedOutputKey, mappedInputValue);
+            Map<String, Object> mappedOutputs = resolveMappedOutputs(outputMap, outputKeys, resolvedOutputKey, mappedInputValue);
+            Object resolvedOutputValue = mappedOutputs.get(resolvedOutputKey);
             Map<String, Object> metadata = buildMetadata(
                 resolvedSubgraphRef,
                 false,
@@ -129,16 +176,24 @@ public class SubgraphNode extends BaseNode {
             metadata.put("inputKey", resolvedInputKey);
             metadata.put("outputKey", resolvedOutputKey);
             metadata.put("strictMode", strictMode);
+            metadata.put("inputKeys", inputKeys);
+            metadata.put("outputKeys", outputKeys);
+            metadata.put("mappedInputCount", resolvedInputs.size());
+            metadata.put("mappedOutputCount", mappedOutputs.size());
+            debugTrace.add("mode=skeleton_mapping");
             recordCallMetadata(context, resolvedSubgraphRef, metadata);
             writeResult(
                 resolvedOutputValue,
                 resolvedInputs,
                 new LinkedHashMap<>(outputMap),
+                mappedOutputs,
                 metadata,
-                !strictMode || outputMap.containsKey(resolvedOutputKey)
+                debugTrace,
+                !strictMode || hasAllRequestedOutputKeys(mappedOutputs, outputKeys)
             );
             return;
         }
+        debugTrace.add("subgraphResolved=true");
 
         int depth = currentCallDepth(context);
         if (depth >= Math.max(1, maxCallDepth)) {
@@ -150,8 +205,11 @@ public class SubgraphNode extends BaseNode {
                 "Maximum subgraph call depth reached: " + maxCallDepth
             );
             metadata.put("depth", depth);
+            metadata.put("inputKeys", inputKeys);
+            metadata.put("outputKeys", outputKeys);
+            debugTrace.add("mode=depth_limit");
             recordCallMetadata(context, resolvedSubgraphRef, metadata);
-            writeResult(null, resolvedInputs, Map.of(), metadata, false);
+            writeResult(null, resolvedInputs, Map.of(), Map.of(), metadata, debugTrace, false);
             return;
         }
 
@@ -164,24 +222,22 @@ public class SubgraphNode extends BaseNode {
                 "Detected recursive subgraph call for ref: " + resolvedSubgraphRef
             );
             metadata.put("depth", depth);
+            metadata.put("inputKeys", inputKeys);
+            metadata.put("outputKeys", outputKeys);
+            debugTrace.add("mode=recursive_call_blocked");
             recordCallMetadata(context, resolvedSubgraphRef, metadata);
-            writeResult(null, resolvedInputs, Map.of(), metadata, false);
+            writeResult(null, resolvedInputs, Map.of(), Map.of(), metadata, debugTrace, false);
             return;
         }
 
         NestedExecutionResult nestedResult = executeSubgraph(context, subgraph, resolvedSubgraphRef, resolvedInputs);
         Map<String, Object> executedOutputs = nestedResult.outputs();
+        debugTrace.add("nestedExecuted=" + nestedResult.executed());
+        debugTrace.add("nestedSuccess=" + nestedResult.success());
 
         boolean hadExternalOutput = executedOutputs.containsKey(resolvedOutputKey);
-        Object resolvedOutputValue;
-        if (hadExternalOutput) {
-            resolvedOutputValue = executedOutputs.get(resolvedOutputKey);
-        } else if (strictMode) {
-            resolvedOutputValue = null;
-        } else {
-            resolvedOutputValue = mappedInputValue;
-            executedOutputs.put(resolvedOutputKey, resolvedOutputValue);
-        }
+        Map<String, Object> mappedOutputs = resolveMappedOutputs(executedOutputs, outputKeys, resolvedOutputKey, mappedInputValue);
+        Object resolvedOutputValue = mappedOutputs.get(resolvedOutputKey);
 
         Map<String, Object> metadata = buildMetadata(
             resolvedSubgraphRef,
@@ -196,34 +252,75 @@ public class SubgraphNode extends BaseNode {
         metadata.put("depth", depth);
         metadata.put("executorSuccess", nestedResult.success());
         metadata.put("nodeCount", subgraph.getNodes().size());
+        metadata.put("inputKeys", inputKeys);
+        metadata.put("outputKeys", outputKeys);
+        metadata.put("mappedInputCount", resolvedInputs.size());
+        metadata.put("mappedOutputCount", mappedOutputs.size());
 
         recordCallMetadata(context, resolvedSubgraphRef, metadata);
+        debugTrace.add("mode=" + (nestedResult.executed() ? "executed" : "execution_failed"));
         writeResult(
             resolvedOutputValue,
             resolvedInputs,
             new LinkedHashMap<>(executedOutputs),
+            mappedOutputs,
             metadata,
-            nestedResult.success() && (!strictMode || hadExternalOutput)
+            debugTrace,
+            nestedResult.success() && (!strictMode || hasAllRequestedOutputKeys(mappedOutputs, outputKeys))
         );
     }
 
-    private void writeResult(Object value, Map<String, Object> inputs, Map<String, Object> outputs, Map<String, Object> metadata, boolean valid) {
+    private void writeResult(
+        Object value,
+        Map<String, Object> inputs,
+        Map<String, Object> outputs,
+        Map<String, Object> mappedOutputs,
+        Map<String, Object> metadata,
+        List<Object> debugTrace,
+        boolean valid
+    ) {
         outputValues.put(OUTPUT_VALUE_ID, value);
         outputValues.put(OUTPUT_INPUTS_ID, inputs);
         outputValues.put(OUTPUT_OUTPUTS_ID, outputs);
+        outputValues.put(OUTPUT_MAPPED_OUTPUTS_ID, mappedOutputs);
         outputValues.put(OUTPUT_METADATA_ID, metadata);
+        outputValues.put(OUTPUT_DEBUG_TRACE_ID, emitDebugTrace ? debugTrace : List.of());
         outputValues.put(OUTPUT_VALID_ID, valid);
     }
 
-    private Object resolveOutputValueWithoutExecution(Map<String, Object> outputMap, String outputKeyValue, Object fallback) {
-        if (outputMap.containsKey(outputKeyValue)) {
-            return outputMap.get(outputKeyValue);
+    private Map<String, Object> resolveMappedOutputs(
+        Map<String, Object> availableOutputs,
+        List<String> outputKeys,
+        String primaryOutputKey,
+        Object primaryFallback
+    ) {
+        Map<String, Object> mapped = new LinkedHashMap<>();
+        for (String key : outputKeys) {
+            if (availableOutputs.containsKey(key)) {
+                mapped.put(key, availableOutputs.get(key));
+                continue;
+            }
+            if (strictMode) {
+                mapped.put(key, null);
+                continue;
+            }
+            if (primaryOutputKey.equals(key)) {
+                mapped.put(key, primaryFallback);
+                availableOutputs.putIfAbsent(key, primaryFallback);
+            } else {
+                mapped.put(key, null);
+            }
         }
-        if (strictMode) {
-            return null;
+        return mapped;
+    }
+
+    private boolean hasAllRequestedOutputKeys(Map<String, Object> outputs, List<String> requiredKeys) {
+        for (String key : requiredKeys) {
+            if (!outputs.containsKey(key) || outputs.get(key) == null) {
+                return false;
+            }
         }
-        outputMap.put(outputKeyValue, fallback);
-        return fallback;
+        return true;
     }
 
     private Map<String, Object> buildMetadata(String ref, boolean executed, boolean usedExternalOutput, String mode, @Nullable String errorMessage) {
@@ -261,6 +358,47 @@ public class SubgraphNode extends BaseNode {
             return "out";
         }
         return outputKey.trim();
+    }
+
+    private List<String> resolveRequestedKeys(String primaryKey, String propertyKeys, Object overrideKeysObj) {
+        Set<String> keys = new LinkedHashSet<>();
+        if (primaryKey != null && !primaryKey.isBlank()) {
+            keys.add(primaryKey);
+        }
+        addKeysFromCsv(keys, propertyKeys);
+        addKeysFromObject(keys, overrideKeysObj);
+        return new ArrayList<>(keys);
+    }
+
+    private void addKeysFromCsv(Set<String> keys, String csv) {
+        if (csv == null || csv.isBlank()) {
+            return;
+        }
+        String[] parts = csv.split(",");
+        for (String part : parts) {
+            String trimmed = part == null ? "" : part.trim();
+            if (!trimmed.isEmpty()) {
+                keys.add(trimmed);
+            }
+        }
+    }
+
+    private void addKeysFromObject(Set<String> keys, Object value) {
+        if (value instanceof String csv) {
+            addKeysFromCsv(keys, csv);
+            return;
+        }
+        if (value instanceof List<?> list) {
+            for (Object entry : list) {
+                if (entry == null) {
+                    continue;
+                }
+                String normalized = String.valueOf(entry).trim();
+                if (!normalized.isEmpty()) {
+                    keys.add(normalized);
+                }
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -420,6 +558,9 @@ public class SubgraphNode extends BaseNode {
         state.put("outputKey", outputKey);
         state.put("strictMode", strictMode);
         state.put("maxCallDepth", maxCallDepth);
+        state.put("additionalInputKeys", additionalInputKeys);
+        state.put("additionalOutputKeys", additionalOutputKeys);
+        state.put("emitDebugTrace", emitDebugTrace);
         return state;
     }
 
@@ -448,9 +589,20 @@ public class SubgraphNode extends BaseNode {
         if (maxCallDepthObj instanceof Number value) {
             maxCallDepth = Math.max(1, value.intValue());
         }
+        Object additionalInputKeysObj = map.get("additionalInputKeys");
+        if (additionalInputKeysObj instanceof String value) {
+            additionalInputKeys = value;
+        }
+        Object additionalOutputKeysObj = map.get("additionalOutputKeys");
+        if (additionalOutputKeysObj instanceof String value) {
+            additionalOutputKeys = value;
+        }
+        Object emitDebugTraceObj = map.get("emitDebugTrace");
+        if (emitDebugTraceObj instanceof Boolean value) {
+            emitDebugTrace = value;
+        }
     }
 
     private record NestedExecutionResult(boolean executed, boolean success, Map<String, Object> outputs, @Nullable String errorMessage) {
     }
 }
-
