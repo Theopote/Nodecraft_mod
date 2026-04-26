@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **413**
+- Total nodes: **417**
 - Total categories: **51**
 
 ## Category Statistics
@@ -48,9 +48,9 @@
 | `reference.planes` | 6 |
 | `reference.points` | 17 |
 | `reference.vectors` | 17 |
-| `transform.basic_transforms` | 10 |
-| `transform.deformations` | 7 |
-| `transform.orientation` | 2 |
+| `transform.basic_transforms` | 12 |
+| `transform.deformations` | 8 |
+| `transform.orientation` | 3 |
 | `utilities.assist` | 5 |
 | `utilities.organization` | 7 |
 | `utilities.organization.graph_io` | 2 |
@@ -595,7 +595,7 @@
 | Vector Component Min/Max | `reference.vectors.component_minmax` | Computes per-component min and max between vectors A and B. | `VectorComponentMinMaxNode` |
 | Slerp Vectors | `reference.vectors.slerp` | Performs spherical linear interpolation between two direction vectors. | `SlerpVectorsNode` |
 
-## transform.basic_transforms (10)
+## transform.basic_transforms (12)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -609,8 +609,10 @@
 | Mirror Geometry About Plane | `transform.basic_transforms.mirror_geometry_plane` | Mirrors analytic geometry about a plane (recursive for composites and boolean geometry nodes) | `MirrorGeometryAboutPlaneNode` |
 | Transform Geometry | `transform.basic_transforms.transform_geometry` | Applies translation, Euler XYZ rotation, and uniform scale to analytic geometry (primitives, composites, booleans, SDF wrappers) | `TransformGeometryNode` |
 | Mirror Vector List About Plane | `transform.basic_transforms.mirror_vector_list_plane` | Mirrors each point in a list about a plane and outputs Vector3d positions | `MirrorVectorListAboutPlaneNode` |
+| Shear Point List | `transform.basic_transforms.shear` | Applies axial shear deformation to a point list around an origin. | `ShearPointListNode` |
+| Transform Points by Frames | `transform.basic_transforms.transform_by_frames` | Transforms local points by frame origin and basis axes into world-space positions. | `TransformPointsByFramesNode` |
 
-## transform.deformations (7)
+## transform.deformations (8)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -621,13 +623,15 @@
 | Curve Attract Point List | `transform.deformations.curve_attract` | Pulls points toward a sampled curve with quadratic falloff; optional displacement along full vector, tangent only, or perpendicular-to-tangent only | `CurveAttractPointListNode` |
 | Relax Point List | `transform.deformations.relax_points` | Laplacian-style smoothing using k nearest neighbors (uniform grid hash for speed; capped point count) | `RelaxPointListNode` |
 | Lattice Deform Point List | `transform.deformations.lattice_deform` | Free-form deformation: trilinear blend of control displacements on a uniform (nx+1)(ny+1)(nz+1) lattice in an axis-aligned box | `LatticeDeformPointListNode` |
+| Spherical Displace | `transform.deformations.spherical_displace` | Applies radial displacement with spherical distance falloff around a center point. | `SphericalDisplaceNode` |
 
-## transform.orientation (2)
+## transform.orientation (3)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Project Point To Plane | `transform.orientation.project_to_plane` | Projects a geometric point onto a plane and reports the projection distance | `ProjectPointToPlaneNode` |
 | Rotate Vector | `transform.orientation.rotate_vector` | 绕指定轴旋转向量 | `RotateVectorNode` |
+| Align Points To Surface Normals | `transform.orientation.align_to_surface` | Builds oriented frames per point by aligning local up axis to surface normals. | `AlignPointsToSurfaceNormalsNode` |
 
 ## utilities.assist (5)
 
