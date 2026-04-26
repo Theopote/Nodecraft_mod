@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**403**
+- **节点总数**：**408**
 - **分类总数**：**51**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -28,7 +28,7 @@
 | `material.surface_aging` | 3 |
 | `math.compare` | 7 |
 | `math.fields` | 11 |
-| `math.list` | 15 |
+| `math.list` | 20 |
 | `math.list_sequence` | 3 |
 | `math.logic` | 6 |
 | `math.random` | 4 |
@@ -324,11 +324,16 @@
 | Vector Field Sample Point | `math.fields.vector_sample_point` | Samples a vector field at a point. | `VectorFieldSamplePointNode` |
 | Vector Field Sample Points | `math.fields.vector_sample_points` | Samples a vector field for each query point and outputs a vector list. | `VectorFieldSamplePointsNode` |
 
-## math.list（15）
+## math.list（20）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Create List | `math.list_sequence.create_list` | Packs multiple input items into a single list. | `CreateListNode` |
+| List Statistics | `math.list.statistics` | Computes min, max, sum, average, and median for a numeric list. | `ListStatisticsNode` |
+| Map List | `math.list.map_list` | Applies a scalar operation to each numeric item in a list. | `MapListNode` |
+| Reduce List | `math.list.reduce` | Reduces a list into a single value using a selected operation. | `ReduceListNode` |
+| Chunk List | `math.list.chunk` | Splits a list into fixed-size chunks. | `ChunkListNode` |
+| Transpose List of Lists | `math.list.transpose` | Transposes a list of lists by swapping rows and columns. | `TransposeListNode` |
 | Combine Lists | `math.list_sequence.combine_lists` | Combines multiple lists into a single list by index. | `CombineListsNode` |
 | Dispatch List | `math.list_sequence.dispatch_list` | Splits a list into two based on boolean conditions | `DispatchListNode` |
 | Filter List | `math.list_sequence.filter_list` | Filters a list based on boolean conditions | `FilterListNode` |
