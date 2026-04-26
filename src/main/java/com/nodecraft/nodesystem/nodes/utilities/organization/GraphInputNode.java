@@ -61,15 +61,31 @@ public class GraphInputNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object override = inputValues.get(INPUT_OVERRIDE_ID);
         Object fallback = inputValues.get(INPUT_DEFAULT_ID);
+        String resolvedName = resolvedInputName();
+
+        Object contextMapped = readContextInput(context, resolvedName);
+        boolean hasContextMapped = contextMapped != null;
 
         boolean hasOverride = override != null;
-        Object resolvedValue = hasOverride ? override : fallback;
+        Object resolvedValue = hasContextMapped ? contextMapped : (hasOverride ? override : fallback);
         boolean valid = !required || resolvedValue != null;
 
         outputValues.put(OUTPUT_VALUE_ID, resolvedValue);
-        outputValues.put(OUTPUT_NAME_ID, resolvedInputName());
-        outputValues.put(OUTPUT_WAS_OVERRIDDEN_ID, hasOverride);
+        outputValues.put(OUTPUT_NAME_ID, resolvedName);
+        outputValues.put(OUTPUT_WAS_OVERRIDDEN_ID, hasContextMapped || hasOverride);
         outputValues.put(OUTPUT_VALID_ID, valid);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object readContextInput(@Nullable ExecutionContext context, String name) {
+        if (context == null || name == null || name.isBlank()) {
+            return null;
+        }
+        Object raw = context.getVariable(GraphIOKeys.GRAPH_INPUTS_KEY);
+        if (!(raw instanceof Map<?, ?> map)) {
+            return null;
+        }
+        return ((Map<String, Object>) map).get(name);
     }
 
     private String resolvedInputName() {
@@ -102,4 +118,3 @@ public class GraphInputNode extends BaseNode {
         }
     }
 }
-

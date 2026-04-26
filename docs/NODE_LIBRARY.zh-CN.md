@@ -628,7 +628,7 @@
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Read Image | `utilities.fileio.read_image` | Reads a local image file and outputs dimensions, colors, and grayscale samples | `ReadImageNode` |
-| Subgraph | `utilities.organization.subgraph` | Subgraph call skeleton with named input/output mapping and execution metadata. | `SubgraphNode` |
+| Subgraph | `utilities.organization.subgraph` | Executes a referenced subgraph with named input/output mapping. | `SubgraphNode` |
 | Align Nodes | `utilities.organization.align_nodes` | 对齐选中的节点 | `AlignNodesNode` |
 | Comment | `utilities.organization.comment` | 在画布上添加文本注释 | `CommentNode` |
 | Group | `utilities.organization.group` | 将选中的节点打包成一个可视化组 | `GroupNode` |

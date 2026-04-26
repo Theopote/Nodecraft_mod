@@ -23,7 +23,6 @@ import java.util.concurrent.ConcurrentHashMap;
 )
 public class GraphOutputNode extends BaseNode {
 
-    private static final String GRAPH_OUTPUTS_KEY = "__nodecraft.graph_outputs";
     private static final Map<String, Object> FALLBACK_OUTPUTS = new ConcurrentHashMap<>();
 
     @NodeProperty(displayName = "Output Name", category = "Graph IO", order = 1)
@@ -93,12 +92,12 @@ public class GraphOutputNode extends BaseNode {
     @SuppressWarnings("unchecked")
     private Map<String, Object> getOrCreateOutputMap(@Nullable ExecutionContext context) {
         if (context != null) {
-            Object existing = context.getVariable(GRAPH_OUTPUTS_KEY);
+            Object existing = context.getVariable(GraphIOKeys.GRAPH_OUTPUTS_KEY);
             if (existing instanceof Map<?, ?> map) {
                 return (Map<String, Object>) map;
             }
             Map<String, Object> created = new LinkedHashMap<>();
-            context.setVariable(GRAPH_OUTPUTS_KEY, created);
+            context.setVariable(GraphIOKeys.GRAPH_OUTPUTS_KEY, created);
             return created;
         }
         return FALLBACK_OUTPUTS;
@@ -122,4 +121,3 @@ public class GraphOutputNode extends BaseNode {
         }
     }
 }
-
