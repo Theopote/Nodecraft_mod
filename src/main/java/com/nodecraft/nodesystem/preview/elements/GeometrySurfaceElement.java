@@ -150,6 +150,8 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
             appendSphere(builder, sphere.getCenter(), sphere.getRadius(), quality);
         } else if (geometry instanceof EllipsoidGeometryData ellipsoid) {
             appendEllipsoid(builder, ellipsoid.getCenter(), ellipsoid.getRadii(), quality);
+        } else if (geometry instanceof HemisphereGeometryData hemisphere) {
+            appendHemisphere(builder, hemisphere, quality);
         } else if (geometry instanceof CylinderGeometryData cylinder) {
             appendCylinder(builder, cylinder, quality);
         } else if (geometry instanceof ConeGeometryData cone) {
@@ -204,6 +206,77 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
                 builder.addSegment(p00, p10);
             }
         }
+    }
+
+    private void appendHemisphere(MeshBuilder builder, HemisphereGeometryData hemisphere, int quality) {
+        Vector3d center = hemisphere.getCenter();
+        Vector3d pole = hemisphere.getAxis();
+        double radius = hemisphere.getRadius();
+        if (radius <= 1.0e-6d) {
+            return;
+        }
+
+        Vector3d basisU = orthogonalUnit(pole);
+        Vector3d basisV = new Vector3d(pole).cross(basisU).normalize();
+
+        int latSegments = quality;
+        int lonSegments = quality * 2;
+
+        for (int lat = 0; lat < latSegments; lat++) {
+            double v0 = (double) lat / latSegments;
+            double v1 = (double) (lat + 1) / latSegments;
+            double phi0 = (Math.PI * 0.5d) * v0;
+            double phi1 = (Math.PI * 0.5d) * v1;
+
+            for (int lon = 0; lon < lonSegments; lon++) {
+                double u0 = (double) lon / lonSegments;
+                double u1 = (double) (lon + 1) / lonSegments;
+                double theta0 = 2.0d * Math.PI * u0;
+                double theta1 = 2.0d * Math.PI * u1;
+
+                Vec3d p00 = orientedHemispherePoint(center, pole, basisU, basisV, radius, phi0, theta0);
+                Vec3d p01 = orientedHemispherePoint(center, pole, basisU, basisV, radius, phi0, theta1);
+                Vec3d p10 = orientedHemispherePoint(center, pole, basisU, basisV, radius, phi1, theta0);
+                Vec3d p11 = orientedHemispherePoint(center, pole, basisU, basisV, radius, phi1, theta1);
+
+                if (lat > 0) {
+                    builder.addTriangle(p00, p10, p01);
+                }
+                if (lat < latSegments - 1) {
+                    builder.addTriangle(p01, p10, p11);
+                }
+
+                builder.addSegment(p00, p01);
+                builder.addSegment(p00, p10);
+            }
+        }
+
+        Vec3d diskCenter = toVec3d(center);
+        for (int lon = 0; lon < lonSegments; lon++) {
+            double u0 = (double) lon / lonSegments;
+            double u1 = (double) (lon + 1) / lonSegments;
+            double theta0 = 2.0d * Math.PI * u0;
+            double theta1 = 2.0d * Math.PI * u1;
+            Vec3d p0 = orientedHemispherePoint(center, pole, basisU, basisV, radius, Math.PI * 0.5d, theta0);
+            Vec3d p1 = orientedHemispherePoint(center, pole, basisU, basisV, radius, Math.PI * 0.5d, theta1);
+            builder.addTriangle(diskCenter, p1, p0);
+            builder.addSegment(p0, p1);
+        }
+    }
+
+    private Vec3d orientedHemispherePoint(Vector3d center,
+                                          Vector3d pole,
+                                          Vector3d basisU,
+                                          Vector3d basisV,
+                                          double radius,
+                                          double phi,
+                                          double theta) {
+        double sinPhi = Math.sin(phi);
+        double cosPhi = Math.cos(phi);
+        Vector3d dir = new Vector3d(basisU).mul(sinPhi * Math.cos(theta))
+            .add(new Vector3d(basisV).mul(sinPhi * Math.sin(theta)))
+            .add(new Vector3d(pole).mul(cosPhi));
+        return toVec3d(new Vector3d(center).add(dir.mul(radius)));
     }
 
     private void appendEllipsoid(MeshBuilder builder, Vector3d center, Vector3d radii, int quality) {

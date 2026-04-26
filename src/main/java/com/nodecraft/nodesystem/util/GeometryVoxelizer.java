@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.util;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
+import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.DifferenceGeometryData;
@@ -107,6 +108,9 @@ public final class GeometryVoxelizer {
         if (geometry instanceof EllipsoidGeometryData ellipsoidGeometry) {
             return voxelizeEllipsoid(ellipsoidGeometry, fillSolid);
         }
+        if (geometry instanceof HemisphereGeometryData hemisphereGeometry) {
+            return voxelizeHemisphere(hemisphereGeometry, fillSolid);
+        }
         if (geometry instanceof OctahedronGeometryData octahedronGeometry) {
             return voxelizeOctahedron(octahedronGeometry, fillSolid);
         }
@@ -161,6 +165,9 @@ public final class GeometryVoxelizer {
         }
         if (geometry instanceof EllipsoidGeometryData ellipsoidGeometry) {
             return EllipsoidBlockGenerator.createBoundingRegion(ellipsoidGeometry);
+        }
+        if (geometry instanceof HemisphereGeometryData hemisphereGeometry) {
+            return HemisphereBlockGenerator.createBoundingRegion(hemisphereGeometry);
         }
         if (geometry instanceof OctahedronGeometryData octahedronGeometry) {
             return OctahedronBlockGenerator.createBoundingRegion(octahedronGeometry);
@@ -372,6 +379,13 @@ public final class GeometryVoxelizer {
             fillSolid ? EllipsoidBlockGenerator.VoxelMode.SOLID : EllipsoidBlockGenerator.VoxelMode.SHELL,
             1.0d
         );
+    }
+
+    public static BlockPosList voxelizeHemisphere(HemisphereGeometryData geometry, boolean fillSolid) {
+        BlockPosList blocks = new BlockPosList();
+        RegionData region = HemisphereBlockGenerator.createBoundingRegion(geometry);
+        HemisphereBlockGenerator.populateHemisphere(blocks, region, geometry, fillSolid);
+        return blocks;
     }
 
     public static BlockPosList voxelizeEllipsoid(EllipsoidGeometryData geometry,

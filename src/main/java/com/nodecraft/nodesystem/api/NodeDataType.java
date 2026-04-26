@@ -38,6 +38,7 @@ public enum NodeDataType {
     FRUSTUM_CONE_GEOMETRY("frustum_cone_geometry", "Frustum Cone Geometry", FrustumConeGeometryData.class),
     CYLINDER_GEOMETRY("cylinder_geometry", "Cylinder Geometry", CylinderGeometryData.class),
     ELLIPSOID_GEOMETRY("ellipsoid_geometry", "Ellipsoid Geometry", EllipsoidGeometryData.class),
+    HEMISPHERE_GEOMETRY("hemisphere_geometry", "Hemisphere Geometry", HemisphereGeometryData.class),
     OCTAHEDRON_GEOMETRY("octahedron_geometry", "Octahedron Geometry", OctahedronGeometryData.class),
     POLYGON_PROFILE("polygon_profile", "Polygon Profile", PolygonProfileData.class),
     PRISM_GEOMETRY("prism_geometry", "Prism Geometry", PrismGeometryData.class),

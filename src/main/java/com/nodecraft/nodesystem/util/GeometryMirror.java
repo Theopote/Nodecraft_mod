@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
+import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.DifferenceGeometryData;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
@@ -89,6 +90,13 @@ public final class GeometryMirror {
             return new EllipsoidGeometryData(
                 mirrorPoint(ellipsoid.getCenter(), plane),
                 ellipsoid.getRadii()
+            );
+        }
+        if (geometry instanceof HemisphereGeometryData hemisphere) {
+            return new HemisphereGeometryData(
+                mirrorPoint(hemisphere.getCenter(), plane),
+                mirrorDirection(hemisphere.getAxis(), plane),
+                hemisphere.getRadius()
             );
         }
         if (geometry instanceof BoxGeometryData box) {

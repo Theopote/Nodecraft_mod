@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.ColorData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
+import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
@@ -918,6 +919,22 @@ public class PropertyPanelComponent implements EditorComponent {
             ImGui.text("Axis: " + formatVector3d(axis));
             ImGui.text(String.format("Length: %.2f", axis.length()));
             ImGui.text(String.format("Radius: %.2f", cylinder.getRadius()));
+        } catch (Throwable e) {
+            panel.handlePropertyError(prop, e);
+        }
+    };
+
+    private static final PropertyRenderer HEMISPHERE_GEOMETRY_RENDERER = (panel, node, prop, isDisabled) -> {
+        try {
+            HemisphereGeometryData hemisphere = (HemisphereGeometryData) prop.getter.invoke(node);
+            if (hemisphere == null) {
+                ImGui.textDisabled("(绌?");
+                return;
+            }
+
+            ImGui.text("Center: " + formatVector3d(hemisphere.getCenter()));
+            ImGui.text("Axis: " + formatVector3d(hemisphere.getAxis()));
+            ImGui.text(String.format("Radius: %.2f", hemisphere.getRadius()));
         } catch (Throwable e) {
             panel.handlePropertyError(prop, e);
         }
@@ -1850,6 +1867,7 @@ public class PropertyPanelComponent implements EditorComponent {
         registerRenderer(TetrahedronGeometryData.class, TETRAHEDRON_RENDERER);
         registerRenderer(ConeGeometryData.class, CONE_GEOMETRY_RENDERER);
         registerRenderer(FrustumConeGeometryData.class, FRUSTUM_CONE_GEOMETRY_RENDERER);
+        registerRenderer(HemisphereGeometryData.class, HEMISPHERE_GEOMETRY_RENDERER);
         registerRenderer(CylinderGeometryData.class, CYLINDER_GEOMETRY_RENDERER);
         registerRenderer(EllipsoidGeometryData.class, ELLIPSOID_GEOMETRY_RENDERER);
         registerRenderer(OctahedronGeometryData.class, OCTAHEDRON_RENDERER);

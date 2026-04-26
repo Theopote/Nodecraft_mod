@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
+import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.DifferenceGeometryData;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
@@ -160,6 +161,17 @@ public final class GeometryTransform {
             return new EllipsoidGeometryData(
                 transformPoint(ellipsoid.getCenter(), t, r, s),
                 new Vector3d(radii.x * s, radii.y * s, radii.z * s)
+            );
+        }
+        if (geometry instanceof HemisphereGeometryData hemisphere) {
+            Vector3d ax = rotateUnitDirection(r, hemisphere.getAxis());
+            if (ax == null) {
+                return null;
+            }
+            return new HemisphereGeometryData(
+                transformPoint(hemisphere.getCenter(), t, r, s),
+                ax,
+                hemisphere.getRadius() * s
             );
         }
         if (geometry instanceof BoxGeometryData box) {

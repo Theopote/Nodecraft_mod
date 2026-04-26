@@ -714,6 +714,7 @@ public class ImGuiNodeRenderer {
                         "input_cone_geometry".equals(portId) ||
                         "input_frustum_cone_geometry".equals(portId) ||
                         "input_ellipsoid_geometry".equals(portId) ||
+                        "input_hemisphere_geometry".equals(portId) ||
                         "input_prism_geometry".equals(portId) ||
                         "input_tetrahedron_geometry".equals(portId) ||
                         "input_octahedron_geometry".equals(portId);

@@ -140,6 +140,7 @@ public final class TypeConversionRegistry {
                 || type == NodeDataType.FRUSTUM_CONE_GEOMETRY
                 || type == NodeDataType.CYLINDER_GEOMETRY
                 || type == NodeDataType.ELLIPSOID_GEOMETRY
+                || type == NodeDataType.HEMISPHERE_GEOMETRY
                 || type == NodeDataType.OCTAHEDRON_GEOMETRY
                 || type == NodeDataType.PRISM_GEOMETRY
                 || type == NodeDataType.SPHERE
