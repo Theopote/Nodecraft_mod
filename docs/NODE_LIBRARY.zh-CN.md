@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**436**
+- **节点总数**：**435**
 - **分类总数**：**50**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -28,7 +28,7 @@
 | `material.surface_aging` | 3 |
 | `math.compare` | 7 |
 | `math.fields` | 11 |
-| `math.list` | 23 |
+| `math.list` | 22 |
 | `math.logic` | 6 |
 | `math.random` | 4 |
 | `math.scalar_math` | 21 |
@@ -336,7 +336,7 @@
 | Vector Field Sample Point | `math.fields.vector_sample_point` | Samples a vector field at a point. | `VectorFieldSamplePointNode` |
 | Vector Field Sample Points | `math.fields.vector_sample_points` | Samples a vector field for each query point and outputs a vector list. | `VectorFieldSamplePointsNode` |
 
-## math.list（23）
+## math.list（22）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -348,7 +348,6 @@
 | Reduce List | `math.list.reduce` | Reduces a list into a single value using a selected operation. | `ReduceListNode` |
 | Chunk List | `math.list.chunk` | Splits a list into fixed-size chunks. | `ChunkListNode` |
 | Transpose List of Lists | `math.list.transpose` | Transposes a list of lists by swapping rows and columns. | `TransposeListNode` |
-| Sequence Range (Legacy) | `math.list.range_legacy` | Deprecated legacy range node. Use Range (math.sequence.range) instead. | `SequenceRangeNode` |
 | Combine Lists | `math.list.combine_lists` | Combines multiple lists into a single list by index. | `CombineListsNode` |
 | Dispatch List | `math.list.dispatch_list` | Splits a list into two based on boolean conditions | `DispatchListNode` |
 | Filter List | `math.list.filter_list` | Filters a list based on boolean conditions | `FilterListNode` |
