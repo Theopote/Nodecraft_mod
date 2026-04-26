@@ -30,6 +30,8 @@ public enum NodeDataType {
     BOUNDING_BOX("bounding_box", "Bounding Box", BoundingBoxData.class),
     GEOMETRY("geometry", "Geometry", GeometryData.class),
     SDF("sdf", "SDF", SignedDistanceFieldData.class),
+    SCALAR_FIELD("scalar_field", "Scalar Field", ScalarFieldData.class),
+    VECTOR_FIELD("vector_field", "Vector Field", VectorFieldData.class),
     BOX_GEOMETRY("box_geometry", "Box Geometry", BoxGeometryData.class),
     BOX_FACE("box_face", "Box Face", BoxFaceData.class),
     CONE_GEOMETRY("cone_geometry", "Cone Geometry", ConeGeometryData.class),
@@ -143,6 +145,12 @@ public enum NodeDataType {
             return true;
         }
         if (this == SDF && value instanceof SignedDistanceFieldData) {
+            return true;
+        }
+        if (this == SCALAR_FIELD && value instanceof ScalarFieldData) {
+            return true;
+        }
+        if (this == VECTOR_FIELD && value instanceof VectorFieldData) {
             return true;
         }
 

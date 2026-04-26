@@ -1,8 +1,8 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **348**
-- Total categories: **43**
+- Total nodes: **360**
+- Total categories: **44**
 
 ## Category Statistics
 
@@ -28,6 +28,7 @@
 | `math.list` | 16 |
 | `math.logic` | 6 |
 | `math.random` | 4 |
+| `math.fields` | 11 |
 | `math.scalar_math` | 15 |
 | `math.trigonometry` | 9 |
 | `output.debug` | 4 |
@@ -313,6 +314,22 @@
 | OR | `math.logic.or` | Returns true when either input evaluates to true. | `OrNode` |
 | NOT | `math.logic.not` | Returns the negated boolean value of the input. | `NotNode` |
 | XOR | `math.logic.xor` | Returns true only when exactly one input evaluates to true. | `XorNode` |
+
+## math.fields (11)
+
+| Node Name | Node ID | Description | Class |
+|---|---|---|---|
+| Scalar Field Constant | `math.fields.scalar_constant` | Builds a scalar field that returns a constant value everywhere. | `ScalarFieldConstantNode` |
+| Scalar Field From SDF | `math.fields.scalar_from_sdf` | Wraps a signed distance field as a scalar field using its distance value. | `ScalarFieldFromSdfNode` |
+| Scalar Field Noise | `math.fields.scalar_noise` | Builds a deterministic pseudo-noise scalar field over world space. | `ScalarFieldNoiseNode` |
+| Scalar Field Binary Op | `math.fields.scalar_binary_op` | Combines two scalar fields with a basic arithmetic operation. | `ScalarFieldBinaryOpNode` |
+| Vector Field Constant | `math.fields.vector_constant` | Builds a vector field that returns a constant vector everywhere. | `VectorFieldConstantNode` |
+| Vector Field From SDF Gradient | `math.fields.vector_from_sdf_gradient` | Builds a vector field from central-difference gradients of an SDF (normalized direction). | `VectorFieldFromSdfGradientNode` |
+| Vector Field Binary Op | `math.fields.vector_binary_op` | Combines two vector fields component-wise or via cross product. | `VectorFieldBinaryOpNode` |
+| Scalar Field Sample Point | `math.fields.scalar_sample_point` | Samples a scalar field at a point. | `ScalarFieldSamplePointNode` |
+| Scalar Field Sample Points | `math.fields.scalar_sample_points` | Samples a scalar field for each query point and outputs a value list. | `ScalarFieldSamplePointsNode` |
+| Vector Field Sample Point | `math.fields.vector_sample_point` | Samples a vector field at a point. | `VectorFieldSamplePointNode` |
+| Vector Field Sample Points | `math.fields.vector_sample_points` | Samples a vector field for each query point and outputs a vector list. | `VectorFieldSamplePointsNode` |
 
 ## math.random (4)
 

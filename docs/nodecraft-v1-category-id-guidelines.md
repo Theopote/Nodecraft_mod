@@ -176,6 +176,7 @@ Bad examples:
 - `math.trigonometry`
 - `math.logic`
 - `math.random`
+- `math.fields`
 - `math.list_sequence`
 
 ## 5. Semantic Boundary Rules
@@ -280,6 +281,8 @@ Use `output.*` for:
 Use `math.*` for reusable general-purpose logic and numeric operations.
 
 This is the shared utility domain of the v1.0 main system.
+
+`math.fields` is reserved for reusable **spatial fields** (scalar / vector) that are evaluated by sampling at points, distinct from geometry generators and distinct from SDF authoring primitives under `geometry.boolean`.
 
 ## 6. Future Expansion Rules
 
