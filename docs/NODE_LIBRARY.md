@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **440**
+- Total nodes: **445**
 - Total categories: **51**
 
 ## Category Statistics
@@ -16,9 +16,9 @@
 | `geometry.profiles` | 25 |
 | `geometry.solids` | 20 |
 | `input.context` | 4 |
-| `input.numeric` | 8 |
+| `input.numeric` | 9 |
 | `input.type_selectors` | 5 |
-| `input.values` | 3 |
+| `input.values` | 4 |
 | `material.basic_assignment` | 3 |
 | `material.block_state` | 6 |
 | `material.directional_mapping` | 2 |
@@ -36,7 +36,7 @@
 | `math.trigonometry` | 14 |
 | `output.debug` | 4 |
 | `output.execute` | 15 |
-| `output.export` | 3 |
+| `output.export` | 4 |
 | `output.preview` | 12 |
 | `pattern.grid` | 4 |
 | `pattern.linear` | 4 |
@@ -51,7 +51,7 @@
 | `transform.basic_transforms` | 12 |
 | `transform.deformations` | 8 |
 | `transform.orientation` | 3 |
-| `utilities.assist` | 5 |
+| `utilities.assist` | 7 |
 | `utilities.organization` | 7 |
 | `utilities.organization.graph_io` | 2 |
 | `variable` | 4 |
@@ -222,7 +222,7 @@
 | Dimension Info | `input.context.dimension_info` | Gets the current dimension and basic dimension traits from the active Minecraft world. | `DimensionInfoNode` |
 | Current Time | `input.context.current_time` | Gets the current time and weather state from the active Minecraft world. | `CurrentTimeNode` |
 
-## input.numeric (8)
+## input.numeric (9)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -233,6 +233,7 @@
 | Angle Slider | `input.numeric.angle` | 输出一个可通过滑动条调节的角度值，支持度和弧度输出。 | `AngleSliderNode` |
 | Circular Angle Picker | `input.numeric.angle_picker` | 通过圆形表盘选择角度，同时输出度和弧度。 | `CircularAngleNode` |
 | Vector Input | `input.numeric.vector_input` | Inputs a 3D vector and outputs vector + X/Y/Z components. | `VectorInputNode` |
+| 2D Vector Input | `input.numeric.vector2_input` | Inputs a 2D vector (X/Y or U/V) and outputs vector + components. | `Vector2InputNode` |
 | Range Input | `input.numeric.range` | Defines a numeric interval and outputs min/max/span plus a range object. | `RangeInputNode` |
 
 ## input.type_selectors (5)
@@ -245,13 +246,14 @@
 | Biome Selector | `input.type_selectors.biome_selector` | Selects a biome id for biome-aware generation workflows. | `BiomeSelectorNode` |
 | Block State Selector | `input.type_selectors.block_state_selector` | Builds block-state key/value data from a compact properties string. | `BlockStateSelectorNode` |
 
-## input.values (3)
+## input.values (4)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Text Input | `input.basic.text_input` | Allows entering single-line or multi-line text. | `TextInputNode` |
 | Color Picker | `input.basic.color_picker` | Allows selecting a color value with RGB and alpha support. | `ColorPickerNode` |
 | Boolean Toggle | `input.basic.boolean_toggle` | 提供一个可以切换的布尔值开关控制 | `BooleanToggleNode` |
+| Dropdown Selector | `input.values.dropdown` | Selects one value from user-defined option list and outputs index + text value. | `DropdownSelectorNode` |
 
 ## material.basic_assignment (3)
 
@@ -469,13 +471,14 @@
 | Tetrahedron Geometry Voxelizer | `tetrahedrongeometryvoxelizer_node` | - | `TetrahedronGeometryVoxelizerNode` |
 | Torus Geometry Voxelizer | `torusgeometryvoxelizer_node` | - | `TorusGeometryVoxelizerNode` |
 
-## output.export (3)
+## output.export (4)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Export Schematic | `output.export.export_schematic` | Exports placements to a NodeCraft NBT structure file | `ExportSchematicNode` |
 | Export Litematic | `output.export.export_litematic` | Exports placements to a single-region Litematic file | `ExportLitematicNode` |
 | Export WorldEdit | `output.export.export_worldedit` | Exports placements to a Sponge schematic file for WorldEdit | `ExportWorldEditNode` |
+| Export CSV / JSON | `output.export.export_data` | Exports list/coordinates data to CSV or JSON file. | `ExportDataNode` |
 
 ## output.preview (12)
 
@@ -649,11 +652,13 @@
 | Rotate Vector | `transform.orientation.rotate_vector` | 绕指定轴旋转向量 | `RotateVectorNode` |
 | Align Points To Surface Normals | `transform.orientation.align_to_surface` | Builds oriented frames per point by aligning local up axis to surface normals. | `AlignPointsToSurfaceNormalsNode` |
 
-## utilities.assist (5)
+## utilities.assist (7)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Block List Morphology | `utilities.morphology.block_list_morphology` | Dilates or erodes a block list using 6- or 26-neighbor morphology iterations (Connectivity property) | `BlockListMorphologyNode` |
+| String Format | `utilities.assist.string_format` | Formats strings with placeholders like {0}, {1} from dynamic values. | `StringFormatNode` |
+| Assert / Validate | `utilities.assist.assert` | Validates a boolean condition and optionally throws to stop execution when it fails. | `AssertNode` |
 | Reroute | `utilities.assist.reroute` | 用于整理连线的中继节点，仅透传输入到输出 | `RerouteNode` |
 | Signal Fork | `utilities.assist.signal_fork` | 将一路输入透传到两路输出，便于连线分流 | `SignalForkNode` |
 | Signal Merge | `utilities.assist.signal_merge` | 将两路输入按优先级汇聚为一路输出 | `SignalMergeNode` |
