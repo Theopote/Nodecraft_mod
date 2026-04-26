@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **417**
+- Total nodes: **423**
 - Total categories: **51**
 
 ## Category Statistics
@@ -19,10 +19,10 @@
 | `input.numeric` | 8 |
 | `input.type_selectors` | 5 |
 | `input.values` | 3 |
-| `material.basic_assignment` | 2 |
-| `material.block_state` | 3 |
+| `material.basic_assignment` | 3 |
+| `material.block_state` | 6 |
 | `material.directional_mapping` | 2 |
-| `material.gradient_mapping` | 3 |
+| `material.gradient_mapping` | 5 |
 | `material.pattern_mapping` | 4 |
 | `material.surface_aging` | 3 |
 | `math.compare` | 7 |
@@ -248,20 +248,24 @@
 | Color Picker | `input.basic.color_picker` | Allows selecting a color value with RGB and alpha support. | `ColorPickerNode` |
 | Boolean Toggle | `input.basic.boolean_toggle` | 提供一个可以切换的布尔值开关控制 | `BooleanToggleNode` |
 
-## material.basic_assignment (2)
+## material.basic_assignment (3)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Assign Block Type | `material.basic_assignment.assign_block_type` | Assigns a single block type to every resolved block position | `AssignBlockTypeNode` |
 | Block Palette | `material.basic_assignment.block_palette` | Assigns a repeating palette of block types to resolved positions | `BlockPaletteNode` |
+| Weighted Block Palette | `material.basic_assignment.weighted_palette` | Assigns block types using weighted random palette probabilities. | `WeightedBlockPaletteNode` |
 
-## material.block_state (3)
+## material.block_state (6)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Block State Assign | `material.block_state.block_state_assign` | Assigns explicit block-state properties to placements or voxelized geometry | `BlockStateAssignNode` |
 | Auto Orient Blocks | `material.block_state.auto_orient_blocks` | Automatically assigns a facing state from the dominant direction axis | `AutoOrientBlocksNode` |
 | Stair Shape | `material.block_state.stair_shape` | Assigns stair facing, half, and inner/outer corner shape states | `StairShapeNode` |
+| Waterlogged State | `material.block_state.waterlogged` | Assigns the waterlogged block-state property to placements or voxelized geometry. | `WaterloggedStateNode` |
+| Facing From Normal | `material.block_state.facing_from_normal` | Converts normal vectors to nearest facing direction and optionally writes facing state to placements. | `FacingFromNormalNode` |
+| Slab / Stair Auto-Fill | `material.block_state.slab_autofill` | Generates slab or stair placements from normals to smooth stepped transitions. | `SlabStairAutofillNode` |
 
 ## material.directional_mapping (2)
 
@@ -270,13 +274,15 @@
 | Top / Side / Bottom Map | `material.directional_mapping.top_side_bottom_map` | Assigns top, side, and bottom block types across a voxelized shape using vertical exposure | `TopSideBottomMapNode` |
 | Slope Map | `material.directional_mapping.slope_map` | Assigns flat/slope/steep materials using local height difference per X/Z column. | `SlopeMapNode` |
 
-## material.gradient_mapping (3)
+## material.gradient_mapping (5)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Height Gradient Map | `material.gradient_mapping.height_gradient_map` | Assigns lower, middle, and upper block types across a shape based on relative height | `HeightGradientMapNode` |
 | Noise Material | `material.gradient_mapping.noise_material` | Assigns block types across placements or geometry using deterministic 3D noise bands | `NoiseMaterialNode` |
 | Gradient Ramp Map | `material.gradient_mapping.gradient_ramp_map` | Assigns block types by height using a custom multi-stop ramp list. | `GradientRampMapNode` |
+| Distance-Based Material | `material.gradient_mapping.distance_material` | Assigns block types from a palette based on distance to a reference point, plane, curve, or line. | `DistanceBasedMaterialNode` |
+| SDF-Driven Material | `material.gradient_mapping.sdf_material` | Assigns block types from a palette using sampled SDF distance values. | `SdfDrivenMaterialNode` |
 
 ## material.pattern_mapping (4)
 
