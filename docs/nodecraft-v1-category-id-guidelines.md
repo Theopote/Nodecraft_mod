@@ -144,6 +144,8 @@ Bad examples:
 - `pattern.grid`
 - `pattern.radial`
 - `pattern.along_curve`
+- `pattern.lsystem`
+- `pattern.voronoi_3d`
 - `pattern.surface_volume_distribution`
 
 ## 4.6 Material
@@ -241,6 +243,10 @@ Examples:
 ### 5.5 `pattern.*`
 
 Use `pattern.*` when the node distributes, repeats, tiles, arrays, or populates objects.
+
+`pattern.lsystem` is for string-rewrite / turtle style procedural traces that emit spatial samples (points / polylines), not for voxel solid authoring.
+
+`pattern.voronoi_3d` is for Voronoi-related **spatial partitioning or relaxation** workflows in 3D (often approximate / grid-based); do not use it for planar profile CAD unless the workflow is explicitly 3D.
 
 ### 5.6 `material.*`
 

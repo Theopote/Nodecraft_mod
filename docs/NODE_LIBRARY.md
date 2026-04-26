@@ -1,8 +1,8 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **360**
-- Total categories: **44**
+- Total nodes: **363**
+- Total categories: **46**
 
 ## Category Statistics
 
@@ -37,8 +37,10 @@
 | `output.preview` | 12 |
 | `pattern.grid` | 3 |
 | `pattern.linear` | 3 |
+| `pattern.lsystem` | 2 |
 | `pattern.radial` | 2 |
 | `pattern.surface_volume_distribution` | 7 |
+| `pattern.voronoi_3d` | 1 |
 | `reference.frames` | 4 |
 | `reference.planes` | 6 |
 | `reference.points` | 17 |
@@ -444,12 +446,25 @@
 | Along Path | `pattern.linear.along_path` | Repeats a block pattern at each resolved path point from a line, polyline, curve, or point list | `AlongPathNode` |
 | Staggered Array | `pattern.linear.staggered_array` | Repeats coordinates in rows with parity-controlled staggering, optional alternate row height, and optional envelope clipping | `StaggeredArrayNode` |
 
+## pattern.lsystem (2)
+
+| Node Name | Node ID | Description | Class |
+|---|---|---|---|
+| L-System Expand String | `pattern.lsystem.expand_string` | Expands an L-system axiom using production rules for a fixed number of iterations (longest symbol match; probabilities as weights) | `LSystemExpandStringNode` |
+| L-System Turtle 3D | `pattern.lsystem.turtle_3d` | Traces a 3D polyline from L-system commands: F/f forward, +- yaw, & and ^ pitch, / and \\ roll, [] stack (local turns; angle in degrees) | `LSystemTurtle3DNode` |
+
 ## pattern.radial (2)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | 极坐标阵列 | `pattern.radial.polar_array` | 将坐标列表绕中心点重复旋转排列 | `PolarArrayNode` |
 | Spiral Array | `pattern.radial.spiral_array` | Repeats coordinates along a spiral path around a center point with optional tangent alignment | `SpiralArrayNode` |
+
+## pattern.voronoi_3d (1)
+
+| Node Name | Node ID | Description | Class |
+|---|---|---|---|
+| Voronoi 3D Lloyd Relax (Grid) | `pattern.voronoi_3d.lloyd_relax` | Approximate 3D Lloyd relaxation: grid cell centers vote for nearest site; sites move to cell centroids (repeat). Not an exact Voronoi diagram. | `Voronoi3DLloydRelaxNode` |
 
 ## pattern.surface_volume_distribution (7)
 
