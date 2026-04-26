@@ -29,6 +29,7 @@ public enum NodeDataType {
     PLANE("plane", "Plane", PlaneData.class),
     BOUNDING_BOX("bounding_box", "Bounding Box", BoundingBoxData.class),
     GEOMETRY("geometry", "Geometry", GeometryData.class),
+    SDF("sdf", "SDF", SignedDistanceFieldData.class),
     BOX_GEOMETRY("box_geometry", "Box Geometry", BoxGeometryData.class),
     BOX_FACE("box_face", "Box Face", BoxFaceData.class),
     CONE_GEOMETRY("cone_geometry", "Cone Geometry", ConeGeometryData.class),
@@ -139,6 +140,9 @@ public enum NodeDataType {
         }
 
         if (this == GEOMETRY && value instanceof GeometryData) {
+            return true;
+        }
+        if (this == SDF && value instanceof SignedDistanceFieldData) {
             return true;
         }
 

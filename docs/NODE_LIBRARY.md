@@ -1,14 +1,14 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **316**
+- Total nodes: **319**
 - Total categories: **43**
 
 ## Category Statistics
 
 | Category ID | Node Count |
 |---|---:|
-| `geometry.boolean` | 5 |
+| `geometry.boolean` | 8 |
 | `geometry.curves` | 16 |
 | `geometry.primitives` | 19 |
 | `geometry.profiles` | 9 |
@@ -52,7 +52,7 @@
 | `world.selection` | 8 |
 | `world.write` | 16 |
 
-## geometry.boolean (5)
+## geometry.boolean (8)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -61,6 +61,9 @@
 | Geometry Union | `geometry.boolean.union` | Combines multiple geometry inputs into one composite geometry value | `GeometryUnionNode` |
 | Difference | `geometry.boolean.difference` | Creates a voxel-evaluated difference geometry value by subtracting cutter geometry from a base geometry | `DifferenceNode` |
 | Intersection | `geometry.boolean.intersection` | Creates a voxel-evaluated intersection geometry value from two geometry inputs | `IntersectionNode` |
+| SDF Sphere | `geometry.boolean.sdf_sphere` | Builds a sphere signed-distance-field primitive from center and radius | `SdfSphereNode` |
+| SDF Boolean | `geometry.boolean.sdf_boolean` | Combines two SDF inputs with union/intersection/difference and optional smooth blending | `SdfBooleanNode` |
+| SDF Sample Point | `geometry.boolean.sdf_sample_point` | Samples signed distance at a query point and reports inside/outside state | `SdfSamplePointNode` |
 
 ## geometry.curves (16)
 
