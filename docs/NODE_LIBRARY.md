@@ -1,14 +1,14 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **323**
+- Total nodes: **324**
 - Total categories: **43**
 
 ## Category Statistics
 
 | Category ID | Node Count |
 |---|---:|
-| `geometry.boolean` | 12 |
+| `geometry.boolean` | 13 |
 | `geometry.curves` | 16 |
 | `geometry.primitives` | 19 |
 | `geometry.profiles` | 9 |
@@ -52,7 +52,7 @@
 | `world.selection` | 8 |
 | `world.write` | 16 |
 
-## geometry.boolean (12)
+## geometry.boolean (13)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -68,6 +68,7 @@
 | SDF Capsule | `geometry.boolean.sdf_capsule` | Builds a capsule signed-distance-field primitive from segment endpoints and radius | `SdfCapsuleNode` |
 | SDF Torus | `geometry.boolean.sdf_torus` | Builds a torus signed-distance-field primitive around the Y axis from center and radii | `SdfTorusNode` |
 | SDF To Geometry | `geometry.boolean.sdf_to_geometry` | Wraps an SDF into GeometryData with explicit sampling bounds so it can be baked to blocks | `SdfToGeometryNode` |
+| SDF Sample Points | `geometry.boolean.sdf_sample_points` | Samples signed distance for each query point and outputs distance and inside lists | `SdfSamplePointsNode` |
 
 ## geometry.curves (16)
 

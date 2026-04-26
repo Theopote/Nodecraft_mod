@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**323**
+- **节点总数**：**324**
 - **分类总数**：**43**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -9,7 +9,7 @@
 
 | 分类 ID | 节点数 |
 |---|---:|
-| `geometry.boolean` | 12 |
+| `geometry.boolean` | 13 |
 | `geometry.curves` | 16 |
 | `geometry.primitives` | 19 |
 | `geometry.profiles` | 9 |
@@ -53,7 +53,7 @@
 | `world.selection` | 8 |
 | `world.write` | 16 |
 
-## geometry.boolean（12）
+## geometry.boolean（13）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -69,6 +69,7 @@
 | SDF Capsule | `geometry.boolean.sdf_capsule` | Builds a capsule signed-distance-field primitive from segment endpoints and radius | `SdfCapsuleNode` |
 | SDF Torus | `geometry.boolean.sdf_torus` | Builds a torus signed-distance-field primitive around the Y axis from center and radii | `SdfTorusNode` |
 | SDF To Geometry | `geometry.boolean.sdf_to_geometry` | Wraps an SDF into GeometryData with explicit sampling bounds so it can be baked to blocks | `SdfToGeometryNode` |
+| SDF Sample Points | `geometry.boolean.sdf_sample_points` | Samples signed distance for each query point and outputs distance and inside lists | `SdfSamplePointsNode` |
 
 ## geometry.curves（16）
 
