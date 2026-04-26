@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
 import java.util.UUID;
@@ -34,6 +35,7 @@ public class DeconstructIcosahedronNode extends BaseNode {
     private static final String OUTPUT_VOLUME_ID = "output_volume";
     private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_BOUNDING_BOX_ID = "output_bounding_box";
+    private static final String OUTPUT_ORIENTATION_ID = "output_orientation";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public DeconstructIcosahedronNode() {
@@ -49,6 +51,7 @@ public class DeconstructIcosahedronNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Interior volume", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", "Axis-aligned bounds", NodeDataType.BOUNDING_BOX, this));
+        addOutputPort(new BasePort(OUTPUT_ORIENTATION_ID, "Orientation", "Rotation matrix (local vertex frame → world)", NodeDataType.MATRIX3, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when input is present", NodeDataType.BOOLEAN, this));
     }
 
@@ -79,6 +82,7 @@ public class DeconstructIcosahedronNode extends BaseNode {
         outputValues.put(OUTPUT_VOLUME_ID, volume);
         outputValues.put(OUTPUT_REGION_ID, region);
         outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
+        outputValues.put(OUTPUT_ORIENTATION_ID, icosa.getOrientationMatrix());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
@@ -91,6 +95,7 @@ public class DeconstructIcosahedronNode extends BaseNode {
         outputValues.put(OUTPUT_VOLUME_ID, 0.0d);
         outputValues.put(OUTPUT_REGION_ID, null);
         outputValues.put(OUTPUT_BOUNDING_BOX_ID, null);
+        outputValues.put(OUTPUT_ORIENTATION_ID, new Matrix3d().identity());
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 

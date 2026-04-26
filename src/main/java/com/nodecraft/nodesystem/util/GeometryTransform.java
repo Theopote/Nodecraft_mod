@@ -241,16 +241,20 @@ public final class GeometryTransform {
             );
         }
         if (geometry instanceof OctahedronGeometryData oct) {
-            return new OctahedronGeometryData(transformPoint(oct.getCenter(), t, r, s), oct.getVertexRadius() * s);
+            Matrix3d rLocal = new Matrix3d(r).mul(oct.getOrientationMatrix());
+            return new OctahedronGeometryData(transformPoint(oct.getCenter(), t, r, s), oct.getVertexRadius() * s, rLocal);
         }
         if (geometry instanceof TetrahedronGeometryData tet) {
-            return new TetrahedronGeometryData(transformPoint(tet.getCenter(), t, r, s), tet.getEdgeLength() * s);
+            Matrix3d rLocal = new Matrix3d(r).mul(tet.getOrientationMatrix());
+            return new TetrahedronGeometryData(transformPoint(tet.getCenter(), t, r, s), tet.getEdgeLength() * s, rLocal);
         }
         if (geometry instanceof IcosahedronGeometryData ico) {
-            return new IcosahedronGeometryData(transformPoint(ico.getCenter(), t, r, s), ico.getEdgeLength() * s);
+            Matrix3d rLocal = new Matrix3d(r).mul(ico.getOrientationMatrix());
+            return new IcosahedronGeometryData(transformPoint(ico.getCenter(), t, r, s), ico.getEdgeLength() * s, rLocal);
         }
         if (geometry instanceof DodecahedronGeometryData dod) {
-            return new DodecahedronGeometryData(transformPoint(dod.getCenter(), t, r, s), dod.getEdgeLength() * s);
+            Matrix3d rLocal = new Matrix3d(r).mul(dod.getOrientationMatrix());
+            return new DodecahedronGeometryData(transformPoint(dod.getCenter(), t, r, s), dod.getEdgeLength() * s, rLocal);
         }
         if (geometry instanceof SdfGeometryData sdfGeom) {
             SignedDistanceFieldData sdf = sdfGeom.getSdf();

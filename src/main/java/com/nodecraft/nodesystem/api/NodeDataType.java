@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.datatypes.*;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.Curve;
 import net.minecraft.util.math.BlockPos;
+import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
 /**
@@ -17,6 +18,7 @@ public enum NodeDataType {
     STRING("string", "String", String.class),
     INTEGER("integer", "Integer", Integer.class),
     DOUBLE("double", "Double", Double.class),
+    MATRIX3("matrix3", "Matrix3", Matrix3d.class),
     BOOLEAN("boolean", "Boolean", Boolean.class),
 
     FLOAT("float", "Float", Float.class),

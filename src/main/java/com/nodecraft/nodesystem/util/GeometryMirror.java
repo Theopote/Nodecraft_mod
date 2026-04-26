@@ -151,16 +151,20 @@ public final class GeometryMirror {
             return new SquarePyramidGeometryData(baseCenter, xAxis, yAxis, normal, pyramid.getBaseSize(), height);
         }
         if (geometry instanceof OctahedronGeometryData oct) {
-            return new OctahedronGeometryData(mirrorPoint(oct.getCenter(), plane), oct.getVertexRadius());
+            Matrix3d rm = new Matrix3d(reflectionMatrix3(plane.getNormal())).mul(oct.getOrientationMatrix());
+            return new OctahedronGeometryData(mirrorPoint(oct.getCenter(), plane), oct.getVertexRadius(), rm);
         }
         if (geometry instanceof TetrahedronGeometryData tet) {
-            return new TetrahedronGeometryData(mirrorPoint(tet.getCenter(), plane), tet.getEdgeLength());
+            Matrix3d rm = new Matrix3d(reflectionMatrix3(plane.getNormal())).mul(tet.getOrientationMatrix());
+            return new TetrahedronGeometryData(mirrorPoint(tet.getCenter(), plane), tet.getEdgeLength(), rm);
         }
         if (geometry instanceof IcosahedronGeometryData ico) {
-            return new IcosahedronGeometryData(mirrorPoint(ico.getCenter(), plane), ico.getEdgeLength());
+            Matrix3d rm = new Matrix3d(reflectionMatrix3(plane.getNormal())).mul(ico.getOrientationMatrix());
+            return new IcosahedronGeometryData(mirrorPoint(ico.getCenter(), plane), ico.getEdgeLength(), rm);
         }
         if (geometry instanceof DodecahedronGeometryData dod) {
-            return new DodecahedronGeometryData(mirrorPoint(dod.getCenter(), plane), dod.getEdgeLength());
+            Matrix3d rm = new Matrix3d(reflectionMatrix3(plane.getNormal())).mul(dod.getOrientationMatrix());
+            return new DodecahedronGeometryData(mirrorPoint(dod.getCenter(), plane), dod.getEdgeLength(), rm);
         }
         return null;
     }

@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.util;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.TetrahedronGeometryData;
 import net.minecraft.util.math.BlockPos;
+import org.joml.Matrix3d;
 import org.joml.Vector3d;
 import org.jspecify.annotations.NonNull;
 
@@ -12,11 +13,28 @@ public final class TetrahedronBlockGenerator {
     }
 
     public static RegionData createBoundingRegion(TetrahedronGeometryData geometry) {
-        double circumR = geometry.getCircumradius();
         Vector3d center = geometry.getCenter();
+        double[][] offsets = getRotatedLocalOffsets(geometry);
+        double minX = Double.POSITIVE_INFINITY;
+        double minY = Double.POSITIVE_INFINITY;
+        double minZ = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+        double maxZ = Double.NEGATIVE_INFINITY;
+        for (double[] o : offsets) {
+            double wx = center.x + o[0];
+            double wy = center.y + o[1];
+            double wz = center.z + o[2];
+            minX = Math.min(minX, wx);
+            minY = Math.min(minY, wy);
+            minZ = Math.min(minZ, wz);
+            maxX = Math.max(maxX, wx);
+            maxY = Math.max(maxY, wy);
+            maxZ = Math.max(maxZ, wz);
+        }
         return new RegionData(
-            BlockPos.ofFloored(center.x - circumR - 1.0d, center.y - circumR - 1.0d, center.z - circumR - 1.0d),
-            BlockPos.ofFloored(center.x + circumR + 1.0d, center.y + circumR + 1.0d, center.z + circumR + 1.0d)
+            BlockPos.ofFloored(minX - 1.0d, minY - 1.0d, minZ - 1.0d),
+            BlockPos.ofFloored(maxX + 1.0d, maxY + 1.0d, maxZ + 1.0d)
         );
     }
 
@@ -34,7 +52,7 @@ public final class TetrahedronBlockGenerator {
         }
 
         Vector3d center = geometry.getCenter();
-        double[][] vertices = getDoubles(geometry);
+        double[][] vertices = getRotatedLocalOffsets(geometry);
 
         int[][] faces = {{1, 2, 3}, {0, 3, 2}, {0, 1, 3}, {0, 2, 1}};
         double[][] normals = new double[4][3];
@@ -84,8 +102,22 @@ public final class TetrahedronBlockGenerator {
         }
     }
 
-    private static double[] @NonNull [] getDoubles(TetrahedronGeometryData geometry) {
-        double edgeLength = geometry.getEdgeLength();
+    private static double[] @NonNull [] getRotatedLocalOffsets(TetrahedronGeometryData geometry) {
+        double[][] canon = getCanonicalLocalDoubles(geometry.getEdgeLength());
+        Matrix3d r = geometry.getOrientationMatrix();
+        Vector3d tmp = new Vector3d();
+        double[][] out = new double[4][3];
+        for (int i = 0; i < 4; i++) {
+            tmp.set(canon[i][0], canon[i][1], canon[i][2]);
+            r.transform(tmp);
+            out[i][0] = tmp.x;
+            out[i][1] = tmp.y;
+            out[i][2] = tmp.z;
+        }
+        return out;
+    }
+
+    private static double[] @NonNull [] getCanonicalLocalDoubles(double edgeLength) {
         double circumR = edgeLength * Math.sqrt(6.0d) / 4.0d;
 
         double h = circumR;

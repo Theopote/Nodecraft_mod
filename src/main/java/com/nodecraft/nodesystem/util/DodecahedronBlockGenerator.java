@@ -1,8 +1,8 @@
 package com.nodecraft.nodesystem.util;
 
 import com.nodecraft.nodesystem.datatypes.DodecahedronGeometryData;
-import org.joml.Vector3d;
 import com.nodecraft.nodesystem.datatypes.RegionData;
+import org.joml.Vector3d;
 
 public final class DodecahedronBlockGenerator {
 
@@ -11,7 +11,8 @@ public final class DodecahedronBlockGenerator {
 
     public static RegionData createBoundingRegion(DodecahedronGeometryData geometry) {
         Vector3d[] local = PlatonicSolidTables.dodecahedronVertices(geometry.getCircumradius());
-        return ConvexTriangleMeshBlockGenerator.createBoundingRegion(new Vector3d(geometry.getCenter()), local);
+        Vector3d[] rotated = PolyhedronOrientationUtil.transformLocalVertices(geometry.getOrientationMatrix(), local);
+        return ConvexTriangleMeshBlockGenerator.createBoundingRegion(new Vector3d(geometry.getCenter()), rotated);
     }
 
     public static void populateDodecahedron(BlockPosList blocks,
@@ -21,11 +22,12 @@ public final class DodecahedronBlockGenerator {
             return;
         }
         Vector3d[] local = PlatonicSolidTables.dodecahedronVertices(geometry.getCircumradius());
+        Vector3d[] rotated = PolyhedronOrientationUtil.transformLocalVertices(geometry.getOrientationMatrix(), local);
         ConvexTriangleMeshBlockGenerator.populateConvexHull(
             blocks,
             region,
             new Vector3d(geometry.getCenter()),
-            local,
+            rotated,
             PlatonicSolidTables.dodecahedronTriangleIndices()
         );
     }
