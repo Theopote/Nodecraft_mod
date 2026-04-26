@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **345**
+- Total nodes: **347**
 - Total categories: **43**
 
 ## Category Statistics
@@ -11,7 +11,7 @@
 | `geometry.boolean` | 19 |
 | `geometry.curves` | 18 |
 | `geometry.primitives` | 19 |
-| `geometry.profiles` | 22 |
+| `geometry.profiles` | 24 |
 | `geometry.solids` | 17 |
 | `input.values` | 3 |
 | `input.context` | 4 |
@@ -123,7 +123,7 @@
 | Deconstruct Tetrahedron | `geometry.primitives.deconstruct_tetrahedron` | Extracts center, edge length, vertices, bounds, and analytical values from tetrahedron geometry | `DeconstructTetrahedronNode` |
 | Deconstruct Prism | `geometry.primitives.deconstruct_prism` | Extracts base polygon, top polygon, extrusion, side surface strip, and bounds from prism geometry | `DeconstructPrismNode` |
 
-## geometry.profiles (22)
+## geometry.profiles (24)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -148,6 +148,8 @@
 | Annular Sector On Plane | `geometry.profiles.annular_sector_profile` | Constructs an annular sector boundary from center, inner/outer radii, angle range, and plane | `AnnularSectorOnPlaneNode` |
 | Cross On Plane | `geometry.profiles.cross_profile` | Constructs a plus-shaped cross profile from arm length, arm width, center, and plane | `CrossOnPlaneNode` |
 | Gear On Plane | `geometry.profiles.gear_profile` | Constructs a gear-like profile from center, tooth count, root/tip radii, and plane | `GearOnPlaneNode` |
+| Profile Offset In Plane | `geometry.profiles.offset_profile_plane` | Offsets a polygon profile in its plane by signed distance using 2D buffer logic | `ProfileOffsetInPlaneNode` |
+| Profile Boolean 2D | `geometry.profiles.boolean_2d` | Performs 2D boolean operations (union/intersection/difference) on two polygon profiles in a shared plane | `ProfileBoolean2DNode` |
 | Window Array | `geometry.architectural_primitives.window_array` | Generates a rectangular array of inset window opening boxes on a box face | `WindowArrayNode` |
 
 ## geometry.solids (17)
