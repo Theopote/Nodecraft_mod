@@ -34,6 +34,7 @@ public class PreviewGeometryNode extends BaseNode {
     private static final String INPUT_SPHERE_GEOMETRY_ID = "input_sphere_geometry";
     private static final String INPUT_TORUS_GEOMETRY_ID = "input_torus_geometry";
     private static final String INPUT_CONE_GEOMETRY_ID = "input_cone_geometry";
+    private static final String INPUT_FRUSTUM_CONE_GEOMETRY_ID = "input_frustum_cone_geometry";
     private static final String INPUT_ELLIPSOID_GEOMETRY_ID = "input_ellipsoid_geometry";
     private static final String INPUT_PRISM_GEOMETRY_ID = "input_prism_geometry";
     private static final String INPUT_TETRAHEDRON_GEOMETRY_ID = "input_tetrahedron_geometry";
@@ -92,6 +93,7 @@ public class PreviewGeometryNode extends BaseNode {
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data", NodeDataType.SPHERE, this));
         addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry data", NodeDataType.TORUS_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_CONE_GEOMETRY_ID, "Cone Geometry", "Cone geometry data", NodeDataType.CONE_GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_FRUSTUM_CONE_GEOMETRY_ID, "Frustum Cone Geometry", "Circular frustum (truncated cone) geometry data", NodeDataType.FRUSTUM_CONE_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_ELLIPSOID_GEOMETRY_ID, "Ellipsoid Geometry", "Ellipsoid geometry data", NodeDataType.ELLIPSOID_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_PRISM_GEOMETRY_ID, "Prism Geometry", "Prism geometry data", NodeDataType.PRISM_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_TETRAHEDRON_GEOMETRY_ID, "Tetrahedron Geometry", "Tetrahedron geometry data", NodeDataType.TETRAHEDRON_GEOMETRY, this));
@@ -212,6 +214,7 @@ public class PreviewGeometryNode extends BaseNode {
         collectGeometryInput(inputValues.get(INPUT_SPHERE_GEOMETRY_ID), geometries);
         collectGeometryInput(inputValues.get(INPUT_TORUS_GEOMETRY_ID), geometries);
         collectGeometryInput(inputValues.get(INPUT_CONE_GEOMETRY_ID), geometries);
+        collectGeometryInput(inputValues.get(INPUT_FRUSTUM_CONE_GEOMETRY_ID), geometries);
         collectGeometryInput(inputValues.get(INPUT_ELLIPSOID_GEOMETRY_ID), geometries);
         collectGeometryInput(inputValues.get(INPUT_PRISM_GEOMETRY_ID), geometries);
         collectGeometryInput(inputValues.get(INPUT_TETRAHEDRON_GEOMETRY_ID), geometries);

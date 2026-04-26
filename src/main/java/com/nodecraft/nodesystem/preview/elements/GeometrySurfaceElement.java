@@ -154,6 +154,8 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
             appendCylinder(builder, cylinder, quality);
         } else if (geometry instanceof ConeGeometryData cone) {
             appendCone(builder, cone, quality);
+        } else if (geometry instanceof FrustumConeGeometryData frustum) {
+            appendFrustumCone(builder, frustum, quality);
         } else if (geometry instanceof TorusGeometryData torus) {
             appendTorus(builder, torus, quality);
         } else if (geometry instanceof BoxGeometryData box) {
@@ -283,6 +285,61 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
             builder.addTriangle(b1, t0, t1);
             builder.addTriangle(bottomCenter, b1, b0);
             builder.addTriangle(topCenter, t0, t1);
+
+            builder.addSegment(b0, b1);
+            builder.addSegment(t0, t1);
+            builder.addSegment(b0, t0);
+        }
+    }
+
+    private void appendFrustumCone(MeshBuilder builder, FrustumConeGeometryData frustum, int quality) {
+        Vector3d start = frustum.getBaseCenter();
+        Vector3d end = frustum.getTopCenter();
+        double radiusBottom = frustum.getBaseRadius();
+        double radiusTop = frustum.getTopRadius();
+        Vector3d axis = new Vector3d(end).sub(start);
+        double height = axis.length();
+        if (height <= 1.0e-6d || (radiusBottom <= 1.0e-6d && radiusTop <= 1.0e-6d)) {
+            return;
+        }
+
+        Vector3d axisDir = axis.normalize();
+        Vector3d basisU = orthogonalUnit(axisDir);
+        Vector3d basisV = new Vector3d(axisDir).cross(basisU).normalize();
+
+        int segments = quality * 2;
+        List<Vec3d> bottom = new ArrayList<>(segments);
+        List<Vec3d> top = new ArrayList<>(segments);
+
+        for (int i = 0; i < segments; i++) {
+            double t = 2.0d * Math.PI * i / segments;
+            double cs = Math.cos(t);
+            double sn = Math.sin(t);
+            Vector3d offset = new Vector3d(basisU).mul(radiusBottom * cs).add(new Vector3d(basisV).mul(radiusBottom * sn));
+            bottom.add(toVec3d(new Vector3d(start).add(offset)));
+            Vector3d offsetTop = new Vector3d(basisU).mul(radiusTop * cs).add(new Vector3d(basisV).mul(radiusTop * sn));
+            top.add(toVec3d(new Vector3d(end).add(offsetTop)));
+        }
+
+        Vec3d bottomCenter = toVec3d(start);
+        Vec3d topCenter = toVec3d(end);
+
+        for (int i = 0; i < segments; i++) {
+            int next = (i + 1) % segments;
+
+            Vec3d b0 = bottom.get(i);
+            Vec3d b1 = bottom.get(next);
+            Vec3d t0 = top.get(i);
+            Vec3d t1 = top.get(next);
+
+            builder.addTriangle(b0, t0, b1);
+            builder.addTriangle(b1, t0, t1);
+            if (radiusBottom > 1.0e-6d) {
+                builder.addTriangle(bottomCenter, b1, b0);
+            }
+            if (radiusTop > 1.0e-6d) {
+                builder.addTriangle(topCenter, t0, t1);
+            }
 
             builder.addSegment(b0, b1);
             builder.addSegment(t0, t1);

@@ -35,6 +35,7 @@ public enum NodeDataType {
     BOX_GEOMETRY("box_geometry", "Box Geometry", BoxGeometryData.class),
     BOX_FACE("box_face", "Box Face", BoxFaceData.class),
     CONE_GEOMETRY("cone_geometry", "Cone Geometry", ConeGeometryData.class),
+    FRUSTUM_CONE_GEOMETRY("frustum_cone_geometry", "Frustum Cone Geometry", FrustumConeGeometryData.class),
     CYLINDER_GEOMETRY("cylinder_geometry", "Cylinder Geometry", CylinderGeometryData.class),
     ELLIPSOID_GEOMETRY("ellipsoid_geometry", "Ellipsoid Geometry", EllipsoidGeometryData.class),
     OCTAHEDRON_GEOMETRY("octahedron_geometry", "Octahedron Geometry", OctahedronGeometryData.class),

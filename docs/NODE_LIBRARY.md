@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **366**
+- Total nodes: **369**
 - Total categories: **46**
 
 ## Category Statistics
@@ -10,7 +10,7 @@
 |---|---:|
 | `geometry.boolean` | 19 |
 | `geometry.curves` | 18 |
-| `geometry.primitives` | 19 |
+| `geometry.primitives` | 22 |
 | `geometry.profiles` | 25 |
 | `geometry.solids` | 17 |
 | `input.values` | 3 |
@@ -102,7 +102,7 @@
 | Parabola On Plane | `geometry.curves.parabola_curve` | Builds a sampled parabola on a plane from vertex, curvature, x-range, and segment count | `ParabolaOnPlaneNode` |
 | Infinity Curve On Plane | `geometry.curves.infinity_curve` | Builds a sampled figure-eight (lemniscate-like) curve on a plane | `InfinityCurveOnPlaneNode` |
 
-## geometry.primitives (19)
+## geometry.primitives (22)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -112,6 +112,8 @@
 | Sphere By Center Radius | `geometry.primitives.sphere` | Constructs sphere geometry from a center point and radius | `SphereByCenterRadiusNode` |
 | Sphere By Diameter | `geometry.primitives.sphere_from_diameter` | Constructs sphere geometry from two diameter endpoints | `SphereByDiameterNode` |
 | Cylinder By Axis Radius | `geometry.primitives.cylinder` | Constructs cylinder geometry from two axis endpoints and a radius | `CylinderByAxisRadiusNode` |
+| Torus By Center Axis Radii | `geometry.primitives.torus` | Constructs torus geometry from a center, symmetry axis direction, major radius, and tube radius | `TorusByCenterAxisRadiiNode` |
+| Frustum By Two Centers Radii | `geometry.primitives.frustum_cone` | Constructs a circular frustum from two face centers and radii (top radius 0 yields a cone) | `FrustumByTwoCentersRadiiNode` |
 | Cone By Base Apex Radius | `geometry.primitives.cone` | Constructs cone geometry from a base center, apex point, and base radius | `ConeByBaseApexRadiusNode` |
 | Ellipsoid By Center Radii | `geometry.primitives.ellipsoid` | Constructs ellipsoid geometry from a center point and X/Y/Z radii | `EllipsoidByCenterRadiiNode` |
 | Octahedron By Center Size | `geometry.primitives.octahedron` | Constructs octahedron geometry from a center point and vertex radius | `OctahedronByCenterSizeNode` |
@@ -121,6 +123,7 @@
 | Deconstruct Sphere | `geometry.primitives.deconstruct_sphere` | Extracts center, radius, diameter, bounds, area, and volume from sphere geometry | `DeconstructSphereNode` |
 | Deconstruct Cylinder | `geometry.primitives.deconstruct_cylinder` | Extracts axis, radius, height, bounds, and analytical values from cylinder geometry | `DeconstructCylinderNode` |
 | Deconstruct Cone | `geometry.primitives.deconstruct_cone` | Extracts axis, height, radius, bounds, and analytical values from cone geometry | `DeconstructConeNode` |
+| Deconstruct Frustum Cone | `geometry.primitives.deconstruct_frustum_cone` | Extracts axis, radii, slant height, lateral/total surface area, volume, and bounds from frustum geometry | `DeconstructFrustumConeNode` |
 | Deconstruct Ellipsoid | `geometry.primitives.deconstruct_ellipsoid` | Extracts center, radii, bounds, volume, and approximate surface area from ellipsoid geometry | `DeconstructEllipsoidNode` |
 | Deconstruct Octahedron | `geometry.primitives.deconstruct_octahedron` | Extracts center, size, vertices, bounds, and analytical values from octahedron geometry | `DeconstructOctahedronNode` |
 | Deconstruct Tetrahedron | `geometry.primitives.deconstruct_tetrahedron` | Extracts center, edge length, vertices, bounds, and analytical values from tetrahedron geometry | `DeconstructTetrahedronNode` |

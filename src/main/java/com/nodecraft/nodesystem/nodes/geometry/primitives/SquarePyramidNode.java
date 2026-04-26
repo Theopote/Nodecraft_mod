@@ -20,7 +20,7 @@ import java.util.UUID;
     displayName = "Square Pyramid",
     description = "Constructs square pyramid geometry from a base center, base size, height, and plane",
     category = "geometry.primitives",
-    order = 10
+    order = 12
 )
 public class SquarePyramidNode extends BaseNode {
 

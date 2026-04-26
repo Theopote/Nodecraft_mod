@@ -20,7 +20,7 @@ import java.util.UUID;
     displayName = "Cone By Base Apex Radius",
     description = "Constructs cone geometry from a base center, apex point, and base radius",
     category = "geometry.primitives",
-    order = 6
+    order = 8
 )
 public class ConeByBaseApexRadiusNode extends BaseNode {
 

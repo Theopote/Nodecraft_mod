@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.util;
 
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
+import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.DifferenceGeometryData;
@@ -97,6 +98,9 @@ public final class GeometryVoxelizer {
         if (geometry instanceof ConeGeometryData coneGeometry) {
             return voxelizeCone(coneGeometry, fillSolid);
         }
+        if (geometry instanceof FrustumConeGeometryData frustumGeometry) {
+            return voxelizeFrustumCone(frustumGeometry, fillSolid);
+        }
         if (geometry instanceof CylinderGeometryData cylinderGeometry) {
             return voxelizeCylinder(cylinderGeometry, fillSolid);
         }
@@ -148,6 +152,9 @@ public final class GeometryVoxelizer {
         }
         if (geometry instanceof ConeGeometryData coneGeometry) {
             return ConeBlockGenerator.createBoundingRegion(coneGeometry);
+        }
+        if (geometry instanceof FrustumConeGeometryData frustumGeometry) {
+            return FrustumConeBlockGenerator.createBoundingRegion(frustumGeometry);
         }
         if (geometry instanceof CylinderGeometryData cylinderGeometry) {
             return CylinderBlockGenerator.createBoundingRegion(cylinderGeometry);
@@ -380,6 +387,13 @@ public final class GeometryVoxelizer {
         BlockPosList blocks = new BlockPosList();
         RegionData region = ConeBlockGenerator.createBoundingRegion(geometry);
         ConeBlockGenerator.populateCone(blocks, region, geometry, fillSolid);
+        return blocks;
+    }
+
+    public static BlockPosList voxelizeFrustumCone(FrustumConeGeometryData geometry, boolean fillSolid) {
+        BlockPosList blocks = new BlockPosList();
+        RegionData region = FrustumConeBlockGenerator.createBoundingRegion(geometry);
+        FrustumConeBlockGenerator.populateFrustum(blocks, region, geometry, fillSolid);
         return blocks;
     }
 

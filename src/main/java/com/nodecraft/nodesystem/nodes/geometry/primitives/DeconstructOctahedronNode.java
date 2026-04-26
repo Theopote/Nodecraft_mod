@@ -20,7 +20,7 @@ import java.util.UUID;
     displayName = "Deconstruct Octahedron",
     description = "Extracts center, size, vertices, bounds, and analytical values from octahedron geometry",
     category = "geometry.primitives",
-    order = 15
+    order = 16
 )
 public class DeconstructOctahedronNode extends BaseNode {
 

@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.ColorData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
+import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
@@ -879,6 +880,25 @@ public class PropertyPanelComponent implements EditorComponent {
             ImGui.text("Axis: " + formatVector3d(cone.getAxisVector()));
             ImGui.text(String.format("Height: %.2f", cone.getHeight()));
             ImGui.text(String.format("Base Radius: %.2f", cone.getBaseRadius()));
+        } catch (Throwable e) {
+            panel.handlePropertyError(prop, e);
+        }
+    };
+
+    private static final PropertyRenderer FRUSTUM_CONE_GEOMETRY_RENDERER = (panel, node, prop, isDisabled) -> {
+        try {
+            FrustumConeGeometryData frustum = (FrustumConeGeometryData) prop.getter.invoke(node);
+            if (frustum == null) {
+                ImGui.textDisabled("(绌?");
+                return;
+            }
+
+            ImGui.text("Base Center: " + formatVector3d(frustum.getBaseCenter()));
+            ImGui.text("Top Center: " + formatVector3d(frustum.getTopCenter()));
+            ImGui.text("Axis: " + formatVector3d(frustum.getAxisVector()));
+            ImGui.text(String.format("Height: %.2f", frustum.getHeight()));
+            ImGui.text(String.format("Base Radius: %.2f", frustum.getBaseRadius()));
+            ImGui.text(String.format("Top Radius: %.2f", frustum.getTopRadius()));
         } catch (Throwable e) {
             panel.handlePropertyError(prop, e);
         }
@@ -1829,6 +1849,7 @@ public class PropertyPanelComponent implements EditorComponent {
         registerRenderer(SquarePyramidGeometryData.class, SQUARE_PYRAMID_RENDERER);
         registerRenderer(TetrahedronGeometryData.class, TETRAHEDRON_RENDERER);
         registerRenderer(ConeGeometryData.class, CONE_GEOMETRY_RENDERER);
+        registerRenderer(FrustumConeGeometryData.class, FRUSTUM_CONE_GEOMETRY_RENDERER);
         registerRenderer(CylinderGeometryData.class, CYLINDER_GEOMETRY_RENDERER);
         registerRenderer(EllipsoidGeometryData.class, ELLIPSOID_GEOMETRY_RENDERER);
         registerRenderer(OctahedronGeometryData.class, OCTAHEDRON_RENDERER);

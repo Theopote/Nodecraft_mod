@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.util;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
+import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.DifferenceGeometryData;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
@@ -74,6 +75,14 @@ public final class GeometryMirror {
                 mirrorPoint(cone.getBaseCenter(), plane),
                 mirrorPoint(cone.getApex(), plane),
                 cone.getBaseRadius()
+            );
+        }
+        if (geometry instanceof FrustumConeGeometryData frustum) {
+            return new FrustumConeGeometryData(
+                mirrorPoint(frustum.getBaseCenter(), plane),
+                mirrorPoint(frustum.getTopCenter(), plane),
+                frustum.getBaseRadius(),
+                frustum.getTopRadius()
             );
         }
         if (geometry instanceof EllipsoidGeometryData ellipsoid) {

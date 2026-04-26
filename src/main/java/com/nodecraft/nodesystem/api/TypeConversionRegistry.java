@@ -137,6 +137,7 @@ public final class TypeConversionRegistry {
     private static boolean isSpecificGeometryType(NodeDataType type) {
         return type == NodeDataType.BOX_GEOMETRY
                 || type == NodeDataType.CONE_GEOMETRY
+                || type == NodeDataType.FRUSTUM_CONE_GEOMETRY
                 || type == NodeDataType.CYLINDER_GEOMETRY
                 || type == NodeDataType.ELLIPSOID_GEOMETRY
                 || type == NodeDataType.OCTAHEDRON_GEOMETRY

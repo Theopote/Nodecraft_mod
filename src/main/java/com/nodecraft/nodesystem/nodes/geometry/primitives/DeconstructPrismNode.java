@@ -21,7 +21,7 @@ import java.util.UUID;
     displayName = "Deconstruct Prism",
     description = "Extracts base polygon, top polygon, extrusion, side surface strip, and bounds from prism geometry",
     category = "geometry.primitives",
-    order = 17
+    order = 18
 )
 public class DeconstructPrismNode extends BaseNode {
 

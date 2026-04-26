@@ -18,7 +18,7 @@ import java.util.UUID;
     displayName = "Ellipsoid By Center Radii",
     description = "Constructs ellipsoid geometry from a center point and X/Y/Z radii",
     category = "geometry.primitives",
-    order = 7
+    order = 9
 )
 public class EllipsoidByCenterRadiiNode extends BaseNode {
 

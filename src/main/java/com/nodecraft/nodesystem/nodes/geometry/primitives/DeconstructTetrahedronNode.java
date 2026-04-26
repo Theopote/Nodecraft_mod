@@ -20,7 +20,7 @@ import java.util.UUID;
     displayName = "Deconstruct Tetrahedron",
     description = "Extracts center, edge length, vertices, bounds, and analytical values from tetrahedron geometry",
     category = "geometry.primitives",
-    order = 16
+    order = 17
 )
 public class DeconstructTetrahedronNode extends BaseNode {
 

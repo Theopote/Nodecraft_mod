@@ -182,6 +182,7 @@ final class PortTableRenderer {
                         "input_sphere_geometry".equals(portId) ||
                         "input_torus_geometry".equals(portId) ||
                         "input_cone_geometry".equals(portId) ||
+                        "input_frustum_cone_geometry".equals(portId) ||
                         "input_ellipsoid_geometry".equals(portId) ||
                         "input_prism_geometry".equals(portId) ||
                         "input_tetrahedron_geometry".equals(portId) ||

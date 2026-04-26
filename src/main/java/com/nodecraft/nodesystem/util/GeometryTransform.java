@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.util;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
+import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.DifferenceGeometryData;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
@@ -144,6 +145,14 @@ public final class GeometryTransform {
                 transformPoint(cone.getBaseCenter(), t, r, s),
                 transformPoint(cone.getApex(), t, r, s),
                 cone.getBaseRadius() * s
+            );
+        }
+        if (geometry instanceof FrustumConeGeometryData frustum) {
+            return new FrustumConeGeometryData(
+                transformPoint(frustum.getBaseCenter(), t, r, s),
+                transformPoint(frustum.getTopCenter(), t, r, s),
+                frustum.getBaseRadius() * s,
+                frustum.getTopRadius() * s
             );
         }
         if (geometry instanceof EllipsoidGeometryData ellipsoid) {
