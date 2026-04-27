@@ -5,12 +5,15 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.nodesystem.util.Coordinate;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -44,7 +47,7 @@ public class PreviewPointsNode extends BaseNode {
 
     public PreviewPointsNode() {
         super(UUID.randomUUID(), "output.preview.preview_points");
-        addInputPort(new BasePort(INPUT_POINT_ID, "Point", "Single reference point", NodeDataType.BLOCK_POS, this));
+        addInputPort(new BasePort(INPUT_POINT_ID, "Point", "Single reference point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "List of reference points", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether the preview was shown", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_PREVIEW_ID_ID, "Preview ID", "Active preview identifier", NodeDataType.STRING, this));
@@ -91,6 +94,13 @@ public class PreviewPointsNode extends BaseNode {
     private void collectPoint(Object value, List<Coordinate> out) {
         if (value instanceof Coordinate coordinate) {
             out.add(coordinate);
+        } else if (value instanceof PointData pointData) {
+            Vector3d p = pointData.getPosition();
+            out.add(new Coordinate((int) Math.round(p.x), (int) Math.round(p.y), (int) Math.round(p.z)));
+        } else if (value instanceof Vector3d vector) {
+            out.add(new Coordinate((int) Math.round(vector.x), (int) Math.round(vector.y), (int) Math.round(vector.z)));
+        } else if (value instanceof Vec3d vec) {
+            out.add(new Coordinate((int) Math.round(vec.x), (int) Math.round(vec.y), (int) Math.round(vec.z)));
         } else if (value instanceof BlockPos pos) {
             out.add(new Coordinate(pos.getX(), pos.getY(), pos.getZ()));
         }

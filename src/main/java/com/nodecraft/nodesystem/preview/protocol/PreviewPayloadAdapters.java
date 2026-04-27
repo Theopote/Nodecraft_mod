@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.preview.protocol;
 
 import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.Coordinate;
@@ -8,6 +9,7 @@ import com.nodecraft.nodesystem.util.Curve;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -157,7 +159,8 @@ public final class PreviewPayloadAdapters {
         if (previewItem instanceof List<?> rawList) {
             List<Vec3d> pts = new ArrayList<>(rawList.size());
             for (Object o : rawList) {
-                if (o instanceof Vec3d v) {
+                Vec3d v = resolveVec3(o);
+                if (v != null) {
                     pts.add(v);
                 }
             }
@@ -165,6 +168,26 @@ public final class PreviewPayloadAdapters {
                 return previewCurveFromWorldPoints(pts, false);
             }
             return null;
+        }
+        return null;
+    }
+
+    private static @Nullable Vec3d resolveVec3(@Nullable Object value) {
+        if (value instanceof Vec3d vec) {
+            return vec;
+        }
+        if (value instanceof PointData pointData) {
+            Vector3d p = pointData.getPosition();
+            return new Vec3d(p.x, p.y, p.z);
+        }
+        if (value instanceof Vector3d vector) {
+            return new Vec3d(vector.x, vector.y, vector.z);
+        }
+        if (value instanceof BlockPos blockPos) {
+            return new Vec3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
+        }
+        if (value instanceof Coordinate coordinate) {
+            return new Vec3d(coordinate.getX(), coordinate.getY(), coordinate.getZ());
         }
         return null;
     }

@@ -14,6 +14,7 @@ import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.nodesystem.preview.protocol.PreviewCurvePayload;
 import com.nodecraft.nodesystem.preview.protocol.PreviewPayloadAdapters;
 import com.nodecraft.nodesystem.util.Color;
+import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.Curve;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -223,6 +224,9 @@ public class PreviewPathsNode extends BaseNode {
         }
         if (value instanceof BlockPos blockPos) {
             return new Vec3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
+        }
+        if (value instanceof Coordinate coordinate) {
+            return new Vec3d(coordinate.getX(), coordinate.getY(), coordinate.getZ());
         }
         if (value instanceof Vec3d vec) {
             return vec;
