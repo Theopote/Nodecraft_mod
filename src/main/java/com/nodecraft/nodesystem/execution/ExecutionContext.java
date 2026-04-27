@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.execution;
 
+import com.nodecraft.nodesystem.minecraft.DefaultPlayerAccessor;
 import com.nodecraft.nodesystem.minecraft.PlayerAccessor;
 import java.util.Collections;
 import java.util.HashMap;
@@ -23,6 +24,7 @@ public class ExecutionContext implements com.nodecraft.nodesystem.api.ExecutionC
     
     // 玩家数据访问器
     private PlayerAccessor playerAccessor;
+    private final PlayerAccessor defaultPlayerAccessor;
     
     // 执行状态
     private boolean success = true;
@@ -32,6 +34,7 @@ public class ExecutionContext implements com.nodecraft.nodesystem.api.ExecutionC
     public ExecutionContext(World world, @Nullable ServerPlayerEntity player) {
         this.world = world;
         this.player = player;
+        this.defaultPlayerAccessor = new DefaultPlayerAccessor(world, player);
     }
     
     public World getWorld() {
@@ -53,14 +56,14 @@ public class ExecutionContext implements com.nodecraft.nodesystem.api.ExecutionC
      * @return 玩家数据访问器，如果不可用则返回null
      */
     public PlayerAccessor getPlayerAccessor() {
-        return playerAccessor;
+        return playerAccessor != null ? playerAccessor : defaultPlayerAccessor;
     }
     
     /**
      * 设置玩家数据访问器
      * @param playerAccessor 玩家数据访问器
      */
-    public void setPlayerAccessor(PlayerAccessor playerAccessor) {
+    public void setPlayerAccessor(@Nullable PlayerAccessor playerAccessor) {
         this.playerAccessor = playerAccessor;
     }
     
