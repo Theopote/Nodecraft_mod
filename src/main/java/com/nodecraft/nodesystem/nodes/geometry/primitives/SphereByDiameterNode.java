@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -64,16 +65,21 @@ public class SphereByDiameterNode extends BaseNode {
         Vector3d start = resolvePoint(startInput);
         Vector3d end = resolvePoint(endInput);
 
-        if ((start == null || end == null) && startInput instanceof LineData diameterLine) {
-            Vec3d lineStart = diameterLine.getStart();
-            Vec3d lineEnd = diameterLine.getEnd();
-            start = new Vector3d(lineStart.x, lineStart.y, lineStart.z);
-            end = new Vector3d(lineEnd.x, lineEnd.y, lineEnd.z);
-        } else if ((start == null || end == null) && endInput instanceof LineData diameterLine) {
-            Vec3d lineStart = diameterLine.getStart();
-            Vec3d lineEnd = diameterLine.getEnd();
-            start = new Vector3d(lineStart.x, lineStart.y, lineStart.z);
-            end = new Vector3d(lineEnd.x, lineEnd.y, lineEnd.z);
+        if (start == null || end == null) {
+            LineData diameterLine = extractLine(startInput);
+            if (diameterLine == null) {
+                diameterLine = extractLine(endInput);
+            }
+            if (diameterLine != null) {
+                Vec3d lineStart = diameterLine.getStart();
+                Vec3d lineEnd = diameterLine.getEnd();
+                if (start == null) {
+                    start = new Vector3d(lineStart.x, lineStart.y, lineStart.z);
+                }
+                if (end == null) {
+                    end = new Vector3d(lineEnd.x, lineEnd.y, lineEnd.z);
+                }
+            }
         }
 
         if (start == null || end == null) {
@@ -118,6 +124,9 @@ public class SphereByDiameterNode extends BaseNode {
         if (value instanceof PointData pointData) {
             return pointData.getPosition();
         }
+        if (value instanceof PlaneData planeData) {
+            return planeData.getPoint();
+        }
         if (value instanceof Coordinate coordinate) {
             return new Vector3d(coordinate.getX(), coordinate.getY(), coordinate.getZ());
         }
@@ -129,6 +138,13 @@ public class SphereByDiameterNode extends BaseNode {
         }
         if (value instanceof BlockPos blockPos) {
             return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
+        }
+        return null;
+    }
+
+    private LineData extractLine(Object value) {
+        if (value instanceof LineData lineData) {
+            return lineData;
         }
         return null;
     }

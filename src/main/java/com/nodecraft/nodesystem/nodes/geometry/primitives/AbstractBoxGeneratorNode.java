@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
+import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
@@ -323,6 +324,14 @@ public abstract class AbstractBoxGeneratorNode extends BaseNode {
         if (value instanceof BlockPos blockPos) {
             return blockPos;
         }
+        if (value instanceof LineData lineData) {
+            Vec3d start = lineData.getStart();
+            return BlockPos.ofFloored(start.x, start.y, start.z);
+        }
+        if (value instanceof PlaneData planeData) {
+            Vector3d point = planeData.getPoint();
+            return BlockPos.ofFloored(point.x, point.y, point.z);
+        }
         if (value instanceof Coordinate coordinate) {
             return new BlockPos(coordinate.getX(), coordinate.getY(), coordinate.getZ());
         }
@@ -340,6 +349,13 @@ public abstract class AbstractBoxGeneratorNode extends BaseNode {
     }
 
     protected @Nullable Vector3d resolveVectorInput(@Nullable Object value) {
+        if (value instanceof LineData lineData) {
+            Vec3d start = lineData.getStart();
+            return new Vector3d(start.x, start.y, start.z);
+        }
+        if (value instanceof PlaneData planeData) {
+            return planeData.getPoint();
+        }
         if (value instanceof PointData pointData) {
             return new Vector3d(pointData.getPosition());
         }

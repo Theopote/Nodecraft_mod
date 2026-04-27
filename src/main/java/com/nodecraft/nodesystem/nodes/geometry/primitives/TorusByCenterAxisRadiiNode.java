@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.TorusGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -107,6 +108,9 @@ public class TorusByCenterAxisRadiiNode extends BaseNode {
         if (value instanceof PointData pointData) {
             return pointData.getPosition();
         }
+        if (value instanceof PlaneData planeData) {
+            return planeData.getPoint();
+        }
         if (value instanceof Coordinate coordinate) {
             return new Vector3d(coordinate.getX(), coordinate.getY(), coordinate.getZ());
         }
@@ -127,6 +131,9 @@ public class TorusByCenterAxisRadiiNode extends BaseNode {
             Vec3d start = lineData.getStart();
             Vec3d end = lineData.getEnd();
             return new Vector3d(end.x - start.x, end.y - start.y, end.z - start.z);
+        }
+        if (value instanceof PlaneData planeData) {
+            return planeData.getNormal();
         }
         return resolvePoint(value);
     }
