@@ -1397,6 +1397,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             NodeCraft.LOGGER.info("启用节点: {}", nodeId);
         } else {
             disabledNodes.add(nodeId);
+            clearNodePreviewArtifacts(nodeId);
             NodeCraft.LOGGER.info("禁用节点: {}", nodeId);
         }
         
@@ -1412,6 +1413,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         
         if (disabled) {
             disabledNodes.add(nodeId);
+            clearNodePreviewArtifacts(nodeId);
         } else {
             disabledNodes.remove(nodeId);
         }
@@ -1479,6 +1481,16 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
      */
     public java.util.Set<UUID> getHiddenNodes() {
         return new HashSet<>(hiddenNodes);
+    }
+
+    private void clearNodePreviewArtifacts(UUID nodeId) {
+        if (nodeId == null) {
+            return;
+        }
+        String ownerNodeId = nodeId.toString();
+        com.nodecraft.nodesystem.preview.PreviewManager.hideNodePreviews(ownerNodeId);
+        com.nodecraft.nodesystem.preview.TrackedPreviewPlacementService.getInstance()
+            .clearTrackedPreviewAcrossWorlds(ownerNodeId);
     }
 
     /**
