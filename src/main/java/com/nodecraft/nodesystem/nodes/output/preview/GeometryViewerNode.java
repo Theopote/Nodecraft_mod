@@ -198,11 +198,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
             clearAllPreviewState(context);
             statusMessage = "Preview disabled";
         } else {
-            // Property-panel graph evaluation can run without execution context and intermittent empty inputs.
-            // Avoid wiping an active ghost preview in that path.
-            if (!(previewBackend == PreviewBackend.GHOST && context == null)) {
-                clearAllPreviewState(context);
-            }
+            clearAllPreviewState(context);
             statusMessage = "Waiting for input...";
         }
 
