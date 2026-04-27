@@ -41,7 +41,7 @@ public class HelixCurveNode extends BaseNode {
 
     public HelixCurveNode() {
         super(UUID.randomUUID(), "geometry.curves.helix");
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Helix base center", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Helix base center point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_AXIS_ID, "Axis", "Helix axis direction", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Helix radius", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_PITCH_ID, "Pitch", "Vertical advance per turn", NodeDataType.DOUBLE, this));
@@ -159,4 +159,3 @@ public class HelixCurveNode extends BaseNode {
         return v instanceof Number n ? n.intValue() : fallback;
     }
 }
-

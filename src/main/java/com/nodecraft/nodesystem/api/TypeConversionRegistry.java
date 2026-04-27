@@ -33,6 +33,10 @@ public final class TypeConversionRegistry {
             return ConversionPolicy.IMPLICIT_SAFE;
         }
 
+        if (isCoordinateToPositionCompatible(output, input)) {
+            return ConversionPolicy.IMPLICIT_SAFE;
+        }
+
         if (isNumericType(output) && isNumericType(input)) {
             return ConversionPolicy.IMPLICIT_SAFE;
         }
@@ -163,6 +167,11 @@ public final class TypeConversionRegistry {
 
     private static boolean isVectorAlias(NodeDataType type) {
         return type == NodeDataType.VECTOR || type == NodeDataType.POSITION;
+    }
+
+    private static boolean isCoordinateToPositionCompatible(NodeDataType outputType, NodeDataType inputType) {
+        return isCoordinateAlias(outputType)
+                && (inputType == NodeDataType.POINT || isVectorAlias(inputType));
     }
 
     private static boolean isCoordinateListAlias(NodeDataType type) {

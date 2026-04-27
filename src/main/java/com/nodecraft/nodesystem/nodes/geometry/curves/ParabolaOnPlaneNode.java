@@ -41,7 +41,7 @@ public class ParabolaOnPlaneNode extends BaseNode {
 
     public ParabolaOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.curves.parabola_curve");
-        addInputPort(new BasePort(INPUT_VERTEX_ID, "Vertex", "Parabola vertex point", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_VERTEX_ID, "Vertex", "Parabola vertex point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_CURVATURE_ID, "Curvature", "Parabola curvature factor (y = a*x^2)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_X_MIN_ID, "X Min", "Minimum local x", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_X_MAX_ID, "X Max", "Maximum local x", NodeDataType.DOUBLE, this));

@@ -39,7 +39,7 @@ public class InfinityCurveOnPlaneNode extends BaseNode {
 
     public InfinityCurveOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.curves.infinity_curve");
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Curve center point", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Curve center point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_SIZE_ID, "Size", "Overall curve scale", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Sample segment count", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XY plane", NodeDataType.PLANE, this));
