@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import net.minecraft.util.math.BlockPos;
+import org.joml.Vector3d;
 
 @NodeInfo(
     id = "geometry.primitives.box_from_corner_size",
@@ -57,27 +58,47 @@ public class BoxCornerSizeNode extends AbstractBoxGeneratorNode {
         Object rotYObj = inputValues.get(INPUT_ROT_Y_ID);
         Object rotZObj = inputValues.get(INPUT_ROT_Z_ID);
 
-        BlockPos corner = resolveBlockPosInput(cornerObj);
-        if (corner == null
-            || !(sizeXObj instanceof Number sizeX)
-            || !(sizeYObj instanceof Number sizeY)
-            || !(sizeZObj instanceof Number sizeZ)) {
+        Vector3d cornerVector = resolveVectorInput(cornerObj);
+        Integer sizeX = resolveInt(sizeXObj);
+        Integer sizeY = resolveInt(sizeYObj);
+        Integer sizeZ = resolveInt(sizeZObj);
+        if (cornerVector == null || sizeX == null || sizeY == null || sizeZ == null) {
             return null;
         }
+        BlockPos corner = BlockPos.ofFloored(cornerVector.x, cornerVector.y, cornerVector.z);
 
-        double rotationX = rotXObj instanceof Number number ? number.doubleValue() : 0.0d;
-        double rotationY = rotYObj instanceof Number number ? number.doubleValue() : 0.0d;
-        double rotationZ = rotZObj instanceof Number number ? number.doubleValue() : 0.0d;
+        double rotationX = resolveFiniteDouble(rotXObj, 0.0d);
+        double rotationY = resolveFiniteDouble(rotYObj, 0.0d);
+        double rotationZ = resolveFiniteDouble(rotZObj, 0.0d);
 
         return createCornerAndSizeDefinition(
             corner,
-            sizeX.intValue(),
-            sizeY.intValue(),
-            sizeZ.intValue(),
+            sizeX,
+            sizeY,
+            sizeZ,
             planeObj,
             rotationX,
             rotationY,
             rotationZ
         );
+    }
+
+    private Integer resolveInt(Object value) {
+        if (!(value instanceof Number number)) {
+            return null;
+        }
+        double asDouble = number.doubleValue();
+        if (!Double.isFinite(asDouble)) {
+            return null;
+        }
+        return number.intValue();
+    }
+
+    private double resolveFiniteDouble(Object value, double fallback) {
+        if (!(value instanceof Number number)) {
+            return fallback;
+        }
+        double resolved = number.doubleValue();
+        return Double.isFinite(resolved) ? resolved : fallback;
     }
 }
