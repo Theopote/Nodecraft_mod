@@ -299,35 +299,53 @@ public class BlockHighlightElement extends AbstractPreviewElement {
      * 渲染立方体的6个面
      */
     private void renderCubeFaces(VertexConsumer vertexConsumer, Matrix4f matrix, float x, float y, float z, float r, float g, float b, float a) {
-        vertexConsumer.vertex(matrix, x, y, z).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y, z).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y, z + 1).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x, y, z + 1).color(r, g, b, a);
+        // bottom face — normal (0, -1, 0)
+        filledVertex(vertexConsumer, matrix, x,     y,     z,     r, g, b, a,  0, -1,  0);
+        filledVertex(vertexConsumer, matrix, x + 1, y,     z,     r, g, b, a,  0, -1,  0);
+        filledVertex(vertexConsumer, matrix, x + 1, y,     z + 1, r, g, b, a,  0, -1,  0);
+        filledVertex(vertexConsumer, matrix, x,     y,     z + 1, r, g, b, a,  0, -1,  0);
 
-        vertexConsumer.vertex(matrix, x, y + 1, z + 1).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y + 1, z + 1).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y + 1, z).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x, y + 1, z).color(r, g, b, a);
+        // top face — normal (0, 1, 0)
+        filledVertex(vertexConsumer, matrix, x,     y + 1, z + 1, r, g, b, a,  0,  1,  0);
+        filledVertex(vertexConsumer, matrix, x + 1, y + 1, z + 1, r, g, b, a,  0,  1,  0);
+        filledVertex(vertexConsumer, matrix, x + 1, y + 1, z,     r, g, b, a,  0,  1,  0);
+        filledVertex(vertexConsumer, matrix, x,     y + 1, z,     r, g, b, a,  0,  1,  0);
 
-        vertexConsumer.vertex(matrix, x, y, z).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x, y + 1, z).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y + 1, z).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y, z).color(r, g, b, a);
+        // north face — normal (0, 0, -1)
+        filledVertex(vertexConsumer, matrix, x,     y,     z,     r, g, b, a,  0,  0, -1);
+        filledVertex(vertexConsumer, matrix, x,     y + 1, z,     r, g, b, a,  0,  0, -1);
+        filledVertex(vertexConsumer, matrix, x + 1, y + 1, z,     r, g, b, a,  0,  0, -1);
+        filledVertex(vertexConsumer, matrix, x + 1, y,     z,     r, g, b, a,  0,  0, -1);
 
-        vertexConsumer.vertex(matrix, x + 1, y, z + 1).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y + 1, z + 1).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x, y + 1, z + 1).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x, y, z + 1).color(r, g, b, a);
+        // south face — normal (0, 0, 1)
+        filledVertex(vertexConsumer, matrix, x + 1, y,     z + 1, r, g, b, a,  0,  0,  1);
+        filledVertex(vertexConsumer, matrix, x + 1, y + 1, z + 1, r, g, b, a,  0,  0,  1);
+        filledVertex(vertexConsumer, matrix, x,     y + 1, z + 1, r, g, b, a,  0,  0,  1);
+        filledVertex(vertexConsumer, matrix, x,     y,     z + 1, r, g, b, a,  0,  0,  1);
 
-        vertexConsumer.vertex(matrix, x, y, z + 1).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x, y + 1, z + 1).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x, y + 1, z).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x, y, z).color(r, g, b, a);
+        // west face — normal (-1, 0, 0)
+        filledVertex(vertexConsumer, matrix, x,     y,     z + 1, r, g, b, a, -1,  0,  0);
+        filledVertex(vertexConsumer, matrix, x,     y + 1, z + 1, r, g, b, a, -1,  0,  0);
+        filledVertex(vertexConsumer, matrix, x,     y + 1, z,     r, g, b, a, -1,  0,  0);
+        filledVertex(vertexConsumer, matrix, x,     y,     z,     r, g, b, a, -1,  0,  0);
 
-        vertexConsumer.vertex(matrix, x + 1, y, z).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y + 1, z).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y + 1, z + 1).color(r, g, b, a);
-        vertexConsumer.vertex(matrix, x + 1, y, z + 1).color(r, g, b, a);
+        // east face — normal (1, 0, 0)
+        filledVertex(vertexConsumer, matrix, x + 1, y,     z,     r, g, b, a,  1,  0,  0);
+        filledVertex(vertexConsumer, matrix, x + 1, y + 1, z,     r, g, b, a,  1,  0,  0);
+        filledVertex(vertexConsumer, matrix, x + 1, y + 1, z + 1, r, g, b, a,  1,  0,  0);
+        filledVertex(vertexConsumer, matrix, x + 1, y,     z + 1, r, g, b, a,  1,  0,  0);
+    }
+
+    private void filledVertex(VertexConsumer vc, Matrix4f matrix,
+                              float x, float y, float z,
+                              float r, float g, float b, float a,
+                              float nx, float ny, float nz) {
+        vc.vertex(matrix, x, y, z)
+            .color(r, g, b, a)
+            .texture(0.5f, 0.5f)
+            .overlay(OverlayTexture.DEFAULT_UV)
+            .light(LightmapTextureManager.MAX_LIGHT_COORDINATE)
+            .normal(nx, ny, nz);
     }
 
     /**

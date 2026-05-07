@@ -486,7 +486,7 @@ public class PreviewRenderer {
         // 基础渲染设置
         public volatile float defaultLineWidth = 2.0f;
         public volatile float defaultPointSize = 0.1f;
-        public volatile Vector3f defaultColor = new Vector3f(0.2f, 0.7f, 1.0f); // 天蓝色
+        private volatile Vector3f defaultColor = new Vector3f(0.2f, 0.7f, 1.0f); // 天蓝色
         public volatile float defaultOpacity = 0.7f;
         public volatile int maxRenderDistance = 256;
         
