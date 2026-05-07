@@ -9,12 +9,12 @@ public final class PreviewRegionPayload implements PreviewPayload {
     private final int maxZ;
 
     public PreviewRegionPayload(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
-        this.minX = minX;
-        this.minY = minY;
-        this.minZ = minZ;
-        this.maxX = maxX;
-        this.maxY = maxY;
-        this.maxZ = maxZ;
+        this.minX = Math.min(minX, maxX);
+        this.minY = Math.min(minY, maxY);
+        this.minZ = Math.min(minZ, maxZ);
+        this.maxX = Math.max(minX, maxX);
+        this.maxY = Math.max(minY, maxY);
+        this.maxZ = Math.max(minZ, maxZ);
     }
 
     @Override

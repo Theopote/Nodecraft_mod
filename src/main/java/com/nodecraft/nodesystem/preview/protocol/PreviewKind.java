@@ -12,6 +12,11 @@ public enum PreviewKind {
     PLANE,
     FRAME,
     LABELS,
+    /**
+     * Reserved/legacy preview kind. No concrete payload or renderer path is implemented yet.
+     * Use GEOMETRY preview instead until surface-strip protocol is fully implemented.
+     */
+    @Deprecated
     SURFACE_STRIP,
     GEOMETRY
 }
