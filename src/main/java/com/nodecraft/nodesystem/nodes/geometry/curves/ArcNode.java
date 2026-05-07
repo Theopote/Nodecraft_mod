@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.core.NodeCraft;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -37,6 +38,12 @@ public class ArcNode extends BaseNode {
 
     @NodeProperty(displayName = "Default Resolution", category = "Arc", order = 2)
     private int defaultResolution = 24;
+
+    @NodeProperty(displayName = "Default Plane", category = "Arc", order = 3)
+    private String defaultPlaneType = "XZ";  // XZ, XY, or YZ
+
+    @NodeProperty(displayName = "Default Center", category = "Arc", order = 4)
+    private String defaultCenterCoords = "0,0,0";  // Format: x,y,z
 
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_PLANE_ID = "input_plane";
@@ -86,7 +93,19 @@ public class ArcNode extends BaseNode {
         double endDegrees = getInputDouble(INPUT_END_ANGLE_ID, 90.0d);
         int resolution = Math.max(2, getInputInt(INPUT_RESOLUTION_ID, defaultResolution));
 
-        if (center == null || normal == null || normal.lengthSquared() <= EPSILON || radius <= EPSILON) {
+        // Validate inputs: center and normal are required
+        if (center == null) {
+            NodeCraft.LOGGER.warn("ArcNode: center is null; cannot build arc");
+            writeEmptyOutputs();
+            return;
+        }
+        if (normal == null || normal.lengthSquared() <= EPSILON) {
+            NodeCraft.LOGGER.warn("ArcNode: normal is null or zero; cannot build arc");
+            writeEmptyOutputs();
+            return;
+        }
+        if (radius <= EPSILON) {
+            NodeCraft.LOGGER.warn("ArcNode: radius must be positive");
             writeEmptyOutputs();
             return;
         }
@@ -155,11 +174,37 @@ public class ArcNode extends BaseNode {
         }
     }
 
+    public String getDefaultPlaneType() {
+        return defaultPlaneType;
+    }
+
+    public void setDefaultPlaneType(String planeType) {
+        if (planeType != null && (planeType.equals("XY") || planeType.equals("XZ") || planeType.equals("YZ"))) {
+            if (!this.defaultPlaneType.equals(planeType)) {
+                this.defaultPlaneType = planeType;
+                markDirty();
+            }
+        }
+    }
+
+    public String getDefaultCenterCoords() {
+        return defaultCenterCoords;
+    }
+
+    public void setDefaultCenterCoords(String centerCoords) {
+        if (centerCoords != null && !this.defaultCenterCoords.equals(centerCoords)) {
+            this.defaultCenterCoords = centerCoords;
+            markDirty();
+        }
+    }
+
     @Override
     public Object getNodeState() {
         return new java.util.HashMap<String, Object>() {{
             put("defaultRadius", defaultRadius);
             put("defaultResolution", defaultResolution);
+            put("defaultPlaneType", defaultPlaneType);
+            put("defaultCenterCoords", defaultCenterCoords);
         }};
     }
 
@@ -174,6 +219,12 @@ public class ArcNode extends BaseNode {
         if (map.get("defaultResolution") instanceof Number value) {
             setDefaultResolution(value.intValue());
         }
+        if (map.get("defaultPlaneType") instanceof String value) {
+            setDefaultPlaneType(value);
+        }
+        if (map.get("defaultCenterCoords") instanceof String value) {
+            setDefaultCenterCoords(value);
+        }
     }
 
     private void writeEmptyOutputs() {
@@ -186,15 +237,52 @@ public class ArcNode extends BaseNode {
     }
 
     private @Nullable Vector3d resolveCenter(@Nullable Object value) {
-        return SpatialValueResolver.resolveVector3d(value);
+        // If input is provided, try to resolve it
+        Vector3d resolved = SpatialValueResolver.resolveVector3d(value);
+        if (resolved != null) {
+            return resolved;
+        }
+
+        // Otherwise, use default center coordinates (typically "0,0,0")
+        try {
+            String[] parts = defaultCenterCoords.trim().split(",");
+            if (parts.length == 3) {
+                double x = Double.parseDouble(parts[0].trim());
+                double y = Double.parseDouble(parts[1].trim());
+                double z = Double.parseDouble(parts[2].trim());
+                return new Vector3d(x, y, z);
+            }
+        } catch (NumberFormatException e) {
+            NodeCraft.LOGGER.warn("ArcNode: invalid defaultCenterCoords format '{}'; using 0,0,0", defaultCenterCoords);
+        }
+
+        // Fallback to origin
+        return new Vector3d(0.0d, 0.0d, 0.0d);
     }
 
     private @Nullable Vector3d resolveNormal(@Nullable Object planeValue, @Nullable Object normalValue) {
+        // Priority 1: If PlaneData is provided, extract normal
         if (planeValue instanceof PlaneData plane) {
             return plane.getNormal();
         }
+
+        // Priority 2: If Normal vector is provided directly, use it
         Vector3d resolved = SpatialValueResolver.resolveVector3d(normalValue);
-        return resolved != null ? resolved : new Vector3d(0.0d, 1.0d, 0.0d);
+        if (resolved != null) {
+            return resolved;
+        }
+
+        // Priority 3: Use default plane based on defaultPlaneType property
+        PlaneData defaultPlane = getDefaultPlane(defaultPlaneType);
+        return defaultPlane.getNormal();
+    }
+
+    private PlaneData getDefaultPlane(String planeType) {
+        return switch (planeType) {
+            case "XY" -> PlaneData.XY_PLANE;
+            case "YZ" -> PlaneData.YZ_PLANE;
+            default -> PlaneData.XZ_PLANE;  // Default to XZ plane
+        };
     }
 
     private @Nullable Basis buildBasis(Vector3d normal) {

@@ -111,14 +111,6 @@ public final class PreviewManager {
                     );
                     yield null;
                 }
-                default -> {
-                    NodeCraft.LOGGER.warn(
-                        "PreviewManager.showPreview: unsupported payload kind={} type={}",
-                        kind,
-                        payload.getClass().getName()
-                    );
-                    yield null;
-                }
             };
         } catch (Exception e) {
             NodeCraft.LOGGER.error("PreviewManager.showPreview failed: nodeId={}", request.ownerNodeId(), e);
@@ -364,7 +356,7 @@ public final class PreviewManager {
         try {
             Identifier id = Identifier.of(blockId);
             var block = Registries.BLOCK.get(id);
-            return block != null ? block.getDefaultState() : null;
+            return block.getDefaultState();
         } catch (Exception e) {
             return null;
         }
