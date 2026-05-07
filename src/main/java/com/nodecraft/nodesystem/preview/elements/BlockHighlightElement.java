@@ -27,7 +27,6 @@ public class BlockHighlightElement extends AbstractPreviewElement {
     private Vector3f color = new Vector3f(1.0f, 0.8f, 0.0f); // 默认橙黄色 (RGBA)
     private Vector3f fillColor = new Vector3f(1.0f, 0.8f, 0.0f); // 填充颜色（可独立配置）
     private float lineWidth = 4.0f; // 线宽 (增加线宽确保可见)
-    private float opacity = 1.0f; // 基础透明度
     private float minOpacity = 0.0f; // 最小透明度值，默认为0允许完全按照设置的透明度显示
     private boolean enablePulse = false; // 是否启用脉冲动画（仅在选项明确开启时启用）
     private boolean showOutline = true; // 是否显示方块边框
