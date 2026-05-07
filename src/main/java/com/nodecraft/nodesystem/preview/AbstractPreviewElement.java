@@ -36,8 +36,6 @@ public abstract class AbstractPreviewElement {
         if (this.options.renderPriority != null) {
             this.renderPriority = this.options.renderPriority;
         }
-        
-        processData(data);
     }
     
     // ================= 抽象方法 =================

@@ -70,10 +70,6 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
         if (options.lineWidth != null) {
             this.lineWidth = Math.max(0.25f, options.lineWidth);
         }
-
-        // AbstractPreviewElement invokes processData() inside super(...), but subclass field initializers run
-        // afterwards and can reset mesh/bounds fields. Reprocess once here to keep final state consistent.
-        processData(data);
     }
 
     @Override

@@ -83,8 +83,6 @@ public class BlockHighlightElement extends AbstractPreviewElement {
             this.showOutline = options.showOutline;
         }
 
-        // 处理输入数据
-        processData(data);
     }
 
     /**

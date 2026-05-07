@@ -306,7 +306,11 @@ public class PreviewRenderer {
                 AbstractPreviewElement element = factory.create(id, ownerId, data, options);
                 if (element == null) {
                     NodeCraft.LOGGER.error("工厂返回null元素: 类型={}", type);
+                    return null;
                 }
+
+                // Avoid virtual method dispatch from base constructor: initialize element data after construction.
+                element.updateData(data);
                 return element;
             } else {
                 NodeCraft.LOGGER.error("未找到预览元素工厂: 类型={}, 可用类型={}", lowerType, elementRegistry.keySet());
