@@ -82,6 +82,25 @@ public final class PreviewStyle {
     /**
      * Best-effort mapping from legacy {@link PreviewOptions} used by transitional APIs.
      */
+    public static PreviewStyle from(PreviewOptions options, PreviewKind kind) {
+        PreviewOptions safeOptions = options != null ? options : new PreviewOptions();
+        return switch (kind) {
+            case BLOCKS -> fromLegacyGhostOptions(safeOptions, 0.7f);
+            case POINTS -> fromLegacyPointOptions(safeOptions);
+            case VECTORS -> fromLegacyVectorOptions(safeOptions);
+            case REGIONS -> fromLegacyRegionOptions(safeOptions);
+            case CURVES -> fromLegacyPathOptions(safeOptions);
+            case GEOMETRY -> fromLegacyGeometryOptions(safeOptions);
+            case PLANE -> fromLegacyPlaneGridOptions(safeOptions);
+            case FRAME -> fromLegacyFrameAxesOptions(safeOptions);
+            case LABELS -> fromLegacyLabelsOptions(safeOptions);
+            case SURFACE_STRIP -> fromLegacyGeometryOptions(safeOptions);
+        };
+    }
+
+    /**
+     * Best-effort mapping from legacy {@link PreviewOptions} used by transitional APIs.
+     */
     public static PreviewStyle fromLegacyGhostOptions(PreviewOptions options, float fallbackOpacity) {
         float r = 1.0f;
         float g = 1.0f;

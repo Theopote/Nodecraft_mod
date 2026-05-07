@@ -237,7 +237,7 @@ public final class PreviewManager {
             hideNodePreviews(nodeId);
             return null;
         }
-        PreviewStyle style = PreviewStyle.fromLegacyPathOptions(options);
+        PreviewStyle style = PreviewStyle.from(options, PreviewKind.CURVES);
         return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
     }
 
@@ -265,7 +265,7 @@ public final class PreviewManager {
         if (replaceNodePreviews) {
             hideNodePreviews(nodeId);
         }
-        PreviewStyle style = PreviewStyle.fromLegacyPathOptions(options);
+        PreviewStyle style = PreviewStyle.from(options, PreviewKind.CURVES);
         PreviewOptions opts = style.toPreviewOptions(PreviewKind.CURVES);
         List<String> ids = new ArrayList<>();
         for (PreviewCurvePayload c : curves) {
@@ -289,7 +289,7 @@ public final class PreviewManager {
             return List.of();
         }
         hideNodePreviews(nodeId);
-        PreviewStyle style = PreviewStyle.fromLegacyGeometryOptions(options);
+        PreviewStyle style = PreviewStyle.from(options, PreviewKind.GEOMETRY);
         PreviewOptions opts = style.toPreviewOptions(PreviewKind.GEOMETRY);
         List<String> ids = new ArrayList<>();
         for (GeometryData g : geometries) {
@@ -378,7 +378,7 @@ public final class PreviewManager {
 
     public static String showRegionBox(String nodeId, Vec3d min, Vec3d max, PreviewOptions options) {
         PreviewRegionPayload payload = PreviewPayloadAdapters.regionFromBoxCorners(min, max);
-        PreviewStyle style = PreviewStyle.fromLegacyRegionOptions(options);
+        PreviewStyle style = PreviewStyle.from(options, PreviewKind.REGIONS);
         return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
     }
 
@@ -394,7 +394,7 @@ public final class PreviewManager {
             return null;
         }
         PreviewPointsPayload payload = PreviewPayloadAdapters.previewPointsFromCoordinates(points);
-        PreviewStyle style = PreviewStyle.fromLegacyPointOptions(options);
+        PreviewStyle style = PreviewStyle.from(options, PreviewKind.POINTS);
         return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
     }
 
@@ -415,7 +415,7 @@ public final class PreviewManager {
             return null;
         }
         PreviewVectorsPayload payload = PreviewPayloadAdapters.previewVectorsFromVecLists(vectors, startPoints);
-        PreviewStyle style = PreviewStyle.fromLegacyVectorOptions(options);
+        PreviewStyle style = PreviewStyle.from(options, PreviewKind.VECTORS);
         return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
     }
 
@@ -427,7 +427,7 @@ public final class PreviewManager {
             return null;
         }
         PreviewPlanePayload payload = new PreviewPlanePayload(planeGridData);
-        PreviewStyle style = PreviewStyle.fromLegacyPlaneGridOptions(options);
+        PreviewStyle style = PreviewStyle.from(options, PreviewKind.PLANE);
         return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
     }
 
@@ -437,7 +437,7 @@ public final class PreviewManager {
             return null;
         }
         PreviewFramePayload payload = new PreviewFramePayload(frameAxesData);
-        PreviewStyle style = PreviewStyle.fromLegacyFrameAxesOptions(options);
+        PreviewStyle style = PreviewStyle.from(options, PreviewKind.FRAME);
         return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
     }
 
@@ -464,7 +464,7 @@ public final class PreviewManager {
             return null;
         }
         PreviewLabelsPayload payload = new PreviewLabelsPayload(labelData);
-        PreviewStyle style = PreviewStyle.fromLegacyLabelsOptions(options);
+        PreviewStyle style = PreviewStyle.from(options, PreviewKind.LABELS);
         return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
     }
 
