@@ -30,7 +30,7 @@ public class RegionBoxElement extends AbstractPreviewElement {
     private boolean showFill = false;
     private boolean showOutline = true;
     private float lineWidth = 2.0f;
-    private static final float OUTLINE_EXPAND = 0.012f;
+    private static final float OUTLINE_EXPAND = 0.004f;
     private static final int[][] BOX_EDGES = new int[][] {
         {0, 1}, {1, 2}, {2, 3}, {3, 0},
         {4, 5}, {5, 6}, {6, 7}, {7, 4},
@@ -164,30 +164,23 @@ public class RegionBoxElement extends AbstractPreviewElement {
         }
 
         MinecraftClient client = MinecraftClient.getInstance();
-        VertexConsumerProvider provider = PreviewRenderer.getInstance().getActiveVertexConsumers();
-        VertexConsumerProvider.Immediate immediate = null;
-        boolean flushImmediately = false;
-        if (provider == null) {
-            immediate = client.getBufferBuilders().getEntityVertexConsumers();
-            provider = immediate;
-            flushImmediately = true;
-        }
-
-        VertexConsumer lineVertexConsumer = showOutline ? provider.getBuffer(RenderLayers.lines()) : null;
-        VertexConsumer fillVertexConsumer = showFill ? provider.getBuffer(RenderLayers.debugFilledBox()) : null;
+        VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         Vec3d cameraPos = camera.getCameraPos();
 
-        for (BoundingBox region : regionsSnapshot) {
-            if (showFill && fillVertexConsumer != null) {
-                drawFilledBox(fillVertexConsumer, matrix, region, cameraPos, Math.max(0.16f, finalOpacity * 0.58f));
+        if (showFill) {
+            VertexConsumer fillVertexConsumer = immediate.getBuffer(RenderLayers.debugFilledBox());
+            for (BoundingBox region : regionsSnapshot) {
+                drawFilledBox(fillVertexConsumer, matrix, region, cameraPos, Math.max(0.12f, finalOpacity * 0.5f));
             }
-            if (showOutline && lineVertexConsumer != null) {
-                drawBox(lineVertexConsumer, matrices, region, cameraPos, Math.max(0.9f, finalOpacity));
-            }
+            immediate.draw();
         }
 
-        if (flushImmediately && immediate != null) {
+        if (showOutline) {
+            VertexConsumer lineVertexConsumer = immediate.getBuffer(RenderLayers.lines());
+            for (BoundingBox region : regionsSnapshot) {
+                drawBox(lineVertexConsumer, matrices, region, cameraPos, Math.max(0.95f, finalOpacity));
+            }
             immediate.draw();
         }
     }
@@ -195,9 +188,6 @@ public class RegionBoxElement extends AbstractPreviewElement {
     private void drawBox(VertexConsumer vertexConsumer, MatrixStack matrices, BoundingBox box, Vec3d cameraPos, float alpha) {
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         float clampedAlpha = Math.max(0.0f, Math.min(1.0f, alpha));
-        // Draw a slightly larger dark shell first, then the colored outline,
-        // so border remains visible when semi-transparent fill is enabled.
-        drawBoxEdges(vertexConsumer, matrix, box, cameraPos, OUTLINE_EXPAND * 1.8f, 0.05f, 0.05f, 0.05f, Math.min(1.0f, clampedAlpha * 0.92f));
         drawBoxEdges(vertexConsumer, matrix, box, cameraPos, OUTLINE_EXPAND, color.x(), color.y(), color.z(), clampedAlpha);
     }
 
