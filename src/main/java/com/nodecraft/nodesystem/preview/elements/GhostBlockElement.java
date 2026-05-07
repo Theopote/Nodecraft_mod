@@ -127,7 +127,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
         long now = System.currentTimeMillis();
         if (now - lastRenderInfoLogMs > 1000L) {
             lastRenderInfoLogMs = now;
-            NodeCraft.LOGGER.info("GhostBlockElement render tick: ownerNode={}, mode={}, blocks={}, ghostOpacity={}, globalOpacity={}, finalOpacity={}, maxDistance={}",
+            NodeCraft.LOGGER.debug("GhostBlockElement render tick: ownerNode={}, mode={}, blocks={}, ghostOpacity={}, globalOpacity={}, finalOpacity={}, maxDistance={}",
                 ownerNodeId, textureMode, blocksSnapshot.size(), ghostOpacity, globalOpacity, finalOpacity,
                 PreviewRenderer.getInstance().getSettings().maxRenderDistance);
         }
@@ -676,7 +676,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
         Vec3d cam = camera.getCameraPos();
         BlockData sample = blocks.isEmpty() ? null : blocks.getFirst();
         if ("beyond_max_distance".equals(reason) && sample != null) {
-            NodeCraft.LOGGER.info(
+            NodeCraft.LOGGER.debug(
                 "GhostBlockElement shouldRender=false: ownerNode={}, reason={}, blockCount={}, maxDistance={}, nearest={}, cam=({},{},{}), samplePos=({},{},{})",
                 ownerNodeId, reason, blocks.size(),
                 PreviewRenderer.getInstance().getSettings().maxRenderDistance,
@@ -685,7 +685,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
                 sample.position.x, sample.position.y, sample.position.z
             );
         } else {
-            NodeCraft.LOGGER.info("GhostBlockElement shouldRender=false: ownerNode={}, reason={}, blockCount={}, cam=({},{},{})",
+            NodeCraft.LOGGER.debug("GhostBlockElement shouldRender=false: ownerNode={}, reason={}, blockCount={}, cam=({},{},{})",
                 ownerNodeId, reason, blocks.size(), cam.x, cam.y, cam.z);
         }
     }
