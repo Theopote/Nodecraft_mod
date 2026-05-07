@@ -480,7 +480,10 @@ public final class PreviewManager {
 
     public static void hideNodePreviews(String nodeId) {
         RENDERER.hidePreviewsByNode(nodeId);
-        TrackedPreviewPlacementService.getInstance().clearTrackedPreviewAcrossWorlds(nodeId);
+        TrackedPreviewPlacementService service = TrackedPreviewPlacementService.getInstance();
+        if (service.hasAnyTrackedPreviews(nodeId)) {
+            service.clearTrackedPreviewAcrossWorlds(nodeId);
+        }
     }
 
     public static void clearAllPreviews() {

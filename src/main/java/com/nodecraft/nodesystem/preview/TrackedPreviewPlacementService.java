@@ -204,6 +204,18 @@ public final class TrackedPreviewPlacementService {
         return restoredCount;
     }
 
+    public synchronized boolean hasAnyTrackedPreviews(String nodeId) {
+        if (nodeId == null || nodeId.isEmpty()) {
+            return false;
+        }
+        for (Map<String, TrackedPreviewState> byNode : trackedPreviews.values()) {
+            if (byNode.containsKey(nodeId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public synchronized int clearTrackedPreviewAcrossWorlds(String nodeId) {
         if (nodeId == null || nodeId.isEmpty()) {
             return 0;
