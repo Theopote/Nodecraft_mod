@@ -692,7 +692,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
     
     @Override
     public void cleanup() {
-        blocks.clear();
+        blocks = List.of();
     }
     
     // ================= Getters/Setters =================
