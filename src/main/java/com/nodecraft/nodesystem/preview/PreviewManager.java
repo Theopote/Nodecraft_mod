@@ -42,6 +42,7 @@ public final class PreviewManager {
     private static final PreviewRenderer RENDERER = PreviewRenderer.getInstance();
     private static final long EMPTY_INPUT_GRACE_MS = 750L;
     private static final Map<String, Long> LAST_NON_EMPTY_BY_NODE_TYPE = new ConcurrentHashMap<>();
+    private static final Map<String, PreviewBackend> LAST_BLOCKS_BACKEND_BY_NODE = new ConcurrentHashMap<>();
 
     private PreviewManager() {
     }
@@ -146,6 +147,13 @@ public final class PreviewManager {
             return null;
         }
 
+        PreviewBackend previousBackend = LAST_BLOCKS_BACKEND_BY_NODE.put(nodeId, request.backend());
+        if (previousBackend != null && previousBackend != request.backend()) {
+            // Force immediate backend switch visibility update even when transient empty input is present.
+            RENDERER.hidePreviewsByNodeAndType(nodeId, "ghost_block");
+            TrackedPreviewPlacementService.getInstance().clearTrackedPreviewAcrossWorlds(nodeId);
+        }
+
         if (request.backend() == PreviewBackend.GHOST) {
             if (blocksPayload.getBlocks().isEmpty()) {
                 if (withinEmptyGrace(nodeId, "ghost_block")) {
@@ -155,13 +163,14 @@ public final class PreviewManager {
                 return null;
             }
             touchNonEmpty(nodeId, "ghost_block");
-            if (ctx != null && ctx.getWorld() != null) {
-                TrackedPreviewPlacementService.getInstance().clearTrackedPreview(ctx.getWorld(), nodeId);
-            }
+            // Backend switch safety: entering GHOST should always clear tracked-world remnants immediately.
+            TrackedPreviewPlacementService.getInstance().clearTrackedPreviewAcrossWorlds(nodeId);
             return RENDERER.upsertPreview(nodeId, "ghost_block", blocksPayload, opts);
         }
 
         if (request.backend() == PreviewBackend.TRACKED_WORLD) {
+            // Backend switch safety: entering TRACKED_WORLD should clear ghost overlays immediately.
+            RENDERER.hidePreviewsByNodeAndType(nodeId, "ghost_block");
             if (ctx == null || ctx.getWorld() == null) {
                 NodeCraft.LOGGER.warn("PreviewManager.showPreview TRACKED_WORLD: missing execution context / world");
                 return null;
