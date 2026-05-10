@@ -499,6 +499,18 @@ public final class PreviewStyle {
         return o;
     }
 
+    public float red() {
+        return red;
+    }
+
+    public float green() {
+        return green;
+    }
+
+    public float blue() {
+        return blue;
+    }
+
     public float opacity() {
         return opacity;
     }
