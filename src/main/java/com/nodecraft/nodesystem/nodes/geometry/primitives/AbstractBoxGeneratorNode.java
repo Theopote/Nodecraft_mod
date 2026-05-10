@@ -126,9 +126,9 @@ public abstract class AbstractBoxGeneratorNode extends BaseNode {
 
         Vector3d centerVector = new Vector3d(center.getX(), center.getY(), center.getZ());
         Vector3d halfExtents = new Vector3d(
-            (resolvedX - 1) / 2.0d,
-            (resolvedY - 1) / 2.0d,
-            (resolvedZ - 1) / 2.0d
+            resolvedX / 2.0d,
+            resolvedY / 2.0d,
+            resolvedZ / 2.0d
         );
 
         Matrix3d orientationMatrix = createOrientationMatrix(planeObj, rotationX, rotationY, rotationZ);

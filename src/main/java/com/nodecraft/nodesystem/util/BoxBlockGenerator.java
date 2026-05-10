@@ -15,18 +15,20 @@ public final class BoxBlockGenerator {
     }
 
     public static RegionData createAxisAlignedRegion(BlockPos center, int sizeX, int sizeY, int sizeZ) {
+        // 现在 sizeX/sizeY/sizeZ 直接等于几何长度
+        int halfX = sizeX / 2;
+        int halfY = sizeY / 2;
+        int halfZ = sizeZ / 2;
         BlockPos minCorner = new BlockPos(
-            center.getX() - ((sizeX - 1) / 2),
-            center.getY() - ((sizeY - 1) / 2),
-            center.getZ() - ((sizeZ - 1) / 2)
+            center.getX() - halfX,
+            center.getY() - halfY,
+            center.getZ() - halfZ
         );
-
         BlockPos maxCorner = new BlockPos(
-            minCorner.getX() + sizeX - 1,
-            minCorner.getY() + sizeY - 1,
-            minCorner.getZ() + sizeZ - 1
+            center.getX() + (sizeX % 2 == 0 ? halfX - 1 : halfX),
+            center.getY() + (sizeY % 2 == 0 ? halfY - 1 : halfY),
+            center.getZ() + (sizeZ % 2 == 0 ? halfZ - 1 : halfZ)
         );
-
         return new RegionData(minCorner, maxCorner);
     }
 
