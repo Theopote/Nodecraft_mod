@@ -21,6 +21,7 @@ public class PlaneGridElement extends AbstractPreviewElement {
 
     private PlaneGridPreviewData planeGridData;
     private Vector3f color = new Vector3f(0.35f, 0.75f, 1.0f);
+    private float lineWidth = 1.5f;
     private boolean enablePulse = false;
 
     public PlaneGridElement(String id, String ownerNodeId, Object data, PreviewOptions options) {
@@ -29,6 +30,9 @@ public class PlaneGridElement extends AbstractPreviewElement {
 
         if (options.color != null) {
             this.color = new Vector3f(options.color);
+        }
+        if (options.lineWidth != null) {
+            this.lineWidth = Math.max(0.25f, options.lineWidth);
         }
         if (options.pulseAnimation != null) {
             this.enablePulse = options.pulseAnimation;
@@ -93,16 +97,16 @@ public class PlaneGridElement extends AbstractPreviewElement {
             boolean major = step == 0;
             float lineAlpha = major ? Math.min(1.0f, finalOpacity * 1.15f) : finalOpacity * 0.7f;
             float scale = major ? 1.1f : 1.0f;
-            drawLine(vertexConsumer, matrix, lineAStart, lineAEnd, color.x() * scale, color.y() * scale, color.z() * scale, lineAlpha);
-            drawLine(vertexConsumer, matrix, lineBStart, lineBEnd, color.x() * scale, color.y() * scale, color.z() * scale, lineAlpha);
+            drawLine(vertexConsumer, matrix, lineAStart, lineAEnd, color.x() * scale, color.y() * scale, color.z() * scale, lineAlpha, lineWidth);
+            drawLine(vertexConsumer, matrix, lineBStart, lineBEnd, color.x() * scale, color.y() * scale, color.z() * scale, lineAlpha, lineWidth);
         }
 
         if (planeGridData.isShowAxes()) {
-            drawAxis(vertexConsumer, matrix, origin, tangent, halfSize, cameraPos, 1.0f, 0.25f, 0.25f, finalOpacity);
-            drawAxis(vertexConsumer, matrix, origin, bitangent, halfSize, cameraPos, 0.25f, 1.0f, 0.25f, finalOpacity);
+            drawAxis(vertexConsumer, matrix, origin, tangent, halfSize, cameraPos, 1.0f, 0.25f, 0.25f, finalOpacity, lineWidth);
+            drawAxis(vertexConsumer, matrix, origin, bitangent, halfSize, cameraPos, 0.25f, 1.0f, 0.25f, finalOpacity, lineWidth);
         }
         if (planeGridData.isShowNormal()) {
-            drawAxis(vertexConsumer, matrix, origin, normal, Math.max(1.0d, halfSize * 0.75d), cameraPos, 0.25f, 0.55f, 1.0f, finalOpacity);
+            drawAxis(vertexConsumer, matrix, origin, normal, Math.max(1.0d, halfSize * 0.75d), cameraPos, 0.25f, 0.55f, 1.0f, finalOpacity, lineWidth);
         }
 
         immediate.draw();
@@ -141,18 +145,18 @@ public class PlaneGridElement extends AbstractPreviewElement {
     }
 
     private static void drawAxis(VertexConsumer vertexConsumer, Matrix4f matrix, Vector3d origin, Vector3d direction,
-                                 double length, Vec3d cameraPos, float r, float g, float b, float a) {
+                                 double length, Vec3d cameraPos, float r, float g, float b, float a, float lineWidth) {
         Vec3d start = new Vec3d(origin.x - cameraPos.x, origin.y - cameraPos.y, origin.z - cameraPos.z);
         Vec3d end = new Vec3d(
             origin.x + direction.x * length - cameraPos.x,
             origin.y + direction.y * length - cameraPos.y,
             origin.z + direction.z * length - cameraPos.z
         );
-        drawLine(vertexConsumer, matrix, start, end, r, g, b, a);
+        drawLine(vertexConsumer, matrix, start, end, r, g, b, a, lineWidth);
     }
 
     private static void drawLine(VertexConsumer vertexConsumer, Matrix4f matrix, Vec3d start, Vec3d end,
-                                 float r, float g, float b, float a) {
+                                 float r, float g, float b, float a, float lineWidth) {
         Vector3f normal = new Vector3f((float) (end.x - start.x), (float) (end.y - start.y), (float) (end.z - start.z));
         if (normal.lengthSquared() < 1.0e-12f) {
             normal.set(0.0f, 1.0f, 0.0f);
@@ -162,9 +166,11 @@ public class PlaneGridElement extends AbstractPreviewElement {
 
         vertexConsumer.vertex(matrix, (float) start.x, (float) start.y, (float) start.z)
             .color(r, g, b, a)
-            .normal(normal.x, normal.y, normal.z);
+            .normal(normal.x, normal.y, normal.z)
+            .lineWidth(lineWidth);
         vertexConsumer.vertex(matrix, (float) end.x, (float) end.y, (float) end.z)
             .color(r, g, b, a)
-            .normal(normal.x, normal.y, normal.z);
+            .normal(normal.x, normal.y, normal.z)
+            .lineWidth(lineWidth);
     }
 }

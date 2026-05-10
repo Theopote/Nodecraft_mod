@@ -24,6 +24,7 @@ public class PointsElement extends AbstractPreviewElement {
 
     private volatile List<Vec3d> points = new ArrayList<>();
     private Vector3f color = new Vector3f(1.0f, 0.2f, 0.2f);
+    private float lineWidth = 1.5f;
     private float pointSize = 0.2f;
 
     public PointsElement(String id, String ownerNodeId, Object data, PreviewOptions options) {
@@ -32,6 +33,9 @@ public class PointsElement extends AbstractPreviewElement {
 
         if (options.color != null) {
             this.color = new Vector3f(options.color);
+        }
+        if (options.lineWidth != null) {
+            this.lineWidth = Math.max(0.25f, options.lineWidth);
         }
         if (options.pointSize != null) {
             this.pointSize = Math.max(0.05f, options.pointSize);
@@ -125,10 +129,12 @@ public class PointsElement extends AbstractPreviewElement {
 
         vertexConsumer.vertex(matrix, (float) start.x, (float) start.y, (float) start.z)
             .color(color.x(), color.y(), color.z(), alpha)
-            .normal(normal.x, normal.y, normal.z);
+            .normal(normal.x, normal.y, normal.z)
+            .lineWidth(lineWidth);
         vertexConsumer.vertex(matrix, (float) end.x, (float) end.y, (float) end.z)
             .color(color.x(), color.y(), color.z(), alpha)
-            .normal(normal.x, normal.y, normal.z);
+            .normal(normal.x, normal.y, normal.z)
+            .lineWidth(lineWidth);
     }
 
     @Override
