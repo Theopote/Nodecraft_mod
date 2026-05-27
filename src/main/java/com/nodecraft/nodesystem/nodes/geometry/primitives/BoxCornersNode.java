@@ -47,33 +47,18 @@ public class BoxCornersNode extends AbstractBoxGeneratorNode {
             return null;
         }
 
-        double minX = Math.min(cornerA.x, cornerB.x);
-        double minY = Math.min(cornerA.y, cornerB.y);
-        double minZ = Math.min(cornerA.z, cornerB.z);
-        double maxX = Math.max(cornerA.x, cornerB.x);
-        double maxY = Math.max(cornerA.y, cornerB.y);
-        double maxZ = Math.max(cornerA.z, cornerB.z);
-
-        BlockPos minCorner = BlockPos.ofFloored(minX, minY, minZ);
-        BlockPos maxCorner = BlockPos.ofFloored(maxX, maxY, maxZ);
-
-        Vector3d center = new Vector3d(
-            (minX + maxX) * 0.5d,
-            (minY + maxY) * 0.5d,
-            (minZ + maxZ) * 0.5d
+        BlockPos a = BlockPos.ofFloored(cornerA.x, cornerA.y, cornerA.z);
+        BlockPos b = BlockPos.ofFloored(cornerB.x, cornerB.y, cornerB.z);
+        BlockPos minCorner = new BlockPos(
+            Math.min(a.getX(), b.getX()),
+            Math.min(a.getY(), b.getY()),
+            Math.min(a.getZ(), b.getZ())
         );
-        Vector3d halfExtents = new Vector3d(
-            Math.max(1.0e-6d, (maxX - minX) * 0.5d),
-            Math.max(1.0e-6d, (maxY - minY) * 0.5d),
-            Math.max(1.0e-6d, (maxZ - minZ) * 0.5d)
+        BlockPos maxCorner = new BlockPos(
+            Math.max(a.getX(), b.getX()),
+            Math.max(a.getY(), b.getY()),
+            Math.max(a.getZ(), b.getZ())
         );
-
-        return new BoxDefinition(
-            new com.nodecraft.nodesystem.datatypes.RegionData(minCorner, maxCorner),
-            center,
-            halfExtents,
-            new Matrix3d().identity(),
-            false
-        );
+        return createAxisAlignedDefinition(minCorner, maxCorner);
     }
 }
