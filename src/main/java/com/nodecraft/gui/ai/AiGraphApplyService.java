@@ -2,12 +2,12 @@ package com.nodecraft.gui.ai;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.nodecraft.NodeCraft;
+import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
-import imgui.extension.nodeeditor.ImGuiNodeEditor;
+import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
 
 import java.util.ArrayList;
 import java.util.HashMap;
