@@ -21,6 +21,7 @@ import java.util.concurrent.Executors;
 public class AiRemotePlannerService {
 
     private static final ExecutorService EXECUTOR = Executors.newCachedThreadPool();
+    private static final int MAX_ATTEMPTS = 3;
 
     public record PlannerConfig(
             String apiBaseUrl,
@@ -31,13 +32,21 @@ public class AiRemotePlannerService {
     ) {
     }
 
-    public record RemotePlanResult(boolean success, String modelContent, String errorMessage, int statusCode) {
-        public static RemotePlanResult ok(String content, int statusCode) {
-            return new RemotePlanResult(true, content, "", statusCode);
+    public record RemotePlanResult(
+            boolean success,
+            String modelContent,
+            String errorMessage,
+            int statusCode,
+            String rawResponse,
+            String errorCategory,
+            int attempts
+    ) {
+        public static RemotePlanResult ok(String content, int statusCode, String rawResponse, int attempts) {
+            return new RemotePlanResult(true, content, "", statusCode, rawResponse, "none", attempts);
         }
 
-        public static RemotePlanResult fail(String error, int statusCode) {
-            return new RemotePlanResult(false, "", error, statusCode);
+        public static RemotePlanResult fail(String error, int statusCode, String rawResponse, String category, int attempts) {
+            return new RemotePlanResult(false, "", error, statusCode, rawResponse, category, attempts);
         }
     }
 
@@ -47,36 +56,72 @@ public class AiRemotePlannerService {
 
     private RemotePlanResult requestPlan(PlannerConfig config, String userPrompt) {
         if (config == null) {
-            return RemotePlanResult.fail("Remote planner config is null.", -1);
+            return RemotePlanResult.fail("Remote planner config is null.", -1, "", "config", 1);
         }
         if (isBlank(config.apiBaseUrl())) {
-            return RemotePlanResult.fail("API base URL is empty.", -1);
+            return RemotePlanResult.fail("API base URL is empty.", -1, "", "config", 1);
         }
         if (isBlank(config.apiKey())) {
-            return RemotePlanResult.fail("API key is empty.", -1);
+            return RemotePlanResult.fail("API key is empty.", -1, "", "config", 1);
         }
         if (isBlank(config.model())) {
-            return RemotePlanResult.fail("Model is empty.", -1);
+            return RemotePlanResult.fail("Model is empty.", -1, "", "config", 1);
         }
 
         String baseUrl = config.apiBaseUrl().trim();
         int timeoutSeconds = Math.max(5, Math.min(600, config.timeoutSeconds()));
 
-        try {
-            HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(Math.min(timeoutSeconds, 30)))
-                    .build();
+        HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(Math.min(timeoutSeconds, 30)))
+                .build();
 
-            if (isAnthropicEndpoint(baseUrl)) {
-                return requestAnthropic(client, config, userPrompt, timeoutSeconds);
+        RemotePlanResult lastFailure = null;
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                RemotePlanResult result = isAnthropicEndpoint(baseUrl)
+                        ? requestAnthropic(client, config, userPrompt, timeoutSeconds, attempt)
+                        : requestOpenAICompatible(client, config, userPrompt, timeoutSeconds, attempt);
+
+                if (result.success()) {
+                    return result;
+                }
+
+                lastFailure = result;
+                if (!isRetryable(result) || attempt >= MAX_ATTEMPTS) {
+                    return result;
+                }
+
+                backoffSleep(attempt);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                return RemotePlanResult.fail("Remote planner request was canceled.", -1, "", "canceled", attempt);
+            } catch (IOException ioe) {
+                lastFailure = RemotePlanResult.fail(
+                        "Network error: " + ioe.getMessage(),
+                        -1,
+                        "",
+                        "network",
+                        attempt
+                );
+                if (attempt >= MAX_ATTEMPTS) {
+                    return lastFailure;
+                }
+                try {
+                    backoffSleep(attempt);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            } catch (Exception e) {
+                return RemotePlanResult.fail("Remote planner request failed: " + e.getMessage(), -1, "", "unknown", attempt);
             }
-            return requestOpenAICompatible(client, config, userPrompt, timeoutSeconds);
-        } catch (Exception e) {
-            return RemotePlanResult.fail("Remote planner request failed: " + e.getMessage(), -1);
         }
+
+        return lastFailure != null
+                ? lastFailure
+                : RemotePlanResult.fail("Remote planner request failed with unknown cause.", -1, "", "unknown", MAX_ATTEMPTS);
     }
 
-    private RemotePlanResult requestOpenAICompatible(HttpClient client, PlannerConfig config, String userPrompt, int timeoutSeconds)
+    private RemotePlanResult requestOpenAICompatible(HttpClient client, PlannerConfig config, String userPrompt, int timeoutSeconds, int attempt)
             throws IOException, InterruptedException {
         String endpoint = normalizeEndpoint(config.apiBaseUrl(), "/chat/completions");
 
@@ -106,17 +151,29 @@ public class AiRemotePlannerService {
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() >= 300) {
-            return RemotePlanResult.fail("HTTP " + response.statusCode() + ": " + truncate(response.body()), response.statusCode());
+            return RemotePlanResult.fail(
+                    "HTTP " + response.statusCode() + ": " + truncate(response.body()),
+                    response.statusCode(),
+                    response.body(),
+                    classifyErrorCategory(response.statusCode()),
+                    attempt
+            );
         }
 
         String content = extractOpenAIContent(response.body());
         if (isBlank(content)) {
-            return RemotePlanResult.fail("OpenAI-compatible response did not include message content.", response.statusCode());
+            return RemotePlanResult.fail(
+                    "OpenAI-compatible response did not include message content.",
+                    response.statusCode(),
+                    response.body(),
+                    "response-format",
+                    attempt
+            );
         }
-        return RemotePlanResult.ok(content, response.statusCode());
+        return RemotePlanResult.ok(content, response.statusCode(), response.body(), attempt);
     }
 
-    private RemotePlanResult requestAnthropic(HttpClient client, PlannerConfig config, String userPrompt, int timeoutSeconds)
+    private RemotePlanResult requestAnthropic(HttpClient client, PlannerConfig config, String userPrompt, int timeoutSeconds, int attempt)
             throws IOException, InterruptedException {
         String endpoint = normalizeAnthropicEndpoint(config.apiBaseUrl());
 
@@ -150,14 +207,64 @@ public class AiRemotePlannerService {
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() >= 300) {
-            return RemotePlanResult.fail("HTTP " + response.statusCode() + ": " + truncate(response.body()), response.statusCode());
+            return RemotePlanResult.fail(
+                    "HTTP " + response.statusCode() + ": " + truncate(response.body()),
+                    response.statusCode(),
+                    response.body(),
+                    classifyErrorCategory(response.statusCode()),
+                    attempt
+            );
         }
 
         String result = extractAnthropicContent(response.body());
         if (isBlank(result)) {
-            return RemotePlanResult.fail("Anthropic response did not include text content.", response.statusCode());
+            return RemotePlanResult.fail(
+                    "Anthropic response did not include text content.",
+                    response.statusCode(),
+                    response.body(),
+                    "response-format",
+                    attempt
+            );
         }
-        return RemotePlanResult.ok(result, response.statusCode());
+        return RemotePlanResult.ok(result, response.statusCode(), response.body(), attempt);
+    }
+
+    private boolean isRetryable(RemotePlanResult result) {
+        if (result == null || result.success()) {
+            return false;
+        }
+        return switch (result.errorCategory()) {
+            case "network", "server", "rate-limit", "timeout" -> true;
+            default -> false;
+        };
+    }
+
+    private String classifyErrorCategory(int statusCode) {
+        if (statusCode == 401 || statusCode == 403) {
+            return "auth";
+        }
+        if (statusCode == 408) {
+            return "timeout";
+        }
+        if (statusCode == 429) {
+            return "rate-limit";
+        }
+        if (statusCode >= 500) {
+            return "server";
+        }
+        if (statusCode >= 400) {
+            return "request";
+        }
+        return "unknown";
+    }
+
+    private void backoffSleep(int attempt) throws InterruptedException {
+        long delayMs = switch (attempt) {
+            case 1 -> 400L;
+            case 2 -> 900L;
+            default -> 1600L;
+        };
+        Thread.sleep(delayMs);
     }
 
     private String extractOpenAIContent(String body) {

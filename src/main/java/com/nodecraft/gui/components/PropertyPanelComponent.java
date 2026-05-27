@@ -37,6 +37,7 @@ import com.nodecraft.nodesystem.datatypes.TetrahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.TorusGeometryData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
+import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.nodes.output.preview.GeometryViewerNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -115,6 +116,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
     private final ImString aiPromptInput = new ImString("", 2048);
     private final ImBoolean aiUseSelectionContext = new ImBoolean(true);
+    private final ImBoolean aiIncludeGraphContext = new ImBoolean(true);
     private final List<AiChatMessage> aiChatMessages = new ArrayList<>();
     private final ImString aiApiBaseUrl = new ImString("https://api.openai.com/v1", 512);
     private final ImString aiApiKey = new ImString("", 512);
@@ -123,10 +125,20 @@ public class PropertyPanelComponent implements EditorComponent {
     private final ImInt aiRequestTimeoutSeconds = new ImInt(60);
     private final ImBoolean aiShowApiKey = new ImBoolean(false);
     private final ImBoolean aiEnableRemotePlanner = new ImBoolean(false);
+    private final ImBoolean aiAutoLayoutBeforeApply = new ImBoolean(true);
+    private final ImBoolean aiPreviewOnlyMode = new ImBoolean(false);
     private final Path aiSettingsPath;
     private final AiRemotePlannerService aiRemotePlannerService = new AiRemotePlannerService();
     private CompletableFuture<AiRemotePlannerService.RemotePlanResult> aiRemotePlanFuture = null;
     private String aiRemotePendingPrompt = "";
+    private String aiLastSubmittedPrompt = "";
+    private String aiLastRemoteRawResponse = "";
+    private String aiLastRemoteModelText = "";
+    private String aiLastRemoteRequestSnapshot = "";
+    private String aiLastRemoteErrorCategory = "";
+    private String aiLastRemoteErrorMessage = "";
+    private int aiLastRemoteStatusCode = 0;
+    private int aiLastRemoteAttempts = 0;
     private AiGraphPlan pendingAiPlan = null;
     private int lastAiUndoStepCount = 0;
     private String aiPlanStatusMessage = "";
@@ -150,6 +162,33 @@ public class PropertyPanelComponent implements EditorComponent {
             return validationErrors == null || validationErrors.isEmpty();
         }
     }
+
+    private record GraphDiffSummary(
+            int nodeAdditions,
+            int nodeMissingFromPlan,
+            int connectionAdditions,
+            int connectionMissingFromPlan,
+            List<String> nodeAdditionSamples,
+            List<String> nodeMissingSamples,
+            List<String> connectionAdditionSamples,
+            List<String> connectionMissingSamples
+    ) {}
+
+        private record CurrentNodeInfo(UUID id, String typeId, String paramSignature) {}
+
+        private record MappedDiffSummary(
+            int reusableNodeMatches,
+            int newNodesToCreate,
+            int unchangedReusableNodes,
+            int paramUpdateCandidates,
+            int connectionAdditions,
+            int connectionRemovalCandidates,
+            List<String> nodeReuseSamples,
+            List<String> nodeCreationSamples,
+            List<String> paramUpdateSamples,
+            List<String> connectionAdditionSamples,
+            List<String> connectionRemovalSamples
+        ) {}
 
     public PropertyPanelComponent() {
         this.editorState = new PropertyEditorState(tempValues, propertiesBeingEdited, errorCounts);
@@ -1542,6 +1581,15 @@ public class PropertyPanelComponent implements EditorComponent {
         if (aiRemotePlanFuture != null && !aiRemotePlanFuture.isDone()) {
             aiRemotePlanFuture.cancel(true);
         }
+        aiRemotePlanFuture = null;
+        aiRemotePendingPrompt = "";
+        aiLastRemoteRawResponse = "";
+        aiLastRemoteModelText = "";
+        aiLastRemoteRequestSnapshot = "";
+        aiLastRemoteErrorCategory = "";
+        aiLastRemoteErrorMessage = "";
+        aiLastRemoteStatusCode = 0;
+        aiLastRemoteAttempts = 0;
         // 移除未保存更改相关的清理
         selectedNode = null;
         aiChatMessages.clear();
@@ -1566,15 +1614,13 @@ public class PropertyPanelComponent implements EditorComponent {
             ImGui.separator();
 
             if (ImGui.beginTabBar("rightPanelTabs")) {
-                int propertyTabFlags = activeTab == RightPanelTab.PROPERTIES ? imgui.flag.ImGuiTabItemFlags.SetSelected : 0;
-                if (ImGui.beginTabItem("Properties", propertyTabFlags)) {
+                if (ImGui.beginTabItem("Properties")) {
                     activeTab = RightPanelTab.PROPERTIES;
                     renderPropertiesTabContent();
                     ImGui.endTabItem();
                 }
 
-                int aiTabFlags = activeTab == RightPanelTab.AI_ASSISTANT ? imgui.flag.ImGuiTabItemFlags.SetSelected : 0;
-                if (ImGui.beginTabItem("AI Assistant", aiTabFlags)) {
+                if (ImGui.beginTabItem("AI Assistant")) {
                     activeTab = RightPanelTab.AI_ASSISTANT;
                     renderAiAssistantTabContent();
                     ImGui.endTabItem();
@@ -1631,11 +1677,22 @@ public class PropertyPanelComponent implements EditorComponent {
             ImGui.textWrapped(aiSettingsStatusMessage);
         }
 
+        if (hasAiDebugData() && ImGui.smallButton("Open Debug Console")) {
+            ImGui.openPopup("AI Debug Console");
+        }
+        renderAiDebugConsolePopup();
+
         if (isRemotePlannerBusy()) {
             ImGui.textColored(0.95f, 0.78f, 0.30f, 1.0f, "AI is generating plan...");
+            ImGui.sameLine();
+            if (ImGui.smallButton("Cancel")) {
+                cancelRemotePlannerRequest();
+            }
         }
 
         ImGui.checkbox("Use current selection as context", aiUseSelectionContext);
+        ImGui.checkbox("Include current canvas graph summary", aiIncludeGraphContext);
+        ImGui.checkbox("Preview-only mode (do not mutate graph)", aiPreviewOnlyMode);
 
         if (aiUseSelectionContext.get()) {
             ImGui.separator();
@@ -1742,6 +1799,8 @@ public class PropertyPanelComponent implements EditorComponent {
         }
         ImGui.popItemWidth();
 
+        ImGui.checkbox("Auto layout before apply", aiAutoLayoutBeforeApply);
+
         ImGui.text("System Prompt");
         ImGui.pushItemWidth(420.0f);
         ImGui.inputTextMultiline("##ai_system_prompt", aiSystemPrompt, 420.0f, 100.0f);
@@ -1771,6 +1830,248 @@ public class PropertyPanelComponent implements EditorComponent {
         ImGui.endPopup();
     }
 
+    private void renderAiDebugConsolePopup() {
+        int flags = ImGuiWindowFlags.AlwaysAutoResize;
+        if (!ImGui.beginPopupModal("AI Debug Console", flags)) {
+            return;
+        }
+
+        renderAiFailureSummaryCard();
+        ImGui.spacing();
+
+        ImGui.textDisabled("Category: " + (aiLastRemoteErrorCategory == null || aiLastRemoteErrorCategory.isBlank()
+                ? "none"
+                : aiLastRemoteErrorCategory)
+                + " | Attempts: " + aiLastRemoteAttempts);
+        ImGui.separator();
+
+        float width = Math.max(620.0f, ImGui.getContentRegionAvailX());
+        if (ImGui.beginTabBar("aiDebugConsoleTabs")) {
+            if (ImGui.beginTabItem("Raw Response")) {
+                if (ImGui.beginChild("aiDebugRawBody", width, 280.0f, true)) {
+                    if (aiLastRemoteRawResponse == null || aiLastRemoteRawResponse.isBlank()) {
+                        ImGui.textDisabled("No raw response available.");
+                    } else {
+                        ImGui.textWrapped(aiLastRemoteRawResponse);
+                    }
+                }
+                ImGui.endChild();
+                if (ImGui.button("Copy Raw Response")) {
+                    copyToClipboard(aiLastRemoteRawResponse == null ? "" : aiLastRemoteRawResponse);
+                    aiPlanStatusMessage = "Raw response copied to clipboard.";
+                }
+                ImGui.endTabItem();
+            }
+
+            if (ImGui.beginTabItem("Model Text")) {
+                if (ImGui.beginChild("aiDebugModelTextBody", width, 280.0f, true)) {
+                    if (aiLastRemoteModelText == null || aiLastRemoteModelText.isBlank()) {
+                        ImGui.textDisabled("No extracted model text available.");
+                    } else {
+                        ImGui.textWrapped(aiLastRemoteModelText);
+                    }
+                }
+                ImGui.endChild();
+                if (ImGui.button("Copy Model Text")) {
+                    copyToClipboard(aiLastRemoteModelText == null ? "" : aiLastRemoteModelText);
+                    aiPlanStatusMessage = "Model text copied to clipboard.";
+                }
+                ImGui.endTabItem();
+            }
+
+            if (ImGui.beginTabItem("Request Snapshot")) {
+                ImGui.textDisabled("API key is masked for safety.");
+                if (ImGui.beginChild("aiDebugRequestSnapshotBody", width, 260.0f, true)) {
+                    if (aiLastRemoteRequestSnapshot == null || aiLastRemoteRequestSnapshot.isBlank()) {
+                        ImGui.textDisabled("No request snapshot available.");
+                    } else {
+                        ImGui.textWrapped(aiLastRemoteRequestSnapshot);
+                    }
+                }
+                ImGui.endChild();
+                if (ImGui.button("Copy Request Snapshot")) {
+                    copyToClipboard(aiLastRemoteRequestSnapshot == null ? "" : aiLastRemoteRequestSnapshot);
+                    aiPlanStatusMessage = "Request snapshot copied to clipboard.";
+                }
+                ImGui.endTabItem();
+            }
+
+            if (ImGui.beginTabItem("Export")) {
+                String compactDiagnostics = buildAiDiagnosticsExportText(false);
+                String fullDiagnostics = buildAiDiagnosticsExportText(true);
+                if (ImGui.beginChild("aiDebugExportBody", width, 260.0f, true)) {
+                    ImGui.textDisabled("Preview (compact):");
+                    ImGui.textWrapped(compactDiagnostics);
+                }
+                ImGui.endChild();
+                if (ImGui.button("Copy Compact Export")) {
+                    copyToClipboard(compactDiagnostics);
+                    aiPlanStatusMessage = "Compact diagnostics exported to clipboard.";
+                }
+                ImGui.sameLine();
+                if (ImGui.button("Copy Full Export")) {
+                    copyToClipboard(fullDiagnostics);
+                    aiPlanStatusMessage = "Full diagnostics exported to clipboard.";
+                }
+                ImGui.endTabItem();
+            }
+
+            ImGui.endTabBar();
+        }
+
+        if (ImGui.button("Close")) {
+            ImGui.closeCurrentPopup();
+        }
+
+        ImGui.endPopup();
+    }
+
+    private boolean hasAiDebugData() {
+        return (aiLastRemoteRawResponse != null && !aiLastRemoteRawResponse.isBlank())
+                || (aiLastRemoteModelText != null && !aiLastRemoteModelText.isBlank())
+                || (aiLastRemoteRequestSnapshot != null && !aiLastRemoteRequestSnapshot.isBlank())
+                || (aiLastRemoteErrorMessage != null && !aiLastRemoteErrorMessage.isBlank());
+    }
+
+    private void renderAiFailureSummaryCard() {
+        if (aiLastRemoteErrorCategory == null || aiLastRemoteErrorCategory.isBlank() || "none".equals(aiLastRemoteErrorCategory)) {
+            ImGui.textDisabled("No remote failure summary available.");
+            return;
+        }
+
+        ImGui.text("Failure Summary");
+        ImGui.separator();
+        ImGui.textWrapped("Category: " + aiLastRemoteErrorCategory
+                + " | Status: " + aiLastRemoteStatusCode
+                + " | Attempts: " + aiLastRemoteAttempts);
+        if (aiLastRemoteErrorMessage != null && !aiLastRemoteErrorMessage.isBlank()) {
+            ImGui.textWrapped("Message: " + aiLastRemoteErrorMessage);
+        }
+        String suggestion = buildRemoteFailureSuggestion(aiLastRemoteErrorCategory);
+        if (!suggestion.isBlank()) {
+            ImGui.textWrapped("Suggested action: " + suggestion);
+        }
+
+        ImGui.spacing();
+        renderAiFailureRecoveryActions();
+    }
+
+    private void renderAiFailureRecoveryActions() {
+        boolean allowTimeoutAction = "timeout".equals(aiLastRemoteErrorCategory)
+                || "server".equals(aiLastRemoteErrorCategory)
+                || "rate-limit".equals(aiLastRemoteErrorCategory)
+                || "network".equals(aiLastRemoteErrorCategory)
+                || "request".equals(aiLastRemoteErrorCategory)
+                || "response-format".equals(aiLastRemoteErrorCategory);
+        boolean allowSettingsAction = "auth".equals(aiLastRemoteErrorCategory)
+                || "request".equals(aiLastRemoteErrorCategory)
+                || "timeout".equals(aiLastRemoteErrorCategory)
+                || "response-format".equals(aiLastRemoteErrorCategory);
+        boolean allowModeAction = "network".equals(aiLastRemoteErrorCategory)
+                || "auth".equals(aiLastRemoteErrorCategory)
+                || "request".equals(aiLastRemoteErrorCategory)
+                || "server".equals(aiLastRemoteErrorCategory);
+
+        if (aiLastSubmittedPrompt != null && !aiLastSubmittedPrompt.isBlank() && !isRemotePlannerBusy()) {
+            if (ImGui.smallButton("Retry Last Request")) {
+                retryLastAiRequest();
+            }
+            ImGui.sameLine();
+        }
+
+        if (allowTimeoutAction) {
+            if (ImGui.smallButton("Increase Timeout +30s")) {
+                increaseAiTimeoutSeconds(30);
+            }
+            ImGui.sameLine();
+        }
+
+        if (allowModeAction) {
+            if (ImGui.smallButton(aiEnableRemotePlanner.get() ? "Use Local Planner" : "Use Remote Planner")) {
+                aiEnableRemotePlanner.set(!aiEnableRemotePlanner.get());
+                saveAiSettingsToDisk();
+                aiSettingsStatusMessage = aiEnableRemotePlanner.get()
+                        ? "Remote planner re-enabled."
+                        : "Switched to local planner for the next request.";
+            }
+            ImGui.sameLine();
+        }
+
+        if (allowSettingsAction) {
+            if (ImGui.smallButton("Open AI Settings")) {
+                ImGui.openPopup("AI Settings");
+            }
+            ImGui.sameLine();
+        }
+
+        if (ImGui.smallButton("Resave Settings")) {
+            saveAiSettingsToDisk();
+            aiSettingsStatusMessage = "AI settings saved.";
+        }
+    }
+
+    private String buildRemoteFailureSuggestion(String category) {
+        return switch (category) {
+            case "auth" -> "Verify API key, organization/project scope, and endpoint authorization policy.";
+            case "rate-limit" -> "Reduce request frequency, switch to a lower-cost model, or increase provider quota.";
+            case "timeout" -> "Increase timeout in AI settings and reduce prompt/schema size for this request.";
+            case "network" -> "Check connectivity, proxy/firewall rules, and whether the base URL is reachable.";
+            case "server" -> "Retry later or switch provider/model temporarily if 5xx errors persist.";
+            case "request" -> "Check model name, endpoint path, and payload constraints for this provider.";
+            case "response-format" -> "Inspect raw response and tighten system prompt to force strict JSON output.";
+            case "canceled" -> "No action required; resend request when ready.";
+            default -> "Open raw response and request snapshot for manual diagnosis.";
+        };
+    }
+
+    private void increaseAiTimeoutSeconds(int deltaSeconds) {
+        int current = aiRequestTimeoutSeconds.get();
+        int updated = Math.max(5, Math.min(600, current + deltaSeconds));
+        aiRequestTimeoutSeconds.set(updated);
+        saveAiSettingsToDisk();
+        aiSettingsStatusMessage = "AI timeout increased to " + updated + " seconds.";
+    }
+
+    private String buildAiDiagnosticsExportText(boolean includeFullPayloads) {
+        StringBuilder sb = new StringBuilder(2048);
+        sb.append("[AI Debug Diagnostics]\n");
+        sb.append("category: ").append(nullToEmpty(aiLastRemoteErrorCategory)).append("\n");
+        sb.append("statusCode: ").append(aiLastRemoteStatusCode).append("\n");
+        sb.append("attempts: ").append(aiLastRemoteAttempts).append("\n");
+        sb.append("errorMessage: ").append(nullToEmpty(aiLastRemoteErrorMessage)).append("\n");
+        sb.append("statusMessage: ").append(nullToEmpty(aiPlanStatusMessage)).append("\n\n");
+
+        sb.append("[Request Snapshot]\n");
+        sb.append(formatDiagnosticsSection(aiLastRemoteRequestSnapshot, includeFullPayloads)).append("\n");
+
+        sb.append("[Model Text]\n");
+        sb.append(formatDiagnosticsSection(aiLastRemoteModelText, includeFullPayloads)).append("\n");
+
+        sb.append("[Raw Response]\n");
+        sb.append(formatDiagnosticsSection(aiLastRemoteRawResponse, includeFullPayloads)).append("\n");
+        return sb.toString();
+    }
+
+    private String formatDiagnosticsSection(String value, boolean includeFullPayloads) {
+        if (value == null || value.isBlank()) {
+            return "(empty)";
+        }
+        if (includeFullPayloads) {
+            return value;
+        }
+        return truncateForDiagnostics(value, 900);
+    }
+
+    private String truncateForDiagnostics(String value, int maxChars) {
+        if (value == null) {
+            return "";
+        }
+        if (value.length() <= maxChars) {
+            return value;
+        }
+        return value.substring(0, maxChars) + "\n...[truncated, total chars=" + value.length() + "]";
+    }
+
     private String validateAiSettings() {
         if (!aiEnableRemotePlanner.get()) {
             return "Remote planner is disabled. Local mock planner remains active.";
@@ -1794,7 +2095,8 @@ public class PropertyPanelComponent implements EditorComponent {
         String plannerMode = aiEnableRemotePlanner.get() ? "Planner: Remote" : "Planner: Local";
         String modelName = aiModel.get() == null || aiModel.get().isBlank() ? "(no model)" : aiModel.get();
         String keyStatus = aiApiKey.get() == null || aiApiKey.get().isBlank() ? "API Key: missing" : "API Key: set";
-        return plannerMode + " | Model: " + modelName + " | " + keyStatus;
+        String layoutMode = aiAutoLayoutBeforeApply.get() ? "Layout: Auto" : "Layout: Plan";
+        return plannerMode + " | Model: " + modelName + " | " + keyStatus + " | " + layoutMode;
     }
 
     private Path resolveAiSettingsPath() {
@@ -1842,6 +2144,15 @@ public class PropertyPanelComponent implements EditorComponent {
             if (root.has("enableRemotePlanner")) {
                 aiEnableRemotePlanner.set(root.get("enableRemotePlanner").getAsBoolean());
             }
+            if (root.has("autoLayoutBeforeApply")) {
+                aiAutoLayoutBeforeApply.set(root.get("autoLayoutBeforeApply").getAsBoolean());
+            }
+            if (root.has("includeGraphContext")) {
+                aiIncludeGraphContext.set(root.get("includeGraphContext").getAsBoolean());
+            }
+            if (root.has("previewOnlyMode")) {
+                aiPreviewOnlyMode.set(root.get("previewOnlyMode").getAsBoolean());
+            }
 
             aiSettingsStatusMessage = "AI settings loaded from disk.";
         } catch (Exception e) {
@@ -1865,6 +2176,9 @@ public class PropertyPanelComponent implements EditorComponent {
             root.addProperty("timeoutSeconds", aiRequestTimeoutSeconds.get());
             root.addProperty("showApiKey", aiShowApiKey.get());
             root.addProperty("enableRemotePlanner", aiEnableRemotePlanner.get());
+            root.addProperty("autoLayoutBeforeApply", aiAutoLayoutBeforeApply.get());
+            root.addProperty("includeGraphContext", aiIncludeGraphContext.get());
+            root.addProperty("previewOnlyMode", aiPreviewOnlyMode.get());
 
             Files.writeString(aiSettingsPath, AI_SETTINGS_GSON.toJson(root), StandardCharsets.UTF_8);
             aiSettingsStatusMessage = "AI settings saved.";
@@ -1914,10 +2228,54 @@ public class PropertyPanelComponent implements EditorComponent {
             ImGui.treePop();
         }
 
+        GraphDiffSummary diff = buildGraphDiffSummary(pendingAiPlan);
+        if (ImGui.treeNode("Graph Diff (Heuristic)")) {
+            ImGui.textDisabled("Compared by node type+params signature and typed connection signature.");
+            ImGui.text("Potential additions: nodes=" + diff.nodeAdditions() + ", connections=" + diff.connectionAdditions());
+            ImGui.text("Potential missing from plan: nodes=" + diff.nodeMissingFromPlan() + ", connections=" + diff.connectionMissingFromPlan());
+
+            renderDiffSamples("Node additions", diff.nodeAdditionSamples());
+            renderDiffSamples("Node missing from plan", diff.nodeMissingSamples());
+            renderDiffSamples("Connection additions", diff.connectionAdditionSamples());
+            renderDiffSamples("Connection missing from plan", diff.connectionMissingSamples());
+
+            ImGui.treePop();
+        }
+
+    MappedDiffSummary mappedDiff = buildMappedDiffSummary(pendingAiPlan);
+    if (ImGui.treeNode("Mapped Diff (Preview)")) {
+        ImGui.textDisabled("Greedy matching by type+params, then type fallback. Estimates reusable vs new nodes.");
+        ImGui.text("Reusable matches=" + mappedDiff.reusableNodeMatches()
+            + ", new nodes=" + mappedDiff.newNodesToCreate());
+        ImGui.text("Unchanged reused=" + mappedDiff.unchangedReusableNodes()
+            + ", param updates=" + mappedDiff.paramUpdateCandidates());
+        ImGui.text("Connection additions=" + mappedDiff.connectionAdditions()
+            + ", connection removal candidates=" + mappedDiff.connectionRemovalCandidates());
+
+        renderDiffSamples("Node reuse matches", mappedDiff.nodeReuseSamples());
+        renderDiffSamples("Node creation candidates", mappedDiff.nodeCreationSamples());
+        renderDiffSamples("Param update candidates", mappedDiff.paramUpdateSamples());
+        renderDiffSamples("Connection additions", mappedDiff.connectionAdditionSamples());
+        renderDiffSamples("Connection removal candidates", mappedDiff.connectionRemovalSamples());
+
+        ImGui.treePop();
+    }
+
         boolean canApply = pendingAiPlan.isValid() && !pendingAiPlan.nodes().isEmpty();
         if (!canApply) ImGui.beginDisabled();
         if (ImGui.button("Apply Plan")) {
-            applyPendingAiPlan();
+            if (aiPreviewOnlyMode.get()) {
+                runDryRunForPendingPlan();
+            } else {
+                applyPendingAiPlan();
+            }
+        }
+        if (!canApply) ImGui.endDisabled();
+
+        ImGui.sameLine();
+        if (!canApply) ImGui.beginDisabled();
+        if (ImGui.button("Dry Run Report")) {
+            runDryRunForPendingPlan();
         }
         if (!canApply) ImGui.endDisabled();
 
@@ -1934,6 +2292,433 @@ public class PropertyPanelComponent implements EditorComponent {
         }
     }
 
+    private void runDryRunForPendingPlan() {
+        if (pendingAiPlan == null) {
+            aiPlanStatusMessage = "Dry run aborted: no plan available.";
+            return;
+        }
+        if (!pendingAiPlan.isValid()) {
+            aiPlanStatusMessage = "Dry run aborted: plan has validation errors.";
+            return;
+        }
+
+        GraphDiffSummary heuristic = buildGraphDiffSummary(pendingAiPlan);
+        MappedDiffSummary mapped = buildMappedDiffSummary(pendingAiPlan);
+
+        StringBuilder report = new StringBuilder(512);
+        report.append("Dry run only (no graph mutation). ")
+                .append("Planned nodes=").append(pendingAiPlan.nodes().size())
+                .append(", connections=").append(pendingAiPlan.connections().size()).append(". ")
+                .append("Mapped: reusable=").append(mapped.reusableNodeMatches())
+                .append(", new=").append(mapped.newNodesToCreate())
+                .append(", paramUpdates=").append(mapped.paramUpdateCandidates())
+                .append(", connAdd=").append(mapped.connectionAdditions())
+                .append(", connRemoveCandidates=").append(mapped.connectionRemovalCandidates())
+                .append(". Heuristic missing: nodes=").append(heuristic.nodeMissingFromPlan())
+                .append(", connections=").append(heuristic.connectionMissingFromPlan()).append(".");
+
+        String reportText = report.toString();
+        aiPlanStatusMessage = reportText;
+        aiChatMessages.add(new AiChatMessage("assistant", reportText, System.currentTimeMillis()));
+    }
+
+    private void renderDiffSamples(String title, List<String> samples) {
+        if (!ImGui.treeNode(title)) {
+            return;
+        }
+        if (samples == null || samples.isEmpty()) {
+            ImGui.textDisabled("None");
+        } else {
+            for (String sample : samples) {
+                ImGui.bulletText(sample);
+            }
+        }
+        ImGui.treePop();
+    }
+
+    private GraphDiffSummary buildGraphDiffSummary(AiGraphPlan plan) {
+        NodeGraph graph = getNodeGraph();
+        if (graph == null) {
+            return new GraphDiffSummary(0, 0, 0, 0, List.of(), List.of(), List.of(), List.of());
+        }
+
+        Map<String, Integer> currentNodeCounts = buildCurrentNodeSignatureCounts(graph);
+        Map<String, Integer> plannedNodeCounts = buildPlannedNodeSignatureCounts(plan);
+
+        Map<String, Integer> currentConnectionCounts = buildCurrentConnectionSignatureCounts(graph);
+        Map<String, Integer> plannedConnectionCounts = buildPlannedConnectionSignatureCounts(plan);
+
+        List<String> nodeAdds = new ArrayList<>();
+        List<String> nodeMissing = new ArrayList<>();
+        int nodeAddTotal = collectMultisetDelta(plannedNodeCounts, currentNodeCounts, nodeAdds, true);
+        int nodeMissingTotal = collectMultisetDelta(currentNodeCounts, plannedNodeCounts, nodeMissing, false);
+
+        List<String> connAdds = new ArrayList<>();
+        List<String> connMissing = new ArrayList<>();
+        int connAddTotal = collectMultisetDelta(plannedConnectionCounts, currentConnectionCounts, connAdds, false);
+        int connMissingTotal = collectMultisetDelta(currentConnectionCounts, plannedConnectionCounts, connMissing, false);
+
+        return new GraphDiffSummary(
+                nodeAddTotal,
+                nodeMissingTotal,
+                connAddTotal,
+                connMissingTotal,
+                nodeAdds,
+                nodeMissing,
+                connAdds,
+                connMissing
+        );
+    }
+
+    private Map<String, Integer> buildCurrentNodeSignatureCounts(NodeGraph graph) {
+        Map<String, Integer> counts = new HashMap<>();
+        for (INode node : graph.getNodes()) {
+            Object state = node instanceof BaseNode baseNode ? baseNode.getNodeState() : null;
+            String signature = buildNodeSignature(node.getTypeId(), state);
+            counts.merge(signature, 1, Integer::sum);
+        }
+        return counts;
+    }
+
+    private Map<String, Integer> buildPlannedNodeSignatureCounts(AiGraphPlan plan) {
+        Map<String, Integer> counts = new HashMap<>();
+        for (AiPlanNode node : plan.nodes()) {
+            String signature = buildNodeSignature(node.typeId(), node.nodeState());
+            counts.merge(signature, 1, Integer::sum);
+        }
+        return counts;
+    }
+
+    private Map<String, Integer> buildCurrentConnectionSignatureCounts(NodeGraph graph) {
+        Map<String, Integer> counts = new HashMap<>();
+        for (NodeGraph.Connection conn : graph.getConnections()) {
+            String signature = buildConnectionSignature(
+                    conn.sourceNode.getTypeId(),
+                    conn.sourcePort.getId(),
+                    conn.targetNode.getTypeId(),
+                    conn.targetPort.getId()
+            );
+            counts.merge(signature, 1, Integer::sum);
+        }
+        return counts;
+    }
+
+    private Map<String, Integer> buildPlannedConnectionSignatureCounts(AiGraphPlan plan) {
+        Map<String, String> refToType = new HashMap<>();
+        for (AiPlanNode node : plan.nodes()) {
+            refToType.put(node.ref(), node.typeId());
+        }
+
+        Map<String, Integer> counts = new HashMap<>();
+        for (AiPlanConnection conn : plan.connections()) {
+            String sourceType = refToType.getOrDefault(conn.sourceRef(), "unknown");
+            String targetType = refToType.getOrDefault(conn.targetRef(), "unknown");
+            String signature = buildConnectionSignature(
+                    sourceType,
+                    conn.sourcePortId(),
+                    targetType,
+                    conn.targetPortId()
+            );
+            counts.merge(signature, 1, Integer::sum);
+        }
+        return counts;
+    }
+
+    private int collectMultisetDelta(
+            Map<String, Integer> lhs,
+            Map<String, Integer> rhs,
+            List<String> samples,
+            boolean nodeSignature
+    ) {
+        int total = 0;
+        List<String> keys = new ArrayList<>(lhs.keySet());
+        Collections.sort(keys);
+
+        for (String key : keys) {
+            int delta = lhs.getOrDefault(key, 0) - rhs.getOrDefault(key, 0);
+            if (delta <= 0) {
+                continue;
+            }
+            total += delta;
+            if (samples.size() < 12) {
+                String label = nodeSignature ? simplifyNodeSignature(key) : key;
+                samples.add(delta + " x " + truncateForDiagnostics(label, 180));
+            }
+        }
+        return total;
+    }
+
+    private String buildNodeSignature(String typeId, Object state) {
+        return nullToEmpty(typeId) + "|" + normalizeStateForSignature(state);
+    }
+
+    private String simplifyNodeSignature(String signature) {
+        if (signature == null || signature.isBlank()) {
+            return "(empty)";
+        }
+        int split = signature.indexOf('|');
+        if (split < 0) {
+            return signature;
+        }
+        String type = signature.substring(0, split);
+        String state = signature.substring(split + 1);
+        return type + " params=" + truncateForDiagnostics(state, 120);
+    }
+
+    private String normalizeStateForSignature(Object state) {
+        if (state == null) {
+            return "{}";
+        }
+        try {
+            Object canonical = canonicalizeForSignature(state);
+            return AI_SETTINGS_GSON.toJson(canonical);
+        } catch (Exception e) {
+            return "{\"_error\":\"state-normalize-failed\"}";
+        }
+    }
+
+    private Object canonicalizeForSignature(Object value) {
+        if (value == null
+                || value instanceof String
+                || value instanceof Number
+                || value instanceof Boolean) {
+            return value;
+        }
+        if (value instanceof Map<?, ?> map) {
+            Map<String, Object> canonical = new TreeMap<>();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                canonical.put(String.valueOf(entry.getKey()), canonicalizeForSignature(entry.getValue()));
+            }
+            return canonical;
+        }
+        if (value instanceof Collection<?> collection) {
+            List<Object> canonical = new ArrayList<>(collection.size());
+            for (Object item : collection) {
+                canonical.add(canonicalizeForSignature(item));
+            }
+            return canonical;
+        }
+        return String.valueOf(value);
+    }
+
+    private String buildConnectionSignature(String sourceType, String sourcePort, String targetType, String targetPort) {
+        return nullToEmpty(sourceType) + "." + nullToEmpty(sourcePort)
+                + " -> " + nullToEmpty(targetType) + "." + nullToEmpty(targetPort);
+    }
+
+    private MappedDiffSummary buildMappedDiffSummary(AiGraphPlan plan) {
+        NodeGraph graph = getNodeGraph();
+        if (graph == null) {
+            return new MappedDiffSummary(0, plan.nodes().size(), 0, 0, plan.connections().size(), 0,
+                    List.of(), List.of(), List.of(), List.of(), List.of());
+        }
+
+        List<CurrentNodeInfo> currentNodes = new ArrayList<>();
+        Map<UUID, String> currentTypeById = new HashMap<>();
+        for (INode node : graph.getNodes()) {
+            Object state = node instanceof BaseNode baseNode ? baseNode.getNodeState() : null;
+            String signature = normalizeStateForSignature(state);
+            currentNodes.add(new CurrentNodeInfo(node.getId(), node.getTypeId(), signature));
+            currentTypeById.put(node.getId(), node.getTypeId());
+        }
+
+        Map<String, List<CurrentNodeInfo>> byType = new HashMap<>();
+        for (CurrentNodeInfo info : currentNodes) {
+            byType.computeIfAbsent(info.typeId(), key -> new ArrayList<>()).add(info);
+        }
+
+        Set<UUID> usedCurrent = new HashSet<>();
+        Map<String, CurrentNodeInfo> refToMatched = new HashMap<>();
+        Set<String> newRefs = new HashSet<>();
+        List<String> reuseSamples = new ArrayList<>();
+        List<String> createSamples = new ArrayList<>();
+        List<String> paramUpdateSamples = new ArrayList<>();
+
+        int unchanged = 0;
+        int paramUpdates = 0;
+
+        for (AiPlanNode planned : plan.nodes()) {
+            CurrentNodeInfo matched = matchCurrentNode(planned, byType, usedCurrent);
+            if (matched == null) {
+                newRefs.add(planned.ref());
+                if (createSamples.size() < 12) {
+                    createSamples.add(planned.ref() + " -> " + planned.typeId());
+                }
+                continue;
+            }
+
+            refToMatched.put(planned.ref(), matched);
+            usedCurrent.add(matched.id());
+            if (reuseSamples.size() < 12) {
+                reuseSamples.add(planned.ref() + " -> existing " + shortUuid(matched.id()) + " (" + matched.typeId() + ")");
+            }
+
+            String plannedSig = normalizeStateForSignature(planned.nodeState());
+            if (plannedSig.equals(matched.paramSignature())) {
+                unchanged++;
+            } else {
+                paramUpdates++;
+                if (paramUpdateSamples.size() < 12) {
+                    paramUpdateSamples.add(planned.ref() + " -> " + matched.typeId());
+                }
+            }
+        }
+
+        Set<String> currentConnAll = new HashSet<>();
+        Set<String> currentConnScoped = new HashSet<>();
+        for (NodeGraph.Connection conn : graph.getConnections()) {
+            String sig = buildMappedConnectionSignature(
+                    "CUR:" + conn.sourceNode.getId(),
+                    conn.sourcePort.getId(),
+                    "CUR:" + conn.targetNode.getId(),
+                    conn.targetPort.getId()
+            );
+            currentConnAll.add(sig);
+
+            if (usedCurrent.contains(conn.sourceNode.getId()) && usedCurrent.contains(conn.targetNode.getId())) {
+                currentConnScoped.add(sig);
+            }
+        }
+
+        Set<String> plannedConnMappedAll = new HashSet<>();
+        Set<String> plannedConnMappedScoped = new HashSet<>();
+        for (AiPlanConnection conn : plan.connections()) {
+            String sourceToken = tokenForPlanRef(conn.sourceRef(), refToMatched);
+            String targetToken = tokenForPlanRef(conn.targetRef(), refToMatched);
+            String mapped = buildMappedConnectionSignature(sourceToken, conn.sourcePortId(), targetToken, conn.targetPortId());
+            plannedConnMappedAll.add(mapped);
+
+            if (sourceToken.startsWith("CUR:") && targetToken.startsWith("CUR:")) {
+                plannedConnMappedScoped.add(mapped);
+            }
+        }
+
+        List<String> connectionAddSamples = new ArrayList<>();
+        int connAdd = 0;
+        List<String> sortedPlannedConn = new ArrayList<>(plannedConnMappedAll);
+        Collections.sort(sortedPlannedConn);
+        for (String conn : sortedPlannedConn) {
+            if (currentConnAll.contains(conn)) {
+                continue;
+            }
+            connAdd++;
+            if (connectionAddSamples.size() < 12) {
+                connectionAddSamples.add(formatMappedConnectionForDisplay(conn, currentTypeById));
+            }
+        }
+
+        List<String> connectionRemoveSamples = new ArrayList<>();
+        int connRemove = 0;
+        List<String> sortedCurrentScoped = new ArrayList<>(currentConnScoped);
+        Collections.sort(sortedCurrentScoped);
+        for (String conn : sortedCurrentScoped) {
+            if (plannedConnMappedScoped.contains(conn)) {
+                continue;
+            }
+            connRemove++;
+            if (connectionRemoveSamples.size() < 12) {
+                connectionRemoveSamples.add(formatMappedConnectionForDisplay(conn, currentTypeById));
+            }
+        }
+
+        return new MappedDiffSummary(
+                refToMatched.size(),
+                newRefs.size(),
+                unchanged,
+                paramUpdates,
+                connAdd,
+                connRemove,
+                reuseSamples,
+                createSamples,
+                paramUpdateSamples,
+                connectionAddSamples,
+                connectionRemoveSamples
+        );
+    }
+
+    private CurrentNodeInfo matchCurrentNode(
+            AiPlanNode planned,
+            Map<String, List<CurrentNodeInfo>> byType,
+            Set<UUID> usedCurrent
+    ) {
+        List<CurrentNodeInfo> candidates = byType.get(planned.typeId());
+        if (candidates == null || candidates.isEmpty()) {
+            return null;
+        }
+
+        String plannedSig = normalizeStateForSignature(planned.nodeState());
+        for (CurrentNodeInfo candidate : candidates) {
+            if (!usedCurrent.contains(candidate.id()) && plannedSig.equals(candidate.paramSignature())) {
+                return candidate;
+            }
+        }
+        for (CurrentNodeInfo candidate : candidates) {
+            if (!usedCurrent.contains(candidate.id())) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private String tokenForPlanRef(String ref, Map<String, CurrentNodeInfo> refToMatched) {
+        CurrentNodeInfo matched = refToMatched.get(ref);
+        if (matched != null) {
+            return "CUR:" + matched.id();
+        }
+        return "NEW:" + nullToEmpty(ref);
+    }
+
+    private String buildMappedConnectionSignature(String sourceToken, String sourcePort, String targetToken, String targetPort) {
+        return nullToEmpty(sourceToken) + "." + nullToEmpty(sourcePort)
+                + " -> " + nullToEmpty(targetToken) + "." + nullToEmpty(targetPort);
+    }
+
+    private String formatMappedConnectionForDisplay(String signature, Map<UUID, String> currentTypeById) {
+        if (signature == null || signature.isBlank()) {
+            return "(empty)";
+        }
+        String[] halves = signature.split(" -> ", 2);
+        if (halves.length != 2) {
+            return signature;
+        }
+        return decorateMappedEndpoint(halves[0], currentTypeById) + " -> " + decorateMappedEndpoint(halves[1], currentTypeById);
+    }
+
+    private String decorateMappedEndpoint(String endpoint, Map<UUID, String> currentTypeById) {
+        if (endpoint == null || endpoint.isBlank()) {
+            return "?";
+        }
+        int dot = endpoint.lastIndexOf('.');
+        if (dot < 0) {
+            return endpoint;
+        }
+
+        String token = endpoint.substring(0, dot);
+        String port = endpoint.substring(dot + 1);
+        if (token.startsWith("CUR:")) {
+            String raw = token.substring(4);
+            try {
+                UUID id = UUID.fromString(raw);
+                String type = currentTypeById.getOrDefault(id, "unknown");
+                return "CUR(" + type + ":" + shortUuid(id) + ")." + port;
+            } catch (IllegalArgumentException ignored) {
+                return token + "." + port;
+            }
+        }
+        if (token.startsWith("NEW:")) {
+            return token + "." + port;
+        }
+        return endpoint;
+    }
+
+    private String shortUuid(UUID id) {
+        if (id == null) {
+            return "unknown";
+        }
+        String text = id.toString();
+        return text.length() <= 8 ? text : text.substring(0, 8);
+    }
+
     private void setAiPrompt(String text) {
         if (text == null) {
             aiPromptInput.clear();
@@ -1948,19 +2733,37 @@ public class PropertyPanelComponent implements EditorComponent {
             return;
         }
 
-        String trimmedPrompt = prompt.trim();
+        submitAiPromptWithText(prompt.trim());
+        aiPromptInput.clear();
+    }
+
+    private void submitAiPromptWithText(String trimmedPrompt) {
+        aiLastSubmittedPrompt = trimmedPrompt;
         aiChatMessages.add(new AiChatMessage("user", trimmedPrompt, System.currentTimeMillis()));
 
         if (aiEnableRemotePlanner.get()) {
             startRemotePlannerRequest(trimmedPrompt);
-            aiPromptInput.clear();
             return;
         }
 
         AiGraphPlan mockTemplatePlan = buildMockAiPlan(trimmedPrompt);
         String dslJson = buildDslJsonFromPlan(mockTemplatePlan);
         applyDslResponse(trimmedPrompt, dslJson, "local-template");
-        aiPromptInput.clear();
+    }
+
+    private void retryLastAiRequest() {
+        if (aiLastSubmittedPrompt == null || aiLastSubmittedPrompt.isBlank()) {
+            aiPlanStatusMessage = "No previous prompt is available to retry.";
+            return;
+        }
+
+        if (isRemotePlannerBusy()) {
+            aiPlanStatusMessage = "Remote planner is already running.";
+            return;
+        }
+
+        submitAiPromptWithText(aiLastSubmittedPrompt);
+        aiPlanStatusMessage = "Retrying last request...";
     }
 
     private void startRemotePlannerRequest(String userPrompt) {
@@ -1997,6 +2800,13 @@ public class PropertyPanelComponent implements EditorComponent {
         );
 
         aiRemotePendingPrompt = userPrompt;
+        aiLastRemoteRawResponse = "";
+        aiLastRemoteModelText = "";
+        aiLastRemoteRequestSnapshot = buildRemoteRequestSnapshot(config, userPrompt, userPromptPayload, relevantSchemas.size());
+        aiLastRemoteErrorCategory = "";
+        aiLastRemoteErrorMessage = "";
+        aiLastRemoteStatusCode = 0;
+        aiLastRemoteAttempts = 0;
         aiPlanStatusMessage = "Remote planner request submitted...";
         aiRemotePlanFuture = aiRemotePlannerService.requestPlanAsync(config, userPromptPayload);
     }
@@ -2021,9 +2831,15 @@ public class PropertyPanelComponent implements EditorComponent {
         aiRemotePlanFuture = null;
         String prompt = aiRemotePendingPrompt;
         aiRemotePendingPrompt = "";
+        aiLastRemoteAttempts = result.attempts();
+        aiLastRemoteErrorCategory = result.errorCategory();
+        aiLastRemoteErrorMessage = result.errorMessage() == null ? "" : result.errorMessage();
+        aiLastRemoteStatusCode = result.statusCode();
+        aiLastRemoteRawResponse = result.rawResponse() == null ? "" : result.rawResponse();
+        aiLastRemoteModelText = result.modelContent() == null ? "" : result.modelContent();
 
         if (!result.success()) {
-            String error = "Remote planner error: " + result.errorMessage();
+            String error = formatRemoteErrorMessage(result);
             aiPlanStatusMessage = error;
             aiChatMessages.add(new AiChatMessage("assistant", error, System.currentTimeMillis()));
             fallbackToLocalPlan(prompt, "remote request failed");
@@ -2074,14 +2890,204 @@ public class PropertyPanelComponent implements EditorComponent {
         return aiRemotePlanFuture != null && !aiRemotePlanFuture.isDone();
     }
 
+    private void cancelRemotePlannerRequest() {
+        if (aiRemotePlanFuture != null && !aiRemotePlanFuture.isDone()) {
+            aiRemotePlanFuture.cancel(true);
+        }
+        aiRemotePlanFuture = null;
+        aiRemotePendingPrompt = "";
+        aiPlanStatusMessage = "Remote planner request canceled.";
+        aiChatMessages.add(new AiChatMessage("assistant", aiPlanStatusMessage, System.currentTimeMillis()));
+    }
+
+    private String formatRemoteErrorMessage(AiRemotePlannerService.RemotePlanResult result) {
+        String category = result.errorCategory();
+        String headline = switch (category) {
+            case "auth" -> "Remote planner auth failed. Please check API key and permissions.";
+            case "rate-limit" -> "Remote planner rate-limited. Please retry shortly or reduce request frequency.";
+            case "timeout" -> "Remote planner timed out. Increase timeout or retry.";
+            case "network" -> "Remote planner network error. Check connectivity and endpoint.";
+            case "server" -> "Remote planner service error. Server returned 5xx.";
+            case "request" -> "Remote planner rejected the request. Check model/base URL/payload.";
+            case "response-format" -> "Remote planner returned an unexpected response format.";
+            case "canceled" -> "Remote planner request canceled.";
+            default -> "Remote planner failed.";
+        };
+
+        String detail = result.errorMessage() == null ? "" : result.errorMessage();
+        String attemptInfo = result.attempts() > 1 ? " (retried " + result.attempts() + " times)" : "";
+        return headline + attemptInfo + (detail.isBlank() ? "" : " Detail: " + detail);
+    }
+
+    private String buildRemoteRequestSnapshot(
+            AiRemotePlannerService.PlannerConfig config,
+            String userPrompt,
+            String userPromptPayload,
+            int schemaCount
+    ) {
+        StringBuilder sb = new StringBuilder(512);
+        sb.append("baseUrl: ").append(nullToEmpty(config.apiBaseUrl())).append("\n");
+        sb.append("apiKeyMasked: ").append(maskSecret(config.apiKey())).append("\n");
+        sb.append("model: ").append(nullToEmpty(config.model())).append("\n");
+        sb.append("timeoutSeconds: ").append(config.timeoutSeconds()).append("\n");
+        sb.append("selectionContextEnabled: ").append(aiUseSelectionContext.get()).append("\n");
+        sb.append("schemaCountInjected: ").append(schemaCount).append("\n");
+        sb.append("systemPromptLength: ").append(config.systemPrompt() == null ? 0 : config.systemPrompt().length()).append("\n");
+        sb.append("userPromptLength: ").append(userPrompt == null ? 0 : userPrompt.length()).append("\n");
+        sb.append("payloadLength: ").append(userPromptPayload == null ? 0 : userPromptPayload.length()).append("\n");
+        sb.append("\nuserPrompt:\n").append(userPrompt == null ? "" : userPrompt).append("\n");
+        return sb.toString();
+    }
+
+    private String maskSecret(String secret) {
+        if (secret == null || secret.isBlank()) {
+            return "(empty)";
+        }
+        int len = secret.length();
+        if (len <= 6) {
+            return "***";
+        }
+        String prefix = secret.substring(0, Math.min(4, len));
+        String suffix = secret.substring(Math.max(0, len - 2));
+        return prefix + "***" + suffix;
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
     private String buildSelectionContextSummary() {
+        StringBuilder context = new StringBuilder(1024);
+
         if (!aiUseSelectionContext.get()) {
-            return "Selection context disabled.";
+            context.append("Selection context disabled.");
+        } else if (selectedNode == null) {
+            context.append("No node selected.");
+        } else {
+            context.append("Selected node: ")
+                    .append(selectedNode.getDisplayName())
+                    .append(" (")
+                    .append(selectedNode.getTypeId())
+                    .append(")");
         }
-        if (selectedNode == null) {
-            return "No node selected.";
+
+        context.append("\n");
+        context.append(aiIncludeGraphContext.get()
+                ? buildCurrentGraphContextSummary()
+                : "Current canvas graph summary disabled.");
+
+        return context.toString();
+    }
+
+    private String buildCurrentGraphContextSummary() {
+        NodeGraph graph = getNodeGraph();
+        if (graph == null) {
+            return "Current canvas graph: unavailable.";
         }
-        return "Selected node: " + selectedNode.getDisplayName() + " (" + selectedNode.getTypeId() + ")";
+
+        List<INode> nodes = graph.getNodes();
+        List<NodeGraph.Connection> connections = graph.getConnections();
+        if (nodes.isEmpty()) {
+            return "Current canvas graph: empty.";
+        }
+
+        StringBuilder sb = new StringBuilder(1600);
+        sb.append("Current canvas graph snapshot:\n");
+        sb.append("nodes=").append(nodes.size())
+                .append(", connections=").append(connections.size())
+                .append("\n");
+
+        final int maxNodes = 20;
+        for (int i = 0; i < nodes.size() && i < maxNodes; i++) {
+            INode node = nodes.get(i);
+            sb.append("- ")
+                    .append(shortNodeId(node))
+                    .append(": ")
+                    .append(node.getTypeId());
+
+            if (node instanceof BaseNode baseNode) {
+                Map<String, Object> state = baseNode.getNodeState();
+                String stateSummary = summarizeNodeState(state);
+                if (!stateSummary.isBlank()) {
+                    sb.append(" ").append(stateSummary);
+                }
+            }
+            sb.append("\n");
+        }
+        if (nodes.size() > maxNodes) {
+            sb.append("- ... ").append(nodes.size() - maxNodes).append(" more nodes\n");
+        }
+
+        final int maxConnections = 30;
+        sb.append("Connections:\n");
+        for (int i = 0; i < connections.size() && i < maxConnections; i++) {
+            NodeGraph.Connection conn = connections.get(i);
+            sb.append("- ")
+                    .append(shortNodeId(conn.sourceNode))
+                    .append(".")
+                    .append(conn.sourcePort.getId())
+                    .append(" -> ")
+                    .append(shortNodeId(conn.targetNode))
+                    .append(".")
+                    .append(conn.targetPort.getId())
+                    .append("\n");
+        }
+        if (connections.size() > maxConnections) {
+            sb.append("- ... ").append(connections.size() - maxConnections).append(" more connections\n");
+        }
+
+        return sb.toString();
+    }
+
+    private String shortNodeId(INode node) {
+        if (node == null || node.getId() == null) {
+            return "unknown";
+        }
+        String text = node.getId().toString();
+        return text.length() <= 8 ? text : text.substring(0, 8);
+    }
+
+    private String summarizeNodeState(Map<String, Object> state) {
+        if (state == null || state.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder(128);
+        sb.append("params{");
+        int limit = 6;
+        int index = 0;
+        for (Map.Entry<String, Object> entry : state.entrySet()) {
+            if (index > 0) {
+                sb.append(", ");
+            }
+            if (index >= limit) {
+                sb.append("...");
+                break;
+            }
+            sb.append(entry.getKey()).append("=").append(formatStateValue(entry.getValue()));
+            index++;
+        }
+        sb.append("}");
+        return sb.toString();
+    }
+
+    private String formatStateValue(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        if (value instanceof Number || value instanceof Boolean) {
+            return String.valueOf(value);
+        }
+        if (value instanceof String text) {
+            return text.length() <= 32 ? text : text.substring(0, 32) + "...";
+        }
+        if (value instanceof Collection<?> collection) {
+            return "list(size=" + collection.size() + ")";
+        }
+        if (value instanceof Map<?, ?> map) {
+            return "map(size=" + map.size() + ")";
+        }
+        return value.getClass().getSimpleName();
     }
 
     private String buildDslJsonFromPlan(AiGraphPlan plan) {
@@ -2360,12 +3366,15 @@ public class PropertyPanelComponent implements EditorComponent {
 
         ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
         float[] anchor = resolveAiPlanAnchorPosition(editor);
+        List<AiPlanNode> nodesToApply = aiAutoLayoutBeforeApply.get()
+                ? buildAutoLayoutNodes(pendingAiPlan)
+                : pendingAiPlan.nodes();
         Map<String, UUID> createdNodeIds = new HashMap<>();
         int undoSteps = 0;
         int successfulConnections = 0;
 
         try {
-            for (AiPlanNode node : pendingAiPlan.nodes()) {
+            for (AiPlanNode node : nodesToApply) {
                 float x = anchor[0] + node.offsetX();
                 float y = anchor[1] + node.offsetY();
                 INode created = node.nodeState() == null
@@ -2416,7 +3425,8 @@ public class PropertyPanelComponent implements EditorComponent {
             lastAiUndoStepCount = undoSteps;
             aiPlanStatusMessage = "Applied AI plan: created " + createdNodeIds.size()
                     + " nodes, connected " + successfulConnections
-                    + ". Undo steps available: " + lastAiUndoStepCount + ".";
+                    + ". Undo steps available: " + lastAiUndoStepCount + "."
+                    + (aiAutoLayoutBeforeApply.get() ? " (auto layout enabled)" : "");
         } catch (Exception e) {
             rollbackAiApply(editor, undoSteps);
             NodeCraft.LOGGER.error("Failed to apply AI plan", e);
@@ -2477,6 +3487,75 @@ public class PropertyPanelComponent implements EditorComponent {
             }
         }
         return new float[]{0.0f, 0.0f};
+    }
+
+    private List<AiPlanNode> buildAutoLayoutNodes(AiGraphPlan plan) {
+        if (plan == null || plan.nodes().isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, AiPlanNode> nodeByRef = new LinkedHashMap<>();
+        Map<String, Integer> indegree = new HashMap<>();
+        Map<String, Integer> depth = new HashMap<>();
+        Map<String, List<String>> edges = new HashMap<>();
+
+        for (AiPlanNode node : plan.nodes()) {
+            nodeByRef.put(node.ref(), node);
+            indegree.put(node.ref(), 0);
+            depth.put(node.ref(), 0);
+            edges.put(node.ref(), new ArrayList<>());
+        }
+
+        for (AiPlanConnection connection : plan.connections()) {
+            if (!nodeByRef.containsKey(connection.sourceRef()) || !nodeByRef.containsKey(connection.targetRef())) {
+                continue;
+            }
+            edges.get(connection.sourceRef()).add(connection.targetRef());
+            indegree.put(connection.targetRef(), indegree.get(connection.targetRef()) + 1);
+        }
+
+        ArrayDeque<String> queue = new ArrayDeque<>();
+        for (AiPlanNode node : plan.nodes()) {
+            if (indegree.get(node.ref()) == 0) {
+                queue.add(node.ref());
+            }
+        }
+
+        while (!queue.isEmpty()) {
+            String current = queue.poll();
+            int currentDepth = depth.getOrDefault(current, 0);
+            for (String next : edges.getOrDefault(current, List.of())) {
+                depth.put(next, Math.max(depth.getOrDefault(next, 0), currentDepth + 1));
+                int nextIn = indegree.getOrDefault(next, 0) - 1;
+                indegree.put(next, nextIn);
+                if (nextIn == 0) {
+                    queue.add(next);
+                }
+            }
+        }
+
+        Map<Integer, List<AiPlanNode>> layerMap = new TreeMap<>();
+        for (AiPlanNode node : plan.nodes()) {
+            int layer = Math.max(0, depth.getOrDefault(node.ref(), 0));
+            layerMap.computeIfAbsent(layer, ignored -> new ArrayList<>()).add(node);
+        }
+
+        float layerSpacingX = 320.0f;
+        float layerSpacingY = 180.0f;
+        List<AiPlanNode> arranged = new ArrayList<>();
+
+        for (Map.Entry<Integer, List<AiPlanNode>> layerEntry : layerMap.entrySet()) {
+            int layer = layerEntry.getKey();
+            List<AiPlanNode> layerNodes = layerEntry.getValue();
+            for (int i = 0; i < layerNodes.size(); i++) {
+                AiPlanNode node = layerNodes.get(i);
+                float x = layer * layerSpacingX;
+                float y = (i - (layerNodes.size() - 1) / 2.0f) * layerSpacingY;
+                arranged.add(new AiPlanNode(node.ref(), node.typeId(), x, y, node.nodeState()));
+            }
+        }
+
+        return arranged;
     }
     private void renderNodeInfo() {
         String typeId = selectedNode.getTypeId();
