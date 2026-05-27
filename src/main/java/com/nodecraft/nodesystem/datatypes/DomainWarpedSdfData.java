@@ -24,6 +24,14 @@ public class DomainWarpedSdfData implements SignedDistanceFieldData {
         this.offset = new Vector3d(offset);
     }
 
+    public SignedDistanceFieldData getSource() {
+        return source;
+    }
+
+    public double getWarpAmplitude() {
+        return warpAmplitude;
+    }
+
     @Override
     public double sampleDistance(Vector3d point) {
         double px = point.x + offset.x;

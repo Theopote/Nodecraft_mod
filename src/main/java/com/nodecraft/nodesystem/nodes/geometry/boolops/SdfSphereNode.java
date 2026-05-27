@@ -21,7 +21,7 @@ import java.util.UUID;
     displayName = "SDF Sphere",
     description = "Builds a sphere signed-distance-field primitive from center and radius",
     category = "geometry.boolean",
-    order = 20
+    order = 10
 )
 public class SdfSphereNode extends BaseNode {
     @NodeProperty(displayName = "Default Radius", category = "SDF", order = 1)

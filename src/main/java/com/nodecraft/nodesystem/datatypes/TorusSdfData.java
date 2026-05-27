@@ -17,6 +17,18 @@ public class TorusSdfData implements SignedDistanceFieldData {
         this.minorRadius = Math.max(0.0d, minorRadius);
     }
 
+    public Vector3d getCenter() {
+        return new Vector3d(center);
+    }
+
+    public double getMajorRadius() {
+        return majorRadius;
+    }
+
+    public double getMinorRadius() {
+        return minorRadius;
+    }
+
     @Override
     public double sampleDistance(Vector3d point) {
         Vector3d p = new Vector3d(point).sub(center);

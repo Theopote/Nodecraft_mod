@@ -20,7 +20,7 @@ import java.util.UUID;
     displayName = "SDF Capsule",
     description = "Builds a capsule signed-distance-field primitive from segment endpoints and radius",
     category = "geometry.boolean",
-    order = 24
+    order = 12
 )
 public class SdfCapsuleNode extends BaseNode {
     @NodeProperty(displayName = "Default Radius", category = "SDF", order = 1)

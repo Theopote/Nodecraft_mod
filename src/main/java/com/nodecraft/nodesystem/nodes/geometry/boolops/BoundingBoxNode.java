@@ -4,13 +4,12 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.BoundingBoxOutputWriter;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
 import java.util.UUID;
 
@@ -63,82 +62,56 @@ public class BoundingBoxNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        BlockPos minCorner = null;
-        BlockPos maxCorner = null;
+        RegionData region = null;
 
         Object coordinatesObj = inputValues.get(INPUT_COORDINATES_ID);
         Object regionObj = inputValues.get(INPUT_REGION_ID);
 
         if (coordinatesObj instanceof BlockPosList coordinates && !coordinates.isEmpty()) {
-            minCorner = calculateMinCorner(coordinates);
-            maxCorner = calculateMaxCorner(coordinates);
+            region = regionFromCoordinates(coordinates);
         }
 
-        if (minCorner == null && regionObj instanceof RegionData region && region.isComplete()) {
-            minCorner = region.getMinCorner();
-            maxCorner = region.getMaxCorner();
+        if (region == null && regionObj instanceof RegionData inputRegion && inputRegion.isComplete()) {
+            region = inputRegion;
         }
 
-        if (minCorner == null || maxCorner == null) {
-            outputValues.clear();
-            return;
-        }
-
-        RegionData boundingRegion = new RegionData(minCorner, maxCorner);
-        BoundingBoxData boundingBox = new BoundingBoxData(
-            new Vector3d(minCorner.getX(), minCorner.getY(), minCorner.getZ()),
-            new Vector3d(maxCorner.getX() + 1.0d, maxCorner.getY() + 1.0d, maxCorner.getZ() + 1.0d)
+        BoundingBoxOutputWriter.writeOrClear(
+            outputValues,
+            region,
+            OUTPUT_BOUNDING_BOX_ID,
+            OUTPUT_REGION_ID,
+            OUTPUT_MIN_CORNER_ID,
+            OUTPUT_MAX_CORNER_ID,
+            OUTPUT_SIZE_X_ID,
+            OUTPUT_SIZE_Y_ID,
+            OUTPUT_SIZE_Z_ID,
+            OUTPUT_VOLUME_ID,
+            OUTPUT_CENTER_ID
         );
-
-        int sizeX = maxCorner.getX() - minCorner.getX() + 1;
-        int sizeY = maxCorner.getY() - minCorner.getY() + 1;
-        int sizeZ = maxCorner.getZ() - minCorner.getZ() + 1;
-        int volume = sizeX * sizeY * sizeZ;
-
-        BlockPos center = new BlockPos(
-            minCorner.getX() + ((sizeX - 1) / 2),
-            minCorner.getY() + ((sizeY - 1) / 2),
-            minCorner.getZ() + ((sizeZ - 1) / 2)
-        );
-
-        outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
-        outputValues.put(OUTPUT_REGION_ID, boundingRegion);
-        outputValues.put(OUTPUT_MIN_CORNER_ID, minCorner);
-        outputValues.put(OUTPUT_MAX_CORNER_ID, maxCorner);
-        outputValues.put(OUTPUT_SIZE_X_ID, sizeX);
-        outputValues.put(OUTPUT_SIZE_Y_ID, sizeY);
-        outputValues.put(OUTPUT_SIZE_Z_ID, sizeZ);
-        outputValues.put(OUTPUT_VOLUME_ID, volume);
-        outputValues.put(OUTPUT_CENTER_ID, center);
     }
 
-    private BlockPos calculateMinCorner(BlockPosList coordinates) {
-        BlockPos firstPos = coordinates.getPositions().get(0);
-        int minX = firstPos.getX();
-        int minY = firstPos.getY();
-        int minZ = firstPos.getZ();
+    private static RegionData regionFromCoordinates(BlockPosList coordinates) {
+        BlockPos minCorner = null;
+        BlockPos maxCorner = null;
 
         for (BlockPos pos : coordinates) {
-            minX = Math.min(minX, pos.getX());
-            minY = Math.min(minY, pos.getY());
-            minZ = Math.min(minZ, pos.getZ());
+            if (minCorner == null) {
+                minCorner = pos.toImmutable();
+                maxCorner = pos.toImmutable();
+                continue;
+            }
+            minCorner = new BlockPos(
+                Math.min(minCorner.getX(), pos.getX()),
+                Math.min(minCorner.getY(), pos.getY()),
+                Math.min(minCorner.getZ(), pos.getZ())
+            );
+            maxCorner = new BlockPos(
+                Math.max(maxCorner.getX(), pos.getX()),
+                Math.max(maxCorner.getY(), pos.getY()),
+                Math.max(maxCorner.getZ(), pos.getZ())
+            );
         }
 
-        return new BlockPos(minX, minY, minZ);
-    }
-
-    private BlockPos calculateMaxCorner(BlockPosList coordinates) {
-        BlockPos firstPos = coordinates.getPositions().get(0);
-        int maxX = firstPos.getX();
-        int maxY = firstPos.getY();
-        int maxZ = firstPos.getZ();
-
-        for (BlockPos pos : coordinates) {
-            maxX = Math.max(maxX, pos.getX());
-            maxY = Math.max(maxY, pos.getY());
-            maxZ = Math.max(maxZ, pos.getZ());
-        }
-
-        return new BlockPos(maxX, maxY, maxZ);
+        return minCorner != null && maxCorner != null ? new RegionData(minCorner, maxCorner) : null;
     }
 }

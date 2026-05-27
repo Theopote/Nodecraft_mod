@@ -18,6 +18,18 @@ public class CapsuleSdfData implements SignedDistanceFieldData {
         this.radius = Math.max(0.0d, radius);
     }
 
+    public Vector3d getEndpointA() {
+        return new Vector3d(a);
+    }
+
+    public Vector3d getEndpointB() {
+        return new Vector3d(b);
+    }
+
+    public double getRadius() {
+        return radius;
+    }
+
     @Override
     public double sampleDistance(Vector3d point) {
         Vector3d pa = new Vector3d(point).sub(a);

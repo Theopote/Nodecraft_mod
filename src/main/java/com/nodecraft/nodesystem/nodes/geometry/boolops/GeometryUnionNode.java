@@ -22,8 +22,8 @@ import java.util.UUID;
  */
 @NodeInfo(
     id = "geometry.boolean.union",
-    displayName = "Geometry Union",
-    description = "Combines multiple geometry inputs into one composite geometry value",
+    displayName = "Combine Geometry",
+    description = "Merges multiple geometry inputs into one composite value (voxel union when baked; not SDF smooth union)",
     category = "geometry.boolean",
     order = 2
 )
@@ -53,7 +53,7 @@ public class GeometryUnionNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Combines multiple geometry inputs into one composite geometry value";
+        return "Merges multiple geometry inputs into one composite value (voxel union when baked; not SDF smooth union)";
     }
 
     @Override

@@ -21,7 +21,7 @@ import java.util.UUID;
     displayName = "SDF Torus",
     description = "Builds a torus signed-distance-field primitive around the Y axis from center and radii",
     category = "geometry.boolean",
-    order = 25
+    order = 13
 )
 public class SdfTorusNode extends BaseNode {
     @NodeProperty(displayName = "Default Major Radius", category = "SDF", order = 1)

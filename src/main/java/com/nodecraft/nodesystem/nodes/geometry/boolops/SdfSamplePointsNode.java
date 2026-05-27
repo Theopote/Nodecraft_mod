@@ -21,7 +21,7 @@ import java.util.UUID;
     displayName = "SDF Sample Points",
     description = "Samples signed distance for each query point and outputs distance and inside lists",
     category = "geometry.boolean",
-    order = 27
+    order = 18
 )
 public class SdfSamplePointsNode extends BaseNode {
     private static final String INPUT_SDF_ID = "input_sdf";

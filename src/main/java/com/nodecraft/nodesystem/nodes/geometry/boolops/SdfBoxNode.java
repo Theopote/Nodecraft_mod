@@ -21,7 +21,7 @@ import java.util.UUID;
     displayName = "SDF Box",
     description = "Builds an axis-aligned box signed-distance-field primitive from center and half extents",
     category = "geometry.boolean",
-    order = 23
+    order = 11
 )
 public class SdfBoxNode extends BaseNode {
     @NodeProperty(displayName = "Half Extent X", category = "SDF", order = 1)

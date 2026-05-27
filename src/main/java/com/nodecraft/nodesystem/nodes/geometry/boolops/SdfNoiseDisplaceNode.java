@@ -20,7 +20,7 @@ import java.util.UUID;
     displayName = "SDF Noise Displace",
     description = "Applies deterministic pseudo-noise displacement to an input SDF",
     category = "geometry.boolean",
-    order = 30
+    order = 20
 )
 public class SdfNoiseDisplaceNode extends BaseNode {
 

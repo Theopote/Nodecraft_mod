@@ -20,7 +20,7 @@ import java.util.UUID;
     displayName = "SDF Transform",
     description = "Applies translation, rotation, and uniform scale to an input SDF",
     category = "geometry.boolean",
-    order = 31
+    order = 21
 )
 public class SdfTransformNode extends BaseNode {
 

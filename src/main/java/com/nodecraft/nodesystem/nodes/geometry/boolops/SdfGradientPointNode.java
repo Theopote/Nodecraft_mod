@@ -19,7 +19,7 @@ import java.util.UUID;
     displayName = "SDF Gradient At Point",
     description = "Samples SDF gradient at a point and outputs a normalized normal-like direction",
     category = "geometry.boolean",
-    order = 28
+    order = 19
 )
 public class SdfGradientPointNode extends BaseNode {
     private static final double EPS = 1.0e-9d;

@@ -24,6 +24,22 @@ public class BooleanSdfData implements SignedDistanceFieldData {
         this.smoothK = Math.max(0.0d, smoothK);
     }
 
+    public SignedDistanceFieldData getLeft() {
+        return left;
+    }
+
+    public SignedDistanceFieldData getRight() {
+        return right;
+    }
+
+    public Operation getOperation() {
+        return operation;
+    }
+
+    public double getSmoothK() {
+        return smoothK;
+    }
+
     @Override
     public double sampleDistance(Vector3d point) {
         double a = left.sampleDistance(point);

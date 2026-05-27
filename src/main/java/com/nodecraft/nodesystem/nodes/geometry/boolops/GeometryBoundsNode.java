@@ -4,14 +4,12 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.BoundingBoxOutputWriter;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
 import java.util.UUID;
 
@@ -63,48 +61,22 @@ public class GeometryBoundsNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
-        if (!(geometryObj instanceof GeometryData geometry)) {
-            outputValues.clear();
-            return;
-        }
+        RegionData region = geometryObj instanceof GeometryData geometry
+            ? GeometryVoxelizer.createBoundingRegion(geometry)
+            : null;
 
-        RegionData region = GeometryVoxelizer.createBoundingRegion(geometry);
-        if (region == null || !region.isComplete()) {
-            outputValues.clear();
-            return;
-        }
-
-        BlockPos minCorner = region.getMinCorner();
-        BlockPos maxCorner = region.getMaxCorner();
-        if (minCorner == null || maxCorner == null) {
-            outputValues.clear();
-            return;
-        }
-
-        BoundingBoxData boundingBox = new BoundingBoxData(
-            new Vector3d(minCorner.getX(), minCorner.getY(), minCorner.getZ()),
-            new Vector3d(maxCorner.getX() + 1.0d, maxCorner.getY() + 1.0d, maxCorner.getZ() + 1.0d)
+        BoundingBoxOutputWriter.writeOrClear(
+            outputValues,
+            region,
+            OUTPUT_BOUNDING_BOX_ID,
+            OUTPUT_REGION_ID,
+            OUTPUT_MIN_CORNER_ID,
+            OUTPUT_MAX_CORNER_ID,
+            OUTPUT_SIZE_X_ID,
+            OUTPUT_SIZE_Y_ID,
+            OUTPUT_SIZE_Z_ID,
+            OUTPUT_VOLUME_ID,
+            OUTPUT_CENTER_ID
         );
-
-        int sizeX = maxCorner.getX() - minCorner.getX() + 1;
-        int sizeY = maxCorner.getY() - minCorner.getY() + 1;
-        int sizeZ = maxCorner.getZ() - minCorner.getZ() + 1;
-        int volume = sizeX * sizeY * sizeZ;
-
-        BlockPos center = new BlockPos(
-            minCorner.getX() + ((sizeX - 1) / 2),
-            minCorner.getY() + ((sizeY - 1) / 2),
-            minCorner.getZ() + ((sizeZ - 1) / 2)
-        );
-
-        outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
-        outputValues.put(OUTPUT_REGION_ID, region);
-        outputValues.put(OUTPUT_MIN_CORNER_ID, minCorner);
-        outputValues.put(OUTPUT_MAX_CORNER_ID, maxCorner);
-        outputValues.put(OUTPUT_SIZE_X_ID, sizeX);
-        outputValues.put(OUTPUT_SIZE_Y_ID, sizeY);
-        outputValues.put(OUTPUT_SIZE_Z_ID, sizeZ);
-        outputValues.put(OUTPUT_VOLUME_ID, volume);
-        outputValues.put(OUTPUT_CENTER_ID, center);
     }
 }

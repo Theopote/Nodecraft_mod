@@ -20,6 +20,14 @@ public class NoiseDisplacedSdfData implements SignedDistanceFieldData {
         this.offset = new Vector3d(offset);
     }
 
+    public SignedDistanceFieldData getSource() {
+        return source;
+    }
+
+    public double getAmplitude() {
+        return amplitude;
+    }
+
     @Override
     public double sampleDistance(Vector3d point) {
         double base = source.sampleDistance(point);

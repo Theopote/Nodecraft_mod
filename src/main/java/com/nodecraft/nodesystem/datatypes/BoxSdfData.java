@@ -18,6 +18,14 @@ public class BoxSdfData implements SignedDistanceFieldData {
         );
     }
 
+    public Vector3d getCenter() {
+        return new Vector3d(center);
+    }
+
+    public Vector3d getHalfExtents() {
+        return new Vector3d(halfExtents);
+    }
+
     @Override
     public double sampleDistance(Vector3d point) {
         Vector3d p = new Vector3d(point).sub(center);

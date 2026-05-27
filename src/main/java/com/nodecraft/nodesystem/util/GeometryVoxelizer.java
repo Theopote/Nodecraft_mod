@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.util;
 
+import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
@@ -34,6 +35,9 @@ import java.util.Set;
  * Shared geometry-to-voxel bridge for nodes that consume abstract geometry.
  */
 public final class GeometryVoxelizer {
+
+    /** Hard cap for SDF brute-force voxelization volume (blocks). */
+    public static final long MAX_SDF_VOXEL_VOLUME = 262_144L;
 
     private GeometryVoxelizer() {
     }
@@ -148,7 +152,10 @@ public final class GeometryVoxelizer {
             return createCompositeBoundingRegion(compositeGeometry);
         }
         if (geometry instanceof DifferenceGeometryData differenceGeometry) {
-            return createBoundingRegion(differenceGeometry.getMinuend());
+            return unionBoundingRegions(
+                createBoundingRegion(differenceGeometry.getMinuend()),
+                createBoundingRegion(differenceGeometry.getSubtrahend())
+            );
         }
         if (geometry instanceof IntersectionGeometryData intersectionGeometry) {
             return createIntersectionBoundingRegion(intersectionGeometry);
@@ -210,6 +217,36 @@ public final class GeometryVoxelizer {
         return null;
     }
 
+    public static @Nullable RegionData unionBoundingRegions(@Nullable RegionData first, @Nullable RegionData second) {
+        if (first == null || !first.isComplete()) {
+            return second;
+        }
+        if (second == null || !second.isComplete()) {
+            return first;
+        }
+
+        BlockPos firstMin = first.getMinCorner();
+        BlockPos firstMax = first.getMaxCorner();
+        BlockPos secondMin = second.getMinCorner();
+        BlockPos secondMax = second.getMaxCorner();
+        if (firstMin == null || firstMax == null || secondMin == null || secondMax == null) {
+            return first;
+        }
+
+        return new RegionData(
+            new BlockPos(
+                Math.min(firstMin.getX(), secondMin.getX()),
+                Math.min(firstMin.getY(), secondMin.getY()),
+                Math.min(firstMin.getZ(), secondMin.getZ())
+            ),
+            new BlockPos(
+                Math.max(firstMax.getX(), secondMax.getX()),
+                Math.max(firstMax.getY(), secondMax.getY()),
+                Math.max(firstMax.getZ(), secondMax.getZ())
+            )
+        );
+    }
+
     public static BlockPosList voxelizeComposite(CompositeGeometryData geometry, boolean fillSolid) {
         Set<BlockPos> mergedPositions = new LinkedHashSet<>();
 
@@ -256,40 +293,11 @@ public final class GeometryVoxelizer {
     }
 
     public static @Nullable RegionData createCompositeBoundingRegion(CompositeGeometryData geometry) {
-        BlockPos minCorner = null;
-        BlockPos maxCorner = null;
-
+        RegionData merged = null;
         for (GeometryData child : geometry.getGeometries()) {
-            RegionData childRegion = createBoundingRegion(child);
-            if (childRegion == null || !childRegion.isComplete()) {
-                continue;
-            }
-
-            BlockPos childMin = childRegion.getMinCorner();
-            BlockPos childMax = childRegion.getMaxCorner();
-            if (childMin == null || childMax == null) {
-                continue;
-            }
-
-            if (minCorner == null || maxCorner == null) {
-                minCorner = childMin;
-                maxCorner = childMax;
-                continue;
-            }
-
-            minCorner = new BlockPos(
-                Math.min(minCorner.getX(), childMin.getX()),
-                Math.min(minCorner.getY(), childMin.getY()),
-                Math.min(minCorner.getZ(), childMin.getZ())
-            );
-            maxCorner = new BlockPos(
-                Math.max(maxCorner.getX(), childMax.getX()),
-                Math.max(maxCorner.getY(), childMax.getY()),
-                Math.max(maxCorner.getZ(), childMax.getZ())
-            );
+            merged = unionBoundingRegions(merged, createBoundingRegion(child));
         }
-
-        return minCorner != null && maxCorner != null ? new RegionData(minCorner, maxCorner) : null;
+        return merged;
     }
 
     public static @Nullable RegionData createIntersectionBoundingRegion(IntersectionGeometryData geometry) {
@@ -697,6 +705,16 @@ public final class GeometryVoxelizer {
             return new BlockPosList();
         }
 
+        long volume = regionVolume(minCorner, maxCorner);
+        if (volume > MAX_SDF_VOXEL_VOLUME) {
+            NodeCraft.LOGGER.warn(
+                "SDF voxelization skipped: bounds volume {} exceeds limit {}. Tighten SDF To Geometry bounds or reduce padding.",
+                volume,
+                MAX_SDF_VOXEL_VOLUME
+            );
+            return new BlockPosList();
+        }
+
         Set<BlockPos> solid = new LinkedHashSet<>();
         for (int x = minCorner.getX(); x <= maxCorner.getX(); x++) {
             for (int y = minCorner.getY(); y <= maxCorner.getY(); y++) {
@@ -720,6 +738,13 @@ public final class GeometryVoxelizer {
             }
         }
         return new BlockPosList(shell);
+    }
+
+    private static long regionVolume(BlockPos minCorner, BlockPos maxCorner) {
+        long sizeX = (long) maxCorner.getX() - minCorner.getX() + 1L;
+        long sizeY = (long) maxCorner.getY() - minCorner.getY() + 1L;
+        long sizeZ = (long) maxCorner.getZ() - minCorner.getZ() + 1L;
+        return sizeX * sizeY * sizeZ;
     }
 
     public static RegionData createAxisAlignedRegion(BoxGeometryData geometry) {

@@ -12,12 +12,13 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
+@Deprecated
 @NodeInfo(
     id = "geometry.boolean.sdf_smooth_boolean",
-    displayName = "SDF Smooth Boolean",
-    description = "Combines two SDF inputs with smooth union/intersection/difference blending",
+    displayName = "SDF Smooth Boolean (Legacy)",
+    description = "Deprecated: use SDF Boolean with Smooth K > 0 for the same smooth union/intersection/difference",
     category = "geometry.boolean",
-    order = 29
+    order = 15
 )
 public class SdfSmoothBooleanNode extends BaseNode {
 
@@ -47,7 +48,7 @@ public class SdfSmoothBooleanNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Combines two SDF inputs with smooth union/intersection/difference blending";
+        return "Deprecated: use SDF Boolean with Smooth K > 0 for the same smooth union/intersection/difference";
     }
 
     @Override
