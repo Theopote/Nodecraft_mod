@@ -2357,7 +2357,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
         String userPromptPayload = AiPromptBuilder.buildUserPrompt(
             userPrompt,
-            buildSelectionContextSummary(
+            AiPromptContextService.buildSelectionContextSummary(
                 aiUseSelectionContext.get(),
                 aiIncludeGraphContext.get(),
                 selectedNode,
@@ -2440,7 +2440,7 @@ public class PropertyPanelComponent implements EditorComponent {
         pendingAiPlan = buildPlanFromDsl(parsed.graph());
         aiChatMessages.add(new AiChatMessage(
             "assistant",
-            buildAiPlanReply(
+            AiPromptContextService.buildAiPlanReply(
                 prompt,
                 source,
                 aiUseSelectionContext.get(),
@@ -2453,72 +2453,6 @@ public class PropertyPanelComponent implements EditorComponent {
             System.currentTimeMillis()
         ));
         aiPlanStatusMessage = "Plan JSON validated (" + source + "). Review and click Apply Plan.";
-    }
-
-    private static String buildSelectionContextSummary(
-            boolean useSelectionContext,
-            boolean includeGraphContext,
-            INode selectedNode,
-            NodeGraph graph
-    ) {
-        StringBuilder context = new StringBuilder(512);
-        if (!useSelectionContext) {
-            context.append("Selection context disabled.");
-        } else if (selectedNode == null) {
-            context.append("No node selected.");
-        } else {
-            context.append("Selected node: ")
-                    .append(selectedNode.getDisplayName())
-                    .append(" (")
-                    .append(selectedNode.getTypeId())
-                    .append(")");
-        }
-
-        context.append("\n");
-        if (!includeGraphContext) {
-            context.append("Current canvas graph summary disabled.");
-        } else if (graph == null) {
-            context.append("Current canvas graph: unavailable.");
-        } else {
-            context.append("Current canvas graph snapshot: nodes=")
-                    .append(graph.getNodes().size())
-                    .append(", connections=")
-                    .append(graph.getConnections().size());
-        }
-        return context.toString();
-    }
-
-    private static String buildAiPlanReply(
-            String prompt,
-            String source,
-            boolean useSelectionContext,
-            INode selectedNode,
-            int nodeCount,
-            int connectionCount,
-            boolean valid,
-            List<String> validationErrors
-    ) {
-        StringBuilder sb = new StringBuilder(512);
-        sb.append("Prompt: ").append(prompt == null ? "" : prompt).append("\n");
-        sb.append("Source: ").append(source == null ? "unknown" : source).append("\n");
-        if (useSelectionContext && selectedNode != null) {
-            sb.append("Selection: ")
-                    .append(selectedNode.getDisplayName())
-                    .append(" (")
-                    .append(selectedNode.getTypeId())
-                    .append(")\n");
-        }
-        sb.append("Plan: nodes=")
-                .append(nodeCount)
-                .append(", connections=")
-                .append(connectionCount)
-                .append(", valid=")
-                .append(valid)
-                .append("\n");
-        if (validationErrors != null && !validationErrors.isEmpty()) {
-            sb.append("Validation errors: ").append(String.join("; ", validationErrors));
-        }
-        return sb.toString();
     }
 
     private void fallbackToLocalPlan(String prompt, String reason) {
@@ -2603,255 +2537,66 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     private String buildDslJsonFromPlan(AiGraphPlan plan) {
-        JsonObject root = new JsonObject();
-        root.addProperty("description", plan.summary());
-
-        JsonArray nodesArray = new JsonArray();
-        for (AiPlanNode node : plan.nodes()) {
-            JsonObject nodeObj = new JsonObject();
-            nodeObj.addProperty("id", node.ref());
-            nodeObj.addProperty("type", node.typeId());
-
-            JsonObject paramsObj = null;
-            if (node.nodeState() instanceof Map<?, ?> stateMap) {
-                paramsObj = AI_SETTINGS_GSON.toJsonTree(stateMap).getAsJsonObject();
-            }
-            nodeObj.add("params", paramsObj == null ? new JsonObject() : paramsObj);
-
-            JsonObject posObj = new JsonObject();
-            posObj.addProperty("x", node.offsetX());
-            posObj.addProperty("y", node.offsetY());
-            nodeObj.add("position", posObj);
-            nodesArray.add(nodeObj);
-        }
-        root.add("nodes", nodesArray);
-
-        JsonArray connectionsArray = getJsonElements(plan);
-        root.add("connections", connectionsArray);
-
-        return AI_SETTINGS_GSON.toJson(root);
-    }
-
-    private static @NonNull JsonArray getJsonElements(AiGraphPlan plan) {
-        JsonArray connectionsArray = new JsonArray();
-        for (AiPlanConnection connection : plan.connections()) {
-            JsonObject connObj = new JsonObject();
-
-            JsonObject fromObj = new JsonObject();
-            fromObj.addProperty("nodeId", connection.sourceRef());
-            fromObj.addProperty("port", connection.sourcePortId());
-
-            JsonObject toObj = new JsonObject();
-            toObj.addProperty("nodeId", connection.targetRef());
-            toObj.addProperty("port", connection.targetPortId());
-
-            connObj.add("from", fromObj);
-            connObj.add("to", toObj);
-            connectionsArray.add(connObj);
-        }
-        return connectionsArray;
+        return AiGraphPlanDslAdapterService.toDslJson(toServiceGraphPlan(plan));
     }
 
     private AiGraphPlan buildPlanFromDsl(AiGraphDslSupport.DslGraph dslGraph) {
-        List<AiPlanNode> nodes = new ArrayList<>();
-        List<AiPlanConnection> connections = new ArrayList<>();
-
-        for (AiGraphDslSupport.DslNode node : dslGraph.nodes()) {
-            float x = node.position() != null ? node.position().x() : 0.0f;
-            float y = node.position() != null ? node.position().y() : 0.0f;
-            Object state = node.params() == null ? null : new HashMap<>(node.params());
-            nodes.add(new AiPlanNode(node.id(), node.type(), x, y, state));
-        }
-
-        for (AiGraphDslSupport.DslConnection connection : dslGraph.connections()) {
-            connections.add(new AiPlanConnection(
-                    connection.from().nodeId(),
-                    connection.from().port(),
-                    connection.to().nodeId(),
-                    connection.to().port()
-            ));
-        }
-
-        String summary = dslGraph.description() == null || dslGraph.description().isBlank()
-                ? "AI JSON plan parsed and validated."
-                : dslGraph.description();
-        return new AiGraphPlan(summary, nodes, connections, List.of());
+        return fromServiceGraphPlan(AiGraphPlanDslAdapterService.fromDsl(dslGraph));
     }
 
     private AiGraphPlan buildMockAiPlan(String prompt) {
-        String lowerPrompt = prompt.toLowerCase(java.util.Locale.ROOT);
-        ParsedAiPromptParameters params = parseAiPromptParameters(prompt);
-        List<AiPlanNode> nodes = new ArrayList<>();
-        List<AiPlanConnection> connections = new ArrayList<>();
-        List<String> errors = new ArrayList<>();
-
-        if (lowerPrompt.contains("mobius") || lowerPrompt.contains("möbius") || lowerPrompt.contains("莫比乌斯")) {
-            nodes.add(new AiPlanNode("center", "reference.points.point_from_coordinates", -720.0f, -180.0f,
-                createNodeState("x", 0, "y", 80, "z", 0, "showLabel", true)));
-            nodes.add(new AiPlanNode("axis", "reference.vectors.vector", -720.0f, 120.0f,
-                createNodeState("x", 0.0d, "y", 1.0d, "z", 0.0d, "showLabel", true, "precision", 2)));
-            nodes.add(new AiPlanNode("radius", "input.numeric.float", -360.0f, -220.0f,
-                createNodeState("value", (float) params.radius(), "minValue", 0.1f, "maxValue", 2048.0f, "precision", 2)));
-            nodes.add(new AiPlanNode("width", "input.numeric.float", -360.0f, -60.0f,
-                createNodeState("value", (float) params.width(), "minValue", 0.1f, "maxValue", 512.0f, "precision", 2)));
-            nodes.add(new AiPlanNode("thickness", "input.numeric.float", -360.0f, 100.0f,
-                createNodeState("value", (float) params.thickness(), "minValue", 0.1f, "maxValue", 512.0f, "precision", 2)));
-                nodes.add(new AiPlanNode("two", "input.numeric.float", -360.0f, 260.0f,
-                    createNodeState("value", 2.0f, "minValue", 2.0f, "maxValue", 2.0f, "precision", 0, "showLabel", false)));
-                nodes.add(new AiPlanNode("width_half", "math.scalar_math.division", -120.0f, 20.0f, null));
-                nodes.add(new AiPlanNode("minor_max", "math.scalar_math.max", 120.0f, 100.0f, null));
-
-            nodes.add(new AiPlanNode("torus", "geometry.primitives.torus", 0.0f, 0.0f, null));
-            nodes.add(new AiPlanNode("bake", "output.execute.bake_geometry_to_blocks", 360.0f, 0.0f,
-                createNodeState("fillGeometry", params.thickness() <= 1.2d)));
-            nodes.add(new AiPlanNode("preview", "output.preview.geometry_viewer", 720.0f, -120.0f,
-                createNodeState(
-                    "previewEnabled", true,
-                    "previewColor", pickPreviewColorByWidth(params.width()),
-                    "transparency", pickPreviewTransparencyByThickness(params.thickness()),
-                    "showOutline", params.width() >= 2.0d
-                )));
-            nodes.add(new AiPlanNode("apply", "output.execute.apply_changes", 720.0f, 120.0f,
-                createNodeState(
-                    "recordUndo", true,
-                    "useAsyncBake", true,
-                    "solidGeometry", params.thickness() >= 1.0d
-                )));
-
-                connections.add(new AiPlanConnection("center", "output_coordinate", "torus", "input_center"));
-                connections.add(new AiPlanConnection("axis", "output_vector", "torus", "input_axis"));
-                connections.add(new AiPlanConnection("radius", "output_value", "torus", "input_major_radius"));
-                connections.add(new AiPlanConnection("width", "output_value", "width_half", "input_a"));
-                connections.add(new AiPlanConnection("two", "output_value", "width_half", "input_b"));
-                connections.add(new AiPlanConnection("width_half", "output_quotient", "minor_max", "input_a"));
-                connections.add(new AiPlanConnection("thickness", "output_value", "minor_max", "input_b"));
-                connections.add(new AiPlanConnection("minor_max", "output_max", "torus", "input_minor_radius"));
-            connections.add(new AiPlanConnection("torus", "output_geometry", "bake", "input_geometry"));
-            connections.add(new AiPlanConnection("bake", "output_blocks", "preview", "input_blocks"));
-            connections.add(new AiPlanConnection("bake", "output_blocks", "apply", "input_blocks"));
-        } else {
-            nodes.add(new AiPlanNode("preview", "output.preview.geometry_viewer", 0.0f, -100.0f,
-                createNodeState("previewEnabled", true, "previewColor", "#4CAF50", "transparency", 0.40f)));
-            nodes.add(new AiPlanNode("apply", "output.execute.apply_changes", 360.0f, 80.0f,
-                createNodeState("recordUndo", true)));
-            connections.add(new AiPlanConnection("preview", "output_blocks", "apply", "input_blocks"));
-        }
-
-        validatePlan(nodes, connections, errors);
-        String summary = buildAiPlanSummary(params);
-        return new AiGraphPlan(summary, nodes, connections, errors);
+        AiMockPlanService.MockPlan mockPlan = AiMockPlanService.buildMockPlan(prompt);
+        return fromServiceGraphPlan(AiGraphPlanDslAdapterService.fromMockPlan(mockPlan));
     }
 
-    private record ParsedAiPromptParameters(double radius, double width, double thickness) {}
-
-    private ParsedAiPromptParameters parseAiPromptParameters(String prompt) {
-        String text = prompt == null ? "" : prompt;
-        double radius = parsePromptNumber(text,
-                "radius", "r", "major radius", "环半径", "半径", "主半径");
-        double width = parsePromptNumber(text,
-                "width", "w", "band width", "带宽", "宽度");
-        double thickness = parsePromptNumber(text,
-                "thickness", "t", "minor radius", "厚度", "管半径", "截面半径");
-
-        if (radius <= 0.0d) {
-            radius = 12.0d;
-        }
-        if (width <= 0.0d) {
-            width = 2.0d;
-        }
-        if (thickness <= 0.0d) {
-            thickness = Math.max(0.8d, width * 0.4d);
+    private AiGraphPlanDslAdapterService.GraphPlan toServiceGraphPlan(AiGraphPlan plan) {
+        List<AiGraphPlanDslAdapterService.PlanNode> nodes = new ArrayList<>();
+        for (AiPlanNode node : plan.nodes()) {
+            nodes.add(new AiGraphPlanDslAdapterService.PlanNode(
+                    node.ref(),
+                    node.typeId(),
+                    node.offsetX(),
+                    node.offsetY(),
+                    node.nodeState()
+            ));
         }
 
-        return new ParsedAiPromptParameters(radius, width, thickness);
-    }
-
-    private double parsePromptNumber(String text, String... aliases) {
-        if (text == null || text.isBlank() || aliases == null) {
-            return -1.0d;
+        List<AiGraphPlanDslAdapterService.PlanConnection> connections = new ArrayList<>();
+        for (AiPlanConnection connection : plan.connections()) {
+            connections.add(new AiGraphPlanDslAdapterService.PlanConnection(
+                    connection.sourceRef(),
+                    connection.sourcePortId(),
+                    connection.targetRef(),
+                    connection.targetPortId()
+            ));
         }
 
-        for (String alias : aliases) {
-            if (alias == null || alias.isBlank()) {
-                continue;
-            }
-
-            String escapedAlias = java.util.regex.Pattern.quote(alias);
-            String pattern = "(?i)(?:^|[^a-zA-Z0-9_])" + escapedAlias
-                    + "\\s*[=:是为]?\\s*(-?\\d+(?:\\.\\d+)?)";
-            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(pattern).matcher(text);
-            if (matcher.find()) {
-                try {
-                    return Double.parseDouble(matcher.group(1));
-                } catch (NumberFormatException ignored) {
-                    // Skip malformed numeric capture and continue.
-                }
-            }
-        }
-
-        return -1.0d;
-    }
-
-    private String pickPreviewColorByWidth(double width) {
-        if (width >= 4.0d) {
-            return "#3A86FF";
-        }
-        if (width >= 2.5d) {
-            return "#2AA876";
-        }
-        return "#45B36B";
-    }
-
-    private float pickPreviewTransparencyByThickness(double thickness) {
-        if (thickness >= 2.0d) {
-            return 0.28f;
-        }
-        if (thickness >= 1.2d) {
-            return 0.34f;
-        }
-        return 0.42f;
-    }
-
-    private String buildAiPlanSummary(ParsedAiPromptParameters params) {
-        return String.format(
-                java.util.Locale.ROOT,
-                "Mock plan generated locally. Parsed parameters: radius=%.2f, width=%.2f, thickness=%.2f. "
-                + "Minor radius is wired as max(width/2, thickness). Backend planner can later reuse the same apply path.",
-                params.radius(),
-                params.width(),
-                params.thickness()
+        return new AiGraphPlanDslAdapterService.GraphPlan(
+                plan.summary(),
+                nodes,
+                connections,
+                plan.validationErrors()
         );
     }
 
-    private void validatePlan(List<AiPlanNode> nodes, List<AiPlanConnection> connections, List<String> errors) {
-        Set<String> refs = new HashSet<>();
-        for (AiPlanNode node : nodes) {
-            if (node.ref() == null || node.ref().isBlank()) {
-                errors.add("Node reference cannot be empty.");
-                continue;
-            }
-            if (!refs.add(node.ref())) {
-                errors.add("Duplicate node reference: " + node.ref());
-            }
-            if (node.typeId() == null || node.typeId().isBlank()) {
-                errors.add("Node type cannot be empty for reference: " + node.ref());
-            }
+    private AiGraphPlan fromServiceGraphPlan(AiGraphPlanDslAdapterService.GraphPlan plan) {
+        List<AiPlanNode> nodes = new ArrayList<>();
+        for (AiGraphPlanDslAdapterService.PlanNode node : plan.nodes()) {
+            nodes.add(new AiPlanNode(node.ref(), node.typeId(), node.offsetX(), node.offsetY(), node.nodeState()));
         }
 
-        for (AiPlanConnection connection : connections) {
-            if (!refs.contains(connection.sourceRef())) {
-                errors.add("Unknown source reference: " + connection.sourceRef());
-            }
-            if (!refs.contains(connection.targetRef())) {
-                errors.add("Unknown target reference: " + connection.targetRef());
-            }
-            if (connection.sourcePortId() == null || connection.sourcePortId().isBlank()) {
-                errors.add("Connection source port is empty for source ref: " + connection.sourceRef());
-            }
-            if (connection.targetPortId() == null || connection.targetPortId().isBlank()) {
-                errors.add("Connection target port is empty for target ref: " + connection.targetRef());
-            }
+        List<AiPlanConnection> connections = new ArrayList<>();
+        for (AiGraphPlanDslAdapterService.PlanConnection connection : plan.connections()) {
+            connections.add(new AiPlanConnection(
+                    connection.sourceRef(),
+                    connection.sourcePortId(),
+                    connection.targetRef(),
+                    connection.targetPortId()
+            ));
         }
+
+        List<String> errors = plan.validationErrors() == null ? List.of() : plan.validationErrors();
+        return new AiGraphPlan(plan.summary(), nodes, connections, errors);
     }
 
     private void applyPendingAiPlan() {
@@ -2978,21 +2723,6 @@ public class PropertyPanelComponent implements EditorComponent {
         lastAiUndoStepCount = result.undoSteps();
         aiPlanStatusMessage = result.statusMessage()
                 + (result.success() && aiAutoLayoutBeforeApply.get() ? " (auto layout enabled for new nodes)" : "");
-    }
-
-    private Map<String, Object> createNodeState(Object... keyValues) {
-        Map<String, Object> state = new HashMap<>();
-        if (keyValues == null || keyValues.length == 0) {
-            return state;
-        }
-        for (int i = 0; i + 1 < keyValues.length; i += 2) {
-            Object key = keyValues[i];
-            Object value = keyValues[i + 1];
-            if (key instanceof String keyString && !keyString.isBlank()) {
-                state.put(keyString, value);
-            }
-        }
-        return state;
     }
 
     private void rollbackAiApply(ImGuiNodeEditor editor, int undoSteps) {

@@ -7,19 +7,19 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-final class AiMockPlanService {
+public final class AiMockPlanService {
 
     private AiMockPlanService() {
     }
 
-    record MockNode(String ref, String typeId, float offsetX, float offsetY, Object nodeState) {
+    public record MockNode(String ref, String typeId, float offsetX, float offsetY, Object nodeState) {
     }
 
-    record MockConnection(String sourceRef, String sourcePortId, String targetRef, String targetPortId) {
+    public record MockConnection(String sourceRef, String sourcePortId, String targetRef, String targetPortId) {
     }
 
-    record MockPlan(String summary, List<MockNode> nodes, List<MockConnection> connections, List<String> validationErrors) {
-        boolean isValid() {
+    public record MockPlan(String summary, List<MockNode> nodes, List<MockConnection> connections, List<String> validationErrors) {
+        public boolean isValid() {
             return validationErrors == null || validationErrors.isEmpty();
         }
     }
@@ -27,7 +27,7 @@ final class AiMockPlanService {
     record ParsedParameters(double radius, double width, double thickness) {
     }
 
-    static MockPlan buildMockPlan(String prompt) {
+    public static MockPlan buildMockPlan(String prompt) {
         String lowerPrompt = prompt == null ? "" : prompt.toLowerCase(Locale.ROOT);
         ParsedParameters params = parseAiPromptParameters(prompt);
         List<MockNode> nodes = new ArrayList<>();
