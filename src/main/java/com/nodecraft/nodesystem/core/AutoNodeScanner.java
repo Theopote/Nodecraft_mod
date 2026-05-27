@@ -12,6 +12,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.lang.Deprecated;
 import java.lang.reflect.Modifier;
 import java.util.Enumeration;
 import java.util.List;
@@ -133,6 +134,9 @@ public final class AutoNodeScanner {
                 return false;
             }
             if (Modifier.isAbstract(clazz.getModifiers())) {
+                return false;
+            }
+            if (clazz.isAnnotationPresent(Deprecated.class)) {
                 return false;
             }
 

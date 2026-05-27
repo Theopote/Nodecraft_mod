@@ -11,7 +11,7 @@
 |---|---:|
 | `flow.control` | 3 |
 | `flow.loop` | 3 |
-| `geometry.boolean` | 19 |
+| `geometry.boolean` | 18 |
 | `geometry.curves` | 19 |
 | `geometry.primitives` | 29 |
 | `geometry.profiles` | 25 |
@@ -76,29 +76,30 @@
 | Accumulator | `flow.loop.accumulator` | Accumulates list values into a single result. | `AccumulatorNode` |
 | While Loop | `flow.loop.while` | Processes input values while condition remains true, with iteration safety limits. | `WhileLoopNode` |
 
-## geometry.boolean（19）
+## geometry.boolean（18）
+
+体素 CSG 与 SDF 分两段排序（0–4 体素，10–23 SDF）。工作流示例见 [geometry-boolean-workflows.zh-CN.md](geometry-boolean-workflows.zh-CN.md)。
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Bounding Box | `geometry.boolean.bounding_box` | Calculates an axis-aligned bounding box from a block list or region | `BoundingBoxNode` |
-| Geometry Bounds | `geometry.boolean.geometry_bounds` | Calculates an axis-aligned bounding box from any supported geometry | `GeometryBoundsNode` |
-| Geometry Union | `geometry.boolean.union` | Combines multiple geometry inputs into one composite geometry value | `GeometryUnionNode` |
-| Difference | `geometry.boolean.difference` | Creates a voxel-evaluated difference geometry value by subtracting cutter geometry from a base geometry | `DifferenceNode` |
-| Intersection | `geometry.boolean.intersection` | Creates a voxel-evaluated intersection geometry value from two geometry inputs | `IntersectionNode` |
-| SDF Sphere | `geometry.boolean.sdf_sphere` | Builds a sphere signed-distance-field primitive from center and radius | `SdfSphereNode` |
-| SDF Boolean | `geometry.boolean.sdf_boolean` | Combines two SDF inputs with union/intersection/difference and optional smooth blending | `SdfBooleanNode` |
-| SDF Sample Point | `geometry.boolean.sdf_sample_point` | Samples signed distance at a query point and reports inside/outside state | `SdfSamplePointNode` |
-| SDF Box | `geometry.boolean.sdf_box` | Builds an axis-aligned box signed-distance-field primitive from center and half extents | `SdfBoxNode` |
-| SDF Capsule | `geometry.boolean.sdf_capsule` | Builds a capsule signed-distance-field primitive from segment endpoints and radius | `SdfCapsuleNode` |
-| SDF Torus | `geometry.boolean.sdf_torus` | Builds a torus signed-distance-field primitive around the Y axis from center and radii | `SdfTorusNode` |
-| SDF To Geometry | `geometry.boolean.sdf_to_geometry` | Wraps an SDF into GeometryData with explicit sampling bounds so it can be baked to blocks | `SdfToGeometryNode` |
-| SDF Sample Points | `geometry.boolean.sdf_sample_points` | Samples signed distance for each query point and outputs distance and inside lists | `SdfSamplePointsNode` |
-| SDF Gradient At Point | `geometry.boolean.sdf_gradient_point` | Samples SDF gradient at a point and outputs a normalized normal-like direction | `SdfGradientPointNode` |
-| SDF Smooth Boolean | `geometry.boolean.sdf_smooth_boolean` | Combines two SDF inputs with smooth union/intersection/difference blending | `SdfSmoothBooleanNode` |
-| SDF Noise Displace | `geometry.boolean.sdf_noise_displace` | Applies deterministic pseudo-noise displacement to an input SDF | `SdfNoiseDisplaceNode` |
-| SDF Transform | `geometry.boolean.sdf_transform` | Applies translation, rotation, and uniform scale to an input SDF | `SdfTransformNode` |
-| SDF Blend Material Mask | `geometry.boolean.sdf_blend_material_mask` | Maps SDF distance values to smooth 0..1 blend weights and inside/outside booleans | `SdfBlendMaterialMaskNode` |
-| SDF Domain Warp | `geometry.boolean.sdf_domain_warp` | Applies coordinate-space noise warping before sampling an input SDF | `SdfDomainWarpNode` |
+| Bounding Box | `geometry.boolean.bounding_box` | 从方块列表或区域计算轴对齐包围盒 | `BoundingBoxNode` |
+| Geometry Bounds | `geometry.boolean.geometry_bounds` | 从任意 GeometryData 计算轴对齐包围盒（含 Difference 基底∪刀具） | `GeometryBoundsNode` |
+| Combine Geometry | `geometry.boolean.union` | 合并多路几何；烘焙为体素并集（非 SDF smooth union） | `GeometryUnionNode` |
+| Difference | `geometry.boolean.difference` | 体素差集：从基底几何减去刀具几何 | `DifferenceNode` |
+| Intersection | `geometry.boolean.intersection` | 体素交集：保留两路几何重叠部分 | `IntersectionNode` |
+| SDF Sphere | `geometry.boolean.sdf_sphere` | 球体 SDF 图元（中心 + 半径） | `SdfSphereNode` |
+| SDF Box | `geometry.boolean.sdf_box` | 轴对齐盒 SDF 图元（中心 + 半轴） | `SdfBoxNode` |
+| SDF Capsule | `geometry.boolean.sdf_capsule` | 胶囊 SDF 图元（两端点 + 半径） | `SdfCapsuleNode` |
+| SDF Torus | `geometry.boolean.sdf_torus` | 环面 SDF 图元（Y 轴，主次半径） | `SdfTorusNode` |
+| SDF Boolean | `geometry.boolean.sdf_boolean` | SDF 并/交/差；Smooth K=0 硬布尔，>0 平滑融合 | `SdfBooleanNode` |
+| SDF To Geometry | `geometry.boolean.sdf_to_geometry` | SDF 转 GeometryData；支持自动包围盒与 Padding | `SdfToGeometryNode` |
+| SDF Sample Point | `geometry.boolean.sdf_sample_point` | 单点采样 SDF 距离与内外判定 | `SdfSamplePointNode` |
+| SDF Sample Points | `geometry.boolean.sdf_sample_points` | 多点采样 SDF，输出距离/内外列表 | `SdfSamplePointsNode` |
+| SDF Gradient At Point | `geometry.boolean.sdf_gradient_point` | 单点 SDF 梯度（法向近似） | `SdfGradientPointNode` |
+| SDF Noise Displace | `geometry.boolean.sdf_noise_displace` | 确定性噪声位移 SDF | `SdfNoiseDisplaceNode` |
+| SDF Transform | `geometry.boolean.sdf_transform` | 平移 / 旋转 / 均匀缩放 SDF | `SdfTransformNode` |
+| SDF Blend Material Mask | `geometry.boolean.sdf_blend_material_mask` | 距离列表映射为 0–1 混合权重与内外掩膜 | `SdfBlendMaterialMaskNode` |
+| SDF Domain Warp | `geometry.boolean.sdf_domain_warp` | 采样前对坐标做噪声域扭曲 | `SdfDomainWarpNode` |
 
 ## geometry.curves（19）
 

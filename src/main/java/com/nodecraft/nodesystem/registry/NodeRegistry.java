@@ -214,11 +214,7 @@ public class NodeRegistry {
         if (nodeInfo == null || nodeInfo.getNodeClass() == null) {
             return false;
         }
-        if (!nodeInfo.getNodeClass().isAnnotationPresent(Deprecated.class)) {
-            return false;
-        }
-        String nodeId = nodeInfo.getId();
-        return nodeId != null && nodeId.startsWith("output.execute.bake_");
+        return nodeInfo.getNodeClass().isAnnotationPresent(Deprecated.class);
     }
 
     /**

@@ -7,7 +7,7 @@ Date: 2026-04-14
 The current node library is sufficient to land a "simple gothic church" if the graph is built on the v1 geometry pipeline:
 
 - `geometry.primitives` / `geometry.solids` for shape construction
-- `geometry.boolean` for shelling and openings
+- `geometry.boolean` for shelling and openings ([workflow guide](geometry-boolean-workflows.zh-CN.md))
 - `material.*` for block assignment
 - `output.execute.apply_changes` for final write
 
@@ -26,7 +26,7 @@ Directly available in source:
 - `OffsetCoordinateNode`
 - `OffsetCoordinatesNode`
 - `DifferenceNode`
-- `GeometryUnionNode`
+- `GeometryUnionNode` (library label: **Combine Geometry**)
 - `MirrorCoordinatesNode`
 - `LinearArrayNode`
 - `PolarArrayNode`
