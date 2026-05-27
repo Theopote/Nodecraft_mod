@@ -1970,109 +1970,76 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     private void renderAiPlanPreviewSection() {
-        ImGui.separator();
-        ImGui.text("Plan Preview");
+        AiGraphPlan plan = pendingAiPlan;
+        boolean hasPlan = plan != null;
 
-        if (pendingAiPlan == null) {
-            ImGui.textDisabled("No plan yet. Send a prompt to generate a plan.");
-            return;
-        }
+        AiGraphDiffService.GraphDiffSummary heuristicDiff = hasPlan ? buildGraphDiffSummary(plan) : null;
+        AiGraphDiffService.MappedDiffSummary mappedDiff = hasPlan ? buildMappedDiffSummary(plan) : null;
+        boolean canApply = hasPlan && plan.isValid() && !plan.nodes().isEmpty();
 
-        ImGui.textWrapped(pendingAiPlan.summary());
-        ImGui.text("Nodes: " + pendingAiPlan.nodes().size() + "  Connections: " + pendingAiPlan.connections().size());
+        AiAssistantPlanPreviewRenderer.renderPlanPreviewSection(
+                new AiAssistantPlanPreviewRenderer.State(
+                        hasPlan,
+                        hasPlan ? plan.summary() : "",
+                        hasPlan ? plan.nodes().size() : 0,
+                        hasPlan ? plan.connections().size() : 0,
+                        hasPlan ? plan.validationErrors() : List.of(),
+                        hasPlan ? buildPlannedNodePreviewLines(plan) : List.of(),
+                        hasPlan ? buildPlannedConnectionPreviewLines(plan) : List.of(),
+                        heuristicDiff,
+                        mappedDiff,
+                        canApply,
+                        lastAiUndoStepCount > 0,
+                        aiPlanStatusMessage
+                ),
+                new AiAssistantPlanPreviewRenderer.Actions() {
+                    @Override
+                    public void applyPlan() {
+                        if (aiPreviewOnlyMode.get()) {
+                            runDryRunForPendingPlan();
+                        } else {
+                            applyPendingAiPlan();
+                        }
+                    }
 
-        if (!pendingAiPlan.isValid()) {
-            ImGui.textColored(1.0f, 0.45f, 0.35f, 1.0f, "Validation errors:");
-            for (String error : pendingAiPlan.validationErrors()) {
-                ImGui.bulletText(error);
-            }
-        }
+                    @Override
+                    public void dryRunReport() {
+                        runDryRunForPendingPlan();
+                    }
 
-        if (ImGui.treeNode("Planned Nodes")) {
-            for (AiPlanNode node : pendingAiPlan.nodes()) {
-                ImGui.bulletText(node.ref() + " -> " + node.typeId()
-                        + "  (" + String.format(java.util.Locale.ROOT, "%.0f", node.offsetX())
-                        + ", " + String.format(java.util.Locale.ROOT, "%.0f", node.offsetY()) + ")");
-            }
-            ImGui.treePop();
-        }
-
-        if (ImGui.treeNode("Planned Connections")) {
-            if (pendingAiPlan.connections().isEmpty()) {
-                ImGui.textDisabled("None");
-            } else {
-                for (AiPlanConnection connection : pendingAiPlan.connections()) {
-                    ImGui.bulletText(connection.sourceRef() + "." + connection.sourcePortId()
-                            + " -> " + connection.targetRef() + "." + connection.targetPortId());
+                    @Override
+                    public void undoLastApply() {
+                        undoLastAiApply();
+                    }
                 }
-            }
-            ImGui.treePop();
-        }
-
-        AiGraphDiffService.GraphDiffSummary diff = buildGraphDiffSummary(pendingAiPlan);
-        if (ImGui.treeNode("Graph Diff (Heuristic)")) {
-            ImGui.textDisabled("Compared by node type+params signature and typed connection signature.");
-            ImGui.text("Potential additions: nodes=" + diff.nodeAdditions() + ", connections=" + diff.connectionAdditions());
-            ImGui.text("Potential missing from plan: nodes=" + diff.nodeMissingFromPlan() + ", connections=" + diff.connectionMissingFromPlan());
-
-            renderDiffSamples("Node additions", diff.nodeAdditionSamples());
-            renderDiffSamples("Node missing from plan", diff.nodeMissingSamples());
-            renderDiffSamples("Connection additions", diff.connectionAdditionSamples());
-            renderDiffSamples("Connection missing from plan", diff.connectionMissingSamples());
-
-            ImGui.treePop();
-        }
-
-    AiGraphDiffService.MappedDiffSummary mappedDiff = buildMappedDiffSummary(pendingAiPlan);
-    if (ImGui.treeNode("Mapped Diff (Preview)")) {
-        ImGui.textDisabled("Greedy matching by type+params, then type fallback. Estimates reusable vs new nodes.");
-        ImGui.text("Reusable matches=" + mappedDiff.reusableNodeMatches()
-            + ", new nodes=" + mappedDiff.newNodesToCreate());
-        ImGui.text("Unchanged reused=" + mappedDiff.unchangedReusableNodes()
-            + ", param updates=" + mappedDiff.paramUpdateCandidates());
-        ImGui.text("Connection additions=" + mappedDiff.connectionAdditions()
-            + ", connection removal candidates=" + mappedDiff.connectionRemovalCandidates()
-            + ", incoming replacements=" + mappedDiff.incomingReplacementCandidates());
-
-        renderDiffSamples("Node reuse matches", mappedDiff.nodeReuseSamples());
-        renderDiffSamples("Node creation candidates", mappedDiff.nodeCreationSamples());
-        renderDiffSamples("Param update candidates", mappedDiff.paramUpdateSamples());
-        renderDiffSamples("Connection additions", mappedDiff.connectionAdditionSamples());
-        renderDiffSamples("Connection removal candidates", mappedDiff.connectionRemovalSamples());
-        renderDiffSamples("Incoming replacement candidates", mappedDiff.incomingReplacementSamples());
-
-        ImGui.treePop();
+        );
     }
 
-        boolean canApply = pendingAiPlan.isValid() && !pendingAiPlan.nodes().isEmpty();
-        if (!canApply) ImGui.beginDisabled();
-        if (ImGui.button("Apply Plan")) {
-            if (aiPreviewOnlyMode.get()) {
-                runDryRunForPendingPlan();
-            } else {
-                applyPendingAiPlan();
-            }
+    private List<String> buildPlannedNodePreviewLines(AiGraphPlan plan) {
+        if (plan == null || plan.nodes().isEmpty()) {
+            return List.of();
         }
-        if (!canApply) ImGui.endDisabled();
 
-        ImGui.sameLine();
-        if (!canApply) ImGui.beginDisabled();
-        if (ImGui.button("Dry Run Report")) {
-            runDryRunForPendingPlan();
+        List<String> lines = new ArrayList<>(plan.nodes().size());
+        for (AiPlanNode node : plan.nodes()) {
+            lines.add(node.ref() + " -> " + node.typeId()
+                    + "  (" + String.format(Locale.ROOT, "%.0f", node.offsetX())
+                    + ", " + String.format(Locale.ROOT, "%.0f", node.offsetY()) + ")");
         }
-        if (!canApply) ImGui.endDisabled();
+        return lines;
+    }
 
-        ImGui.sameLine();
-        boolean canUndo = lastAiUndoStepCount > 0;
-        if (!canUndo) ImGui.beginDisabled();
-        if (ImGui.button("Undo Last AI Apply")) {
-            undoLastAiApply();
+    private List<String> buildPlannedConnectionPreviewLines(AiGraphPlan plan) {
+        if (plan == null || plan.connections().isEmpty()) {
+            return List.of();
         }
-        if (!canUndo) ImGui.endDisabled();
 
-        if (aiPlanStatusMessage != null && !aiPlanStatusMessage.isBlank()) {
-            ImGui.textWrapped(aiPlanStatusMessage);
+        List<String> lines = new ArrayList<>(plan.connections().size());
+        for (AiPlanConnection connection : plan.connections()) {
+            lines.add(connection.sourceRef() + "." + connection.sourcePortId()
+                    + " -> " + connection.targetRef() + "." + connection.targetPortId());
         }
+        return lines;
     }
 
     private void runDryRunForPendingPlan() {
@@ -2088,43 +2055,14 @@ public class PropertyPanelComponent implements EditorComponent {
         AiGraphDiffService.GraphDiffSummary heuristic = buildGraphDiffSummary(pendingAiPlan);
         AiGraphDiffService.MappedDiffSummary mapped = buildMappedDiffSummary(pendingAiPlan);
 
-        StringBuilder report = new StringBuilder(512);
-        report.append("Dry run only (no graph mutation). ")
-                .append("Planned nodes=").append(pendingAiPlan.nodes().size())
-                .append(", connections=").append(pendingAiPlan.connections().size()).append(". ")
-                .append("Mapped: reusable=").append(mapped.reusableNodeMatches())
-                .append(", new=").append(mapped.newNodesToCreate())
-                .append(", paramUpdates=").append(mapped.paramUpdateCandidates())
-                .append(", connAdd=").append(mapped.connectionAdditions())
-                .append(", connRemoveCandidates=").append(mapped.connectionRemovalCandidates())
-                .append(", incomingReplaceCandidates=").append(mapped.incomingReplacementCandidates())
-                .append(". Heuristic missing: nodes=").append(heuristic.nodeMissingFromPlan())
-                .append(", connections=").append(heuristic.connectionMissingFromPlan()).append(".");
-
-            if (!mapped.incomingReplacementSamples().isEmpty()) {
-                report.append(" Incoming replacements sample: ")
-                    .append(String.join(" | ", mapped.incomingReplacementSamples().subList(0,
-                        Math.min(3, mapped.incomingReplacementSamples().size()))))
-                    .append(".");
-            }
-
-        String reportText = report.toString();
+        String reportText = AiPlanDryRunReportService.buildDryRunReport(
+                pendingAiPlan.nodes().size(),
+                pendingAiPlan.connections().size(),
+                heuristic,
+                mapped
+        );
         aiPlanStatusMessage = reportText;
         aiChatMessages.add(new AiChatMessage("assistant", reportText, System.currentTimeMillis()));
-    }
-
-    private void renderDiffSamples(String title, List<String> samples) {
-        if (!ImGui.treeNode(title)) {
-            return;
-        }
-        if (samples == null || samples.isEmpty()) {
-            ImGui.textDisabled("None");
-        } else {
-            for (String sample : samples) {
-                ImGui.bulletText(sample);
-            }
-        }
-        ImGui.treePop();
     }
 
     private AiGraphDiffService.GraphDiffSummary buildGraphDiffSummary(AiGraphPlan plan) {
