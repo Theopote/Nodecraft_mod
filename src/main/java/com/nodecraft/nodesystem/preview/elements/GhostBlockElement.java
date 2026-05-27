@@ -113,6 +113,37 @@ public class GhostBlockElement extends AbstractPreviewElement {
         }
         blocks = nextBlocks;
     }
+
+    @Override
+    public void updateOptions(PreviewOptions newOptions) {
+        super.updateOptions(newOptions);
+        if (newOptions == null) {
+            return;
+        }
+
+        // Keep runtime-rendered visuals in sync when an existing preview is upserted.
+        if (newOptions.color != null) {
+            this.fillColor = new Vector3f(newOptions.color);
+        }
+        if (newOptions.tintColor != null) {
+            this.outlineColor = new Vector3f(newOptions.tintColor);
+        }
+        if (newOptions.showOutline != null) {
+            this.showOutline = newOptions.showOutline;
+        }
+        if (newOptions.lineWidth != null) {
+            this.outlineLineWidth = Math.max(0.25f, newOptions.lineWidth);
+        }
+        if (newOptions.textureMode != null && !newOptions.textureMode.isBlank()) {
+            this.textureMode = newOptions.textureMode;
+        }
+        if (newOptions.useOriginalTexture != null) {
+            this.useOriginalTexture = newOptions.useOriginalTexture;
+        }
+        if (newOptions.opacity != null) {
+            this.ghostOpacity = Math.max(0.0f, Math.min(1.0f, newOptions.opacity));
+        }
+    }
     
     @Override
     public void render(MatrixStack matrices, Camera camera, float partialTicks, float globalOpacity) {
