@@ -1748,6 +1748,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
     private AiGraphPlan buildMockAiPlan(String prompt) {
         String lowerPrompt = prompt.toLowerCase(java.util.Locale.ROOT);
+        ParsedAiPromptParameters params = parseAiPromptParameters(prompt);
         List<AiPlanNode> nodes = new ArrayList<>();
         List<AiPlanConnection> connections = new ArrayList<>();
         List<String> errors = new ArrayList<>();
@@ -1755,11 +1756,20 @@ public class PropertyPanelComponent implements EditorComponent {
         if (lowerPrompt.contains("mobius") || lowerPrompt.contains("möbius") || lowerPrompt.contains("莫比乌斯")) {
             nodes.add(new AiPlanNode("torus", "geometry.primitives.torus", 0.0f, 0.0f, null));
             nodes.add(new AiPlanNode("bake", "output.execute.bake_geometry_to_blocks", 360.0f, 0.0f,
-                createNodeState("fillGeometry", false)));
+                createNodeState("fillGeometry", params.thickness() <= 1.2d)));
             nodes.add(new AiPlanNode("preview", "output.preview.geometry_viewer", 720.0f, -120.0f,
-                createNodeState("previewEnabled", true, "previewColor", "#45B36B", "transparency", 0.35f, "showOutline", true)));
+                createNodeState(
+                    "previewEnabled", true,
+                    "previewColor", pickPreviewColorByWidth(params.width()),
+                    "transparency", pickPreviewTransparencyByThickness(params.thickness()),
+                    "showOutline", params.width() >= 2.0d
+                )));
             nodes.add(new AiPlanNode("apply", "output.execute.apply_changes", 720.0f, 120.0f,
-                createNodeState("recordUndo", true, "useAsyncBake", true)));
+                createNodeState(
+                    "recordUndo", true,
+                    "useAsyncBake", true,
+                    "solidGeometry", params.thickness() >= 1.0d
+                )));
 
             connections.add(new AiPlanConnection("torus", "output_geometry", "bake", "input_geometry"));
             connections.add(new AiPlanConnection("bake", "output_blocks", "preview", "input_blocks"));
@@ -1773,9 +1783,89 @@ public class PropertyPanelComponent implements EditorComponent {
         }
 
         validatePlan(nodes, connections, errors);
-        String summary = "Mock plan generated locally from your prompt."
-                + " Replace this planner with backend output later without changing the apply path.";
+        String summary = buildAiPlanSummary(params);
         return new AiGraphPlan(summary, nodes, connections, errors);
+    }
+
+    private record ParsedAiPromptParameters(double radius, double width, double thickness) {}
+
+    private ParsedAiPromptParameters parseAiPromptParameters(String prompt) {
+        String text = prompt == null ? "" : prompt;
+        double radius = parsePromptNumber(text,
+                "radius", "r", "major radius", "环半径", "半径", "主半径");
+        double width = parsePromptNumber(text,
+                "width", "w", "band width", "带宽", "宽度");
+        double thickness = parsePromptNumber(text,
+                "thickness", "t", "minor radius", "厚度", "管半径", "截面半径");
+
+        if (radius <= 0.0d) {
+            radius = 12.0d;
+        }
+        if (width <= 0.0d) {
+            width = 2.0d;
+        }
+        if (thickness <= 0.0d) {
+            thickness = Math.max(0.8d, width * 0.4d);
+        }
+
+        return new ParsedAiPromptParameters(radius, width, thickness);
+    }
+
+    private double parsePromptNumber(String text, String... aliases) {
+        if (text == null || text.isBlank() || aliases == null || aliases.length == 0) {
+            return -1.0d;
+        }
+
+        for (String alias : aliases) {
+            if (alias == null || alias.isBlank()) {
+                continue;
+            }
+
+            String escapedAlias = java.util.regex.Pattern.quote(alias);
+            String pattern = "(?i)(?:^|[^a-zA-Z0-9_])" + escapedAlias
+                    + "\\s*(?:=|:|是|为)?\\s*(-?\\d+(?:\\.\\d+)?)";
+            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(pattern).matcher(text);
+            if (matcher.find()) {
+                try {
+                    return Double.parseDouble(matcher.group(1));
+                } catch (NumberFormatException ignored) {
+                    // Skip malformed numeric capture and continue.
+                }
+            }
+        }
+
+        return -1.0d;
+    }
+
+    private String pickPreviewColorByWidth(double width) {
+        if (width >= 4.0d) {
+            return "#3A86FF";
+        }
+        if (width >= 2.5d) {
+            return "#2AA876";
+        }
+        return "#45B36B";
+    }
+
+    private float pickPreviewTransparencyByThickness(double thickness) {
+        if (thickness >= 2.0d) {
+            return 0.28f;
+        }
+        if (thickness >= 1.2d) {
+            return 0.34f;
+        }
+        return 0.42f;
+    }
+
+    private String buildAiPlanSummary(ParsedAiPromptParameters params) {
+        return String.format(
+                java.util.Locale.ROOT,
+                "Mock plan generated locally. Parsed parameters: radius=%.2f, width=%.2f, thickness=%.2f. "
+                        + "Backend planner can later reuse the same apply path.",
+                params.radius(),
+                params.width(),
+                params.thickness()
+        );
     }
 
     private void validatePlan(List<AiPlanNode> nodes, List<AiPlanConnection> connections, List<String> errors) {
