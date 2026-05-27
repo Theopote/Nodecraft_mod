@@ -163,9 +163,6 @@ public class PropertyPanelComponent implements EditorComponent {
             return validationErrors == null || validationErrors.isEmpty();
         }
     }
-
-        private record CurrentNodeInfo(UUID id, String typeId, String paramSignature) {}
-
     public PropertyPanelComponent() {
         this.editorState = new PropertyEditorState(tempValues, propertiesBeingEdited, errorCounts);
         this.nodeGraphAccess = new NodeGraphAccess(() -> {
@@ -2298,79 +2295,6 @@ public class PropertyPanelComponent implements EditorComponent {
         return new AiGraphDiffService.GraphPlan(nodes, connections);
     }
 
-    private String normalizeStateForSignature(Object state) {
-        if (state == null) {
-            return "{}";
-        }
-        try {
-            Object canonical = canonicalizeForSignature(state);
-            return AI_SETTINGS_GSON.toJson(canonical);
-        } catch (Exception e) {
-            return "{\"_error\":\"state-normalize-failed\"}";
-        }
-    }
-
-    private Object canonicalizeForSignature(Object value) {
-        if (value == null
-                || value instanceof String
-                || value instanceof Number
-                || value instanceof Boolean) {
-            return value;
-        }
-        if (value instanceof Map<?, ?> map) {
-            Map<String, Object> canonical = new TreeMap<>();
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                canonical.put(String.valueOf(entry.getKey()), canonicalizeForSignature(entry.getValue()));
-            }
-            return canonical;
-        }
-        if (value instanceof Collection<?> collection) {
-            List<Object> canonical = new ArrayList<>(collection.size());
-            for (Object item : collection) {
-                canonical.add(canonicalizeForSignature(item));
-            }
-            return canonical;
-        }
-        return String.valueOf(value);
-    }
-
-    private CurrentNodeInfo matchCurrentNode(
-            AiPlanNode planned,
-            Map<String, List<CurrentNodeInfo>> byType,
-            Set<UUID> usedCurrent
-    ) {
-        List<CurrentNodeInfo> candidates = byType.get(planned.typeId());
-        if (candidates == null || candidates.isEmpty()) {
-            return null;
-        }
-
-        String plannedSig = normalizeStateForSignature(planned.nodeState());
-        for (CurrentNodeInfo candidate : candidates) {
-            if (!usedCurrent.contains(candidate.id()) && plannedSig.equals(candidate.paramSignature())) {
-                return candidate;
-            }
-        }
-        for (CurrentNodeInfo candidate : candidates) {
-            if (!usedCurrent.contains(candidate.id())) {
-                return candidate;
-            }
-        }
-        return null;
-    }
-
-    private String buildMappedConnectionSignature(String sourceToken, String sourcePort, String targetToken, String targetPort) {
-        return nullToEmpty(sourceToken) + "." + nullToEmpty(sourcePort)
-                + " -> " + nullToEmpty(targetToken) + "." + nullToEmpty(targetPort);
-    }
-
-    private String shortUuid(UUID id) {
-        if (id == null) {
-            return "unknown";
-        }
-        String text = id.toString();
-        return text.length() <= 8 ? text : text.substring(0, 8);
-    }
-
     private void setAiPrompt(String text) {
         if (text == null) {
             aiPromptInput.clear();
@@ -2442,7 +2366,15 @@ public class PropertyPanelComponent implements EditorComponent {
             systemPrompt = systemPrompt + "\n\n" + AiPromptBuilder.buildSystemPrompt(relevantSchemas);
         }
 
-        String userPromptPayload = AiPromptBuilder.buildUserPrompt(userPrompt, buildSelectionContextSummary());
+        String userPromptPayload = AiPromptBuilder.buildUserPrompt(
+            userPrompt,
+            AiPromptContextService.buildSelectionContextSummary(
+                aiUseSelectionContext.get(),
+                aiIncludeGraphContext.get(),
+                selectedNode,
+                getNodeGraph()
+            )
+        );
         AiRemotePlannerService.PlannerConfig config = new AiRemotePlannerService.PlannerConfig(
                 aiApiBaseUrl.get(),
                 aiApiKey.get(),
@@ -2517,7 +2449,20 @@ public class PropertyPanelComponent implements EditorComponent {
         }
 
         pendingAiPlan = buildPlanFromDsl(parsed.graph());
-        aiChatMessages.add(new AiChatMessage("assistant", buildAiPlanReply(prompt, pendingAiPlan, source), System.currentTimeMillis()));
+        aiChatMessages.add(new AiChatMessage(
+            "assistant",
+            AiPromptContextService.buildAiPlanReply(
+                prompt,
+                source,
+                aiUseSelectionContext.get(),
+                selectedNode,
+                pendingAiPlan.nodes().size(),
+                pendingAiPlan.connections().size(),
+                pendingAiPlan.isValid(),
+                pendingAiPlan.validationErrors()
+            ),
+            System.currentTimeMillis()
+        ));
         aiPlanStatusMessage = "Plan JSON validated (" + source + "). Review and click Apply Plan.";
     }
 
@@ -2604,144 +2549,6 @@ public class PropertyPanelComponent implements EditorComponent {
         return prefix + "***" + suffix;
     }
 
-    private String nullToEmpty(String value) {
-        return value == null ? "" : value;
-    }
-
-    private String buildSelectionContextSummary() {
-        StringBuilder context = new StringBuilder(1024);
-
-        if (!aiUseSelectionContext.get()) {
-            context.append("Selection context disabled.");
-        } else if (selectedNode == null) {
-            context.append("No node selected.");
-        } else {
-            context.append("Selected node: ")
-                    .append(selectedNode.getDisplayName())
-                    .append(" (")
-                    .append(selectedNode.getTypeId())
-                    .append(")");
-        }
-
-        context.append("\n");
-        context.append(aiIncludeGraphContext.get()
-                ? buildCurrentGraphContextSummary()
-                : "Current canvas graph summary disabled.");
-
-        return context.toString();
-    }
-
-    private String buildCurrentGraphContextSummary() {
-        NodeGraph graph = getNodeGraph();
-        if (graph == null) {
-            return "Current canvas graph: unavailable.";
-        }
-
-        List<INode> nodes = graph.getNodes();
-        List<NodeGraph.Connection> connections = graph.getConnections();
-        if (nodes.isEmpty()) {
-            return "Current canvas graph: empty.";
-        }
-
-        StringBuilder sb = new StringBuilder(1600);
-        sb.append("Current canvas graph snapshot:\n");
-        sb.append("nodes=").append(nodes.size())
-                .append(", connections=").append(connections.size())
-                .append("\n");
-
-        final int maxNodes = 20;
-        for (int i = 0; i < nodes.size() && i < maxNodes; i++) {
-            INode node = nodes.get(i);
-            sb.append("- ")
-                    .append(shortNodeId(node))
-                    .append(": ")
-                    .append(node.getTypeId());
-
-            if (node instanceof BaseNode baseNode) {
-                Map<String, Object> state = (Map<String, Object>) baseNode.getNodeState();
-                String stateSummary = summarizeNodeState(state);
-                if (!stateSummary.isBlank()) {
-                    sb.append(" ").append(stateSummary);
-                }
-            }
-            sb.append("\n");
-        }
-        if (nodes.size() > maxNodes) {
-            sb.append("- ... ").append(nodes.size() - maxNodes).append(" more nodes\n");
-        }
-
-        final int maxConnections = 30;
-        sb.append("Connections:\n");
-        for (int i = 0; i < connections.size() && i < maxConnections; i++) {
-            NodeGraph.Connection conn = connections.get(i);
-            sb.append("- ")
-                    .append(shortNodeId(conn.sourceNode))
-                    .append(".")
-                    .append(conn.sourcePort.getId())
-                    .append(" -> ")
-                    .append(shortNodeId(conn.targetNode))
-                    .append(".")
-                    .append(conn.targetPort.getId())
-                    .append("\n");
-        }
-        if (connections.size() > maxConnections) {
-            sb.append("- ... ").append(connections.size() - maxConnections).append(" more connections\n");
-        }
-
-        return sb.toString();
-    }
-
-    private String shortNodeId(INode node) {
-        if (node == null || node.getId() == null) {
-            return "unknown";
-        }
-        String text = node.getId().toString();
-        return text.length() <= 8 ? text : text.substring(0, 8);
-    }
-
-    private String summarizeNodeState(Map<String, Object> state) {
-        if (state == null || state.isEmpty()) {
-            return "";
-        }
-
-        StringBuilder sb = new StringBuilder(128);
-        sb.append("params{");
-        int limit = 6;
-        int index = 0;
-        for (Map.Entry<String, Object> entry : state.entrySet()) {
-            if (index > 0) {
-                sb.append(", ");
-            }
-            if (index >= limit) {
-                sb.append("...");
-                break;
-            }
-            sb.append(entry.getKey()).append("=").append(formatStateValue(entry.getValue()));
-            index++;
-        }
-        sb.append("}");
-        return sb.toString();
-    }
-
-    private String formatStateValue(Object value) {
-        if (value == null) {
-            return "null";
-        }
-        if (value instanceof Number || value instanceof Boolean) {
-            return String.valueOf(value);
-        }
-        if (value instanceof String text) {
-            return text.length() <= 32 ? text : text.substring(0, 32) + "...";
-        }
-        if (value instanceof Collection<?> collection) {
-            return "list(size=" + collection.size() + ")";
-        }
-        if (value instanceof Map<?, ?> map) {
-            return "map(size=" + map.size() + ")";
-        }
-        return value.getClass().getSimpleName();
-    }
-
     private String buildDslJsonFromPlan(AiGraphPlan plan) {
         JsonObject root = new JsonObject();
         root.addProperty("description", plan.summary());
@@ -2811,23 +2618,6 @@ public class PropertyPanelComponent implements EditorComponent {
                 ? "AI JSON plan parsed and validated."
                 : dslGraph.description();
         return new AiGraphPlan(summary, nodes, connections, List.of());
-    }
-
-    private String buildAiPlanReply(String prompt, AiGraphPlan plan, String source) {
-        String contextSummary;
-        if (aiUseSelectionContext.get() && selectedNode != null) {
-            contextSummary = "Using selected node context: " + selectedNode.getDisplayName() + " (" + selectedNode.getTypeId() + ").";
-        } else if (aiUseSelectionContext.get()) {
-            contextSummary = "Selection context requested, but no node is selected.";
-        } else {
-            contextSummary = "Selection context disabled.";
-        }
-
-        return "Plan received: '" + prompt + "'\n"
-            + "Source: " + source + "\n"
-                + contextSummary + "\n"
-                + "Generated preview: " + plan.nodes().size() + " nodes, " + plan.connections().size() + " connections."
-                + (plan.isValid() ? "" : " Validation issues: " + String.join("; ", plan.validationErrors()));
     }
 
     private AiGraphPlan buildMockAiPlan(String prompt) {
@@ -3098,251 +2888,38 @@ public class PropertyPanelComponent implements EditorComponent {
             aiPlanStatusMessage = "Patch apply failed: current graph is unavailable.";
             return;
         }
-
-        List<CurrentNodeInfo> currentNodes = new ArrayList<>();
-        Map<String, List<CurrentNodeInfo>> byType = new HashMap<>();
-        for (INode node : graph.getNodes()) {
-            Object state = node instanceof BaseNode baseNode ? baseNode.getNodeState() : null;
-            CurrentNodeInfo info = new CurrentNodeInfo(node.getId(), node.getTypeId(), normalizeStateForSignature(state));
-            currentNodes.add(info);
-            byType.computeIfAbsent(info.typeId(), key -> new ArrayList<>()).add(info);
+        List<AiGraphApplyService.ApplyNode> applyNodes = new ArrayList<>(nodesToApply.size());
+        for (AiPlanNode node : nodesToApply) {
+            applyNodes.add(new AiGraphApplyService.ApplyNode(
+                    node.ref(),
+                    node.typeId(),
+                    node.offsetX(),
+                    node.offsetY(),
+                    node.nodeState()
+            ));
         }
 
-        Set<UUID> usedCurrent = new HashSet<>();
-        Map<String, UUID> planRefToNodeId = new HashMap<>();
-        Map<UUID, Object> previousStates = new HashMap<>();
-        int undoSteps = 0;
-        int successfulConnections = 0;
-        int replacedIncomingConnections = 0;
-        int removedScopedConnections = 0;
-        int reusedNodes = 0;
-        int createdNodes = 0;
-        int updatedNodes = 0;
-
-        try {
-            for (AiPlanNode node : nodesToApply) {
-                CurrentNodeInfo matched = matchCurrentNode(node, byType, usedCurrent);
-                if (matched != null) {
-                    usedCurrent.add(matched.id());
-                    planRefToNodeId.put(node.ref(), matched.id());
-                    reusedNodes++;
-
-                    INode existing = graph.getNode(matched.id());
-                    if (existing instanceof BaseNode existingBaseNode) {
-                        String plannedSig = normalizeStateForSignature(node.nodeState());
-                        if (!plannedSig.equals(matched.paramSignature())) {
-                            previousStates.putIfAbsent(matched.id(), deepCopyNodeState(existingBaseNode.getNodeState()));
-                            existingBaseNode.setNodeState(deepCopyNodeState(node.nodeState()));
-                            updatedNodes++;
-                        }
-                    }
-                    continue;
-                }
-
-                float x = anchor[0] + node.offsetX();
-                float y = anchor[1] + node.offsetY();
-                INode created = node.nodeState() == null
-                        ? editor.addNode(node.typeId(), x, y)
-                        : editor.addNodeWithState(node.typeId(), null, x, y, node.nodeState());
-
-                if (created == null) {
-                    rollbackAiApply(editor, undoSteps);
-                    restoreNodeStates(graph, previousStates);
-                    aiPlanStatusMessage = "Patch apply failed to create node: " + node.ref() + " (" + node.typeId() + "). Auto-rolled back.";
-                    return;
-                }
-
-                planRefToNodeId.put(node.ref(), created.getId());
-                undoSteps++;
-                createdNodes++;
-            }
-
-            for (AiPlanConnection connection : pendingAiPlan.connections()) {
-                UUID sourceNodeId = planRefToNodeId.get(connection.sourceRef());
-                UUID targetNodeId = planRefToNodeId.get(connection.targetRef());
-                if (sourceNodeId == null || targetNodeId == null) {
-                    rollbackAiApply(editor, undoSteps);
-                    restoreNodeStates(graph, previousStates);
-                    aiPlanStatusMessage = "Patch apply connection failed due to missing mapped node ref: "
-                            + connection.sourceRef() + " -> " + connection.targetRef() + ". Auto-rolled back.";
-                    return;
-                }
-
-                if (graph.isConnected(sourceNodeId, connection.sourcePortId(), targetNodeId, connection.targetPortId())) {
-                    continue;
-                }
-
-                INode targetNode = graph.getNode(targetNodeId);
-                IPort targetPort = findInputPortById(targetNode, connection.targetPortId());
-                if (targetPort == null) {
-                    rollbackAiApply(editor, undoSteps);
-                    restoreNodeStates(graph, previousStates);
-                    aiPlanStatusMessage = "Patch apply failed: target input port not found for "
-                            + connection.targetRef() + "." + connection.targetPortId() + ".";
-                    return;
-                }
-
-                if (!targetPort.allowsMultipleIncomingConnections()) {
-                    UUID oldSourceNodeId = graph.getConnectedOutputNodeId(targetNodeId, targetPort.getId());
-                    String oldSourcePortId = graph.getConnectedOutputPortId(targetNodeId, targetPort.getId());
-                    boolean hasDifferentExisting = oldSourceNodeId != null
-                            && oldSourcePortId != null
-                            && (!oldSourceNodeId.equals(sourceNodeId) || !oldSourcePortId.equals(connection.sourcePortId()));
-
-                    if (hasDifferentExisting) {
-                        boolean disconnected = editor.disconnectPorts(
-                                oldSourceNodeId,
-                                oldSourcePortId,
-                                targetNodeId,
-                                targetPort.getId()
-                        );
-                        if (!disconnected) {
-                            rollbackAiApply(editor, undoSteps);
-                            restoreNodeStates(graph, previousStates);
-                            aiPlanStatusMessage = "Patch apply failed to replace existing connection on "
-                                    + connection.targetRef() + "." + connection.targetPortId()
-                                    + ". Try Dry Run for details.";
-                            return;
-                        }
-                        undoSteps++;
-                        replacedIncomingConnections++;
-                    }
-                }
-
-                boolean connected = editor.connectPorts(
-                        sourceNodeId,
-                        connection.sourcePortId(),
-                        targetNodeId,
-                        connection.targetPortId()
-                );
-                if (!connected) {
-                    rollbackAiApply(editor, undoSteps);
-                    restoreNodeStates(graph, previousStates);
-                    aiPlanStatusMessage = "Patch apply failed to connect: "
-                            + connection.sourceRef() + "." + connection.sourcePortId()
-                            + " -> " + connection.targetRef() + "." + connection.targetPortId()
-                            + ". Try disabling patch apply mode or run Dry Run to inspect conflicts.";
-                    return;
-                }
-
-                successfulConnections++;
-                undoSteps++;
-            }
-
-            if (aiPatchRemoveScopedConnections.get()) {
-                Map<String, Integer> plannedScopedCounts = buildPlannedScopedConnectionCounts(pendingAiPlan, planRefToNodeId);
-                List<NodeGraph.Connection> existingConnections = graph.getConnections();
-                for (NodeGraph.Connection conn : existingConnections) {
-                    UUID currentSource = conn.sourceNode.getId();
-                    UUID currentTarget = conn.targetNode.getId();
-                    if (!usedCurrent.contains(currentSource) || !usedCurrent.contains(currentTarget)) {
-                        continue;
-                    }
-
-                    String signature = buildMappedConnectionSignature(
-                            "CUR:" + currentSource,
-                            conn.sourcePort.getId(),
-                            "CUR:" + currentTarget,
-                            conn.targetPort.getId()
-                    );
-
-                    int remain = plannedScopedCounts.getOrDefault(signature, 0);
-                    if (remain > 0) {
-                        plannedScopedCounts.put(signature, remain - 1);
-                        continue;
-                    }
-
-                    boolean disconnected = editor.disconnectPorts(
-                            currentSource,
-                            conn.sourcePort.getId(),
-                            currentTarget,
-                            conn.targetPort.getId()
-                    );
-                    if (!disconnected) {
-                        rollbackAiApply(editor, undoSteps);
-                        restoreNodeStates(graph, previousStates);
-                        aiPlanStatusMessage = "Patch apply failed while removing scoped stale connection. Try Dry Run first.";
-                        return;
-                    }
-                    undoSteps++;
-                    removedScopedConnections++;
-                }
-            }
-
-            lastAiUndoStepCount = undoSteps;
-            aiPlanStatusMessage = "Patch apply completed: reused " + reusedNodes
-                    + ", created " + createdNodes
-                    + ", updated " + updatedNodes
-                    + ", connected " + successfulConnections
-                    + ", replacedIncoming " + replacedIncomingConnections
-                    + ", removedScoped " + removedScopedConnections
-                    + ". Undo steps available: " + lastAiUndoStepCount + "."
-                    + (aiAutoLayoutBeforeApply.get() ? " (auto layout enabled for new nodes)" : "");
-        } catch (Exception e) {
-            rollbackAiApply(editor, undoSteps);
-            restoreNodeStates(graph, previousStates);
-            NodeCraft.LOGGER.error("Failed to patch-apply AI plan", e);
-            aiPlanStatusMessage = "Patch apply failed: " + e.getMessage() + ". Auto-rolled back.";
-        }
-    }
-
-    private Object deepCopyNodeState(Object state) {
-        if (state == null) {
-            return null;
-        }
-        try {
-            return AI_SETTINGS_GSON.fromJson(AI_SETTINGS_GSON.toJsonTree(state), Object.class);
-        } catch (Exception e) {
-            return state;
-        }
-    }
-
-    private void restoreNodeStates(NodeGraph graph, Map<UUID, Object> previousStates) {
-        if (graph == null || previousStates == null || previousStates.isEmpty()) {
-            return;
-        }
-        for (Map.Entry<UUID, Object> entry : previousStates.entrySet()) {
-            INode node = graph.getNode(entry.getKey());
-            if (node instanceof BaseNode baseNode) {
-                baseNode.setNodeState(deepCopyNodeState(entry.getValue()));
-            }
-        }
-    }
-
-    private IPort findInputPortById(INode node, String portId) {
-        if (node == null || portId == null || portId.isBlank()) {
-            return null;
-        }
-        for (IPort port : node.getInputPorts()) {
-            if (portId.equals(port.getId())) {
-                return port;
-            }
-        }
-        return null;
-    }
-
-    private Map<String, Integer> buildPlannedScopedConnectionCounts(AiGraphPlan plan, Map<String, UUID> planRefToNodeId) {
-        Map<String, Integer> counts = new HashMap<>();
-        if (plan == null || plan.connections() == null) {
-            return counts;
+        List<AiGraphApplyService.ApplyConnection> applyConnections = new ArrayList<>(pendingAiPlan.connections().size());
+        for (AiPlanConnection connection : pendingAiPlan.connections()) {
+            applyConnections.add(new AiGraphApplyService.ApplyConnection(
+                    connection.sourceRef(),
+                    connection.sourcePortId(),
+                    connection.targetRef(),
+                    connection.targetPortId()
+            ));
         }
 
-        for (AiPlanConnection conn : plan.connections()) {
-            UUID sourceId = planRefToNodeId.get(conn.sourceRef());
-            UUID targetId = planRefToNodeId.get(conn.targetRef());
-            if (sourceId == null || targetId == null) {
-                continue;
-            }
-
-            String signature = buildMappedConnectionSignature(
-                    "CUR:" + sourceId,
-                    conn.sourcePortId(),
-                    "CUR:" + targetId,
-                    conn.targetPortId()
-            );
-            counts.merge(signature, 1, Integer::sum);
-        }
-        return counts;
+        AiGraphApplyService.ApplyResult result = AiGraphApplyService.applyPatch(
+                editor,
+                graph,
+                applyNodes,
+                applyConnections,
+                anchor,
+                aiPatchRemoveScopedConnections.get()
+        );
+        lastAiUndoStepCount = result.undoSteps();
+        aiPlanStatusMessage = result.statusMessage()
+                + (result.success() && aiAutoLayoutBeforeApply.get() ? " (auto layout enabled for new nodes)" : "");
     }
 
     private Map<String, Object> createNodeState(Object... keyValues) {
