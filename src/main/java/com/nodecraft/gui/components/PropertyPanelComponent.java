@@ -4,12 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.nodecraft.gui.ai.AiGraphDslSupport;
-import com.nodecraft.gui.ai.AiNodeSchemaCatalog;
-import com.nodecraft.gui.ai.AiPromptBuilder;
-import com.nodecraft.gui.ai.AiRemotePlannerService;
-import com.nodecraft.gui.ai.AiSettingsStore;
-import com.nodecraft.gui.ai.AiGraphDiffService;
+import com.nodecraft.gui.ai.*;
 import com.nodecraft.core.NodeCraft; // For logging
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
@@ -2368,7 +2363,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
         String userPromptPayload = AiPromptBuilder.buildUserPrompt(
             userPrompt,
-            AiPromptContextService.buildSelectionContextSummary(
+            buildSelectionContextSummary(
                 aiUseSelectionContext.get(),
                 aiIncludeGraphContext.get(),
                 selectedNode,
@@ -2451,7 +2446,7 @@ public class PropertyPanelComponent implements EditorComponent {
         pendingAiPlan = buildPlanFromDsl(parsed.graph());
         aiChatMessages.add(new AiChatMessage(
             "assistant",
-            AiPromptContextService.buildAiPlanReply(
+            buildAiPlanReply(
                 prompt,
                 source,
                 aiUseSelectionContext.get(),
@@ -2464,6 +2459,72 @@ public class PropertyPanelComponent implements EditorComponent {
             System.currentTimeMillis()
         ));
         aiPlanStatusMessage = "Plan JSON validated (" + source + "). Review and click Apply Plan.";
+    }
+
+    private static String buildSelectionContextSummary(
+            boolean useSelectionContext,
+            boolean includeGraphContext,
+            INode selectedNode,
+            NodeGraph graph
+    ) {
+        StringBuilder context = new StringBuilder(512);
+        if (!useSelectionContext) {
+            context.append("Selection context disabled.");
+        } else if (selectedNode == null) {
+            context.append("No node selected.");
+        } else {
+            context.append("Selected node: ")
+                    .append(selectedNode.getDisplayName())
+                    .append(" (")
+                    .append(selectedNode.getTypeId())
+                    .append(")");
+        }
+
+        context.append("\n");
+        if (!includeGraphContext) {
+            context.append("Current canvas graph summary disabled.");
+        } else if (graph == null) {
+            context.append("Current canvas graph: unavailable.");
+        } else {
+            context.append("Current canvas graph snapshot: nodes=")
+                    .append(graph.getNodes().size())
+                    .append(", connections=")
+                    .append(graph.getConnections().size());
+        }
+        return context.toString();
+    }
+
+    private static String buildAiPlanReply(
+            String prompt,
+            String source,
+            boolean useSelectionContext,
+            INode selectedNode,
+            int nodeCount,
+            int connectionCount,
+            boolean valid,
+            List<String> validationErrors
+    ) {
+        StringBuilder sb = new StringBuilder(512);
+        sb.append("Prompt: ").append(prompt == null ? "" : prompt).append("\n");
+        sb.append("Source: ").append(source == null ? "unknown" : source).append("\n");
+        if (useSelectionContext && selectedNode != null) {
+            sb.append("Selection: ")
+                    .append(selectedNode.getDisplayName())
+                    .append(" (")
+                    .append(selectedNode.getTypeId())
+                    .append(")\n");
+        }
+        sb.append("Plan: nodes=")
+                .append(nodeCount)
+                .append(", connections=")
+                .append(connectionCount)
+                .append(", valid=")
+                .append(valid)
+                .append("\n");
+        if (validationErrors != null && !validationErrors.isEmpty()) {
+            sb.append("Validation errors: ").append(String.join("; ", validationErrors));
+        }
+        return sb.toString();
     }
 
     private void fallbackToLocalPlan(String prompt, String reason) {
@@ -3513,6 +3574,10 @@ public class PropertyPanelComponent implements EditorComponent {
         int g = Math.max(0, Math.min(255, Math.round(rgb[1] * 255.0f)));
         int b = Math.max(0, Math.min(255, Math.round(rgb[2] * 255.0f)));
         return String.format("#%02X%02X%02X", r, g, b);
+    }
+
+    private static String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     private List<PropertyDescriptor> getPropertiesForNode(Class<?> nodeClass) {

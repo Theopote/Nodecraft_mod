@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import org.jspecify.annotations.NonNull;
 
 import java.util.List;
 
@@ -21,41 +22,7 @@ public final class AiPromptBuilder {
         JsonArray schemaJson = new JsonArray();
         if (schemas != null) {
             for (AiNodeSchemaCatalog.NodeSchema schema : schemas) {
-                JsonObject nodeObj = new JsonObject();
-                nodeObj.addProperty("typeId", schema.typeId());
-                nodeObj.addProperty("displayName", schema.displayName());
-                nodeObj.addProperty("description", schema.description());
-                nodeObj.addProperty("category", schema.category());
-
-                JsonArray inputPorts = new JsonArray();
-                for (AiNodeSchemaCatalog.PortSchema input : schema.inputs()) {
-                    JsonObject port = new JsonObject();
-                    port.addProperty("id", input.id());
-                    port.addProperty("dataType", input.dataType());
-                    port.addProperty("required", input.required());
-                    port.addProperty("description", input.description());
-                    inputPorts.add(port);
-                }
-                nodeObj.add("inputs", inputPorts);
-
-                JsonArray outputPorts = new JsonArray();
-                for (AiNodeSchemaCatalog.PortSchema output : schema.outputs()) {
-                    JsonObject port = new JsonObject();
-                    port.addProperty("id", output.id());
-                    port.addProperty("dataType", output.dataType());
-                    port.addProperty("description", output.description());
-                    outputPorts.add(port);
-                }
-                nodeObj.add("outputs", outputPorts);
-
-                JsonArray params = new JsonArray();
-                for (AiNodeSchemaCatalog.ParamSchema param : schema.params()) {
-                    JsonObject paramObj = new JsonObject();
-                    paramObj.addProperty("name", param.name());
-                    paramObj.addProperty("valueType", param.valueType());
-                    params.add(paramObj);
-                }
-                nodeObj.add("params", params);
+                JsonObject nodeObj = getJsonObject(schema);
 
                 schemaJson.add(nodeObj);
             }
@@ -79,6 +46,45 @@ public final class AiPromptBuilder {
                 + "}\\n"
                 + "AVAILABLE_NODES:\\n"
                 + schemaText;
+    }
+
+    private static @NonNull JsonObject getJsonObject(AiNodeSchemaCatalog.NodeSchema schema) {
+        JsonObject nodeObj = new JsonObject();
+        nodeObj.addProperty("typeId", schema.typeId());
+        nodeObj.addProperty("displayName", schema.displayName());
+        nodeObj.addProperty("description", schema.description());
+        nodeObj.addProperty("category", schema.category());
+
+        JsonArray inputPorts = new JsonArray();
+        for (AiNodeSchemaCatalog.PortSchema input : schema.inputs()) {
+            JsonObject port = new JsonObject();
+            port.addProperty("id", input.id());
+            port.addProperty("dataType", input.dataType());
+            port.addProperty("required", input.required());
+            port.addProperty("description", input.description());
+            inputPorts.add(port);
+        }
+        nodeObj.add("inputs", inputPorts);
+
+        JsonArray outputPorts = new JsonArray();
+        for (AiNodeSchemaCatalog.PortSchema output : schema.outputs()) {
+            JsonObject port = new JsonObject();
+            port.addProperty("id", output.id());
+            port.addProperty("dataType", output.dataType());
+            port.addProperty("description", output.description());
+            outputPorts.add(port);
+        }
+        nodeObj.add("outputs", outputPorts);
+
+        JsonArray params = new JsonArray();
+        for (AiNodeSchemaCatalog.ParamSchema param : schema.params()) {
+            JsonObject paramObj = new JsonObject();
+            paramObj.addProperty("name", param.name());
+            paramObj.addProperty("valueType", param.valueType());
+            params.add(paramObj);
+        }
+        nodeObj.add("params", params);
+        return nodeObj;
     }
 
     public static String buildUserPrompt(String prompt, String selectionContext) {

@@ -58,7 +58,7 @@ public final class AiGraphDslSupport {
         }
 
         String jsonPayload = extractJsonPayload(modelResponse);
-        if (jsonPayload == null || jsonPayload.isBlank()) {
+        if (jsonPayload.isBlank()) {
             errors.add("No JSON found in model response.");
             return new ParseValidationResult(null, errors, "");
         }

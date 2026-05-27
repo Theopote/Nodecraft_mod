@@ -210,26 +210,30 @@ public final class AiGraphDiffService {
         if (value == null || value instanceof String || value instanceof Number || value instanceof Boolean) {
             return value;
         }
-        if (value instanceof Map<?, ?> map) {
-            Map<String, Object> canonical = new TreeMap<>();
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                canonical.put(String.valueOf(entry.getKey()), canonicalizeForSignature(entry.getValue()));
+        switch (value) {
+            case Map<?, ?> map -> {
+                Map<String, Object> canonical = new TreeMap<>();
+                for (Map.Entry<?, ?> entry : map.entrySet()) {
+                    canonical.put(String.valueOf(entry.getKey()), canonicalizeForSignature(entry.getValue()));
+                }
+                return canonical;
             }
-            return canonical;
-        }
-        if (value instanceof List<?> list) {
-            List<Object> canonical = new ArrayList<>(list.size());
-            for (Object item : list) {
-                canonical.add(canonicalizeForSignature(item));
+            case List<?> list -> {
+                List<Object> canonical = new ArrayList<>(list.size());
+                for (Object item : list) {
+                    canonical.add(canonicalizeForSignature(item));
+                }
+                return canonical;
             }
-            return canonical;
-        }
-        if (value instanceof Iterable<?> iterable) {
-            List<Object> canonical = new ArrayList<>();
-            for (Object item : iterable) {
-                canonical.add(canonicalizeForSignature(item));
+            case Iterable<?> iterable -> {
+                List<Object> canonical = new ArrayList<>();
+                for (Object item : iterable) {
+                    canonical.add(canonicalizeForSignature(item));
+                }
+                return canonical;
             }
-            return canonical;
+            default -> {
+            }
         }
         return String.valueOf(value);
     }
