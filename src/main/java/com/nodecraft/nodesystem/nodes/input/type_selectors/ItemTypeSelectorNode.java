@@ -1,19 +1,12 @@
 package com.nodecraft.nodesystem.nodes.input.type_selectors;
 
-import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.execution.ExecutionContext;
-import imgui.ImGui;
-import imgui.flag.ImGuiCol;
-import imgui.type.ImString;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -25,7 +18,12 @@ import java.util.UUID;
     category = "input.type_selectors",
     order = 2
 )
-public class ItemTypeSelectorNode extends BaseCustomUINode {
+public class ItemTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
+
+    private static final String CATEGORY_BLOCKS = "blocks";
+    private static final String CATEGORY_TOOLS = "tools";
+    private static final String CATEGORY_FOOD = "food";
+    private static final String CATEGORY_COMBAT = "combat";
 
     private static final String[] QUICK_ITEMS = {
         "minecraft:stone",
@@ -36,6 +34,15 @@ public class ItemTypeSelectorNode extends BaseCustomUINode {
         "minecraft:water_bucket",
         "minecraft:minecart",
         "minecraft:armor_stand"
+    };
+
+    private static final CategorySpec[] CATEGORIES = {
+        new CategorySpec(CATEGORY_ALL, "All"),
+        new CategorySpec(CATEGORY_BLOCKS, "Blocks"),
+        new CategorySpec(CATEGORY_TOOLS, "Tools"),
+        new CategorySpec(CATEGORY_FOOD, "Food"),
+        new CategorySpec(CATEGORY_COMBAT, "Combat"),
+        new CategorySpec(CATEGORY_MODDED, "Modded")
     };
 
     @NodeProperty(
@@ -59,13 +66,6 @@ public class ItemTypeSelectorNode extends BaseCustomUINode {
     private static final String OUTPUT_ITEM_PATH = "output_item_path";
     private static final String OUTPUT_IS_MODDED = "output_is_modded";
 
-    private transient ImString searchBuffer = new ImString(256);
-    private transient volatile List<String> filteredItems = new ArrayList<>();
-    private transient volatile boolean showDropdown = false;
-    private transient volatile String lastSearchText = "";
-
-    private static final int MAX_RESULTS = 20;
-
     public ItemTypeSelectorNode() {
         super(UUID.randomUUID(), "input.type_selectors.item_type_selector");
 
@@ -74,7 +74,7 @@ public class ItemTypeSelectorNode extends BaseCustomUINode {
         addOutputPort(new BasePort(OUTPUT_ITEM_PATH, "Item Path", "The path part of the selected item id", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_IS_MODDED, "Is Modded", "Whether the selected item is outside the minecraft namespace", NodeDataType.BOOLEAN, this));
 
-        updateOutputs();
+        onSelectionApplied();
     }
 
     @Override
@@ -83,171 +83,150 @@ public class ItemTypeSelectorNode extends BaseCustomUINode {
     }
 
     @Override
-    public void processNode(@Nullable ExecutionContext context) {
+    protected String getPickerPopupKey() {
+        return "item_picker";
+    }
+
+    @Override
+    protected String getPickerTitle() {
+        return "Select Item";
+    }
+
+    @Override
+    protected String getSearchHint() {
+        return "Search item id...";
+    }
+
+    @Override
+    protected String getOpenButtonIdSuffix() {
+        return "##open_item_picker";
+    }
+
+    @Override
+    protected String readSelectedId() {
+        return selectedItem;
+    }
+
+    @Override
+    protected boolean isAllowModded() {
+        return allowModded;
+    }
+
+    @Override
+    protected void setAllowModdedFlag(boolean allowModded) {
+        this.allowModded = allowModded;
+        normalizeFilterState();
+        if (!allowModded && !selectedItem.startsWith("minecraft:")) {
+            setSelectedItem(getDefaultId());
+        }
+        updateFilteredListFromSearch();
+    }
+
+    @Override
+    protected String getDefaultId() {
+        return "minecraft:stone";
+    }
+
+    @Override
+    protected String[] getQuickPickIds() {
+        return QUICK_ITEMS;
+    }
+
+    @Override
+    protected CategorySpec[] getCategorySpecs() {
+        return CATEGORIES;
+    }
+
+    @Override
+    protected void collectRegistryIds(List<String> target) {
+        for (Identifier id : Registries.ITEM.getIds()) {
+            target.add(id.toString());
+        }
+    }
+
+    @Override
+    protected boolean isKnownId(String id) {
+        if (getDefaultId().equals(id)) {
+            return true;
+        }
+        if (catalogContains(id)) {
+            return true;
+        }
+        try {
+            Identifier parsed = Identifier.tryParse(id);
+            if (parsed == null) {
+                return false;
+            }
+            if (Registries.ITEM.getIds().isEmpty()) {
+                return false;
+            }
+            return Registries.ITEM.containsId(parsed);
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    @Override
+    protected boolean matchesCategory(String fullId, String categoryKey) {
+        if (CATEGORY_ALL.equals(categoryKey)) {
+            return true;
+        }
+        if (CATEGORY_MODDED.equals(categoryKey)) {
+            return matchesModdedCategory(fullId);
+        }
+
+        String path = fullId;
+        String[] parts = fullId.split(":", 2);
+        if (parts.length == 2) {
+            if (!"minecraft".equals(parts[0])) {
+                return false;
+            }
+            path = parts[1];
+        }
+
+        return switch (categoryKey) {
+            case CATEGORY_TOOLS -> containsAny(path,
+                "pickaxe", "axe", "shovel", "hoe", "shears", "flint_and_steel", "bucket", "fishing_rod",
+                "brush", "compass", "clock", "spyglass", "lead", "name_tag", "saddle");
+            case CATEGORY_FOOD -> containsAny(path,
+                "apple", "bread", "beef", "porkchop", "chicken", "mutton", "rabbit", "cod", "salmon",
+                "potato", "carrot", "beetroot", "cookie", "melon", "berry", "honey", "soup", "stew",
+                "cake", "pie", "milk", "egg", "kelp", "dried", "sweet", "chorus", "spider_eye", "pufferfish");
+            case CATEGORY_COMBAT -> containsAny(path,
+                "sword", "bow", "crossbow", "trident", "shield", "arrow", "helmet", "chestplate",
+                "leggings", "boots", "tnt", "firework", "spectral", "totem", "elytra");
+            case CATEGORY_BLOCKS -> {
+                if (matchesCategory(fullId, CATEGORY_TOOLS)
+                    || matchesCategory(fullId, CATEGORY_FOOD)
+                    || matchesCategory(fullId, CATEGORY_COMBAT)) {
+                    yield false;
+                }
+                yield containsAny(path,
+                    "stone", "planks", "log", "glass", "brick", "concrete", "wool", "terracotta",
+                    "sand", "dirt", "grass", "leaves", "slab", "stairs", "fence", "door", "trapdoor",
+                    "ore", "deepslate", "copper", "torch", "lantern", "chest", "barrel");
+            }
+            default -> true;
+        };
+    }
+
+    @Override
+    protected String getRegistryNotReadyMessage() {
+        return "Item registry not ready";
+    }
+
+    @Override
+    protected String getRegistryLoadWarningLog() {
+        return "Item registry is not ready for ItemTypeSelectorNode yet.";
+    }
+
+    @Override
+    protected void onSelectionApplied() {
         updateOutputs();
     }
 
-    @Override
-    protected float calculateUIHeight() {
-        float height = getMediumPadding();
-        height += ImGui.getTextLineHeight();
-        height += getSmallPadding();
-        height += ImGui.getFrameHeight();
-        height += getSmallPadding();
-        if (showDropdown) {
-            height += Math.min(filteredItems.size(), MAX_RESULTS) * ImGui.getTextLineHeightWithSpacing();
-            height += getSmallPadding();
-        }
-        height += getMediumPadding();
-        return height;
-    }
-
-    @Override
-    protected float calculateMinUIWidth() {
-        return 184f + getContentMargin();
-    }
-
-    @Override
-    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
-        return layout(zoom, layout -> {
-            boolean changed = false;
-
-            try {
-                float availableWidth = getAvailableContentWidth(width, zoom);
-                layout.addVerticalSpacing(getMediumPadding());
-
-                ImGui.text("Common:");
-                for (int i = 0; i < QUICK_ITEMS.length; i++) {
-                    String quickItem = QUICK_ITEMS[i];
-                    String quickLabel = quickItem.split(":", 2)[1];
-                    if (i > 0 && i % 2 != 0) {
-                        ImGui.sameLine();
-                    }
-                    if (ImGui.smallButton(quickLabel + "##quick_item_" + i)) {
-                        setSelectedItem(quickItem);
-                        searchBuffer.set("");
-                        filteredItems = new ArrayList<>();
-                        showDropdown = false;
-                        lastSearchText = "";
-                        changed = true;
-                    }
-                }
-
-                layout.addVerticalSpacing(getSmallPadding());
-
-                layout.pushFramePadding(4.0f, 3.0f);
-                layout.setItemWidth(availableWidth / zoom);
-
-                if (ImGui.inputTextWithHint("##item_search", "Search items...", searchBuffer)) {
-                    String searchText = searchBuffer.get().trim().toLowerCase();
-                    if (!searchText.equals(lastSearchText)) {
-                        lastSearchText = searchText;
-                        updateFilteredList(searchText);
-                        showDropdown = !searchText.isEmpty();
-                    }
-                }
-
-                if (ImGui.isItemActivated() && !searchBuffer.get().isEmpty()) {
-                    showDropdown = true;
-                }
-
-                layout.popItemWidth();
-                layout.popStyleVar();
-
-                layout.addVerticalSpacing(getSmallPadding());
-
-                List<String> filteredSnapshot = filteredItems;
-                if (showDropdown && !filteredSnapshot.isEmpty()) {
-                    ImGui.pushStyleColor(ImGuiCol.ChildBg, 0.15f, 0.15f, 0.18f, 0.95f);
-
-                    int displayCount = Math.min(filteredSnapshot.size(), MAX_RESULTS);
-                    for (int i = 0; i < displayCount; i++) {
-                        String itemId = filteredSnapshot.get(i);
-                        String itemPath = itemId.contains(":") ? itemId.split(":", 2)[1] : itemId;
-
-                        boolean isSelected = itemId.equals(selectedItem);
-                        if (isSelected) {
-                            ImGui.pushStyleColor(ImGuiCol.Text, 0.3f, 0.9f, 0.5f, 1.0f);
-                        }
-
-                        if (ImGui.selectable("  " + itemPath + "##item_" + i, isSelected)) {
-                            setSelectedItem(itemId);
-                            searchBuffer.set("");
-                            showDropdown = false;
-                            lastSearchText = "";
-                            changed = true;
-                        }
-
-                        if (isSelected) {
-                            ImGui.popStyleColor();
-                        }
-
-                        if (ImGui.isItemHovered()) {
-                            ImGui.setTooltip(itemId);
-                        }
-                    }
-
-                    if (filteredSnapshot.size() > MAX_RESULTS) {
-                        ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 1.0f);
-                        ImGui.text("  ... " + (filteredSnapshot.size() - MAX_RESULTS) + " more");
-                        ImGui.popStyleColor();
-                    }
-
-                    ImGui.popStyleColor();
-                }
-
-                layout.addVerticalSpacing(getMediumPadding());
-            } catch (Exception e) {
-                System.err.println("ItemTypeSelectorNode UI render failed: " + e.getMessage());
-            }
-
-            return changed;
-        });
-    }
-
-    private void updateFilteredList(String searchText) {
-        List<String> nextFilteredItems = new ArrayList<>();
-        if (searchText.isEmpty()) {
-            for (String quickItem : QUICK_ITEMS) {
-                if (allowModded || quickItem.startsWith("minecraft:")) {
-                    nextFilteredItems.add(quickItem);
-                }
-            }
-            filteredItems = nextFilteredItems;
-            invalidateCache();
-            return;
-        }
-
-        try {
-            for (Identifier id : Registries.ITEM.getIds()) {
-                String fullId = id.toString();
-                if (!allowModded && !id.getNamespace().equals("minecraft")) {
-                    continue;
-                }
-
-                if (fullId.contains(searchText) || id.getPath().contains(searchText)) {
-                    nextFilteredItems.add(fullId);
-                    if (nextFilteredItems.size() >= MAX_RESULTS * 2) {
-                        break;
-                    }
-                }
-            }
-        } catch (Exception ignored) {
-        }
-
-        filteredItems = nextFilteredItems;
-        invalidateCache();
-    }
-
     public void setSelectedItem(String itemId) {
-        if (itemId == null || itemId.isEmpty()) {
-            itemId = "minecraft:stone";
-        }
-        if (!this.selectedItem.equals(itemId)) {
-            this.selectedItem = itemId;
-            updateOutputs();
-            markDirty();
-        }
+        applyValidatedId(itemId, getDefaultId());
     }
 
     private void updateOutputs() {
@@ -265,38 +244,54 @@ public class ItemTypeSelectorNode extends BaseCustomUINode {
         syncOutputPorts();
     }
 
+    @Override
+    protected void applySelectedId(String id) {
+        String nextId = sanitizeNamespacedId(id, getDefaultId());
+        if (!allowModded && !nextId.startsWith("minecraft:")) {
+            nextId = getDefaultId();
+        }
+        if (!isKnownId(nextId)) {
+            nextId = getDefaultId();
+        }
+        if (!selectedItem.equals(nextId)) {
+            selectedItem = nextId;
+            updateOutputs();
+            markDirty();
+        }
+    }
+
     public String getSelectedItem() {
         return selectedItem;
     }
 
-    public boolean isAllowModded() {
-        return allowModded;
-    }
-
     public void setAllowModded(boolean allowModded) {
-        this.allowModded = allowModded;
-        if (!allowModded && !selectedItem.startsWith("minecraft:")) {
-            setSelectedItem("minecraft:stone");
-        }
+        setAllowModdedFlag(allowModded);
     }
 
     @Override
     public Object getNodeState() {
         return Map.of(
             "selectedItem", getSelectedItem(),
-            "allowModded", isAllowModded()
+            "allowModded", isAllowModded(),
+            "selectedCategory", getFilterCategory(),
+            "minecraftOnly", isMinecraftOnlyFilter()
         );
     }
 
     @Override
     public void setNodeState(Object state) {
         if (state instanceof Map<?, ?> map) {
-            if (map.get("allowModded") instanceof Boolean bool) {
-                setAllowModded(bool);
-            }
             if (map.get("selectedItem") instanceof String value) {
                 setSelectedItem(value);
             }
+            if (map.get("allowModded") instanceof Boolean bool) {
+                setAllowModded(bool);
+            }
+            restoreFilterState(
+                map.get("allowModded") instanceof Boolean b ? b : allowModded,
+                map.get("selectedCategory") instanceof String c ? c : CATEGORY_ALL,
+                map.get("minecraftOnly") instanceof Boolean m && m
+            );
         }
     }
 }
