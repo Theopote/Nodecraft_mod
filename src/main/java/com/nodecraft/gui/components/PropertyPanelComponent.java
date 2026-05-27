@@ -1735,69 +1735,36 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     private void renderAiSettingsPopup() {
-        int flags = ImGuiWindowFlags.AlwaysAutoResize;
-        if (!ImGui.beginPopupModal("AI Settings", flags)) {
-            return;
-        }
+        AiAssistantSettingsPopupRenderer.renderSettingsPopup(
+                new AiAssistantSettingsPopupRenderer.State(
+                        aiEnableRemotePlanner,
+                        aiApiBaseUrl,
+                        aiApiKey,
+                        aiModel,
+                        aiSystemPrompt,
+                        aiRequestTimeoutSeconds,
+                        aiShowApiKey,
+                        aiAutoLayoutBeforeApply,
+                        aiSettingsPath
+                ),
+                new AiAssistantSettingsPopupRenderer.Actions() {
+                    @Override
+                    public void onValidateLocal() {
+                        aiSettingsStatusMessage = validateAiSettings();
+                    }
 
-        ImGui.text("Remote Planner Connection");
-        ImGui.separator();
+                    @Override
+                    public void onSaveSettings() {
+                        saveAiSettingsToDisk();
+                    }
 
-        ImGui.checkbox("Enable remote planner", aiEnableRemotePlanner);
-
-        ImGui.text("API Base URL");
-        ImGui.pushItemWidth(420.0f);
-        ImGui.inputText("##ai_api_base_url", aiApiBaseUrl);
-        ImGui.popItemWidth();
-
-        ImGui.text("API Key");
-        int keyFlags = aiShowApiKey.get() ? ImGuiInputTextFlags.None : ImGuiInputTextFlags.Password;
-        ImGui.pushItemWidth(420.0f);
-        ImGui.inputText("##ai_api_key", aiApiKey, keyFlags);
-        ImGui.popItemWidth();
-        ImGui.checkbox("Show API key", aiShowApiKey);
-
-        ImGui.text("Model");
-        ImGui.pushItemWidth(240.0f);
-        ImGui.inputText("##ai_model", aiModel);
-        ImGui.popItemWidth();
-
-        ImGui.text("Request Timeout (seconds)");
-        ImGui.pushItemWidth(120.0f);
-        if (ImGui.inputInt("##ai_timeout_seconds", aiRequestTimeoutSeconds)) {
-            aiRequestTimeoutSeconds.set(Math.max(5, Math.min(600, aiRequestTimeoutSeconds.get())));
-        }
-        ImGui.popItemWidth();
-
-        ImGui.checkbox("Auto layout before apply", aiAutoLayoutBeforeApply);
-
-        ImGui.text("System Prompt");
-        ImGui.pushItemWidth(420.0f);
-        ImGui.inputTextMultiline("##ai_system_prompt", aiSystemPrompt, 420.0f, 100.0f);
-        ImGui.popItemWidth();
-
-        ImGui.separator();
-        if (ImGui.button("Validate (Local)")) {
-            aiSettingsStatusMessage = validateAiSettings();
-        }
-        ImGui.sameLine();
-        if (ImGui.button("Save Settings")) {
-            saveAiSettingsToDisk();
-        }
-        ImGui.sameLine();
-        if (ImGui.button("Reload Settings")) {
-            loadAiSettingsFromDisk();
-            aiSettingsStatusMessage = "AI settings reloaded from disk.";
-        }
-        ImGui.sameLine();
-        if (ImGui.button("Close")) {
-            ImGui.closeCurrentPopup();
-        }
-
-        ImGui.textDisabled("Config file: " + aiSettingsPath.toAbsolutePath());
-        ImGui.textDisabled("Settings are persisted to disk and loaded on startup.");
-
-        ImGui.endPopup();
+                    @Override
+                    public void onReloadSettings() {
+                        loadAiSettingsFromDisk();
+                        aiSettingsStatusMessage = "AI settings reloaded from disk.";
+                    }
+                }
+        );
     }
 
     private void renderAiDebugConsolePopup() {
