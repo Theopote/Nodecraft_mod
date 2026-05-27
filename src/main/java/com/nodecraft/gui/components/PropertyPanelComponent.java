@@ -1,5 +1,10 @@
 package com.nodecraft.gui.components;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.nodecraft.gui.ai.AiGraphDslSupport;
 import com.nodecraft.core.NodeCraft; // For logging
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.datatypes.LSystemRule;
@@ -31,6 +36,7 @@ import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.nodes.output.preview.GeometryViewerNode;
+import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.Vec3; // 确保 Vec3 可用
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.Color;
@@ -45,13 +51,20 @@ import imgui.flag.ImGuiTableFlags;
 import imgui.flag.ImGuiTableColumnFlags; // 添加 ImGuiTableColumnFlags 导入
 import imgui.flag.ImGuiCol;
 import imgui.flag.ImGuiTreeNodeFlags;
+import imgui.flag.ImGuiWindowFlags;
 import imgui.type.ImBoolean;
 import imgui.type.ImInt;
 import imgui.type.ImString;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.registry.Registries;
@@ -61,6 +74,7 @@ import org.joml.Vector3d;
 public class PropertyPanelComponent implements EditorComponent {
 
     private static final String COMPONENT_ID = "property_panel";
+    private static final Gson AI_SETTINGS_GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Set<String> HIDDEN_NODE_PROPERTIES = Set.of(
             "cachedHeight",
             "cachedMinWidth",
@@ -98,9 +112,18 @@ public class PropertyPanelComponent implements EditorComponent {
     private final ImString aiPromptInput = new ImString("", 2048);
     private final ImBoolean aiUseSelectionContext = new ImBoolean(true);
     private final List<AiChatMessage> aiChatMessages = new ArrayList<>();
+    private final ImString aiApiBaseUrl = new ImString("https://api.openai.com/v1", 512);
+    private final ImString aiApiKey = new ImString("", 512);
+    private final ImString aiModel = new ImString("gpt-4.1-mini", 128);
+    private final ImString aiSystemPrompt = new ImString("You are a NodeCraft graph planning assistant.", 2048);
+    private final ImInt aiRequestTimeoutSeconds = new ImInt(60);
+    private final ImBoolean aiShowApiKey = new ImBoolean(false);
+    private final ImBoolean aiEnableRemotePlanner = new ImBoolean(false);
+    private final Path aiSettingsPath;
     private AiGraphPlan pendingAiPlan = null;
     private int lastAiUndoStepCount = 0;
     private String aiPlanStatusMessage = "";
+    private String aiSettingsStatusMessage = "";
 
     private enum RightPanelTab {
         PROPERTIES,
@@ -152,6 +175,8 @@ public class PropertyPanelComponent implements EditorComponent {
                 PropertyPanelComponent.this.highlightRegion(region);
             }
         });
+        this.aiSettingsPath = resolveAiSettingsPath();
+        loadAiSettingsFromDisk();
     }
 
     private void applyPropertyValue(INode node, PropertyDescriptor prop, Object value) throws Throwable {
@@ -1506,13 +1531,16 @@ public class PropertyPanelComponent implements EditorComponent {
         NodeCraft.LOGGER.debug("PropertyPanelComponent cleaned up");
         clearAllTempValues();
         propertyInspector.clearCache();
+        saveAiSettingsToDisk();
         // 移除未保存更改相关的清理
         selectedNode = null;
         aiChatMessages.clear();
         aiPromptInput.clear();
+        aiApiKey.clear();
         pendingAiPlan = null;
         lastAiUndoStepCount = 0;
         aiPlanStatusMessage = "";
+        aiSettingsStatusMessage = "";
     }
 
     @Override
@@ -1580,6 +1608,17 @@ public class PropertyPanelComponent implements EditorComponent {
 
     private void renderAiAssistantTabContent() {
         ImGui.textWrapped("Describe what you want to build, and AI will generate a node graph plan.");
+        if (ImGui.smallButton("AI Settings")) {
+            ImGui.openPopup("AI Settings");
+        }
+        renderAiSettingsPopup();
+        ImGui.sameLine();
+        ImGui.textDisabled(buildAiSettingsSummary());
+
+        if (aiSettingsStatusMessage != null && !aiSettingsStatusMessage.isBlank()) {
+            ImGui.textWrapped(aiSettingsStatusMessage);
+        }
+
         ImGui.checkbox("Use current selection as context", aiUseSelectionContext);
 
         if (aiUseSelectionContext.get()) {
@@ -1646,6 +1685,170 @@ public class PropertyPanelComponent implements EditorComponent {
         }
 
         ImGui.textDisabled("Current mode: local mock planner (preview + apply + undo).");
+    }
+
+    private void renderAiSettingsPopup() {
+        int flags = ImGuiWindowFlags.AlwaysAutoResize;
+        if (!ImGui.beginPopupModal("AI Settings", flags)) {
+            return;
+        }
+
+        ImGui.text("Remote Planner Connection");
+        ImGui.separator();
+
+        ImGui.checkbox("Enable remote planner", aiEnableRemotePlanner);
+
+        ImGui.text("API Base URL");
+        ImGui.pushItemWidth(420.0f);
+        ImGui.inputText("##ai_api_base_url", aiApiBaseUrl);
+        ImGui.popItemWidth();
+
+        ImGui.text("API Key");
+        int keyFlags = aiShowApiKey.get() ? ImGuiInputTextFlags.None : ImGuiInputTextFlags.Password;
+        ImGui.pushItemWidth(420.0f);
+        ImGui.inputText("##ai_api_key", aiApiKey, keyFlags);
+        ImGui.popItemWidth();
+        ImGui.checkbox("Show API key", aiShowApiKey);
+
+        ImGui.text("Model");
+        ImGui.pushItemWidth(240.0f);
+        ImGui.inputText("##ai_model", aiModel);
+        ImGui.popItemWidth();
+
+        ImGui.text("Request Timeout (seconds)");
+        ImGui.pushItemWidth(120.0f);
+        if (ImGui.inputInt("##ai_timeout_seconds", aiRequestTimeoutSeconds)) {
+            aiRequestTimeoutSeconds.set(Math.max(5, Math.min(600, aiRequestTimeoutSeconds.get())));
+        }
+        ImGui.popItemWidth();
+
+        ImGui.text("System Prompt");
+        ImGui.pushItemWidth(420.0f);
+        ImGui.inputTextMultiline("##ai_system_prompt", aiSystemPrompt, 420.0f, 100.0f);
+        ImGui.popItemWidth();
+
+        ImGui.separator();
+        if (ImGui.button("Validate (Local)")) {
+            aiSettingsStatusMessage = validateAiSettings();
+        }
+        ImGui.sameLine();
+        if (ImGui.button("Save Settings")) {
+            saveAiSettingsToDisk();
+        }
+        ImGui.sameLine();
+        if (ImGui.button("Reload Settings")) {
+            loadAiSettingsFromDisk();
+            aiSettingsStatusMessage = "AI settings reloaded from disk.";
+        }
+        ImGui.sameLine();
+        if (ImGui.button("Close")) {
+            ImGui.closeCurrentPopup();
+        }
+
+        ImGui.textDisabled("Config file: " + aiSettingsPath.toAbsolutePath());
+        ImGui.textDisabled("Settings are persisted to disk and loaded on startup.");
+
+        ImGui.endPopup();
+    }
+
+    private String validateAiSettings() {
+        if (!aiEnableRemotePlanner.get()) {
+            return "Remote planner is disabled. Local mock planner remains active.";
+        }
+        if (aiApiBaseUrl.get() == null || aiApiBaseUrl.get().isBlank()) {
+            return "Validation failed: API Base URL is required when remote planner is enabled.";
+        }
+        if (aiApiKey.get() == null || aiApiKey.get().isBlank()) {
+            return "Validation failed: API Key is required when remote planner is enabled.";
+        }
+        if (aiModel.get() == null || aiModel.get().isBlank()) {
+            return "Validation failed: Model is required when remote planner is enabled.";
+        }
+        return "AI settings look valid. Remote planner wiring can now use these values.";
+    }
+
+    private String buildAiSettingsSummary() {
+        String plannerMode = aiEnableRemotePlanner.get() ? "Planner: Remote" : "Planner: Local";
+        String modelName = aiModel.get() == null || aiModel.get().isBlank() ? "(no model)" : aiModel.get();
+        String keyStatus = aiApiKey.get() == null || aiApiKey.get().isBlank() ? "API Key: missing" : "API Key: set";
+        return plannerMode + " | Model: " + modelName + " | " + keyStatus;
+    }
+
+    private Path resolveAiSettingsPath() {
+        try {
+            Path gameDir = FabricLoader.getInstance().getGameDir();
+            return gameDir.resolve("nodecraft").resolve("config").resolve("ai_settings.json");
+        } catch (IllegalStateException e) {
+            NodeCraft.LOGGER.warn("Fabric game directory unavailable, falling back to local AI settings path.");
+            return Paths.get("nodecraft", "config", "ai_settings.json");
+        }
+    }
+
+    private void loadAiSettingsFromDisk() {
+        try {
+            if (!Files.exists(aiSettingsPath)) {
+                aiSettingsStatusMessage = "AI settings file not found, using defaults.";
+                return;
+            }
+
+            String json = Files.readString(aiSettingsPath, StandardCharsets.UTF_8);
+            JsonObject root = AI_SETTINGS_GSON.fromJson(json, JsonObject.class);
+            if (root == null) {
+                aiSettingsStatusMessage = "AI settings file is empty, using defaults.";
+                return;
+            }
+
+            if (root.has("apiBaseUrl")) {
+                aiApiBaseUrl.set(root.get("apiBaseUrl").getAsString());
+            }
+            if (root.has("apiKey")) {
+                aiApiKey.set(root.get("apiKey").getAsString());
+            }
+            if (root.has("model")) {
+                aiModel.set(root.get("model").getAsString());
+            }
+            if (root.has("systemPrompt")) {
+                aiSystemPrompt.set(root.get("systemPrompt").getAsString());
+            }
+            if (root.has("timeoutSeconds")) {
+                aiRequestTimeoutSeconds.set(Math.max(5, Math.min(600, root.get("timeoutSeconds").getAsInt())));
+            }
+            if (root.has("showApiKey")) {
+                aiShowApiKey.set(root.get("showApiKey").getAsBoolean());
+            }
+            if (root.has("enableRemotePlanner")) {
+                aiEnableRemotePlanner.set(root.get("enableRemotePlanner").getAsBoolean());
+            }
+
+            aiSettingsStatusMessage = "AI settings loaded from disk.";
+        } catch (Exception e) {
+            NodeCraft.LOGGER.error("Failed to load AI settings", e);
+            aiSettingsStatusMessage = "Failed to load AI settings: " + e.getMessage();
+        }
+    }
+
+    private void saveAiSettingsToDisk() {
+        try {
+            Path parent = aiSettingsPath.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+
+            JsonObject root = new JsonObject();
+            root.addProperty("apiBaseUrl", aiApiBaseUrl.get());
+            root.addProperty("apiKey", aiApiKey.get());
+            root.addProperty("model", aiModel.get());
+            root.addProperty("systemPrompt", aiSystemPrompt.get());
+            root.addProperty("timeoutSeconds", aiRequestTimeoutSeconds.get());
+            root.addProperty("showApiKey", aiShowApiKey.get());
+            root.addProperty("enableRemotePlanner", aiEnableRemotePlanner.get());
+
+            Files.writeString(aiSettingsPath, AI_SETTINGS_GSON.toJson(root), StandardCharsets.UTF_8);
+            aiSettingsStatusMessage = "AI settings saved.";
+        } catch (IOException e) {
+            NodeCraft.LOGGER.error("Failed to save AI settings", e);
+            aiSettingsStatusMessage = "Failed to save AI settings: " + e.getMessage();
+        }
     }
 
     private void renderAiPlanPreviewSection() {
@@ -1723,11 +1926,97 @@ public class PropertyPanelComponent implements EditorComponent {
         }
 
         String trimmedPrompt = prompt.trim();
-        pendingAiPlan = buildMockAiPlan(trimmedPrompt);
+
+        AiGraphPlan mockTemplatePlan = buildMockAiPlan(trimmedPrompt);
+        String dslJson = buildDslJsonFromPlan(mockTemplatePlan);
+        AiGraphDslSupport.ParseValidationResult parsed =
+                AiGraphDslSupport.parseAndValidate(dslJson, NodeRegistry.getInstance());
+
         aiChatMessages.add(new AiChatMessage("user", trimmedPrompt, System.currentTimeMillis()));
+        if (!parsed.isSuccess() || parsed.graph() == null) {
+            pendingAiPlan = null;
+            String errorMessage = "Plan JSON validation failed: " + String.join("; ", parsed.errors());
+            aiChatMessages.add(new AiChatMessage("assistant", errorMessage, System.currentTimeMillis()));
+            aiPlanStatusMessage = errorMessage;
+            aiPromptInput.clear();
+            return;
+        }
+
+        pendingAiPlan = buildPlanFromDsl(parsed.graph());
         aiChatMessages.add(new AiChatMessage("assistant", buildAiPlanReply(trimmedPrompt, pendingAiPlan), System.currentTimeMillis()));
-        aiPlanStatusMessage = "Plan ready. Review and click Apply Plan.";
+        aiPlanStatusMessage = "Plan JSON validated. Review and click Apply Plan.";
         aiPromptInput.clear();
+    }
+
+    private String buildDslJsonFromPlan(AiGraphPlan plan) {
+        JsonObject root = new JsonObject();
+        root.addProperty("description", plan.summary());
+
+        JsonArray nodesArray = new JsonArray();
+        for (AiPlanNode node : plan.nodes()) {
+            JsonObject nodeObj = new JsonObject();
+            nodeObj.addProperty("id", node.ref());
+            nodeObj.addProperty("type", node.typeId());
+
+            JsonObject paramsObj = null;
+            if (node.nodeState() instanceof Map<?, ?> stateMap) {
+                paramsObj = AI_SETTINGS_GSON.toJsonTree(stateMap).getAsJsonObject();
+            }
+            nodeObj.add("params", paramsObj == null ? new JsonObject() : paramsObj);
+
+            JsonObject posObj = new JsonObject();
+            posObj.addProperty("x", node.offsetX());
+            posObj.addProperty("y", node.offsetY());
+            nodeObj.add("position", posObj);
+            nodesArray.add(nodeObj);
+        }
+        root.add("nodes", nodesArray);
+
+        JsonArray connectionsArray = new JsonArray();
+        for (AiPlanConnection connection : plan.connections()) {
+            JsonObject connObj = new JsonObject();
+
+            JsonObject fromObj = new JsonObject();
+            fromObj.addProperty("nodeId", connection.sourceRef());
+            fromObj.addProperty("port", connection.sourcePortId());
+
+            JsonObject toObj = new JsonObject();
+            toObj.addProperty("nodeId", connection.targetRef());
+            toObj.addProperty("port", connection.targetPortId());
+
+            connObj.add("from", fromObj);
+            connObj.add("to", toObj);
+            connectionsArray.add(connObj);
+        }
+        root.add("connections", connectionsArray);
+
+        return AI_SETTINGS_GSON.toJson(root);
+    }
+
+    private AiGraphPlan buildPlanFromDsl(AiGraphDslSupport.DslGraph dslGraph) {
+        List<AiPlanNode> nodes = new ArrayList<>();
+        List<AiPlanConnection> connections = new ArrayList<>();
+
+        for (AiGraphDslSupport.DslNode node : dslGraph.nodes()) {
+            float x = node.position() != null ? node.position().x() : 0.0f;
+            float y = node.position() != null ? node.position().y() : 0.0f;
+            Object state = node.params() == null ? null : new HashMap<>(node.params());
+            nodes.add(new AiPlanNode(node.id(), node.type(), x, y, state));
+        }
+
+        for (AiGraphDslSupport.DslConnection connection : dslGraph.connections()) {
+            connections.add(new AiPlanConnection(
+                    connection.from().nodeId(),
+                    connection.from().port(),
+                    connection.to().nodeId(),
+                    connection.to().port()
+            ));
+        }
+
+        String summary = dslGraph.description() == null || dslGraph.description().isBlank()
+                ? "AI JSON plan parsed and validated."
+                : dslGraph.description();
+        return new AiGraphPlan(summary, nodes, connections, List.of());
     }
 
     private String buildAiPlanReply(String prompt, AiGraphPlan plan) {
@@ -1754,6 +2043,21 @@ public class PropertyPanelComponent implements EditorComponent {
         List<String> errors = new ArrayList<>();
 
         if (lowerPrompt.contains("mobius") || lowerPrompt.contains("möbius") || lowerPrompt.contains("莫比乌斯")) {
+            nodes.add(new AiPlanNode("center", "reference.points.point_from_coordinates", -720.0f, -180.0f,
+                createNodeState("x", 0, "y", 80, "z", 0, "showLabel", true)));
+            nodes.add(new AiPlanNode("axis", "reference.vectors.vector", -720.0f, 120.0f,
+                createNodeState("x", 0.0d, "y", 1.0d, "z", 0.0d, "showLabel", true, "precision", 2)));
+            nodes.add(new AiPlanNode("radius", "input.numeric.float", -360.0f, -220.0f,
+                createNodeState("value", (float) params.radius(), "minValue", 0.1f, "maxValue", 2048.0f, "precision", 2)));
+            nodes.add(new AiPlanNode("width", "input.numeric.float", -360.0f, -60.0f,
+                createNodeState("value", (float) params.width(), "minValue", 0.1f, "maxValue", 512.0f, "precision", 2)));
+            nodes.add(new AiPlanNode("thickness", "input.numeric.float", -360.0f, 100.0f,
+                createNodeState("value", (float) params.thickness(), "minValue", 0.1f, "maxValue", 512.0f, "precision", 2)));
+                nodes.add(new AiPlanNode("two", "input.numeric.float", -360.0f, 260.0f,
+                    createNodeState("value", 2.0f, "minValue", 2.0f, "maxValue", 2.0f, "precision", 0, "showLabel", false)));
+                nodes.add(new AiPlanNode("width_half", "math.scalar_math.division", -120.0f, 20.0f, null));
+                nodes.add(new AiPlanNode("minor_max", "math.scalar_math.max", 120.0f, 100.0f, null));
+
             nodes.add(new AiPlanNode("torus", "geometry.primitives.torus", 0.0f, 0.0f, null));
             nodes.add(new AiPlanNode("bake", "output.execute.bake_geometry_to_blocks", 360.0f, 0.0f,
                 createNodeState("fillGeometry", params.thickness() <= 1.2d)));
@@ -1771,6 +2075,14 @@ public class PropertyPanelComponent implements EditorComponent {
                     "solidGeometry", params.thickness() >= 1.0d
                 )));
 
+                connections.add(new AiPlanConnection("center", "output_coordinate", "torus", "input_center"));
+                connections.add(new AiPlanConnection("axis", "output_vector", "torus", "input_axis"));
+                connections.add(new AiPlanConnection("radius", "output_value", "torus", "input_major_radius"));
+                connections.add(new AiPlanConnection("width", "output_value", "width_half", "input_a"));
+                connections.add(new AiPlanConnection("two", "output_value", "width_half", "input_b"));
+                connections.add(new AiPlanConnection("width_half", "output_quotient", "minor_max", "input_a"));
+                connections.add(new AiPlanConnection("thickness", "output_value", "minor_max", "input_b"));
+                connections.add(new AiPlanConnection("minor_max", "output_max", "torus", "input_minor_radius"));
             connections.add(new AiPlanConnection("torus", "output_geometry", "bake", "input_geometry"));
             connections.add(new AiPlanConnection("bake", "output_blocks", "preview", "input_blocks"));
             connections.add(new AiPlanConnection("bake", "output_blocks", "apply", "input_blocks"));
@@ -1861,7 +2173,7 @@ public class PropertyPanelComponent implements EditorComponent {
         return String.format(
                 java.util.Locale.ROOT,
                 "Mock plan generated locally. Parsed parameters: radius=%.2f, width=%.2f, thickness=%.2f. "
-                        + "Backend planner can later reuse the same apply path.",
+                + "Minor radius is wired as max(width/2, thickness). Backend planner can later reuse the same apply path.",
                 params.radius(),
                 params.width(),
                 params.thickness()
