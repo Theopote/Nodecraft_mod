@@ -120,9 +120,12 @@ public abstract class AbstractBoxGeneratorNode extends BaseNode {
         double rotationY,
         double rotationZ
     ) {
-        int resolvedX = Math.max(1, Math.abs(sizeX));
-        int resolvedY = Math.max(1, Math.abs(sizeY));
-        int resolvedZ = Math.max(1, Math.abs(sizeZ));
+        int resolvedX = Math.abs(sizeX);
+        int resolvedY = Math.abs(sizeY);
+        int resolvedZ = Math.abs(sizeZ);
+        if (resolvedX == 0 || resolvedY == 0 || resolvedZ == 0) {
+            return null;
+        }
 
         Vector3d centerVector = new Vector3d(center.getX(), center.getY(), center.getZ());
         Vector3d halfExtents = new Vector3d(
