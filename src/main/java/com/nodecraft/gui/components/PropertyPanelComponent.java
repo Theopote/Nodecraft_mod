@@ -5,6 +5,9 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.nodecraft.gui.ai.AiGraphDslSupport;
+import com.nodecraft.gui.ai.AiNodeSchemaCatalog;
+import com.nodecraft.gui.ai.AiPromptBuilder;
+import com.nodecraft.gui.ai.AiRemotePlannerService;
 import com.nodecraft.core.NodeCraft; // For logging
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.datatypes.LSystemRule;
@@ -62,6 +65,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.fabricmc.loader.api.FabricLoader;
@@ -120,6 +124,9 @@ public class PropertyPanelComponent implements EditorComponent {
     private final ImBoolean aiShowApiKey = new ImBoolean(false);
     private final ImBoolean aiEnableRemotePlanner = new ImBoolean(false);
     private final Path aiSettingsPath;
+    private final AiRemotePlannerService aiRemotePlannerService = new AiRemotePlannerService();
+    private CompletableFuture<AiRemotePlannerService.RemotePlanResult> aiRemotePlanFuture = null;
+    private String aiRemotePendingPrompt = "";
     private AiGraphPlan pendingAiPlan = null;
     private int lastAiUndoStepCount = 0;
     private String aiPlanStatusMessage = "";
@@ -1532,6 +1539,9 @@ public class PropertyPanelComponent implements EditorComponent {
         clearAllTempValues();
         propertyInspector.clearCache();
         saveAiSettingsToDisk();
+        if (aiRemotePlanFuture != null && !aiRemotePlanFuture.isDone()) {
+            aiRemotePlanFuture.cancel(true);
+        }
         // 移除未保存更改相关的清理
         selectedNode = null;
         aiChatMessages.clear();
@@ -1607,6 +1617,8 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     private void renderAiAssistantTabContent() {
+        pollRemotePlannerResultIfReady();
+
         ImGui.textWrapped("Describe what you want to build, and AI will generate a node graph plan.");
         if (ImGui.smallButton("AI Settings")) {
             ImGui.openPopup("AI Settings");
@@ -1617,6 +1629,10 @@ public class PropertyPanelComponent implements EditorComponent {
 
         if (aiSettingsStatusMessage != null && !aiSettingsStatusMessage.isBlank()) {
             ImGui.textWrapped(aiSettingsStatusMessage);
+        }
+
+        if (isRemotePlannerBusy()) {
+            ImGui.textColored(0.95f, 0.78f, 0.30f, 1.0f, "AI is generating plan...");
         }
 
         ImGui.checkbox("Use current selection as context", aiUseSelectionContext);
@@ -1676,6 +1692,7 @@ public class PropertyPanelComponent implements EditorComponent {
         }
         ImGui.endChild();
 
+        if (isRemotePlannerBusy()) ImGui.beginDisabled();
         ImGui.pushItemWidth(-80.0f);
         boolean submitByEnter = ImGui.inputText("##ai_prompt", aiPromptInput, ImGuiInputTextFlags.EnterReturnsTrue);
         ImGui.popItemWidth();
@@ -1683,8 +1700,11 @@ public class PropertyPanelComponent implements EditorComponent {
         if (ImGui.button("Send") || submitByEnter) {
             submitAiPrompt();
         }
+        if (isRemotePlannerBusy()) ImGui.endDisabled();
 
-        ImGui.textDisabled("Current mode: local mock planner (preview + apply + undo).");
+        ImGui.textDisabled(aiEnableRemotePlanner.get()
+                ? "Current mode: remote planner + DSL validation + apply/undo"
+                : "Current mode: local mock planner + DSL validation + apply/undo");
     }
 
     private void renderAiSettingsPopup() {
@@ -1763,6 +1783,9 @@ public class PropertyPanelComponent implements EditorComponent {
         }
         if (aiModel.get() == null || aiModel.get().isBlank()) {
             return "Validation failed: Model is required when remote planner is enabled.";
+        }
+        if (!aiApiBaseUrl.get().startsWith("http://") && !aiApiBaseUrl.get().startsWith("https://")) {
+            return "Validation failed: API Base URL must start with http:// or https://.";
         }
         return "AI settings look valid. Remote planner wiring can now use these values.";
     }
@@ -1926,26 +1949,139 @@ public class PropertyPanelComponent implements EditorComponent {
         }
 
         String trimmedPrompt = prompt.trim();
+        aiChatMessages.add(new AiChatMessage("user", trimmedPrompt, System.currentTimeMillis()));
+
+        if (aiEnableRemotePlanner.get()) {
+            startRemotePlannerRequest(trimmedPrompt);
+            aiPromptInput.clear();
+            return;
+        }
 
         AiGraphPlan mockTemplatePlan = buildMockAiPlan(trimmedPrompt);
         String dslJson = buildDslJsonFromPlan(mockTemplatePlan);
-        AiGraphDslSupport.ParseValidationResult parsed =
-                AiGraphDslSupport.parseAndValidate(dslJson, NodeRegistry.getInstance());
+        applyDslResponse(trimmedPrompt, dslJson, "local-template");
+        aiPromptInput.clear();
+    }
 
-        aiChatMessages.add(new AiChatMessage("user", trimmedPrompt, System.currentTimeMillis()));
+    private void startRemotePlannerRequest(String userPrompt) {
+        if (isRemotePlannerBusy()) {
+            aiPlanStatusMessage = "Remote planner is already running.";
+            return;
+        }
+
+        String validation = validateAiSettings();
+        if (validation.startsWith("Validation failed")) {
+            aiPlanStatusMessage = validation;
+            aiChatMessages.add(new AiChatMessage("assistant", validation, System.currentTimeMillis()));
+            return;
+        }
+
+        NodeRegistry registry = NodeRegistry.getInstance();
+        List<AiNodeSchemaCatalog.NodeSchema> allSchemas = AiNodeSchemaCatalog.collectAll(registry);
+        List<AiNodeSchemaCatalog.NodeSchema> relevantSchemas = AiNodeSchemaCatalog.selectRelevant(allSchemas, userPrompt, 40);
+
+        String systemPrompt = aiSystemPrompt.get();
+        if (systemPrompt == null || systemPrompt.isBlank()) {
+            systemPrompt = AiPromptBuilder.buildSystemPrompt(relevantSchemas);
+        } else {
+            systemPrompt = systemPrompt + "\n\n" + AiPromptBuilder.buildSystemPrompt(relevantSchemas);
+        }
+
+        String userPromptPayload = AiPromptBuilder.buildUserPrompt(userPrompt, buildSelectionContextSummary());
+        AiRemotePlannerService.PlannerConfig config = new AiRemotePlannerService.PlannerConfig(
+                aiApiBaseUrl.get(),
+                aiApiKey.get(),
+                aiModel.get(),
+                systemPrompt,
+                aiRequestTimeoutSeconds.get()
+        );
+
+        aiRemotePendingPrompt = userPrompt;
+        aiPlanStatusMessage = "Remote planner request submitted...";
+        aiRemotePlanFuture = aiRemotePlannerService.requestPlanAsync(config, userPromptPayload);
+    }
+
+    private void pollRemotePlannerResultIfReady() {
+        if (aiRemotePlanFuture == null || !aiRemotePlanFuture.isDone()) {
+            return;
+        }
+
+        AiRemotePlannerService.RemotePlanResult result;
+        try {
+            result = aiRemotePlanFuture.join();
+        } catch (Exception e) {
+            String error = "Remote planner failed: " + e.getMessage();
+            aiPlanStatusMessage = error;
+            aiChatMessages.add(new AiChatMessage("assistant", error, System.currentTimeMillis()));
+            aiRemotePlanFuture = null;
+            aiRemotePendingPrompt = "";
+            return;
+        }
+
+        aiRemotePlanFuture = null;
+        String prompt = aiRemotePendingPrompt;
+        aiRemotePendingPrompt = "";
+
+        if (!result.success()) {
+            String error = "Remote planner error: " + result.errorMessage();
+            aiPlanStatusMessage = error;
+            aiChatMessages.add(new AiChatMessage("assistant", error, System.currentTimeMillis()));
+            fallbackToLocalPlan(prompt, "remote request failed");
+            return;
+        }
+
+        applyDslResponse(prompt, result.modelContent(), "remote");
+    }
+
+    private void applyDslResponse(String prompt, String dslOrModelResponse, String source) {
+        AiGraphDslSupport.ParseValidationResult parsed =
+                AiGraphDslSupport.parseAndValidate(dslOrModelResponse, NodeRegistry.getInstance());
+
         if (!parsed.isSuccess() || parsed.graph() == null) {
             pendingAiPlan = null;
             String errorMessage = "Plan JSON validation failed: " + String.join("; ", parsed.errors());
             aiChatMessages.add(new AiChatMessage("assistant", errorMessage, System.currentTimeMillis()));
             aiPlanStatusMessage = errorMessage;
-            aiPromptInput.clear();
+            if ("remote".equals(source)) {
+                fallbackToLocalPlan(prompt, "remote JSON invalid");
+            }
             return;
         }
 
         pendingAiPlan = buildPlanFromDsl(parsed.graph());
-        aiChatMessages.add(new AiChatMessage("assistant", buildAiPlanReply(trimmedPrompt, pendingAiPlan), System.currentTimeMillis()));
-        aiPlanStatusMessage = "Plan JSON validated. Review and click Apply Plan.";
-        aiPromptInput.clear();
+        aiChatMessages.add(new AiChatMessage("assistant", buildAiPlanReply(prompt, pendingAiPlan, source), System.currentTimeMillis()));
+        aiPlanStatusMessage = "Plan JSON validated (" + source + "). Review and click Apply Plan.";
+    }
+
+    private void fallbackToLocalPlan(String prompt, String reason) {
+        AiGraphPlan localPlan = buildMockAiPlan(prompt);
+        String localDslJson = buildDslJsonFromPlan(localPlan);
+        AiGraphDslSupport.ParseValidationResult localParsed =
+                AiGraphDslSupport.parseAndValidate(localDslJson, NodeRegistry.getInstance());
+
+        if (!localParsed.isSuccess() || localParsed.graph() == null) {
+            aiPlanStatusMessage = "Local fallback also failed: " + String.join("; ", localParsed.errors());
+            aiChatMessages.add(new AiChatMessage("assistant", aiPlanStatusMessage, System.currentTimeMillis()));
+            return;
+        }
+
+        pendingAiPlan = buildPlanFromDsl(localParsed.graph());
+        aiPlanStatusMessage = "Remote planner fallback applied (" + reason + "). Review and click Apply Plan.";
+        aiChatMessages.add(new AiChatMessage("assistant", aiPlanStatusMessage, System.currentTimeMillis()));
+    }
+
+    private boolean isRemotePlannerBusy() {
+        return aiRemotePlanFuture != null && !aiRemotePlanFuture.isDone();
+    }
+
+    private String buildSelectionContextSummary() {
+        if (!aiUseSelectionContext.get()) {
+            return "Selection context disabled.";
+        }
+        if (selectedNode == null) {
+            return "No node selected.";
+        }
+        return "Selected node: " + selectedNode.getDisplayName() + " (" + selectedNode.getTypeId() + ")";
     }
 
     private String buildDslJsonFromPlan(AiGraphPlan plan) {
@@ -2019,7 +2155,7 @@ public class PropertyPanelComponent implements EditorComponent {
         return new AiGraphPlan(summary, nodes, connections, List.of());
     }
 
-    private String buildAiPlanReply(String prompt, AiGraphPlan plan) {
+    private String buildAiPlanReply(String prompt, AiGraphPlan plan, String source) {
         String contextSummary;
         if (aiUseSelectionContext.get() && selectedNode != null) {
             contextSummary = "Using selected node context: " + selectedNode.getDisplayName() + " (" + selectedNode.getTypeId() + ").";
@@ -2030,6 +2166,7 @@ public class PropertyPanelComponent implements EditorComponent {
         }
 
         return "Plan received: '" + prompt + "'\n"
+            + "Source: " + source + "\n"
                 + contextSummary + "\n"
                 + "Generated preview: " + plan.nodes().size() + " nodes, " + plan.connections().size() + " connections."
                 + (plan.isValid() ? "" : " Validation issues: " + String.join("; ", plan.validationErrors()));
@@ -2135,7 +2272,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
             String escapedAlias = java.util.regex.Pattern.quote(alias);
             String pattern = "(?i)(?:^|[^a-zA-Z0-9_])" + escapedAlias
-                    + "\\s*(?:=|:|是|为)?\\s*(-?\\d+(?:\\.\\d+)?)";
+                    + "\\s*[=:是为]?\\s*(-?\\d+(?:\\.\\d+)?)";
             java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(pattern).matcher(text);
             if (matcher.find()) {
                 try {
