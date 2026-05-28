@@ -111,6 +111,7 @@ public class PropertyPanelComponent implements EditorComponent {
     private final ImString aiModel = new ImString("gpt-4.1-mini", 128);
     private final ImString aiSystemPrompt = new ImString("You are a NodeCraft graph planning assistant.", 2048);
     private final ImInt aiRequestTimeoutSeconds = new ImInt(60);
+    private final ImInt aiConversationHistoryTurns = new ImInt(6);
     private final ImBoolean aiShowApiKey = new ImBoolean(false);
     private final ImBoolean aiEnableRemotePlanner = new ImBoolean(false);
     private final ImBoolean aiAutoLayoutBeforeApply = new ImBoolean(true);
@@ -1736,6 +1737,7 @@ public class PropertyPanelComponent implements EditorComponent {
                         aiModel,
                         aiSystemPrompt,
                         aiRequestTimeoutSeconds,
+                        aiConversationHistoryTurns,
                         aiShowApiKey,
                         aiAutoLayoutBeforeApply,
                         aiSettingsPath
@@ -1934,6 +1936,7 @@ public class PropertyPanelComponent implements EditorComponent {
                 aiModel.get(),
                 aiSystemPrompt.get(),
                 aiRequestTimeoutSeconds.get(),
+                aiConversationHistoryTurns.get(),
                 aiShowApiKey.get(),
                 aiEnableRemotePlanner.get(),
                 aiAutoLayoutBeforeApply.get(),
@@ -1953,6 +1956,7 @@ public class PropertyPanelComponent implements EditorComponent {
         aiModel.set(data.model());
         aiSystemPrompt.set(data.systemPrompt());
         aiRequestTimeoutSeconds.set(data.timeoutSeconds());
+        aiConversationHistoryTurns.set(data.conversationHistoryTurns());
         aiShowApiKey.set(data.showApiKey());
         aiEnableRemotePlanner.set(data.enableRemotePlanner());
         aiAutoLayoutBeforeApply.set(data.autoLayoutBeforeApply());
@@ -2213,7 +2217,7 @@ public class PropertyPanelComponent implements EditorComponent {
     ) {
         List<AiRemotePlannerService.ConversationMessage> history = new ArrayList<>();
 
-        List<AiChatMessage> recent = getRecentPlanningMessages(6, newUserPrompt);
+        List<AiChatMessage> recent = getRecentPlanningMessages(resolveConversationHistoryLimit(), newUserPrompt);
         for (AiChatMessage message : recent) {
             history.add(new AiRemotePlannerService.ConversationMessage(message.role(), message.content()));
         }
@@ -2232,52 +2236,35 @@ public class PropertyPanelComponent implements EditorComponent {
         return history;
     }
 
+    private int resolveConversationHistoryLimit() {
+        return Math.max(1, Math.min(20, aiConversationHistoryTurns.get()));
+    }
+
     private List<AiChatMessage> getRecentPlanningMessages(int limit, String latestUserPrompt) {
         if (aiChatMessages.isEmpty() || limit <= 0) {
             return List.of();
         }
 
-        List<AiChatMessage> recent = new ArrayList<>();
-        boolean skippedCurrentUserPrompt = false;
-        String normalizedPrompt = latestUserPrompt == null ? "" : latestUserPrompt.trim();
-
-        for (int i = aiChatMessages.size() - 1; i >= 0 && recent.size() < limit; i--) {
-            AiChatMessage message = aiChatMessages.get(i);
-            if (message == null || message.content() == null || message.content().isBlank()) {
-                continue;
-            }
-
-            if (!skippedCurrentUserPrompt
-                    && "user".equalsIgnoreCase(message.role())
-                    && message.content().trim().equals(normalizedPrompt)) {
-                skippedCurrentUserPrompt = true;
-                continue;
-            }
-
-            if (isPureStatusMessage(message.content())) {
-                continue;
-            }
-
-            recent.add(0, message);
+        List<AiConversationHistoryService.ChatLine> allLines = new ArrayList<>(aiChatMessages.size());
+        for (AiChatMessage message : aiChatMessages) {
+            allLines.add(new AiConversationHistoryService.ChatLine(
+                    message.role(),
+                    message.content(),
+                    message.timestampMs()
+            ));
         }
 
+        List<AiConversationHistoryService.ChatLine> selected = AiConversationHistoryService.selectRecentPlanningMessages(
+                allLines,
+                latestUserPrompt,
+                limit
+        );
+
+        List<AiChatMessage> recent = new ArrayList<>(selected.size());
+        for (AiConversationHistoryService.ChatLine line : selected) {
+            recent.add(new AiChatMessage(line.role(), line.content(), line.timestampMs()));
+        }
         return recent;
-    }
-
-    private boolean isPureStatusMessage(String text) {
-        if (text == null || text.isBlank()) {
-            return true;
-        }
-
-        String normalized = text.trim();
-        return normalized.startsWith("Remote planner request submitted")
-                || normalized.startsWith("Retrying last request")
-                || normalized.startsWith("Remote planner request canceled")
-                || normalized.startsWith("Plan JSON validated")
-                || normalized.startsWith("Remote planner fallback applied")
-                || normalized.startsWith("Undo completed")
-                || normalized.startsWith("Applied AI plan")
-                || normalized.startsWith("Patch apply completed");
     }
 
     private void pollRemotePlannerResultIfReady() {

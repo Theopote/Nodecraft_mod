@@ -24,6 +24,7 @@ public final class AiSettingsStore {
             String model,
             String systemPrompt,
             int timeoutSeconds,
+            int conversationHistoryTurns,
             boolean showApiKey,
             boolean enableRemotePlanner,
             boolean autoLayoutBeforeApply,
@@ -44,6 +45,7 @@ public final class AiSettingsStore {
                 "gpt-4.1-mini",
                 "You are a NodeCraft graph planning assistant.",
                 60,
+                6,
                 false,
                 false,
                 true,
@@ -83,6 +85,9 @@ public final class AiSettingsStore {
                     root.has("model") ? root.get("model").getAsString() : current.model(),
                     root.has("systemPrompt") ? root.get("systemPrompt").getAsString() : current.systemPrompt(),
                     root.has("timeoutSeconds") ? clampTimeout(root.get("timeoutSeconds").getAsInt()) : current.timeoutSeconds(),
+                        root.has("conversationHistoryTurns")
+                            ? clampConversationHistoryTurns(root.get("conversationHistoryTurns").getAsInt())
+                            : current.conversationHistoryTurns(),
                     root.has("showApiKey") && root.get("showApiKey").getAsBoolean(),
                     root.has("enableRemotePlanner") && root.get("enableRemotePlanner").getAsBoolean(),
                     !root.has("autoLayoutBeforeApply") || root.get("autoLayoutBeforeApply").getAsBoolean(),
@@ -116,6 +121,7 @@ public final class AiSettingsStore {
             root.addProperty("model", safe(data.model()));
             root.addProperty("systemPrompt", safe(data.systemPrompt()));
             root.addProperty("timeoutSeconds", clampTimeout(data.timeoutSeconds()));
+            root.addProperty("conversationHistoryTurns", clampConversationHistoryTurns(data.conversationHistoryTurns()));
             root.addProperty("showApiKey", data.showApiKey());
             root.addProperty("enableRemotePlanner", data.enableRemotePlanner());
             root.addProperty("autoLayoutBeforeApply", data.autoLayoutBeforeApply());
@@ -171,6 +177,10 @@ public final class AiSettingsStore {
 
     private static int clampTimeout(int timeoutSeconds) {
         return Math.max(5, Math.min(600, timeoutSeconds));
+    }
+
+    private static int clampConversationHistoryTurns(int turns) {
+        return Math.max(1, Math.min(20, turns));
     }
 
     private static boolean isBlank(String text) {

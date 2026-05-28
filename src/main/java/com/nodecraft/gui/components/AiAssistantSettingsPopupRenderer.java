@@ -21,6 +21,7 @@ final class AiAssistantSettingsPopupRenderer {
             ImString model,
             ImString systemPrompt,
             ImInt requestTimeoutSeconds,
+            ImInt conversationHistoryTurns,
             ImBoolean showApiKey,
             ImBoolean autoLayoutBeforeApply,
             Path settingsPath
@@ -67,6 +68,13 @@ final class AiAssistantSettingsPopupRenderer {
         ImGui.pushItemWidth(120.0f);
         if (ImGui.inputInt("##ai_timeout_seconds", state.requestTimeoutSeconds())) {
             state.requestTimeoutSeconds().set(Math.max(5, Math.min(600, state.requestTimeoutSeconds().get())));
+        }
+        ImGui.popItemWidth();
+
+        ImGui.text("Conversation History Turns");
+        ImGui.pushItemWidth(120.0f);
+        if (ImGui.inputInt("##ai_conversation_history_turns", state.conversationHistoryTurns())) {
+            state.conversationHistoryTurns().set(Math.max(1, Math.min(20, state.conversationHistoryTurns().get())));
         }
         ImGui.popItemWidth();
 
