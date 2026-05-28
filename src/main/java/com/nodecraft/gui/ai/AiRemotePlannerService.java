@@ -31,6 +31,7 @@ public class AiRemotePlannerService {
             String model,
             String providerStrategy,
             String systemPrompt,
+            int maxOutputTokens,
             int timeoutSeconds
     ) {
     }
@@ -212,7 +213,7 @@ public class AiRemotePlannerService {
         JsonObject body = new JsonObject();
         body.addProperty("model", config.model());
         body.addProperty("temperature", 0.1);
-        body.addProperty("max_tokens", 1400);
+        body.addProperty("max_tokens", resolveAnthropicMaxTokens(config, conversation));
         body.addProperty("system", config.systemPrompt());
 
         JsonArray tools = new JsonArray();
@@ -545,6 +546,27 @@ public class AiRemotePlannerService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private int resolveAnthropicMaxTokens(PlannerConfig config, List<ConversationMessage> conversation) {
+        int configured = Math.max(512, Math.min(4096, config.maxOutputTokens()));
+        int estimated = estimateRequiredTokens(conversation, config.systemPrompt());
+        return Math.max(configured, estimated);
+    }
+
+    private int estimateRequiredTokens(List<ConversationMessage> conversation, String systemPrompt) {
+        int textChars = systemPrompt == null ? 0 : systemPrompt.length();
+        if (conversation != null) {
+            for (ConversationMessage message : conversation) {
+                if (message != null && message.content() != null) {
+                    textChars += message.content().length();
+                }
+            }
+        }
+
+        // Rough heuristic: ~4 chars/token + fixed JSON tool/schema overhead.
+        int estimated = (textChars / 4) + 900;
+        return Math.max(1400, Math.min(estimated, 4096));
     }
 
     private List<ConversationMessage> normalizeConversation(List<ConversationMessage> conversation) {
