@@ -213,6 +213,15 @@ public class AiRemotePlannerService {
         body.addProperty("max_tokens", 1400);
         body.addProperty("system", config.systemPrompt());
 
+        JsonArray tools = new JsonArray();
+        tools.add(buildNodeGraphToolSchema());
+        body.add("tools", tools);
+
+        JsonObject toolChoice = new JsonObject();
+        toolChoice.addProperty("type", "tool");
+        toolChoice.addProperty("name", "create_node_graph");
+        body.add("tool_choice", toolChoice);
+
         JsonArray messages = new JsonArray();
         for (ConversationMessage message : conversation) {
             JsonObject item = new JsonObject();
@@ -248,10 +257,14 @@ public class AiRemotePlannerService {
             );
         }
 
-        String result = extractAnthropicContent(response.body());
+        String result = extractAnthropicToolInput(response.body());
+        if (isBlank(result)) {
+            // Fallback for legacy providers or non-tool responses.
+            result = extractAnthropicContent(response.body());
+        }
         if (isBlank(result)) {
             return RemotePlanResult.fail(
-                    "Anthropic response did not include text content.",
+                    "Anthropic response did not include tool input or text content.",
                     response.statusCode(),
                     response.body(),
                     "response-format",
@@ -332,6 +345,129 @@ public class AiRemotePlannerService {
         } catch (Exception ignored) {
         }
         return "";
+    }
+
+    private String extractAnthropicToolInput(String body) {
+        try {
+            JsonObject root = JsonParser.parseString(body).getAsJsonObject();
+            JsonArray content = root.getAsJsonArray("content");
+            if (content == null || content.isEmpty()) {
+                return "";
+            }
+
+            for (int i = 0; i < content.size(); i++) {
+                JsonObject part = content.get(i).getAsJsonObject();
+                if (part.has("type")
+                        && "tool_use".equals(part.get("type").getAsString())
+                        && part.has("name")
+                        && "create_node_graph".equals(part.get("name").getAsString())
+                        && part.has("input")) {
+                    return part.get("input").toString();
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return "";
+    }
+
+    private JsonObject buildNodeGraphToolSchema() {
+        JsonObject tool = new JsonObject();
+        tool.addProperty("name", "create_node_graph");
+        tool.addProperty("description", "Create a node graph from user's description");
+
+        JsonObject schema = new JsonObject();
+        schema.addProperty("type", "object");
+
+        JsonObject properties = new JsonObject();
+
+        JsonObject description = new JsonObject();
+        description.addProperty("type", "string");
+        description.addProperty("description", "Short summary of the planned graph.");
+        properties.add("description", description);
+
+        JsonObject nodeItem = new JsonObject();
+        nodeItem.addProperty("type", "object");
+        JsonObject nodeProperties = new JsonObject();
+        JsonObject nodeId = new JsonObject();
+        nodeId.addProperty("type", "string");
+        JsonObject nodeType = new JsonObject();
+        nodeType.addProperty("type", "string");
+        JsonObject nodeParams = new JsonObject();
+        nodeParams.addProperty("type", "object");
+        JsonObject nodePosition = new JsonObject();
+        nodePosition.addProperty("type", "object");
+        JsonObject nodePositionProperties = new JsonObject();
+        JsonObject posX = new JsonObject();
+        posX.addProperty("type", "number");
+        JsonObject posY = new JsonObject();
+        posY.addProperty("type", "number");
+        nodePositionProperties.add("x", posX);
+        nodePositionProperties.add("y", posY);
+        nodePosition.add("properties", nodePositionProperties);
+        JsonArray nodePositionRequired = new JsonArray();
+        nodePositionRequired.add("x");
+        nodePositionRequired.add("y");
+        nodePosition.add("required", nodePositionRequired);
+        nodePosition.addProperty("additionalProperties", false);
+
+        nodeProperties.add("id", nodeId);
+        nodeProperties.add("type", nodeType);
+        nodeProperties.add("params", nodeParams);
+        nodeProperties.add("position", nodePosition);
+        nodeItem.add("properties", nodeProperties);
+        JsonArray nodeRequired = new JsonArray();
+        nodeRequired.add("id");
+        nodeRequired.add("type");
+        nodeItem.add("required", nodeRequired);
+        nodeItem.addProperty("additionalProperties", false);
+
+        JsonObject nodes = new JsonObject();
+        nodes.addProperty("type", "array");
+        nodes.add("items", nodeItem);
+        properties.add("nodes", nodes);
+
+        JsonObject endpoint = new JsonObject();
+        endpoint.addProperty("type", "object");
+        JsonObject endpointProps = new JsonObject();
+        JsonObject endpointNodeId = new JsonObject();
+        endpointNodeId.addProperty("type", "string");
+        JsonObject endpointPort = new JsonObject();
+        endpointPort.addProperty("type", "string");
+        endpointProps.add("nodeId", endpointNodeId);
+        endpointProps.add("port", endpointPort);
+        endpoint.add("properties", endpointProps);
+        JsonArray endpointRequired = new JsonArray();
+        endpointRequired.add("nodeId");
+        endpointRequired.add("port");
+        endpoint.add("required", endpointRequired);
+        endpoint.addProperty("additionalProperties", false);
+
+        JsonObject connectionItem = new JsonObject();
+        connectionItem.addProperty("type", "object");
+        JsonObject connectionProps = new JsonObject();
+        connectionProps.add("from", endpoint);
+        connectionProps.add("to", endpoint);
+        connectionItem.add("properties", connectionProps);
+        JsonArray connectionRequired = new JsonArray();
+        connectionRequired.add("from");
+        connectionRequired.add("to");
+        connectionItem.add("required", connectionRequired);
+        connectionItem.addProperty("additionalProperties", false);
+
+        JsonObject connections = new JsonObject();
+        connections.addProperty("type", "array");
+        connections.add("items", connectionItem);
+        properties.add("connections", connections);
+
+        schema.add("properties", properties);
+        JsonArray required = new JsonArray();
+        required.add("nodes");
+        required.add("connections");
+        schema.add("required", required);
+        schema.addProperty("additionalProperties", false);
+
+        tool.add("input_schema", schema);
+        return tool;
     }
 
     private boolean isAnthropicEndpoint(String baseUrl) {

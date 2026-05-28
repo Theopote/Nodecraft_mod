@@ -19,6 +19,19 @@ import java.util.Set;
  */
 public final class AiNodeSchemaCatalog {
 
+    private static final List<String> ALWAYS_INCLUDE_TYPE_PREFIXES = List.of(
+            "output.execute.apply_changes",
+            "output.preview.",
+            "input.numeric.",
+            "math.scalar_math."
+    );
+
+        private static final List<String> DIVERSITY_CATEGORY_PREFIXES = List.of(
+            "input.",
+            "math.",
+            "output."
+        );
+
     private AiNodeSchemaCatalog() {
     }
 
@@ -93,10 +106,88 @@ public final class AiNodeSchemaCatalog {
                 .reversed()
                 .thenComparing(NodeSchema::typeId, String.CASE_INSENSITIVE_ORDER));
 
-        if (sorted.size() > safeLimit) {
-            return new ArrayList<>(sorted.subList(0, safeLimit));
+        List<NodeSchema> mustHave = new ArrayList<>();
+        List<NodeSchema> scored = new ArrayList<>();
+        for (NodeSchema schema : sorted) {
+            if (isAlwaysIncludeSchema(schema)) {
+                mustHave.add(schema);
+            } else {
+                scored.add(schema);
+            }
         }
-        return sorted;
+
+        List<NodeSchema> result = new ArrayList<>(safeLimit);
+        for (NodeSchema schema : mustHave) {
+            if (result.size() >= safeLimit) {
+                return result;
+            }
+            result.add(schema);
+        }
+
+        // Ensure basic category diversity before consuming all remaining high-score slots.
+        for (String categoryPrefix : DIVERSITY_CATEGORY_PREFIXES) {
+            if (result.size() >= safeLimit) {
+                break;
+            }
+            if (containsCategoryPrefix(result, categoryPrefix)) {
+                continue;
+            }
+
+            NodeSchema candidate = findFirstByCategoryPrefix(scored, categoryPrefix);
+            if (candidate != null && !result.contains(candidate)) {
+                result.add(candidate);
+            }
+        }
+
+        for (NodeSchema schema : scored) {
+            if (result.size() >= safeLimit) {
+                break;
+            }
+            if (result.contains(schema)) {
+                continue;
+            }
+            result.add(schema);
+        }
+
+        return result;
+    }
+
+    private static boolean containsCategoryPrefix(List<NodeSchema> schemas, String categoryPrefix) {
+        if (schemas == null || schemas.isEmpty() || categoryPrefix == null || categoryPrefix.isBlank()) {
+            return false;
+        }
+        for (NodeSchema schema : schemas) {
+            if (schema != null && safeLower(schema.category()).startsWith(safeLower(categoryPrefix))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static NodeSchema findFirstByCategoryPrefix(List<NodeSchema> schemas, String categoryPrefix) {
+        if (schemas == null || schemas.isEmpty() || categoryPrefix == null || categoryPrefix.isBlank()) {
+            return null;
+        }
+        String prefix = safeLower(categoryPrefix);
+        for (NodeSchema schema : schemas) {
+            if (schema != null && safeLower(schema.category()).startsWith(prefix)) {
+                return schema;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isAlwaysIncludeSchema(NodeSchema schema) {
+        if (schema == null || schema.typeId() == null) {
+            return false;
+        }
+        String typeId = schema.typeId().toLowerCase(Locale.ROOT);
+        for (String prefix : ALWAYS_INCLUDE_TYPE_PREFIXES) {
+            if (typeId.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static List<PortSchema> convertPorts(List<IPort> ports) {
