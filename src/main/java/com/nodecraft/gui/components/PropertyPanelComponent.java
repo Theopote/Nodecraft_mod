@@ -67,6 +67,9 @@ import org.joml.Vector3d;
 public class PropertyPanelComponent implements EditorComponent {
 
     private static final String COMPONENT_ID = "property_panel";
+    private static final int AI_HISTORY_MAX_CHARS_PER_MESSAGE = 1800;
+    private static final int AI_HISTORY_MAX_TOTAL_CHARS = 9000;
+    private static final int AI_LATEST_USER_MESSAGE_MAX_CHARS = 7000;
     private static final Gson AI_SETTINGS_GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Set<String> HIDDEN_NODE_PROPERTIES = Set.of(
             "cachedHeight",
@@ -2215,12 +2218,21 @@ public class PropertyPanelComponent implements EditorComponent {
             String newUserPrompt,
             String userPromptPayload
     ) {
-        List<AiRemotePlannerService.ConversationMessage> history = new ArrayList<>();
-
         List<AiChatMessage> recent = getRecentPlanningMessages(resolveConversationHistoryLimit(), newUserPrompt);
+        List<AiConversationHistoryService.ChatLine> historyLines = new ArrayList<>(recent.size());
         for (AiChatMessage message : recent) {
-            history.add(new AiRemotePlannerService.ConversationMessage(message.role(), message.content()));
+            historyLines.add(new AiConversationHistoryService.ChatLine(
+                    message.role(),
+                    message.content(),
+                    message.timestampMs()
+            ));
         }
+
+        List<AiRemotePlannerService.ConversationMessage> history = AiConversationHistoryService.toConversationMessages(
+                historyLines,
+                AI_HISTORY_MAX_CHARS_PER_MESSAGE,
+                AI_HISTORY_MAX_TOTAL_CHARS
+        );
 
         String latestUserMessage = userPromptPayload;
         if (pendingAiPlan != null) {
@@ -2231,6 +2243,11 @@ public class PropertyPanelComponent implements EditorComponent {
                     + "User follow-up:\n"
                     + userPromptPayload;
         }
+
+                latestUserMessage = AiConversationHistoryService.compactMessage(
+                    latestUserMessage,
+                    AI_LATEST_USER_MESSAGE_MAX_CHARS
+                );
 
         history.add(new AiRemotePlannerService.ConversationMessage("user", latestUserMessage));
         return history;
