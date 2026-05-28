@@ -1,4 +1,4 @@
-package com.nodecraft.gui.components;
+package com.nodecraft.gui.components.ai;
 
 import imgui.ImGui;
 import imgui.flag.ImGuiWindowFlags;

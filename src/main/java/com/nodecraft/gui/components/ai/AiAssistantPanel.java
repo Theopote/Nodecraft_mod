@@ -1,10 +1,10 @@
-package com.nodecraft.gui.components;
+package com.nodecraft.gui.components.ai;
 
 import com.nodecraft.gui.ai.*;
-import com.nodecraft.gui.components.AiAssistantComponent.AiChatMessage;
-import com.nodecraft.gui.components.AiAssistantComponent.AiGraphPlan;
-import com.nodecraft.gui.components.AiAssistantComponent.AiPlanConnection;
-import com.nodecraft.gui.components.AiAssistantComponent.AiPlanNode;
+import com.nodecraft.gui.components.ai.AiAssistantComponent.AiChatMessage;
+import com.nodecraft.gui.components.ai.AiAssistantComponent.AiGraphPlan;
+import com.nodecraft.gui.components.ai.AiAssistantComponent.AiPlanConnection;
+import com.nodecraft.gui.components.ai.AiAssistantComponent.AiPlanNode;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
 import com.nodecraft.gui.editor.impl.NodePosition;
 import com.nodecraft.nodesystem.api.INode;
@@ -23,7 +23,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-final class AiAssistantPanel {
+public final class AiAssistantPanel {
 
     private static final long AI_SESSION_SAVE_DEBOUNCE_MS = 800L;
     private static final int AI_HISTORY_MAX_CHARS_PER_MESSAGE = 1800;
@@ -94,7 +94,7 @@ final class AiAssistantPanel {
     private String aiPlanStatusMessage = "";
     private String aiSettingsStatusMessage = "";
 
-    AiAssistantPanel(
+    public AiAssistantPanel(
             AiAssistantComponent aiAssistantComponent,
             Supplier<NodeGraph> nodeGraphSupplier,
             Consumer<String> clipboardCopier
@@ -109,16 +109,16 @@ final class AiAssistantPanel {
         loadAiSessionStateFromDisk();
     }
 
-    void onSelectedNodeChanged(INode node) {
+    public void onSelectedNodeChanged(INode node) {
         this.selectedNode = node;
         aiAssistantComponent.handleEvent("nodeSelected", node == null ? null : node.getId());
     }
 
-    void flushSessionStateIfDue() {
+    public void flushSessionStateIfDue() {
         aiAssistantComponent.flushSessionStateIfDue(AI_SESSION_SAVE_DEBOUNCE_MS, this::serializePendingPlanToDsl);
     }
 
-    void cleanup() {
+    public void cleanup() {
         saveAiSettingsToDisk();
         saveAiSessionStateToDiskNow();
         aiAssistantComponent.cleanup();
@@ -131,7 +131,7 @@ final class AiAssistantPanel {
         selectedNode = null;
     }
 
-    void render() {
+    public void render() {
         pollRemotePlannerResultIfReady();
         pollConnectionTestResultIfReady();
 

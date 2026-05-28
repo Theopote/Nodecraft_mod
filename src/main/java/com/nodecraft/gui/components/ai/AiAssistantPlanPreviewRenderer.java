@@ -1,4 +1,4 @@
-package com.nodecraft.gui.components;
+package com.nodecraft.gui.components.ai;
 
 import com.nodecraft.gui.ai.AiGraphDiffService;
 import imgui.ImGui;

@@ -1,8 +1,9 @@
-package com.nodecraft.gui.components;
+package com.nodecraft.gui.components.ai;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.ai.AiRemotePlannerService;
 import com.nodecraft.gui.ai.AiSessionStateStore;
+import com.nodecraft.gui.components.EditorComponent;
 import org.jspecify.annotations.NonNull;
 
 import java.nio.file.Path;
