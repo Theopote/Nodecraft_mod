@@ -1,0 +1,85 @@
+{
+  "templates": {
+    "SPHERE": {
+      "summary": "Optional external override for SPHERE mock template.",
+      "nodes": [
+        {
+          "ref": "center",
+          "typeId": "reference.points.point_from_coordinates",
+          "offsetX": -520.0,
+          "offsetY": -120.0,
+          "nodeState": {
+            "x": 0,
+            "y": 80,
+            "z": 0,
+            "showLabel": true
+          }
+        },
+        {
+          "ref": "radius",
+          "typeId": "input.numeric.float",
+          "offsetX": -520.0,
+          "offsetY": 40.0,
+          "nodeState": {
+            "value": 16.0,
+            "minValue": 1.0,
+            "maxValue": 2048.0,
+            "precision": 2
+          }
+        },
+        {
+          "ref": "sphere",
+          "typeId": "geometry.primitives.sphere",
+          "offsetX": -180.0,
+          "offsetY": -20.0
+        },
+        {
+          "ref": "bake",
+          "typeId": "output.execute.bake_geometry_to_blocks",
+          "offsetX": 120.0,
+          "offsetY": -20.0,
+          "nodeState": {
+            "fillGeometry": true
+          }
+        },
+        {
+          "ref": "apply",
+          "typeId": "output.execute.apply_changes",
+          "offsetX": 420.0,
+          "offsetY": 120.0,
+          "nodeState": {
+            "recordUndo": true,
+            "useAsyncBake": true,
+            "solidGeometry": true
+          }
+        }
+      ],
+      "connections": [
+        {
+          "sourceRef": "center",
+          "sourcePortId": "output_coordinate",
+          "targetRef": "sphere",
+          "targetPortId": "input_center"
+        },
+        {
+          "sourceRef": "radius",
+          "sourcePortId": "output_value",
+          "targetRef": "sphere",
+          "targetPortId": "input_radius"
+        },
+        {
+          "sourceRef": "sphere",
+          "sourcePortId": "output_geometry",
+          "targetRef": "bake",
+          "targetPortId": "input_geometry"
+        },
+        {
+          "sourceRef": "bake",
+          "sourcePortId": "output_blocks",
+          "targetRef": "apply",
+          "targetPortId": "input_blocks"
+        }
+      ]
+    }
+  }
+}

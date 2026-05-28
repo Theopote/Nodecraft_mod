@@ -60,13 +60,19 @@ public final class AiMockPlanService {
     record WeightedKeyword(String token, double weight) {
     }
 
+    record ExternalTemplate(String summary, List<MockNode> nodes, List<MockConnection> connections) {
+    }
+
     private static final Gson GSON = new Gson();
     private static final String TEMPLATE_WEIGHTS_FILE_NAME = "ai_mock_template_weights.json";
+    private static final String TEMPLATE_OVERRIDES_FILE_NAME = "ai_mock_plan_templates.json";
 
     private static volatile boolean templateWeightsInitialized = false;
     private static volatile String templateWeightsSource = "built-in";
+    private static volatile String templateOverridesSource = "built-in";
     private static volatile Map<MockTemplateKind, List<WeightedKeyword>> templatePositiveKeywords = createPositiveKeywordTable();
     private static volatile Map<MockTemplateKind, List<WeightedKeyword>> templateNegativeKeywords = createNegativeKeywordTable();
+    private static volatile Map<MockTemplateKind, ExternalTemplate> templateOverrides = Map.of();
 
     public static MockPlan buildMockPlan(String prompt) {
         ensureTemplateWeightsLoaded();
@@ -117,6 +123,10 @@ public final class AiMockPlanService {
         List<MockNode> nodes,
         List<MockConnection> connections
     ) {
+        if (applyExternalTemplate(kind, nodes, connections)) {
+            return;
+        }
+
         switch (kind) {
             case MOBIUS -> buildMobiusTemplate(params, nodes, connections);
             case HELIX_PATH -> buildHelixPathTemplate(params, nodes, connections);
@@ -629,6 +639,7 @@ public final class AiMockPlanService {
                 + "Parsed parameters: radius=%.2f, width=%.2f, thickness=%.2f, turns=%.2f, pitch=%.2f, height=%.2f. "
                 + "Score debug: %s. "
                 + "Weights source: %s. "
+                + "Template overrides source: %s. "
                 + "Template uses known node IDs/ports so local fallback stays executable while remote planner is unavailable.",
             templateName,
             fallbackName,
@@ -640,8 +651,26 @@ public final class AiMockPlanService {
             params.pitch(),
             params.height(),
             scoreDebug,
-            templateWeightsSource
+            templateWeightsSource,
+            templateOverridesSource
         );
+    }
+
+    private static boolean applyExternalTemplate(
+        MockTemplateKind kind,
+        List<MockNode> nodes,
+        List<MockConnection> connections
+    ) {
+        ExternalTemplate template = templateOverrides.get(kind);
+        if (template == null || template.nodes() == null || template.nodes().isEmpty()) {
+            return false;
+        }
+
+        nodes.addAll(template.nodes());
+        if (template.connections() != null && !template.connections().isEmpty()) {
+            connections.addAll(template.connections());
+        }
+        return true;
     }
 
     private static void ensureTemplateWeightsLoaded() {
@@ -655,7 +684,9 @@ public final class AiMockPlanService {
 
             Map<MockTemplateKind, List<WeightedKeyword>> positive = deepCopyKeywordTable(createPositiveKeywordTable());
             Map<MockTemplateKind, List<WeightedKeyword>> negative = deepCopyKeywordTable(createNegativeKeywordTable());
-            String source = "built-in";
+            String weightsSource = "built-in";
+            String overridesSource = "built-in";
+            Map<MockTemplateKind, ExternalTemplate> loadedOverrides = Map.of();
 
             try {
                 Path overridePath = resolveTemplateWeightsPath();
@@ -664,16 +695,31 @@ public final class AiMockPlanService {
                     JsonObject root = JsonParser.parseString(json).getAsJsonObject();
                     applyKeywordTableOverrides(root, "positive", positive);
                     applyKeywordTableOverrides(root, "negative", negative);
-                    source = "file:" + overridePath.toString();
+                    weightsSource = "file:" + overridePath.toString();
                 }
             } catch (Exception e) {
                 NodeCraft.LOGGER.warn("AiMockPlanService: failed to load template weight overrides, using built-in defaults.", e);
-                source = "built-in(fallback)";
+                weightsSource = "built-in(fallback)";
+            }
+
+            try {
+                Path overridesPath = resolveTemplateOverridesPath();
+                if (overridesPath != null && Files.exists(overridesPath)) {
+                    String json = Files.readString(overridesPath, StandardCharsets.UTF_8);
+                    loadedOverrides = parseTemplateOverrides(json);
+                    overridesSource = "file:" + overridesPath;
+                }
+            } catch (Exception e) {
+                NodeCraft.LOGGER.warn("AiMockPlanService: failed to load mock template overrides, using built-in templates.", e);
+                loadedOverrides = Map.of();
+                overridesSource = "built-in(fallback)";
             }
 
             templatePositiveKeywords = positive;
             templateNegativeKeywords = negative;
-            templateWeightsSource = source;
+            templateOverrides = loadedOverrides;
+            templateWeightsSource = weightsSource;
+            templateOverridesSource = overridesSource;
             templateWeightsInitialized = true;
         }
     }
@@ -685,6 +731,119 @@ public final class AiMockPlanService {
             return null;
         }
         return parent.resolve(TEMPLATE_WEIGHTS_FILE_NAME);
+    }
+
+    private static Path resolveTemplateOverridesPath() {
+        Path settingsPath = AiSettingsStore.resolveSettingsPath();
+        Path parent = settingsPath == null ? null : settingsPath.getParent();
+        if (parent == null) {
+            return null;
+        }
+        return parent.resolve(TEMPLATE_OVERRIDES_FILE_NAME);
+    }
+
+    private static Map<MockTemplateKind, ExternalTemplate> parseTemplateOverrides(String json) {
+        if (json == null || json.isBlank()) {
+            return Map.of();
+        }
+
+        JsonObject root = JsonParser.parseString(json).getAsJsonObject();
+        if (!root.has("templates") || !root.get("templates").isJsonObject()) {
+            return Map.of();
+        }
+
+        Map<MockTemplateKind, ExternalTemplate> overrides = new HashMap<>();
+        JsonObject templates = root.getAsJsonObject("templates");
+        for (Map.Entry<String, JsonElement> entry : templates.entrySet()) {
+            MockTemplateKind kind = parseTemplateKind(entry.getKey());
+            if (kind == null || entry.getValue() == null || !entry.getValue().isJsonObject()) {
+                continue;
+            }
+
+            ExternalTemplate template = parseExternalTemplate(entry.getValue().getAsJsonObject());
+            if (template != null) {
+                overrides.put(kind, template);
+            }
+        }
+        return overrides;
+    }
+
+    private static ExternalTemplate parseExternalTemplate(JsonObject object) {
+        if (object == null) {
+            return null;
+        }
+
+        List<MockNode> nodes = parseExternalNodes(object.get("nodes"));
+        if (nodes.isEmpty()) {
+            return null;
+        }
+        List<MockConnection> connections = parseExternalConnections(object.get("connections"));
+        String summary = object.has("summary") && object.get("summary").isJsonPrimitive()
+            ? object.get("summary").getAsString()
+            : "";
+        return new ExternalTemplate(summary, List.copyOf(nodes), List.copyOf(connections));
+    }
+
+    private static List<MockNode> parseExternalNodes(JsonElement element) {
+        if (element == null || !element.isJsonArray()) {
+            return List.of();
+        }
+
+        List<MockNode> nodes = new ArrayList<>();
+        for (JsonElement item : element.getAsJsonArray()) {
+            if (item == null || !item.isJsonObject()) {
+                continue;
+            }
+            JsonObject node = item.getAsJsonObject();
+            String ref = asTrimmedString(node.get("ref"));
+            String typeId = asTrimmedString(node.get("typeId"));
+            if (ref.isBlank() || typeId.isBlank()) {
+                continue;
+            }
+
+            float offsetX = asFloat(node.get("offsetX"), 0.0f);
+            float offsetY = asFloat(node.get("offsetY"), 0.0f);
+            Object nodeState = node.has("nodeState") ? GSON.fromJson(node.get("nodeState"), Object.class) : null;
+            nodes.add(new MockNode(ref, typeId, offsetX, offsetY, nodeState));
+        }
+        return nodes;
+    }
+
+    private static List<MockConnection> parseExternalConnections(JsonElement element) {
+        if (element == null || !element.isJsonArray()) {
+            return List.of();
+        }
+
+        List<MockConnection> connections = new ArrayList<>();
+        for (JsonElement item : element.getAsJsonArray()) {
+            if (item == null || !item.isJsonObject()) {
+                continue;
+            }
+            JsonObject conn = item.getAsJsonObject();
+            String sourceRef = asTrimmedString(conn.get("sourceRef"));
+            String sourcePortId = asTrimmedString(conn.get("sourcePortId"));
+            String targetRef = asTrimmedString(conn.get("targetRef"));
+            String targetPortId = asTrimmedString(conn.get("targetPortId"));
+            if (sourceRef.isBlank() || sourcePortId.isBlank() || targetRef.isBlank() || targetPortId.isBlank()) {
+                continue;
+            }
+            connections.add(new MockConnection(sourceRef, sourcePortId, targetRef, targetPortId));
+        }
+        return connections;
+    }
+
+    private static String asTrimmedString(JsonElement element) {
+        if (element == null || !element.isJsonPrimitive()) {
+            return "";
+        }
+        return element.getAsString().trim();
+    }
+
+    private static float asFloat(JsonElement element, float fallback) {
+        if (element == null || !element.isJsonPrimitive() || !element.getAsJsonPrimitive().isNumber()) {
+            return fallback;
+        }
+        return element.getAsFloat();
     }
 
     private static Map<MockTemplateKind, List<WeightedKeyword>> deepCopyKeywordTable(

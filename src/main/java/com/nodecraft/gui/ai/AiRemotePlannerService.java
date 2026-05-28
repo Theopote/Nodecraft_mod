@@ -820,18 +820,81 @@ public class AiRemotePlannerService {
     }
 
     private int estimateRequiredTokens(List<ConversationMessage> conversation, String systemPrompt) {
-        int textChars = systemPrompt == null ? 0 : systemPrompt.length();
+        int estimated = estimateTextTokens(systemPrompt);
+        int messageCount = 0;
         if (conversation != null) {
             for (ConversationMessage message : conversation) {
                 if (message != null && message.content() != null) {
-                    textChars += message.content().length();
+                    estimated += estimateTextTokens(message.content());
+                    estimated += estimateTextTokens(message.role());
+                    messageCount++;
                 }
             }
         }
 
-        // Rough heuristic: ~4 chars/token + fixed JSON tool/schema overhead.
-        int estimated = (textChars / 4) + 900;
+        // Add envelope overhead for chat wrappers + tool schema payload.
+        estimated += 240 + (messageCount * 32) + 620;
         return Math.max(1400, Math.min(estimated, 4096));
+    }
+
+    private int estimateTextTokens(String text) {
+        if (text == null || text.isBlank()) {
+            return 0;
+        }
+
+        int estimate = 0;
+        int asciiRunLength = 0;
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (Character.isWhitespace(ch)) {
+                if (asciiRunLength > 0) {
+                    estimate += Math.max(1, (asciiRunLength + 3) / 4);
+                    asciiRunLength = 0;
+                }
+                continue;
+            }
+
+            if (isCjk(ch)) {
+                if (asciiRunLength > 0) {
+                    estimate += Math.max(1, (asciiRunLength + 3) / 4);
+                    asciiRunLength = 0;
+                }
+                estimate += 2;
+                continue;
+            }
+
+            if (isAsciiLetterOrDigit(ch)) {
+                asciiRunLength++;
+                continue;
+            }
+
+            if (asciiRunLength > 0) {
+                estimate += Math.max(1, (asciiRunLength + 3) / 4);
+                asciiRunLength = 0;
+            }
+            // Punctuation and symbols still consume context budget.
+            estimate += 1;
+        }
+
+        if (asciiRunLength > 0) {
+            estimate += Math.max(1, (asciiRunLength + 3) / 4);
+        }
+        return estimate;
+    }
+
+    private boolean isAsciiLetterOrDigit(char ch) {
+        return ch <= 0x7F && Character.isLetterOrDigit(ch);
+    }
+
+    private boolean isCjk(char ch) {
+        Character.UnicodeBlock block = Character.UnicodeBlock.of(ch);
+        return block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS
+                || block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A
+                || block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_B
+                || block == Character.UnicodeBlock.CJK_COMPATIBILITY_IDEOGRAPHS
+                || block == Character.UnicodeBlock.HIRAGANA
+                || block == Character.UnicodeBlock.KATAKANA
+                || block == Character.UnicodeBlock.HANGUL_SYLLABLES;
     }
 
     private List<ConversationMessage> normalizeConversation(List<ConversationMessage> conversation) {

@@ -61,6 +61,7 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -124,7 +125,9 @@ public class PropertyPanelComponent implements EditorComponent {
     );
 
     private boolean visible = true;
-    private INode selectedNode = null;
+    private volatile INode selectedNode = null;
+    private final Object selectionLock = new Object();
+    private final AtomicReference<UUID> selectedNodeIdSnapshot = new AtomicReference<>(null);
     private final PropertyInspector propertyInspector = new PropertyInspector();
     private final PropertyEditorState editorState;
     private final PortDataRenderer portDataRenderer;
@@ -1641,6 +1644,19 @@ public class PropertyPanelComponent implements EditorComponent {
         pollRemotePlannerResultIfReady();
         pollConnectionTestResultIfReady();
 
+        renderAiAssistantHeaderSection();
+        renderAiAssistantBusySection();
+        renderAiAssistantModeSection();
+        renderAiAssistantSelectionContextSection();
+        renderAiAssistantQuickPromptSection();
+
+        renderAiPlanPreviewSection();
+        renderAiAssistantChatHistorySection();
+        renderAiAssistantPromptInputSection();
+        renderAiAssistantModeHint();
+    }
+
+    private void renderAiAssistantHeaderSection() {
         ImGui.textWrapped("Describe what you want to build, and AI will generate a node graph plan.");
         if (ImGui.smallButton("AI Settings")) {
             ImGui.openPopup("AI Settings");
@@ -1657,42 +1673,55 @@ public class PropertyPanelComponent implements EditorComponent {
             ImGui.openPopup("AI Debug Console");
         }
         renderAiDebugConsolePopup();
+    }
 
-        if (isRemotePlannerBusy()) {
-            ImGui.textColored(0.95f, 0.78f, 0.30f, 1.0f, "AI is generating plan...");
-            ImGui.sameLine();
-            if (ImGui.smallButton("Cancel")) {
-                cancelRemotePlannerRequest();
-            }
+    private void renderAiAssistantBusySection() {
+        if (!isRemotePlannerBusy()) {
+            return;
         }
+        ImGui.textColored(0.95f, 0.78f, 0.30f, 1.0f, "AI is generating plan...");
+        ImGui.sameLine();
+        if (ImGui.smallButton("Cancel")) {
+            cancelRemotePlannerRequest();
+        }
+    }
 
+    private void renderAiAssistantModeSection() {
         ImGui.checkbox("Use current selection as context", aiUseSelectionContext);
         ImGui.checkbox("Include current canvas graph summary", aiIncludeGraphContext);
         ImGui.checkbox("Preview-only mode (do not mutate graph)", aiPreviewOnlyMode);
         ImGui.checkbox("Patch apply mode (reuse matching nodes)", aiPatchApplyMode);
-        if (aiPatchApplyMode.get()) {
-            ImGui.checkbox("Patch remove scoped stale connections", aiPatchRemoveScopedConnections);
-            ImGui.textColored(0.95f, 0.72f, 0.22f, 1.0f,
-                    "Warning: reused-node parameter updates may not be undoable.");
-            ImGui.sameLine();
-            ImGui.textDisabled("(?)");
-            if (ImGui.isItemHovered()) {
-                ImGui.setTooltip("Patch mode can update state on matched existing nodes directly.\n"
-                        + "Graph edits are undoable, but some parameter/state updates may require manual revert.");
-            }
+        if (!aiPatchApplyMode.get()) {
+            return;
         }
 
-        if (aiUseSelectionContext.get()) {
-            ImGui.separator();
-            if (selectedNode != null) {
-                ImGui.textColored(0.45f, 0.85f, 0.55f, 1.0f,
-                        "Context: Selected node = " + selectedNode.getDisplayName());
-                ImGui.textDisabled("Type ID: " + selectedNode.getTypeId());
-            } else {
-                ImGui.textDisabled("Context: No node selected");
-            }
+        ImGui.checkbox("Patch remove scoped stale connections", aiPatchRemoveScopedConnections);
+        ImGui.textColored(0.95f, 0.72f, 0.22f, 1.0f,
+                "Warning: reused-node parameter updates may not be undoable.");
+        ImGui.sameLine();
+        ImGui.textDisabled("(?)");
+        if (ImGui.isItemHovered()) {
+            ImGui.setTooltip("Patch mode can update state on matched existing nodes directly.\n"
+                    + "Graph edits are undoable, but some parameter/state updates may require manual revert.");
+        }
+    }
+
+    private void renderAiAssistantSelectionContextSection() {
+        if (!aiUseSelectionContext.get()) {
+            return;
         }
 
+        ImGui.separator();
+        if (selectedNode != null) {
+            ImGui.textColored(0.45f, 0.85f, 0.55f, 1.0f,
+                    "Context: Selected node = " + selectedNode.getDisplayName());
+            ImGui.textDisabled("Type ID: " + selectedNode.getTypeId());
+            return;
+        }
+        ImGui.textDisabled("Context: No node selected");
+    }
+
+    private void renderAiAssistantQuickPromptSection() {
         ImGui.separator();
         ImGui.text("Quick prompts:");
         if (ImGui.smallButton("Generate from selection")) {
@@ -1709,9 +1738,9 @@ public class PropertyPanelComponent implements EditorComponent {
         if (ImGui.smallButton("Mobius ring example")) {
             setAiPrompt("Build a parametrized Mobius ring above selected position with radius/width/thickness controls.");
         }
+    }
 
-        renderAiPlanPreviewSection();
-
+    private void renderAiAssistantChatHistorySection() {
         float inputBlockHeight = ImGui.getFrameHeightWithSpacing() * 3.2f;
         float historyHeight = Math.max(120.0f, ImGui.getContentRegionAvailY() - inputBlockHeight);
 
@@ -1732,7 +1761,6 @@ public class PropertyPanelComponent implements EditorComponent {
                     ImGui.textWrapped(message.content());
                     ImGui.spacing();
                 }
-                // Fixed: Only auto-scroll when a new message is added, preserved manual scroll position otherwise.
                 if (aiChatMessages.size() > lastRenderedChatCount) {
                     ImGui.setScrollHereY(1.0f);
                     lastRenderedChatCount = aiChatMessages.size();
@@ -1740,19 +1768,23 @@ public class PropertyPanelComponent implements EditorComponent {
             }
         }
         ImGui.endChild();
+    }
 
-        if (isRemotePlannerBusy()) ImGui.beginDisabled();
+    private void renderAiAssistantPromptInputSection() {
+        if (isRemotePlannerBusy()) {
+            ImGui.beginDisabled();
+        }
 
-        // Force line count calculation for dynamic height adjustment
         String rawInput = aiPromptInput.get();
         long newlines = (rawInput == null) ? 0 : rawInput.chars().filter(c -> c == '\n').count();
         int activeLineCount = Math.min(4, (int) newlines + 1);
-        float lineH = ImGui.getFrameHeight(); 
+        float lineH = ImGui.getFrameHeight();
         float dynamicHeight = activeLineCount * lineH;
 
         ImGui.pushItemWidth(ImGui.getContentRegionAvailX() - 85.0f);
-        // Use a clearer ID and ensure height is passed correctly every frame
-        boolean submitted = ImGui.inputTextMultiline("##ai_input_multiline", aiPromptInput, ImGui.getContentRegionAvailX() - 85.0f, dynamicHeight, 
+        boolean submitted = ImGui.inputTextMultiline("##ai_input_multiline", aiPromptInput,
+                ImGui.getContentRegionAvailX() - 85.0f,
+                dynamicHeight,
                 ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.CtrlEnterForNewLine);
         ImGui.popItemWidth();
 
@@ -1760,8 +1792,13 @@ public class PropertyPanelComponent implements EditorComponent {
         if (ImGui.button("Send", 80.0f, dynamicHeight) || submitted) {
             submitAiPrompt();
         }
-        if (isRemotePlannerBusy()) ImGui.endDisabled();
 
+        if (isRemotePlannerBusy()) {
+            ImGui.endDisabled();
+        }
+    }
+
+    private void renderAiAssistantModeHint() {
         ImGui.textDisabled(aiEnableRemotePlanner.get()
                 ? "Current mode: remote planner + DSL validation + apply/undo"
                 : "Current mode: local mock planner + DSL validation + apply/undo");
@@ -3039,7 +3076,11 @@ public class PropertyPanelComponent implements EditorComponent {
      * 清理当前选中节点的临时值
      */
     private void clearCurrentNodeTempValues() {
-        editorState.clearForNode(selectedNode);
+        clearNodeScopedData(selectedNode);
+    }
+
+    private void clearNodeScopedData(INode node) {
+        editorState.clearForNode(node);
     }
 
     /**
@@ -3053,25 +3094,35 @@ public class PropertyPanelComponent implements EditorComponent {
      * 清理当前选中节点的所有数据
      * 包括临时值、编辑锁等
      */
-    private void clearSelectedNodeData() {
-        clearCurrentNodeTempValues();
+    private void clearSelectedNodeData(INode nodeToClear) {
+        clearNodeScopedData(nodeToClear);
         // propertiesBeingEdited 在 clearCurrentNodeTempValues 内部已经处理了
         // errorCounts 也在 clearCurrentNodeTempValues 内部处理了
     }
 
     public void setSelectedNode(INode node) {
-        // 简化选择逻辑，直接设置选中节点
-        if (this.selectedNode != node) { // 仅当选择的节点实际发生变化时才操作
-            // 清理旧节点的数据
-            clearSelectedNodeData();
-            this.selectedNode = node;
-            if (node != null) {
-                NodeCraft.LOGGER.debug("属性面板更新选中节点: {}", node.getId());
-                aiAssistantComponent.handleEvent("nodeSelected", node.getId());
-            } else {
-                NodeCraft.LOGGER.debug("属性面板已清除选中节点");
-                aiAssistantComponent.handleEvent("nodeSelected", null);
+        UUID nextNodeId = node == null ? null : node.getId();
+        INode previousNode;
+        synchronized (selectionLock) {
+            UUID currentNodeId = selectedNodeIdSnapshot.get();
+            if (Objects.equals(currentNodeId, nextNodeId)) {
+                // Keep the latest reference, but avoid redundant clear/reload churn.
+                this.selectedNode = node;
+                return;
             }
+
+            previousNode = this.selectedNode;
+            this.selectedNode = node;
+            selectedNodeIdSnapshot.set(nextNodeId);
+        }
+
+        clearSelectedNodeData(previousNode);
+        if (node != null) {
+            NodeCraft.LOGGER.debug("属性面板更新选中节点: {}", node.getId());
+            aiAssistantComponent.handleEvent("nodeSelected", node.getId());
+        } else {
+            NodeCraft.LOGGER.debug("属性面板已清除选中节点");
+            aiAssistantComponent.handleEvent("nodeSelected", null);
         }
     }
 
