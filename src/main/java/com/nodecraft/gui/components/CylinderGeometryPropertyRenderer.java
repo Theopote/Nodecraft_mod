@@ -21,20 +21,13 @@ final class CylinderGeometryPropertyRenderer {
             }
 
             Vector3d axis = cylinder.getEnd().sub(cylinder.getStart(), new Vector3d());
-            ImGui.text("Start: " + formatVector3d(cylinder.getStart()));
-            ImGui.text("End: " + formatVector3d(cylinder.getEnd()));
-            ImGui.text("Axis: " + formatVector3d(axis));
+            ImGui.text("Start: " + PropertyValueFormatters.formatVector3d(cylinder.getStart()));
+            ImGui.text("End: " + PropertyValueFormatters.formatVector3d(cylinder.getEnd()));
+            ImGui.text("Axis: " + PropertyValueFormatters.formatVector3d(axis));
             ImGui.text(String.format("Length: %.2f", axis.length()));
             ImGui.text(String.format("Radius: %.2f", cylinder.getRadius()));
         } catch (Throwable e) {
             panel.handlePropertyError(prop, e);
         }
-    }
-
-    private static String formatVector3d(Vector3d vec) {
-        if (vec == null) {
-            return "(null)";
-        }
-        return String.format("(%.2f, %.2f, %.2f)", vec.x, vec.y, vec.z);
     }
 }

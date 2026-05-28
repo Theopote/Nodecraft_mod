@@ -54,7 +54,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 import org.joml.Vector3d;
@@ -1298,10 +1297,6 @@ public class PropertyPanelComponent implements EditorComponent {
         int g = Math.max(0, Math.min(255, Math.round(rgb[1] * 255.0f)));
         int b = Math.max(0, Math.min(255, Math.round(rgb[2] * 255.0f)));
         return String.format("#%02X%02X%02X", r, g, b);
-    }
-
-    private static String nullToEmpty(String value) {
-        return value == null ? "" : value;
     }
 
     private List<PropertyDescriptor> getPropertiesForNode(Class<?> nodeClass) {

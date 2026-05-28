@@ -3,7 +3,6 @@ package com.nodecraft.gui.components;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import imgui.ImGui;
-import net.minecraft.util.math.BlockPos;
 
 final class RegionPropertyRenderer {
 
@@ -21,21 +20,14 @@ final class RegionPropertyRenderer {
             }
 
             ImGui.text("Complete: " + (region.isComplete() ? "Yes" : "No"));
-            ImGui.text("Corner 1: " + formatBlockPos(region.corner1()));
-            ImGui.text("Corner 2: " + formatBlockPos(region.corner2()));
+            ImGui.text("Corner 1: " + PropertyValueFormatters.formatBlockPos(region.corner1()));
+            ImGui.text("Corner 2: " + PropertyValueFormatters.formatBlockPos(region.corner2()));
             if (region.isComplete()) {
-                ImGui.text("Min: " + formatBlockPos(region.getMinCorner()));
-                ImGui.text("Max: " + formatBlockPos(region.getMaxCorner()));
+                ImGui.text("Min: " + PropertyValueFormatters.formatBlockPos(region.getMinCorner()));
+                ImGui.text("Max: " + PropertyValueFormatters.formatBlockPos(region.getMaxCorner()));
             }
         } catch (Throwable e) {
             panel.handlePropertyError(prop, e);
         }
-    }
-
-    private static String formatBlockPos(BlockPos pos) {
-        if (pos == null) {
-            return "(null)";
-        }
-        return String.format("(%d, %d, %d)", pos.getX(), pos.getY(), pos.getZ());
     }
 }

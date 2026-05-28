@@ -3,7 +3,6 @@ package com.nodecraft.gui.components;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import imgui.ImGui;
-import org.joml.Vector3d;
 
 final class PointPropertyRenderer {
 
@@ -20,16 +19,9 @@ final class PointPropertyRenderer {
                 return;
             }
 
-            ImGui.text("Position: " + formatVector3d(point.getPosition()));
+            ImGui.text("Position: " + PropertyValueFormatters.formatVector3d(point.getPosition()));
         } catch (Throwable e) {
             panel.handlePropertyError(prop, e);
         }
-    }
-
-    private static String formatVector3d(Vector3d vec) {
-        if (vec == null) {
-            return "(null)";
-        }
-        return String.format("(%.2f, %.2f, %.2f)", vec.x, vec.y, vec.z);
     }
 }
