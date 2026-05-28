@@ -84,7 +84,8 @@ public final class AiSessionStateStore {
         }
     }
 
-    public static void save(Path sessionPath, AiSessionStateData data) {
+    public static void
+    save(Path sessionPath, AiSessionStateData data) {
         try {
             if (sessionPath == null || data == null) {
                 return;

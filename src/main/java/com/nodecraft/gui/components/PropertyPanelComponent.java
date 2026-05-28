@@ -67,6 +67,7 @@ import org.joml.Vector3d;
 public class PropertyPanelComponent implements EditorComponent {
 
     private static final String COMPONENT_ID = "property_panel";
+    private static final long AI_SESSION_SAVE_DEBOUNCE_MS = 800L;
     private static final int AI_HISTORY_MAX_CHARS_PER_MESSAGE = 1800;
     private static final int AI_HISTORY_MAX_TOTAL_CHARS = 9000;
     private static final int AI_LATEST_USER_MESSAGE_MAX_CHARS = 7000;
@@ -136,6 +137,8 @@ public class PropertyPanelComponent implements EditorComponent {
     private int aiLastRemoteAttempts = 0;
     private AiGraphPlan pendingAiPlan = null;
     private boolean aiSessionRestoreInProgress = false;
+    private boolean aiSessionSaveDirty = false;
+    private long aiSessionSaveDueAtMs = 0L;
     private int lastAiUndoStepCount = 0;
     private String aiPlanStatusMessage = "";
     private String aiSettingsStatusMessage = "";
@@ -1546,7 +1549,7 @@ public class PropertyPanelComponent implements EditorComponent {
         clearAllTempValues();
         propertyInspector.clearCache();
         saveAiSettingsToDisk();
-        saveAiSessionStateToDisk();
+        saveAiSessionStateToDiskNow();
         if (aiRemotePlanFuture != null && !aiRemotePlanFuture.isDone()) {
             aiRemotePlanFuture.cancel(true);
         }
@@ -1578,6 +1581,7 @@ public class PropertyPanelComponent implements EditorComponent {
         ImGui.pushStyleVar(imgui.flag.ImGuiStyleVar.ScrollbarSize, baseScrollbarSize);
         try {
             checkAndCleanExpiredEditLocks();
+            flushAiSessionStateIfDue();
 
             ImGui.text("Inspector");
             ImGui.separator();
@@ -1950,11 +1954,35 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     private void saveAiSessionStateToDisk() {
+        queueAiSessionStateSave();
+    }
+
+    private void saveAiSessionStateToDiskNow() {
         if (aiSessionRestoreInProgress) {
             return;
         }
         AiSessionStateStore.AiSessionStateData data = collectAiSessionStateData();
         AiSessionStateStore.save(aiSessionStatePath, data);
+        aiSessionSaveDirty = false;
+        aiSessionSaveDueAtMs = 0L;
+    }
+
+    private void queueAiSessionStateSave() {
+        if (aiSessionRestoreInProgress) {
+            return;
+        }
+        aiSessionSaveDirty = true;
+        aiSessionSaveDueAtMs = System.currentTimeMillis() + AI_SESSION_SAVE_DEBOUNCE_MS;
+    }
+
+    private void flushAiSessionStateIfDue() {
+        if (!aiSessionSaveDirty) {
+            return;
+        }
+        if (System.currentTimeMillis() < aiSessionSaveDueAtMs) {
+            return;
+        }
+        saveAiSessionStateToDiskNow();
     }
 
     private AiSessionStateStore.AiSessionStateData collectAiSessionStateData() {
