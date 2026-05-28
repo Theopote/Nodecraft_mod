@@ -44,7 +44,7 @@ public final class AiGraphDslSupport {
     public record DslGraph(List<DslNode> nodes, List<DslConnection> connections, String description) {
     }
 
-    public record ParseValidationResult(DslGraph graph, List<String> errors, String normalizedJson) {
+    public record ParseValidationResult(DslGraph graph, List<String> errors, List<String> warnings, String normalizedJson) {
         public boolean isSuccess() {
             return errors == null || errors.isEmpty();
         }
@@ -52,15 +52,16 @@ public final class AiGraphDslSupport {
 
     public static ParseValidationResult parseAndValidate(String modelResponse, NodeRegistry registry) {
         List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
         if (registry == null) {
             errors.add("Node registry is unavailable.");
-            return new ParseValidationResult(null, errors, "");
+            return new ParseValidationResult(null, errors, warnings, "");
         }
 
         String jsonPayload = extractJsonPayload(modelResponse);
         if (jsonPayload.isBlank()) {
             errors.add("No JSON found in model response.");
-            return new ParseValidationResult(null, errors, "");
+            return new ParseValidationResult(null, errors, warnings, "");
         }
 
         JsonObject root;
@@ -68,12 +69,12 @@ public final class AiGraphDslSupport {
             root = JsonParser.parseString(jsonPayload).getAsJsonObject();
         } catch (Exception e) {
             errors.add("Invalid JSON: " + e.getMessage());
-            return new ParseValidationResult(null, errors, jsonPayload);
+            return new ParseValidationResult(null, errors, warnings, jsonPayload);
         }
 
         if (root.has("error")) {
             errors.add(root.get("error").getAsString());
-            return new ParseValidationResult(null, errors, jsonPayload);
+            return new ParseValidationResult(null, errors, warnings, jsonPayload);
         }
 
         List<DslNode> nodes = parseNodes(root, errors);
@@ -81,8 +82,8 @@ public final class AiGraphDslSupport {
         String description = root.has("description") ? root.get("description").getAsString() : "";
 
         DslGraph graph = new DslGraph(nodes, connections, description);
-        validateGraph(graph, registry, errors);
-        return new ParseValidationResult(graph, errors, GSON.toJson(root));
+        validateGraph(graph, registry, errors, warnings);
+        return new ParseValidationResult(graph, errors, warnings, GSON.toJson(root));
     }
 
     public static String extractJsonPayload(String response) {
@@ -202,7 +203,7 @@ public final class AiGraphDslSupport {
         return connections;
     }
 
-    private static void validateGraph(DslGraph graph, NodeRegistry registry, List<String> errors) {
+    private static void validateGraph(DslGraph graph, NodeRegistry registry, List<String> errors, List<String> warnings) {
         if (graph.nodes().isEmpty()) {
             errors.add("Graph must contain at least one node.");
             return;
@@ -238,7 +239,7 @@ public final class AiGraphDslSupport {
             }
         }
         if (!hasOutputNode) {
-            errors.add("Graph must include at least one output.* category node.");
+            warnings.add("Graph has no output.* category node. This is allowed for partial sub-graphs, but it may not produce visible output until connected.");
         }
 
         for (DslConnection connection : graph.connections()) {

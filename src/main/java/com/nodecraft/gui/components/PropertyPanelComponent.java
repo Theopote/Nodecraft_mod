@@ -2,8 +2,6 @@ package com.nodecraft.gui.components;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import com.nodecraft.gui.ai.*;
 import com.nodecraft.core.NodeCraft; // For logging
 import com.nodecraft.nodesystem.api.INode;
@@ -51,7 +49,6 @@ import imgui.flag.ImGuiTableFlags;
 import imgui.flag.ImGuiTableColumnFlags; // 添加 ImGuiTableColumnFlags 导入
 import imgui.flag.ImGuiCol;
 import imgui.flag.ImGuiTreeNodeFlags;
-import imgui.flag.ImGuiWindowFlags;
 import imgui.type.ImBoolean;
 import imgui.type.ImInt;
 import imgui.type.ImString;
@@ -141,8 +138,6 @@ public class PropertyPanelComponent implements EditorComponent {
         PROPERTIES,
         AI_ASSISTANT
     }
-
-    private RightPanelTab activeTab = RightPanelTab.PROPERTIES;
 
     private record AiChatMessage(String role, String content, long timestampMs) {}
 
@@ -1579,14 +1574,13 @@ public class PropertyPanelComponent implements EditorComponent {
             ImGui.separator();
 
             if (ImGui.beginTabBar("rightPanelTabs")) {
+                RightPanelTab activeTab = RightPanelTab.PROPERTIES;
                 if (ImGui.beginTabItem("Properties")) {
-                    activeTab = RightPanelTab.PROPERTIES;
                     renderPropertiesTabContent();
                     ImGui.endTabItem();
                 }
 
                 if (ImGui.beginTabItem("AI Assistant")) {
-                    activeTab = RightPanelTab.AI_ASSISTANT;
                     renderAiAssistantTabContent();
                     ImGui.endTabItem();
                 }
@@ -2265,6 +2259,7 @@ public class PropertyPanelComponent implements EditorComponent {
         }
 
         pendingAiPlan = fromServiceGraphPlan(AiPlanDslWorkflowService.fromDsl(parsed.graph()));
+        String warningSuffix = formatValidationWarningSuffix(parsed.warnings());
         aiChatMessages.add(new AiChatMessage(
             "assistant",
             AiPromptContextService.buildAiPlanReply(
@@ -2276,10 +2271,10 @@ public class PropertyPanelComponent implements EditorComponent {
                 pendingAiPlan.connections().size(),
                 pendingAiPlan.isValid(),
                 pendingAiPlan.validationErrors()
-            ),
+            ) + warningSuffix,
             System.currentTimeMillis()
         ));
-        aiPlanStatusMessage = "Plan JSON validated (" + source + "). Review and click Apply Plan.";
+        aiPlanStatusMessage = "Plan JSON validated (" + source + "). Review and click Apply Plan." + warningSuffix;
     }
 
     private void fallbackToLocalPlan(String prompt, String reason) {
@@ -2296,8 +2291,16 @@ public class PropertyPanelComponent implements EditorComponent {
         }
 
         pendingAiPlan = fromServiceGraphPlan(AiPlanDslWorkflowService.fromDsl(localParsed.graph()));
-        aiPlanStatusMessage = "Remote planner fallback applied (" + reason + "). Review and click Apply Plan.";
+        String warningSuffix = formatValidationWarningSuffix(localParsed.warnings());
+        aiPlanStatusMessage = "Remote planner fallback applied (" + reason + "). Review and click Apply Plan." + warningSuffix;
         aiChatMessages.add(new AiChatMessage("assistant", aiPlanStatusMessage, System.currentTimeMillis()));
+    }
+
+    private String formatValidationWarningSuffix(List<String> warnings) {
+        if (warnings == null || warnings.isEmpty()) {
+            return "";
+        }
+        return " Warning: " + String.join("; ", warnings);
     }
 
     private boolean isRemotePlannerBusy() {
