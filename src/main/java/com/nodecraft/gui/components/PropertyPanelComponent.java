@@ -2,6 +2,10 @@ package com.nodecraft.gui.components;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.nodecraft.gui.components.AiAssistantComponent.AiChatMessage;
+import com.nodecraft.gui.components.AiAssistantComponent.AiGraphPlan;
+import com.nodecraft.gui.components.AiAssistantComponent.AiPlanConnection;
+import com.nodecraft.gui.components.AiAssistantComponent.AiPlanNode;
 import com.nodecraft.gui.ai.*;
 import com.nodecraft.core.NodeCraft; // For logging
 import com.nodecraft.nodesystem.api.INode;
@@ -105,11 +109,12 @@ public class PropertyPanelComponent implements EditorComponent {
     private final Map<String, Integer> errorCounts = new ConcurrentHashMap<>(); // 每次 selectedNode 切换时重置
 
     private final NodeGraphAccess nodeGraphAccess;
+    private final AiAssistantComponent aiAssistantComponent = new AiAssistantComponent();
 
     private final ImString aiPromptInput = new ImString("", 2048);
     private final ImBoolean aiUseSelectionContext = new ImBoolean(true);
     private final ImBoolean aiIncludeGraphContext = new ImBoolean(true);
-    private final List<AiChatMessage> aiChatMessages = new ArrayList<>();
+    private final List<AiChatMessage> aiChatMessages = aiAssistantComponent.getChatMessages();
     private final ImString aiApiBaseUrl = new ImString("https://api.openai.com/v1", 512);
     private final ImString aiApiKey = new ImString("", 512);
     private final ImString aiModel = new ImString("gpt-4.1-mini", 128);
@@ -148,17 +153,6 @@ public class PropertyPanelComponent implements EditorComponent {
         AI_ASSISTANT
     }
 
-    private record AiChatMessage(String role, String content, long timestampMs) {}
-
-    private record AiPlanNode(String ref, String typeId, float offsetX, float offsetY, @org.jetbrains.annotations.Nullable Object nodeState) {}
-
-    private record AiPlanConnection(String sourceRef, String sourcePortId, String targetRef, String targetPortId) {}
-
-    private record AiGraphPlan(String summary, List<AiPlanNode> nodes, List<AiPlanConnection> connections, List<String> validationErrors) {
-        boolean isValid() {
-            return validationErrors == null || validationErrors.isEmpty();
-        }
-    }
     public PropertyPanelComponent() {
         this.editorState = new PropertyEditorState(tempValues, propertiesBeingEdited, errorCounts);
         this.nodeGraphAccess = new NodeGraphAccess(() -> {
@@ -1550,6 +1544,7 @@ public class PropertyPanelComponent implements EditorComponent {
         propertyInspector.clearCache();
         saveAiSettingsToDisk();
         saveAiSessionStateToDiskNow();
+        aiAssistantComponent.cleanup();
         if (aiRemotePlanFuture != null && !aiRemotePlanFuture.isDone()) {
             aiRemotePlanFuture.cancel(true);
         }
@@ -2011,6 +2006,7 @@ public class PropertyPanelComponent implements EditorComponent {
         try {
             aiChatMessages.clear();
             pendingAiPlan = null;
+            aiAssistantComponent.setPendingPlan(null);
 
             if (data == null) {
                 return;
@@ -2036,6 +2032,7 @@ public class PropertyPanelComponent implements EditorComponent {
                         AiGraphDslSupport.parseAndValidate(pendingPlanDslJson, NodeRegistry.getInstance());
                 if (parsed.isSuccess() && parsed.graph() != null) {
                     pendingAiPlan = fromServiceGraphPlan(AiPlanDslWorkflowService.fromDsl(parsed.graph()));
+                    aiAssistantComponent.setPendingPlan(pendingAiPlan);
                 } else {
                     aiPlanStatusMessage = "Stored pending plan skipped due to validation failure.";
                 }
@@ -2055,6 +2052,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
     private void setPendingAiPlan(AiGraphPlan plan) {
         pendingAiPlan = plan;
+        aiAssistantComponent.setPendingPlan(plan);
         saveAiSessionStateToDisk();
     }
 
@@ -2940,8 +2938,10 @@ public class PropertyPanelComponent implements EditorComponent {
             this.selectedNode = node;
             if (node != null) {
                 NodeCraft.LOGGER.debug("属性面板更新选中节点: {}", node.getId());
+                aiAssistantComponent.handleEvent("nodeSelected", node.getId());
             } else {
                 NodeCraft.LOGGER.debug("属性面板已清除选中节点");
+                aiAssistantComponent.handleEvent("nodeSelected", null);
             }
         }
     }
@@ -3338,6 +3338,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
     @Override
     public boolean handleEvent(String eventType, Object eventData) {
+        aiAssistantComponent.handleEvent(eventType, eventData);
         switch (eventType) {
             case "nodeSelected":
                 if (eventData instanceof UUID nodeId) {
