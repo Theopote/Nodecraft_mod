@@ -1644,164 +1644,62 @@ public class PropertyPanelComponent implements EditorComponent {
         pollRemotePlannerResultIfReady();
         pollConnectionTestResultIfReady();
 
-        renderAiAssistantHeaderSection();
-        renderAiAssistantBusySection();
-        renderAiAssistantModeSection();
-        renderAiAssistantSelectionContextSection();
-        renderAiAssistantQuickPromptSection();
+        String selectedNodeDisplayName = selectedNode == null ? "" : selectedNode.getDisplayName();
+        String selectedNodeTypeId = selectedNode == null ? "" : selectedNode.getTypeId();
 
-        renderAiPlanPreviewSection();
-        renderAiAssistantChatHistorySection();
-        renderAiAssistantPromptInputSection();
-        renderAiAssistantModeHint();
-    }
+        lastRenderedChatCount = AiAssistantMainPanelRenderer.renderMainPanel(
+                new AiAssistantMainPanelRenderer.State(
+                        buildAiSettingsSummary(),
+                        aiSettingsStatusMessage,
+                        hasAiDebugData(),
+                        isRemotePlannerBusy(),
+                        aiUseSelectionContext,
+                        aiIncludeGraphContext,
+                        aiPreviewOnlyMode,
+                        aiPatchApplyMode,
+                        aiPatchRemoveScopedConnections,
+                        selectedNodeDisplayName,
+                        selectedNodeTypeId,
+                        aiChatMessages,
+                        aiPromptInput,
+                        aiEnableRemotePlanner.get(),
+                        lastRenderedChatCount
+                ),
+                new AiAssistantMainPanelRenderer.Actions() {
+                    @Override
+                    public void openSettingsPopup() {
+                        ImGui.openPopup("AI Settings");
+                    }
 
-    private void renderAiAssistantHeaderSection() {
-        ImGui.textWrapped("Describe what you want to build, and AI will generate a node graph plan.");
-        if (ImGui.smallButton("AI Settings")) {
-            ImGui.openPopup("AI Settings");
-        }
+                    @Override
+                    public void openDebugConsolePopup() {
+                        ImGui.openPopup("AI Debug Console");
+                    }
+
+                    @Override
+                    public void cancelRequest() {
+                        cancelRemotePlannerRequest();
+                    }
+
+                    @Override
+                    public void onQuickPrompt(String text) {
+                        setAiPrompt(text);
+                    }
+
+                    @Override
+                    public void renderPlanPreviewSection() {
+                        PropertyPanelComponent.this.renderAiPlanPreviewSection();
+                    }
+
+                    @Override
+                    public void onSubmitPrompt() {
+                        submitAiPrompt();
+                    }
+                }
+        );
+
         renderAiSettingsPopup();
-        ImGui.sameLine();
-        ImGui.textDisabled(buildAiSettingsSummary());
-
-        if (aiSettingsStatusMessage != null && !aiSettingsStatusMessage.isBlank()) {
-            ImGui.textWrapped(aiSettingsStatusMessage);
-        }
-
-        if (hasAiDebugData() && ImGui.smallButton("Open Debug Console")) {
-            ImGui.openPopup("AI Debug Console");
-        }
         renderAiDebugConsolePopup();
-    }
-
-    private void renderAiAssistantBusySection() {
-        if (!isRemotePlannerBusy()) {
-            return;
-        }
-        ImGui.textColored(0.95f, 0.78f, 0.30f, 1.0f, "AI is generating plan...");
-        ImGui.sameLine();
-        if (ImGui.smallButton("Cancel")) {
-            cancelRemotePlannerRequest();
-        }
-    }
-
-    private void renderAiAssistantModeSection() {
-        ImGui.checkbox("Use current selection as context", aiUseSelectionContext);
-        ImGui.checkbox("Include current canvas graph summary", aiIncludeGraphContext);
-        ImGui.checkbox("Preview-only mode (do not mutate graph)", aiPreviewOnlyMode);
-        ImGui.checkbox("Patch apply mode (reuse matching nodes)", aiPatchApplyMode);
-        if (!aiPatchApplyMode.get()) {
-            return;
-        }
-
-        ImGui.checkbox("Patch remove scoped stale connections", aiPatchRemoveScopedConnections);
-        ImGui.textColored(0.95f, 0.72f, 0.22f, 1.0f,
-                "Warning: reused-node parameter updates may not be undoable.");
-        ImGui.sameLine();
-        ImGui.textDisabled("(?)");
-        if (ImGui.isItemHovered()) {
-            ImGui.setTooltip("Patch mode can update state on matched existing nodes directly.\n"
-                    + "Graph edits are undoable, but some parameter/state updates may require manual revert.");
-        }
-    }
-
-    private void renderAiAssistantSelectionContextSection() {
-        if (!aiUseSelectionContext.get()) {
-            return;
-        }
-
-        ImGui.separator();
-        if (selectedNode != null) {
-            ImGui.textColored(0.45f, 0.85f, 0.55f, 1.0f,
-                    "Context: Selected node = " + selectedNode.getDisplayName());
-            ImGui.textDisabled("Type ID: " + selectedNode.getTypeId());
-            return;
-        }
-        ImGui.textDisabled("Context: No node selected");
-    }
-
-    private void renderAiAssistantQuickPromptSection() {
-        ImGui.separator();
-        ImGui.text("Quick prompts:");
-        if (ImGui.smallButton("Generate from selection")) {
-            setAiPrompt("Generate a node graph based on current selection and keep existing style.");
-        }
-        ImGui.sameLine();
-        if (ImGui.smallButton("Optimize selected graph")) {
-            setAiPrompt("Optimize selected node graph for readability and performance.");
-        }
-        if (ImGui.smallButton("Explain current node")) {
-            setAiPrompt("Explain what the selected node does and how to connect it.");
-        }
-        ImGui.sameLine();
-        if (ImGui.smallButton("Mobius ring example")) {
-            setAiPrompt("Build a parametrized Mobius ring above selected position with radius/width/thickness controls.");
-        }
-    }
-
-    private void renderAiAssistantChatHistorySection() {
-        float inputBlockHeight = ImGui.getFrameHeightWithSpacing() * 3.2f;
-        float historyHeight = Math.max(120.0f, ImGui.getContentRegionAvailY() - inputBlockHeight);
-
-        if (ImGui.beginChild("aiChatHistory", 0.0f, historyHeight, true)) {
-            if (aiChatMessages.isEmpty()) {
-                ImGui.textDisabled("No messages yet.");
-                ImGui.textDisabled("Tip: Ask AI to create or modify a node graph.");
-            } else {
-                for (AiChatMessage message : aiChatMessages) {
-                    boolean isUser = "user".equals(message.role());
-                    ImGui.textColored(
-                            isUser ? 0.45f : 0.65f,
-                            isUser ? 0.75f : 0.85f,
-                            isUser ? 1.0f : 0.55f,
-                            1.0f,
-                            isUser ? "You" : "AI");
-                    ImGui.sameLine();
-                    ImGui.textWrapped(message.content());
-                    ImGui.spacing();
-                }
-                if (aiChatMessages.size() > lastRenderedChatCount) {
-                    ImGui.setScrollHereY(1.0f);
-                    lastRenderedChatCount = aiChatMessages.size();
-                }
-            }
-        }
-        ImGui.endChild();
-    }
-
-    private void renderAiAssistantPromptInputSection() {
-        if (isRemotePlannerBusy()) {
-            ImGui.beginDisabled();
-        }
-
-        String rawInput = aiPromptInput.get();
-        long newlines = (rawInput == null) ? 0 : rawInput.chars().filter(c -> c == '\n').count();
-        int activeLineCount = Math.min(4, (int) newlines + 1);
-        float lineH = ImGui.getFrameHeight();
-        float dynamicHeight = activeLineCount * lineH;
-
-        ImGui.pushItemWidth(ImGui.getContentRegionAvailX() - 85.0f);
-        boolean submitted = ImGui.inputTextMultiline("##ai_input_multiline", aiPromptInput,
-                ImGui.getContentRegionAvailX() - 85.0f,
-                dynamicHeight,
-                ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.CtrlEnterForNewLine);
-        ImGui.popItemWidth();
-
-        ImGui.sameLine();
-        if (ImGui.button("Send", 80.0f, dynamicHeight) || submitted) {
-            submitAiPrompt();
-        }
-
-        if (isRemotePlannerBusy()) {
-            ImGui.endDisabled();
-        }
-    }
-
-    private void renderAiAssistantModeHint() {
-        ImGui.textDisabled(aiEnableRemotePlanner.get()
-                ? "Current mode: remote planner + DSL validation + apply/undo"
-                : "Current mode: local mock planner + DSL validation + apply/undo");
     }
 
     private void renderAiSettingsPopup() {
