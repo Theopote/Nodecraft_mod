@@ -37,6 +37,9 @@ public class AiRemotePlannerService {
             int maxOutputTokens,
             int timeoutSeconds
     ) {
+        public PlannerConfig withSystemPrompt(String newPrompt) {
+            return new PlannerConfig(apiBaseUrl, apiKey, model, providerStrategy, newPrompt, maxOutputTokens, timeoutSeconds);
+        }
     }
 
     public record RemotePlanResult(

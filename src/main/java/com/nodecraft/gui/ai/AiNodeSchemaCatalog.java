@@ -192,16 +192,16 @@ public final class AiNodeSchemaCatalog {
 
     private static List<PortSchema> convertPorts(List<IPort> ports) {
         List<PortSchema> result = new ArrayList<>();
-        if (ports == null) {
-            return result;
-        }
+        if (ports == null) return result;
         for (IPort port : ports) {
+            // Minified port schema: AI mostly needs ID and DataType for connectivity logic.
+            // Display names and long descriptions are truncated to save tokens.
             result.add(new PortSchema(
                     port.getId(),
-                    port.getDisplayName(),
+                    null, // Remove display name for prompt efficiency
                     port.getDataType().getId(),
                     port.isRequired(),
-                    port.getDescription()
+                    null  // Remove description unless specifically needed
             ));
         }
         return result;
@@ -209,19 +209,19 @@ public final class AiNodeSchemaCatalog {
 
     private static List<ParamSchema> extractParamSchema(Object nodeState) {
         List<ParamSchema> params = new ArrayList<>();
-        if (!(nodeState instanceof Map<?, ?> map)) {
-            return params;
-        }
+        if (!(nodeState instanceof Map<?, ?> map)) return params;
         for (Map.Entry<?, ?> entry : map.entrySet()) {
-            Object key = entry.getKey();
-            if (!(key instanceof String keyText) || keyText.isBlank()) {
-                continue;
-            }
+            if (!(entry.getKey() instanceof String keyText)) continue;
             Object value = entry.getValue();
-            String valueType = value == null ? "any" : value.getClass().getSimpleName();
+            String valueType = "any";
+            if (value != null) {
+                if (value instanceof Number) valueType = "number";
+                else if (value instanceof Boolean) valueType = "boolean";
+                else if (value instanceof String) valueType = "string";
+                else valueType = value.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+            }
             params.add(new ParamSchema(keyText, valueType));
         }
-        params.sort(Comparator.comparing(ParamSchema::name, String.CASE_INSENSITIVE_ORDER));
         return params;
     }
 

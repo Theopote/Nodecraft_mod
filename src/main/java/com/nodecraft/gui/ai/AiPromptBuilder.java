@@ -22,30 +22,48 @@ public final class AiPromptBuilder {
         JsonArray schemaJson = new JsonArray();
         if (schemas != null) {
             for (AiNodeSchemaCatalog.NodeSchema schema : schemas) {
-                JsonObject nodeObj = getJsonObject(schema);
-
-                schemaJson.add(nodeObj);
+                schemaJson.add(getJsonObject(schema));
             }
         }
 
         String schemaText = GSON.toJson(schemaJson);
 
         return """
-            You are NodeCraft AI planner. Convert user request into a strict node-graph JSON DSL.
-            Rules:
-            1) Output JSON only. No markdown, no explanation.
-            2) Use only nodes and ports listed in AVAILABLE_NODES.
-            3) Connections must use compatible port data types.
-            4) Graph must include at least one output.* category node.
-            5) If impossible, return {"error":"reason"}.
-            6) Prefer minimal graph that satisfies user intent.
-            JSON format:
+            # ROLE
+            You are the NodeCraft AI Planner. Your job is to translate natural language requests into a functional node-graph DSL.
+            
+            # OUTPUT_SPEC
+            - Output ONLY raw JSON. Do NOT use markdown code blocks (```json).
+            - No conversational fillers, no explanations. Just the JSON object.
+            
+            # RULES
+            1. Connection Logic: Verify that 'from' and 'to' port IDs exist in the library and have compatible 'dataType'.
+            2. Functional Completion: Graphs MUST eventually reach an output node (category starts with 'output.').
+            3. Minimality: Prefer simple, direct graphs over complex ones.
+            4. Position: Use relative 'position' offsets; (0,0) is usually fine as the engine handles auto-layout.
+            5. Failure: If the request cannot be fulfilled with the library, return {"error": "brief_reason"}.
+
+            # DSL_FORMAT
             {
-              "description": "...",
-              "nodes": [{"id":"n1","type":"...","params":{},"position":{"x":0,"y":0}}],
-              "connections": [{"from":{"nodeId":"n1","port":"..."},"to":{"nodeId":"n2","port":"..."}}]
+              "description": "Short summary of the intended outcome",
+              "nodes": [
+                {
+                  "id": "n1", 
+                  "type": "node.type.id",
+                  "params": { "radius": 5.0 },
+                  "position": { "x": 0, "y": 0 }
+                }
+              ],
+              "connections": [
+                {
+                  "from": { "nodeId": "n1", "port": "out" },
+                  "to": { "nodeId": "n2", "port": "in" }
+                }
+              ]
             }
-            AVAILABLE_NODES:
+
+            # AVAILABLE_NODE_LIBRARY
+            Usage: Identify nodes by their 'typeId'.
             """ + schemaText;
     }
 
