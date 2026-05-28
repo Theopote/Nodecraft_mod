@@ -94,7 +94,7 @@ public class AiRemotePlannerService {
         RemotePlanResult lastFailure = null;
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
-                RemotePlanResult result = isAnthropicEndpoint(baseUrl)
+                RemotePlanResult result = isAnthropicEndpoint(baseUrl, config.model())
                         ? requestAnthropic(client, config, normalizedConversation, timeoutSeconds, attempt)
                         : requestOpenAICompatible(client, config, normalizedConversation, timeoutSeconds, attempt);
 
@@ -224,6 +224,13 @@ public class AiRemotePlannerService {
 
         JsonArray messages = new JsonArray();
         for (ConversationMessage message : conversation) {
+            // Anthropic tool-use protocol can reject follow-up turns if prior assistant
+            // tool_use/tool_result blocks are not replayed in strict order.
+            // Short-term safety: keep only user history in Anthropic requests.
+            if (!"user".equals(normalizeRoleForOpenAI(message.role()))) {
+                continue;
+            }
+
             JsonObject item = new JsonObject();
             item.addProperty("role", normalizeRoleForAnthropic(message.role()));
 
@@ -470,9 +477,17 @@ public class AiRemotePlannerService {
         return tool;
     }
 
-    private boolean isAnthropicEndpoint(String baseUrl) {
-        String normalized = baseUrl.toLowerCase(Locale.ROOT);
-        return normalized.contains("anthropic") || normalized.endsWith("/v1/messages") || normalized.endsWith("/messages");
+    private boolean isAnthropicEndpoint(String baseUrl, String model) {
+        String normalized = baseUrl == null ? "" : baseUrl.toLowerCase(Locale.ROOT);
+        String normalizedModel = model == null ? "" : model.toLowerCase(Locale.ROOT);
+
+        // Prefer explicit provider signals and avoid path-based false positives
+        // because many non-Anthropic gateways may expose "/messages" endpoints.
+        if (normalized.contains("anthropic")) {
+            return true;
+        }
+
+        return normalizedModel.startsWith("claude");
     }
 
     private String normalizeEndpoint(String baseUrl, String suffix) {
