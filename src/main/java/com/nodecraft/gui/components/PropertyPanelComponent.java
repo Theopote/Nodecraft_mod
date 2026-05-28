@@ -637,88 +637,13 @@ public class PropertyPanelComponent implements EditorComponent {
 
     private static final PropertyRenderer LINE_RENDERER = LinePropertyRenderer.RENDERER;
 
-    private static final PropertyRenderer GEOMETRY_RENDERER = (panel, node, prop, isDisabled) -> {
-        try {
-            Object value = prop.getter.invoke(node);
-            if (value == null) {
-                ImGui.textDisabled("(绌?");
-                return;
-            }
+    private static final PropertyRenderer GEOMETRY_RENDERER = GeometryPropertyRenderer.RENDERER;
 
-            PropertyRenderer fallbackGeometryRenderer = panel.getRendererForType(GeometryData.class);
-            PropertyRenderer delegate = panel.getRendererForType(value.getClass());
-            if (delegate != null
-                    && delegate != fallbackGeometryRenderer
-                    && !isGeometryRendererSelfReference(delegate)) {
-                delegate.render(panel, node, prop, isDisabled);
-                return;
-            }
+    private static final PropertyRenderer CURVE_RENDERER = CurvePropertyRenderer.RENDERER;
 
-            ImGui.text("Type: " + value.getClass().getSimpleName());
-            ImGui.textWrapped(value.toString());
-        } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
-        }
-    };
+    private static final PropertyRenderer BLOCK_POS_LIST_RENDERER = BlockPosListPropertyRenderer.RENDERER;
 
-    private static final PropertyRenderer CURVE_RENDERER = (panel, node, prop, isDisabled) -> {
-        try {
-            Curve curve = (Curve) prop.getter.invoke(node);
-            if (curve == null) {
-                ImGui.textDisabled("(绌?");
-                return;
-            }
-
-            ImGui.text("Type: " + curve.getCurveType());
-            ImGui.text("Control Points: " + curve.size());
-            ImGui.text("Resolution: " + curve.getResolution());
-            ImGui.text("Sample Points: " + curve.getSamplePoints().size());
-        } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
-        }
-    };
-
-    private static boolean isGeometryRendererSelfReference(PropertyRenderer renderer) {
-        return renderer == GEOMETRY_RENDERER;
-    }
-
-    private static final PropertyRenderer BLOCK_POS_LIST_RENDERER = (panel, node, prop, isDisabled) -> {
-        try {
-            BlockPosList positions = (BlockPosList) prop.getter.invoke(node);
-            if (positions == null) {
-                ImGui.textDisabled("(绌?");
-                return;
-            }
-
-            ImGui.text("Count: " + positions.size());
-            List<BlockPos> preview = positions.getPositions();
-            if (!preview.isEmpty()) {
-                ImGui.text("First: " + formatBlockPos(preview.getFirst()));
-            }
-            if (preview.size() > 1) {
-                ImGui.text("Last: " + formatBlockPos(preview.getLast()));
-            }
-        } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
-        }
-    };
-
-    private static final PropertyRenderer PLANT_BLOCK_RENDERER = (panel, node, prop, isDisabled) -> {
-        try {
-            PlantStructure.PlantBlock block = (PlantStructure.PlantBlock) prop.getter.invoke(node);
-            if (block == null) {
-                ImGui.textDisabled("(绌?");
-                return;
-            }
-
-            ImGui.text("Position: " + formatBlockPos(block.getPosition()));
-            ImGui.text("Block Type: " + block.getBlockType());
-            ImGui.text(String.format("Thickness: %.2f", block.getThickness()));
-            ImGui.text("Properties: " + block.getProperties().size());
-        } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
-        }
-    };
+    private static final PropertyRenderer PLANT_BLOCK_RENDERER = PlantBlockPropertyRenderer.RENDERER;
 
     private static final PropertyRenderer LIST_RENDERER = (panel, node, prop, isDisabled) -> {
         try {
@@ -1472,7 +1397,7 @@ public class PropertyPanelComponent implements EditorComponent {
      * @param type 需要获取渲染器的类型
      * @return 对应的渲染器，如果没有注册则返回null
      */
-    private PropertyRenderer getRendererForType(Class<?> type) {
+    PropertyRenderer getRendererForType(Class<?> type) {
         return PropertyRendererRegistry.getRendererForType(type, ENUM_RENDERER);
     }
 
