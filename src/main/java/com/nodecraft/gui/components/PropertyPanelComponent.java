@@ -619,22 +619,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
     private static final PropertyRenderer OCTAHEDRON_RENDERER = OctahedronGeometryPropertyRenderer.RENDERER;
 
-    private static final PropertyRenderer TORUS_GEOMETRY_RENDERER = (panel, node, prop, isDisabled) -> {
-        try {
-            TorusGeometryData torus = (TorusGeometryData) prop.getter.invoke(node);
-            if (torus == null) {
-                ImGui.textDisabled("(绌?");
-                return;
-            }
-
-            ImGui.text("Center: " + formatVector3d(torus.getCenter()));
-            ImGui.text("Axis: " + formatVector3d(torus.getAxis()));
-            ImGui.text(String.format("Major Radius: %.2f", torus.getMajorRadius()));
-            ImGui.text(String.format("Minor Radius: %.2f", torus.getMinorRadius()));
-        } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
-        }
-    };
+    private static final PropertyRenderer TORUS_GEOMETRY_RENDERER = TorusGeometryPropertyRenderer.RENDERER;
 
     private static final PropertyRenderer VECTOR3D_RENDERER = Vector3dPropertyRenderer.RENDERER;
 
@@ -644,66 +629,13 @@ public class PropertyPanelComponent implements EditorComponent {
 
     private static final PropertyRenderer NODE_COLOR_RENDERER = ColorPropertyRenderer.NODE_COLOR_RENDERER;
 
-    private static final PropertyRenderer POINT_RENDERER = (panel, node, prop, isDisabled) -> {
-        try {
-            PointData point = (PointData) prop.getter.invoke(node);
-            if (point == null) {
-                ImGui.textDisabled("(绌?");
-                return;
-            }
+    private static final PropertyRenderer POINT_RENDERER = PointPropertyRenderer.RENDERER;
 
-            ImGui.text("Position: " + formatVector3d(point.getPosition()));
-        } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
-        }
-    };
+    private static final PropertyRenderer BOUNDING_BOX_RENDERER = BoundingBoxPropertyRenderer.RENDERER;
 
-    private static final PropertyRenderer BOUNDING_BOX_RENDERER = (panel, node, prop, isDisabled) -> {
-        try {
-            BoundingBoxData box = (BoundingBoxData) prop.getter.invoke(node);
-            if (box == null) {
-                ImGui.textDisabled("(绌?");
-                return;
-            }
+    private static final PropertyRenderer SPHERE_RENDERER = SpherePropertyRenderer.RENDERER;
 
-            ImGui.text("Min: " + formatVector3d(box.getMin()));
-            ImGui.text("Max: " + formatVector3d(box.getMax()));
-        } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
-        }
-    };
-
-    private static final PropertyRenderer SPHERE_RENDERER = (panel, node, prop, isDisabled) -> {
-        try {
-            SphereData sphere = (SphereData) prop.getter.invoke(node);
-            if (sphere == null) {
-                ImGui.textDisabled("(绌?");
-                return;
-            }
-
-            ImGui.text("Center: " + formatVector3d(sphere.getCenter()));
-            ImGui.text(String.format("Radius: %.2f", sphere.getRadius()));
-        } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
-        }
-    };
-
-    private static final PropertyRenderer LINE_RENDERER = (panel, node, prop, isDisabled) -> {
-        try {
-            LineData line = (LineData) prop.getter.invoke(node);
-            if (line == null) {
-                ImGui.textDisabled("(绌?");
-                return;
-            }
-
-            ImGui.text("Start: " + formatVec3d(line.getStart()));
-            ImGui.text("End: " + formatVec3d(line.getEnd()));
-            ImGui.text("Direction: " + formatVec3d(line.getDirection()));
-            ImGui.text(String.format("Length: %.2f", line.getLength()));
-        } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
-        }
-    };
+    private static final PropertyRenderer LINE_RENDERER = LinePropertyRenderer.RENDERER;
 
     private static final PropertyRenderer GEOMETRY_RENDERER = (panel, node, prop, isDisabled) -> {
         try {
