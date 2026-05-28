@@ -4,6 +4,7 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.ai.AiRemotePlannerService;
 import com.nodecraft.gui.ai.AiSessionStateStore;
 import com.nodecraft.gui.ai.AiSettingsStore;
+import org.jspecify.annotations.NonNull;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -196,17 +197,7 @@ public class AiAssistantComponent implements EditorComponent {
             return;
         }
 
-        List<AiSessionStateStore.ChatMessageData> messages = new ArrayList<>(chatMessages.size());
-        for (AiChatMessage message : chatMessages) {
-            if (message == null || message.content() == null || message.content().isBlank()) {
-                continue;
-            }
-            messages.add(new AiSessionStateStore.ChatMessageData(
-                    message.role() == null ? "assistant" : message.role(),
-                    message.content(),
-                    message.timestampMs()
-            ));
-        }
+        List<AiSessionStateStore.ChatMessageData> messages = getChatMessageData();
 
         String pendingPlanDslJson = "";
         if (pendingPlan != null && serializer != null) {
@@ -219,6 +210,21 @@ public class AiAssistantComponent implements EditorComponent {
         AiSessionStateStore.save(sessionStatePath, new AiSessionStateStore.AiSessionStateData(messages, pendingPlanDslJson));
         sessionSaveDirty = false;
         sessionSaveDueAtMs = 0L;
+    }
+
+    private @NonNull List<AiSessionStateStore.ChatMessageData> getChatMessageData() {
+        List<AiSessionStateStore.ChatMessageData> messages = new ArrayList<>(chatMessages.size());
+        for (AiChatMessage message : chatMessages) {
+            if (message == null || message.content() == null || message.content().isBlank()) {
+                continue;
+            }
+            messages.add(new AiSessionStateStore.ChatMessageData(
+                    message.role() == null ? "assistant" : message.role(),
+                    message.content(),
+                    message.timestampMs()
+            ));
+        }
+        return messages;
     }
 
     private void applySessionStateData(AiSessionStateStore.AiSessionStateData data, PendingPlanDeserializer deserializer) {

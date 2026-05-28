@@ -1641,6 +1641,14 @@ public class PropertyPanelComponent implements EditorComponent {
         ImGui.checkbox("Patch apply mode (reuse matching nodes)", aiPatchApplyMode);
         if (aiPatchApplyMode.get()) {
             ImGui.checkbox("Patch remove scoped stale connections", aiPatchRemoveScopedConnections);
+            ImGui.textColored(0.95f, 0.72f, 0.22f, 1.0f,
+                    "Warning: reused-node parameter updates may not be undoable.");
+            ImGui.sameLine();
+            ImGui.textDisabled("(?)");
+            if (ImGui.isItemHovered()) {
+                ImGui.setTooltip("Patch mode can update state on matched existing nodes directly.\n"
+                        + "Graph edits are undoable, but some parameter/state updates may require manual revert.");
+            }
         }
 
         if (aiUseSelectionContext.get()) {
