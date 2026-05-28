@@ -62,8 +62,19 @@ public final class AiPromptBuilder {
               ]
             }
 
+            # TYPE_SYSTEM_RULES
+            - Numeric Flow: 'integer' is compatible with 'float' and 'double'.
+            - Semantic Aliases: 'block_pos' ≡ 'coordinate'; 'vector' ≡ 'position'. They are interchangeable.
+            - Geometry Inheritance: Specific shapes (e.g., 'sphere', 'box_geometry') are implicitly compatible with generic 'geometry' inputs.
+            - Implicit Conversions: You can connect 'block_pos' directly to 'point' or 'vector' inputs; the engine handles the mapping.
+
+            # DSL_BEST_PRACTICES
+            - World Anchoring: To place a node at the player, start with 'input.world.player_pos'.
+            - Local Offsets: Use 'math.vector.add' to adjust positions (e.g., putting an object 5 blocks above the head).
+            - Mandatory Termination: Every functional graph MUST end in an output node (e.g., 'output.execute.apply_changes' or 'output.preview.show_geometry').
+
             # AVAILABLE_NODE_LIBRARY
-            Usage: Identify nodes by their 'typeId'.
+            Usage: Strictly use the 'typeId' provided below.
             """ + schemaText;
     }
 

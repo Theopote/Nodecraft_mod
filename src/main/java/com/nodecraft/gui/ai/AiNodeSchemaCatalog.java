@@ -102,7 +102,7 @@ public final class AiNodeSchemaCatalog {
 
         List<NodeSchema> sorted = new ArrayList<>(allSchemas);
         sorted.sort(Comparator
-                .comparingInt((NodeSchema schema) -> relevanceScore(schema, tokens, generationIntent, geometryIntent, spatialIntent))
+                .comparingInt((NodeSchema schema) -> relevanceScore(schema, prompt, tokens, generationIntent, geometryIntent, spatialIntent))
                 .reversed()
                 .thenComparing(NodeSchema::typeId, String.CASE_INSENSITIVE_ORDER));
 
@@ -194,14 +194,19 @@ public final class AiNodeSchemaCatalog {
         List<PortSchema> result = new ArrayList<>();
         if (ports == null) return result;
         for (IPort port : ports) {
-            // Minified port schema: AI mostly needs ID and DataType for connectivity logic.
-            // Display names and long descriptions are truncated to save tokens.
+            String id = port.getId();
+            String displayName = port.getDisplayName();
+            
+            // Smart labeling: help AI only when the ID is cryptic (e.g., "val1", "arg0", "a", "b").
+            // If the ID is descriptive (e.g., "radius", "center"), we omit the display name to save tokens.
+            boolean isCryptic = id.length() <= 3 || id.toLowerCase(Locale.ROOT).matches("^(arg|val|in|out|p)[0-9]*$");
+            
             result.add(new PortSchema(
-                    port.getId(),
-                    null, // Remove display name for prompt efficiency
+                    id,
+                    isCryptic ? displayName : null,
                     port.getDataType().getId(),
                     port.isRequired(),
-                    null  // Remove description unless specifically needed
+                    null
             ));
         }
         return result;
@@ -227,6 +232,7 @@ public final class AiNodeSchemaCatalog {
 
     private static int relevanceScore(
             NodeSchema schema,
+            String prompt,
             Set<String> tokens,
             boolean generationIntent,
             boolean geometryIntent,
@@ -294,30 +300,31 @@ public final class AiNodeSchemaCatalog {
         }
 
         if (generationIntent) {
-            if (category.startsWith("output.")) {
-                score += 6;
-            }
-            if (typeId.contains("bake") || displayName.contains("bake") || category.contains("bake")) {
-                score += 5;
-            }
+            if (category.startsWith("output.")) score += 6;
+            if (typeId.contains("bake") || category.contains("bake")) score += 5;
         }
 
         if (geometryIntent) {
-            if (typeId.contains("sphere") || displayName.contains("sphere") || description.contains("sphere")) {
-                score += 8;
-            }
-            if (category.contains("geometry") || typeId.contains("geometry") || displayName.contains("geometry")) {
-                score += 4;
-            }
+            if (typeId.contains("sphere") || typeId.contains("box") || category.contains("geometry")) score += 6;
         }
 
         if (spatialIntent) {
-            if (typeId.contains("position") || displayName.contains("position") || description.contains("position")) {
-                score += 4;
-            }
-            if (typeId.contains("offset") || displayName.contains("offset") || description.contains("offset")) {
-                score += 3;
-            }
+            if (typeId.contains("position") || typeId.contains("offset") || typeId.contains("world")) score += 4;
+        }
+
+        // Color intent
+        if (containsAny(prompt, "颜色", "彩色", "红", "绿", "蓝", "color", "red", "green", "blue", "rgb", "hsv")) {
+            if (typeId.contains("color") || category.contains("color")) score += 7;
+        }
+
+        // Logic & Math intent
+        if (containsAny(prompt, "计算", "数学", "加", "减", "乘", "除", "比较", "math", "add", "sub", "mul", "div", "logic", "compare")) {
+            if (category.startsWith("math.") || category.startsWith("logic.")) score += 6;
+        }
+
+        // Entity & Player intent
+        if (containsAny(prompt, "玩家", "实体", "生物", "player", "entity", "mob", "living")) {
+            if (typeId.contains("player") || typeId.contains("entity") || category.contains("input.world")) score += 6;
         }
 
         return score;
