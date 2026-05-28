@@ -128,7 +128,6 @@ public class PropertyPanelComponent implements EditorComponent {
     private final ImBoolean aiPatchRemoveScopedConnections = new ImBoolean(false);
     private final Path aiSettingsPath;
     private String aiLastSubmittedPrompt = "";
-    private AiGraphPlan pendingAiPlan = null;
     private int lastAiUndoStepCount = 0;
     private String aiPlanStatusMessage = "";
     private String aiSettingsStatusMessage = "";
@@ -1535,7 +1534,6 @@ public class PropertyPanelComponent implements EditorComponent {
         aiChatMessages.clear();
         aiPromptInput.clear();
         aiApiKey.clear();
-        pendingAiPlan = null;
         lastAiUndoStepCount = 0;
         aiPlanStatusMessage = "";
         aiSettingsStatusMessage = "";
@@ -1911,7 +1909,6 @@ public class PropertyPanelComponent implements EditorComponent {
 
     private void loadAiSessionStateFromDisk() {
         String status = aiAssistantComponent.loadSessionState(this::deserializePendingPlanFromDsl);
-        pendingAiPlan = aiAssistantComponent.getPendingPlan();
         if (status != null && !status.isBlank()) {
             aiSettingsStatusMessage = status;
         }
@@ -1955,9 +1952,12 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     private void setPendingAiPlan(AiGraphPlan plan) {
-        pendingAiPlan = plan;
         aiAssistantComponent.setPendingPlan(plan);
         saveAiSessionStateToDisk();
+    }
+
+    private AiGraphPlan getPendingAiPlan() {
+        return aiAssistantComponent.getPendingPlan();
     }
 
     private AiSettingsStore.AiSettingsData collectAiSettingsData() {
@@ -1998,7 +1998,7 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     private void renderAiPlanPreviewSection() {
-        AiGraphPlan plan = pendingAiPlan;
+        AiGraphPlan plan = getPendingAiPlan();
         boolean hasPlan = plan != null;
 
         AiGraphDiffService.GraphDiffSummary heuristicDiff = hasPlan ? buildGraphDiffSummary(plan) : null;
@@ -2071,6 +2071,7 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     private void runDryRunForPendingPlan() {
+        AiGraphPlan pendingAiPlan = getPendingAiPlan();
         if (pendingAiPlan == null) {
             aiPlanStatusMessage = "Dry run aborted: no plan available.";
             return;
@@ -2256,6 +2257,7 @@ public class PropertyPanelComponent implements EditorComponent {
         );
 
         String latestUserMessage = userPromptPayload;
+        AiGraphPlan pendingAiPlan = getPendingAiPlan();
         if (pendingAiPlan != null) {
             String currentPlanJson = AiPlanDslWorkflowService.toDslJson(toServiceGraphPlanForHistory(pendingAiPlan));
             latestUserMessage = "Current plan in effect:\n```json\n"
@@ -2354,6 +2356,7 @@ public class PropertyPanelComponent implements EditorComponent {
         }
 
         setPendingAiPlan(fromServiceGraphPlan(AiPlanDslWorkflowService.fromDsl(parsed.graph())));
+        AiGraphPlan pendingAiPlan = getPendingAiPlan();
         String warningSuffix = formatValidationWarningSuffix(parsed.warnings());
         addAiChatMessage(
                 "assistant",
@@ -2512,6 +2515,7 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     private void applyPendingAiPlan() {
+        AiGraphPlan pendingAiPlan = getPendingAiPlan();
         if (pendingAiPlan == null) {
             aiPlanStatusMessage = "No plan available.";
             return;
@@ -2569,6 +2573,7 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     private void applyPendingAiPlanPatch(ImGuiNodeEditor editor, List<AiPlanNode> nodesToApply, float[] anchor) {
+        AiGraphPlan pendingAiPlan = getPendingAiPlan();
         NodeGraph graph = getNodeGraph();
         if (graph == null) {
             aiPlanStatusMessage = "Patch apply failed: current graph is unavailable.";
