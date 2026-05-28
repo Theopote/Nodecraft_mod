@@ -3,6 +3,7 @@ package com.nodecraft.gui.ai;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.jspecify.annotations.NonNull;
 
 import java.io.IOException;
 import java.net.URI;
@@ -173,6 +174,20 @@ public class AiRemotePlannerService {
     ) throws IOException, InterruptedException {
         String endpoint = normalizeAnthropicEndpoint(config.apiBaseUrl());
 
+        JsonObject body = getJsonObject(config);
+
+        HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
+                .timeout(Duration.ofSeconds(timeoutSeconds))
+                .header("Content-Type", "application/json")
+                .header("x-api-key", config.apiKey())
+                .header("anthropic-version", "2023-06-01")
+                .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
+                .build();
+
+        return client.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private static @NonNull JsonObject getJsonObject(PlannerConfig config) {
         JsonObject body = new JsonObject();
         body.addProperty("model", config.model());
         body.addProperty("max_tokens", 8);
@@ -188,16 +203,7 @@ public class AiRemotePlannerService {
         item.add("content", content);
         messages.add(item);
         body.add("messages", messages);
-
-        HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
-                .timeout(Duration.ofSeconds(timeoutSeconds))
-                .header("Content-Type", "application/json")
-                .header("x-api-key", config.apiKey())
-                .header("anthropic-version", "2023-06-01")
-                .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
-                .build();
-
-        return client.send(request, HttpResponse.BodyHandlers.ofString());
+        return body;
     }
 
     private RemotePlanResult requestPlan(PlannerConfig config, List<ConversationMessage> conversation) {
@@ -585,62 +591,25 @@ public class AiRemotePlannerService {
         description.addProperty("description", "Short summary of the planned graph.");
         properties.add("description", description);
 
-        JsonObject nodeItem = new JsonObject();
-        nodeItem.addProperty("type", "object");
-        JsonObject nodeProperties = new JsonObject();
-        JsonObject nodeId = new JsonObject();
-        nodeId.addProperty("type", "string");
-        JsonObject nodeType = new JsonObject();
-        nodeType.addProperty("type", "string");
-        JsonObject nodeParams = new JsonObject();
-        nodeParams.addProperty("type", "object");
-        JsonObject nodePosition = new JsonObject();
-        nodePosition.addProperty("type", "object");
-        JsonObject nodePositionProperties = new JsonObject();
-        JsonObject posX = new JsonObject();
-        posX.addProperty("type", "number");
-        JsonObject posY = new JsonObject();
-        posY.addProperty("type", "number");
-        nodePositionProperties.add("x", posX);
-        nodePositionProperties.add("y", posY);
-        nodePosition.add("properties", nodePositionProperties);
-        JsonArray nodePositionRequired = new JsonArray();
-        nodePositionRequired.add("x");
-        nodePositionRequired.add("y");
-        nodePosition.add("required", nodePositionRequired);
-        nodePosition.addProperty("additionalProperties", false);
-
-        nodeProperties.add("id", nodeId);
-        nodeProperties.add("type", nodeType);
-        nodeProperties.add("params", nodeParams);
-        nodeProperties.add("position", nodePosition);
-        nodeItem.add("properties", nodeProperties);
-        JsonArray nodeRequired = new JsonArray();
-        nodeRequired.add("id");
-        nodeRequired.add("type");
-        nodeItem.add("required", nodeRequired);
-        nodeItem.addProperty("additionalProperties", false);
-
-        JsonObject nodes = new JsonObject();
-        nodes.addProperty("type", "array");
-        nodes.add("items", nodeItem);
+        JsonObject nodes = getJsonObject();
         properties.add("nodes", nodes);
 
-        JsonObject endpoint = new JsonObject();
-        endpoint.addProperty("type", "object");
-        JsonObject endpointProps = new JsonObject();
-        JsonObject endpointNodeId = new JsonObject();
-        endpointNodeId.addProperty("type", "string");
-        JsonObject endpointPort = new JsonObject();
-        endpointPort.addProperty("type", "string");
-        endpointProps.add("nodeId", endpointNodeId);
-        endpointProps.add("port", endpointPort);
-        endpoint.add("properties", endpointProps);
-        JsonArray endpointRequired = new JsonArray();
-        endpointRequired.add("nodeId");
-        endpointRequired.add("port");
-        endpoint.add("required", endpointRequired);
-        endpoint.addProperty("additionalProperties", false);
+        JsonObject connections = getConnections();
+        properties.add("connections", connections);
+
+        schema.add("properties", properties);
+        JsonArray required = new JsonArray();
+        required.add("nodes");
+        required.add("connections");
+        schema.add("required", required);
+        schema.addProperty("additionalProperties", false);
+
+        tool.add("input_schema", schema);
+        return tool;
+    }
+
+    private static @NonNull JsonObject getConnections() {
+        JsonObject endpoint = getEndpoint();
 
         JsonObject connectionItem = new JsonObject();
         connectionItem.addProperty("type", "object");
@@ -657,17 +626,79 @@ public class AiRemotePlannerService {
         JsonObject connections = new JsonObject();
         connections.addProperty("type", "array");
         connections.add("items", connectionItem);
-        properties.add("connections", connections);
+        return connections;
+    }
 
-        schema.add("properties", properties);
-        JsonArray required = new JsonArray();
-        required.add("nodes");
-        required.add("connections");
-        schema.add("required", required);
-        schema.addProperty("additionalProperties", false);
+    private static @NonNull JsonObject getEndpoint() {
+        JsonObject endpoint = new JsonObject();
+        endpoint.addProperty("type", "object");
+        JsonObject endpointProps = new JsonObject();
+        JsonObject endpointNodeId = new JsonObject();
+        endpointNodeId.addProperty("type", "string");
+        JsonObject endpointPort = new JsonObject();
+        endpointPort.addProperty("type", "string");
+        endpointProps.add("nodeId", endpointNodeId);
+        endpointProps.add("port", endpointPort);
+        endpoint.add("properties", endpointProps);
+        JsonArray endpointRequired = new JsonArray();
+        endpointRequired.add("nodeId");
+        endpointRequired.add("port");
+        endpoint.add("required", endpointRequired);
+        endpoint.addProperty("additionalProperties", false);
+        return endpoint;
+    }
 
-        tool.add("input_schema", schema);
-        return tool;
+    private static @NonNull JsonObject getJsonObject() {
+        JsonObject nodeItem = new JsonObject();
+        nodeItem.addProperty("type", "object");
+        JsonObject nodeProperties = getNodeProperties();
+        nodeItem.add("properties", nodeProperties);
+        JsonArray nodeRequired = new JsonArray();
+        nodeRequired.add("id");
+        nodeRequired.add("type");
+        nodeItem.add("required", nodeRequired);
+        nodeItem.addProperty("additionalProperties", false);
+
+        JsonObject nodes = new JsonObject();
+        nodes.addProperty("type", "array");
+        nodes.add("items", nodeItem);
+        return nodes;
+    }
+
+    private static @NonNull JsonObject getNodeProperties() {
+        JsonObject nodeProperties = new JsonObject();
+        JsonObject nodeId = new JsonObject();
+        nodeId.addProperty("type", "string");
+        JsonObject nodeType = new JsonObject();
+        nodeType.addProperty("type", "string");
+        JsonObject nodeParams = new JsonObject();
+        nodeParams.addProperty("type", "object");
+        JsonObject nodePosition = getObject();
+
+        nodeProperties.add("id", nodeId);
+        nodeProperties.add("type", nodeType);
+        nodeProperties.add("params", nodeParams);
+        nodeProperties.add("position", nodePosition);
+        return nodeProperties;
+    }
+
+    private static @NonNull JsonObject getObject() {
+        JsonObject nodePosition = new JsonObject();
+        nodePosition.addProperty("type", "object");
+        JsonObject nodePositionProperties = new JsonObject();
+        JsonObject posX = new JsonObject();
+        posX.addProperty("type", "number");
+        JsonObject posY = new JsonObject();
+        posY.addProperty("type", "number");
+        nodePositionProperties.add("x", posX);
+        nodePositionProperties.add("y", posY);
+        nodePosition.add("properties", nodePositionProperties);
+        JsonArray nodePositionRequired = new JsonArray();
+        nodePositionRequired.add("x");
+        nodePositionRequired.add("y");
+        nodePosition.add("required", nodePositionRequired);
+        nodePosition.addProperty("additionalProperties", false);
+        return nodePosition;
     }
 
     private boolean shouldUseAnthropic(PlannerConfig config, String baseUrl) {
