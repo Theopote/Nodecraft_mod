@@ -25,20 +25,13 @@ final class BlockPosListPropertyRenderer {
             ImGui.text("Count: " + positions.size());
             List<BlockPos> preview = positions.getPositions();
             if (!preview.isEmpty()) {
-                ImGui.text("First: " + formatBlockPos(preview.getFirst()));
+                ImGui.text("First: " + PropertyValueFormatters.formatBlockPos(preview.getFirst()));
             }
             if (preview.size() > 1) {
-                ImGui.text("Last: " + formatBlockPos(preview.getLast()));
+                ImGui.text("Last: " + PropertyValueFormatters.formatBlockPos(preview.getLast()));
             }
         } catch (Throwable e) {
             panel.handlePropertyError(prop, e);
         }
-    }
-
-    private static String formatBlockPos(BlockPos pos) {
-        if (pos == null) {
-            return "(null)";
-        }
-        return String.format("(%d, %d, %d)", pos.getX(), pos.getY(), pos.getZ());
     }
 }

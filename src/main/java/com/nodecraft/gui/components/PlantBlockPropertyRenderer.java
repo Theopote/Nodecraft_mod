@@ -3,7 +3,6 @@ package com.nodecraft.gui.components;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.datatypes.PlantStructure;
 import imgui.ImGui;
-import net.minecraft.util.math.BlockPos;
 
 final class PlantBlockPropertyRenderer {
 
@@ -20,19 +19,12 @@ final class PlantBlockPropertyRenderer {
                 return;
             }
 
-            ImGui.text("Position: " + formatBlockPos(block.getPosition()));
+            ImGui.text("Position: " + PropertyValueFormatters.formatBlockPos(block.getPosition()));
             ImGui.text("Block Type: " + block.getBlockType());
             ImGui.text(String.format("Thickness: %.2f", block.getThickness()));
             ImGui.text("Properties: " + block.getProperties().size());
         } catch (Throwable e) {
             panel.handlePropertyError(prop, e);
         }
-    }
-
-    private static String formatBlockPos(BlockPos pos) {
-        if (pos == null) {
-            return "(null)";
-        }
-        return String.format("(%d, %d, %d)", pos.getX(), pos.getY(), pos.getZ());
     }
 }

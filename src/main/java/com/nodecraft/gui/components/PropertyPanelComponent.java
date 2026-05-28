@@ -523,8 +523,8 @@ public class PropertyPanelComponent implements EditorComponent {
             }
 
             ImGui.text("Face: " + face.getName() + " (#" + face.getIndex() + ")");
-            ImGui.text("Center: " + formatVector3d(face.getCenter()));
-            ImGui.text("Normal: " + formatVector3d(face.getNormal()));
+            ImGui.text("Center: " + PropertyValueFormatters.formatVector3d(face.getCenter()));
+            ImGui.text("Normal: " + PropertyValueFormatters.formatVector3d(face.getNormal()));
             ImGui.text("Corners: " + face.getCorners().size());
             ImGui.text("Edges: " + face.getEdgeCount());
         } catch (Throwable e) {
@@ -540,10 +540,10 @@ public class PropertyPanelComponent implements EditorComponent {
                 return;
             }
 
-            ImGui.text("Center: " + formatVector3d(profile.getCenter()));
+            ImGui.text("Center: " + PropertyValueFormatters.formatVector3d(profile.getCenter()));
             ImGui.text("Edges: " + profile.getEdgeCount());
             ImGui.text("Unique Points: " + profile.getUniquePoints().size());
-            ImGui.text("Plane Normal: " + formatVector3d(profile.getPlane().getNormal()));
+            ImGui.text("Plane Normal: " + PropertyValueFormatters.formatVector3d(profile.getPlane().getNormal()));
         } catch (Throwable e) {
             panel.handlePropertyError(prop, e);
         }
@@ -576,11 +576,11 @@ public class PropertyPanelComponent implements EditorComponent {
                 return;
             }
 
-            ImGui.text("Base Center: " + formatVector3d(pyramid.getBaseCenter()));
-            ImGui.text("Apex: " + formatVector3d(pyramid.getApex()));
+            ImGui.text("Base Center: " + PropertyValueFormatters.formatVector3d(pyramid.getBaseCenter()));
+            ImGui.text("Apex: " + PropertyValueFormatters.formatVector3d(pyramid.getApex()));
             ImGui.text(String.format("Base Size: %.2f", pyramid.getBaseSize()));
             ImGui.text(String.format("Height: %.2f", pyramid.getHeight()));
-            ImGui.text("Normal: " + formatVector3d(pyramid.getNormal()));
+            ImGui.text("Normal: " + PropertyValueFormatters.formatVector3d(pyramid.getNormal()));
         } catch (Throwable e) {
             panel.handlePropertyError(prop, e);
         }
@@ -594,7 +594,7 @@ public class PropertyPanelComponent implements EditorComponent {
                 return;
             }
 
-            ImGui.text("Center: " + formatVector3d(tetrahedron.getCenter()));
+            ImGui.text("Center: " + PropertyValueFormatters.formatVector3d(tetrahedron.getCenter()));
             ImGui.text(String.format("Edge Length: %.2f", tetrahedron.getEdgeLength()));
             ImGui.text(String.format("Circumradius: %.2f", tetrahedron.getCircumradius()));
             ImGui.text("Vertices: " + tetrahedron.getVertices().size());
@@ -664,27 +664,6 @@ public class PropertyPanelComponent implements EditorComponent {
     };
 
     // 改进的异常处理方法
-    private static String formatBlockPos(BlockPos pos) {
-        if (pos == null) {
-            return "(null)";
-        }
-        return String.format("(%d, %d, %d)", pos.getX(), pos.getY(), pos.getZ());
-    }
-
-    private static String formatVector3d(Vector3d vec) {
-        if (vec == null) {
-            return "(null)";
-        }
-        return String.format("(%.2f, %.2f, %.2f)", vec.x, vec.y, vec.z);
-    }
-
-    private static String formatVec3d(Vec3d vec) {
-        if (vec == null) {
-            return "(null)";
-        }
-        return String.format("(%.2f, %.2f, %.2f)", vec.x, vec.y, vec.z);
-    }
-
     void handlePropertyError(PropertyDescriptor prop, Throwable e) { // 统一捕获 Throwable
         // 根据错误类型选择日志级别
         boolean isSevere = false;
