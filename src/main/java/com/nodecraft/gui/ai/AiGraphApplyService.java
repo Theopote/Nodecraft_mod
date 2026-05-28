@@ -230,7 +230,10 @@ public final class AiGraphApplyService {
                     + ", connected " + successfulConnections
                     + ", replacedIncoming " + replacedIncomingConnections
                     + ", removedScoped " + removedScopedConnectionsCount
-                    + ". Undo steps available: " + undoSteps + ".";
+                    + ". Undo steps available: " + undoSteps + "."
+                    + (updatedNodes > 0
+                    ? " Note: parameter/state updates on reused nodes are currently not tracked in undo stack."
+                    : "");
             return new ApplyResult(true, undoSteps, status);
         } catch (Exception e) {
             rollbackAiApply(editor, undoSteps);

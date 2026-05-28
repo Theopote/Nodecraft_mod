@@ -2352,12 +2352,14 @@ public class PropertyPanelComponent implements EditorComponent {
             return;
         }
 
-        applyDslResponse(prompt, result.modelContent(), "remote");
+        applyDslResponse(prompt, result.modelContent(), result.structuredPayload() ? "remote-tool" : "remote");
     }
 
     private void applyDslResponse(String prompt, String dslOrModelResponse, String source) {
-        AiGraphDslSupport.ParseValidationResult parsed =
-                AiGraphDslSupport.parseAndValidate(dslOrModelResponse, NodeRegistry.getInstance());
+        boolean isStructured = "remote-tool".equals(source);
+        AiGraphDslSupport.ParseValidationResult parsed = isStructured
+            ? AiGraphDslSupport.parseStructured(dslOrModelResponse, NodeRegistry.getInstance())
+            : AiGraphDslSupport.parseAndValidate(dslOrModelResponse, NodeRegistry.getInstance());
 
         if (!parsed.isSuccess() || parsed.graph() == null) {
             setPendingAiPlan(null);

@@ -51,16 +51,29 @@ public final class AiGraphDslSupport {
     }
 
     public static ParseValidationResult parseAndValidate(String modelResponse, NodeRegistry registry) {
+        String jsonPayload = extractJsonPayload(modelResponse);
+        if (jsonPayload.isBlank()) {
+            List<String> errors = new ArrayList<>();
+            errors.add("No JSON found in model response.");
+            return new ParseValidationResult(null, errors, new ArrayList<>(), "");
+        }
+        return parseJsonPayload(jsonPayload, registry);
+    }
+
+    public static ParseValidationResult parseStructured(String jsonPayload, NodeRegistry registry) {
+        if (jsonPayload == null || jsonPayload.isBlank()) {
+            List<String> errors = new ArrayList<>();
+            errors.add("Structured JSON payload is empty.");
+            return new ParseValidationResult(null, errors, new ArrayList<>(), "");
+        }
+        return parseJsonPayload(jsonPayload, registry);
+    }
+
+    private static ParseValidationResult parseJsonPayload(String jsonPayload, NodeRegistry registry) {
         List<String> errors = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
         if (registry == null) {
             errors.add("Node registry is unavailable.");
-            return new ParseValidationResult(null, errors, warnings, "");
-        }
-
-        String jsonPayload = extractJsonPayload(modelResponse);
-        if (jsonPayload.isBlank()) {
-            errors.add("No JSON found in model response.");
             return new ParseValidationResult(null, errors, warnings, "");
         }
 

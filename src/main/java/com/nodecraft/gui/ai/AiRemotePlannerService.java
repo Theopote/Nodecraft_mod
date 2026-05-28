@@ -24,6 +24,8 @@ public class AiRemotePlannerService {
 
     private static final ExecutorService EXECUTOR = Executors.newCachedThreadPool();
     private static final int MAX_ATTEMPTS = 3;
+    private static final String OPENAI_MAX_TOKENS_FIELD = "max_tokens";
+    private static final String OPENAI_MAX_COMPLETION_TOKENS_FIELD = "max_completion_tokens";
 
     public record PlannerConfig(
             String apiBaseUrl,
@@ -43,14 +45,19 @@ public class AiRemotePlannerService {
             int statusCode,
             String rawResponse,
             String errorCategory,
+            boolean structuredPayload,
             int attempts
     ) {
         public static RemotePlanResult ok(String content, int statusCode, String rawResponse, int attempts) {
-            return new RemotePlanResult(true, content, "", statusCode, rawResponse, "none", attempts);
+            return new RemotePlanResult(true, content, "", statusCode, rawResponse, "none", false, attempts);
+        }
+
+        public static RemotePlanResult okStructured(String content, int statusCode, String rawResponse, int attempts) {
+            return new RemotePlanResult(true, content, "", statusCode, rawResponse, "none", true, attempts);
         }
 
         public static RemotePlanResult fail(String error, int statusCode, String rawResponse, String category, int attempts) {
-            return new RemotePlanResult(false, "", error, statusCode, rawResponse, category, attempts);
+            return new RemotePlanResult(false, "", error, statusCode, rawResponse, category, false, attempts);
         }
     }
 
@@ -153,6 +160,8 @@ public class AiRemotePlannerService {
         JsonObject body = new JsonObject();
         body.addProperty("model", config.model());
         body.addProperty("temperature", 0.1);
+        int maxTokens = resolveOpenAICompatibleMaxTokens(config, conversation);
+        body.addProperty(OPENAI_MAX_TOKENS_FIELD, maxTokens);
 
         JsonArray messages = new JsonArray();
         JsonObject system = new JsonObject();
@@ -169,21 +178,41 @@ public class AiRemotePlannerService {
 
         body.add("messages", messages);
 
-        HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
-                .timeout(Duration.ofSeconds(timeoutSeconds))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + config.apiKey())
-                .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
-                .build();
-
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = sendOpenAIRequest(client, endpoint, config.apiKey(), body, timeoutSeconds);
         if (response.statusCode() >= 300) {
-            return RemotePlanResult.fail(
-                    "HTTP " + response.statusCode() + ": " + truncate(response.body()),
-                    response.statusCode(),
-                    response.body(),
-                    classifyErrorCategory(response.statusCode()),
+            if (response.statusCode() == 400 && isOpenAITokenFieldCompatibilityError(response.body())) {
+            body.remove(OPENAI_MAX_TOKENS_FIELD);
+            body.addProperty(OPENAI_MAX_COMPLETION_TOKENS_FIELD, maxTokens);
+            HttpResponse<String> fallbackResponse = sendOpenAIRequest(client, endpoint, config.apiKey(), body, timeoutSeconds);
+            if (fallbackResponse.statusCode() < 300) {
+                String fallbackContent = extractOpenAIContent(fallbackResponse.body());
+                if (!isBlank(fallbackContent)) {
+                return RemotePlanResult.ok(fallbackContent, fallbackResponse.statusCode(), fallbackResponse.body(), attempt);
+                }
+                return RemotePlanResult.fail(
+                    "OpenAI-compatible fallback response did not include message content.",
+                    fallbackResponse.statusCode(),
+                    fallbackResponse.body(),
+                    "response-format",
                     attempt
+                );
+            }
+
+            return RemotePlanResult.fail(
+                "HTTP " + fallbackResponse.statusCode() + ": " + truncate(fallbackResponse.body()),
+                fallbackResponse.statusCode(),
+                fallbackResponse.body(),
+                classifyErrorCategory(fallbackResponse.statusCode()),
+                attempt
+            );
+            }
+
+            return RemotePlanResult.fail(
+                "HTTP " + response.statusCode() + ": " + truncate(response.body()),
+                response.statusCode(),
+                response.body(),
+                classifyErrorCategory(response.statusCode()),
+                attempt
             );
         }
 
@@ -198,6 +227,36 @@ public class AiRemotePlannerService {
             );
         }
         return RemotePlanResult.ok(content, response.statusCode(), response.body(), attempt);
+    }
+
+    private HttpResponse<String> sendOpenAIRequest(
+            HttpClient client,
+            String endpoint,
+            String apiKey,
+            JsonObject body,
+            int timeoutSeconds
+    ) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
+                .timeout(Duration.ofSeconds(timeoutSeconds))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + apiKey)
+                .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
+                .build();
+        return client.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private boolean isOpenAITokenFieldCompatibilityError(String responseBody) {
+        if (responseBody == null || responseBody.isBlank()) {
+            return false;
+        }
+        String body = responseBody.toLowerCase(Locale.ROOT);
+        boolean mentionsTokenField = body.contains("max_tokens") || body.contains("max_completion_tokens");
+        boolean indicatesInvalidField = body.contains("unknown")
+                || body.contains("unsupported")
+                || body.contains("invalid")
+                || body.contains("not allowed")
+                || body.contains("unrecognized");
+        return mentionsTokenField && indicatesInvalidField;
     }
 
         private RemotePlanResult requestAnthropic(
@@ -267,7 +326,12 @@ public class AiRemotePlannerService {
             );
         }
 
-        String result = extractAnthropicToolInput(response.body());
+        String toolInput = extractAnthropicToolInput(response.body());
+        if (!isBlank(toolInput)) {
+            return RemotePlanResult.okStructured(toolInput, response.statusCode(), response.body(), attempt);
+        }
+
+        String result = toolInput;
         if (isBlank(result)) {
             // Fallback for legacy providers or non-tool responses.
             result = extractAnthropicContent(response.body());
@@ -549,6 +613,12 @@ public class AiRemotePlannerService {
     }
 
     private int resolveAnthropicMaxTokens(PlannerConfig config, List<ConversationMessage> conversation) {
+        int configured = Math.max(512, Math.min(4096, config.maxOutputTokens()));
+        int estimated = estimateRequiredTokens(conversation, config.systemPrompt());
+        return Math.max(configured, estimated);
+    }
+
+    private int resolveOpenAICompatibleMaxTokens(PlannerConfig config, List<ConversationMessage> conversation) {
         int configured = Math.max(512, Math.min(4096, config.maxOutputTokens()));
         int estimated = estimateRequiredTokens(conversation, config.systemPrompt());
         return Math.max(configured, estimated);

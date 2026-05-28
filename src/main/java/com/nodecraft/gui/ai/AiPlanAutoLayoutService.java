@@ -82,20 +82,30 @@ public final class AiPlanAutoLayoutService {
 
     private static @NonNull List<ArrangedNode> toArrangedNodes(Map<Integer, List<PlanNode>> layerMap) {
         float layerSpacingX = 320.0f;
-        float layerSpacingY = 180.0f;
+        float baseLayerSpacingY = 180.0f;
         List<ArrangedNode> arranged = new ArrayList<>();
 
         for (Map.Entry<Integer, List<PlanNode>> layerEntry : layerMap.entrySet()) {
             int layer = layerEntry.getKey();
             List<PlanNode> layerNodes = layerEntry.getValue();
+            float effectiveSpacingY = resolveLayerSpacingY(baseLayerSpacingY, layerNodes.size());
             for (int i = 0; i < layerNodes.size(); i++) {
                 PlanNode node = layerNodes.get(i);
                 float x = layer * layerSpacingX;
-                float y = (i - (layerNodes.size() - 1) / 2.0f) * layerSpacingY;
+                float y = (i - (layerNodes.size() - 1) / 2.0f) * effectiveSpacingY;
                 arranged.add(new ArrangedNode(node.ref(), node.typeId(), x, y, node.nodeState()));
             }
         }
 
         return arranged;
+    }
+
+    private static float resolveLayerSpacingY(float baseSpacing, int layerNodeCount) {
+        if (layerNodeCount <= 4) {
+            return baseSpacing;
+        }
+
+        float denseSpacing = 220.0f + (layerNodeCount - 5) * 12.0f;
+        return Math.max(baseSpacing, Math.min(320.0f, denseSpacing));
     }
 }
