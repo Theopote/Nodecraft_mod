@@ -1,4 +1,4 @@
-package com.nodecraft.gui.components;
+package com.nodecraft.gui.components.port;
 
 import java.util.ArrayList;
 import java.util.Comparator;

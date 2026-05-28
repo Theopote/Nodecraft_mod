@@ -35,6 +35,8 @@ import com.nodecraft.nodesystem.util.Vec3; // 确保 Vec3 可用
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.Color;
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.gui.components.port.PortDataRenderer;
+import com.nodecraft.gui.components.port.PortTableRenderer;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
 import imgui.ImGui;

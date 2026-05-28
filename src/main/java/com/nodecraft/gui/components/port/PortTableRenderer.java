@@ -1,4 +1,4 @@
-package com.nodecraft.gui.components;
+package com.nodecraft.gui.components.port;
 
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
@@ -13,12 +13,12 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
 
-final class PortTableRenderer {
+public final class PortTableRenderer {
 
     private PortTableRenderer() {
     }
 
-    static void renderInputPorts(INode selectedNode, NodeGraph graph) {
+    public static void renderInputPorts(INode selectedNode, NodeGraph graph) {
         if (selectedNode == null) {
             return;
         }
@@ -80,7 +80,7 @@ final class PortTableRenderer {
         }
     }
 
-    static void renderOutputPorts(INode selectedNode, NodeGraph graph) {
+    public static void renderOutputPorts(INode selectedNode, NodeGraph graph) {
         if (selectedNode == null) {
             return;
         }

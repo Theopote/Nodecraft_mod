@@ -1,4 +1,4 @@
-package com.nodecraft.gui.components;
+package com.nodecraft.gui.components.port;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.util.Vec3;
@@ -9,7 +9,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
-final class PortDataRenderer {
+public final class PortDataRenderer {
     static {
         PortDataRendererRegistry.registerType(Vec3.class, (renderer, value, label) -> renderer.renderVec3((Vec3) value, label), 100);
         PortDataRendererRegistry.registerType(List.class, (renderer, value, label) -> renderer.renderList((List<?>) value, label), 95);
@@ -21,7 +21,7 @@ final class PortDataRenderer {
         PortDataRendererRegistry.registerPredicate(PortDataRenderer::isNbtLikeStatic, (renderer, value, label) -> renderer.renderNBT(value), 50);
     }
 
-    interface Actions {
+    public interface Actions {
         void copyToClipboard(String text);
 
         void highlightPoint(Vec3 point);
@@ -33,7 +33,7 @@ final class PortDataRenderer {
 
     private final Actions actions;
 
-    PortDataRenderer(Actions actions) {
+    public PortDataRenderer(Actions actions) {
         this.actions = actions;
     }
 
@@ -61,7 +61,7 @@ final class PortDataRenderer {
         }
     }
 
-    void renderList(List<?> list, String label) {
+    public void renderList(List<?> list, String label) {
         int size = list.size();
         if (ImGui.treeNode(label + ": List (" + size + " items)")) {
             int displayLimit = Math.min(size, 10);

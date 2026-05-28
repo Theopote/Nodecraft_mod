@@ -1,4 +1,4 @@
-package com.nodecraft.gui.components;
+package com.nodecraft.gui.components.port;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.INode;

@@ -1,4 +1,4 @@
-package com.nodecraft.gui.components;
+package com.nodecraft.gui.components.port;
 
 import com.nodecraft.nodesystem.util.Vec3;
 import java.util.Collection;
