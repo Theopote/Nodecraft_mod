@@ -1,4 +1,4 @@
-package com.nodecraft.gui.components;
+package com.nodecraft.gui.components.node;
 
 import com.nodecraft.nodesystem.registry.NodeRegistry.NodeCategory;
 

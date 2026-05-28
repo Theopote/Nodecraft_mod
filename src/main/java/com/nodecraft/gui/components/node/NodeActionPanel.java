@@ -1,4 +1,4 @@
-package com.nodecraft.gui.components;
+package com.nodecraft.gui.components.node;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.INode;
@@ -13,12 +13,12 @@ import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-final class NodeActionPanel {
+public final class NodeActionPanel {
 
     private NodeActionPanel() {
     }
 
-    static void renderAssistNodeControls(INode selectedNode, Supplier<NodeGraph> graphSupplier) {
+    public static void renderAssistNodeControls(INode selectedNode, Supplier<NodeGraph> graphSupplier) {
         if (selectedNode instanceof SignalForkNode forkNode) {
             renderSignalForkControls(forkNode, graphSupplier);
             ImGui.separator();
@@ -35,7 +35,7 @@ final class NodeActionPanel {
         }
     }
 
-    static void renderActionButtons(
+    public static void renderActionButtons(
             INode selectedNode,
             Supplier<NodeGraph> graphSupplier,
             Runnable clearCurrentNodeTempValues,

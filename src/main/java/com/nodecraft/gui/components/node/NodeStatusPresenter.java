@@ -1,4 +1,4 @@
-package com.nodecraft.gui.components;
+package com.nodecraft.gui.components.node;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.INode;
@@ -10,12 +10,12 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
 
-final class NodeStatusPresenter {
+public final class NodeStatusPresenter {
 
     private NodeStatusPresenter() {
     }
 
-    static String getCategoryNameForNode(String typeId) {
+    public static String getCategoryNameForNode(String typeId) {
         if (typeId == null || typeId.isEmpty()) {
             return "Unknown";
         }
@@ -46,7 +46,7 @@ final class NodeStatusPresenter {
         return parts.length > 0 ? formatSingleWord(parts[0]) : "Uncategorized";
     }
 
-    static String getNodeStatus(INode node) {
+    public static String getNodeStatus(INode node) {
         if (node == null) {
             return "Unselected";
         }
@@ -90,7 +90,7 @@ final class NodeStatusPresenter {
         return "Ready";
     }
 
-    static String getNodeStatusMessage(String status) {
+    public static String getNodeStatusMessage(String status) {
         return switch (status) {
             case "Error" -> "The node failed to evaluate and could not produce a valid result.";
             case "Warning" -> "The node has missing required inputs.";
@@ -102,7 +102,7 @@ final class NodeStatusPresenter {
         };
     }
 
-    static ImVec4 getStatusColor(String status) {
+    public static ImVec4 getStatusColor(String status) {
         return switch (status) {
             case "Error" -> new ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
             case "Warning" -> new ImVec4(1.0f, 0.9f, 0.3f, 1.0f);
