@@ -164,6 +164,7 @@ public class PropertyPanelComponent implements EditorComponent {
     private String aiLastSubmittedPrompt = "";
     private String aiLastDetectedProviderLabel = "";
     private CompletableFuture<AiRemotePlannerService.RemotePlanResult> aiConnectionTestFuture = null;
+    private int lastRenderedChatCount = 0;
     private int lastAiUndoStepCount = 0;
     private String aiPlanStatusMessage = "";
     private String aiSettingsStatusMessage = "";
@@ -1731,17 +1732,33 @@ public class PropertyPanelComponent implements EditorComponent {
                     ImGui.textWrapped(message.content());
                     ImGui.spacing();
                 }
-                ImGui.setScrollHereY(1.0f);
+                // Fixed: Only auto-scroll when a new message is added, preserved manual scroll position otherwise.
+                if (aiChatMessages.size() > lastRenderedChatCount) {
+                    ImGui.setScrollHereY(1.0f);
+                    lastRenderedChatCount = aiChatMessages.size();
+                }
             }
         }
         ImGui.endChild();
 
         if (isRemotePlannerBusy()) ImGui.beginDisabled();
-        ImGui.pushItemWidth(-80.0f);
-        boolean submitByEnter = ImGui.inputText("##ai_prompt", aiPromptInput, ImGuiInputTextFlags.EnterReturnsTrue);
+
+        // Calculate dynamic height: base height for 1 line, expanding to 4 lines max.
+        String currentInput = aiPromptInput.get();
+        int lineCount = (currentInput == null || currentInput.isEmpty()) ? 1 : 
+                        (int) (currentInput.chars().filter(ch -> ch == '\n').count() + 1);
+        float inputHeight = Math.min(4, Math.max(1, lineCount)) * ImGui.getFrameHeight();
+
+        ImGui.pushItemWidth(-85.0f);
+        // Multiline with smart return: Enter to submit, Ctrl+Enter or Shift+Enter for new line
+        // Note: ImGuiInputTextFlags.EnterReturnsTrue paired with Multiline usually requires custom handling
+        // for better UX, but here we prioritize the 'expansion' feel.
+        boolean submitted = ImGui.inputTextMultiline("##ai_prompt", aiPromptInput, ImGui.getContentRegionAvailX() - 85.0f, inputHeight, 
+                ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.CtrlEnterForNewLine);
         ImGui.popItemWidth();
+
         ImGui.sameLine();
-        if (ImGui.button("Send") || submitByEnter) {
+        if (ImGui.button("Send", 80.0f, inputHeight) || submitted) {
             submitAiPrompt();
         }
         if (isRemotePlannerBusy()) ImGui.endDisabled();
