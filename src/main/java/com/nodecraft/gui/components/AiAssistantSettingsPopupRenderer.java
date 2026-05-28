@@ -19,6 +19,7 @@ final class AiAssistantSettingsPopupRenderer {
             ImString apiBaseUrl,
             ImString apiKey,
             ImString model,
+            ImInt providerStrategyIndex,
             ImString systemPrompt,
             ImInt requestTimeoutSeconds,
             ImInt conversationHistoryTurns,
@@ -62,6 +63,11 @@ final class AiAssistantSettingsPopupRenderer {
         ImGui.text("Model");
         ImGui.pushItemWidth(240.0f);
         ImGui.inputText("##ai_model", state.model());
+        ImGui.popItemWidth();
+
+        ImGui.text("Provider Strategy");
+        ImGui.pushItemWidth(240.0f);
+        ImGui.combo("##ai_provider_strategy", state.providerStrategyIndex(), new String[]{"AUTO", "OPENAI_COMPAT", "ANTHROPIC"});
         ImGui.popItemWidth();
 
         ImGui.text("Request Timeout (seconds)");

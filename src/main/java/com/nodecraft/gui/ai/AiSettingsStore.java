@@ -15,6 +15,10 @@ public final class AiSettingsStore {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
+    public static final String PROVIDER_AUTO = "AUTO";
+    public static final String PROVIDER_OPENAI_COMPAT = "OPENAI_COMPAT";
+    public static final String PROVIDER_ANTHROPIC = "ANTHROPIC";
+
     private AiSettingsStore() {
     }
 
@@ -22,6 +26,7 @@ public final class AiSettingsStore {
             String apiBaseUrl,
             String apiKey,
             String model,
+            String providerStrategy,
             String systemPrompt,
             int timeoutSeconds,
             int conversationHistoryTurns,
@@ -43,6 +48,7 @@ public final class AiSettingsStore {
                 "https://api.openai.com/v1",
                 "",
                 "gpt-4.1-mini",
+                PROVIDER_AUTO,
                 "You are a NodeCraft graph planning assistant.",
                 60,
                 6,
@@ -83,6 +89,9 @@ public final class AiSettingsStore {
                     root.has("apiBaseUrl") ? root.get("apiBaseUrl").getAsString() : current.apiBaseUrl(),
                     root.has("apiKey") ? root.get("apiKey").getAsString() : current.apiKey(),
                     root.has("model") ? root.get("model").getAsString() : current.model(),
+                        root.has("providerStrategy")
+                            ? sanitizeProviderStrategy(root.get("providerStrategy").getAsString())
+                            : current.providerStrategy(),
                     root.has("systemPrompt") ? root.get("systemPrompt").getAsString() : current.systemPrompt(),
                     root.has("timeoutSeconds") ? clampTimeout(root.get("timeoutSeconds").getAsInt()) : current.timeoutSeconds(),
                         root.has("conversationHistoryTurns")
@@ -119,6 +128,7 @@ public final class AiSettingsStore {
             root.addProperty("apiBaseUrl", safe(data.apiBaseUrl()));
             root.addProperty("apiKey", safe(data.apiKey()));
             root.addProperty("model", safe(data.model()));
+            root.addProperty("providerStrategy", sanitizeProviderStrategy(data.providerStrategy()));
             root.addProperty("systemPrompt", safe(data.systemPrompt()));
             root.addProperty("timeoutSeconds", clampTimeout(data.timeoutSeconds()));
             root.addProperty("conversationHistoryTurns", clampConversationHistoryTurns(data.conversationHistoryTurns()));
@@ -154,6 +164,12 @@ public final class AiSettingsStore {
         if (isBlank(data.model())) {
             return "Validation failed: Model is required when remote planner is enabled.";
         }
+        String provider = sanitizeProviderStrategy(data.providerStrategy());
+        if (!PROVIDER_AUTO.equals(provider)
+                && !PROVIDER_OPENAI_COMPAT.equals(provider)
+                && !PROVIDER_ANTHROPIC.equals(provider)) {
+            return "Validation failed: Provider strategy must be AUTO, OPENAI_COMPAT, or ANTHROPIC.";
+        }
         if (!data.apiBaseUrl().startsWith("http://") && !data.apiBaseUrl().startsWith("https://")) {
             return "Validation failed: API Base URL must start with http:// or https://.";
         }
@@ -166,9 +182,10 @@ public final class AiSettingsStore {
         }
         String plannerMode = data.enableRemotePlanner() ? "Planner: Remote" : "Planner: Local";
         String modelName = isBlank(data.model()) ? "(no model)" : data.model();
+        String provider = sanitizeProviderStrategy(data.providerStrategy());
         String keyStatus = isBlank(data.apiKey()) ? "API Key: missing" : "API Key: set";
         String layoutMode = data.autoLayoutBeforeApply() ? "Layout: Auto" : "Layout: Plan";
-        return plannerMode + " | Model: " + modelName + " | " + keyStatus + " | " + layoutMode;
+        return plannerMode + " | Provider: " + provider + " | Model: " + modelName + " | " + keyStatus + " | " + layoutMode;
     }
 
     private static String safe(String text) {
@@ -185,5 +202,17 @@ public final class AiSettingsStore {
 
     private static boolean isBlank(String text) {
         return text == null || text.isBlank();
+    }
+
+    private static String sanitizeProviderStrategy(String providerStrategy) {
+        if (providerStrategy == null) {
+            return PROVIDER_AUTO;
+        }
+        String normalized = providerStrategy.trim().toUpperCase();
+        return switch (normalized) {
+            case PROVIDER_OPENAI_COMPAT -> PROVIDER_OPENAI_COMPAT;
+            case PROVIDER_ANTHROPIC -> PROVIDER_ANTHROPIC;
+            default -> PROVIDER_AUTO;
+        };
     }
 }

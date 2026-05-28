@@ -29,6 +29,7 @@ public class AiRemotePlannerService {
             String apiBaseUrl,
             String apiKey,
             String model,
+            String providerStrategy,
             String systemPrompt,
             int timeoutSeconds
     ) {
@@ -94,7 +95,8 @@ public class AiRemotePlannerService {
         RemotePlanResult lastFailure = null;
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
-                RemotePlanResult result = isAnthropicEndpoint(baseUrl, config.model())
+                boolean useAnthropic = shouldUseAnthropic(config, baseUrl);
+                RemotePlanResult result = useAnthropic
                         ? requestAnthropic(client, config, normalizedConversation, timeoutSeconds, attempt)
                         : requestOpenAICompatible(client, config, normalizedConversation, timeoutSeconds, attempt);
 
@@ -475,6 +477,27 @@ public class AiRemotePlannerService {
 
         tool.add("input_schema", schema);
         return tool;
+    }
+
+    private boolean shouldUseAnthropic(PlannerConfig config, String baseUrl) {
+        String strategy = normalizeProviderStrategy(config.providerStrategy());
+        return switch (strategy) {
+            case "ANTHROPIC" -> true;
+            case "OPENAI_COMPAT" -> false;
+            default -> isAnthropicEndpoint(baseUrl, config.model());
+        };
+    }
+
+    private String normalizeProviderStrategy(String providerStrategy) {
+        if (providerStrategy == null || providerStrategy.isBlank()) {
+            return "AUTO";
+        }
+        String normalized = providerStrategy.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "OPENAI_COMPAT" -> "OPENAI_COMPAT";
+            case "ANTHROPIC" -> "ANTHROPIC";
+            default -> "AUTO";
+        };
     }
 
     private boolean isAnthropicEndpoint(String baseUrl, String model) {

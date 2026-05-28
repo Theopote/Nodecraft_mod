@@ -74,6 +74,11 @@ public class PropertyPanelComponent implements EditorComponent {
     private static final int AI_HISTORY_MAX_CHARS_PER_MESSAGE = 1800;
     private static final int AI_HISTORY_MAX_TOTAL_CHARS = 9000;
     private static final int AI_LATEST_USER_MESSAGE_MAX_CHARS = 7000;
+        private static final String[] AI_PROVIDER_STRATEGY_OPTIONS = {
+            AiSettingsStore.PROVIDER_AUTO,
+            AiSettingsStore.PROVIDER_OPENAI_COMPAT,
+            AiSettingsStore.PROVIDER_ANTHROPIC
+        };
     private static final Gson AI_SETTINGS_GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Set<String> HIDDEN_NODE_PROPERTIES = Set.of(
             "cachedHeight",
@@ -117,6 +122,7 @@ public class PropertyPanelComponent implements EditorComponent {
     private final ImString aiApiBaseUrl = new ImString("https://api.openai.com/v1", 512);
     private final ImString aiApiKey = new ImString("", 512);
     private final ImString aiModel = new ImString("gpt-4.1-mini", 128);
+    private final ImInt aiProviderStrategyIndex = new ImInt(0);
     private final ImString aiSystemPrompt = new ImString("You are a NodeCraft graph planning assistant.", 2048);
     private final ImInt aiRequestTimeoutSeconds = new ImInt(60);
     private final ImInt aiConversationHistoryTurns = new ImInt(6);
@@ -1713,6 +1719,7 @@ public class PropertyPanelComponent implements EditorComponent {
                         aiApiBaseUrl,
                         aiApiKey,
                         aiModel,
+                    aiProviderStrategyIndex,
                         aiSystemPrompt,
                         aiRequestTimeoutSeconds,
                         aiConversationHistoryTurns,
@@ -1965,6 +1972,7 @@ public class PropertyPanelComponent implements EditorComponent {
                 aiApiBaseUrl.get(),
                 aiApiKey.get(),
                 aiModel.get(),
+            providerStrategyFromIndex(aiProviderStrategyIndex.get()),
                 aiSystemPrompt.get(),
                 aiRequestTimeoutSeconds.get(),
                 aiConversationHistoryTurns.get(),
@@ -1985,6 +1993,7 @@ public class PropertyPanelComponent implements EditorComponent {
         aiApiBaseUrl.set(data.apiBaseUrl());
         aiApiKey.set(data.apiKey());
         aiModel.set(data.model());
+        aiProviderStrategyIndex.set(indexFromProviderStrategy(data.providerStrategy()));
         aiSystemPrompt.set(data.systemPrompt());
         aiRequestTimeoutSeconds.set(data.timeoutSeconds());
         aiConversationHistoryTurns.set(data.conversationHistoryTurns());
@@ -2227,6 +2236,7 @@ public class PropertyPanelComponent implements EditorComponent {
                 aiApiBaseUrl.get(),
                 aiApiKey.get(),
                 aiModel.get(),
+            providerStrategyFromIndex(aiProviderStrategyIndex.get()),
                 systemPrompt,
                 aiRequestTimeoutSeconds.get()
         );
@@ -2438,6 +2448,7 @@ public class PropertyPanelComponent implements EditorComponent {
         return "baseUrl: " + nullToEmpty(config.apiBaseUrl()) + "\n" +
                 "apiKeyMasked: " + maskSecret(config.apiKey()) + "\n" +
                 "model: " + nullToEmpty(config.model()) + "\n" +
+            "providerStrategy: " + nullToEmpty(config.providerStrategy()) + "\n" +
                 "timeoutSeconds: " + config.timeoutSeconds() + "\n" +
                 "selectionContextEnabled: " + aiUseSelectionContext.get() + "\n" +
                 "schemaCountInjected: " + schemaCount + "\n" +
@@ -2458,6 +2469,23 @@ public class PropertyPanelComponent implements EditorComponent {
         String prefix = secret.substring(0, 4);
         String suffix = secret.substring(Math.max(0, len - 2));
         return prefix + "***" + suffix;
+    }
+
+    private String providerStrategyFromIndex(int index) {
+        int safeIndex = Math.max(0, Math.min(AI_PROVIDER_STRATEGY_OPTIONS.length - 1, index));
+        return AI_PROVIDER_STRATEGY_OPTIONS[safeIndex];
+    }
+
+    private int indexFromProviderStrategy(String strategy) {
+        if (strategy == null || strategy.isBlank()) {
+            return 0;
+        }
+        for (int i = 0; i < AI_PROVIDER_STRATEGY_OPTIONS.length; i++) {
+            if (AI_PROVIDER_STRATEGY_OPTIONS[i].equalsIgnoreCase(strategy)) {
+                return i;
+            }
+        }
+        return 0;
     }
 
     private AiGraphPlanDslAdapterService.GraphPlan toServiceGraphPlanForHistory(AiGraphPlan plan) {
