@@ -1,5 +1,15 @@
 package com.nodecraft.gui.ai;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.nodecraft.core.NodeCraft;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -50,10 +60,16 @@ public final class AiMockPlanService {
     record WeightedKeyword(String token, double weight) {
     }
 
-    private static final Map<MockTemplateKind, List<WeightedKeyword>> TEMPLATE_POSITIVE_KEYWORDS = createPositiveKeywordTable();
-    private static final Map<MockTemplateKind, List<WeightedKeyword>> TEMPLATE_NEGATIVE_KEYWORDS = createNegativeKeywordTable();
+    private static final Gson GSON = new Gson();
+    private static final String TEMPLATE_WEIGHTS_FILE_NAME = "ai_mock_template_weights.json";
+
+    private static volatile boolean templateWeightsInitialized = false;
+    private static volatile String templateWeightsSource = "built-in";
+    private static volatile Map<MockTemplateKind, List<WeightedKeyword>> templatePositiveKeywords = createPositiveKeywordTable();
+    private static volatile Map<MockTemplateKind, List<WeightedKeyword>> templateNegativeKeywords = createNegativeKeywordTable();
 
     public static MockPlan buildMockPlan(String prompt) {
+        ensureTemplateWeightsLoaded();
         String lowerPrompt = prompt == null ? "" : prompt.toLowerCase(Locale.ROOT);
         ParsedParameters params = parseAiPromptParameters(prompt);
 
@@ -494,8 +510,8 @@ public final class AiMockPlanService {
     }
 
     private static double scoreFromWeightedKeywords(String lowerPrompt, MockTemplateKind kind) {
-        double positive = weightedKeywordScore(lowerPrompt, TEMPLATE_POSITIVE_KEYWORDS.get(kind));
-        double negative = weightedKeywordScore(lowerPrompt, TEMPLATE_NEGATIVE_KEYWORDS.get(kind));
+        double positive = weightedKeywordScore(lowerPrompt, templatePositiveKeywords.get(kind));
+        double negative = weightedKeywordScore(lowerPrompt, templateNegativeKeywords.get(kind));
         return positive - negative;
     }
 
@@ -612,6 +628,7 @@ public final class AiMockPlanService {
             "Mock plan generated locally with template=%s (fallbackCandidate=%s, fallbackUsed=%s). "
                 + "Parsed parameters: radius=%.2f, width=%.2f, thickness=%.2f, turns=%.2f, pitch=%.2f, height=%.2f. "
                 + "Score debug: %s. "
+                + "Weights source: %s. "
                 + "Template uses known node IDs/ports so local fallback stays executable while remote planner is unavailable.",
             templateName,
             fallbackName,
@@ -622,8 +639,163 @@ public final class AiMockPlanService {
             params.turns(),
             params.pitch(),
             params.height(),
-            scoreDebug
+            scoreDebug,
+            templateWeightsSource
         );
+    }
+
+    private static void ensureTemplateWeightsLoaded() {
+        if (templateWeightsInitialized) {
+            return;
+        }
+        synchronized (AiMockPlanService.class) {
+            if (templateWeightsInitialized) {
+                return;
+            }
+
+            Map<MockTemplateKind, List<WeightedKeyword>> positive = deepCopyKeywordTable(createPositiveKeywordTable());
+            Map<MockTemplateKind, List<WeightedKeyword>> negative = deepCopyKeywordTable(createNegativeKeywordTable());
+            String source = "built-in";
+
+            try {
+                Path overridePath = resolveTemplateWeightsPath();
+                if (overridePath != null && Files.exists(overridePath)) {
+                    String json = Files.readString(overridePath, StandardCharsets.UTF_8);
+                    JsonObject root = JsonParser.parseString(json).getAsJsonObject();
+                    applyKeywordTableOverrides(root, "positive", positive);
+                    applyKeywordTableOverrides(root, "negative", negative);
+                    source = "file:" + overridePath.toString();
+                }
+            } catch (Exception e) {
+                NodeCraft.LOGGER.warn("AiMockPlanService: failed to load template weight overrides, using built-in defaults.", e);
+                source = "built-in(fallback)";
+            }
+
+            templatePositiveKeywords = positive;
+            templateNegativeKeywords = negative;
+            templateWeightsSource = source;
+            templateWeightsInitialized = true;
+        }
+    }
+
+    private static Path resolveTemplateWeightsPath() {
+        Path settingsPath = AiSettingsStore.resolveSettingsPath();
+        Path parent = settingsPath == null ? null : settingsPath.getParent();
+        if (parent == null) {
+            return null;
+        }
+        return parent.resolve(TEMPLATE_WEIGHTS_FILE_NAME);
+    }
+
+    private static Map<MockTemplateKind, List<WeightedKeyword>> deepCopyKeywordTable(
+        Map<MockTemplateKind, List<WeightedKeyword>> source
+    ) {
+        Map<MockTemplateKind, List<WeightedKeyword>> copy = new HashMap<>();
+        if (source == null || source.isEmpty()) {
+            return copy;
+        }
+        for (Map.Entry<MockTemplateKind, List<WeightedKeyword>> entry : source.entrySet()) {
+            List<WeightedKeyword> value = entry.getValue();
+            copy.put(entry.getKey(), value == null ? List.of() : new ArrayList<>(value));
+        }
+        return copy;
+    }
+
+    private static void applyKeywordTableOverrides(
+        JsonObject root,
+        String sectionName,
+        Map<MockTemplateKind, List<WeightedKeyword>> destination
+    ) {
+        if (root == null || !root.has(sectionName) || !root.get(sectionName).isJsonObject()) {
+            return;
+        }
+        JsonObject section = root.getAsJsonObject(sectionName);
+        for (Map.Entry<String, JsonElement> entry : section.entrySet()) {
+            MockTemplateKind kind = parseTemplateKind(entry.getKey());
+            if (kind == null) {
+                continue;
+            }
+            List<WeightedKeyword> keywords = parseWeightedKeywords(entry.getValue());
+            if (!keywords.isEmpty()) {
+                destination.put(kind, keywords);
+            }
+        }
+    }
+
+    private static MockTemplateKind parseTemplateKind(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return MockTemplateKind.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    private static List<WeightedKeyword> parseWeightedKeywords(JsonElement element) {
+        if (element == null || element.isJsonNull()) {
+            return List.of();
+        }
+
+        List<WeightedKeyword> keywords = new ArrayList<>();
+        if (element.isJsonArray()) {
+            JsonArray array = element.getAsJsonArray();
+            for (JsonElement item : array) {
+                WeightedKeyword keyword = parseWeightedKeyword(item);
+                if (keyword != null) {
+                    keywords.add(keyword);
+                }
+            }
+            return keywords;
+        }
+
+        if (element.isJsonObject()) {
+            JsonObject object = element.getAsJsonObject();
+            for (Map.Entry<String, JsonElement> item : object.entrySet()) {
+                String token = item.getKey();
+                double weight = item.getValue().isJsonPrimitive() && item.getValue().getAsJsonPrimitive().isNumber()
+                    ? item.getValue().getAsDouble()
+                    : 1.0d;
+                if (token != null && !token.isBlank() && Double.isFinite(weight)) {
+                    keywords.add(kw(token, weight));
+                }
+            }
+            return keywords;
+        }
+
+        WeightedKeyword keyword = parseWeightedKeyword(element);
+        if (keyword != null) {
+            keywords.add(keyword);
+        }
+        return keywords;
+    }
+
+    private static WeightedKeyword parseWeightedKeyword(JsonElement element) {
+        if (element == null || element.isJsonNull()) {
+            return null;
+        }
+        if (element.isJsonPrimitive()) {
+            String token = element.getAsString();
+            if (token == null || token.isBlank()) {
+                return null;
+            }
+            return kw(token, 1.0d);
+        }
+        if (!element.isJsonObject()) {
+            return null;
+        }
+
+        JsonObject object = element.getAsJsonObject();
+        if (!object.has("token")) {
+            return null;
+        }
+        String token = object.get("token").getAsString();
+        double weight = object.has("weight") ? object.get("weight").getAsDouble() : 1.0d;
+        if (token == null || token.isBlank() || !Double.isFinite(weight)) {
+            return null;
+        }
+        return kw(token, weight);
     }
 
     private static String buildScoreDebugText(List<TemplateSelection> rankedCandidates, int limit) {

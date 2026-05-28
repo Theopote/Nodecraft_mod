@@ -1,0 +1,29 @@
+{
+  "positive": {
+    "HELIX_PATH": [
+      { "token": "helix", "weight": 3.2 },
+      { "token": "spiral", "weight": 2.6 },
+      { "token": "路径", "weight": 1.8 }
+    ],
+    "TOWER": {
+      "tower": 3.0,
+      "塔": 2.8,
+      "cylinder": 1.8
+    },
+    "RING_WALKWAY": [
+      "ring",
+      { "token": "torus", "weight": 2.8 },
+      { "token": "圆环", "weight": 3.0 }
+    ]
+  },
+  "negative": {
+    "HELIX_PATH": {
+      "sphere": 1.4,
+      "box": 1.2
+    },
+    "TOWER": {
+      "ring": 1.3,
+      "arch": 1.2
+    }
+  }
+}
