@@ -287,6 +287,12 @@ public class AiAssistantComponent implements EditorComponent {
         remotePlanFuture = remotePlannerService.requestPlanAsync(config, conversationHistory);
     }
 
+    public CompletableFuture<AiRemotePlannerService.RemotePlanResult> testRemoteConnectionAsync(
+            AiRemotePlannerService.PlannerConfig config
+    ) {
+        return remotePlannerService.testConnectionAsync(config);
+    }
+
     public RemotePollResult pollRemotePlannerResultIfReady() {
         if (remotePlanFuture == null || !remotePlanFuture.isDone()) {
             return null;

@@ -35,6 +35,8 @@ final class AiAssistantSettingsPopupRenderer {
     interface Actions {
         void onValidateLocal();
 
+        void onTestRemoteConnection();
+
         void onSaveSettings();
 
         void onReloadSettings();
@@ -121,6 +123,10 @@ final class AiAssistantSettingsPopupRenderer {
         ImGui.separator();
         if (ImGui.button("Validate (Local)")) {
             actions.onValidateLocal();
+        }
+        ImGui.sameLine();
+        if (ImGui.button("Test Remote API")) {
+            actions.onTestRemoteConnection();
         }
         ImGui.sameLine();
         if (ImGui.button("Save Settings")) {

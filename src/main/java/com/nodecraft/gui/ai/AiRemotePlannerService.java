@@ -79,8 +79,125 @@ public class AiRemotePlannerService {
         return CompletableFuture.supplyAsync(() -> requestPlan(config, conversation), executor);
     }
 
+    public CompletableFuture<RemotePlanResult> testConnectionAsync(PlannerConfig config) {
+        if (executor.isShutdown()) {
+            return CompletableFuture.completedFuture(
+                    RemotePlanResult.fail("Remote planner is shut down.", -1, "", "canceled", 1)
+            );
+        }
+        return CompletableFuture.supplyAsync(() -> testConnection(config), executor);
+    }
+
     public void shutdown() {
         executor.shutdownNow();
+    }
+
+    private RemotePlanResult testConnection(PlannerConfig config) {
+        if (config == null) {
+            return RemotePlanResult.fail("Remote planner config is null.", -1, "", "config", 1);
+        }
+        if (isBlank(config.apiBaseUrl())) {
+            return RemotePlanResult.fail("API base URL is empty.", -1, "", "config", 1);
+        }
+        if (isBlank(config.apiKey())) {
+            return RemotePlanResult.fail("API key is empty.", -1, "", "config", 1);
+        }
+        if (isBlank(config.model())) {
+            return RemotePlanResult.fail("Model is empty.", -1, "", "config", 1);
+        }
+
+        String baseUrl = config.apiBaseUrl().trim();
+        int timeoutSeconds = Math.max(5, Math.min(600, config.timeoutSeconds()));
+        HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(Math.min(timeoutSeconds, 30)))
+                .build();
+
+        try {
+            boolean useAnthropic = shouldUseAnthropic(config, baseUrl);
+            HttpResponse<String> response = useAnthropic
+                    ? sendAnthropicConnectionTest(client, config, timeoutSeconds)
+                    : sendOpenAIConnectionTest(client, config, timeoutSeconds);
+
+            if (response.statusCode() >= 300) {
+                return RemotePlanResult.fail(
+                        "HTTP " + response.statusCode() + ": " + truncate(response.body()),
+                        response.statusCode(),
+                        response.body(),
+                        classifyErrorCategory(response.statusCode()),
+                        1
+                );
+            }
+            return RemotePlanResult.ok("Connection test succeeded.", response.statusCode(), response.body(), 1);
+        } catch (IOException e) {
+            return RemotePlanResult.fail("Network error: " + e.getMessage(), -1, "", "network", 1);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return RemotePlanResult.fail("Connection test was canceled.", -1, "", "canceled", 1);
+        } catch (Exception e) {
+            return RemotePlanResult.fail("Connection test failed: " + e.getMessage(), -1, "", "unknown", 1);
+        }
+    }
+
+    private HttpResponse<String> sendOpenAIConnectionTest(
+            HttpClient client,
+            PlannerConfig config,
+            int timeoutSeconds
+    ) throws IOException, InterruptedException {
+        String endpoint = normalizeEndpoint(config.apiBaseUrl(), "/chat/completions");
+
+        JsonObject body = new JsonObject();
+        body.addProperty("model", config.model());
+        body.addProperty("temperature", 0.0);
+        body.addProperty(OPENAI_MAX_TOKENS_FIELD, 1);
+
+        JsonArray messages = new JsonArray();
+        JsonObject user = new JsonObject();
+        user.addProperty("role", "user");
+        user.addProperty("content", "ping");
+        messages.add(user);
+        body.add("messages", messages);
+
+        HttpResponse<String> response = sendOpenAIRequest(client, endpoint, config.apiKey(), body, timeoutSeconds);
+        if (response.statusCode() == 400 && isOpenAITokenFieldCompatibilityError(response.body())) {
+            body.remove(OPENAI_MAX_TOKENS_FIELD);
+            body.addProperty(OPENAI_MAX_COMPLETION_TOKENS_FIELD, 1);
+            return sendOpenAIRequest(client, endpoint, config.apiKey(), body, timeoutSeconds);
+        }
+        return response;
+    }
+
+    private HttpResponse<String> sendAnthropicConnectionTest(
+            HttpClient client,
+            PlannerConfig config,
+            int timeoutSeconds
+    ) throws IOException, InterruptedException {
+        String endpoint = normalizeAnthropicEndpoint(config.apiBaseUrl());
+
+        JsonObject body = new JsonObject();
+        body.addProperty("model", config.model());
+        body.addProperty("max_tokens", 8);
+
+        JsonArray messages = new JsonArray();
+        JsonObject item = new JsonObject();
+        item.addProperty("role", "user");
+        JsonArray content = new JsonArray();
+        JsonObject textPart = new JsonObject();
+        textPart.addProperty("type", "text");
+        textPart.addProperty("text", "ping");
+        content.add(textPart);
+        item.add("content", content);
+        messages.add(item);
+        body.add("messages", messages);
+
+        HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
+                .timeout(Duration.ofSeconds(timeoutSeconds))
+                .header("Content-Type", "application/json")
+                .header("x-api-key", config.apiKey())
+                .header("anthropic-version", "2023-06-01")
+                .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
+                .build();
+
+        return client.send(request, HttpResponse.BodyHandlers.ofString());
     }
 
     private RemotePlanResult requestPlan(PlannerConfig config, List<ConversationMessage> conversation) {

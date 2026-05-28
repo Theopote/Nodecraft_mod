@@ -59,6 +59,7 @@ import imgui.type.ImString;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.minecraft.util.math.BlockPos;
@@ -162,6 +163,7 @@ public class PropertyPanelComponent implements EditorComponent {
     private final Path aiSettingsPath;
     private String aiLastSubmittedPrompt = "";
     private String aiLastDetectedProviderLabel = "";
+    private CompletableFuture<AiRemotePlannerService.RemotePlanResult> aiConnectionTestFuture = null;
     private int lastAiUndoStepCount = 0;
     private String aiPlanStatusMessage = "";
     private String aiSettingsStatusMessage = "";
@@ -1636,6 +1638,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
     private void renderAiAssistantTabContent() {
         pollRemotePlannerResultIfReady();
+        pollConnectionTestResultIfReady();
 
         ImGui.textWrapped("Describe what you want to build, and AI will generate a node graph plan.");
         if (ImGui.smallButton("AI Settings")) {
@@ -1774,6 +1777,11 @@ public class PropertyPanelComponent implements EditorComponent {
                     @Override
                     public void onValidateLocal() {
                         aiSettingsStatusMessage = validateAiSettings();
+                    }
+
+                    @Override
+                    public void onTestRemoteConnection() {
+                        testRemoteConnection();
                     }
 
                     @Override
@@ -2290,6 +2298,50 @@ public class PropertyPanelComponent implements EditorComponent {
         String requestSnapshot = buildRemoteRequestSnapshot(config, userPrompt, userPromptPayload, relevantSchemas.size());
         aiPlanStatusMessage = "Remote planner request submitted...";
         aiAssistantComponent.submitRemotePlannerRequest(userPrompt, config, conversationHistory, requestSnapshot);
+    }
+
+    private void testRemoteConnection() {
+        String validation = validateAiSettings();
+        if (validation.startsWith("Validation failed")) {
+            aiSettingsStatusMessage = validation;
+            return;
+        }
+
+        if (aiConnectionTestFuture != null && !aiConnectionTestFuture.isDone()) {
+            aiSettingsStatusMessage = "Connection test is already running...";
+            return;
+        }
+
+        AiRemotePlannerService.PlannerConfig config = new AiRemotePlannerService.PlannerConfig(
+                aiApiBaseUrl.get(),
+                aiApiKey.get(),
+                aiModel.get(),
+                providerStrategyFromIndex(aiProviderStrategyIndex.get()),
+                aiSystemPrompt.get(),
+                aiMaxOutputTokens.get(),
+                aiRequestTimeoutSeconds.get()
+        );
+        aiSettingsStatusMessage = "Testing remote API connection...";
+        aiConnectionTestFuture = aiAssistantComponent.testRemoteConnectionAsync(config);
+    }
+
+    private void pollConnectionTestResultIfReady() {
+        if (aiConnectionTestFuture == null || !aiConnectionTestFuture.isDone()) {
+            return;
+        }
+
+        try {
+            AiRemotePlannerService.RemotePlanResult result = aiConnectionTestFuture.join();
+            if (result.success()) {
+                aiSettingsStatusMessage = "Remote API connection successful (HTTP " + result.statusCode() + ").";
+            } else {
+                aiSettingsStatusMessage = "Remote API connection failed: " + formatRemoteErrorMessage(result);
+            }
+        } catch (Exception e) {
+            aiSettingsStatusMessage = "Remote API connection failed: " + e.getMessage();
+        } finally {
+            aiConnectionTestFuture = null;
+        }
     }
 
     private List<AiRemotePlannerService.ConversationMessage> buildConversationHistory(
