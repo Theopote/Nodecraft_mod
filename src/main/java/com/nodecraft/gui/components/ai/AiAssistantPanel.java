@@ -763,6 +763,7 @@ public final class AiAssistantPanel {
                         aiUseSelectionContext.get(),
                         aiIncludeGraphContext.get(),
                         selectedNode,
+                resolveSelectedNodePosition(),
                         getNodeGraph()
                 )
         );
@@ -1580,6 +1581,19 @@ public final class AiAssistantPanel {
 
     private NodeGraph getNodeGraph() {
         return nodeGraphSupplier.get();
+    }
+
+    private NodePosition resolveSelectedNodePosition() {
+        if (selectedNode == null) {
+            return null;
+        }
+
+        ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
+        if (editor == null) {
+            return null;
+        }
+
+        return editor.getNodePosition(selectedNode.getId());
     }
 
     private static String nullToEmpty(String value) {

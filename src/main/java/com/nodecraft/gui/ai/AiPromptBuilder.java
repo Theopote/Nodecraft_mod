@@ -49,6 +49,12 @@ public final class AiPromptBuilder {
             4. Position: Use relative 'position' offsets; (0,0) is usually fine as the engine handles auto-layout.
             5. Failure: If the request cannot be fulfilled with the library, return {"error": "brief_reason"}.
 
+            # WORKFLOW_BOUNDARIES
+            - Minecraft block selection is a user-side interaction. Do not invent a node to perform the click unless the library explicitly provides one.
+            - When the user describes a build/model/preview task, your job is to compose the canvas node graph that will produce that result in Minecraft.
+            - If the request references a selected block or selected area, use the selection context as an input anchor for graph layout and spatial reasoning.
+            - Prefer graphs that end in preview or apply/execute nodes so the final effect is visible or materialized in Minecraft.
+
             # DSL_FORMAT
             {
               "description": "Short summary of the intended outcome",
@@ -78,6 +84,7 @@ public final class AiPromptBuilder {
             - World Anchoring: To place a node at the player, start with 'input.world.player_pos'.
             - Local Offsets: Use 'math.vector.add' to adjust positions (e.g., putting an object 5 blocks above the head).
             - Mandatory Termination: Every functional graph MUST end in an output node (e.g., 'output.execute.apply_changes' or 'output.preview.show_geometry').
+            - Build Focus: Treat selection-related nodes as graph inputs, not as the final goal. The final goal is the generated geometry or world-operation pipeline.
 
             # AVAILABLE_NODE_LIBRARY
             Usage: Strictly use the 'typeId' provided below.
