@@ -40,6 +40,7 @@ public final class AiMockPlanService {
     }
 
     enum MockTemplateKind {
+        PLACEMENT,
         MOBIUS,
         SPHERE,
         BOX_FILL,
@@ -472,7 +473,25 @@ public final class AiMockPlanService {
         buildSphereTemplate(params, nodes, connections);
     }
 
+    private static void buildPlacementTemplate(ParsedParameters params, List<MockNode> nodes, List<MockConnection> connections) {
+        nodes.add(new MockNode(
+            "selected_block",
+            "world.selection.selected_block",
+            0.0f,
+            0.0f,
+            createNodeState("showBlockPreview", true)
+        ));
+    }
+
     private static TemplateSelectionResult selectTemplateCandidates(String lowerPrompt) {
+        if (containsAny(lowerPrompt, "place", "add", "create", "insert", "放置", "添加", "插入", "生成一个节点", "放一个", "选择节点", "方块选择", "selected block", "block selector")) {
+            List<TemplateSelection> ranked = List.of(
+                new TemplateSelection(MockTemplateKind.PLACEMENT, 1000.0d),
+                new TemplateSelection(MockTemplateKind.GENERIC, 1.0d)
+            );
+            return new TemplateSelectionResult(ranked, ranked);
+        }
+
         if (containsAny(lowerPrompt, "mobius", "möbius", "莫比乌斯")) {
             List<TemplateSelection> ranked = List.of(
                 new TemplateSelection(MockTemplateKind.MOBIUS, 1000.0d),
@@ -483,6 +502,7 @@ public final class AiMockPlanService {
 
         List<TemplateSelection> scored = new ArrayList<>();
         for (MockTemplateKind kind : List.of(
+            MockTemplateKind.PLACEMENT,
             MockTemplateKind.HELIX_PATH,
             MockTemplateKind.BOX_FILL,
             MockTemplateKind.SPHERE,
@@ -609,6 +629,7 @@ public final class AiMockPlanService {
         List<TemplateSelection> rankedCandidates
     ) {
         String templateName = switch (Objects.requireNonNullElse(templateKind, MockTemplateKind.GENERIC)) {
+            case PLACEMENT -> "placement";
             case MOBIUS -> "mobius";
             case SPHERE -> "sphere";
             case BOX_FILL -> "box_fill";
@@ -620,6 +641,7 @@ public final class AiMockPlanService {
             case GENERIC -> "generic";
         };
         String fallbackName = switch (Objects.requireNonNullElse(fallbackTemplate, MockTemplateKind.GENERIC)) {
+            case PLACEMENT -> "placement";
             case MOBIUS -> "mobius";
             case SPHERE -> "sphere";
             case BOX_FILL -> "box_fill";
@@ -1020,6 +1042,10 @@ public final class AiMockPlanService {
 
     private static Map<MockTemplateKind, List<WeightedKeyword>> createPositiveKeywordTable() {
         Map<MockTemplateKind, List<WeightedKeyword>> map = new HashMap<>();
+        map.put(MockTemplateKind.PLACEMENT, List.of(
+            kw("place", 4.0d), kw("add", 3.0d), kw("insert", 2.8d), kw("create", 2.6d), kw("node", 2.0d), kw("selector", 3.0d), kw("selected block", 4.0d), kw("block selector", 4.0d),
+            kw("放置", 4.0d), kw("添加", 3.0d), kw("插入", 2.8d), kw("创建", 2.6d), kw("节点", 2.0d), kw("选择节点", 4.0d), kw("方块选择", 4.0d), kw("选中方块", 3.2d)
+        ));
         map.put(MockTemplateKind.HELIX_PATH, List.of(
             kw("helix", 3.2d), kw("spiral", 2.6d), kw("coil", 2.4d), kw("spring", 2.2d),
             kw("curve", 1.6d), kw("path", 1.8d), kw("road", 1.4d), kw("trail", 1.3d), kw("ramp", 1.4d),
@@ -1057,6 +1083,9 @@ public final class AiMockPlanService {
 
     private static Map<MockTemplateKind, List<WeightedKeyword>> createNegativeKeywordTable() {
         Map<MockTemplateKind, List<WeightedKeyword>> map = new HashMap<>();
+        map.put(MockTemplateKind.PLACEMENT, List.of(
+            kw("sphere", 1.5d), kw("box", 1.5d), kw("tower", 1.2d), kw("helix", 1.2d), kw("arch", 1.1d), kw("ring", 1.1d)
+        ));
         map.put(MockTemplateKind.HELIX_PATH, List.of(
             kw("sphere", 1.4d), kw("ball", 1.2d), kw("tower", 1.3d), kw("box", 1.2d), kw("cube", 1.2d), kw("region", 0.9d), kw("fill", 0.9d)
         ));

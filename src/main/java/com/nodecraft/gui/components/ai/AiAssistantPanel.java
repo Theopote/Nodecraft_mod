@@ -954,6 +954,9 @@ public final class AiAssistantPanel {
         setPendingAiPlan(fromServiceGraphPlan(AiPlanDslWorkflowService.fromDsl(parsed.graph())));
         AiGraphPlan pendingAiPlan = getPendingAiPlan();
         String warningSuffix = formatValidationWarningSuffix(parsed.warnings());
+        if (shouldAutoApplyPlacementPlan(pendingAiPlan)) {
+            applyPendingAiPlan();
+        }
         addAiChatMessage(
                 "assistant",
                 AiPromptContextService.buildAiPlanReply(
@@ -987,6 +990,21 @@ public final class AiAssistantPanel {
         String warningSuffix = formatValidationWarningSuffix(localParsed.warnings());
         aiPlanStatusMessage = "Remote planner fallback applied (" + reason + "). Review and click Apply Plan." + warningSuffix;
         addAiChatMessage("assistant", aiPlanStatusMessage);
+    }
+
+    private boolean shouldAutoApplyPlacementPlan(AiGraphPlan plan) {
+        if (aiPreviewOnlyMode.get() || plan == null || !plan.isValid()) {
+            return false;
+        }
+        if (plan.nodes() == null || plan.connections() == null) {
+            return false;
+        }
+        if (plan.nodes().size() != 1 || !plan.connections().isEmpty()) {
+            return false;
+        }
+
+        AiPlanNode node = plan.nodes().getFirst();
+        return node != null && "world.selection.selected_block".equalsIgnoreCase(node.typeId());
     }
 
     private String formatValidationWarningSuffix(List<String> warnings) {

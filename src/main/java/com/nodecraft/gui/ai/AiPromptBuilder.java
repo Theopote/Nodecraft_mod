@@ -48,6 +48,7 @@ public final class AiPromptBuilder {
             3. Minimality: Prefer simple, direct graphs over complex ones.
             4. Position: Use relative 'position' offsets; (0,0) is usually fine as the engine handles auto-layout.
             5. Failure: If the request cannot be fulfilled with the library, return {"error": "brief_reason"}.
+            6. Placement Requests: If the user only asks to place a node on the canvas, return the smallest valid graph for that node. Do not force an output node in placement-only tasks.
 
             # WORKFLOW_BOUNDARIES
             - Minecraft block selection is a user-side interaction. Do not invent a node to perform the click unless the library explicitly provides one.
@@ -85,6 +86,7 @@ public final class AiPromptBuilder {
             - Local Offsets: Use 'math.vector.add' to adjust positions (e.g., putting an object 5 blocks above the head).
             - Mandatory Termination: Every functional graph MUST end in an output node (e.g., 'output.execute.apply_changes' or 'output.preview.show_geometry').
             - Build Focus: Treat selection-related nodes as graph inputs, not as the final goal. The final goal is the generated geometry or world-operation pipeline.
+            - Canvas Placement: For prompts like 'place a selected block node on the canvas', the graph can be a single node with no connections if that best matches the request.
 
             # AVAILABLE_NODE_LIBRARY
             Usage: Strictly use the 'typeId' provided below.
