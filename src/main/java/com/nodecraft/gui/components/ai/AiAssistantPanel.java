@@ -455,7 +455,7 @@ public final class AiAssistantPanel {
         if (content == null || content.isBlank()) {
             return;
         }
-        aiChatMessages.add(new AiChatMessage(role == null ? "assistant" : role, content, System.currentTimeMillis()));
+        aiAssistantComponent.addChatMessage(role == null ? "assistant" : role, content, System.currentTimeMillis());
         saveAiSessionStateToDisk();
     }
 
@@ -779,8 +779,10 @@ public final class AiAssistantPanel {
         );
 
         String requestSnapshot = buildRemoteRequestSnapshot(config, userPrompt, userPromptPayload, relevantSchemas.size());
-        aiPlanStatusMessage = "Remote planner request submitted...";
-        aiAssistantComponent.submitRemotePlannerRequest(userPrompt, config, conversationHistory, requestSnapshot);
+        boolean submitted = aiAssistantComponent.submitRemotePlannerRequest(userPrompt, config, conversationHistory, requestSnapshot);
+        aiPlanStatusMessage = submitted
+            ? "Remote planner request submitted..."
+            : "Remote planner is already running. Please wait for completion or cancel the current request.";
     }
 
     private void testRemoteConnection() {
@@ -1030,6 +1032,8 @@ public final class AiAssistantPanel {
     ) {
         String detectedLanguage = detectInputLanguage(userPrompt);
         String normalizedIntentPreview = buildNormalizedIntentPreview(userPrompt);
+        String promptPreview = sanitizeUserPromptForSnapshot(userPrompt);
+        String promptFingerprint = computePromptFingerprint(userPrompt);
 
         return "baseUrl: " + nullToEmpty(config.apiBaseUrl()) + "\n" +
                 "apiKeyMasked: " + maskSecret(config.apiKey()) + "\n" +
@@ -1040,11 +1044,39 @@ public final class AiAssistantPanel {
                 "selectionContextEnabled: " + aiUseSelectionContext.get() + "\n" +
                 "inputLanguageDetected: " + detectedLanguage + "\n" +
                 "normalizedIntentPreview: " + normalizedIntentPreview + "\n" +
+                "userPromptPreview: " + promptPreview + "\n" +
+                "userPromptFingerprint: " + promptFingerprint + "\n" +
                 "schemaCountInjected: " + schemaCount + "\n" +
                 "systemPromptLength: " + (config.systemPrompt() == null ? 0 : config.systemPrompt().length()) + "\n" +
                 "userPromptLength: " + (userPrompt == null ? 0 : userPrompt.length()) + "\n" +
-                "payloadLength: " + (userPromptPayload == null ? 0 : userPromptPayload.length()) + "\n" +
-                "\nuserPrompt:\n" + (userPrompt == null ? "" : userPrompt) + "\n";
+                "payloadLength: " + (userPromptPayload == null ? 0 : userPromptPayload.length()) + "\n";
+    }
+
+    private String sanitizeUserPromptForSnapshot(String prompt) {
+        if (prompt == null || prompt.isBlank()) {
+            return "(empty)";
+        }
+
+        String sanitized = prompt;
+        sanitized = sanitized.replaceAll("(?i)(api[_-]?key\\s*[:=]\\s*)([^\\s,;]+)", "$1***");
+        sanitized = sanitized.replaceAll("(?i)(password\\s*[:=]\\s*)([^\\s,;]+)", "$1***");
+        sanitized = sanitized.replaceAll("(?i)(token\\s*[:=]\\s*)([^\\s,;]+)", "$1***");
+        sanitized = sanitized.replaceAll("(?i)(authorization\\s*[:=]\\s*bearer\\s+)([^\\s,;]+)", "$1***");
+        sanitized = sanitized.replaceAll("(?i)\\bsk-[a-z0-9]{16,}\\b", "***");
+        sanitized = sanitized.replaceAll("(?i)\\b[a-z0-9_\\-]{32,}\\b", "***");
+        sanitized = sanitized.replaceAll("\\s+", " ").trim();
+
+        if (sanitized.length() <= 280) {
+            return sanitized;
+        }
+        return sanitized.substring(0, 280) + "...[truncated]";
+    }
+
+    private String computePromptFingerprint(String prompt) {
+        if (prompt == null || prompt.isBlank()) {
+            return "none";
+        }
+        return Integer.toHexString(prompt.hashCode());
     }
 
     private String detectInputLanguage(String text) {

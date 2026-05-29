@@ -21,6 +21,9 @@ import java.util.concurrent.CompletableFuture;
 public class AiAssistantComponent implements EditorComponent {
 
     private static final String COMPONENT_ID = "ai_assistant";
+    private static final int MAX_CHAT_MESSAGES = 120;
+    private static final int MAX_CHAT_TOTAL_CHARS = 50000;
+    private static final int MAX_CHAT_MESSAGE_CHARS = 3000;
 
     private boolean visible = true;
     private UUID selectedNodeId = null;
@@ -149,8 +152,28 @@ public class AiAssistantComponent implements EditorComponent {
     public void setChatMessages(List<AiChatMessage> messages) {
         chatMessages.clear();
         if (messages != null && !messages.isEmpty()) {
-            chatMessages.addAll(messages);
+            for (AiChatMessage message : messages) {
+                if (message == null) {
+                    continue;
+                }
+                addChatMessage(message.role(), message.content(), message.timestampMs());
+            }
         }
+        trimChatMessagesForCapacity();
+    }
+
+    public void addChatMessage(String role, String content, long timestampMs) {
+        if (content == null || content.isBlank()) {
+            return;
+        }
+
+        String compacted = compactChatContent(content);
+        if (compacted.isBlank()) {
+            return;
+        }
+
+        chatMessages.add(new AiChatMessage(role == null ? "assistant" : role, compacted, timestampMs));
+        trimChatMessagesForCapacity();
     }
 
     public AiGraphPlan getPendingPlan() {
@@ -244,11 +267,11 @@ public class AiAssistantComponent implements EditorComponent {
                     if (message == null || message.content() == null || message.content().isBlank()) {
                         continue;
                     }
-                    chatMessages.add(new AiChatMessage(
+                        addChatMessage(
                             message.role() == null ? "assistant" : message.role(),
                             message.content(),
                             message.timestampMs()
-                    ));
+                        );
                 }
             }
 
@@ -262,7 +285,36 @@ public class AiAssistantComponent implements EditorComponent {
                 }
             }
         } finally {
+            trimChatMessagesForCapacity();
             sessionRestoreInProgress = false;
+        }
+    }
+
+    private String compactChatContent(String content) {
+        String normalized = content == null ? "" : content.strip();
+        if (normalized.isBlank()) {
+            return "";
+        }
+
+        if (normalized.length() <= MAX_CHAT_MESSAGE_CHARS) {
+            return normalized;
+        }
+        return normalized.substring(0, MAX_CHAT_MESSAGE_CHARS) + "\n...[truncated, original chars=" + normalized.length() + "]";
+    }
+
+    private void trimChatMessagesForCapacity() {
+        while (chatMessages.size() > MAX_CHAT_MESSAGES) {
+            chatMessages.remove(0);
+        }
+
+        int totalChars = 0;
+        for (AiChatMessage message : chatMessages) {
+            totalChars += message.content() == null ? 0 : message.content().length();
+        }
+
+        while (totalChars > MAX_CHAT_TOTAL_CHARS && !chatMessages.isEmpty()) {
+            AiChatMessage removed = chatMessages.remove(0);
+            totalChars -= removed.content() == null ? 0 : removed.content().length();
         }
     }
 
@@ -270,12 +322,18 @@ public class AiAssistantComponent implements EditorComponent {
         return sessionRestoreInProgress;
     }
 
-    public void submitRemotePlannerRequest(
+    public boolean submitRemotePlannerRequest(
             String prompt,
             AiRemotePlannerService.PlannerConfig config,
             List<AiRemotePlannerService.ConversationMessage> conversationHistory,
             String requestSnapshot
     ) {
+        if (isRemotePlannerBusy()) {
+            lastRemoteErrorCategory = "request";
+            lastRemoteErrorMessage = "Remote planner is already running.";
+            return false;
+        }
+
         remotePendingPrompt = prompt == null ? "" : prompt;
         lastRemoteRawResponse = "";
         lastRemoteModelText = "";
@@ -285,6 +343,7 @@ public class AiAssistantComponent implements EditorComponent {
         lastRemoteStatusCode = 0;
         lastRemoteAttempts = 0;
         remotePlanFuture = remotePlannerService.requestPlanAsync(config, conversationHistory);
+        return true;
     }
 
     public CompletableFuture<AiRemotePlannerService.RemotePlanResult> testRemoteConnectionAsync(

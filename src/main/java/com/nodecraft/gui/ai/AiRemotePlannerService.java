@@ -16,7 +16,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Remote AI planner client with OpenAI-compatible and Anthropic-compatible request formats.
@@ -24,9 +28,30 @@ import java.util.concurrent.Executors;
 public class AiRemotePlannerService {
 
     private static final int MAX_ATTEMPTS = 3;
+    private static final int EXECUTOR_THREADS = 2;
+    private static final int EXECUTOR_QUEUE_CAPACITY = 16;
     private static final String OPENAI_MAX_TOKENS_FIELD = "max_tokens";
     private static final String OPENAI_MAX_COMPLETION_TOKENS_FIELD = "max_completion_tokens";
-    private final ExecutorService executor = Executors.newCachedThreadPool();
+    private final ExecutorService executor = new ThreadPoolExecutor(
+            EXECUTOR_THREADS,
+            EXECUTOR_THREADS,
+            30L,
+            TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(EXECUTOR_QUEUE_CAPACITY),
+            new AiPlannerThreadFactory(),
+            new ThreadPoolExecutor.AbortPolicy()
+    );
+
+    private static final class AiPlannerThreadFactory implements ThreadFactory {
+        private int sequence = 1;
+
+        @Override
+        public synchronized Thread newThread(Runnable runnable) {
+            Thread thread = new Thread(runnable, "ai-remote-planner-" + sequence++);
+            thread.setDaemon(true);
+            return thread;
+        }
+    }
 
     public record PlannerConfig(
             String apiBaseUrl,
@@ -80,7 +105,13 @@ public class AiRemotePlannerService {
                     RemotePlanResult.fail("Remote planner is shut down.", -1, "", "canceled", 1)
             );
         }
-        return CompletableFuture.supplyAsync(() -> requestPlan(config, conversation), executor);
+        try {
+            return CompletableFuture.supplyAsync(() -> requestPlan(config, conversation), executor);
+        } catch (RejectedExecutionException e) {
+            return CompletableFuture.completedFuture(
+                    RemotePlanResult.fail("Remote planner is busy. Please retry shortly.", -1, "", "request", 1)
+            );
+        }
     }
 
     public CompletableFuture<RemotePlanResult> testConnectionAsync(PlannerConfig config) {
@@ -89,7 +120,13 @@ public class AiRemotePlannerService {
                     RemotePlanResult.fail("Remote planner is shut down.", -1, "", "canceled", 1)
             );
         }
-        return CompletableFuture.supplyAsync(() -> testConnection(config), executor);
+        try {
+            return CompletableFuture.supplyAsync(() -> testConnection(config), executor);
+        } catch (RejectedExecutionException e) {
+            return CompletableFuture.completedFuture(
+                    RemotePlanResult.fail("Remote planner is busy. Please retry shortly.", -1, "", "request", 1)
+            );
+        }
     }
 
     public void shutdown() {
