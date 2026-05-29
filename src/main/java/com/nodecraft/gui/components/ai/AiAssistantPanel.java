@@ -193,6 +193,7 @@ public final class AiAssistantPanel {
 
                     @Override
                     public void onSubmitPrompt() {
+                        aiPlanStatusMessage = "Send clicked. Preparing request...";
                         submitAiPrompt();
                     }
                 }
@@ -694,6 +695,11 @@ public final class AiAssistantPanel {
     }
 
     private void submitAiPrompt() {
+        if (isRemotePlannerBusy()) {
+            aiPlanStatusMessage = "Remote planner is still running. Please wait or click Cancel.";
+            return;
+        }
+
         String prompt = aiPromptInput.get();
         if (prompt == null || prompt.isBlank()) {
             aiPlanStatusMessage = "Prompt is empty. Please enter a request.";
@@ -962,8 +968,9 @@ public final class AiAssistantPanel {
         setPendingAiPlan(fromServiceGraphPlan(AiPlanDslWorkflowService.fromDsl(parsed.graph())));
         AiGraphPlan pendingAiPlan = getPendingAiPlan();
         String warningSuffix = formatValidationWarningSuffix(parsed.warnings());
-        if (shouldAutoApplyPlacementPlan(pendingAiPlan)) {
-            applyPendingAiPlan();
+        boolean autoAppliedPlacement = false;
+        if (shouldAutoApplyPlacementPlan(prompt, pendingAiPlan)) {
+            autoAppliedPlacement = applyPlacementPlan(pendingAiPlan);
         }
         addAiChatMessage(
                 "assistant",
@@ -978,7 +985,11 @@ public final class AiAssistantPanel {
                         pendingAiPlan.validationErrors()
                 ) + warningSuffix
         );
-        aiPlanStatusMessage = "Plan JSON validated (" + source + "). Review and click Apply Plan." + warningSuffix;
+        if (!autoAppliedPlacement) {
+            aiPlanStatusMessage = "Plan JSON validated (" + source + "). Review and click Apply Plan." + warningSuffix;
+        } else if (!warningSuffix.isBlank()) {
+            aiPlanStatusMessage = aiPlanStatusMessage + warningSuffix;
+        }
     }
 
     private void fallbackToLocalPlan(String prompt, String reason) {
@@ -1000,7 +1011,7 @@ public final class AiAssistantPanel {
         addAiChatMessage("assistant", aiPlanStatusMessage);
     }
 
-    private boolean shouldAutoApplyPlacementPlan(AiGraphPlan plan) {
+    private boolean shouldAutoApplyPlacementPlan(String prompt, AiGraphPlan plan) {
         if (aiPreviewOnlyMode.get() || plan == null || !plan.isValid()) {
             return false;
         }
@@ -1012,7 +1023,69 @@ public final class AiAssistantPanel {
         }
 
         AiPlanNode node = plan.nodes().get(0);
-        return node != null && "world.selection.selected_block".equalsIgnoreCase(node.typeId());
+        if (node == null || node.typeId() == null || node.typeId().isBlank()) {
+            return false;
+        }
+
+        String nodeType = node.typeId().toLowerCase(Locale.ROOT);
+        if (nodeType.startsWith("world.selection.")) {
+            return true;
+        }
+        if (nodeType.startsWith("input.type_selectors.")) {
+            return true;
+        }
+
+        String normalizedPrompt = prompt == null ? "" : prompt.toLowerCase(Locale.ROOT);
+        return normalizedPrompt.contains("place")
+                || normalizedPrompt.contains("add")
+                || normalizedPrompt.contains("insert")
+                || normalizedPrompt.contains("放置")
+                || normalizedPrompt.contains("添加")
+                || normalizedPrompt.contains("插入")
+                || normalizedPrompt.contains("节点");
+    }
+
+    private boolean applyPlacementPlan(AiGraphPlan pendingAiPlan) {
+        if (pendingAiPlan == null || !pendingAiPlan.isValid() || pendingAiPlan.nodes() == null || pendingAiPlan.nodes().isEmpty()) {
+            return false;
+        }
+
+        ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
+        if (editor == null) {
+            aiPlanStatusMessage = "Placement apply failed: editor is unavailable.";
+            return false;
+        }
+
+        float[] anchor = resolveAiPlanAnchorPosition(editor);
+        List<AiPlanApplyCoordinatorService.PlanNode> applyNodes = new ArrayList<>(pendingAiPlan.nodes().size());
+        for (AiPlanNode node : pendingAiPlan.nodes()) {
+            applyNodes.add(new AiPlanApplyCoordinatorService.PlanNode(
+                    node.ref(),
+                    node.typeId(),
+                    node.offsetX(),
+                    node.offsetY(),
+                    node.nodeState()
+            ));
+        }
+
+        AiPlanApplyCoordinatorService.ApplyResult result = AiPlanApplyCoordinatorService.applyExact(
+                editor,
+                applyNodes,
+                List.of(),
+                anchor
+        );
+
+        if (result.success()) {
+            lastAiUndoStepCount = result.undoSteps();
+            lastAiApplyWasPatch = false;
+            aiPlanStatusMessage = result.statusMessage() + " (placement auto-applied)";
+            return true;
+        }
+
+        lastAiUndoStepCount = 0;
+        lastAiApplyWasPatch = false;
+        aiPlanStatusMessage = "Placement auto-apply failed: " + result.statusMessage();
+        return false;
     }
 
     private String formatValidationWarningSuffix(List<String> warnings) {

@@ -190,7 +190,11 @@ final class AiAssistantMainPanelRenderer {
     }
 
     private static void renderPromptInput(State state, Actions actions) {
-        if (state.busy()) {
+        boolean busy = state.busy();
+
+        ImGui.pushID("ai_prompt_input_zone");
+
+        if (busy) {
             ImGui.beginDisabled();
         }
 
@@ -212,14 +216,16 @@ final class AiAssistantMainPanelRenderer {
             inputFlags);
         ImGui.popItemWidth();
 
+        if (busy) {
+            ImGui.endDisabled();
+        }
+
         ImGui.sameLine();
-        if (ImGui.button("Send", 80.0f, dynamicHeight) || (state.enterToSend().get() && submitted)) {
+        if (ImGui.button("Send##ai_prompt_send", 80.0f, dynamicHeight) || (state.enterToSend().get() && submitted)) {
             actions.onSubmitPrompt();
         }
 
-        if (state.busy()) {
-            ImGui.endDisabled();
-        }
+        ImGui.popID();
     }
 
     private static void renderModeHint(State state) {

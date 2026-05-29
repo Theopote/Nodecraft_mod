@@ -40,6 +40,9 @@ final class AiAssistantPlanPreviewRenderer {
 
         if (!state.hasPlan()) {
             ImGui.textDisabled("No plan yet. Send a prompt to generate a plan.");
+            if (state.statusMessage() != null && !state.statusMessage().isBlank()) {
+                renderStatusMessage(state.statusMessage());
+            }
             return;
         }
 
