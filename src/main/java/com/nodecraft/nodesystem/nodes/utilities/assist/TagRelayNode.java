@@ -69,11 +69,6 @@ public class TagRelayNode extends BaseNode {
     }
 
     @Override
-    public String getDescription() {
-        return "用于标注语义的中继节点，输入输出保持透传";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         outputValues.put(OUTPUT_SIGNAL_ID, inputValues.get(INPUT_SIGNAL_ID));
     }
@@ -194,21 +189,21 @@ public class TagRelayNode extends BaseNode {
         if (state instanceof Map<?, ?> values) {
             Object valueTag = values.get("tag");
             if (valueTag instanceof String tagText) {
-                tag = tagText;
+                setTag(tagText);
             }
             Object valueColor = values.get("color");
             if (valueColor instanceof String colorText) {
-                color = colorText;
+                setColor(colorText);
             }
             return;
         }
 
         if (state instanceof Object[] values && values.length >= 2) {
             if (values[0] instanceof String valueTag) {
-                tag = valueTag;
+                setTag(valueTag);
             }
             if (values[1] instanceof String valueColor) {
-                color = valueColor;
+                setColor(valueColor);
             }
         }
     }
