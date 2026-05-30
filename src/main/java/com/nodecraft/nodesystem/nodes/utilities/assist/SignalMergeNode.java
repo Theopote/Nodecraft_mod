@@ -221,11 +221,6 @@ public class SignalMergeNode extends BaseCustomUINode {
     }
 
     @Override
-    public String getDescription() {
-        return "将两路输入按优先级汇聚为一路输出";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         boolean usePrimaryFirst = preferPrimary;
         Object preferPrimaryInput = inputValues.get(INPUT_PREFER_PRIMARY_ID);
@@ -282,14 +277,14 @@ public class SignalMergeNode extends BaseCustomUINode {
     @Override
     public void setNodeState(@Nullable Object state) {
         if (state instanceof Boolean value) {
-            this.preferPrimary = value;
+            setPreferPrimary(value);
             return;
         }
 
         if (state instanceof Map<?, ?> map) {
             Object prefer = map.get("preferPrimary");
             if (prefer instanceof Boolean value) {
-                this.preferPrimary = value;
+                setPreferPrimary(value);
             }
 
             Object count = map.get("inputBranchCount");

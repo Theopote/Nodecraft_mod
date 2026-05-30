@@ -67,10 +67,7 @@ public class AccumulatorNode extends BaseNode {
         Object initialObj = inputValues.get(INPUT_INITIAL_ID);
 
         if (!(valuesObj instanceof List<?> values)) {
-            outputValues.put(OUTPUT_RESULT_ID, null);
-            outputValues.put(OUTPUT_RUNNING_RESULTS_ID, List.of());
-            outputValues.put(OUTPUT_COUNT_ID, 0);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            writeOutputs(null, List.of(), 0, false);
             return;
         }
 
@@ -81,81 +78,105 @@ public class AccumulatorNode extends BaseNode {
         switch (op) {
             case SUM -> {
                 Double initial = asFiniteDouble(initialObj);
+                if (initialObj != null && initial == null) {
+                    writeOutputs(null, List.of(), 0, false);
+                    return;
+                }
                 double acc = initial != null ? initial : 0.0d;
                 for (Object value : values) {
-                    if (value == null && ignoreNulls) {
-                        continue;
+                    if (value == null) {
+                        if (ignoreNulls) {
+                            continue;
+                        }
+                        writeOutputs(null, running, processedCount, false);
+                        return;
                     }
                     Double numeric = asFiniteDouble(value);
                     if (numeric == null) {
-                        continue;
+                        writeOutputs(null, running, processedCount, false);
+                        return;
                     }
                     acc += numeric;
                     running.add(acc);
                     processedCount++;
                 }
-                outputValues.put(OUTPUT_RESULT_ID, acc);
-                outputValues.put(OUTPUT_RUNNING_RESULTS_ID, running);
-                outputValues.put(OUTPUT_COUNT_ID, processedCount);
-                outputValues.put(OUTPUT_VALID_ID, true);
+                writeOutputs(acc, running, processedCount, true);
             }
             case PRODUCT -> {
                 Double initial = asFiniteDouble(initialObj);
+                if (initialObj != null && initial == null) {
+                    writeOutputs(null, List.of(), 0, false);
+                    return;
+                }
                 double acc = initial != null ? initial : 1.0d;
                 for (Object value : values) {
-                    if (value == null && ignoreNulls) {
-                        continue;
+                    if (value == null) {
+                        if (ignoreNulls) {
+                            continue;
+                        }
+                        writeOutputs(null, running, processedCount, false);
+                        return;
                     }
                     Double numeric = asFiniteDouble(value);
                     if (numeric == null) {
-                        continue;
+                        writeOutputs(null, running, processedCount, false);
+                        return;
                     }
                     acc *= numeric;
                     running.add(acc);
                     processedCount++;
                 }
-                outputValues.put(OUTPUT_RESULT_ID, acc);
-                outputValues.put(OUTPUT_RUNNING_RESULTS_ID, running);
-                outputValues.put(OUTPUT_COUNT_ID, processedCount);
-                outputValues.put(OUTPUT_VALID_ID, true);
+                writeOutputs(acc, running, processedCount, true);
             }
             case MIN -> {
                 Double acc = asFiniteDouble(initialObj);
+                if (initialObj != null && acc == null) {
+                    writeOutputs(null, List.of(), 0, false);
+                    return;
+                }
                 for (Object value : values) {
-                    if (value == null && ignoreNulls) {
-                        continue;
+                    if (value == null) {
+                        if (ignoreNulls) {
+                            continue;
+                        }
+                        writeOutputs(null, running, processedCount, false);
+                        return;
                     }
                     Double numeric = asFiniteDouble(value);
                     if (numeric == null) {
-                        continue;
+                        writeOutputs(null, running, processedCount, false);
+                        return;
                     }
                     acc = acc == null ? numeric : Math.min(acc, numeric);
                     running.add(acc);
                     processedCount++;
                 }
-                outputValues.put(OUTPUT_RESULT_ID, acc);
-                outputValues.put(OUTPUT_RUNNING_RESULTS_ID, running);
-                outputValues.put(OUTPUT_COUNT_ID, processedCount);
-                outputValues.put(OUTPUT_VALID_ID, acc != null);
+                writeOutputs(acc, running, processedCount, acc != null);
             }
             case MAX -> {
                 Double acc = asFiniteDouble(initialObj);
+                if (initialObj != null && acc == null) {
+                    writeOutputs(null, List.of(), 0, false);
+                    return;
+                }
                 for (Object value : values) {
-                    if (value == null && ignoreNulls) {
-                        continue;
+                    if (value == null) {
+                        if (ignoreNulls) {
+                            continue;
+                        }
+                        writeOutputs(null, running, processedCount, false);
+                        return;
                     }
                     Double numeric = asFiniteDouble(value);
                     if (numeric == null) {
-                        continue;
+                        writeOutputs(null, running, processedCount, false);
+                        return;
                     }
                     acc = acc == null ? numeric : Math.max(acc, numeric);
                     running.add(acc);
                     processedCount++;
                 }
-                outputValues.put(OUTPUT_RESULT_ID, acc);
-                outputValues.put(OUTPUT_RUNNING_RESULTS_ID, running);
-                outputValues.put(OUTPUT_COUNT_ID, processedCount);
-                outputValues.put(OUTPUT_VALID_ID, acc != null);
+                writeOutputs(acc, running, processedCount, acc != null);
             }
             case CONCAT -> {
                 StringBuilder builder = new StringBuilder();
@@ -173,10 +194,7 @@ public class AccumulatorNode extends BaseNode {
                     running.add(builder.toString());
                     processedCount++;
                 }
-                outputValues.put(OUTPUT_RESULT_ID, builder.toString());
-                outputValues.put(OUTPUT_RUNNING_RESULTS_ID, running);
-                outputValues.put(OUTPUT_COUNT_ID, processedCount);
-                outputValues.put(OUTPUT_VALID_ID, true);
+                writeOutputs(builder.toString(), running, processedCount, true);
             }
             case COUNT -> {
                 int count = 0;
@@ -187,12 +205,16 @@ public class AccumulatorNode extends BaseNode {
                     count++;
                     running.add(count);
                 }
-                outputValues.put(OUTPUT_RESULT_ID, count);
-                outputValues.put(OUTPUT_RUNNING_RESULTS_ID, running);
-                outputValues.put(OUTPUT_COUNT_ID, count);
-                outputValues.put(OUTPUT_VALID_ID, true);
+                writeOutputs(count, running, count, true);
             }
         }
+    }
+
+    private void writeOutputs(Object result, List<?> runningResults, int count, boolean valid) {
+        outputValues.put(OUTPUT_RESULT_ID, result);
+        outputValues.put(OUTPUT_RUNNING_RESULTS_ID, runningResults);
+        outputValues.put(OUTPUT_COUNT_ID, count);
+        outputValues.put(OUTPUT_VALID_ID, valid);
     }
 
     private Double asFiniteDouble(Object value) {

@@ -187,11 +187,6 @@ public class SignalForkNode extends BaseCustomUINode {
     }
 
     @Override
-    public String getDescription() {
-        return "将一路输入透传到两路输出，便于连线分流";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object value = inputValues.get(INPUT_SIGNAL_ID);
         outputValues.clear();
