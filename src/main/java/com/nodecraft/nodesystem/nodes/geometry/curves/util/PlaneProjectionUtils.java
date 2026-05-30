@@ -54,6 +54,27 @@ public final class PlaneProjectionUtils {
         };
     }
 
+    public static @Nullable Basis createBasisFromNormal(@Nullable Vector3d normalIn) {
+        if (normalIn == null || normalIn.lengthSquared() <= 1.0e-12d) {
+            return null;
+        }
+        Vector3d normal = new Vector3d(normalIn).normalize();
+        Vector3d xAxis = fallbackAxis(normal);
+        if (xAxis.lengthSquared() <= 1.0e-12d) {
+            return null;
+        }
+        xAxis.normalize();
+
+        Vector3d yAxis = new Vector3d(normal).cross(xAxis);
+        if (yAxis.lengthSquared() <= 1.0e-12d) {
+            return null;
+        }
+        yAxis.normalize();
+        xAxis = new Vector3d(yAxis).cross(normal).normalize();
+
+        return new Basis(xAxis, yAxis, normal);
+    }
+
     public static @Nullable Basis createBasis(PlaneData plane, @Nullable Vector3d preferredXAxis) {
         Vector3d normal = plane.getNormal();
         if (normal.lengthSquared() <= 1.0e-12d) {

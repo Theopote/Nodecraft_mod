@@ -97,8 +97,7 @@ public class ArcNode extends AbstractCurveNode {
             return;
         }
 
-        Vector3d normalizedNormal = new Vector3d(normal).normalize();
-        Basis basis = buildBasis(normalizedNormal);
+        var basis = PlaneProjectionUtils.createBasisFromNormal(normal);
         if (basis == null) {
             writeInvalid();
             return;
@@ -113,7 +112,6 @@ public class ArcNode extends AbstractCurveNode {
 
         List<Vec3d> sampledPoints = new ArrayList<>(resolution);
         List<PointData> pointData = new ArrayList<>(resolution);
-        Curve curve = buildLinearCurve(sampledPoints);
 
         for (int i = 0; i < resolution; i++) {
             double t = (double) i / (double) (resolution - 1);
@@ -126,6 +124,8 @@ public class ArcNode extends AbstractCurveNode {
             sampledPoints.add(vec);
             pointData.add(new PointData(point));
         }
+
+        Curve curve = buildLinearCurve(sampledPoints);
 
         PolylineData polyline = new PolylineData(sampledPoints);
         outputValues.put(OUTPUT_CURVE_ID, curve);
@@ -220,26 +220,4 @@ public class ArcNode extends AbstractCurveNode {
         putBooleanOutputs(false, OUTPUT_VALID_ID);
     }
 
-    private @Nullable Basis buildBasis(Vector3d normal) {
-        Vector3d reference = Math.abs(normal.y) < 0.99d
-            ? new Vector3d(0.0d, 1.0d, 0.0d)
-            : new Vector3d(1.0d, 0.0d, 0.0d);
-        Vector3d xAxis = reference.cross(normal, new Vector3d());
-        if (xAxis.lengthSquared() <= EPSILON) {
-            reference = new Vector3d(0.0d, 0.0d, 1.0d);
-            xAxis = reference.cross(normal, new Vector3d());
-        }
-        if (xAxis.lengthSquared() <= EPSILON) {
-            return null;
-        }
-        xAxis.normalize();
-        Vector3d yAxis = new Vector3d(normal).cross(xAxis);
-        if (yAxis.lengthSquared() <= EPSILON) {
-            return null;
-        }
-        return new Basis(xAxis, yAxis.normalize());
-    }
-
-    private record Basis(Vector3d xAxis, Vector3d yAxis) {
-    }
 }
