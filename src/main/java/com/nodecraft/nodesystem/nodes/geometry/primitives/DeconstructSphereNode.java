@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -76,18 +75,7 @@ public class DeconstructSphereNode extends BaseNode {
         double surfaceArea = 4.0d * Math.PI * radius * radius;
         double volume = (4.0d / 3.0d) * Math.PI * radius * radius * radius;
         RegionData region = GeometryVoxelizer.createBoundingRegion(sphere);
-        BoundingBoxData boundingBox = null;
-
-        if (region != null && region.isComplete()) {
-            BlockPos minCorner = region.getMinCorner();
-            BlockPos maxCorner = region.getMaxCorner();
-            if (minCorner != null && maxCorner != null) {
-                boundingBox = new BoundingBoxData(
-                    new Vector3d(minCorner.getX(), minCorner.getY(), minCorner.getZ()),
-                    new Vector3d(maxCorner.getX() + 1.0d, maxCorner.getY() + 1.0d, maxCorner.getZ() + 1.0d)
-                );
-            }
-        }
+        BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
 
         outputValues.put(OUTPUT_CENTER_ID, center);
         outputValues.put(OUTPUT_RADIUS_ID, radius);
