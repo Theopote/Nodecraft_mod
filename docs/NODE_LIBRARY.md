@@ -126,6 +126,8 @@ Voxel CSG and SDF nodes are ordered in two bands (0–4 voxel, 10–23 SDF). See
 
 ## geometry.primitives (29)
 
+Note: For `Deconstruct*` nodes in this category, when `Valid == false`, geometry/vector-like outputs may be `null`. Gate downstream processing by checking `Valid` first.
+
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Box by Center + Size | `geometry.primitives.box` | Generates a box from a center point and explicit X/Y/Z sizes | `BoxCenterSizeNode` |

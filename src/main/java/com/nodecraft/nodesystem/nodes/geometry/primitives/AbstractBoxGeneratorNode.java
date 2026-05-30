@@ -185,28 +185,23 @@ public abstract class AbstractBoxGeneratorNode extends BaseNode {
         return Math.abs(value);
     }
 
-    private Vector3d signedCornerOffset(int sizeX, int sizeY, int sizeZ) {
-        return new Vector3d(
-            startExtentOffset(sizeX),
-            startExtentOffset(sizeY),
-            startExtentOffset(sizeZ)
-        );
+    protected @Nullable Integer resolveInt(@Nullable Object value) {
+        if (!(value instanceof Number number)) {
+            return null;
+        }
+        double asDouble = number.doubleValue();
+        if (!Double.isFinite(asDouble)) {
+            return null;
+        }
+        return number.intValue();
     }
 
-    private Vector3d signedOppositeCornerOffset(int sizeX, int sizeY, int sizeZ) {
-        return new Vector3d(
-            endExtentOffset(sizeX),
-            endExtentOffset(sizeY),
-            endExtentOffset(sizeZ)
-        );
-    }
-
-    private double startExtentOffset(int size) {
-        return size > 0 ? 0.0d : -(Math.abs(size) - 1);
-    }
-
-    private double endExtentOffset(int size) {
-        return size > 0 ? size - 1.0d : 0.0d;
+    protected double resolveFiniteDouble(@Nullable Object value, double fallback) {
+        if (!(value instanceof Number number)) {
+            return fallback;
+        }
+        double resolved = number.doubleValue();
+        return Double.isFinite(resolved) ? resolved : fallback;
     }
 
     protected void populateBlocks(BlockPosList blocksList, BlockPos minCorner, BlockPos maxCorner, BoxDefinition definition) {

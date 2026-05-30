@@ -127,6 +127,8 @@
 
 ## geometry.primitives（29）
 
+说明：本分类中的 `Deconstruct*` 节点在 `Valid == false` 时，几何/向量类输出端口可能为 `null`。建议下游先检查 `Valid` 再处理这些输出。
+
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Box by Center + Size | `geometry.primitives.box` | Generates a box from a center point and explicit X/Y/Z sizes | `BoxCenterSizeNode` |

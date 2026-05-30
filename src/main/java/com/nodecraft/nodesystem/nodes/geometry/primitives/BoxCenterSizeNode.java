@@ -83,22 +83,4 @@ public class BoxCenterSizeNode extends AbstractBoxGeneratorNode {
         );
     }
 
-    private Integer resolveInt(Object value) {
-        if (!(value instanceof Number number)) {
-            return null;
-        }
-        double asDouble = number.doubleValue();
-        if (!Double.isFinite(asDouble)) {
-            return null;
-        }
-        return number.intValue();
-    }
-
-    private double resolveFiniteDouble(Object value, double fallback) {
-        if (!(value instanceof Number number)) {
-            return fallback;
-        }
-        double resolved = number.doubleValue();
-        return Double.isFinite(resolved) ? resolved : fallback;
-    }
 }
