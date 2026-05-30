@@ -147,13 +147,13 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("axis", "reference.vectors.vector", -720.0f, 120.0f,
             createNodeState("x", 0.0d, "y", 1.0d, "z", 0.0d, "showLabel", true, "precision", 2)));
         nodes.add(new MockNode("radius", "input.numeric.float", -360.0f, -220.0f,
-            createNodeState("value", (float) params.radius(), "minValue", 0.1f, "maxValue", 2048.0f, "precision", 2)));
+            createNodeState("value", (float) params.radius(), "min", 0.1f, "max", 2048.0f, "precision", 2)));
         nodes.add(new MockNode("width", "input.numeric.float", -360.0f, -60.0f,
-            createNodeState("value", (float) params.width(), "minValue", 0.1f, "maxValue", 512.0f, "precision", 2)));
+            createNodeState("value", (float) params.width(), "min", 0.1f, "max", 512.0f, "precision", 2)));
         nodes.add(new MockNode("thickness", "input.numeric.float", -360.0f, 100.0f,
-            createNodeState("value", (float) params.thickness(), "minValue", 0.1f, "maxValue", 512.0f, "precision", 2)));
+            createNodeState("value", (float) params.thickness(), "min", 0.1f, "max", 512.0f, "precision", 2)));
         nodes.add(new MockNode("two", "input.numeric.float", -360.0f, 260.0f,
-            createNodeState("value", 2.0f, "minValue", 2.0f, "maxValue", 2.0f, "precision", 0, "showLabel", false)));
+            createNodeState("value", 2.0f, "min", 2.0f, "max", 2.0f, "precision", 0, "showLabel", false)));
         nodes.add(new MockNode("width_half", "math.scalar_math.division", -120.0f, 20.0f, null));
         nodes.add(new MockNode("minor_max", "math.scalar_math.max", 120.0f, 100.0f, null));
         nodes.add(new MockNode("torus", "geometry.primitives.torus", 0.0f, 0.0f, null));
@@ -190,7 +190,7 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("center", "reference.points.point_from_coordinates", -520.0f, -120.0f,
             createNodeState("x", 0, "y", 80, "z", 0, "showLabel", true)));
         nodes.add(new MockNode("radius", "input.numeric.float", -520.0f, 40.0f,
-            createNodeState("value", (float) params.radius(), "minValue", 1.0f, "maxValue", 2048.0f, "precision", 2)));
+            createNodeState("value", (float) params.radius(), "min", 1.0f, "max", 2048.0f, "precision", 2)));
         nodes.add(new MockNode("sphere", "geometry.primitives.sphere", -180.0f, -20.0f, null));
         nodes.add(new MockNode("bake", "output.execute.bake_geometry_to_blocks", 120.0f, -20.0f,
             createNodeState("fillGeometry", params.thickness() >= 1.0d)));
@@ -214,11 +214,11 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("center", "reference.points.point_from_coordinates", -660.0f, -120.0f,
             createNodeState("x", 0, "y", 72, "z", 0, "showLabel", true)));
         nodes.add(new MockNode("size_x", "input.numeric.integer", -660.0f, 60.0f,
-            createNodeState("value", sizeX, "minValue", 1, "maxValue", 1024, "step", 1)));
+            createNodeState("value", sizeX, "min", 1, "max", 1024, "step", 1)));
         nodes.add(new MockNode("size_y", "input.numeric.integer", -660.0f, 220.0f,
-            createNodeState("value", sizeY, "minValue", 1, "maxValue", 512, "step", 1)));
+            createNodeState("value", sizeY, "min", 1, "max", 512, "step", 1)));
         nodes.add(new MockNode("size_z", "input.numeric.integer", -660.0f, 380.0f,
-            createNodeState("value", sizeZ, "minValue", 1, "maxValue", 1024, "step", 1)));
+            createNodeState("value", sizeZ, "min", 1, "max", 1024, "step", 1)));
         nodes.add(new MockNode("box", "geometry.primitives.box", -280.0f, 180.0f, null));
         nodes.add(new MockNode("bake", "output.execute.bake_geometry_to_blocks", 80.0f, 180.0f,
             createNodeState("fillGeometry", true)));
@@ -245,16 +245,16 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("axis", "reference.vectors.vector", -1000.0f, 40.0f,
             createNodeState("x", 0.0d, "y", 1.0d, "z", 0.0d, "showLabel", false, "precision", 2)));
         nodes.add(new MockNode("radius", "input.numeric.float", -1000.0f, 220.0f,
-            createNodeState("value", (float) params.radius(), "minValue", 1.0f, "maxValue", 2048.0f, "precision", 2)));
+            createNodeState("value", (float) params.radius(), "min", 1.0f, "max", 2048.0f, "precision", 2)));
         nodes.add(new MockNode("pitch", "input.numeric.float", -1000.0f, 380.0f,
-            createNodeState("value", (float) params.pitch(), "minValue", 0.2f, "maxValue", 256.0f, "precision", 2)));
+            createNodeState("value", (float) params.pitch(), "min", 0.2f, "max", 256.0f, "precision", 2)));
         nodes.add(new MockNode("turns", "input.numeric.float", -760.0f, 380.0f,
-            createNodeState("value", (float) params.turns(), "minValue", 0.5f, "maxValue", 128.0f, "precision", 2)));
+            createNodeState("value", (float) params.turns(), "min", 0.5f, "max", 128.0f, "precision", 2)));
         nodes.add(new MockNode("segments", "input.numeric.integer", -760.0f, 220.0f,
-            createNodeState("value", segmentsPerTurn, "minValue", 6, "maxValue", 128, "step", 1)));
+            createNodeState("value", segmentsPerTurn, "min", 6, "max", 128, "step", 1)));
 
         nodes.add(new MockNode("seed_radius", "input.numeric.float", -760.0f, 40.0f,
-            createNodeState("value", seedRadius, "minValue", 0.25f, "maxValue", 8.0f, "precision", 2, "showLabel", false)));
+            createNodeState("value", seedRadius, "min", 0.25f, "max", 8.0f, "precision", 2, "showLabel", false)));
         nodes.add(new MockNode("seed_sphere", "geometry.primitives.sphere", -520.0f, 40.0f, null));
         nodes.add(new MockNode("seed_bake", "output.execute.bake_geometry_to_blocks", -260.0f, 40.0f,
             createNodeState("fillGeometry", true)));
@@ -299,7 +299,7 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("tower_top", "reference.points.point_from_coordinates", -640.0f, 120.0f,
             createNodeState("x", 0, "y", topY, "z", 0, "showLabel", true)));
         nodes.add(new MockNode("tower_radius", "input.numeric.float", -640.0f, 300.0f,
-            createNodeState("value", radius, "minValue", 1.0f, "maxValue", 128.0f, "precision", 2)));
+            createNodeState("value", radius, "min", 1.0f, "max", 128.0f, "precision", 2)));
         nodes.add(new MockNode("tower_cylinder", "geometry.primitives.cylinder", -260.0f, 120.0f, null));
         nodes.add(new MockNode("tower_bake", "output.execute.bake_geometry_to_blocks", 80.0f, 120.0f,
             createNodeState("fillGeometry", true)));
@@ -325,20 +325,20 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("arch_normal", "reference.vectors.vector", -980.0f, 20.0f,
             createNodeState("x", 0.0d, "y", 0.0d, "z", 1.0d, "showLabel", false, "precision", 2)));
         nodes.add(new MockNode("arch_radius", "input.numeric.float", -980.0f, 200.0f,
-            createNodeState("value", (float) Math.max(4.0d, params.radius()), "minValue", 1.0f, "maxValue", 512.0f, "precision", 2)));
+            createNodeState("value", (float) Math.max(4.0d, params.radius()), "min", 1.0f, "max", 512.0f, "precision", 2)));
         nodes.add(new MockNode("arch_start", "input.numeric.float", -980.0f, 360.0f,
-            createNodeState("value", 180.0f, "minValue", -360.0f, "maxValue", 360.0f, "precision", 1, "showLabel", false)));
+            createNodeState("value", 180.0f, "min", -360.0f, "max", 360.0f, "precision", 1, "showLabel", false)));
         nodes.add(new MockNode("arch_end", "input.numeric.float", -760.0f, 360.0f,
-            createNodeState("value", 0.0f, "minValue", -360.0f, "maxValue", 360.0f, "precision", 1, "showLabel", false)));
+            createNodeState("value", 0.0f, "min", -360.0f, "max", 360.0f, "precision", 1, "showLabel", false)));
         nodes.add(new MockNode("arch_segments", "input.numeric.integer", -760.0f, 200.0f,
-            createNodeState("value", segments, "minValue", 8, "maxValue", 256, "step", 1)));
+            createNodeState("value", segments, "min", 8, "max", 256, "step", 1)));
 
         nodes.add(new MockNode("arch_curve", "geometry.curves.arc", -540.0f, 200.0f, null));
         nodes.add(new MockNode("path_preview", "output.preview.preview_curves", -280.0f, 200.0f,
             createNodeState("previewEnabled", true, "pathColor", "#FFD933", "lineWidth", 1.8f, "showDirection", false)));
 
         nodes.add(new MockNode("seed_radius", "input.numeric.float", -760.0f, 20.0f,
-            createNodeState("value", seedRadius, "minValue", 0.25f, "maxValue", 8.0f, "precision", 2, "showLabel", false)));
+            createNodeState("value", seedRadius, "min", 0.25f, "max", 8.0f, "precision", 2, "showLabel", false)));
         nodes.add(new MockNode("seed_sphere", "geometry.primitives.sphere", -540.0f, 20.0f, null));
         nodes.add(new MockNode("seed_bake", "output.execute.bake_geometry_to_blocks", -280.0f, 20.0f,
             createNodeState("fillGeometry", true)));
@@ -379,9 +379,9 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("axis", "reference.vectors.vector", -700.0f, 60.0f,
             createNodeState("x", 0.0d, "y", 1.0d, "z", 0.0d, "showLabel", false, "precision", 2)));
         nodes.add(new MockNode("major", "input.numeric.float", -700.0f, 240.0f,
-            createNodeState("value", majorRadius, "minValue", 2.0f, "maxValue", 1024.0f, "precision", 2)));
+            createNodeState("value", majorRadius, "min", 2.0f, "max", 1024.0f, "precision", 2)));
         nodes.add(new MockNode("minor", "input.numeric.float", -700.0f, 380.0f,
-            createNodeState("value", minorRadius, "minValue", 0.5f, "maxValue", 128.0f, "precision", 2)));
+            createNodeState("value", minorRadius, "min", 0.5f, "max", 128.0f, "precision", 2)));
 
         nodes.add(new MockNode("torus", "geometry.primitives.torus", -320.0f, 150.0f, null));
         nodes.add(new MockNode("bake", "output.execute.bake_geometry_to_blocks", 40.0f, 150.0f,
@@ -415,22 +415,22 @@ public final class AiMockPlanService {
             createNodeState("x", 0, "y", 70 + gap * 2, "z", 0, "showLabel", false)));
 
         nodes.add(new MockNode("sx0", "input.numeric.integer", -900.0f, -230.0f,
-            createNodeState("value", baseSize, "minValue", 2, "maxValue", 256, "step", 1, "showLabel", false)));
+            createNodeState("value", baseSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
         nodes.add(new MockNode("sz0", "input.numeric.integer", -900.0f, -120.0f,
-            createNodeState("value", baseSize, "minValue", 2, "maxValue", 256, "step", 1, "showLabel", false)));
+            createNodeState("value", baseSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
 
         nodes.add(new MockNode("sx1", "input.numeric.integer", -900.0f, -10.0f,
-            createNodeState("value", middleSize, "minValue", 2, "maxValue", 256, "step", 1, "showLabel", false)));
+            createNodeState("value", middleSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
         nodes.add(new MockNode("sz1", "input.numeric.integer", -900.0f, 100.0f,
-            createNodeState("value", middleSize, "minValue", 2, "maxValue", 256, "step", 1, "showLabel", false)));
+            createNodeState("value", middleSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
 
         nodes.add(new MockNode("sx2", "input.numeric.integer", -900.0f, 210.0f,
-            createNodeState("value", topSize, "minValue", 2, "maxValue", 256, "step", 1, "showLabel", false)));
+            createNodeState("value", topSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
         nodes.add(new MockNode("sz2", "input.numeric.integer", -900.0f, 320.0f,
-            createNodeState("value", topSize, "minValue", 2, "maxValue", 256, "step", 1, "showLabel", false)));
+            createNodeState("value", topSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
 
         nodes.add(new MockNode("sy", "input.numeric.integer", -900.0f, 430.0f,
-            createNodeState("value", thickness, "minValue", 1, "maxValue", 32, "step", 1, "showLabel", false)));
+            createNodeState("value", thickness, "min", 1, "max", 32, "step", 1, "showLabel", false)));
 
         nodes.add(new MockNode("box0", "geometry.primitives.box", -620.0f, -120.0f, null));
         nodes.add(new MockNode("box1", "geometry.primitives.box", -620.0f, 80.0f, null));
@@ -471,16 +471,6 @@ public final class AiMockPlanService {
 
     private static void buildGenericTemplate(ParsedParameters params, List<MockNode> nodes, List<MockConnection> connections) {
         buildSphereTemplate(params, nodes, connections);
-    }
-
-    private static void buildPlacementTemplate(ParsedParameters params, List<MockNode> nodes, List<MockConnection> connections) {
-        nodes.add(new MockNode(
-            "selected_block",
-            "world.selection.selected_block",
-            0.0f,
-            0.0f,
-            createNodeState("showBlockPreview", true)
-        ));
     }
 
     private static TemplateSelectionResult selectTemplateCandidates(String lowerPrompt) {
@@ -717,7 +707,7 @@ public final class AiMockPlanService {
                     JsonObject root = JsonParser.parseString(json).getAsJsonObject();
                     applyKeywordTableOverrides(root, "positive", positive);
                     applyKeywordTableOverrides(root, "negative", negative);
-                    weightsSource = "file:" + overridePath.toString();
+                    weightsSource = "file:" + overridePath;
                 }
             } catch (Exception e) {
                 NodeCraft.LOGGER.warn("AiMockPlanService: failed to load template weight overrides, using built-in defaults.", e);
@@ -1054,7 +1044,7 @@ public final class AiMockPlanService {
         map.put(MockTemplateKind.BOX_FILL, List.of(
             kw("box", 2.4d), kw("cube", 2.2d), kw("room", 1.8d), kw("wall", 1.5d), kw("region", 1.8d),
             kw("fill", 2.4d), kw("volume", 1.6d), kw("cuboid", 2.0d), kw("block", 1.2d),
-            kw("盒", 2.4d), kw("立方体", 2.4d), kw("区域", 1.8d), kw("填充", 2.4d), kw("体积", 1.6d), kw("房间", 1.8d), kw("墙", 1.4d)
+            kw("盒子", 2.4d), kw("立方体", 2.4d), kw("区域", 1.8d), kw("填充", 2.4d), kw("体积", 1.6d), kw("房间", 1.8d), kw("方块", 1.4d)
         ));
         map.put(MockTemplateKind.SPHERE, List.of(
             kw("sphere", 3.0d), kw("ball", 2.4d), kw("orb", 2.2d), kw("dome", 1.9d), kw("planet", 1.8d), kw("bubble", 1.6d),
