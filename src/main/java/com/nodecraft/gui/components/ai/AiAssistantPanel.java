@@ -78,6 +78,7 @@ public final class AiAssistantPanel {
     private String aiSettingsStatusMessage = "";
     private String aiPreviewFocusedNodeRef = "";
     private boolean aiPreviewFocusScrollPending = false;
+    private final TopologyPreviewState aiTopologyPreviewState = new TopologyPreviewState();
 
     public AiAssistantPanel(
             AiAssistantComponent aiAssistantComponent,
@@ -109,6 +110,7 @@ public final class AiAssistantPanel {
         aiChatMessages.clear();
         aiPromptInput.clear();
         aiApiKey.clear();
+        aiTopologyPreviewState.reset();
         lastAiUndoStepCount = 0;
         lastAiApplyWasPatch = false;
         aiPlanStatusMessage = "";
@@ -468,6 +470,7 @@ public final class AiAssistantPanel {
                         hasPlan ? buildPlannedConnectionPreviewLines(plan) : List.of(),
                         hasPlan ? plan.nodes() : List.of(),
                         hasPlan ? plan.connections() : List.of(),
+                        aiTopologyPreviewState,
                         heuristicDiff,
                         mappedDiff,
                         canApply,

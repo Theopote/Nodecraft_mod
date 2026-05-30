@@ -19,12 +19,6 @@ import java.util.Set;
 
 final class AiAssistantPlanPreviewRenderer {
 
-    private static String topologyPlanKey = "";
-    private static final Map<String, float[]> topologyManualUvByRef = new HashMap<>();
-    private static String topologyDraggingNodeRef = null;
-    private static float topologyDragOffsetX = 0.0f;
-    private static float topologyDragOffsetY = 0.0f;
-
     private AiAssistantPlanPreviewRenderer() {
     }
 
@@ -41,6 +35,7 @@ final class AiAssistantPlanPreviewRenderer {
             List<String> plannedConnectionLines,
             List<AiPlanNode> planNodes,
             List<AiPlanConnection> planConnections,
+            TopologyPreviewState topologyPreviewState,
             AiGraphDiffService.GraphDiffSummary heuristicDiff,
             AiGraphDiffService.MappedDiffSummary mappedDiff,
             boolean canApply,
@@ -71,7 +66,7 @@ final class AiAssistantPlanPreviewRenderer {
         if (!state.hasPlan()) {
             ImGui.textDisabled("No plan yet. Send a prompt to generate a plan.");
             if (state.statusMessage() != null && !state.statusMessage().isBlank()) {
-                renderStatusMessage(state.statusMessage());
+                AiUiHelper.renderStatusMessage(state.statusMessage());
             }
             return;
         }
@@ -132,9 +127,9 @@ final class AiAssistantPlanPreviewRenderer {
         if (ImGui.treeNode("Graph Topology Preview")) {
             ImGui.textDisabled("Auto-layout + drag nodes to adjust manually");
             if (ImGui.smallButton("Reset Topology Layout")) {
-                resetTopologyPreviewLayout();
+                topologyPreviewState.reset();
             }
-            String selectedNodeRef = renderTopologyPreview(state.planNodes(), state.planConnections(), state.focusedNodeRef());
+            String selectedNodeRef = renderTopologyPreview(state.planNodes(), state.planConnections(), state.focusedNodeRef(), topologyPreviewState);
             if (selectedNodeRef != null && !selectedNodeRef.isBlank()) {
                 actions.onTopologyNodeSelected(selectedNodeRef);
             }
@@ -206,7 +201,7 @@ final class AiAssistantPlanPreviewRenderer {
         }
 
         if (state.statusMessage() != null && !state.statusMessage().isBlank()) {
-            renderStatusMessage(state.statusMessage());
+            AiUiHelper.renderStatusMessage(state.statusMessage());
         }
     }
 
@@ -227,7 +222,8 @@ final class AiAssistantPlanPreviewRenderer {
     private static String renderTopologyPreview(
             List<AiPlanNode> nodes,
             List<AiPlanConnection> connections,
-            String focusedNodeRef
+            String focusedNodeRef,
+            TopologyPreviewState topologyPreviewState
     ) {
         if (nodes == null || nodes.isEmpty()) {
             ImGui.textDisabled("No nodes to preview.");
@@ -244,13 +240,7 @@ final class AiAssistantPlanPreviewRenderer {
         float contentHeight = Math.max(1.0f, previewHeight - 2.0f * padding - nodeHeight);
 
         String planKey = buildTopologyPlanKey(nodes, connections);
-        if (!planKey.equals(topologyPlanKey)) {
-            topologyPlanKey = planKey;
-            topologyManualUvByRef.clear();
-            topologyDraggingNodeRef = null;
-            topologyDragOffsetX = 0.0f;
-            topologyDragOffsetY = 0.0f;
-        }
+        topologyPreviewState.updatePlanKey(planKey);
 
         ImDrawList drawList = ImGui.getWindowDrawList();
         ImVec2 cursor = ImGui.getCursorScreenPos();
@@ -270,7 +260,7 @@ final class AiAssistantPlanPreviewRenderer {
         Map<String, float[]> autoUvByRef = buildAdaptiveTopologyUv(nodes, connections, contentWidth, contentHeight, nodeWidth, nodeHeight);
         Map<String, float[]> nodeAnchors = new HashMap<>();
         for (AiPlanNode node : nodes) {
-            float[] uv = topologyManualUvByRef.get(node.ref());
+            float[] uv = topologyPreviewState.getManualUv(node.ref());
             if (uv == null) {
                 uv = autoUvByRef.get(node.ref());
             }
@@ -285,20 +275,21 @@ final class AiAssistantPlanPreviewRenderer {
         ImVec2 mouse = ImGui.getIO().getMousePos();
         boolean mouseInCanvas = pointInRect(mouse.x, mouse.y, cursor.x, cursor.y, previewWidth, previewHeight);
 
-        if (topologyDraggingNodeRef != null) {
+        if (topologyPreviewState.getDraggingNodeRef() != null) {
             if (ImGui.isMouseDown(0)) {
-                float nx = clamp(mouse.x - topologyDragOffsetX, cursor.x + padding, cursor.x + padding + contentWidth);
-                float ny = clamp(mouse.y - topologyDragOffsetY, cursor.y + padding, cursor.y + padding + contentHeight);
+                float nx = clamp(mouse.x - topologyPreviewState.getDragOffsetX(), cursor.x + padding, cursor.x + padding + contentWidth);
+                float ny = clamp(mouse.y - topologyPreviewState.getDragOffsetY(), cursor.y + padding, cursor.y + padding + contentHeight);
                 float u = (nx - (cursor.x + padding)) / contentWidth;
                 float v = (ny - (cursor.y + padding)) / contentHeight;
-                topologyManualUvByRef.put(topologyDraggingNodeRef, new float[]{clamp(u, 0.0f, 1.0f), clamp(v, 0.0f, 1.0f)});
-                nodeAnchors.put(topologyDraggingNodeRef, new float[]{nx, ny});
+                String draggingNodeRef = topologyPreviewState.getDraggingNodeRef();
+                topologyPreviewState.setManualUv(draggingNodeRef, clamp(u, 0.0f, 1.0f), clamp(v, 0.0f, 1.0f));
+                nodeAnchors.put(draggingNodeRef, new float[]{nx, ny});
             } else {
-                topologyDraggingNodeRef = null;
+                topologyPreviewState.stopDragging();
             }
         }
 
-        if (mouseInCanvas && ImGui.isMouseClicked(0) && topologyDraggingNodeRef == null) {
+        if (mouseInCanvas && ImGui.isMouseClicked(0) && topologyPreviewState.getDraggingNodeRef() == null) {
             for (int i = nodes.size() - 1; i >= 0; i--) {
                 AiPlanNode node = nodes.get(i);
                 float[] anchor = nodeAnchors.get(node.ref());
@@ -308,9 +299,7 @@ final class AiAssistantPlanPreviewRenderer {
                 float nx = anchor[0];
                 float ny = anchor[1];
                 if (mouse.x >= nx && mouse.x <= nx + nodeWidth && mouse.y >= ny && mouse.y <= ny + nodeHeight) {
-                    topologyDraggingNodeRef = node.ref();
-                    topologyDragOffsetX = mouse.x - nx;
-                    topologyDragOffsetY = mouse.y - ny;
+                    topologyPreviewState.startDragging(node.ref(), mouse.x - nx, mouse.y - ny);
                     break;
                 }
             }
@@ -362,13 +351,6 @@ final class AiAssistantPlanPreviewRenderer {
 
         ImGui.dummy(previewWidth, previewHeight);
         return clickedRef;
-    }
-
-    private static void resetTopologyPreviewLayout() {
-        topologyManualUvByRef.clear();
-        topologyDraggingNodeRef = null;
-        topologyDragOffsetX = 0.0f;
-        topologyDragOffsetY = 0.0f;
     }
 
     private static String buildTopologyPlanKey(List<AiPlanNode> nodes, List<AiPlanConnection> connections) {
@@ -554,50 +536,4 @@ final class AiAssistantPlanPreviewRenderer {
         return normalized;
     }
 
-    private static void renderStatusMessage(String message) {
-        if (message == null || message.isBlank()) {
-            return;
-        }
-
-        StatusTone tone = resolveStatusTone(message);
-        switch (tone) {
-            case ERROR -> ImGui.textColored(0.96f, 0.35f, 0.35f, 1.0f, "[Error] " + message);
-            case WARN -> ImGui.textColored(0.95f, 0.74f, 0.30f, 1.0f, "[Warn] " + message);
-            case SUCCESS -> ImGui.textColored(0.45f, 0.82f, 0.54f, 1.0f, "[OK] " + message);
-            default -> ImGui.textWrapped(message);
-        }
-    }
-
-    private static StatusTone resolveStatusTone(String message) {
-        String lower = message.toLowerCase();
-        if (containsAny(lower, "failed", "error", "invalid", "exception", "aborted")) {
-            return StatusTone.ERROR;
-        }
-        if (containsAny(lower, "warn", "retry", "canceled", "unavailable", "busy")) {
-            return StatusTone.WARN;
-        }
-        if (containsAny(lower, "saved", "loaded", "validated", "completed", "successful", "submitted", "applied")) {
-            return StatusTone.SUCCESS;
-        }
-        return StatusTone.INFO;
-    }
-
-    private static boolean containsAny(String text, String... keywords) {
-        if (text == null || text.isBlank() || keywords == null) {
-            return false;
-        }
-        for (String keyword : keywords) {
-            if (keyword != null && !keyword.isBlank() && text.contains(keyword)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private enum StatusTone {
-        INFO,
-        SUCCESS,
-        WARN,
-        ERROR
-    }
 }
