@@ -9,7 +9,7 @@ import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.CurvePathSamplingUtil;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
@@ -29,7 +29,7 @@ import java.util.UUID;
     category = "geometry.curves",
     order = 10
 )
-public class PolylineOffsetInPlaneNode extends BaseNode {
+public class PolylineOffsetInPlaneNode extends AbstractCurveNode {
 
     private static final double EPS = 1.0e-9d;
 
@@ -118,7 +118,7 @@ public class PolylineOffsetInPlaneNode extends BaseNode {
             return;
         }
 
-        boolean closed = CurvePathSamplingUtil.isClosedPolyline(worldVerts);
+        boolean closed = PathUtils.isClosed(worldVerts);
         List<Vector3d> unique = closed ? worldVerts.subList(0, worldVerts.size() - 1) : worldVerts;
         if (unique.size() < 2) {
             writeInvalid();
@@ -147,7 +147,7 @@ public class PolylineOffsetInPlaneNode extends BaseNode {
             outPts.add(outPts.get(0));
         }
 
-        PolylineData polyline = CurvePathSamplingUtil.createPolylineOrNull(outPts);
+        PolylineData polyline = PathUtils.createPolylineOrNull(outPts);
         if (polyline == null) {
             writeInvalid();
             return;
@@ -163,7 +163,7 @@ public class PolylineOffsetInPlaneNode extends BaseNode {
     }
 
     private List<Vector3d> resolvePathVertices() {
-        return CurvePathSamplingUtil.resolveVertices(
+        return PathUtils.resolveVertices(
             null,
             inputValues.get(INPUT_POLYLINE_ID),
             inputValues.get(INPUT_LINE_ID)

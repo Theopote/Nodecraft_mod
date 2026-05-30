@@ -1,4 +1,5 @@
-package com.nodecraft.nodesystem.nodes.geometry.curves;
+
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -24,7 +25,7 @@ import java.util.UUID;
     category = "geometry.curves",
     order = 12
 )
-public class NurbsCurveNode extends BaseNode {
+public class NurbsCurveNode extends AbstractCurveNode {
 
     private static final double EPSILON = 1.0e-9d;
 
@@ -79,7 +80,7 @@ public class NurbsCurveNode extends BaseNode {
 
         List<Vec3d> controlPoints = new ArrayList<>();
         for (Object entry : collection) {
-            Vec3d point = CurvePlaneUtils.resolveVec3dPoint(entry);
+            Vec3d point = PlaneProjectionUtils.resolveVec3dPoint(entry);
             if (point != null) {
                 controlPoints.add(point);
             }
@@ -99,7 +100,7 @@ public class NurbsCurveNode extends BaseNode {
         int effectiveDegree = Math.min(Math.min(5, requestedDegree), controlPoints.size() - 1);
         int n = controlPoints.size() - 1;
         int knotCount = n + effectiveDegree + 2;
-        double[] knots = NurbsMath.buildClampedUniformKnots(knotCount, effectiveDegree, n);
+        double[] knots = CurveMathUtils.buildClampedUniformKnots(knotCount, effectiveDegree, n);
 
         int spanCount = Math.max(1, n - effectiveDegree + 1);
         int totalSamples = spanCount * resolutionPerSpan + 1;
@@ -110,7 +111,7 @@ public class NurbsCurveNode extends BaseNode {
         for (int i = 0; i < totalSamples; i++) {
             double t = totalSamples == 1 ? 0.0d : (double) i / (double) (totalSamples - 1);
             double u = uStart + (uEnd - uStart) * t;
-            sampled.add(NurbsMath.evaluateNurbs(controlPoints, weights, knots, effectiveDegree, u, n, EPSILON));
+            sampled.add(CurveMathUtils.evaluateNurbs(controlPoints, weights, knots, effectiveDegree, u, n, EPSILON));
         }
 
         Curve curve = new Curve(Curve.CurveType.LINEAR, 2);

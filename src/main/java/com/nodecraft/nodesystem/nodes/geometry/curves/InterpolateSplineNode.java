@@ -1,4 +1,5 @@
-package com.nodecraft.nodesystem.nodes.geometry.curves;
+
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -24,7 +25,7 @@ import java.util.UUID;
     category = "geometry.curves",
     order = 10
 )
-public class InterpolateSplineNode extends BaseNode {
+public class InterpolateSplineNode extends AbstractCurveNode {
 
     private static final double EPSILON = 1.0e-9d;
 
@@ -75,7 +76,7 @@ public class InterpolateSplineNode extends BaseNode {
 
         List<Vec3d> points = new ArrayList<>();
         for (Object entry : collection) {
-            Vec3d point = CurvePlaneUtils.resolveVec3dPoint(entry);
+            Vec3d point = PlaneProjectionUtils.resolveVec3dPoint(entry);
             if (point != null) {
                 points.add(point);
             }

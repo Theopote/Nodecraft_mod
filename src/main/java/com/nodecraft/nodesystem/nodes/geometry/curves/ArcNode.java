@@ -28,7 +28,7 @@ import java.util.UUID;
     category = "geometry.curves",
     order = 2
 )
-public class ArcNode extends BaseNode {
+public class ArcNode extends AbstractCurveNode {
 
     private static final double EPSILON = 1.0e-9d;
 

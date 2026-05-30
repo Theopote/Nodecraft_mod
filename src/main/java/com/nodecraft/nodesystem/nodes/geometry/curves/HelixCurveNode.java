@@ -1,4 +1,5 @@
-package com.nodecraft.nodesystem.nodes.geometry.curves;
+
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -22,7 +23,7 @@ import java.util.UUID;
     category = "geometry.curves",
     order = 17
 )
-public class HelixCurveNode extends BaseNode {
+public class HelixCurveNode extends AbstractCurveNode {
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_AXIS_ID = "input_axis";
     private static final String INPUT_RADIUS_ID = "input_radius";
@@ -56,11 +57,11 @@ public class HelixCurveNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d center = CurvePlaneUtils.resolvePoint(inputValues.get(INPUT_CENTER_ID));
+        Vector3d center = PlaneProjectionUtils.resolvePoint(inputValues.get(INPUT_CENTER_ID));
         Object radiusObj = inputValues.get(INPUT_RADIUS_ID);
         Object pitchObj = inputValues.get(INPUT_PITCH_ID);
         Object turnsObj = inputValues.get(INPUT_TURNS_ID);
-        Vector3d axisIn = CurvePlaneUtils.resolvePoint(inputValues.get(INPUT_AXIS_ID));
+        Vector3d axisIn = PlaneProjectionUtils.resolvePoint(inputValues.get(INPUT_AXIS_ID));
         if (center == null || axisIn == null || !(radiusObj instanceof Number radiusN)
             || !(pitchObj instanceof Number pitchN) || !(turnsObj instanceof Number turnsN)) {
             writeInvalid();

@@ -22,7 +22,7 @@ import java.util.UUID;
     category = "geometry.curves",
     order = 3
 )
-public class BoxFaceBoundaryPathNode extends BaseNode {
+public class BoxFaceBoundaryPathNode extends AbstractCurveNode {
 
     private static final String INPUT_FACE_ID = "input_face";
 

@@ -28,7 +28,7 @@ import java.util.UUID;
     category = "geometry.curves",
     order = 0
 )
-public class PointsToPathNode extends BaseNode {
+public class PointsToPathNode extends AbstractCurveNode {
 
     private static final String INPUT_POINTS_ID = "input_points";
 

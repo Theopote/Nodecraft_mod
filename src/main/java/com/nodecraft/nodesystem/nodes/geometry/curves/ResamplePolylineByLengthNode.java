@@ -7,7 +7,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.CurvePathSamplingUtil;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -26,7 +26,7 @@ import java.util.UUID;
     category = "geometry.curves",
     order = 12
 )
-public class ResamplePolylineByLengthNode extends BaseNode {
+public class ResamplePolylineByLengthNode extends AbstractCurveNode {
 
     private static final double EPS = 1.0e-9d;
 
@@ -78,14 +78,14 @@ public class ResamplePolylineByLengthNode extends BaseNode {
             return;
         }
 
-        boolean closed = CurvePathSamplingUtil.isClosedPolyline(verts);
+        boolean closed = PathUtils.isClosed(verts);
         List<Vector3d> unique = closed ? verts.subList(0, verts.size() - 1) : verts;
         if (unique.size() < 2) {
             writeInvalid();
             return;
         }
 
-        double[] cumulative = CurvePathSamplingUtil.buildCumulative(unique, closed);
+        double[] cumulative = PathUtils.buildCumulative(unique, closed);
         if (cumulative == null) {
             writeInvalid();
             return;
@@ -123,7 +123,7 @@ public class ResamplePolylineByLengthNode extends BaseNode {
 
         List<Vector3d> samples = new ArrayList<>(sampleDistances.size());
         for (double d : sampleDistances) {
-            samples.add(CurvePathSamplingUtil.sampleAtDistance(unique, closed, cumulative, d));
+            samples.add(PathUtils.sampleAtDistance(unique, closed, cumulative, d));
         }
 
         if (closed && samples.size() >= 2) {
@@ -133,8 +133,8 @@ public class ResamplePolylineByLengthNode extends BaseNode {
             }
         }
 
-        List<Vec3d> polyPts = CurvePathSamplingUtil.toVec3dList(samples, closed);
-        PolylineData polyline = CurvePathSamplingUtil.createPolylineOrNull(polyPts);
+        List<Vec3d> polyPts = PathUtils.toVec3dList(samples, closed);
+        PolylineData polyline = PathUtils.createPolylineOrNull(polyPts);
         if (polyline == null) {
             writeInvalid();
             return;
@@ -154,7 +154,7 @@ public class ResamplePolylineByLengthNode extends BaseNode {
     }
 
     private List<Vector3d> resolveVertices() {
-        return CurvePathSamplingUtil.resolveVertices(
+        return PathUtils.resolveVertices(
             null,
             inputValues.get(INPUT_POLYLINE_ID),
             inputValues.get(INPUT_LINE_ID)

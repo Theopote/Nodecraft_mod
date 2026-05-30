@@ -8,7 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.CurvePathSamplingUtil;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
@@ -28,7 +28,7 @@ import java.util.UUID;
     category = "geometry.curves",
     order = 11
 )
-public class PolylineCornerFilletNode extends BaseNode {
+public class PolylineCornerFilletNode extends AbstractCurveNode {
 
     private static final double EPS = 1.0e-9d;
 
@@ -137,7 +137,7 @@ public class PolylineCornerFilletNode extends BaseNode {
             Vector3d w = axes.from2d(p);
             out.add(new Vec3d(w.x, w.y, w.z));
         }
-        PolylineData polyline = CurvePathSamplingUtil.createPolylineOrNull(out);
+        PolylineData polyline = PathUtils.createPolylineOrNull(out);
         if (polyline == null) {
             writeInvalid();
             return;

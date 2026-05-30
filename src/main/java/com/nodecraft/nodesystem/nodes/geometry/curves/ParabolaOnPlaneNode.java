@@ -1,4 +1,5 @@
-package com.nodecraft.nodesystem.nodes.geometry.curves;
+
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -23,7 +24,7 @@ import java.util.UUID;
     category = "geometry.curves",
     order = 16
 )
-public class ParabolaOnPlaneNode extends BaseNode {
+public class ParabolaOnPlaneNode extends AbstractCurveNode {
     private static final String INPUT_VERTEX_ID = "input_vertex";
     private static final String INPUT_CURVATURE_ID = "input_curvature";
     private static final String INPUT_X_MIN_ID = "input_x_min";
@@ -55,13 +56,13 @@ public class ParabolaOnPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d vertex = CurvePlaneUtils.resolvePoint(inputValues.get(INPUT_VERTEX_ID));
+        Vector3d vertex = PlaneProjectionUtils.resolvePoint(inputValues.get(INPUT_VERTEX_ID));
         Object curvatureObj = inputValues.get(INPUT_CURVATURE_ID);
         Object minObj = inputValues.get(INPUT_X_MIN_ID);
         Object maxObj = inputValues.get(INPUT_X_MAX_ID);
         Object segmentsObj = inputValues.get(INPUT_SEGMENTS_ID);
         PlaneData plane = inputValues.get(INPUT_PLANE_ID) instanceof PlaneData p ? p : PlaneData.XY_PLANE;
-        Vector3d preferred = CurvePlaneUtils.resolvePoint(inputValues.get(INPUT_AXIS_ID));
+        Vector3d preferred = PlaneProjectionUtils.resolvePoint(inputValues.get(INPUT_AXIS_ID));
 
         if (vertex == null || !(curvatureObj instanceof Number cN) || !(minObj instanceof Number minN)
             || !(maxObj instanceof Number maxN) || !(segmentsObj instanceof Number segN)) {
@@ -77,7 +78,7 @@ public class ParabolaOnPlaneNode extends BaseNode {
             return;
         }
 
-        CurvePlaneUtils.Basis basis = CurvePlaneUtils.createBasis(plane, preferred);
+        PlaneProjectionUtils.Basis basis = PlaneProjectionUtils.createBasis(plane, preferred);
         if (basis == null) {
             writeInvalid();
             return;

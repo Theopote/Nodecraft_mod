@@ -10,7 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
-import com.nodecraft.nodesystem.util.CurvePathSamplingUtil;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -29,7 +29,7 @@ import java.util.UUID;
     category = "geometry.curves",
     order = 15
 )
-public class CurveFrameAlongPathNode extends BaseNode {
+public class CurveFrameAlongPathNode extends AbstractCurveNode {
 
     private static final double EPS = 1.0e-9d;
 
@@ -97,14 +97,14 @@ public class CurveFrameAlongPathNode extends BaseNode {
             return;
         }
 
-        boolean closed = CurvePathSamplingUtil.isClosedPolyline(verts);
+        boolean closed = PathUtils.isClosed(verts);
         List<Vector3d> unique = closed ? verts.subList(0, verts.size() - 1) : verts;
         if (unique.size() < 2) {
             writeInvalid();
             return;
         }
 
-        double[] cumulative = CurvePathSamplingUtil.buildCumulative(unique, closed);
+        double[] cumulative = PathUtils.buildCumulative(unique, closed);
         if (cumulative == null) {
             writeInvalid();
             return;
@@ -147,12 +147,12 @@ public class CurveFrameAlongPathNode extends BaseNode {
 
         double delta = Math.max(total * 1.0e-4d, 1.0e-4d);
         for (double d : sampleDistances) {
-            Vector3d origin = CurvePathSamplingUtil.sampleAtDistance(unique, closed, cumulative, d);
+            Vector3d origin = PathUtils.sampleAtDistance(unique, closed, cumulative, d);
             double backDistance = closed ? wrapDistance(d - delta, total) : Math.max(0.0d, d - delta);
             double forwardDistance = closed ? wrapDistance(d + delta, total) : Math.min(total, d + delta);
 
-            Vector3d prev = CurvePathSamplingUtil.sampleAtDistance(unique, closed, cumulative, backDistance);
-            Vector3d next = CurvePathSamplingUtil.sampleAtDistance(unique, closed, cumulative, forwardDistance);
+            Vector3d prev = PathUtils.sampleAtDistance(unique, closed, cumulative, backDistance);
+            Vector3d next = PathUtils.sampleAtDistance(unique, closed, cumulative, forwardDistance);
             Vector3d tangent = new Vector3d(next).sub(prev);
             if (tangent.lengthSquared() <= EPS) {
                 continue;
@@ -220,7 +220,7 @@ public class CurveFrameAlongPathNode extends BaseNode {
     }
 
     private List<Vector3d> resolveVertices() {
-        return CurvePathSamplingUtil.resolveVertices(
+        return PathUtils.resolveVertices(
             inputValues.get(INPUT_CURVE_ID),
             inputValues.get(INPUT_POLYLINE_ID),
             inputValues.get(INPUT_LINE_ID)

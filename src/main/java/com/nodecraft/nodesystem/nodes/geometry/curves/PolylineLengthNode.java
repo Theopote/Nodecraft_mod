@@ -21,7 +21,7 @@ import java.util.UUID;
     category = "geometry.curves",
     order = 13
 )
-public class PolylineLengthNode extends BaseNode {
+public class PolylineLengthNode extends AbstractCurveNode {
 
     private static final String INPUT_POLYLINE_ID = "input_polyline";
     private static final String INPUT_LINE_ID = "input_line";

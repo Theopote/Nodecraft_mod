@@ -21,7 +21,7 @@ import java.util.UUID;
     category = "geometry.curves",
     order = 2
 )
-public class FaceEdgeToPathNode extends BaseNode {
+public class FaceEdgeToPathNode extends AbstractCurveNode {
 
     private static final String INPUT_EDGE_ID = "input_edge";
     private static final String INPUT_START_CORNER_INDEX_ID = "input_start_corner_index";

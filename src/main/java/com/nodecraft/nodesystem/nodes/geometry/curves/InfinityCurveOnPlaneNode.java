@@ -1,4 +1,5 @@
-package com.nodecraft.nodesystem.nodes.geometry.curves;
+
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -23,7 +24,7 @@ import java.util.UUID;
     category = "geometry.curves",
     order = 17
 )
-public class InfinityCurveOnPlaneNode extends BaseNode {
+public class InfinityCurveOnPlaneNode extends AbstractCurveNode {
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_SIZE_ID = "input_size";
     private static final String INPUT_SEGMENTS_ID = "input_segments";
@@ -51,11 +52,11 @@ public class InfinityCurveOnPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d center = CurvePlaneUtils.resolvePoint(inputValues.get(INPUT_CENTER_ID));
+        Vector3d center = PlaneProjectionUtils.resolvePoint(inputValues.get(INPUT_CENTER_ID));
         Object sizeObj = inputValues.get(INPUT_SIZE_ID);
         Object segmentsObj = inputValues.get(INPUT_SEGMENTS_ID);
         PlaneData plane = inputValues.get(INPUT_PLANE_ID) instanceof PlaneData p ? p : PlaneData.XY_PLANE;
-        Vector3d preferred = CurvePlaneUtils.resolvePoint(inputValues.get(INPUT_AXIS_ID));
+        Vector3d preferred = PlaneProjectionUtils.resolvePoint(inputValues.get(INPUT_AXIS_ID));
 
         if (center == null || !(sizeObj instanceof Number sN) || !(segmentsObj instanceof Number segN)) {
             writeInvalid();
@@ -68,7 +69,7 @@ public class InfinityCurveOnPlaneNode extends BaseNode {
             return;
         }
 
-        CurvePlaneUtils.Basis basis = CurvePlaneUtils.createBasis(plane, preferred);
+        PlaneProjectionUtils.Basis basis = PlaneProjectionUtils.createBasis(plane, preferred);
         if (basis == null) {
             writeInvalid();
             return;

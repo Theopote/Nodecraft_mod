@@ -25,7 +25,7 @@ import java.util.UUID;
     category = "geometry.curves",
     order = 1
 )
-public class PathToPointsNode extends BaseNode {
+public class PathToPointsNode extends AbstractCurveNode {
 
     private static final String INPUT_LINE_ID = "input_line";
     private static final String INPUT_POLYLINE_ID = "input_polyline";
