@@ -1,4 +1,5 @@
-package com.nodecraft.nodesystem.nodes.geometry.solids;
+
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -9,7 +10,6 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.nodes.geometry.curves.PolylineOffsetInPlaneNode;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import net.minecraft.util.math.BlockPos;
@@ -97,7 +97,7 @@ public class SectionCutNode extends BaseNode {
         BlockPosList sliceBlocks = new BlockPosList();
         List<Vector3d> projected = new ArrayList<>();
         List<Vector2d> uv = new ArrayList<>();
-        PolylineOffsetInPlaneNode.PlaneAxes axes = PolylineOffsetInPlaneNode.PlaneAxes.from(plane);
+        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
         for (BlockPos b : filled) {
             Vector3d c = new Vector3d(b.getX() + 0.5d, b.getY() + 0.5d, b.getZ() + 0.5d);
             double d = new Vector3d(c).sub(p0).dot(n);

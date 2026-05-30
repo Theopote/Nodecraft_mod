@@ -229,7 +229,7 @@ public class PolylineOffsetInPlaneNode extends AbstractCurveNode {
     }
 
     /**
-     * Compatibility wrapper kept for nodes that still reference PolylineOffsetInPlaneNode.PlaneAxes.
+     * Compatibility wrapper kept for nodes that still reference PlaneProjectionUtils.PlaneAxes.
      * New code should use PlaneProjectionUtils.PlaneAxes directly.
      */
     @Deprecated

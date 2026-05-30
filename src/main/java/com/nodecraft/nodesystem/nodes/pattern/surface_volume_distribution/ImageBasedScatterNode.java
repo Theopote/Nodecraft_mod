@@ -1,4 +1,5 @@
-package com.nodecraft.nodesystem.nodes.pattern.surface_volume_distribution;
+
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -9,7 +10,6 @@ import com.nodecraft.nodesystem.datatypes.ColorData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.nodes.geometry.curves.PolylineOffsetInPlaneNode;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -114,7 +114,7 @@ public class ImageBasedScatterNode extends BaseNode {
 
         PlaneData plane = inputValues.get(INPUT_PLANE_ID) instanceof PlaneData pd ? pd : null;
         Vector3d origin = resolveOrigin(inputValues.get(INPUT_ORIGIN_ID), plane);
-        PolylineOffsetInPlaneNode.PlaneAxes axes = plane != null ? PolylineOffsetInPlaneNode.PlaneAxes.from(plane) : null;
+        PlaneProjectionUtils.PlaneAxes axes = plane != null ? PlaneProjectionUtils.PlaneAxes.from(plane) : null;
 
         Random rng = new Random(resolvedSeed);
         List<Vector3d> points = new ArrayList<>(targetCount);
@@ -237,7 +237,7 @@ public class ImageBasedScatterNode extends BaseNode {
         return low;
     }
 
-    private Vector3d toWorldPoint(Vector3d origin, @Nullable PolylineOffsetInPlaneNode.PlaneAxes axes, double localU, double localV) {
+    private Vector3d toWorldPoint(Vector3d origin, @Nullable PlaneProjectionUtils.PlaneAxes axes, double localU, double localV) {
         if (axes != null) {
             Vector2d uv = axes.to2d(origin);
             return axes.from2d(new Vector2d(uv.x + localU, uv.y + localV));

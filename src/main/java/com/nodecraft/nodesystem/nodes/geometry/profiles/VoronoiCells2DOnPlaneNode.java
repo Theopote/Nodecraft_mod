@@ -1,4 +1,5 @@
-package com.nodecraft.nodesystem.nodes.geometry.profiles;
+
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -9,7 +10,6 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.nodes.geometry.curves.PolylineOffsetInPlaneNode;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
@@ -105,7 +105,7 @@ public class VoronoiCells2DOnPlaneNode extends BaseNode {
             return;
         }
 
-        PolylineOffsetInPlaneNode.PlaneAxes axes = PolylineOffsetInPlaneNode.PlaneAxes.from(plane);
+        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
         List<Vector2d> uvSites = new ArrayList<>();
         for (Vector3d p : world) {
             Vector3d proj = plane.projectPoint(p);
@@ -170,7 +170,7 @@ public class VoronoiCells2DOnPlaneNode extends BaseNode {
     }
 
     private static void appendPolygons(Geometry geometry,
-                                       PolylineOffsetInPlaneNode.PlaneAxes axes,
+                                       PlaneProjectionUtils.PlaneAxes axes,
                                        PlaneData plane,
                                        List<PolygonProfileData> out) {
         if (geometry == null || geometry.isEmpty()) {
@@ -191,7 +191,7 @@ public class VoronoiCells2DOnPlaneNode extends BaseNode {
     }
 
     private static @Nullable PolygonProfileData toProfile(Polygon polygon,
-                                                          PolylineOffsetInPlaneNode.PlaneAxes axes,
+                                                          PlaneProjectionUtils.PlaneAxes axes,
                                                           PlaneData plane) {
         LineString ring = polygon.getExteriorRing();
         if (ring == null || ring.isEmpty()) {

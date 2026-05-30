@@ -1,4 +1,5 @@
-package com.nodecraft.nodesystem.nodes.geometry.profiles;
+
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -8,7 +9,6 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.nodes.geometry.curves.PolylineOffsetInPlaneNode;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
 import org.joml.Vector3d;
@@ -67,7 +67,7 @@ public class ProfileBoolean2DNode extends BaseNode {
         }
 
         PlaneData plane = a.getPlane();
-        PolylineOffsetInPlaneNode.PlaneAxes axes = PolylineOffsetInPlaneNode.PlaneAxes.from(plane);
+        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
         GeometryFactory gf = new GeometryFactory();
 
         Polygon pa = toJtsPolygon(a, axes, gf);
@@ -115,7 +115,7 @@ public class ProfileBoolean2DNode extends BaseNode {
     }
 
     private Polygon toJtsPolygon(PolygonProfileData profile,
-                                 PolylineOffsetInPlaneNode.PlaneAxes axes,
+                                 PlaneProjectionUtils.PlaneAxes axes,
                                  GeometryFactory gf) {
         List<Vector3d> closed = profile.getClosedPoints();
         if (closed.size() < 4) {
@@ -131,7 +131,7 @@ public class ProfileBoolean2DNode extends BaseNode {
 
     private Polygon toJtsPolygonProjecting(PolygonProfileData profile,
                                            PlaneData targetPlane,
-                                           PolylineOffsetInPlaneNode.PlaneAxes axes,
+                                           PlaneProjectionUtils.PlaneAxes axes,
                                            GeometryFactory gf) {
         List<Vector3d> closed = profile.getClosedPoints();
         if (closed.size() < 4) {
@@ -147,7 +147,7 @@ public class ProfileBoolean2DNode extends BaseNode {
     }
 
     private void appendPolygons(Geometry geometry,
-                                PolylineOffsetInPlaneNode.PlaneAxes axes,
+                                PlaneProjectionUtils.PlaneAxes axes,
                                 PlaneData plane,
                                 List<PolygonProfileData> out) {
         if (geometry == null || geometry.isEmpty()) {
@@ -168,7 +168,7 @@ public class ProfileBoolean2DNode extends BaseNode {
     }
 
     private @Nullable PolygonProfileData toProfile(Polygon polygon,
-                                                   PolylineOffsetInPlaneNode.PlaneAxes axes,
+                                                   PlaneProjectionUtils.PlaneAxes axes,
                                                    PlaneData plane) {
         Coordinate[] coords = polygon.getExteriorRing().getCoordinates();
         if (coords.length < 4) {
@@ -185,7 +185,7 @@ public class ProfileBoolean2DNode extends BaseNode {
         }
     }
 
-    private double area2d(PolygonProfileData profile, PolylineOffsetInPlaneNode.PlaneAxes axes) {
+    private double area2d(PolygonProfileData profile, PlaneProjectionUtils.PlaneAxes axes) {
         List<Vector3d> pts = profile.getClosedPoints();
         double area2 = 0.0d;
         for (int i = 0; i < pts.size() - 1; i++) {

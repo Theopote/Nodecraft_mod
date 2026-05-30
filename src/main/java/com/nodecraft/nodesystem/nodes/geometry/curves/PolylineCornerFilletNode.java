@@ -1,5 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.curves;
 
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
+
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
@@ -119,7 +121,7 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
             return;
         }
 
-        PolylineOffsetInPlaneNode.PlaneAxes axes = PolylineOffsetInPlaneNode.PlaneAxes.from(plane);
+        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
         List<Vector2d> pts = new ArrayList<>(raw.size());
         for (Vec3d v : raw) {
             Vector3d p3 = plane.projectPoint(new Vector3d(v.x, v.y, v.z));

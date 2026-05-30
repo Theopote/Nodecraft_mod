@@ -1,4 +1,5 @@
-package com.nodecraft.nodesystem.nodes.pattern.surface_volume_distribution;
+
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -125,8 +126,8 @@ public class PoissonDiskOnPlaneNode extends BaseNode {
         }
 
         Vector3d origin = resolveOrigin(inputValues.get(INPUT_ORIGIN_ID), plane);
-        com.nodecraft.nodesystem.nodes.geometry.curves.PolylineOffsetInPlaneNode.PlaneAxes axes =
-            com.nodecraft.nodesystem.nodes.geometry.curves.PolylineOffsetInPlaneNode.PlaneAxes.from(plane);
+        com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils.PlaneAxes axes =
+            com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils.PlaneAxes.from(plane);
         Vector3d projectedOrigin = plane.projectPoint(origin);
         Vector2d originUv = axes.to2d(projectedOrigin);
 

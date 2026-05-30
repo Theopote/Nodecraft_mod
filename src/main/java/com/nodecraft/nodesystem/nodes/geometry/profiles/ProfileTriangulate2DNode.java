@@ -1,4 +1,5 @@
-package com.nodecraft.nodesystem.nodes.geometry.profiles;
+
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -7,7 +8,6 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.nodes.geometry.curves.PolylineOffsetInPlaneNode;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
 import org.joml.Vector3d;
@@ -61,7 +61,7 @@ public class ProfileTriangulate2DNode extends BaseNode {
         }
 
         PlaneData plane = profile.getPlane();
-        PolylineOffsetInPlaneNode.PlaneAxes axes = PolylineOffsetInPlaneNode.PlaneAxes.from(plane);
+        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
         List<Vector2d> pts2d = new ArrayList<>(unique3d.size());
         for (Vector3d p : unique3d) {
             pts2d.add(axes.to2d(p));
