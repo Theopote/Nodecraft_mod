@@ -125,7 +125,7 @@ public final class AiAssistantPanel {
     }
 
     public void flushSessionStateIfDue() {
-        aiAssistantComponent.flushSessionStateIfDue(AI_SESSION_SAVE_DEBOUNCE_MS, this::serializePendingPlanToDsl);
+        aiAssistantComponent.flushSessionStateIfDue(AI_SESSION_SAVE_DEBOUNCE_MS, AiSessionPlanCodecService::serializePendingPlanToDsl);
     }
 
     public void cleanup() {
@@ -212,8 +212,8 @@ public final class AiAssistantPanel {
     }
 
     private void renderAiSettingsPopup() {
-        String detectedProviderLabel = resolveDetectedProviderLabel(aiApiBaseUrl.get());
-        String[] suggestedModels = resolveSuggestedModels(aiApiBaseUrl.get());
+        String detectedProviderLabel = AiProviderModelService.resolveDetectedProviderLabel(aiApiBaseUrl.get());
+        String[] suggestedModels = AiProviderModelService.resolveSuggestedModels(aiApiBaseUrl.get());
         maybeAutofillModelByProviderChange(detectedProviderLabel, suggestedModels);
 
         AiAssistantSettingsPopupRenderer.renderSettingsPopup(
@@ -259,8 +259,8 @@ public final class AiAssistantPanel {
     }
 
     private void renderAiDebugConsolePopup() {
-        String compactDiagnostics = buildAiDiagnosticsExportText(false);
-        String fullDiagnostics = buildAiDiagnosticsExportText(true);
+        String compactDiagnostics = AiDiagnosticsService.buildAiDiagnosticsExportText(aiAssistantComponent, aiPlanStatusMessage, false);
+        String fullDiagnostics = AiDiagnosticsService.buildAiDiagnosticsExportText(aiAssistantComponent, aiPlanStatusMessage, true);
 
         AiAssistantDebugConsoleRenderer.renderDebugConsolePopup(
                 new AiAssistantDebugConsoleRenderer.State(
@@ -357,10 +357,7 @@ public final class AiAssistantPanel {
     }
 
     private boolean hasAiDebugData() {
-        return (aiAssistantComponent.getLastRemoteRawResponse() != null && !aiAssistantComponent.getLastRemoteRawResponse().isBlank())
-                || (aiAssistantComponent.getLastRemoteModelText() != null && !aiAssistantComponent.getLastRemoteModelText().isBlank())
-                || (aiAssistantComponent.getLastRemoteRequestSnapshot() != null && !aiAssistantComponent.getLastRemoteRequestSnapshot().isBlank())
-                || (aiAssistantComponent.getLastRemoteErrorMessage() != null && !aiAssistantComponent.getLastRemoteErrorMessage().isBlank());
+        return AiDiagnosticsService.hasAiDebugData(aiAssistantComponent);
     }
 
     private void increaseAiTimeoutSeconds(int deltaSeconds) {
@@ -369,41 +366,6 @@ public final class AiAssistantPanel {
         aiRequestTimeoutSeconds.set(updated);
         saveAiSettingsToDisk();
         aiSettingsStatusMessage = "AI timeout increased to " + updated + " seconds.";
-    }
-
-    private String buildAiDiagnosticsExportText(boolean includeFullPayloads) {
-        return "[AI Debug Diagnostics]\n" +
-                "category: " + nullToEmpty(aiAssistantComponent.getLastRemoteErrorCategory()) + "\n" +
-                "statusCode: " + aiAssistantComponent.getLastRemoteStatusCode() + "\n" +
-                "attempts: " + aiAssistantComponent.getLastRemoteAttempts() + "\n" +
-                "errorMessage: " + nullToEmpty(aiAssistantComponent.getLastRemoteErrorMessage()) + "\n" +
-                "statusMessage: " + nullToEmpty(aiPlanStatusMessage) + "\n\n" +
-                "[Request Snapshot]\n" +
-                formatDiagnosticsSection(aiAssistantComponent.getLastRemoteRequestSnapshot(), includeFullPayloads) + "\n" +
-                "[Model Text]\n" +
-                formatDiagnosticsSection(aiAssistantComponent.getLastRemoteModelText(), includeFullPayloads) + "\n" +
-                "[Raw Response]\n" +
-                formatDiagnosticsSection(aiAssistantComponent.getLastRemoteRawResponse(), includeFullPayloads) + "\n";
-    }
-
-    private String formatDiagnosticsSection(String value, boolean includeFullPayloads) {
-        if (value == null || value.isBlank()) {
-            return "(empty)";
-        }
-        if (includeFullPayloads) {
-            return value;
-        }
-        return truncateForDiagnostics(value, 900);
-    }
-
-    private String truncateForDiagnostics(String value, int maxChars) {
-        if (value == null) {
-            return "";
-        }
-        if (value.length() <= maxChars) {
-            return value;
-        }
-        return value.substring(0, maxChars) + "\n...[truncated, total chars=" + value.length() + "]";
     }
 
     private String validateAiSettings() {
@@ -429,7 +391,7 @@ public final class AiAssistantPanel {
     }
 
     private void loadAiSessionStateFromDisk() {
-        String status = aiAssistantComponent.loadSessionState(this::deserializePendingPlanFromDsl);
+        String status = aiAssistantComponent.loadSessionState(AiSessionPlanCodecService::deserializePendingPlanFromDsl);
         if (status != null && !status.isBlank()) {
             aiSettingsStatusMessage = status;
         }
@@ -440,24 +402,7 @@ public final class AiAssistantPanel {
     }
 
     private void saveAiSessionStateToDiskNow() {
-        aiAssistantComponent.saveSessionStateNow(this::serializePendingPlanToDsl);
-    }
-
-    private String serializePendingPlanToDsl(AiGraphPlan plan) {
-        if (plan == null) {
-            return "";
-        }
-        return AiPlanDslWorkflowService.toDslJson(toServiceGraphPlanForHistory(plan));
-    }
-
-    private AiGraphPlan deserializePendingPlanFromDsl(String pendingPlanDslJson) {
-        AiGraphDslSupport.ParseValidationResult parsed =
-                AiGraphDslSupport.parseAndValidate(pendingPlanDslJson, NodeRegistry.getInstance());
-        if (!parsed.isSuccess() || parsed.graph() == null) {
-            aiPlanStatusMessage = "Stored pending plan skipped due to validation failure.";
-            return null;
-        }
-        return fromServiceGraphPlan(AiPlanDslWorkflowService.fromDsl(parsed.graph()));
+        aiAssistantComponent.saveSessionStateNow(AiSessionPlanCodecService::serializePendingPlanToDsl);
     }
 
     private void addAiChatMessage(String role, String content) {
@@ -482,7 +427,7 @@ public final class AiAssistantPanel {
                 aiApiBaseUrl.get(),
                 aiApiKey.get(),
                 aiModel.get(),
-                providerStrategyFromIndex(aiProviderStrategyIndex.get()),
+                AiProviderModelService.providerStrategyFromIndex(aiProviderStrategyIndex.get(), AI_PROVIDER_STRATEGY_OPTIONS),
                 aiSystemPrompt.get(),
                 aiMaxOutputTokens.get(),
                 aiRequestTimeoutSeconds.get(),
@@ -505,7 +450,7 @@ public final class AiAssistantPanel {
         aiApiBaseUrl.set(data.apiBaseUrl());
         aiApiKey.set(data.apiKey());
         aiModel.set(data.model());
-        aiProviderStrategyIndex.set(indexFromProviderStrategy(data.providerStrategy()));
+        aiProviderStrategyIndex.set(AiProviderModelService.indexFromProviderStrategy(data.providerStrategy(), AI_PROVIDER_STRATEGY_OPTIONS));
         aiSystemPrompt.set(data.systemPrompt());
         aiMaxOutputTokens.set(data.maxOutputTokens());
         aiRequestTimeoutSeconds.set(data.timeoutSeconds());
@@ -903,7 +848,7 @@ public final class AiAssistantPanel {
                 aiApiBaseUrl.get(),
                 aiApiKey.get(),
                 aiModel.get(),
-                providerStrategyFromIndex(aiProviderStrategyIndex.get()),
+                AiProviderModelService.providerStrategyFromIndex(aiProviderStrategyIndex.get(), AI_PROVIDER_STRATEGY_OPTIONS),
                 systemPrompt,
                 aiMaxOutputTokens.get(),
                 aiRequestTimeoutSeconds.get()
@@ -932,7 +877,7 @@ public final class AiAssistantPanel {
                 aiApiBaseUrl.get(),
                 aiApiKey.get(),
                 aiModel.get(),
-                providerStrategyFromIndex(aiProviderStrategyIndex.get()),
+                AiProviderModelService.providerStrategyFromIndex(aiProviderStrategyIndex.get(), AI_PROVIDER_STRATEGY_OPTIONS),
                 aiSystemPrompt.get(),
                 aiMaxOutputTokens.get(),
                 aiRequestTimeoutSeconds.get()
@@ -1345,72 +1290,6 @@ public final class AiAssistantPanel {
         return prefix + "***" + suffix;
     }
 
-    private String providerStrategyFromIndex(int index) {
-        int safeIndex = Math.max(0, Math.min(AI_PROVIDER_STRATEGY_OPTIONS.length - 1, index));
-        return AI_PROVIDER_STRATEGY_OPTIONS[safeIndex];
-    }
-
-    private int indexFromProviderStrategy(String strategy) {
-        if (strategy == null || strategy.isBlank()) {
-            return 0;
-        }
-        for (int i = 0; i < AI_PROVIDER_STRATEGY_OPTIONS.length; i++) {
-            if (AI_PROVIDER_STRATEGY_OPTIONS[i].equalsIgnoreCase(strategy)) {
-                return i;
-            }
-        }
-        return 0;
-    }
-
-    private String resolveDetectedProviderLabel(String baseUrl) {
-        String normalized = normalizeProviderInput(baseUrl);
-        if (normalized.isBlank()) {
-            return "Unknown";
-        }
-
-        if (normalized.contains("deepseek")) {
-            return "DeepSeek";
-        }
-        if (normalized.contains("dashscope") || normalized.contains("aliyuncs") || normalized.contains("qwen")) {
-            return "Qwen (DashScope)";
-        }
-        if (normalized.contains("anthropic")) {
-            return "Anthropic";
-        }
-        if (normalized.contains("groq")) {
-            return "Groq";
-        }
-        return "OpenAI-Compatible";
-    }
-
-    private String[] resolveSuggestedModels(String baseUrl) {
-        String normalized = normalizeProviderInput(baseUrl);
-        if (normalized.isBlank()) {
-            return OPENAI_MODELS;
-        }
-
-        if (normalized.contains("deepseek")) {
-            return DEEPSEEK_MODELS;
-        }
-        if (normalized.contains("dashscope") || normalized.contains("aliyuncs") || normalized.contains("qwen")) {
-            return QWEN_MODELS;
-        }
-        if (normalized.contains("anthropic")) {
-            return ANTHROPIC_MODELS;
-        }
-        if (normalized.contains("groq")) {
-            return GROQ_MODELS;
-        }
-        return OPENAI_MODELS;
-    }
-
-    private String normalizeProviderInput(String baseUrl) {
-        if (baseUrl == null) {
-            return "";
-        }
-        return baseUrl.trim().toLowerCase(Locale.ROOT);
-    }
-
     private void maybeAutofillModelByProviderChange(String detectedProviderLabel, String[] suggestedModels) {
         if (detectedProviderLabel == null) {
             detectedProviderLabel = "";
@@ -1427,7 +1306,7 @@ public final class AiAssistantPanel {
         String currentModel = aiModel.get();
         boolean shouldAutofill = currentModel == null
                 || currentModel.isBlank()
-                || !isModelInSuggestions(currentModel, suggestedModels);
+            || !AiProviderModelService.isModelInSuggestions(currentModel, suggestedModels);
 
         if (shouldAutofill) {
             aiModel.set(suggestedModels[0]);
@@ -1436,18 +1315,6 @@ public final class AiAssistantPanel {
         }
 
         aiLastDetectedProviderLabel = detectedProviderLabel;
-    }
-
-    private boolean isModelInSuggestions(String model, String[] suggestedModels) {
-        if (model == null || suggestedModels == null) {
-            return false;
-        }
-        for (String suggestion : suggestedModels) {
-            if (suggestion != null && suggestion.equalsIgnoreCase(model)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private AiGraphPlanDslAdapterService.GraphPlan toServiceGraphPlanForHistory(AiGraphPlan plan) {
