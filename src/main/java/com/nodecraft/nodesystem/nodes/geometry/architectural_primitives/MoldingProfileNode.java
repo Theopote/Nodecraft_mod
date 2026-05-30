@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -96,15 +97,10 @@ public class MoldingProfileNode extends BaseNode {
             return;
         }
 
-        List<Vec3d> boundaryPoints = new ArrayList<>(points.size());
-        for (Vector3d point : points) {
-            boundaryPoints.add(new Vec3d(point.x, point.y, point.z));
-        }
-
         PolygonProfileData profile = new PolygonProfileData(points, plane);
         outputValues.put(OUTPUT_PROFILE_ID, profile);
         outputValues.put(OUTPUT_POINTS_ID, List.copyOf(points));
-        outputValues.put(OUTPUT_BOUNDARY_ID, new PolylineData(boundaryPoints));
+        outputValues.put(OUTPUT_BOUNDARY_ID, PathUtils.createPolylineOrNull(PathUtils.toVec3dList(points, false)));
         outputValues.put(OUTPUT_PLANE_ID, plane);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
@@ -173,22 +169,40 @@ public class MoldingProfileNode extends BaseNode {
     }
 
     private void addQuarterArc(List<Vector3d> points, Vector3d center, Basis basis, double cx, double cy, double radius, double startAngle, double endAngle, int segments) {
-        for (int i = 1; i <= segments; i++) {
-            double t = i / (double) segments;
+        List<Vector3d> guide = new ArrayList<>(5);
+        for (int i = 0; i <= 4; i++) {
+            double t = i / 4.0d;
             double angle = startAngle + (endAngle - startAngle) * t;
-            double x = cx + Math.cos(angle) * radius;
-            double y = cy + Math.sin(angle) * radius;
-            points.add(localPoint(center, basis, x, y));
+            guide.add(new Vector3d(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius, 0.0d));
         }
+        appendResampledLocalCurve(points, center, basis, guide, segments);
     }
 
     private void addSCurve(List<Vector3d> points, Vector3d center, Basis basis, double startX, double startY, double width, double height, int segments) {
-        for (int i = 1; i <= segments; i++) {
-            double t = i / (double) segments;
-            double x = startX + width * t;
+        List<Vector3d> guide = new ArrayList<>(5);
+        for (int i = 0; i <= 4; i++) {
+            double t = i / 4.0d;
             double eased = t * t * (3.0d - 2.0d * t);
-            double y = startY + height * eased;
-            points.add(localPoint(center, basis, x, y));
+            guide.add(new Vector3d(startX + width * t, startY + height * eased, 0.0d));
+        }
+        appendResampledLocalCurve(points, center, basis, guide, segments);
+    }
+
+    private void appendResampledLocalCurve(List<Vector3d> points, Vector3d center, Basis basis, List<Vector3d> guide, int segments) {
+        if (guide.size() < 2) {
+            return;
+        }
+        double[] cumulative = PathUtils.buildCumulative(guide, false);
+        if (cumulative == null) {
+            return;
+        }
+        double total = cumulative[cumulative.length - 1];
+        if (total <= 1.0e-9d) {
+            return;
+        }
+        for (int i = 1; i <= segments; i++) {
+            Vector3d sample = PathUtils.sampleAtDistance(guide, false, cumulative, total * i / (double) segments);
+            points.add(localPoint(center, basis, sample.x, sample.y));
         }
     }
 

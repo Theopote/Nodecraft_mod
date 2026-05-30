@@ -86,12 +86,12 @@ public class WindowArrayNode extends AbstractFaceArrayNode {
         boolean valid = false;
 
         if (faceObj instanceof BoxFaceData face) {
-            int columns = resolvePositiveInt(columnsObj, 1);
-            int rows = resolvePositiveInt(rowsObj, 1);
-            double windowWidth = resolvePositiveDouble(widthObj, 1.0d);
-            double windowHeight = resolvePositiveDouble(heightObj, 1.0d);
-            double margin = resolveNonNegativeDouble(marginObj, 0.0d);
-            double depth = resolvePositiveDouble(depthObj, defaultDepth);
+            int columns = ArchitecturalPrimitiveSupport.resolvePositiveInt(columnsObj, 1);
+            int rows = ArchitecturalPrimitiveSupport.resolvePositiveInt(rowsObj, 1);
+            double windowWidth = ArchitecturalPrimitiveSupport.resolvePositiveDouble(widthObj, 1.0d);
+            double windowHeight = ArchitecturalPrimitiveSupport.resolvePositiveDouble(heightObj, 1.0d);
+            double margin = ArchitecturalPrimitiveSupport.resolveNonNegativeDouble(marginObj, 0.0d);
+            double depth = ArchitecturalPrimitiveSupport.resolvePositiveDouble(depthObj, defaultDepth);
 
             FaceArrayLayout layout = resolveFaceArrayLayout(face, columns, rows, windowWidth, windowHeight, margin, VerticalAnchor.TOP);
             if (layout != null) {
