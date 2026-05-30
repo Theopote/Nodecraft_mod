@@ -42,12 +42,12 @@ public final class PathUtils {
         if (verts.size() < 3) {
             return false;
         }
-        Vector3d first = verts.get(0);
-        Vector3d last = verts.get(verts.size() - 1);
+        Vector3d first = verts.getFirst();
+        Vector3d last = verts.getLast();
         return first.distance(last) < 1.0e-6d;
     }
 
-    public static @Nullable double[] buildCumulative(List<Vector3d> unique, boolean closed) {
+    public static double @Nullable [] buildCumulative(List<Vector3d> unique, boolean closed) {
         int segCount = closed ? unique.size() : unique.size() - 1;
         if (segCount < 1) {
             return null;
@@ -83,7 +83,7 @@ public final class PathUtils {
                 return new Vector3d(p0).lerp(p1, t);
             }
         }
-        return new Vector3d(unique.get(0));
+        return new Vector3d(unique.getFirst());
     }
 
     public static List<Vec3d> toVec3dList(List<Vector3d> points, boolean closed) {
@@ -92,7 +92,7 @@ public final class PathUtils {
             out.add(new Vec3d(point.x, point.y, point.z));
         }
         if (closed && !out.isEmpty()) {
-            out.add(out.get(0));
+            out.add(out.getFirst());
         }
         return out;
     }

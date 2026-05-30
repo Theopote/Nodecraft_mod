@@ -101,7 +101,7 @@ public final class CurveMathUtils {
         }
 
         if (denominator <= epsilon) {
-            Vec3d fallback = controlPoints.get(0);
+            Vec3d fallback = controlPoints.getFirst();
             return new Vec3d(fallback.x, fallback.y, fallback.z);
         }
 
