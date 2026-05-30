@@ -6,6 +6,7 @@ import com.google.gson.JsonParser;
 import org.jspecify.annotations.NonNull;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -306,6 +307,24 @@ public class AiRemotePlannerService {
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
                 return RemotePlanResult.fail("Remote planner request was canceled.", -1, "", "canceled", attempt);
+            } catch (UncheckedIOException uioe) {
+                // UncheckedIOException is thrown when a network error occurs while lazily consuming
+                // the SSE line stream from BodyHandlers.ofLines(). Treat it as a retryable network error.
+                lastFailure = RemotePlanResult.fail(
+                        "Network error (stream): " + uioe.getMessage(),
+                        -1,
+                        "",
+                        "network",
+                        attempt
+                );
+                if (attempt >= MAX_ATTEMPTS) {
+                    return lastFailure;
+                }
+                try {
+                    backoffSleep(attempt);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             } catch (IOException ioe) {
                 lastFailure = RemotePlanResult.fail(
                         "Network error: " + ioe.getMessage(),

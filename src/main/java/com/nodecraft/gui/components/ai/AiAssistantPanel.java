@@ -1083,14 +1083,13 @@ public final class AiAssistantPanel {
 
         if (!parsed.isSuccess() || parsed.graph() == null) {
             setPendingAiPlan(null);
-            String errorMessage = null;
-            if (parsed.errors() != null) {
-                errorMessage = "Plan JSON validation failed: " + String.join("; ", parsed.errors());
-            }
+            String errorMessage = (parsed.errors() != null && !parsed.errors().isEmpty())
+                    ? "Plan JSON validation failed: " + String.join("; ", parsed.errors())
+                    : "Plan validation failed (no error details available).";
             addAiChatMessage("assistant", errorMessage);
             aiPlanStatusMessage = errorMessage;
             NodeCraft.LOGGER.warn("[AI_SEND] DSL parse failed. source={}, errors={}", source, parsed.errors());
-            if ("remote".equals(source)) {
+            if ("remote".equals(source) || "remote-tool".equals(source)) {
                 fallbackToLocalPlan(prompt, "remote JSON invalid");
             }
             return;
@@ -1501,6 +1500,7 @@ public final class AiAssistantPanel {
 
         if (containsAnyLower(lower,
                 "新建", "生成", "创建", "做一个", "添加", "放置",
+                "帮我", "需要一个", "我想", "造一个", "建一个", "搭一个",
                 "generate", "create", "build", "make", "add", "place")) {
             return UserIntent.GENERATE_NEW;
         }
