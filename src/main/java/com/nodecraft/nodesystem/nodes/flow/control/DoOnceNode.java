@@ -30,10 +30,12 @@ public class DoOnceNode extends BaseNode {
 
     private static final String STATE_KEY_FALLBACK_EXECUTED = "fallbackExecuted";
 
+    private final String contextStateKey;
     private boolean fallbackExecuted;
 
     public DoOnceNode() {
         super(UUID.randomUUID(), "flow.control.do_once");
+        this.contextStateKey = "flow.do_once.executed." + getId();
 
         addInputPort(new BasePort(INPUT_SIGNAL_ID, "Signal", "Signal that should pass only once", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_RESET_ID, "Reset", "Resets execution gate when true", NodeDataType.BOOLEAN, this));
@@ -60,12 +62,7 @@ public class DoOnceNode extends BaseNode {
         Object signal = inputValues.get(INPUT_SIGNAL_ID);
         boolean hasSignal = signal != null;
 
-        if (context != null && reset) {
-            context.setVariable(contextStateKey(), false);
-        }
-        if (context == null && reset) {
-            fallbackExecuted = false;
-        }
+        applyReset(context, reset);
 
         boolean alreadyExecuted = readExecutedState(context);
         if (hasSignal && !alreadyExecuted) {
@@ -83,9 +80,15 @@ public class DoOnceNode extends BaseNode {
         outputValues.put(OUTPUT_HAS_EXECUTED_ID, alreadyExecuted);
     }
 
+    private void applyReset(@Nullable ExecutionContext context, boolean reset) {
+        if (reset) {
+            writeExecutedState(context, false);
+        }
+    }
+
     private boolean readExecutedState(@Nullable ExecutionContext context) {
         if (context != null) {
-            Object value = context.getVariable(contextStateKey());
+            Object value = context.getVariable(contextStateKey);
             return Boolean.TRUE.equals(value);
         }
         return fallbackExecuted;
@@ -93,19 +96,16 @@ public class DoOnceNode extends BaseNode {
 
     private void writeExecutedState(@Nullable ExecutionContext context, boolean executed) {
         if (context != null) {
-            context.setVariable(contextStateKey(), executed);
+            context.setVariable(contextStateKey, executed);
             return;
         }
         fallbackExecuted = executed;
     }
 
-    private String contextStateKey() {
-        return "flow.do_once.executed." + getId();
-    }
-
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
+        // Only fallback state is serialized; ExecutionContext-backed state is runtime-only.
         state.put(STATE_KEY_FALLBACK_EXECUTED, fallbackExecuted);
         return state;
     }

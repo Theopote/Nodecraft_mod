@@ -20,6 +20,7 @@ import java.util.UUID;
 public class SequenceNode extends BaseNode {
 
     private static final int MAX_STEPS = 8;
+    private static final int DEFAULT_STEP_COUNT = 2;
 
     private static final String INPUT_SIGNAL_ID = "input_signal";
     private static final String INPUT_STEP_COUNT_ID = "input_step_count";
@@ -37,7 +38,7 @@ public class SequenceNode extends BaseNode {
             addOutputPort(new BasePort(stepOutputId(i), "Step " + i, "Sequence output step " + i, NodeDataType.ANY, this));
         }
         addOutputPort(new BasePort(OUTPUT_ACTIVE_STEP_COUNT_ID, "Active Step Count", "Resolved active step count", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_ACTIVE_STEPS_ID, "Active Steps", "Labels of active steps", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_ACTIVE_STEPS_ID, "Active Step Indexes", "1-based indexes of active steps", NodeDataType.LIST, this));
     }
 
     @Override
@@ -55,11 +56,11 @@ public class SequenceNode extends BaseNode {
         Object signal = inputValues.get(INPUT_SIGNAL_ID);
         int activeCount = resolveStepCount(inputValues.get(INPUT_STEP_COUNT_ID));
 
-        List<String> activeSteps = new ArrayList<>(activeCount);
+        List<Integer> activeSteps = new ArrayList<>(activeCount);
         for (int i = 1; i <= MAX_STEPS; i++) {
             if (i <= activeCount) {
                 outputValues.put(stepOutputId(i), signal);
-                activeSteps.add("step_" + i);
+                activeSteps.add(i);
             } else {
                 outputValues.put(stepOutputId(i), null);
             }
@@ -70,7 +71,7 @@ public class SequenceNode extends BaseNode {
     }
 
     private int resolveStepCount(Object value) {
-        int stepCount = MAX_STEPS;
+        int stepCount = DEFAULT_STEP_COUNT;
         if (value instanceof Number number) {
             stepCount = number.intValue();
         }

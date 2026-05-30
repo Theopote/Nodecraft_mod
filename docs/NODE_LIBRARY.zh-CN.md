@@ -64,7 +64,7 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Branch | `flow.control.branch` | Routes an input signal to True or False output based on condition. | `BranchNode` |
+| Branch | `flow.control.branch` | Routes an input signal to True or False output based on condition; returns early with both outputs null when signal is null. | `BranchNode` |
 | Sequence | `flow.control.sequence` | Replicates one signal to ordered sequence outputs. | `SequenceNode` |
 | Do Once | `flow.control.do_once` | Allows a signal to pass once per execution context, unless reset. | `DoOnceNode` |
 

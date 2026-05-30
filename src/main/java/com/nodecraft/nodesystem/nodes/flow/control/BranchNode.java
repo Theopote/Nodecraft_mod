@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 
+import java.util.Locale;
 import java.util.UUID;
 
 @NodeInfo(
@@ -22,8 +23,6 @@ public class BranchNode extends BaseNode {
 
     private static final String OUTPUT_TRUE_ID = "output_true";
     private static final String OUTPUT_FALSE_ID = "output_false";
-    private static final String OUTPUT_WAS_TRUE_ID = "output_was_true";
-    private static final String OUTPUT_WAS_FALSE_ID = "output_was_false";
 
     public BranchNode() {
         super(UUID.randomUUID(), "flow.control.branch");
@@ -33,8 +32,6 @@ public class BranchNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_TRUE_ID, "True", "Signal routed to true branch", NodeDataType.ANY, this));
         addOutputPort(new BasePort(OUTPUT_FALSE_ID, "False", "Signal routed to false branch", NodeDataType.ANY, this));
-        addOutputPort(new BasePort(OUTPUT_WAS_TRUE_ID, "Was True", "Whether true branch was taken", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_WAS_FALSE_ID, "Was False", "Whether false branch was taken", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -52,18 +49,20 @@ public class BranchNode extends BaseNode {
         boolean condition = coerceToBoolean(inputValues.get(INPUT_CONDITION_ID));
         Object signal = inputValues.get(INPUT_SIGNAL_ID);
 
+        if (signal == null) {
+            outputValues.put(OUTPUT_TRUE_ID, null);
+            outputValues.put(OUTPUT_FALSE_ID, null);
+            return;
+        }
+
         if (condition) {
             outputValues.put(OUTPUT_TRUE_ID, signal);
             outputValues.put(OUTPUT_FALSE_ID, null);
-            outputValues.put(OUTPUT_WAS_TRUE_ID, true);
-            outputValues.put(OUTPUT_WAS_FALSE_ID, false);
             return;
         }
 
         outputValues.put(OUTPUT_TRUE_ID, null);
         outputValues.put(OUTPUT_FALSE_ID, signal);
-        outputValues.put(OUTPUT_WAS_TRUE_ID, false);
-        outputValues.put(OUTPUT_WAS_FALSE_ID, true);
     }
 
     private boolean coerceToBoolean(Object value) {
@@ -78,7 +77,10 @@ public class BranchNode extends BaseNode {
             if (normalized.isEmpty()) {
                 return false;
             }
-            return Boolean.parseBoolean(normalized);
+            return switch (normalized.toLowerCase(Locale.ROOT)) {
+                case "true", "yes", "1", "on" -> true;
+                default -> false;
+            };
         }
         return value != null;
     }

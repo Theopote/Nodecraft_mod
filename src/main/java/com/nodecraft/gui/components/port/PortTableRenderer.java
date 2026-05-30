@@ -3,6 +3,7 @@ package com.nodecraft.gui.components.port;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.nodes.flow.control.SequenceNode;
 import com.nodecraft.nodesystem.nodes.output.execute.ApplyChangesNode;
 import com.nodecraft.nodesystem.nodes.output.preview.GeometryViewerNode;
 import com.nodecraft.nodesystem.nodes.output.preview.PreviewGeometryNode;
@@ -15,6 +16,9 @@ import java.util.UUID;
 
 public final class PortTableRenderer {
 
+    private static final int SEQUENCE_MAX_STEPS = 8;
+    private static final int SEQUENCE_DEFAULT_STEP_COUNT = 2;
+
     private PortTableRenderer() {
     }
 
@@ -23,7 +27,7 @@ public final class PortTableRenderer {
             return;
         }
 
-        java.util.List<IPort> inputPorts = filterViewerPorts(selectedNode.getInputPorts(), selectedNode);
+        java.util.List<IPort> inputPorts = filterViewerPorts(selectedNode.getInputPorts(), selectedNode, graph);
         if (inputPorts.isEmpty()) {
             ImGui.textDisabled("No input ports");
             return;
@@ -85,7 +89,7 @@ public final class PortTableRenderer {
             return;
         }
 
-        java.util.List<IPort> outputPorts = filterViewerPorts(selectedNode.getOutputPorts(), selectedNode);
+        java.util.List<IPort> outputPorts = filterViewerPorts(selectedNode.getOutputPorts(), selectedNode, graph);
         if (outputPorts.isEmpty()) {
             ImGui.textDisabled("No output ports");
             return;
@@ -153,7 +157,7 @@ public final class PortTableRenderer {
         }
     }
 
-    private static java.util.List<IPort> filterViewerPorts(java.util.List<IPort> ports, INode node) {
+    private static java.util.List<IPort> filterViewerPorts(java.util.List<IPort> ports, INode node, NodeGraph graph) {
         if (ports == null || ports.isEmpty()) {
             return ports;
         }
@@ -198,6 +202,12 @@ public final class PortTableRenderer {
                         "input_torus_geometry".equals(portId) ||
                         "input_preview_ids".equals(portId) ||
                         "input_notify".equals(portId);
+            } else if (node instanceof SequenceNode) {
+                if (shouldHideSequenceStepPort(node, port, graph)) {
+                    continue;
+                }
+                visiblePorts.add(port);
+                continue;
             } else {
                 return ports;
             }
@@ -209,5 +219,45 @@ public final class PortTableRenderer {
             visiblePorts.add(port);
         }
         return visiblePorts;
+    }
+
+    private static boolean shouldHideSequenceStepPort(INode node, IPort port, NodeGraph graph) {
+        String portId = port.getId();
+        int stepIndex = parseSequenceStepIndex(portId);
+        if (stepIndex < 0) {
+            return false;
+        }
+        if (port.isConnected()) {
+            return false;
+        }
+
+        int visibleStepCount = resolveSequenceStepCount(node, graph);
+        return stepIndex > visibleStepCount;
+    }
+
+    private static int resolveSequenceStepCount(INode node, NodeGraph graph) {
+        Object activeCountValue = graph != null
+                ? NodeOutputResolver.resolveNodeOutput(graph, node, "output_active_step_count")
+                : node.getOutput("output_active_step_count");
+
+        if (activeCountValue instanceof Number number) {
+            int count = number.intValue();
+            if (count < 1) {
+                return 1;
+            }
+            return Math.min(count, SEQUENCE_MAX_STEPS);
+        }
+        return SEQUENCE_DEFAULT_STEP_COUNT;
+    }
+
+    private static int parseSequenceStepIndex(String portId) {
+        if (portId == null || !portId.startsWith("output_step_")) {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(portId.substring("output_step_".length()));
+        } catch (NumberFormatException ignored) {
+            return -1;
+        }
     }
 }
