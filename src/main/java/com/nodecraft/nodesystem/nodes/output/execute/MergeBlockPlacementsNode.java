@@ -252,11 +252,12 @@ public class MergeBlockPlacementsNode extends BaseNode {
             : existing.blockId();
 
         BlockStateData mergedState = null;
-        if (existing.stateData() != null) {
-            mergedState = existing.stateData();
+        boolean preserveExistingState = Objects.equals(blockId, existing.blockId());
+        if (preserveExistingState && existing.stateData() != null) {
+            mergedState = existing.stateData().copy();
         }
         if (incoming.stateData() != null) {
-            mergedState = mergedState != null ? mergedState.copy() : new BlockStateData();
+            mergedState = mergedState != null ? mergedState : new BlockStateData();
             mergedState.putAll(incoming.stateData());
         }
         return new BlockPlacementData(incoming.pos(), blockId, mergedState);

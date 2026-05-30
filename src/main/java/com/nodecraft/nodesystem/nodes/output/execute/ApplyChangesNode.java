@@ -154,14 +154,21 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 long startTime = System.currentTimeMillis();
                 progressPercentage = 0.2f;
                 statusMessage = "Applying material placements...";
-                operationCount = applyPlacementList(context, placements);
-                success = true;
+                ApplyResult applyResult = applyPlacementList(context, placements, startTime + executionTimeout * 1000L);
+                operationCount = applyResult.operationCount();
+                success = !applyResult.timedOut();
                 executionTime = (int) (System.currentTimeMillis() - startTime);
-                status = useAsyncBake
-                    ? "Queued " + operationCount + " block placements"
-                    : "Placed " + operationCount + " blocks";
-                progressPercentage = 1.0f;
-                statusMessage = "Completed";
+                if (applyResult.timedOut()) {
+                    status = "Timed out after " + executionTimeout + "s; placed " + operationCount + " blocks";
+                    progressPercentage = 0.0f;
+                    statusMessage = "Timed out";
+                } else {
+                    status = useAsyncBake
+                        ? "Queued " + operationCount + " block placements"
+                        : "Placed " + operationCount + " blocks";
+                    progressPercentage = 1.0f;
+                    statusMessage = "Completed";
+                }
                 if (notify) {
                     LOGGER.info("ApplyChangesNode: {}, {}ms", status, executionTime);
                 }
@@ -184,14 +191,21 @@ public class ApplyChangesNode extends BaseCustomUINode {
             long startTime = System.currentTimeMillis();
             progressPercentage = 0.2f;
             statusMessage = "Applying blocks...";
-            operationCount = applyUniformBlocks(context, blocks, targetState);
-            success = true;
+            ApplyResult applyResult = applyUniformBlocks(context, blocks, targetState, startTime + executionTimeout * 1000L);
+            operationCount = applyResult.operationCount();
+            success = !applyResult.timedOut();
             executionTime = (int) (System.currentTimeMillis() - startTime);
-            status = useAsyncBake
-                ? "Queued " + operationCount + " blocks"
-                : "Placed " + operationCount + "/" + blocks.size() + " blocks";
-            progressPercentage = 1.0f;
-            statusMessage = "Completed";
+            if (applyResult.timedOut()) {
+                status = "Timed out after " + executionTimeout + "s; placed " + operationCount + "/" + blocks.size() + " blocks";
+                progressPercentage = 0.0f;
+                statusMessage = "Timed out";
+            } else {
+                status = useAsyncBake
+                    ? "Queued " + operationCount + " blocks"
+                    : "Placed " + operationCount + "/" + blocks.size() + " blocks";
+                progressPercentage = 1.0f;
+                statusMessage = "Completed";
+            }
             if (notify) {
                 LOGGER.info("ApplyChangesNode: {}, {}ms", status, executionTime);
             }
@@ -255,7 +269,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
         return GeometryVoxelizer.resolveBlocks(blocksObj, geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj, solidGeometry);
     }
 
-    private int applyPlacementList(ExecutionContext context, List<BlockPlacementData> placements) {
+    private ApplyResult applyPlacementList(ExecutionContext context, List<BlockPlacementData> placements, long deadlineMillis) {
         Map<String, List<BlockPlacementData>> byBlockId = new LinkedHashMap<>();
         for (BlockPlacementData placement : placements) {
             byBlockId.computeIfAbsent(placement.blockId(), ignored -> new ArrayList<>()).add(placement);
@@ -288,6 +302,9 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 count += positions.size();
             } else {
                 for (BlockPlacementData placement : placementBatch) {
+                    if (isTimedOut(deadlineMillis)) {
+                        return new ApplyResult(count, true);
+                    }
                     BlockPos pos = placement.pos();
                     if (placementMode == PlacementMode.INCREMENTAL && !context.getWorld().isAir(pos)) {
                         continue;
@@ -299,7 +316,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 }
             }
         }
-        return count;
+        return new ApplyResult(count, false);
     }
 
     private BlockState applyBlockStateData(BlockState baseState, @Nullable BlockStateData stateData) {
@@ -327,7 +344,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
             .orElse(state);
     }
 
-    private int applyUniformBlocks(ExecutionContext context, BlockPosList blocks, BlockState targetState) {
+    private ApplyResult applyUniformBlocks(ExecutionContext context, BlockPosList blocks, BlockState targetState, long deadlineMillis) {
         if (useAsyncBake) {
             BakePlacementService.getInstance().enqueue(
                 context.getWorld(),
@@ -338,11 +355,14 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 1000,
                 null
             );
-            return blocks.size();
+            return new ApplyResult(blocks.size(), false);
         }
 
         int count = 0;
         for (BlockPos pos : blocks) {
+            if (isTimedOut(deadlineMillis)) {
+                return new ApplyResult(count, true);
+            }
             if (placementMode == PlacementMode.INCREMENTAL && !context.getWorld().isAir(pos)) {
                 continue;
             }
@@ -350,7 +370,11 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 count++;
             }
         }
-        return count;
+        return new ApplyResult(count, false);
+    }
+
+    private boolean isTimedOut(long deadlineMillis) {
+        return !useAsyncBake && System.currentTimeMillis() >= deadlineMillis;
     }
 
     private BlockState resolveBlockState(String blockId) {
@@ -504,6 +528,9 @@ public class ApplyChangesNode extends BaseCustomUINode {
             solidGeometry = value;
             markDirty();
         }
+    }
+
+    private record ApplyResult(int operationCount, boolean timedOut) {
     }
 
     @Override
