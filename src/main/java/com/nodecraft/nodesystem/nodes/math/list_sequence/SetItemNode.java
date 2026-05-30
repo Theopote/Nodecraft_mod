@@ -27,7 +27,6 @@ public class SetItemNode extends BaseNode {
     private boolean allowNegativeIndex = true; //                                                              ?
     private boolean wrapIndex = false; //                                     ?
     private boolean expandList = false; //                                                   ?
-    private String description; //                    ?
     
     // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
@@ -42,9 +41,6 @@ public class SetItemNode extends BaseNode {
     public SetItemNode() {
         //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.set_item");
-        
-        //                    ?
-        this.description = "Sets an item in a list at a specified index";
         
         //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
@@ -67,15 +63,6 @@ public class SetItemNode extends BaseNode {
         IPort successOutput = new BasePort(OUTPUT_SUCCESS_ID, "Success", 
                 "Whether the operation was successful", NodeDataType.BOOLEAN, this);
         addOutputPort(successOutput);
-    }
-    
-    /**
-     *         ode            tDescription      ?
-     * @return              ?
-     */
-    @Override
-    public String getDescription() {
-        return this.description;
     }
     
     /**
@@ -141,8 +128,10 @@ public class SetItemNode extends BaseNode {
     }
     
     public void setAllowNegativeIndex(boolean allow) {
-        this.allowNegativeIndex = allow;
-        markDirty();
+        if (this.allowNegativeIndex != allow) {
+            this.allowNegativeIndex = allow;
+            markDirty();
+        }
     }
     
     public boolean isWrapIndex() {
@@ -150,8 +139,10 @@ public class SetItemNode extends BaseNode {
     }
     
     public void setWrapIndex(boolean wrap) {
-        this.wrapIndex = wrap;
-        markDirty();
+        if (this.wrapIndex != wrap) {
+            this.wrapIndex = wrap;
+            markDirty();
+        }
     }
     
     public boolean isExpandList() {
@@ -159,8 +150,10 @@ public class SetItemNode extends BaseNode {
     }
     
     public void setExpandList(boolean expand) {
-        this.expandList = expand;
-        markDirty();
+        if (this.expandList != expand) {
+            this.expandList = expand;
+            markDirty();
+        }
     }
     
     // ---                         ?---

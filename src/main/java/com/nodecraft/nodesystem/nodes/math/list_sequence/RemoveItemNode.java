@@ -28,7 +28,6 @@ public class RemoveItemNode extends BaseNode {
     private boolean useIndex = true; //                                                      ?
     private boolean allowNegativeIndex = true; //                                                              ?
     private boolean removeAllMatches = false; //                                                                     ?
-    private String description; //                    ?
     
     // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
@@ -44,9 +43,6 @@ public class RemoveItemNode extends BaseNode {
     public RemoveItemNode() {
         //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.remove_item");
-        
-        //                    ?
-        this.description = "Removes an item from a list by index or value";
         
         //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
@@ -76,15 +72,6 @@ public class RemoveItemNode extends BaseNode {
     }
     
     /**
-     *         ode            tDescription      ?
-     * @return              ?
-     */
-    @Override
-    public String getDescription() {
-        return this.description;
-    }
-    
-    /**
      *                         ?
      * @param context                ?
      */
@@ -94,6 +81,7 @@ public class RemoveItemNode extends BaseNode {
         Object inputObj = inputValues.get(INPUT_LIST_ID);
         Object indexObj = inputValues.get(INPUT_INDEX_ID);
         Object valueObj = inputValues.get(INPUT_VALUE_ID);
+        boolean hasValueInput = inputValues.containsKey(INPUT_VALUE_ID);
         
         List<Object> resultList = new ArrayList<>();
         Object removedItem = null;
@@ -125,7 +113,7 @@ public class RemoveItemNode extends BaseNode {
                 }
             } 
             //             ?
-            else if (!useIndex && valueObj != null) {
+            else if (!useIndex && hasValueInput) {
                 //                                   ?
                 if (removeAllMatches) {
                     List<Object> toRemove = new ArrayList<>();
@@ -170,8 +158,10 @@ public class RemoveItemNode extends BaseNode {
     }
     
     public void setUseIndex(boolean useIndex) {
-        this.useIndex = useIndex;
-        markDirty();
+        if (this.useIndex != useIndex) {
+            this.useIndex = useIndex;
+            markDirty();
+        }
     }
     
     public boolean isAllowNegativeIndex() {
@@ -179,8 +169,10 @@ public class RemoveItemNode extends BaseNode {
     }
     
     public void setAllowNegativeIndex(boolean allow) {
-        this.allowNegativeIndex = allow;
-        markDirty();
+        if (this.allowNegativeIndex != allow) {
+            this.allowNegativeIndex = allow;
+            markDirty();
+        }
     }
     
     public boolean isRemoveAllMatches() {
@@ -188,8 +180,10 @@ public class RemoveItemNode extends BaseNode {
     }
     
     public void setRemoveAllMatches(boolean removeAll) {
-        this.removeAllMatches = removeAll;
-        markDirty();
+        if (this.removeAllMatches != removeAll) {
+            this.removeAllMatches = removeAll;
+            markDirty();
+        }
     }
     
     // ---                         ?---

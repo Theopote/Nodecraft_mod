@@ -25,7 +25,6 @@ public class FilterListNode extends BaseNode {
     
     // ---              ?---
     private boolean invert = false; //                                                  lse         ?
-    private String description; //                    ?
     
     // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
@@ -40,9 +39,6 @@ public class FilterListNode extends BaseNode {
     public FilterListNode() {
         //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.filter_list");
-        
-        //                    ?
-        this.description = "Filters a list based on boolean conditions";
         
         //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
@@ -65,15 +61,6 @@ public class FilterListNode extends BaseNode {
         IPort countOutput = new BasePort(OUTPUT_COUNT_ID, "Count", 
                 "Number of items after filtering", NodeDataType.INTEGER, this);
         addOutputPort(countOutput);
-    }
-    
-    /**
-     *         ode            tDescription      ?
-     * @return              ?
-     */
-    @Override
-    public String getDescription() {
-        return this.description;
     }
     
     /**
@@ -156,8 +143,10 @@ public class FilterListNode extends BaseNode {
     }
     
     public void setInvert(boolean invert) {
-        this.invert = invert;
-        markDirty();
+        if (this.invert != invert) {
+            this.invert = invert;
+            markDirty();
+        }
     }
     
     // ---                         ?---
