@@ -50,16 +50,6 @@ public class DeduplicateListNode extends BaseNode {
     }
 
     @Override
-    public String getDisplayName() {
-        return "Deduplicate List";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Removes duplicate values from a list while preserving order.";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object input = inputValues.get(INPUT_LIST_ID);
         if (!(input instanceof List<?> list)) {
@@ -116,7 +106,18 @@ public class DeduplicateListNode extends BaseNode {
         }
         Object preserveOrderValue = map.get("preserveOrder");
         if (preserveOrderValue instanceof Boolean value) {
+            setPreserveOrder(value);
+        }
+    }
+
+    public boolean isPreserveOrder() {
+        return preserveOrder;
+    }
+
+    public void setPreserveOrder(boolean value) {
+        if (preserveOrder != value) {
             preserveOrder = value;
+            markDirty();
         }
     }
 }

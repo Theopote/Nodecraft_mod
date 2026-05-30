@@ -66,11 +66,6 @@ public class CreateListNode extends BaseCustomUINode {
     }
 
     @Override
-    public String getDescription() {
-        return "Packs multiple input items into a single list.";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Object> resultList = new ArrayList<>();
         for (int i = 0; i < inputCount; i++) {
@@ -202,16 +197,13 @@ public class CreateListNode extends BaseCustomUINode {
         if (state instanceof Map<?, ?> map) {
             Object allowMixed = map.get("allowDifferentTypes");
             if (allowMixed instanceof Boolean value) {
-                this.allowDifferentTypes = value;
+                setAllowDifferentTypes(value);
             }
 
             Object count = map.get("inputCount");
-            if (count instanceof Integer value) {
-                this.inputCount = Math.max(MIN_INPUT_COUNT, Math.min(MAX_INPUT_COUNT, value));
+            if (count instanceof Number value) {
+                setInputCount(value.intValue());
             }
-
-            rebuildInputPorts();
-            markDirty();
         }
     }
 }

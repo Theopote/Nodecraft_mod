@@ -47,16 +47,6 @@ public class ChunkListNode extends BaseNode {
     }
 
     @Override
-    public String getDisplayName() {
-        return "Chunk List";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Splits a list into fixed-size chunks.";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object listObj = inputValues.get(INPUT_LIST_ID);
         Object sizeObj = inputValues.get(INPUT_SIZE_ID);
@@ -85,9 +75,6 @@ public class ChunkListNode extends BaseNode {
             List<Object> chunk = new ArrayList<>(list.subList(i, end));
             if (chunk.size() < size && dropRemainder) {
                 remainder.addAll(chunk);
-            } else if (chunk.size() < size) {
-                chunks.add(chunk);
-                remainder.addAll(chunk);
             } else {
                 chunks.add(chunk);
             }
@@ -113,7 +100,18 @@ public class ChunkListNode extends BaseNode {
         }
         Object dropRemainderValue = map.get("dropRemainder");
         if (dropRemainderValue instanceof Boolean value) {
+            setDropRemainder(value);
+        }
+    }
+
+    public boolean isDropRemainder() {
+        return dropRemainder;
+    }
+
+    public void setDropRemainder(boolean value) {
+        if (dropRemainder != value) {
             dropRemainder = value;
+            markDirty();
         }
     }
 }
