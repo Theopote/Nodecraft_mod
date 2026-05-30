@@ -61,13 +61,15 @@ public class TransposeListNode extends BaseNode {
             return;
         }
 
+        int inputRowCount = outer.size();
+
         List<List<?>> rows = new ArrayList<>();
         for (Object rowObj : outer) {
             if (rowObj instanceof List<?> row) {
                 rows.add(row);
             } else if (!ignoreNonListRows) {
                 outputValues.put(OUTPUT_TRANSPOSED_ID, List.of());
-                outputValues.put(OUTPUT_ROW_COUNT_ID, outer.size());
+                outputValues.put(OUTPUT_ROW_COUNT_ID, inputRowCount);
                 outputValues.put(OUTPUT_COLUMN_COUNT_ID, 0);
                 outputValues.put(OUTPUT_VALID_ID, false);
                 return;
@@ -76,7 +78,7 @@ public class TransposeListNode extends BaseNode {
 
         if (rows.isEmpty()) {
             outputValues.put(OUTPUT_TRANSPOSED_ID, List.of());
-            outputValues.put(OUTPUT_ROW_COUNT_ID, 0);
+            outputValues.put(OUTPUT_ROW_COUNT_ID, inputRowCount);
             outputValues.put(OUTPUT_COLUMN_COUNT_ID, 0);
             outputValues.put(OUTPUT_VALID_ID, outer.isEmpty());
             return;
@@ -97,7 +99,7 @@ public class TransposeListNode extends BaseNode {
         }
 
         outputValues.put(OUTPUT_TRANSPOSED_ID, transposed);
-        outputValues.put(OUTPUT_ROW_COUNT_ID, rows.size());
+        outputValues.put(OUTPUT_ROW_COUNT_ID, inputRowCount);
         outputValues.put(OUTPUT_COLUMN_COUNT_ID, columns);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
