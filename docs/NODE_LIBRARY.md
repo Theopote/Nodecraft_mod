@@ -1,8 +1,8 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **441**
-- Total categories: **50**
+- Total nodes: **454**
+- Total categories: **51**
 
 ## Category Statistics
 
@@ -13,7 +13,8 @@
 | `geometry.boolean` | 18 |
 | `geometry.curves` | 19 |
 | `geometry.primitives` | 29 |
-| `geometry.profiles` | 25 |
+| `geometry.architectural_primitives` | 14 |
+| `geometry.profiles` | 24 |
 | `geometry.solids` | 20 |
 | `input.context` | 4 |
 | `input.numeric` | 9 |
@@ -160,12 +161,30 @@ Note: For `Deconstruct*` nodes in this category, when `Valid == false`, geometry
 | Deconstruct Icosahedron | `geometry.primitives.deconstruct_icosahedron` | Extracts center, edge length, vertices, bounds, and analytical values from icosahedron geometry | `DeconstructIcosahedronNode` |
 | Deconstruct Dodecahedron | `geometry.primitives.deconstruct_dodecahedron` | Extracts center, edge length, vertices, bounds, and analytical values from dodecahedron geometry | `DeconstructDodecahedronNode` |
 
-## geometry.profiles (25)
+## geometry.architectural_primitives (14)
+
+| Node Name | Node ID | Description | Class |
+|---|---|---|---|
+| Window Array | `geometry.architectural_primitives.window_array` | Generates a rectangular array of inset window opening boxes on a box face | `WindowArrayNode` |
+| Door Array | `geometry.architectural_primitives.door_array` | Generates a rectangular array of inset door opening boxes on a box face | `DoorArrayNode` |
+| Column Grid | `geometry.architectural_primitives.column_grid` | Generates a rectangular grid of columns on a box face | `ColumnGridNode` |
+| Railing | `geometry.architectural_primitives.railing` | Generates a straight railing or balustrade along a line segment | `RailingNode` |
+| Staircase | `geometry.architectural_primitives.staircase` | Generates a straight staircase from a line segment | `StaircaseNode` |
+| Roof Generator | `geometry.architectural_primitives.roof_generator` | Generates a simple roof volume from a box face footprint | `RoofGeneratorNode` |
+| Facade Panel Array | `geometry.architectural_primitives.facade_panel_array` | Generates a rectangular array of facade panels on a box face | `FacadePanelArrayNode` |
+| Arch Opening | `geometry.architectural_primitives.arch_opening` | Generates a rectangular, round, or pointed arch opening volume | `ArchOpeningNode` |
+| Wall With Openings | `geometry.architectural_primitives.wall_with_openings` | Generates a wall slab with an opening grid | `WallWithOpeningsNode` |
+| Pilaster / Cornice | `geometry.architectural_primitives.pilaster_cornice` | Generates pilasters and a cornice along a box face | `PilasterOrCorniceNode` |
+| Array Along Curve | `geometry.architectural_primitives.array_along_curve` | Places repeated columns, posts, or panels along a curve or polyline path | `ArrayAlongCurveNode` |
+| Deconstruct Architectural Opening | `geometry.architectural_primitives.deconstruct_opening` | Flattens architectural opening geometry into component lists and bounds | `DeconstructArchitecturalOpeningNode` |
+| Floor Slab With Beams | `geometry.architectural_primitives.floor_slab_with_beams` | Generates a floor slab and a configurable support beam grid | `FloorSlabWithBeamsNode` |
+| Molding Profile | `geometry.architectural_primitives.molding_profile` | Generates decorative molding cross-section profiles | `MoldingProfileNode` |
+
+## geometry.profiles (24)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Rectangle On Plane | `geometry.profiles.rectangle_profile` | Constructs a planar rectangle from a center point, width, height, and plane | `RectangleOnPlaneNode` |
-| Window Array | `geometry.architectural_primitives.window_array` | Generates a rectangular array of inset window opening boxes on a box face | `WindowArrayNode` |
 | Regular Polygon On Plane | `geometry.profiles.polygon_profile` | Constructs a regular polygon from a center point, radius, side count, and plane | `RegularPolygonOnPlaneNode` |
 | Polygon By Points | `geometry.profiles.custom_profile` | Constructs a planar polygon profile from an ordered point list | `PolygonByPointsNode` |
 | Resample Polygon Profile | `geometry.profiles.resample_profile` | Resamples a polygon profile to a target edge count using perimeter-distance sampling | `ResamplePolygonProfileNode` |
