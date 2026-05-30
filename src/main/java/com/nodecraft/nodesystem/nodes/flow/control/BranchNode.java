@@ -35,16 +35,6 @@ public class BranchNode extends BaseNode {
     }
 
     @Override
-    public String getDisplayName() {
-        return "Branch";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Routes an input signal to True or False output based on condition.";
-    }
-
-    @Override
     public void processNode(ExecutionContext context) {
         boolean condition = coerceToBoolean(inputValues.get(INPUT_CONDITION_ID));
         Object signal = inputValues.get(INPUT_SIGNAL_ID);

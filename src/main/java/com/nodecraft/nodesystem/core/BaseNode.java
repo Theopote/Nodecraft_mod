@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.core;
 
 import com.nodecraft.nodesystem.api.INode;
+import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 
@@ -24,6 +25,8 @@ public abstract class BaseNode implements INode {
 
     private final UUID id;
     private final String typeId;
+    private final String displayName;
+    private final String description;
     private double positionX;
     private double positionY;
     private Object nodeState;
@@ -39,6 +42,10 @@ public abstract class BaseNode implements INode {
     public BaseNode(UUID id, String typeId) {
         this.id = id;
         this.typeId = typeId;
+
+        NodeInfo nodeInfo = getClass().getAnnotation(NodeInfo.class);
+        this.displayName = resolveDisplayName(nodeInfo, typeId);
+        this.description = resolveDescription(nodeInfo);
     }
 
     @Override
@@ -68,13 +75,32 @@ public abstract class BaseNode implements INode {
     }
 
     public String getDisplayName() {
+        return displayName;
+    }
+
+    @Override
+    public String getDescription() {
+        return description;
+    }
+
+    private static String resolveDisplayName(NodeInfo nodeInfo, String typeId) {
+        if (nodeInfo != null && nodeInfo.displayName() != null && !nodeInfo.displayName().isBlank()) {
+            return nodeInfo.displayName();
+        }
         if (typeId != null && typeId.contains(".")) {
             return formatDisplayName(typeId.substring(typeId.lastIndexOf('.') + 1));
         }
         return typeId;
     }
 
-    private String formatDisplayName(String name) {
+    private static String resolveDescription(NodeInfo nodeInfo) {
+        if (nodeInfo != null && nodeInfo.description() != null) {
+            return nodeInfo.description();
+        }
+        return "";
+    }
+
+    private static String formatDisplayName(String name) {
         if (name == null || name.isEmpty()) {
             return name;
         }

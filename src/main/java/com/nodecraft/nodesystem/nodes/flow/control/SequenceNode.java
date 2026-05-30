@@ -42,16 +42,6 @@ public class SequenceNode extends BaseNode {
     }
 
     @Override
-    public String getDisplayName() {
-        return "Sequence";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Replicates one signal to ordered sequence outputs.";
-    }
-
-    @Override
     public void processNode(ExecutionContext context) {
         Object signal = inputValues.get(INPUT_SIGNAL_ID);
         int activeCount = resolveStepCount(inputValues.get(INPUT_STEP_COUNT_ID));

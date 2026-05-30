@@ -47,16 +47,6 @@ public class DoOnceNode extends BaseNode {
     }
 
     @Override
-    public String getDisplayName() {
-        return "Do Once";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Allows a signal to pass once per execution context, unless reset.";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         boolean reset = Boolean.TRUE.equals(inputValues.get(INPUT_RESET_ID));
         Object signal = inputValues.get(INPUT_SIGNAL_ID);

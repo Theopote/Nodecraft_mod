@@ -62,16 +62,6 @@ public class AccumulatorNode extends BaseNode {
     }
 
     @Override
-    public String getDisplayName() {
-        return "Accumulator";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Accumulates list values into a single result.";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object valuesObj = inputValues.get(INPUT_VALUES_ID);
         Object initialObj = inputValues.get(INPUT_INITIAL_ID);

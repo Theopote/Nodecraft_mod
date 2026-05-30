@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -22,6 +23,9 @@ import java.util.UUID;
     order = 2
 )
 public class WhileLoopNode extends BaseNode {
+
+    private static final int MIN_ITERATIONS = 1;
+    private static final int MAX_ITERATIONS_CAP = 100000;
 
     @NodeProperty(displayName = "Max Iterations", category = "Loop", order = 1)
     private int maxIterations = 256;
@@ -51,16 +55,6 @@ public class WhileLoopNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_TERMINATED_BY_CONDITION_ID, "Terminated By Condition", "Whether loop stopped because condition became false", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "Whether loop stopped because max iterations was reached", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether loop input shape was valid", NodeDataType.BOOLEAN, this));
-    }
-
-    @Override
-    public String getDisplayName() {
-        return "While Loop";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Processes input values while condition remains true, with iteration safety limits.";
     }
 
     @Override
@@ -106,10 +100,7 @@ public class WhileLoopNode extends BaseNode {
         if (inputLimit instanceof Number number) {
             resolved = number.intValue();
         }
-        if (resolved < 1) {
-            return 1;
-        }
-        return Math.min(resolved, 100000);
+        return clampMaxIterations(resolved);
     }
 
     private boolean resolveConditionAt(Object conditionObj, int index) {
@@ -138,9 +129,19 @@ public class WhileLoopNode extends BaseNode {
             if (normalized.isEmpty()) {
                 return false;
             }
-            return Boolean.parseBoolean(normalized);
+            return switch (normalized.toLowerCase(Locale.ROOT)) {
+                case "true", "yes", "1", "on" -> true;
+                default -> false;
+            };
         }
         return value != null;
+    }
+
+    private static int clampMaxIterations(int value) {
+        if (value < MIN_ITERATIONS) {
+            return MIN_ITERATIONS;
+        }
+        return Math.min(value, MAX_ITERATIONS_CAP);
     }
 
     @Override
@@ -159,7 +160,7 @@ public class WhileLoopNode extends BaseNode {
 
         Object maxIterationsObj = map.get("maxIterations");
         if (maxIterationsObj instanceof Number number) {
-            maxIterations = number.intValue();
+            maxIterations = clampMaxIterations(number.intValue());
         }
 
         Object defaultConditionObj = map.get("defaultCondition");

@@ -10,6 +10,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -49,19 +50,9 @@ public class ForEachLoopNode extends BaseNode {
     }
 
     @Override
-    public String getDisplayName() {
-        return "For Each Loop";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Iterates over a list and exposes derived iteration data.";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object listObj = inputValues.get(INPUT_LIST_ID);
-        boolean enabled = !Boolean.FALSE.equals(inputValues.get(INPUT_ENABLED_ID));
+        boolean enabled = coerceEnabled(inputValues.get(INPUT_ENABLED_ID));
 
         if (!enabled) {
             outputValues.put(OUTPUT_ITEMS_ID, List.of());
@@ -107,5 +98,28 @@ public class ForEachLoopNode extends BaseNode {
         outputValues.put(OUTPUT_LAST_ITEM_ID, lastItem);
         outputValues.put(OUTPUT_COUNT_ID, items.size());
         outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    private boolean coerceEnabled(Object value) {
+        if (value == null) {
+            return true;
+        }
+        if (value instanceof Boolean booleanValue) {
+            return booleanValue;
+        }
+        if (value instanceof Number number) {
+            return number.doubleValue() != 0.0d;
+        }
+        if (value instanceof String stringValue) {
+            String normalized = stringValue.trim();
+            if (normalized.isEmpty()) {
+                return false;
+            }
+            return switch (normalized.toLowerCase(Locale.ROOT)) {
+                case "true", "yes", "1", "on" -> true;
+                default -> false;
+            };
+        }
+        return true;
     }
 }
