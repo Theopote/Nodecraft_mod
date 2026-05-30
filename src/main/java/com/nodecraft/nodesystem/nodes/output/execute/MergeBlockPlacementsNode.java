@@ -76,11 +76,6 @@ public class MergeBlockPlacementsNode extends BaseNode {
     }
 
     @Override
-    public String getDescription() {
-        return "Concatenates multiple block placement lists into one execution-ready placement list";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         MergeResult mergeResult = lastWins ? mergeWithOverwrite() : mergeByConcatenation();
         List<BlockPlacementData> merged = mergeResult.placements();

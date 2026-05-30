@@ -109,11 +109,6 @@ public class ApplyChangesNode extends BaseCustomUINode {
     }
 
     @Override
-    public String getDescription() {
-        return "Applies explicit placements or voxelized geometry to the world.";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         boolean success = false;
         int operationCount = 0;

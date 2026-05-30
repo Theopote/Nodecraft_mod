@@ -455,7 +455,7 @@ Voxel CSG and SDF nodes are ordered in two bands (0–4 voxel, 10–23 SDF). See
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Apply Changes | `output.execute.apply_changes` | Applies explicit placements or voxelized geometry to the world. | `ApplyChangesNode` |
+| Apply Changes | `output.execute.apply_changes` | Applies explicit placements or voxelized geometry to the world, with synchronous execution respecting the configured timeout. | `ApplyChangesNode` |
 | Clear Preview | `output.execute.clear_preview` | Clears all active previews in the current world | `ClearAllPreviewsNode` |
 | Bake Geometry To Blocks | `output.execute.bake_geometry_to_blocks` | Bakes any supported geometry into Minecraft block coordinates for final execution | `GeometryToBlocksNode` |
 | Undo Last Bake | `output.execute.undo_last_bake` | Reverts the most recent recorded bake or apply-changes operation | `UndoLastBakeNode` |
