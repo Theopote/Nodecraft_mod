@@ -8,12 +8,10 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.Curve;
-import net.minecraft.util.math.BlockPos;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -56,11 +54,6 @@ public class BezierNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_CONTROL_COUNT_ID, "Control Count", "Number of valid control points", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Sampled length of the polyline approximation", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when at least 3 control points were resolved", NodeDataType.BOOLEAN, this));
-    }
-
-    @Override
-    public String getDescription() {
-        return "Builds a sampled Bezier curve from an ordered list of control points";
     }
 
     @Override
@@ -148,23 +141,11 @@ public class BezierNode extends BaseNode {
     }
 
     private @Nullable Vec3d resolvePoint(Object value) {
-        if (value instanceof PointData pointData) {
-            Vector3d p = pointData.getPosition();
-            return new Vec3d(p.x, p.y, p.z);
-        }
-        if (value instanceof Coordinate coordinate) {
-            return new Vec3d(coordinate.getX(), coordinate.getY(), coordinate.getZ());
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vec3d(vector.x, vector.y, vector.z);
-        }
-        if (value instanceof BlockPos blockPos) {
-            return new Vec3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
-        }
         if (value instanceof Vec3d vec) {
             return vec;
         }
-        return null;
+        var resolved = SpatialValueResolver.resolveVector3d(value);
+        return resolved == null ? null : new Vec3d(resolved.x, resolved.y, resolved.z);
     }
 
     private int getInputInt(String portId, int fallback) {

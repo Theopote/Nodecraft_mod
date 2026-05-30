@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.CurvePathSamplingUtil;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
@@ -63,14 +64,33 @@ public class PolylineCornerFilletNode extends BaseNode {
             NodeDataType.BOOLEAN, this));
     }
 
-    @Override
-    public String getDisplayName() {
-        return "Fillet Polyline Corners";
+    public int getArcSegments() {
+        return arcSegments;
+    }
+
+    public void setArcSegments(int arcSegments) {
+        int resolved = Math.max(1, arcSegments);
+        if (this.arcSegments != resolved) {
+            this.arcSegments = resolved;
+            markDirty();
+        }
     }
 
     @Override
-    public String getDescription() {
-        return "Fillets interior corners of an open polyline with circular arcs in the work plane";
+    public Object getNodeState() {
+        return new java.util.HashMap<String, Object>() {{
+            put("arcSegments", arcSegments);
+        }};
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (!(state instanceof java.util.Map<?, ?> map)) {
+            return;
+        }
+        if (map.get("arcSegments") instanceof Number value) {
+            setArcSegments(value.intValue());
+        }
     }
 
     @Override
@@ -117,12 +137,14 @@ public class PolylineCornerFilletNode extends BaseNode {
             Vector3d w = axes.from2d(p);
             out.add(new Vec3d(w.x, w.y, w.z));
         }
-        try {
-            outputValues.put(OUTPUT_POLYLINE_ID, new PolylineData(out));
-            outputValues.put(OUTPUT_VALID_ID, true);
-        } catch (IllegalArgumentException ex) {
+        PolylineData polyline = CurvePathSamplingUtil.createPolylineOrNull(out);
+        if (polyline == null) {
             writeInvalid();
+            return;
         }
+
+        outputValues.put(OUTPUT_POLYLINE_ID, polyline);
+        outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private void writeInvalid() {

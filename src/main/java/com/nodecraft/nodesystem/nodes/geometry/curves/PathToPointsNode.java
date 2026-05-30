@@ -57,16 +57,6 @@ public class PathToPointsNode extends BaseNode {
     }
 
     @Override
-    public String getDisplayName() {
-        return "Path To Points";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Extracts an ordered point list from a line, polyline, or curve";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<PointData> points = new ArrayList<>();
 

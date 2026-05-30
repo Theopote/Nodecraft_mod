@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.CurvePathSamplingUtil;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
@@ -68,14 +69,33 @@ public class PolylineOffsetInPlaneNode extends BaseNode {
             NodeDataType.BOOLEAN, this));
     }
 
-    @Override
-    public String getDisplayName() {
-        return "Offset Polyline In Plane";
+    public double getMiterLimit() {
+        return miterLimit;
+    }
+
+    public void setMiterLimit(double miterLimit) {
+        double resolved = Math.max(0.0d, miterLimit);
+        if (Double.compare(this.miterLimit, resolved) != 0) {
+            this.miterLimit = resolved;
+            markDirty();
+        }
     }
 
     @Override
-    public String getDescription() {
-        return "Offsets a polyline in a plane using parallel segments and miters (left is CCW in the plane UV basis)";
+    public Object getNodeState() {
+        return new java.util.HashMap<String, Object>() {{
+            put("miterLimit", miterLimit);
+        }};
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (!(state instanceof java.util.Map<?, ?> map)) {
+            return;
+        }
+        if (map.get("miterLimit") instanceof Number value) {
+            setMiterLimit(value.doubleValue());
+        }
     }
 
     @Override
@@ -98,7 +118,7 @@ public class PolylineOffsetInPlaneNode extends BaseNode {
             return;
         }
 
-        boolean closed = isClosedPath(worldVerts);
+        boolean closed = CurvePathSamplingUtil.isClosedPolyline(worldVerts);
         List<Vector3d> unique = closed ? worldVerts.subList(0, worldVerts.size() - 1) : worldVerts;
         if (unique.size() < 2) {
             writeInvalid();
@@ -127,12 +147,14 @@ public class PolylineOffsetInPlaneNode extends BaseNode {
             outPts.add(outPts.get(0));
         }
 
-        try {
-            outputValues.put(OUTPUT_POLYLINE_ID, new PolylineData(outPts));
-            outputValues.put(OUTPUT_VALID_ID, true);
-        } catch (IllegalArgumentException ex) {
+        PolylineData polyline = CurvePathSamplingUtil.createPolylineOrNull(outPts);
+        if (polyline == null) {
             writeInvalid();
+            return;
         }
+
+        outputValues.put(OUTPUT_POLYLINE_ID, polyline);
+        outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private void writeInvalid() {
@@ -141,31 +163,11 @@ public class PolylineOffsetInPlaneNode extends BaseNode {
     }
 
     private List<Vector3d> resolvePathVertices() {
-        Object polyObj = inputValues.get(INPUT_POLYLINE_ID);
-        Object lineObj = inputValues.get(INPUT_LINE_ID);
-        if (polyObj instanceof PolylineData poly) {
-            List<Vec3d> pts = poly.getPoints();
-            List<Vector3d> out = new ArrayList<>(pts.size());
-            for (Vec3d v : pts) {
-                out.add(new Vector3d(v.x, v.y, v.z));
-            }
-            return out;
-        }
-        if (lineObj instanceof LineData line) {
-            Vec3d a = line.getStart();
-            Vec3d b = line.getEnd();
-            return List.of(new Vector3d(a.x, a.y, a.z), new Vector3d(b.x, b.y, b.z));
-        }
-        return null;
-    }
-
-    private static boolean isClosedPath(List<Vector3d> worldVerts) {
-        if (worldVerts.size() < 3) {
-            return false;
-        }
-        Vector3d first = worldVerts.get(0);
-        Vector3d last = worldVerts.get(worldVerts.size() - 1);
-        return first.distance(last) < 1.0e-6d;
+        return CurvePathSamplingUtil.resolveVertices(
+            null,
+            inputValues.get(INPUT_POLYLINE_ID),
+            inputValues.get(INPUT_LINE_ID)
+        );
     }
 
     /**

@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.CurvePathSamplingUtil;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -89,11 +90,6 @@ public class CurveFrameAlongPathNode extends BaseNode {
     }
 
     @Override
-    public String getDescription() {
-        return "Generates local frames along a curve/path using count or spacing, outputting origins, axes, and planes per sample";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> verts = resolveVertices();
         if (verts == null || verts.size() < 2) {
@@ -101,14 +97,14 @@ public class CurveFrameAlongPathNode extends BaseNode {
             return;
         }
 
-        boolean closed = isClosedPolyline(verts);
+        boolean closed = CurvePathSamplingUtil.isClosedPolyline(verts);
         List<Vector3d> unique = closed ? verts.subList(0, verts.size() - 1) : verts;
         if (unique.size() < 2) {
             writeInvalid();
             return;
         }
 
-        double[] cumulative = buildCumulative(unique, closed);
+        double[] cumulative = CurvePathSamplingUtil.buildCumulative(unique, closed);
         if (cumulative == null) {
             writeInvalid();
             return;
@@ -151,12 +147,12 @@ public class CurveFrameAlongPathNode extends BaseNode {
 
         double delta = Math.max(total * 1.0e-4d, 1.0e-4d);
         for (double d : sampleDistances) {
-            Vector3d origin = sampleAtDistance(unique, closed, cumulative, d);
+            Vector3d origin = CurvePathSamplingUtil.sampleAtDistance(unique, closed, cumulative, d);
             double backDistance = closed ? wrapDistance(d - delta, total) : Math.max(0.0d, d - delta);
             double forwardDistance = closed ? wrapDistance(d + delta, total) : Math.min(total, d + delta);
 
-            Vector3d prev = sampleAtDistance(unique, closed, cumulative, backDistance);
-            Vector3d next = sampleAtDistance(unique, closed, cumulative, forwardDistance);
+            Vector3d prev = CurvePathSamplingUtil.sampleAtDistance(unique, closed, cumulative, backDistance);
+            Vector3d next = CurvePathSamplingUtil.sampleAtDistance(unique, closed, cumulative, forwardDistance);
             Vector3d tangent = new Vector3d(next).sub(prev);
             if (tangent.lengthSquared() <= EPS) {
                 continue;
@@ -224,35 +220,11 @@ public class CurveFrameAlongPathNode extends BaseNode {
     }
 
     private List<Vector3d> resolveVertices() {
-        Object curveObj = inputValues.get(INPUT_CURVE_ID);
-        Object polyObj = inputValues.get(INPUT_POLYLINE_ID);
-        Object lineObj = inputValues.get(INPUT_LINE_ID);
-
-        if (curveObj instanceof Curve curve) {
-            List<Vec3d> pts = curve.getSamplePoints();
-            if (pts.size() < 2) {
-                return null;
-            }
-            List<Vector3d> out = new ArrayList<>(pts.size());
-            for (Vec3d v : pts) {
-                out.add(new Vector3d(v.x, v.y, v.z));
-            }
-            return out;
-        }
-        if (polyObj instanceof PolylineData poly) {
-            List<Vec3d> pts = poly.getPoints();
-            List<Vector3d> out = new ArrayList<>(pts.size());
-            for (Vec3d v : pts) {
-                out.add(new Vector3d(v.x, v.y, v.z));
-            }
-            return out;
-        }
-        if (lineObj instanceof LineData line) {
-            Vec3d a = line.getStart();
-            Vec3d b = line.getEnd();
-            return List.of(new Vector3d(a.x, a.y, a.z), new Vector3d(b.x, b.y, b.z));
-        }
-        return null;
+        return CurvePathSamplingUtil.resolveVertices(
+            inputValues.get(INPUT_CURVE_ID),
+            inputValues.get(INPUT_POLYLINE_ID),
+            inputValues.get(INPUT_LINE_ID)
+        );
     }
 
     private Vector3d resolveUpVector(Object value) {
@@ -260,51 +232,6 @@ public class CurveFrameAlongPathNode extends BaseNode {
             return new Vector3d(vector).normalize();
         }
         return new Vector3d(0.0d, 1.0d, 0.0d);
-    }
-
-    private static boolean isClosedPolyline(List<Vector3d> verts) {
-        if (verts.size() < 3) {
-            return false;
-        }
-        Vector3d first = verts.get(0);
-        Vector3d last = verts.get(verts.size() - 1);
-        return first.distance(last) < 1.0e-6d;
-    }
-
-    private static double[] buildCumulative(List<Vector3d> unique, boolean closed) {
-        int segCount = closed ? unique.size() : unique.size() - 1;
-        if (segCount < 1) {
-            return null;
-        }
-        double[] cumulative = new double[segCount + 1];
-        cumulative[0] = 0.0d;
-        double acc = 0.0d;
-        for (int i = 0; i < segCount; i++) {
-            Vector3d a = unique.get(i);
-            Vector3d b = unique.get((i + 1) % unique.size());
-            acc += a.distance(b);
-            cumulative[i + 1] = acc;
-        }
-        return cumulative;
-    }
-
-    private static Vector3d sampleAtDistance(List<Vector3d> unique, boolean closed, double[] cumulative, double targetDistance) {
-        double clamped = Math.max(0.0d, Math.min(targetDistance, cumulative[cumulative.length - 1]));
-        for (int i = 0; i < cumulative.length - 1; i++) {
-            double s0 = cumulative[i];
-            double s1 = cumulative[i + 1];
-            if (clamped <= s1 || i == cumulative.length - 2) {
-                Vector3d p0 = unique.get(i);
-                Vector3d p1 = unique.get((i + 1) % unique.size());
-                double segLen = s1 - s0;
-                if (segLen <= EPS) {
-                    return new Vector3d(p0);
-                }
-                double t = (clamped - s0) / segLen;
-                return new Vector3d(p0).lerp(p1, t);
-            }
-        }
-        return new Vector3d(unique.get(0));
     }
 
     private static double wrapDistance(double value, double length) {

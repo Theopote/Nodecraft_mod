@@ -8,12 +8,10 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.Curve;
-import net.minecraft.util.math.BlockPos;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -70,11 +68,6 @@ public class NurbsCurveNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_EFFECTIVE_DEGREE_ID, "Effective Degree", "Degree used after safety clamping", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Sampled polyline length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when valid control points are sufficient", NodeDataType.BOOLEAN, this));
-    }
-
-    @Override
-    public String getDescription() {
-        return "Builds a sampled clamped uniform NURBS curve from control points and optional per-point weights";
     }
 
     @Override
@@ -308,23 +301,11 @@ public class NurbsCurveNode extends BaseNode {
     }
 
     private @Nullable Vec3d resolvePoint(Object value) {
-        if (value instanceof PointData pointData) {
-            Vector3d p = pointData.getPosition();
-            return new Vec3d(p.x, p.y, p.z);
-        }
-        if (value instanceof Coordinate coordinate) {
-            return new Vec3d(coordinate.getX(), coordinate.getY(), coordinate.getZ());
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vec3d(vector.x, vector.y, vector.z);
-        }
-        if (value instanceof BlockPos blockPos) {
-            return new Vec3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
-        }
         if (value instanceof Vec3d vec3d) {
             return vec3d;
         }
-        return null;
+        var resolved = SpatialValueResolver.resolveVector3d(value);
+        return resolved == null ? null : new Vec3d(resolved.x, resolved.y, resolved.z);
     }
 
     private int getInputInt(String portId, int fallback) {

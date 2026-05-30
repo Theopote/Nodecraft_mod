@@ -79,11 +79,6 @@ public class ArcNode extends BaseNode {
     }
 
     @Override
-    public String getDescription() {
-        return "Builds a sampled circular arc from a center point, plane, radius, and start/end angles";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d center = resolveCenter(inputValues.get(INPUT_CENTER_ID));
         Vector3d normal = resolveNormal(inputValues.get(INPUT_PLANE_ID), inputValues.get(INPUT_NORMAL_ID));

@@ -48,16 +48,6 @@ public class PolylineLengthNode extends BaseNode {
     }
 
     @Override
-    public String getDisplayName() {
-        return "Polyline Length";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Computes the total length of a polyline or line segment";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object polyObj = inputValues.get(INPUT_POLYLINE_ID);
         Object lineObj = inputValues.get(INPUT_LINE_ID);

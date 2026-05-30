@@ -57,16 +57,6 @@ public class PointsToPathNode extends BaseNode {
     }
 
     @Override
-    public String getDisplayName() {
-        return "Points To Path";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Builds a line or polyline from an ordered point list";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object pointsObj = inputValues.get(INPUT_POINTS_ID);
         if (!(pointsObj instanceof Collection<?> collection)) {
