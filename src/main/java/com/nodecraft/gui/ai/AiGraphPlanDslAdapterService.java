@@ -13,6 +13,7 @@ import java.util.Map;
 public final class AiGraphPlanDslAdapterService {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Gson GSON_COMPACT = new GsonBuilder().create();
 
     private AiGraphPlanDslAdapterService() {
     }
@@ -27,6 +28,14 @@ public final class AiGraphPlanDslAdapterService {
     }
 
     public static String toDslJson(GraphPlan plan) {
+        return toDslJson(plan, false);
+    }
+
+    public static String toDslJsonCompact(GraphPlan plan) {
+        return toDslJson(plan, true);
+    }
+
+    private static String toDslJson(GraphPlan plan, boolean compact) {
         JsonObject root = new JsonObject();
         root.addProperty("description", plan.summary());
 
@@ -68,7 +77,7 @@ public final class AiGraphPlanDslAdapterService {
         }
         root.add("connections", connectionsArray);
 
-        return GSON.toJson(root);
+        return compact ? GSON_COMPACT.toJson(root) : GSON.toJson(root);
     }
 
     public static GraphPlan fromDsl(AiGraphDslSupport.DslGraph dslGraph) {

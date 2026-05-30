@@ -9,6 +9,10 @@ public final class AiPlanDslWorkflowService {
         return AiGraphPlanDslAdapterService.toDslJson(plan);
     }
 
+    public static String toDslJsonCompact(AiGraphPlanDslAdapterService.GraphPlan plan) {
+        return AiGraphPlanDslAdapterService.toDslJsonCompact(plan);
+    }
+
     public static AiGraphPlanDslAdapterService.GraphPlan fromDsl(AiGraphDslSupport.DslGraph dslGraph) {
         return AiGraphPlanDslAdapterService.fromDsl(dslGraph);
     }

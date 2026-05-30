@@ -27,10 +27,21 @@ import java.util.function.Supplier;
 
 public final class AiAssistantPanel {
 
+    private enum UserIntent {
+        GENERATE_NEW,
+        MODIFY_PARAM,
+        EXPLAIN,
+        UNCLEAR
+    }
+
     private static final long AI_SESSION_SAVE_DEBOUNCE_MS = 800L;
     private static final int AI_HISTORY_MAX_CHARS_PER_MESSAGE = 1800;
     private static final int AI_HISTORY_MAX_TOTAL_CHARS = 9000;
     private static final int AI_LATEST_USER_MESSAGE_MAX_CHARS = 7000;
+    private static final String MODIFY_PARAM_SYSTEM_HINT =
+            "If the user asks to modify a specific parameter value on an existing node,\n"
+            + "return only the affected node with its updated params. Keep all other nodes and connections unchanged.\n"
+            + "Use the same node ids as in the \"Current plan in effect\" JSON.";
     private static final String[] AI_PROVIDER_STRATEGY_OPTIONS = {
             AiSettingsStore.PROVIDER_AUTO,
             AiSettingsStore.PROVIDER_OPENAI_COMPAT,
@@ -747,13 +758,18 @@ public final class AiAssistantPanel {
             return;
         }
 
+        if (!aiEnableRemotePlanner.get()) {
+            aiPlanStatusMessage = "Retry requires remote planner to be enabled.";
+            return;
+        }
+
         if (isRemotePlannerBusy()) {
             aiPlanStatusMessage = "Remote planner is already running.";
             return;
         }
 
-        submitAiPromptWithText(aiLastSubmittedPrompt);
         aiPlanStatusMessage = "Retrying last request...";
+        startRemotePlannerRequest(aiLastSubmittedPrompt);
     }
 
     private void startRemotePlannerRequest(String userPrompt) {
@@ -772,6 +788,7 @@ public final class AiAssistantPanel {
         NodeRegistry registry = NodeRegistry.getInstance();
         List<AiNodeSchemaCatalog.NodeSchema> allSchemas = AiNodeSchemaCatalog.collectAll(registry);
         List<AiNodeSchemaCatalog.NodeSchema> relevantSchemas = AiNodeSchemaCatalog.selectRelevant(allSchemas, userPrompt, 40);
+        UserIntent userIntent = classifyIntent(userPrompt);
 
         String systemPrompt = aiSystemPrompt.get();
         if (systemPrompt == null || systemPrompt.isBlank()) {
@@ -779,6 +796,12 @@ public final class AiAssistantPanel {
         } else {
             systemPrompt = systemPrompt + "\n\n" + AiPromptBuilder.buildSystemPrompt(relevantSchemas);
         }
+        if (userIntent == UserIntent.MODIFY_PARAM) {
+            systemPrompt = systemPrompt + "\n\n" + MODIFY_PARAM_SYSTEM_HINT;
+        }
+        NodeCraft.LOGGER.info("[AI_SEND] Intent classified. intent={}, promptPreview={}",
+                userIntent,
+                sanitizeUserPromptForSnapshot(userPrompt));
 
         String userPromptPayload = AiPromptBuilder.buildUserPrompt(
                 userPrompt,
@@ -876,7 +899,7 @@ public final class AiAssistantPanel {
         String latestUserMessage = userPromptPayload;
         AiGraphPlan pendingAiPlan = getPendingAiPlan();
         if (pendingAiPlan != null) {
-            String currentPlanJson = AiPlanDslWorkflowService.toDslJson(toServiceGraphPlanForHistory(pendingAiPlan));
+            String currentPlanJson = AiPlanDslWorkflowService.toDslJsonCompact(toServiceGraphPlanForHistory(pendingAiPlan));
             latestUserMessage = "Current plan in effect:\n```json\n"
                     + currentPlanJson
                     + "\n```\n\n"
@@ -983,7 +1006,10 @@ public final class AiAssistantPanel {
         setPendingAiPlan(fromServiceGraphPlan(AiPlanDslWorkflowService.fromDsl(parsed.graph())));
         AiGraphPlan pendingAiPlan = getPendingAiPlan();
         String warningSuffix = formatValidationWarningSuffix(parsed.warnings());
-        boolean shouldAutoApplyPlacement = shouldAutoApplyPlacementPlan(prompt, pendingAiPlan);
+        UserIntent intent = classifyIntent(prompt);
+        boolean shouldAutoApplyPlacement = intent == UserIntent.MODIFY_PARAM || intent == UserIntent.EXPLAIN
+            ? false
+            : shouldAutoApplyPlacementPlan(prompt, pendingAiPlan);
         boolean autoAppliedPlacement = false;
         if (shouldAutoApplyPlacement) {
             autoAppliedPlacement = applyPlacementPlan(pendingAiPlan);
@@ -1354,6 +1380,33 @@ public final class AiAssistantPanel {
         return String.join(", ", tags);
     }
 
+    private UserIntent classifyIntent(String prompt) {
+        if (prompt == null || prompt.isBlank()) {
+            return UserIntent.UNCLEAR;
+        }
+
+        String lower = prompt.toLowerCase(Locale.ROOT);
+        if (containsAnyLower(lower,
+                "修改", "改成", "改为", "换成", "调整", "增大", "减小", "参数", "半径", "直径",
+                "change", "set", "modify", "update", "adjust", "make it", "increase", "decrease", "radius", "parameter")) {
+            return UserIntent.MODIFY_PARAM;
+        }
+
+        if (containsAnyLower(lower,
+                "解释", "说明", "什么", "为什么", "如何", "怎么",
+                "explain", "what", "why", "how does", "how do", "how to")) {
+            return UserIntent.EXPLAIN;
+        }
+
+        if (containsAnyLower(lower,
+                "新建", "生成", "创建", "做一个", "添加", "放置",
+                "generate", "create", "build", "make", "add", "place")) {
+            return UserIntent.GENERATE_NEW;
+        }
+
+        return UserIntent.UNCLEAR;
+    }
+
     private boolean containsAnyLower(String lowerText, String... keywords) {
         if (lowerText == null || lowerText.isBlank() || keywords == null) {
             return false;
@@ -1631,6 +1684,7 @@ public final class AiAssistantPanel {
 
         AiGraphApplyAdapterService.PatchPayload payload =
                 AiGraphApplyAdapterService.toPatchPayload(patchNodes, patchConnections);
+        boolean mergeExistingNodeState = classifyIntent(aiLastSubmittedPrompt) == UserIntent.MODIFY_PARAM;
 
         AiGraphApplyService.ApplyResult result = AiGraphApplyService.applyPatch(
                 editor,
@@ -1638,7 +1692,8 @@ public final class AiAssistantPanel {
                 payload.nodes(),
                 payload.connections(),
                 anchor,
-                aiPatchRemoveScopedConnections.get()
+            aiPatchRemoveScopedConnections.get(),
+            mergeExistingNodeState
         );
         if (result.success()) {
             // Patch apply records one aggregate AI_PATCH action; undo should be one step.

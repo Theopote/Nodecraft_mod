@@ -42,7 +42,8 @@ public final class AiGraphApplyService {
             List<ApplyNode> nodesToApply,
             List<ApplyConnection> connections,
             float[] anchor,
-            boolean removeScopedConnections
+            boolean removeScopedConnections,
+            boolean mergeExistingNodeState
     ) {
         if (graph == null) {
             return new ApplyResult(false, 0, "Patch apply failed: current graph is unavailable.");
@@ -93,7 +94,12 @@ public final class AiGraphApplyService {
                         String plannedSig = normalizeStateForSignature(node.nodeState());
                         if (!plannedSig.equals(matched.paramSignature())) {
                             previousStates.putIfAbsent(matched.id(), deepCopyNodeState(existingBaseNode.getNodeState()));
-                            existingBaseNode.setNodeState(deepCopyNodeState(node.nodeState()));
+                            Object nextState = mergeNodeState(
+                                    existingBaseNode.getNodeState(),
+                                    node.nodeState(),
+                                    mergeExistingNodeState
+                            );
+                            existingBaseNode.setNodeState(nextState);
                             updatedNodes++;
                         }
                     }
@@ -278,6 +284,37 @@ public final class AiGraphApplyService {
         } catch (Exception e) {
             return state;
         }
+    }
+
+    private static Object mergeNodeState(Object existingState, Object plannedState, boolean mergeExistingNodeState) {
+        if (!mergeExistingNodeState) {
+            return deepCopyNodeState(plannedState);
+        }
+        if (plannedState == null) {
+            return deepCopyNodeState(existingState);
+        }
+        if (existingState instanceof Map<?, ?> existingMap && plannedState instanceof Map<?, ?> plannedMap) {
+            return mergeMapState(existingMap, plannedMap);
+        }
+        return deepCopyNodeState(plannedState);
+    }
+
+    private static Map<String, Object> mergeMapState(Map<?, ?> existingMap, Map<?, ?> plannedMap) {
+        Map<String, Object> merged = new HashMap<>();
+        for (Map.Entry<?, ?> entry : existingMap.entrySet()) {
+            merged.put(String.valueOf(entry.getKey()), deepCopyNodeState(entry.getValue()));
+        }
+        for (Map.Entry<?, ?> entry : plannedMap.entrySet()) {
+            String key = String.valueOf(entry.getKey());
+            Object plannedValue = entry.getValue();
+            Object existingValue = merged.get(key);
+            if (existingValue instanceof Map<?, ?> existingNested && plannedValue instanceof Map<?, ?> plannedNested) {
+                merged.put(key, mergeMapState(existingNested, plannedNested));
+                continue;
+            }
+            merged.put(key, deepCopyNodeState(plannedValue));
+        }
+        return merged;
     }
 
     private static void restoreNodeStates(NodeGraph graph, Map<UUID, Object> previousStates) {

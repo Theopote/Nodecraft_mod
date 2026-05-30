@@ -779,35 +779,32 @@ public class AiRemotePlannerService {
     private boolean shouldUseAnthropic(PlannerConfig config, String baseUrl) {
         String strategy = normalizeProviderStrategy(config.providerStrategy());
         return switch (strategy) {
-            case "ANTHROPIC" -> true;
-            case "OPENAI_COMPAT" -> false;
-            default -> isAnthropicEndpoint(baseUrl, config.model());
+            case AiSettingsStore.PROVIDER_ANTHROPIC -> true;
+            case AiSettingsStore.PROVIDER_OPENAI_COMPAT -> false;
+            default -> isAnthropicEndpoint(baseUrl);
         };
     }
 
     private String normalizeProviderStrategy(String providerStrategy) {
         if (providerStrategy == null || providerStrategy.isBlank()) {
-            return "AUTO";
+            return AiSettingsStore.PROVIDER_AUTO;
         }
         String normalized = providerStrategy.trim().toUpperCase(Locale.ROOT);
         return switch (normalized) {
-            case "OPENAI_COMPAT" -> "OPENAI_COMPAT";
-            case "ANTHROPIC" -> "ANTHROPIC";
-            default -> "AUTO";
+            case AiSettingsStore.PROVIDER_OPENAI_COMPAT -> AiSettingsStore.PROVIDER_OPENAI_COMPAT;
+            case AiSettingsStore.PROVIDER_ANTHROPIC -> AiSettingsStore.PROVIDER_ANTHROPIC;
+            default -> AiSettingsStore.PROVIDER_AUTO;
         };
     }
 
-    private boolean isAnthropicEndpoint(String baseUrl, String model) {
+    private boolean isAnthropicEndpoint(String baseUrl) {
         String normalized = baseUrl == null ? "" : baseUrl.toLowerCase(Locale.ROOT);
-        String normalizedModel = model == null ? "" : model.toLowerCase(Locale.ROOT);
 
-        // Prefer explicit provider signals and avoid path-based false positives
-        // because many non-Anthropic gateways may expose "/messages" endpoints.
+        // AUTO mode uses base URL only. Explicit providerStrategy is handled in shouldUseAnthropic.
         if (normalized.contains("anthropic")) {
             return true;
         }
-
-        return normalizedModel.startsWith("claude");
+        return normalized.endsWith("/v1/messages") || normalized.endsWith("/messages");
     }
 
     private String normalizeEndpoint(String baseUrl, String suffix) {
