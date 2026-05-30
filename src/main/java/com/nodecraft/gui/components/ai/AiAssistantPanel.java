@@ -43,32 +43,6 @@ public final class AiAssistantPanel {
             AiSettingsStore.PROVIDER_OPENAI_COMPAT,
             AiSettingsStore.PROVIDER_ANTHROPIC
     };
-    private static final String[] OPENAI_MODELS = {
-            "gpt-4.1-mini",
-            "gpt-4.1",
-            "gpt-4o-mini",
-            "gpt-4o"
-    };
-    private static final String[] ANTHROPIC_MODELS = {
-            "claude-3-5-haiku-latest",
-            "claude-3-7-sonnet-latest",
-            "claude-sonnet-4-0"
-    };
-    private static final String[] DEEPSEEK_MODELS = {
-            "deepseek-chat",
-            "deepseek-reasoner"
-    };
-    private static final String[] QWEN_MODELS = {
-            "qwen-max",
-            "qwen-plus",
-            "qwen-turbo",
-            "qwen3-32b"
-    };
-    private static final String[] GROQ_MODELS = {
-            "llama-3.3-70b-versatile",
-            "llama-3.1-8b-instant",
-            "qwen/qwen3-32b"
-    };
 
     private final AiAssistantComponent aiAssistantComponent;
     private final Supplier<NodeGraph> nodeGraphSupplier;
