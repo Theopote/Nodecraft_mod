@@ -1,12 +1,10 @@
 package com.nodecraft.nodesystem.nodes.geometry.curves;
 
-import com.nodecraft.nodesystem.nodes.geometry.curves.AbstractCurveNode;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
@@ -72,7 +70,7 @@ public class InterpolateSplineNode extends AbstractCurveNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object pointsObj = inputValues.get(INPUT_POINTS_ID);
         if (!(pointsObj instanceof Collection<?> collection)) {
-            writeEmptyOutputs();
+            writeInvalid();
             return;
         }
 
@@ -88,14 +86,14 @@ public class InterpolateSplineNode extends AbstractCurveNode {
         double alpha = clamp(getInputDouble(INPUT_ALPHA_ID, defaultAlpha), 0.0d, 1.0d);
 
         if (points.size() < 2) {
-            writeEmptyOutputs();
+            writeInvalid();
             outputValues.put(OUTPUT_CONTROL_COUNT_ID, points.size());
             return;
         }
 
         List<Vec3d> sampled = sampleCatmullRom(points, resolutionPerSegment, alpha, closed);
         if (sampled.size() < 2) {
-            writeEmptyOutputs();
+            writeInvalid();
             outputValues.put(OUTPUT_CONTROL_COUNT_ID, points.size());
             return;
         }
@@ -181,7 +179,7 @@ public class InterpolateSplineNode extends AbstractCurveNode {
         }
     }
 
-    private void writeEmptyOutputs() {
+    private void writeInvalid() {
         outputValues.put(OUTPUT_CURVE_ID, null);
         outputValues.put(OUTPUT_POLYLINE_ID, null);
         outputValues.put(OUTPUT_POINTS_ID, List.of());

@@ -3,13 +3,13 @@ package com.nodecraft.nodesystem.nodes.geometry.curves;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
@@ -125,7 +125,7 @@ public class PolylineOffsetInPlaneNode extends AbstractCurveNode {
             return;
         }
 
-        PlaneAxes axes = PlaneAxes.from(plane);
+        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
         List<Vector2d> pts2d = new ArrayList<>(unique.size());
         for (Vector3d p : unique) {
             Vector3d proj = plane.projectPoint(p);
@@ -228,37 +228,4 @@ public class PolylineOffsetInPlaneNode extends AbstractCurveNode {
         return out;
     }
 
-    public static final class PlaneAxes {
-        private final Vector3d origin;
-        private final Vector3d axisU;
-        private final Vector3d axisV;
-
-        private PlaneAxes(Vector3d origin, Vector3d axisU, Vector3d axisV) {
-            this.origin = origin;
-            this.axisU = axisU;
-            this.axisV = axisV;
-        }
-
-        public static PlaneAxes from(PlaneData plane) {
-            Vector3d n = plane.getNormal();
-            Vector3d axisU = new Vector3d(1, 0, 0);
-            if (Math.abs(axisU.dot(n)) > 0.9d) {
-                axisU.set(0, 1, 0);
-            }
-            Vector3d axisV = new Vector3d(n).cross(axisU, new Vector3d()).normalize();
-            axisU = new Vector3d(axisV).cross(n, new Vector3d()).normalize();
-            return new PlaneAxes(new Vector3d(plane.getPoint()), axisU, axisV);
-        }
-
-        public Vector2d to2d(Vector3d p) {
-            Vector3d rel = new Vector3d(p).sub(origin);
-            return new Vector2d(rel.dot(axisU), rel.dot(axisV));
-        }
-
-        public Vector3d from2d(Vector2d p) {
-            return new Vector3d(origin)
-                .add(new Vector3d(axisU).mul(p.x, new Vector3d()))
-                .add(new Vector3d(axisV).mul(p.y, new Vector3d()));
-        }
-    }
 }

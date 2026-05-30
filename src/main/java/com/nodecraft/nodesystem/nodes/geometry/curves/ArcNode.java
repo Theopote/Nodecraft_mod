@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.geometry.curves;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
@@ -90,32 +89,32 @@ public class ArcNode extends AbstractCurveNode {
         // Validate inputs: center and normal are required
         if (normal == null || normal.lengthSquared() <= EPSILON) {
             NodeCraft.LOGGER.warn("ArcNode: normal is null or zero; cannot build arc");
-            writeEmptyOutputs();
+            writeInvalid();
             return;
         }
         if (radius <= EPSILON) {
             NodeCraft.LOGGER.warn("ArcNode: radius must be positive");
-            writeEmptyOutputs();
+            writeInvalid();
             return;
         }
 
         Vector3d normalizedNormal = new Vector3d(normal).normalize();
         Basis basis = buildBasis(normalizedNormal);
         if (basis == null) {
-            writeEmptyOutputs();
+            writeInvalid();
             return;
         }
 
         double sweepDegrees = endDegrees - startDegrees;
         double sweepRadians = Math.toRadians(sweepDegrees);
         if (Math.abs(sweepRadians) <= EPSILON) {
-            writeEmptyOutputs();
+            writeInvalid();
             return;
         }
 
         List<Vec3d> sampledPoints = new ArrayList<>(resolution);
         List<PointData> pointData = new ArrayList<>(resolution);
-        Curve curve = new Curve(Curve.CurveType.LINEAR, 2);
+        Curve curve = buildLinearCurve(sampledPoints);
 
         for (int i = 0; i < resolution; i++) {
             double t = (double) i / (double) (resolution - 1);
@@ -127,7 +126,6 @@ public class ArcNode extends AbstractCurveNode {
             Vec3d vec = new Vec3d(point.x, point.y, point.z);
             sampledPoints.add(vec);
             pointData.add(new PointData(point));
-            curve.addControlPoint(vec);
         }
 
         PolylineData polyline = new PolylineData(sampledPoints);
@@ -216,13 +214,11 @@ public class ArcNode extends AbstractCurveNode {
         }
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_CURVE_ID, null);
-        outputValues.put(OUTPUT_POLYLINE_ID, null);
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_LENGTH_ID, 0.0d);
-        outputValues.put(OUTPUT_SWEEP_DEGREES_ID, 0.0d);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeInvalid() {
+        putNullOutputs(OUTPUT_CURVE_ID, OUTPUT_POLYLINE_ID);
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        putDoubleOutputs(0.0d, OUTPUT_LENGTH_ID, OUTPUT_SWEEP_DEGREES_ID);
+        putBooleanOutputs(false, OUTPUT_VALID_ID);
     }
 
     private @NonNull Vector3d resolveCenter(@Nullable Object value) {

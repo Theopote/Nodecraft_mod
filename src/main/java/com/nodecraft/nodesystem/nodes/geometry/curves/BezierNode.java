@@ -1,12 +1,10 @@
 package com.nodecraft.nodesystem.nodes.geometry.curves;
 
-import com.nodecraft.nodesystem.nodes.geometry.curves.AbstractCurveNode;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
@@ -62,7 +60,7 @@ public class BezierNode extends AbstractCurveNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object controlPointsObj = inputValues.get(INPUT_CONTROL_POINTS_ID);
         if (!(controlPointsObj instanceof Collection<?> collection)) {
-            writeEmptyOutputs();
+            writeInvalid();
             return;
         }
 
@@ -76,7 +74,7 @@ public class BezierNode extends AbstractCurveNode {
 
         int resolution = Math.max(2, getInputInt(INPUT_RESOLUTION_ID, defaultResolution));
         if (controlPoints.size() < 3) {
-            writeEmptyOutputs();
+            writeInvalid();
             outputValues.put(OUTPUT_CONTROL_COUNT_ID, controlPoints.size());
             return;
         }
@@ -132,7 +130,7 @@ public class BezierNode extends AbstractCurveNode {
         }
     }
 
-    private void writeEmptyOutputs() {
+    private void writeInvalid() {
         outputValues.put(OUTPUT_CURVE_ID, null);
         outputValues.put(OUTPUT_POLYLINE_ID, null);
         outputValues.put(OUTPUT_POINTS_ID, List.of());

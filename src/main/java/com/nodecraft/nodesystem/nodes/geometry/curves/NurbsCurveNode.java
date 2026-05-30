@@ -76,7 +76,7 @@ public class NurbsCurveNode extends AbstractCurveNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object controlPointsObj = inputValues.get(INPUT_CONTROL_POINTS_ID);
         if (!(controlPointsObj instanceof Collection<?> collection)) {
-            writeEmptyOutputs();
+            writeInvalid();
             return;
         }
 
@@ -89,7 +89,7 @@ public class NurbsCurveNode extends AbstractCurveNode {
         }
 
         if (controlPoints.size() < 2) {
-            writeEmptyOutputs();
+            writeInvalid();
             outputValues.put(OUTPUT_CONTROL_COUNT_ID, controlPoints.size());
             outputValues.put(OUTPUT_EFFECTIVE_DEGREE_ID, 0);
             return;
@@ -199,7 +199,7 @@ public class NurbsCurveNode extends AbstractCurveNode {
         }
     }
 
-    private void writeEmptyOutputs() {
+    private void writeInvalid() {
         outputValues.put(OUTPUT_CURVE_ID, null);
         outputValues.put(OUTPUT_POLYLINE_ID, null);
         outputValues.put(OUTPUT_POINTS_ID, List.of());

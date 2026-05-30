@@ -1,13 +1,11 @@
 package com.nodecraft.nodesystem.nodes.geometry.curves;
 
-import com.nodecraft.nodesystem.nodes.geometry.curves.AbstractCurveNode;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.CurveMathUtils;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
@@ -70,7 +68,7 @@ public class BSplineNode extends AbstractCurveNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object controlPointsObj = inputValues.get(INPUT_CONTROL_POINTS_ID);
         if (!(controlPointsObj instanceof Collection<?> collection)) {
-            writeEmptyOutputs();
+            writeInvalid();
             return;
         }
 
@@ -86,7 +84,7 @@ public class BSplineNode extends AbstractCurveNode {
         int resolutionPerSpan = Math.max(2, getInputInt(INPUT_RESOLUTION_ID, defaultResolutionPerSpan));
 
         if (controlPoints.size() < 2) {
-            writeEmptyOutputs();
+            writeInvalid();
             outputValues.put(OUTPUT_CONTROL_COUNT_ID, controlPoints.size());
             outputValues.put(OUTPUT_EFFECTIVE_DEGREE_ID, 0);
             return;
@@ -176,7 +174,7 @@ public class BSplineNode extends AbstractCurveNode {
         }
     }
 
-    private void writeEmptyOutputs() {
+    private void writeInvalid() {
         outputValues.put(OUTPUT_CURVE_ID, null);
         outputValues.put(OUTPUT_POLYLINE_ID, null);
         outputValues.put(OUTPUT_POINTS_ID, List.of());

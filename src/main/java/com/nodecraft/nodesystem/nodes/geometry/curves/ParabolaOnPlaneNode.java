@@ -1,11 +1,8 @@
 package com.nodecraft.nodesystem.nodes.geometry.curves;
-
-import com.nodecraft.nodesystem.nodes.geometry.curves.AbstractCurveNode;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
@@ -63,8 +60,8 @@ public class ParabolaOnPlaneNode extends AbstractCurveNode {
         Object minObj = inputValues.get(INPUT_X_MIN_ID);
         Object maxObj = inputValues.get(INPUT_X_MAX_ID);
         Object segmentsObj = inputValues.get(INPUT_SEGMENTS_ID);
-        PlaneData plane = inputValues.get(INPUT_PLANE_ID) instanceof PlaneData p ? p : PlaneData.XY_PLANE;
-        Vector3d preferred = PlaneProjectionUtils.resolvePoint(inputValues.get(INPUT_AXIS_ID));
+        Object planeObj = inputValues.get(INPUT_PLANE_ID);
+        Object preferredAxisObj = inputValues.get(INPUT_AXIS_ID);
 
         if (vertex == null || !(curvatureObj instanceof Number cN) || !(minObj instanceof Number minN)
             || !(maxObj instanceof Number maxN) || !(segmentsObj instanceof Number segN)) {
@@ -80,7 +77,7 @@ public class ParabolaOnPlaneNode extends AbstractCurveNode {
             return;
         }
 
-        PlaneProjectionUtils.Basis basis = PlaneProjectionUtils.createBasis(plane, preferred);
+        PlaneProjectionUtils.Basis basis = resolvePlaneBasis(planeObj, preferredAxisObj, PlaneData.XY_PLANE);
         if (basis == null) {
             writeInvalid();
             return;
@@ -97,10 +94,7 @@ public class ParabolaOnPlaneNode extends AbstractCurveNode {
             pts.add(new Vec3d(world.x, world.y, world.z));
         }
 
-        Curve curve = new Curve(Curve.CurveType.LINEAR, 2);
-        for (Vec3d p : pts) {
-            curve.addControlPoint(p);
-        }
+        Curve curve = buildLinearCurve(pts);
         outputValues.put(OUTPUT_CURVE_ID, curve);
         outputValues.put(OUTPUT_POLYLINE_ID, new PolylineData(pts));
         outputValues.put(OUTPUT_POINTS_ID, List.copyOf(pts));
@@ -108,10 +102,9 @@ public class ParabolaOnPlaneNode extends AbstractCurveNode {
     }
 
     private void writeInvalid() {
-        outputValues.put(OUTPUT_CURVE_ID, null);
-        outputValues.put(OUTPUT_POLYLINE_ID, null);
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_VALID_ID, false);
+        putNullOutputs(OUTPUT_CURVE_ID, OUTPUT_POLYLINE_ID);
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        putBooleanOutputs(false, OUTPUT_VALID_ID);
     }
 
 }
