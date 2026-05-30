@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -52,13 +53,8 @@ public class AssertNode extends BaseNode {
     }
 
     @Override
-    public String getDescription() {
-        return "Validates a boolean condition and optionally throws to stop execution when it fails.";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
-        boolean condition = inputValues.get(INPUT_CONDITION_ID) instanceof Boolean b ? b : defaultCondition;
+        boolean condition = resolveCondition(inputValues.get(INPUT_CONDITION_ID));
         String message = inputValues.get(INPUT_MESSAGE_ID) instanceof String text && !text.isBlank() ? text : defaultMessage;
         Object value = inputValues.get(INPUT_VALUE_ID);
 
@@ -77,6 +73,29 @@ public class AssertNode extends BaseNode {
         outputValues.put(OUTPUT_VALUE_ID, value);
         outputValues.put(OUTPUT_MESSAGE_ID, "ok");
         outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    private boolean resolveCondition(Object value) {
+        if (value == null) {
+            return defaultCondition;
+        }
+        if (value instanceof Boolean booleanValue) {
+            return booleanValue;
+        }
+        if (value instanceof Number number) {
+            return number.doubleValue() != 0.0d;
+        }
+        if (value instanceof String text) {
+            String normalized = text.trim();
+            if (normalized.isEmpty()) {
+                return false;
+            }
+            return switch (normalized.toLowerCase(Locale.ROOT)) {
+                case "true", "yes", "1", "on" -> true;
+                default -> false;
+            };
+        }
+        return true;
     }
 
     @Override

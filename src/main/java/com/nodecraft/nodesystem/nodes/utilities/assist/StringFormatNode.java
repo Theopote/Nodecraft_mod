@@ -14,6 +14,7 @@ import org.joml.Vector3d;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -53,11 +54,6 @@ public class StringFormatNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_TEXT_ID, "Text", "Formatted output text", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Formatted text length", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when formatting produced output", NodeDataType.BOOLEAN, this));
-    }
-
-    @Override
-    public String getDescription() {
-        return "Formats strings with placeholders like {0}, {1} from dynamic values.";
     }
 
     @Override
@@ -125,12 +121,13 @@ public class StringFormatNode extends BaseNode {
                 return String.valueOf(n.longValue());
             }
             int p = Math.max(0, Math.min(8, precision));
-            return String.format("%." + p + "f", n.doubleValue());
+            String format = "%." + p + "f";
+            return String.format(Locale.ROOT, format, n.doubleValue());
         }
         if (value instanceof Vector3d v) {
             int p = Math.max(0, Math.min(8, precision));
             String f = "%." + p + "f";
-            return "(" + String.format(f, v.x) + ", " + String.format(f, v.y) + ", " + String.format(f, v.z) + ")";
+            return "(" + String.format(Locale.ROOT, f, v.x) + ", " + String.format(Locale.ROOT, f, v.y) + ", " + String.format(Locale.ROOT, f, v.z) + ")";
         }
         if (value instanceof PointData p) {
             return valueToString(p.getPosition());

@@ -45,11 +45,6 @@ public class RerouteNode extends BaseNode {
     }
 
     @Override
-    public String getDescription() {
-        return "用于整理连线的中继节点，仅透传输入到输出";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         outputValues.put(OUTPUT_SIGNAL_ID, inputValues.get(INPUT_SIGNAL_ID));
     }

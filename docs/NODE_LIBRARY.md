@@ -649,8 +649,8 @@ Voxel CSG and SDF nodes are ordered in two bands (0–4 voxel, 10–23 SDF). See
 |---|---|---|---|
 | Block List Morphology | `utilities.morphology.block_list_morphology` | Dilates or erodes a block list using 6- or 26-neighbor morphology iterations (Connectivity property) | `BlockListMorphologyNode` |
 | String Format | `utilities.assist.string_format` | Formats strings with placeholders like {0}, {1} from dynamic values. | `StringFormatNode` |
-| Assert / Validate | `utilities.assist.assert` | Validates a boolean condition and optionally throws to stop execution when it fails. | `AssertNode` |
-| Reroute | `utilities.assist.reroute` | 用于整理连线的中继节点，仅透传输入到输出 | `RerouteNode` |
+| Assert / Validate | `utilities.assist.assert` | Validates a condition with boolean truthy coercion and optionally throws to stop execution when it fails. | `AssertNode` |
+| Reroute | `utilities.assist.reroute` | Relay node for organizing connections; transparently passes input to output. | `RerouteNode` |
 | Signal Fork | `utilities.assist.signal_fork` | 将一路输入透传到两路输出，便于连线分流 | `SignalForkNode` |
 | Signal Merge | `utilities.assist.signal_merge` | 将两路输入按优先级汇聚为一路输出 | `SignalMergeNode` |
 | Tag Relay | `utilities.assist.tag_relay` | 用于标注语义的中继节点，输入输出保持透传 | `TagRelayNode` |
