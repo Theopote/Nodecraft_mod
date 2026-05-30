@@ -161,8 +161,14 @@ public class SortListNode extends BaseNode {
                                 
                                 //                           mparable      ?
                                 if (o1 instanceof Comparable && o2 instanceof Comparable) {
-                                    int result = ((Comparable<Object>) o1).compareTo(o2);
-                                    return descending ? -result : result;
+                                    try {
+                                        int result = ((Comparable<Object>) o1).compareTo(o2);
+                                        return descending ? -result : result;
+                                    } catch (ClassCastException ex) {
+                                        // Mixed comparable types (e.g., Integer vs String): fall back to text order.
+                                        int result = o1.toString().compareTo(o2.toString());
+                                        return descending ? -result : result;
+                                    }
                                 } else {
                                     //               Comparable                            ?
                                     int result = o1.toString().compareTo(o2.toString());
