@@ -28,7 +28,6 @@ public class ShuffleListNode extends BaseNode {
     // ---              ?---
     private long seed = 0; //                      ?                           
     private boolean preserveInput = false; //                            ?
-    private String description; //                    ?
     
     // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
@@ -43,9 +42,6 @@ public class ShuffleListNode extends BaseNode {
         super(UUID.randomUUID(), "math.list.shuffle_list");
         
         //                    ?
-        this.description = "Randomly reorders elements in a list";
-        
-        //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
                 "The list to shuffle", NodeDataType.LIST, this);
         addInputPort(listInput);
@@ -58,15 +54,6 @@ public class ShuffleListNode extends BaseNode {
         IPort listOutput = new BasePort(OUTPUT_LIST_ID, "Shuffled List", 
                 "The list with elements in random order", NodeDataType.LIST, this);
         addOutputPort(listOutput);
-    }
-    
-    /**
-     *         ode            tDescription      ?
-     * @return              ?
-     */
-    @Override
-    public String getDescription() {
-        return this.description;
     }
     
     /**
@@ -117,8 +104,10 @@ public class ShuffleListNode extends BaseNode {
     }
     
     public void setSeed(long seed) {
-        this.seed = seed;
-        markDirty();
+        if (this.seed != seed) {
+            this.seed = seed;
+            markDirty();
+        }
     }
     
     public boolean isPreserveInput() {
@@ -126,8 +115,10 @@ public class ShuffleListNode extends BaseNode {
     }
     
     public void setPreserveInput(boolean preserve) {
-        this.preserveInput = preserve;
-        markDirty();
+        if (this.preserveInput != preserve) {
+            this.preserveInput = preserve;
+            markDirty();
+        }
     }
     
     // ---                         ?---

@@ -26,7 +26,6 @@ public class InsertItemNode extends BaseNode {
     // ---              ?---
     private boolean allowNegativeIndex = true; //                                                              ?
     private boolean append = true; //                                                               ?
-    private String description; //                    ?
     
     // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
@@ -40,9 +39,6 @@ public class InsertItemNode extends BaseNode {
     public InsertItemNode() {
         //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.insert_item");
-        
-        //                    ?
-        this.description = "Inserts an item into a list at a specified index";
         
         //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
@@ -64,15 +60,6 @@ public class InsertItemNode extends BaseNode {
     }
     
     /**
-     *         ode            tDescription      ?
-     * @return              ?
-     */
-    @Override
-    public String getDescription() {
-        return this.description;
-    }
-    
-    /**
      *                         ?
      * @param context                ?
      */
@@ -82,6 +69,7 @@ public class InsertItemNode extends BaseNode {
         Object inputObj = inputValues.get(INPUT_LIST_ID);
         Object indexObj = inputValues.get(INPUT_INDEX_ID);
         Object valueObj = inputValues.get(INPUT_VALUE_ID);
+        boolean hasValueInput = inputValues.containsKey(INPUT_VALUE_ID);
         
         List<Object> resultList = new ArrayList<>();
         
@@ -120,7 +108,7 @@ public class InsertItemNode extends BaseNode {
             
             //              ?
             resultList.add(insertIndex, valueObj);
-        } else if (valueObj != null) {
+        } else if (hasValueInput) {
             //                                                                                          ?
             resultList.add(valueObj);
         }
@@ -136,8 +124,10 @@ public class InsertItemNode extends BaseNode {
     }
     
     public void setAllowNegativeIndex(boolean allow) {
-        this.allowNegativeIndex = allow;
-        markDirty();
+        if (this.allowNegativeIndex != allow) {
+            this.allowNegativeIndex = allow;
+            markDirty();
+        }
     }
     
     public boolean isAppend() {
@@ -145,8 +135,10 @@ public class InsertItemNode extends BaseNode {
     }
     
     public void setAppend(boolean append) {
-        this.append = append;
-        markDirty();
+        if (this.append != append) {
+            this.append = append;
+            markDirty();
+        }
     }
     
     // ---                         ?---

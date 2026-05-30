@@ -27,7 +27,6 @@ public class CombineListsNode extends BaseNode {
     private int inputCount = 2; //                                   ?
     private boolean skipIncomplete = false; //                                                           ?
     private boolean outputAsTuples = true; //                                                               
-    private String description; //                    ?
     
     // ---               D ---
     private static final String OUTPUT_LIST_ID = "output_list";
@@ -39,9 +38,6 @@ public class CombineListsNode extends BaseNode {
         //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.combine_lists");
         
-        //                    ?
-        this.description = "Combines multiple lists into a single list by index";
-        
         //                            ?
         rebuildInputPorts();
         
@@ -49,15 +45,6 @@ public class CombineListsNode extends BaseNode {
         IPort listOutput = new BasePort(OUTPUT_LIST_ID, "Combined List", 
                 "The resulting combined list", NodeDataType.LIST, this);
         addOutputPort(listOutput);
-    }
-    
-    /**
-     *         ode            tDescription      ?
-     * @return              ?
-     */
-    @Override
-    public String getDescription() {
-        return this.description;
     }
     
     /**
@@ -173,8 +160,10 @@ public class CombineListsNode extends BaseNode {
     }
     
     public void setSkipIncomplete(boolean skip) {
-        this.skipIncomplete = skip;
-        markDirty();
+        if (this.skipIncomplete != skip) {
+            this.skipIncomplete = skip;
+            markDirty();
+        }
     }
     
     public boolean isOutputAsTuples() {
@@ -182,8 +171,10 @@ public class CombineListsNode extends BaseNode {
     }
     
     public void setOutputAsTuples(boolean asTuples) {
-        this.outputAsTuples = asTuples;
-        markDirty();
+        if (this.outputAsTuples != asTuples) {
+            this.outputAsTuples = asTuples;
+            markDirty();
+        }
     }
     
     // ---                         ?---

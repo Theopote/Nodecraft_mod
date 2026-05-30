@@ -26,7 +26,6 @@ public class DispatchListNode extends BaseNode {
     // ---              ?---
     private boolean useDefaultValue = false; //                                                         ?
     private boolean defaultValue = false; //                ?
-    private String description; //                    ?
     
     // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
@@ -40,9 +39,6 @@ public class DispatchListNode extends BaseNode {
     public DispatchListNode() {
         //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.dispatch_list");
-        
-        //                    ?
-        this.description = "Splits a list into two based on boolean conditions";
         
         //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
@@ -61,15 +57,6 @@ public class DispatchListNode extends BaseNode {
         IPort falseOutput = new BasePort(OUTPUT_FALSE_LIST_ID, "False List", 
                 "Items for which the condition was false", NodeDataType.LIST, this);
         addOutputPort(falseOutput);
-    }
-    
-    /**
-     *         ode            tDescription      ?
-     * @return              ?
-     */
-    @Override
-    public String getDescription() {
-        return this.description;
     }
     
     /**
@@ -132,8 +119,7 @@ public class DispatchListNode extends BaseNode {
                 if (condObj instanceof Boolean) {
                     condition = (Boolean) condObj;
                 } else {
-                    //                           lse
-                    condition = false;
+                    condition = useDefaultValue ? defaultValue : false;
                 }
             } else {
                 //                            ?
@@ -156,8 +142,10 @@ public class DispatchListNode extends BaseNode {
     }
     
     public void setUseDefaultValue(boolean use) {
-        this.useDefaultValue = use;
-        markDirty();
+        if (this.useDefaultValue != use) {
+            this.useDefaultValue = use;
+            markDirty();
+        }
     }
     
     public boolean getDefaultValue() {
@@ -165,8 +153,10 @@ public class DispatchListNode extends BaseNode {
     }
     
     public void setDefaultValue(boolean value) {
-        this.defaultValue = value;
-        markDirty();
+        if (this.defaultValue != value) {
+            this.defaultValue = value;
+            markDirty();
+        }
     }
     
     // ---                         ?---

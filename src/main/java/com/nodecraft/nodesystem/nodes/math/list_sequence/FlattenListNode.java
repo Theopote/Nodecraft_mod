@@ -26,7 +26,6 @@ public class FlattenListNode extends BaseNode {
     // ---              ?---
     private int maxDepth = -1; //                         -1                   ?
     private boolean preserveTypes = false; //                                         
-    private String description = "Flattens a nested list structure into a single-level list"; //              ?
     
     // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
@@ -53,15 +52,6 @@ public class FlattenListNode extends BaseNode {
         IPort listOutput = new BasePort(OUTPUT_LIST_ID, "Flattened List", 
                 "The resulting flattened list", NodeDataType.LIST, this);
         addOutputPort(listOutput);
-    }
-    
-    /**
-     *         ode            tDescription      ?
-     * @return              ?
-     */
-    @Override
-    public String getDescription() {
-        return this.description;
     }
     
     /**
@@ -104,7 +94,7 @@ public class FlattenListNode extends BaseNode {
     private void flatten(List<?> input, List<Object> output, int currentDepth, int maxDepth) {
         //                                  ?
         if (maxDepth >= 0 && currentDepth >= maxDepth) {
-            output.add(input);
+            output.addAll(input);
             return;
         }
         
@@ -138,8 +128,10 @@ public class FlattenListNode extends BaseNode {
     }
     
     public void setMaxDepth(int depth) {
-        this.maxDepth = depth;
-        markDirty();
+        if (this.maxDepth != depth) {
+            this.maxDepth = depth;
+            markDirty();
+        }
     }
     
     public boolean isPreserveTypes() {
@@ -147,8 +139,10 @@ public class FlattenListNode extends BaseNode {
     }
     
     public void setPreserveTypes(boolean preserve) {
-        this.preserveTypes = preserve;
-        markDirty();
+        if (this.preserveTypes != preserve) {
+            this.preserveTypes = preserve;
+            markDirty();
+        }
     }
     
     // ---                         ?---

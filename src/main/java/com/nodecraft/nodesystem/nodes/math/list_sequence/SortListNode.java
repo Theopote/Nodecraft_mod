@@ -28,7 +28,6 @@ public class SortListNode extends BaseNode {
     // ---              ?---
     private boolean descending = false; //                     ?
     private SortType sortType = SortType.AUTO; //              ?
-    private String description = "Sorts elements of a list"; //              ?
     
     // ---                       ---
     public enum SortType {
@@ -68,15 +67,6 @@ public class SortListNode extends BaseNode {
         IPort listOutput = new BasePort(OUTPUT_LIST_ID, "Sorted List", 
                 "The sorted list", NodeDataType.LIST, this);
         addOutputPort(listOutput);
-    }
-    
-    /**
-     *         ode            tDescription      ?
-     * @return              ?
-     */
-    @Override
-    public String getDescription() {
-        return this.description;
     }
     
     /**
@@ -154,7 +144,7 @@ public class SortListNode extends BaseNode {
                     comparator = createNumericComparator();
                 } else if (firstNonNull instanceof String) {
                     comparator = createTextComparator();
-                } else if (firstNonNull instanceof List || firstNonNull instanceof String) {
+                } else if (firstNonNull instanceof List || firstNonNull instanceof Object[]) {
                     comparator = createLengthComparator();
                 } else {
                     //                                                      Comparable         ?
@@ -292,8 +282,10 @@ public class SortListNode extends BaseNode {
     }
     
     public void setDescending(boolean descending) {
-        this.descending = descending;
-        markDirty();
+        if (this.descending != descending) {
+            this.descending = descending;
+            markDirty();
+        }
     }
     
     public SortType getSortType() {
@@ -301,8 +293,11 @@ public class SortListNode extends BaseNode {
     }
     
     public void setSortType(SortType sortType) {
-        this.sortType = sortType;
-        markDirty();
+        SortType resolved = sortType == null ? SortType.AUTO : sortType;
+        if (this.sortType != resolved) {
+            this.sortType = resolved;
+            markDirty();
+        }
     }
     
     // ---                         ?---

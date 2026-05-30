@@ -27,7 +27,6 @@ public class GroupListNode extends BaseNode {
     
     // ---              ?---
     private boolean skipInvalidKeys = false; //                            
-    private String description; //                    ?
     
     // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
@@ -42,9 +41,6 @@ public class GroupListNode extends BaseNode {
     public GroupListNode() {
         //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.group_list");
-        
-        //                    ?
-        this.description = "Groups items in a list based on a key list";
         
         //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
@@ -67,15 +63,6 @@ public class GroupListNode extends BaseNode {
         IPort countOutput = new BasePort(OUTPUT_COUNT_ID, "Group Count", 
                 "Number of groups created", NodeDataType.INTEGER, this);
         addOutputPort(countOutput);
-    }
-    
-    /**
-     *         ode            tDescription      ?
-     * @return              ?
-     */
-    @Override
-    public String getDescription() {
-        return this.description;
     }
     
     /**
@@ -145,8 +132,10 @@ public class GroupListNode extends BaseNode {
     }
     
     public void setSkipInvalidKeys(boolean skip) {
-        this.skipInvalidKeys = skip;
-        markDirty();
+        if (this.skipInvalidKeys != skip) {
+            this.skipInvalidKeys = skip;
+            markDirty();
+        }
     }
     
     // ---                         ?---

@@ -29,21 +29,13 @@ public class MathRangeNode extends BaseNode {
     private static final String INPUT_STEP_ID = "input_step";
     private static final String OUTPUT_NUMBERS_ID = "output_numbers";
 
-    private final String description;
-
     public MathRangeNode() {
         super(UUID.randomUUID(), "math.sequence.range");
-        this.description = "Generates a sequence of numbers from Start to End with Step.";
 
         addInputPort(new BasePort(INPUT_START_ID, "Start", "The starting number of the range", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_END_ID, "End", "The ending number of the range", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_STEP_ID, "Step", "The step size between numbers", NodeDataType.ANY, this));
         addOutputPort(new BasePort(OUTPUT_NUMBERS_ID, "Numbers", "The generated list of numbers", NodeDataType.ANY, this));
-    }
-
-    @Override
-    public String getDescription() {
-        return description;
     }
 
     @Override
@@ -53,11 +45,16 @@ public class MathRangeNode extends BaseNode {
         double step = getValueAsDouble(inputValues.get(INPUT_STEP_ID), 1.0);
 
         List<Double> numbers = new ArrayList<>();
+        if (!Double.isFinite(start) || !Double.isFinite(end) || !Double.isFinite(step)) {
+            outputValues.put(OUTPUT_NUMBERS_ID, Collections.unmodifiableList(numbers));
+            return;
+        }
+
         if (Math.abs(step) < 1e-10) {
             if (start <= end) {
                 numbers.add(start);
             }
-            outputValues.put(OUTPUT_NUMBERS_ID, numbers);
+            outputValues.put(OUTPUT_NUMBERS_ID, Collections.unmodifiableList(numbers));
             return;
         }
 
