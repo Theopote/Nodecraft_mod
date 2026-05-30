@@ -54,11 +54,6 @@ public class FaceEdgeToPathNode extends BaseNode {
     }
 
     @Override
-    public String getDescription() {
-        return "Converts a face edge into line, polyline, and point outputs for path workflows";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object edgeObj = inputValues.get(INPUT_EDGE_ID);
         Object startCornerIndexObj = inputValues.get(INPUT_START_CORNER_INDEX_ID);

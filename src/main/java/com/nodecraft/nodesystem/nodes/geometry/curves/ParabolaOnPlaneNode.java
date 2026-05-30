@@ -5,12 +5,9 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.Curve;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -57,13 +54,8 @@ public class ParabolaOnPlaneNode extends BaseNode {
     }
 
     @Override
-    public String getDescription() {
-        return "Builds a sampled parabola on a plane from vertex, curvature, x-range, and segment count";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d vertex = resolvePoint(inputValues.get(INPUT_VERTEX_ID));
+        Vector3d vertex = CurvePlaneUtils.resolvePoint(inputValues.get(INPUT_VERTEX_ID));
         Object curvatureObj = inputValues.get(INPUT_CURVATURE_ID);
         Object minObj = inputValues.get(INPUT_X_MIN_ID);
         Object maxObj = inputValues.get(INPUT_X_MAX_ID);
@@ -85,7 +77,7 @@ public class ParabolaOnPlaneNode extends BaseNode {
             return;
         }
 
-        Basis basis = createBasis(plane, preferred);
+        CurvePlaneUtils.Basis basis = CurvePlaneUtils.createBasis(plane, preferred);
         if (basis == null) {
             writeInvalid();
             return;
@@ -97,8 +89,8 @@ public class ParabolaOnPlaneNode extends BaseNode {
             double x = xMin + (xMax - xMin) * t;
             double y = curvature * x * x;
             Vector3d world = new Vector3d(vertex)
-                .add(new Vector3d(basis.xAxis).mul(x))
-                .add(new Vector3d(basis.yAxis).mul(y));
+                .add(new Vector3d(basis.xAxis()).mul(x))
+                .add(new Vector3d(basis.yAxis()).mul(y));
             pts.add(new Vec3d(world.x, world.y, world.z));
         }
 
@@ -119,49 +111,4 @@ public class ParabolaOnPlaneNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
-    private Vector3d resolvePoint(Object value) {
-        if (value instanceof PointData pointData) return pointData.getPosition();
-        if (value instanceof Coordinate coordinate) return new Vector3d(coordinate.getX(), coordinate.getY(), coordinate.getZ());
-        if (value instanceof Vector3d vector) return new Vector3d(vector);
-        if (value instanceof BlockPos blockPos) return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
-        return null;
-    }
-
-    private @Nullable Basis createBasis(PlaneData plane, @Nullable Vector3d preferredXAxis) {
-        Vector3d normal = plane.getNormal();
-        if (normal.lengthSquared() <= 1.0e-12d) {
-            return null;
-        }
-        normal.normalize();
-
-        Vector3d xAxis = preferredXAxis != null ? new Vector3d(preferredXAxis) : null;
-        if (xAxis != null) {
-            xAxis.sub(new Vector3d(normal).mul(xAxis.dot(normal)));
-        }
-        if (xAxis == null || xAxis.lengthSquared() <= 1.0e-12d) {
-            xAxis = fallbackAxis(normal);
-        }
-        if (xAxis.lengthSquared() <= 1.0e-12d) {
-            return null;
-        }
-        xAxis.normalize();
-
-        Vector3d yAxis = new Vector3d(normal).cross(xAxis);
-        if (yAxis.lengthSquared() <= 1.0e-12d) {
-            return null;
-        }
-        yAxis.normalize();
-        xAxis = new Vector3d(yAxis).cross(normal).normalize();
-        return new Basis(xAxis, yAxis, normal);
-    }
-
-    private Vector3d fallbackAxis(Vector3d normal) {
-        Vector3d reference = Math.abs(normal.z) < 0.99d
-            ? new Vector3d(0.0d, 0.0d, 1.0d)
-            : new Vector3d(0.0d, 1.0d, 0.0d);
-        return reference.sub(new Vector3d(normal).mul(reference.dot(normal)));
-    }
-
-    private record Basis(Vector3d xAxis, Vector3d yAxis, Vector3d normal) {
-    }
 }

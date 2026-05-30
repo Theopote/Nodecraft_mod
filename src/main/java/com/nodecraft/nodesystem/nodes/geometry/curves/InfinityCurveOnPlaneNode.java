@@ -5,12 +5,9 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.Curve;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -53,13 +50,8 @@ public class InfinityCurveOnPlaneNode extends BaseNode {
     }
 
     @Override
-    public String getDescription() {
-        return "Builds a sampled figure-eight (lemniscate-like) curve on a plane";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d center = resolvePoint(inputValues.get(INPUT_CENTER_ID));
+        Vector3d center = CurvePlaneUtils.resolvePoint(inputValues.get(INPUT_CENTER_ID));
         Object sizeObj = inputValues.get(INPUT_SIZE_ID);
         Object segmentsObj = inputValues.get(INPUT_SEGMENTS_ID);
         PlaneData plane = inputValues.get(INPUT_PLANE_ID) instanceof PlaneData p ? p : PlaneData.XY_PLANE;
@@ -76,7 +68,7 @@ public class InfinityCurveOnPlaneNode extends BaseNode {
             return;
         }
 
-        Basis basis = createBasis(plane, preferred);
+        CurvePlaneUtils.Basis basis = CurvePlaneUtils.createBasis(plane, preferred);
         if (basis == null) {
             writeInvalid();
             return;
@@ -88,8 +80,8 @@ public class InfinityCurveOnPlaneNode extends BaseNode {
             double x = Math.sin(t);
             double y = Math.sin(t) * Math.cos(t);
             Vector3d world = new Vector3d(center)
-                .add(new Vector3d(basis.xAxis).mul(x * size))
-                .add(new Vector3d(basis.yAxis).mul(y * size));
+                .add(new Vector3d(basis.xAxis()).mul(x * size))
+                .add(new Vector3d(basis.yAxis()).mul(y * size));
             pts.add(new Vec3d(world.x, world.y, world.z));
         }
 
@@ -110,49 +102,4 @@ public class InfinityCurveOnPlaneNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
-    private Vector3d resolvePoint(Object value) {
-        if (value instanceof PointData pointData) return pointData.getPosition();
-        if (value instanceof Coordinate coordinate) return new Vector3d(coordinate.getX(), coordinate.getY(), coordinate.getZ());
-        if (value instanceof Vector3d vector) return new Vector3d(vector);
-        if (value instanceof BlockPos blockPos) return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
-        return null;
-    }
-
-    private @Nullable Basis createBasis(PlaneData plane, @Nullable Vector3d preferredXAxis) {
-        Vector3d normal = plane.getNormal();
-        if (normal.lengthSquared() <= 1.0e-12d) {
-            return null;
-        }
-        normal.normalize();
-
-        Vector3d xAxis = preferredXAxis != null ? new Vector3d(preferredXAxis) : null;
-        if (xAxis != null) {
-            xAxis.sub(new Vector3d(normal).mul(xAxis.dot(normal)));
-        }
-        if (xAxis == null || xAxis.lengthSquared() <= 1.0e-12d) {
-            xAxis = fallbackAxis(normal);
-        }
-        if (xAxis.lengthSquared() <= 1.0e-12d) {
-            return null;
-        }
-        xAxis.normalize();
-
-        Vector3d yAxis = new Vector3d(normal).cross(xAxis);
-        if (yAxis.lengthSquared() <= 1.0e-12d) {
-            return null;
-        }
-        yAxis.normalize();
-        xAxis = new Vector3d(yAxis).cross(normal).normalize();
-        return new Basis(xAxis, yAxis, normal);
-    }
-
-    private Vector3d fallbackAxis(Vector3d normal) {
-        Vector3d reference = Math.abs(normal.z) < 0.99d
-            ? new Vector3d(0.0d, 0.0d, 1.0d)
-            : new Vector3d(0.0d, 1.0d, 0.0d);
-        return reference.sub(new Vector3d(normal).mul(reference.dot(normal)));
-    }
-
-    private record Basis(Vector3d xAxis, Vector3d yAxis, Vector3d normal) {
-    }
 }

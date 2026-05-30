@@ -47,11 +47,6 @@ public class BoxFaceBoundaryPathNode extends BaseNode {
     }
 
     @Override
-    public String getDescription() {
-        return "Builds a closed boundary path from a box face for preview and downstream path workflows";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object faceObj = inputValues.get(INPUT_FACE_ID);
 

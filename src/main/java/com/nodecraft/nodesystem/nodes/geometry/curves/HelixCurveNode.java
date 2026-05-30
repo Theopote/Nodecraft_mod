@@ -4,12 +4,9 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.Curve;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -58,13 +55,8 @@ public class HelixCurveNode extends BaseNode {
     }
 
     @Override
-    public String getDescription() {
-        return "Builds a sampled helix from center, axis, radius, pitch, turns, and segment count.";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d center = resolvePoint(inputValues.get(INPUT_CENTER_ID));
+        Vector3d center = CurvePlaneUtils.resolvePoint(inputValues.get(INPUT_CENTER_ID));
         Object axisObj = inputValues.get(INPUT_AXIS_ID);
         Object radiusObj = inputValues.get(INPUT_RADIUS_ID);
         Object pitchObj = inputValues.get(INPUT_PITCH_ID);
@@ -131,14 +123,6 @@ public class HelixCurveNode extends BaseNode {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_LENGTH_ID, 0.0d);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private Vector3d resolvePoint(Object value) {
-        if (value instanceof PointData pointData) return pointData.getPosition();
-        if (value instanceof Coordinate coordinate) return new Vector3d(coordinate.getX(), coordinate.getY(), coordinate.getZ());
-        if (value instanceof Vector3d vector) return new Vector3d(vector);
-        if (value instanceof BlockPos blockPos) return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
-        return null;
     }
 
     private Vector3d fallbackAxis(Vector3d axis) {
