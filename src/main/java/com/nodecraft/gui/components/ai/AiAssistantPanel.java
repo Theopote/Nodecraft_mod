@@ -237,26 +237,28 @@ public final class AiAssistantPanel {
     private void renderAiDebugConsolePopup() {
         String compactDiagnostics = AiDiagnosticsService.buildAiDiagnosticsExportText(aiAssistantComponent, aiPlanStatusMessage, false);
         String fullDiagnostics = AiDiagnosticsService.buildAiDiagnosticsExportText(aiAssistantComponent, aiPlanStatusMessage, true);
+        AiAssistantComponent.RemotePlannerSnapshot remoteSnapshot = aiAssistantComponent.getRemotePlannerSnapshot();
 
         AiAssistantDebugConsoleRenderer.renderDebugConsolePopup(
                 new AiAssistantDebugConsoleRenderer.State(
-                        aiAssistantComponent.getLastRemoteErrorCategory(),
-                        aiAssistantComponent.getLastRemoteAttempts(),
-                        aiAssistantComponent.getLastRemoteRawResponse(),
-                        aiAssistantComponent.getLastRemoteModelText(),
-                        aiAssistantComponent.getLastRemoteRequestSnapshot(),
+                remoteSnapshot.errorCategory(),
+                remoteSnapshot.attempts(),
+                remoteSnapshot.rawResponse(),
+                remoteSnapshot.modelText(),
+                remoteSnapshot.requestSnapshot(),
                         compactDiagnostics,
                         fullDiagnostics
                 ),
                 new AiAssistantDebugConsoleRenderer.Actions() {
                     @Override
                     public void renderFailureSummarySection() {
+                AiAssistantComponent.RemotePlannerSnapshot snapshot = aiAssistantComponent.getRemotePlannerSnapshot();
                         AiAssistantFailurePanelRenderer.renderFailureSummaryCard(
                                 new AiAssistantFailurePanelRenderer.State(
-                                        aiAssistantComponent.getLastRemoteErrorCategory(),
-                                        aiAssistantComponent.getLastRemoteStatusCode(),
-                                        aiAssistantComponent.getLastRemoteAttempts(),
-                                        aiAssistantComponent.getLastRemoteErrorMessage(),
+                        snapshot.errorCategory(),
+                        snapshot.statusCode(),
+                        snapshot.attempts(),
+                        snapshot.errorMessage(),
                                         aiLastSubmittedPrompt != null && !aiLastSubmittedPrompt.isBlank(),
                                         isRemotePlannerBusy(),
                                         aiEnableRemotePlanner.get()

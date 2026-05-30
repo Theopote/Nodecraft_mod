@@ -39,16 +39,7 @@ public class AiAssistantComponent implements EditorComponent {
     private long sessionSaveDueAtMs = 0L;
 
     private final AiRemotePlannerService remotePlannerService = new AiRemotePlannerService();
-    private CompletableFuture<AiRemotePlannerService.RemotePlanResult> remotePlanFuture = null;
-    private String remotePendingPrompt = "";
-    private String lastRemoteRawResponse = "";
-    private String lastRemoteModelText = "";
-    private String lastRemoteRequestSnapshot = "";
-    private String lastRemoteErrorCategory = "";
-    private String lastRemoteErrorMessage = "";
-    private int lastRemoteStatusCode = 0;
-    private int lastRemoteAttempts = 0;
-    private final StringBuilder remoteStreamingBuffer = new StringBuilder();
+    private final RemotePlannerState remotePlannerState = new RemotePlannerState();
 
     public record AiChatMessage(String role, String content, long timestampMs) {
     }
@@ -69,6 +60,17 @@ public class AiAssistantComponent implements EditorComponent {
         public boolean hasException() {
             return exceptionMessage != null && !exceptionMessage.isBlank();
         }
+    }
+
+    public record RemotePlannerSnapshot(
+            String rawResponse,
+            String modelText,
+            String requestSnapshot,
+            String errorCategory,
+            String errorMessage,
+            int statusCode,
+            int attempts
+    ) {
     }
 
     @FunctionalInterface
@@ -100,7 +102,6 @@ public class AiAssistantComponent implements EditorComponent {
         cancelRemotePlannerRequest();
         remotePlannerService.shutdown();
         clearRemoteDebugState();
-        clearStreamingBuffer();
         sessionRestoreInProgress = false;
         sessionSaveDirty = false;
         sessionSaveDueAtMs = 0L;
@@ -332,22 +333,13 @@ public class AiAssistantComponent implements EditorComponent {
             List<AiRemotePlannerService.ConversationMessage> conversationHistory,
             String requestSnapshot
     ) {
-        if (isRemotePlannerBusy()) {
-            lastRemoteErrorCategory = "request";
-            lastRemoteErrorMessage = "Remote planner is already running.";
+        if (!remotePlannerState.beginRequest(prompt, requestSnapshot)) {
             return false;
         }
 
-        remotePendingPrompt = prompt == null ? "" : prompt;
-        lastRemoteRawResponse = "";
-        lastRemoteModelText = "";
-        lastRemoteRequestSnapshot = requestSnapshot == null ? "" : requestSnapshot;
-        lastRemoteErrorCategory = "";
-        lastRemoteErrorMessage = "";
-        lastRemoteStatusCode = 0;
-        lastRemoteAttempts = 0;
-        clearStreamingBuffer();
-        remotePlanFuture = remotePlannerService.requestPlanAsync(config, conversationHistory, this::appendStreamingTokenOnClientThread);
+        remotePlannerState.setRemotePlanFuture(
+                remotePlannerService.requestPlanAsync(config, conversationHistory, this::appendStreamingTokenOnClientThread)
+        );
         return true;
     }
 
@@ -358,74 +350,31 @@ public class AiAssistantComponent implements EditorComponent {
     }
 
     public RemotePollResult pollRemotePlannerResultIfReady() {
-        if (remotePlanFuture == null || !remotePlanFuture.isDone()) {
-            return null;
-        }
-
-        AiRemotePlannerService.RemotePlanResult result;
-        try {
-            result = remotePlanFuture.join();
-        } catch (Exception e) {
-            String prompt = remotePendingPrompt;
-            remotePlanFuture = null;
-            remotePendingPrompt = "";
-            return new RemotePollResult(prompt, null, e.getMessage());
-        }
-
-        String prompt = remotePendingPrompt;
-        remotePlanFuture = null;
-        remotePendingPrompt = "";
-        lastRemoteAttempts = result.attempts();
-        lastRemoteErrorCategory = result.errorCategory();
-        lastRemoteErrorMessage = result.errorMessage() == null ? "" : result.errorMessage();
-        lastRemoteStatusCode = result.statusCode();
-        lastRemoteRawResponse = result.rawResponse() == null ? "" : result.rawResponse();
-        lastRemoteModelText = result.modelContent() == null ? "" : result.modelContent();
-        clearStreamingBuffer();
-        return new RemotePollResult(prompt, result, null);
+        return remotePlannerState.pollRemotePlannerResultIfReady();
     }
 
     public boolean isRemotePlannerBusy() {
-        return remotePlanFuture != null && !remotePlanFuture.isDone();
+        return remotePlannerState.isBusy();
     }
 
     public void cancelRemotePlannerRequest() {
-        if (remotePlanFuture != null && !remotePlanFuture.isDone()) {
-            remotePlanFuture.cancel(true);
-        }
-        remotePlanFuture = null;
-        remotePendingPrompt = "";
-        clearStreamingBuffer();
+        remotePlannerState.cancelRemotePlannerRequest();
     }
 
     public void clearRemoteDebugState() {
-        lastRemoteRawResponse = "";
-        lastRemoteModelText = "";
-        lastRemoteRequestSnapshot = "";
-        lastRemoteErrorCategory = "";
-        lastRemoteErrorMessage = "";
-        lastRemoteStatusCode = 0;
-        lastRemoteAttempts = 0;
-        clearStreamingBuffer();
+        remotePlannerState.clearRemoteDebugState();
     }
 
     public String getRemoteStreamingBuffer() {
-        synchronized (remoteStreamingBuffer) {
-            return remoteStreamingBuffer.toString();
-        }
+        return remotePlannerState.getRemoteStreamingBuffer();
+    }
+
+    public RemotePlannerSnapshot getRemotePlannerSnapshot() {
+        return remotePlannerState.snapshot();
     }
 
     private void appendStreamingToken(String token) {
-        if (token == null || token.isBlank()) {
-            return;
-        }
-        synchronized (remoteStreamingBuffer) {
-            remoteStreamingBuffer.append(token);
-            if (remoteStreamingBuffer.length() > MAX_STREAMING_BUFFER_CHARS) {
-                int excess = remoteStreamingBuffer.length() - MAX_STREAMING_BUFFER_CHARS;
-                remoteStreamingBuffer.delete(0, excess);
-            }
-        }
+        remotePlannerState.appendStreamingToken(token);
     }
 
     private void appendStreamingTokenOnClientThread(String token) {
@@ -448,37 +397,31 @@ public class AiAssistantComponent implements EditorComponent {
         client.execute(action);
     }
 
-    private void clearStreamingBuffer() {
-        synchronized (remoteStreamingBuffer) {
-            remoteStreamingBuffer.setLength(0);
-        }
-    }
-
     public String getLastRemoteRawResponse() {
-        return lastRemoteRawResponse;
+        return getRemotePlannerSnapshot().rawResponse();
     }
 
     public String getLastRemoteModelText() {
-        return lastRemoteModelText;
+        return getRemotePlannerSnapshot().modelText();
     }
 
     public String getLastRemoteRequestSnapshot() {
-        return lastRemoteRequestSnapshot;
+        return getRemotePlannerSnapshot().requestSnapshot();
     }
 
     public String getLastRemoteErrorCategory() {
-        return lastRemoteErrorCategory;
+        return getRemotePlannerSnapshot().errorCategory();
     }
 
     public String getLastRemoteErrorMessage() {
-        return lastRemoteErrorMessage;
+        return getRemotePlannerSnapshot().errorMessage();
     }
 
     public int getLastRemoteStatusCode() {
-        return lastRemoteStatusCode;
+        return getRemotePlannerSnapshot().statusCode();
     }
 
     public int getLastRemoteAttempts() {
-        return lastRemoteAttempts;
+        return getRemotePlannerSnapshot().attempts();
     }
 }

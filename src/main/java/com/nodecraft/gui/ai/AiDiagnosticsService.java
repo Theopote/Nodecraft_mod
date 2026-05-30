@@ -1,6 +1,7 @@
 package com.nodecraft.gui.ai;
 
 import com.nodecraft.gui.components.ai.AiAssistantComponent;
+import com.nodecraft.gui.components.ai.AiAssistantComponent.RemotePlannerSnapshot;
 
 public final class AiDiagnosticsService {
 
@@ -11,10 +12,11 @@ public final class AiDiagnosticsService {
         if (component == null) {
             return false;
         }
-        return hasText(component.getLastRemoteRawResponse())
-                || hasText(component.getLastRemoteModelText())
-                || hasText(component.getLastRemoteRequestSnapshot())
-                || hasText(component.getLastRemoteErrorMessage());
+        RemotePlannerSnapshot snapshot = component.getRemotePlannerSnapshot();
+        return hasText(snapshot.rawResponse())
+                || hasText(snapshot.modelText())
+                || hasText(snapshot.requestSnapshot())
+                || hasText(snapshot.errorMessage());
     }
 
     public static String buildAiDiagnosticsExportText(
@@ -26,18 +28,20 @@ public final class AiDiagnosticsService {
             return "[AI Debug Diagnostics]\n(empty)\n";
         }
 
+        RemotePlannerSnapshot snapshot = component.getRemotePlannerSnapshot();
+
         return "[AI Debug Diagnostics]\n" +
-                "category: " + nullToEmpty(component.getLastRemoteErrorCategory()) + "\n" +
-                "statusCode: " + component.getLastRemoteStatusCode() + "\n" +
-                "attempts: " + component.getLastRemoteAttempts() + "\n" +
-                "errorMessage: " + nullToEmpty(component.getLastRemoteErrorMessage()) + "\n" +
+            "category: " + nullToEmpty(snapshot.errorCategory()) + "\n" +
+            "statusCode: " + snapshot.statusCode() + "\n" +
+            "attempts: " + snapshot.attempts() + "\n" +
+            "errorMessage: " + nullToEmpty(snapshot.errorMessage()) + "\n" +
                 "statusMessage: " + nullToEmpty(statusMessage) + "\n\n" +
                 "[Request Snapshot]\n" +
-                formatDiagnosticsSection(component.getLastRemoteRequestSnapshot(), includeFullPayloads) + "\n" +
+            formatDiagnosticsSection(snapshot.requestSnapshot(), includeFullPayloads) + "\n" +
                 "[Model Text]\n" +
-                formatDiagnosticsSection(component.getLastRemoteModelText(), includeFullPayloads) + "\n" +
+            formatDiagnosticsSection(snapshot.modelText(), includeFullPayloads) + "\n" +
                 "[Raw Response]\n" +
-                formatDiagnosticsSection(component.getLastRemoteRawResponse(), includeFullPayloads) + "\n";
+            formatDiagnosticsSection(snapshot.rawResponse(), includeFullPayloads) + "\n";
     }
 
     public static String formatDiagnosticsSection(String value, boolean includeFullPayloads) {
