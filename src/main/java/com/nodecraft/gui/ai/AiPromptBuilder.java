@@ -65,7 +65,7 @@ public final class AiPromptBuilder {
               "description": "Short summary of the intended outcome",
               "nodes": [
                 {
-                  "id": "n1", 
+                  "id": "n1",
                   "type": "node.type.id",
                   "params": { "radius": 5.0 },
                   "position": { "x": 0, "y": 0 }
