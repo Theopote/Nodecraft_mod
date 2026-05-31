@@ -422,9 +422,11 @@ public class ImGuiNodeHistory {
             }
 
             // 1. Rollback structural changes (additions/connections)
+            boolean structuralRollbackComplete = true;
             for (int i = 0; i < undoStepsTaken; i++) {
                 if (!editor.undo()) {
                     NodeCraft.LOGGER.warn("AI Patch undo partially failed during structural rollback at step {}", i);
+                    structuralRollbackComplete = false;
                     break;
                 }
             }
@@ -436,9 +438,13 @@ public class ImGuiNodeHistory {
                     baseNode.setNodeState(deepCopyState(entry.getValue()));
                 }
             }
-            
-            NodeCraft.LOGGER.info("AI Patch undone: {}", summary);
-            return true;
+
+            if (structuralRollbackComplete) {
+                NodeCraft.LOGGER.info("AI Patch undone: {}", summary);
+            } else {
+                NodeCraft.LOGGER.warn("AI Patch undo incomplete: {}", summary);
+            }
+            return structuralRollbackComplete;
         }
 
         @Override
