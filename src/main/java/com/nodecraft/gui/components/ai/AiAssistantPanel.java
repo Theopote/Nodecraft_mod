@@ -44,6 +44,15 @@ public final class AiAssistantPanel {
                     If the user asks to modify a specific parameter value on an existing node,
                     return only the affected node with its updated params. Keep all other nodes and connections unchanged.
                     Use the same node ids as in the "Current plan in effect" JSON.""";
+    private static final String RESTRUCTURE_SYSTEM_HINT =
+            """
+                    If the user asks to restructure, delete, or optimize the existing graph:
+                    - Analyze the 'Current canvas graph snapshot' and connections carefully.
+                    - Perform the requested structural changes (e.g., deleting, replacing, or inserting nodes and changing connections).
+                    - Retain all other nodes and connections that the user did not ask to modify.
+                    - Reuse the existing node IDs (e.g. n1, n2, or short UUIDs like 8ef1a2c3) for any nodes that are retained.
+                    - Output the complete, updated graph containing both retained nodes and new/modified nodes.
+                    """;
         private static final String REMOTE_DSL_REPAIR_SYSTEM_HINT =
             """
                 You are now in DSL repair mode.
@@ -61,6 +70,7 @@ public final class AiAssistantPanel {
                     - Do NOT connect vectors to geometry inputs.
                     - Ensure output ports and input ports exist on the corresponding node types.
                     - If needed, replace incorrect intermediate nodes with valid ones from the provided node library.
+                    - Ensure the output is valid JSON: do NOT include trailing commas, unescaped characters, or markdown tags.
                     """;
             private static final int MAX_REMOTE_DSL_REPAIR_ATTEMPTS = 2;
     private static final String[] AI_PROVIDER_STRATEGY_OPTIONS = {
@@ -845,7 +855,7 @@ public final class AiAssistantPanel {
 
         NodeRegistry registry = NodeRegistry.getInstance();
         List<AiNodeSchemaCatalog.NodeSchema> allSchemas = AiNodeSchemaCatalog.collectAll(registry);
-        List<AiNodeSchemaCatalog.NodeSchema> relevantSchemas = AiNodeSchemaCatalog.selectRelevant(allSchemas, userPrompt, 40);
+        List<AiNodeSchemaCatalog.NodeSchema> relevantSchemas = AiNodeSchemaCatalog.selectRelevant(allSchemas, userPrompt, 20);
         UserIntent userIntent = AiIntentAnalysisService.classifyIntent(userPrompt);
 
         String systemPrompt = aiSystemPrompt.get();
@@ -856,6 +866,8 @@ public final class AiAssistantPanel {
         }
         if (userIntent == UserIntent.MODIFY_PARAM) {
             systemPrompt = systemPrompt + "\n\n" + MODIFY_PARAM_SYSTEM_HINT;
+        } else if (userIntent == UserIntent.RESTRUCTURE) {
+            systemPrompt = systemPrompt + "\n\n" + RESTRUCTURE_SYSTEM_HINT;
         }
         NodeCraft.LOGGER.info("[AI_SEND] Intent classified. intent={}, promptPreview={}",
                 userIntent,
@@ -1083,7 +1095,7 @@ public final class AiAssistantPanel {
         AiGraphPlan pendingAiPlan = getPendingAiPlan();
         String warningSuffix = formatValidationWarningSuffix(parsed.warnings());
         UserIntent intent = AiIntentAnalysisService.classifyIntent(prompt);
-        boolean shouldAutoApplyPlacement = intent != UserIntent.MODIFY_PARAM && intent != UserIntent.EXPLAIN && shouldAutoApplyPlacementPlan(prompt, pendingAiPlan);
+        boolean shouldAutoApplyPlacement = intent != UserIntent.MODIFY_PARAM && intent != UserIntent.RESTRUCTURE && intent != UserIntent.EXPLAIN && shouldAutoApplyPlacementPlan(prompt, pendingAiPlan);
         boolean autoAppliedPlacement = false;
         if (shouldAutoApplyPlacement) {
             autoAppliedPlacement = applyPlacementPlan(pendingAiPlan);
@@ -1163,7 +1175,7 @@ public final class AiAssistantPanel {
 
         NodeRegistry registry = NodeRegistry.getInstance();
         List<AiNodeSchemaCatalog.NodeSchema> allSchemas = AiNodeSchemaCatalog.collectAll(registry);
-        List<AiNodeSchemaCatalog.NodeSchema> relevantSchemas = AiNodeSchemaCatalog.selectRelevant(allSchemas, originalPrompt, 60);
+        List<AiNodeSchemaCatalog.NodeSchema> relevantSchemas = AiNodeSchemaCatalog.selectRelevant(allSchemas, originalPrompt, 30);
 
         String systemPrompt = aiSystemPrompt.get();
         if (systemPrompt == null || systemPrompt.isBlank()) {
@@ -1930,7 +1942,7 @@ public final class AiAssistantPanel {
 
         AiGraphApplyAdapterService.PatchPayload payload =
                 AiGraphApplyAdapterService.toPatchPayload(patchNodes, patchConnections);
-        boolean mergeExistingNodeState = AiIntentAnalysisService.classifyIntent(aiLastSubmittedPrompt) == UserIntent.MODIFY_PARAM;
+        boolean mergeExistingNodeState = AiIntentAnalysisService.classifyIntent(aiLastSubmittedPrompt) == UserIntent.MODIFY_PARAM || AiIntentAnalysisService.classifyIntent(aiLastSubmittedPrompt) == UserIntent.RESTRUCTURE;
 
         AiGraphApplyService.ApplyResult result = AiGraphApplyService.applyPatch(
                 editor,

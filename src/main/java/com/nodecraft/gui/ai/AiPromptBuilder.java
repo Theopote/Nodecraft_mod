@@ -92,6 +92,54 @@ public final class AiPromptBuilder {
             - Build Focus: Treat selection-related nodes as graph inputs, not as the final goal. The final goal is the generated geometry or world-operation pipeline.
             - Canvas Placement: For prompts like 'place a selected block node on the canvas', the graph can be a single node with no connections if that best matches the request.
 
+            # FEW_SHOT_EXAMPLES
+            Use these examples to understand how to build, patch, and restructure graphs.
+            
+            Example 1: Generating a Sphere at Player Position and Rendering it
+            User request: "在玩家位置生成一个半径为 5 的球体并显示它"
+            DSL Output:
+            {
+              "description": "Generate a sphere with radius 5 at player position and show preview",
+              "nodes": [
+                { "id": "n1", "type": "input.world.player_pos", "position": { "x": -200, "y": 0 } },
+                { "id": "n2", "type": "geometry.primitive.sphere", "params": { "radius": 5.0 }, "position": { "x": 0, "y": 0 } },
+                { "id": "n3", "type": "output.preview.show_geometry", "position": { "x": 200, "y": 0 } }
+              ],
+              "connections": [
+                { "from": { "nodeId": "n1", "port": "position" }, "to": { "nodeId": "n2", "port": "center" } },
+                { "from": { "nodeId": "n2", "port": "geometry" }, "to": { "nodeId": "n3", "port": "geometry" } }
+              ]
+            }
+
+            Example 2: Modifying Parameters (Patch Mode)
+            Context: Current plan in effect has a sphere node `n2` with `radius: 5.0`.
+            User request: "把半径改成 8"
+            DSL Output:
+            {
+              "description": "Update sphere radius parameter to 8.0",
+              "nodes": [
+                { "id": "n2", "type": "geometry.primitive.sphere", "params": { "radius": 8.0 }, "position": { "x": 0, "y": 0 } }
+              ],
+              "connections": []
+            }
+
+            Example 3: Restructuring/Rebuilding (Replacing sphere with a box)
+            Context: Current canvas graph has `n1: input.world.player_pos`, `n2: geometry.primitive.sphere` (id: 8ef1a2c3), `n3: output.preview.show_geometry` (id: a3b2c1d0).
+            User request: "把那个球体删掉，换成一个 3x3x3 的立方体"
+            DSL Output:
+            {
+              "description": "Replace sphere with a 3x3x3 box geometry",
+              "nodes": [
+                { "id": "n1", "type": "input.world.player_pos", "position": { "x": -200, "y": 0 } },
+                { "id": "n4", "type": "geometry.primitive.box", "params": { "width": 3.0, "height": 3.0, "depth": 3.0 }, "position": { "x": 0, "y": 0 } },
+                { "id": "n3", "type": "output.preview.show_geometry", "position": { "x": 200, "y": 0 } }
+              ],
+              "connections": [
+                { "from": { "nodeId": "n1", "port": "position" }, "to": { "nodeId": "n4", "port": "center" } },
+                { "from": { "nodeId": "n4", "port": "geometry" }, "to": { "nodeId": "n3", "port": "geometry" } }
+              ]
+            }
+
             # AVAILABLE_NODE_LIBRARY
             Usage: Strictly use the 'typeId' provided below.
             """ + schemaText;

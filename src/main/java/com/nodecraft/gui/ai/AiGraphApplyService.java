@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -262,12 +263,27 @@ public final class AiGraphApplyService {
             return null;
         }
 
+        // 1. Try exact ref-to-ID matching (short UUID or full UUID)
+        String plannedRef = planned.ref().trim().toLowerCase(Locale.ROOT);
+        for (CurrentNodeInfo candidate : candidates) {
+            if (!usedCurrent.contains(candidate.id())) {
+                String fullId = candidate.id().toString().toLowerCase(Locale.ROOT);
+                String shortId = fullId.length() <= 8 ? fullId : fullId.substring(0, 8);
+                if (plannedRef.equals(fullId) || plannedRef.equals(shortId)) {
+                    return candidate;
+                }
+            }
+        }
+
+        // 2. Fallback to matching parameters
         String plannedSig = normalizeStateForSignature(planned.nodeState());
         for (CurrentNodeInfo candidate : candidates) {
             if (!usedCurrent.contains(candidate.id()) && plannedSig.equals(candidate.paramSignature())) {
                 return candidate;
             }
         }
+
+        // 3. Fallback to matching first unused of same type
         for (CurrentNodeInfo candidate : candidates) {
             if (!usedCurrent.contains(candidate.id())) {
                 return candidate;

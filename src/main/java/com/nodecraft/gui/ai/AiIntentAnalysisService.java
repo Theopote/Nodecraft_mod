@@ -12,6 +12,7 @@ public final class AiIntentAnalysisService {
     public enum UserIntent {
         GENERATE_NEW,
         MODIFY_PARAM,
+        RESTRUCTURE,
         EXPLAIN,
         UNCLEAR
     }
@@ -164,6 +165,12 @@ public final class AiIntentAnalysisService {
         }
 
         String lower = prompt.toLowerCase(Locale.ROOT);
+
+        if (containsAnyLower(lower,
+                "重构", "重建", "重做", "优化", "替换", "删除", "删掉", "移除", "去掉", "重新连接", "连接已有的",
+                "restructure", "rebuild", "reconstruct", "optimize", "replace", "delete", "remove", "disconnect", "reconnect")) {
+            return UserIntent.RESTRUCTURE;
+        }
 
         if (containsAnyLower(lower,
                 "新建", "生成", "创建", "做一个", "添加", "放置", "连接", "连线",
