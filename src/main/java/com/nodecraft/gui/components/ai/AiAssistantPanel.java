@@ -1474,6 +1474,9 @@ public final class AiAssistantPanel {
                 if (!input.required()) {
                     continue;
                 }
+                if (!shouldAutoWireInputPort(input)) {
+                    continue;
+                }
                 String targetKey = target.ref() + "#" + input.id();
                 if (usedTargetPorts.contains(targetKey)) {
                     continue;
@@ -1549,6 +1552,9 @@ public final class AiAssistantPanel {
             if (candidate == null || candidate.ref().equals(target.ref())) {
                 continue;
             }
+            if (isOutputCategory(candidate.category())) {
+                continue;
+            }
             PortMeta sourcePort = findBestSourcePort(candidate, targetInput);
             if (sourcePort == null) {
                 continue;
@@ -1584,6 +1590,9 @@ public final class AiAssistantPanel {
         PortMeta best = null;
         int bestScore = Integer.MIN_VALUE;
         for (PortMeta output : source.outputs()) {
+            if (!shouldAutoWireSourcePort(output)) {
+                continue;
+            }
             if (!isTypeCompatible(output.dataType(), targetInput.dataType())) {
                 continue;
             }
@@ -1633,6 +1642,39 @@ public final class AiAssistantPanel {
         }
 
         return false;
+    }
+
+    private boolean shouldAutoWireInputPort(PortMeta input) {
+        if (input == null || !input.required()) {
+            return false;
+        }
+        String inputId = safeLower(input.id());
+        String inputType = safeLower(input.dataType());
+
+        if (containsAny(inputId,
+                "color", "block_type", "transparency", "trigger", "notify", "status", "message", "progress")) {
+            return false;
+        }
+
+        if (containsAny(inputType,
+                "geometry", "blocks", "curve", "coordinate", "position", "vector", "integer", "float", "double", "number", "bounding_box")) {
+            return true;
+        }
+
+        return containsAny(inputId,
+                "geometry", "blocks", "curve", "coordinate", "position", "vector", "radius", "height", "width", "depth", "size", "count", "value");
+    }
+
+    private boolean shouldAutoWireSourcePort(PortMeta output) {
+        if (output == null) {
+            return false;
+        }
+        String outputId = safeLower(output.id());
+        if (containsAny(outputId,
+                "status", "valid", "notify", "message", "progress", "debug", "log")) {
+            return false;
+        }
+        return true;
     }
 
     private boolean isInputCategory(String category) {
