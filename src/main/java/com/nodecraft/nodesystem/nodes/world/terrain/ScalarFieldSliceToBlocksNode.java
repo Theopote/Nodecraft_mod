@@ -37,6 +37,13 @@ public class ScalarFieldSliceToBlocksNode extends BaseNode {
     private static final String OUTPUT_BLOCK_PLACEMENTS_ID = "output_block_placements";
     private static final String OUTPUT_POINTS_ID = "output_points";
 
+    private static final int DEFAULT_MIN_X = -512;
+    private static final int DEFAULT_MAX_X = 512;
+    private static final int DEFAULT_MIN_Z = -512;
+    private static final int DEFAULT_MAX_Z = 512;
+    private static final int DEFAULT_MIN_Y = -64;
+    private static final int DEFAULT_MAX_Y = 320;
+
     @NodeProperty(displayName = "Slice Y", category = "Slice", order = 1)
     private int sliceY = 64;
 
@@ -52,7 +59,7 @@ public class ScalarFieldSliceToBlocksNode extends BaseNode {
     public ScalarFieldSliceToBlocksNode() {
         super(UUID.randomUUID(), "world.terrain.scalar_field_slice_to_blocks");
 
-        addInputPort(new BasePort(INPUT_REGION_ID, "Region", "Region to sample", NodeDataType.REGION, this));
+        addInputPort(new BasePort(INPUT_REGION_ID, "Region", "Optional region to sample; defaults to broad bounds when omitted", NodeDataType.REGION, this));
         addInputPort(new BasePort(INPUT_SCALAR_FIELD_ID, "Scalar Field", "Field to visualize", NodeDataType.SCALAR_FIELD, this));
         addInputPort(new BasePort(INPUT_SLICE_Y_ID, "Slice Y", "Y level for field sampling", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_THRESHOLD_ID, "Threshold", "Value threshold for high/low split", NodeDataType.DOUBLE, this));
@@ -68,21 +75,15 @@ public class ScalarFieldSliceToBlocksNode extends BaseNode {
         Object regionObj = inputValues.get(INPUT_REGION_ID);
         Object fieldObj = inputValues.get(INPUT_SCALAR_FIELD_ID);
 
-        if (!(regionObj instanceof RegionData region) || !region.isComplete() || !(fieldObj instanceof ScalarFieldData field)) {
+        if (!(fieldObj instanceof ScalarFieldData field)) {
             outputValues.put(OUTPUT_BLOCK_PLACEMENTS_ID, List.of());
             outputValues.put(OUTPUT_POINTS_ID, new BlockPosList());
             return;
         }
 
-        BlockPos min = region.getMinCorner();
-        BlockPos max = region.getMaxCorner();
-        if (min == null || max == null) {
-            outputValues.put(OUTPUT_BLOCK_PLACEMENTS_ID, List.of());
-            outputValues.put(OUTPUT_POINTS_ID, new BlockPosList());
-            return;
-        }
+        RegionBounds bounds = resolveBounds(regionObj instanceof RegionData value ? value : null);
 
-        int y = getInputInt(INPUT_SLICE_Y_ID, sliceY);
+        int y = clamp(getInputInt(INPUT_SLICE_Y_ID, sliceY), bounds.minY, bounds.maxY);
         double cut = getInputDouble(INPUT_THRESHOLD_ID, threshold);
         String low = getInputString(INPUT_LOW_BLOCK_ID, lowBlock);
         String high = getInputString(INPUT_HIGH_BLOCK_ID, highBlock);
@@ -91,10 +92,10 @@ public class ScalarFieldSliceToBlocksNode extends BaseNode {
         BlockPosList points = new BlockPosList();
         Vector3d samplePoint = new Vector3d();
 
-        for (int x = min.getX(); x <= max.getX(); x++) {
-            for (int z = min.getZ(); z <= max.getZ(); z++) {
+        for (int x = bounds.minX; x <= bounds.maxX; x++) {
+            for (int z = bounds.minZ; z <= bounds.maxZ; z++) {
                 samplePoint.set(x, y, z);
-                double value = field.sampleScalar(samplePoint);
+                double value = sanitizeFinite(field.sampleScalar(samplePoint), 0.0d);
                 String block = value >= cut ? high : low;
 
                 BlockPos pos = new BlockPos(x, y, z);
@@ -120,5 +121,33 @@ public class ScalarFieldSliceToBlocksNode extends BaseNode {
     private String getInputString(String portId, String fallback) {
         Object value = inputValues.get(portId);
         return (value instanceof String text && !text.isBlank()) ? text : fallback;
+    }
+
+    private double sanitizeFinite(double value, double fallback) {
+        return Double.isFinite(value) ? value : fallback;
+    }
+
+    private RegionBounds resolveBounds(@Nullable RegionData region) {
+        if (region == null || !region.isComplete()) {
+            return new RegionBounds(DEFAULT_MIN_X, DEFAULT_MAX_X, DEFAULT_MIN_Y, DEFAULT_MAX_Y, DEFAULT_MIN_Z, DEFAULT_MAX_Z);
+        }
+
+        BlockPos min = region.getMinCorner();
+        BlockPos max = region.getMaxCorner();
+        if (min == null || max == null) {
+            return new RegionBounds(DEFAULT_MIN_X, DEFAULT_MAX_X, DEFAULT_MIN_Y, DEFAULT_MAX_Y, DEFAULT_MIN_Z, DEFAULT_MAX_Z);
+        }
+
+        return new RegionBounds(min.getX(), max.getX(), min.getY(), max.getY(), min.getZ(), max.getZ());
+    }
+
+    private int clamp(int value, int min, int max) {
+        if (value < min) {
+            return min;
+        }
+        return Math.min(value, max);
+    }
+
+    private record RegionBounds(int minX, int maxX, int minY, int maxY, int minZ, int maxZ) {
     }
 }

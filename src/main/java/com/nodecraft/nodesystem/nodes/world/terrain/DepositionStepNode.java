@@ -29,6 +29,7 @@ public class DepositionStepNode extends BaseNode {
 
     private static final String OUTPUT_HEIGHT_FIELD_ID = "output_height_field";
     private static final String OUTPUT_SEDIMENT_FIELD_ID = "output_sediment_field";
+    private static final String OUTPUT_DELTA_FIELD_ID = "output_delta_field";
 
     @NodeProperty(displayName = "Rate", category = "Deposition", order = 1)
     private double rate = 0.1d;
@@ -48,6 +49,7 @@ public class DepositionStepNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_HEIGHT_FIELD_ID, "Height Field", "Height field after deposition", NodeDataType.SCALAR_FIELD, this));
         addOutputPort(new BasePort(OUTPUT_SEDIMENT_FIELD_ID, "Sediment Field", "Sediment field after deposition update", NodeDataType.SCALAR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_DELTA_FIELD_ID, "Delta Field", "Signed height delta after deposition (new - old)", NodeDataType.SCALAR_FIELD, this));
     }
 
     @Override
@@ -64,6 +66,7 @@ public class DepositionStepNode extends BaseNode {
             || !(slopeObj instanceof ScalarFieldData slopeField)) {
             outputValues.put(OUTPUT_HEIGHT_FIELD_ID, null);
             outputValues.put(OUTPUT_SEDIMENT_FIELD_ID, null);
+            outputValues.put(OUTPUT_DELTA_FIELD_ID, null);
             return;
         }
 
@@ -71,9 +74,9 @@ public class DepositionStepNode extends BaseNode {
         double resolvedCapacity = Math.max(0.0d, getInputDouble(INPUT_CAPACITY_ID, capacity));
 
         ScalarFieldData updatedSedimentField = point -> {
-            double sediment = Math.max(0.0d, sedimentField.sampleScalar(point));
-            double slope = Math.max(0.0d, slopeField.sampleScalar(point));
-            double flow = Math.max(0.0d, accumulationField.sampleScalar(point));
+            double sediment = Math.max(0.0d, sanitizeFinite(sedimentField.sampleScalar(point), 0.0d));
+            double slope = Math.max(0.0d, sanitizeFinite(slopeField.sampleScalar(point), 0.0d));
+            double flow = Math.max(0.0d, sanitizeFinite(accumulationField.sampleScalar(point), 0.0d));
             double carryingCapacity = flow * slope * resolvedCapacity;
 
             // Deposit only the overload above local carrying capacity.
@@ -82,20 +85,27 @@ public class DepositionStepNode extends BaseNode {
         };
 
         ScalarFieldData depositedField = point -> {
-            double baseHeight = heightField.sampleScalar(point);
-            double sediment = Math.max(0.0d, sedimentField.sampleScalar(point));
-            double slope = Math.max(0.0d, slopeField.sampleScalar(point));
-            double flow = Math.max(0.0d, accumulationField.sampleScalar(point));
+            double baseHeight = sanitizeFinite(heightField.sampleScalar(point), 0.0d);
+            double sediment = Math.max(0.0d, sanitizeFinite(sedimentField.sampleScalar(point), 0.0d));
+            double slope = Math.max(0.0d, sanitizeFinite(slopeField.sampleScalar(point), 0.0d));
+            double flow = Math.max(0.0d, sanitizeFinite(accumulationField.sampleScalar(point), 0.0d));
 
             double carryingCapacity = flow * slope * resolvedCapacity;
             double overload = Math.max(0.0d, sediment - carryingCapacity);
             double deposition = overload * resolvedRate;
 
-            return baseHeight + deposition;
+            return sanitizeFinite(baseHeight + deposition, baseHeight);
+        };
+
+        ScalarFieldData deltaField = point -> {
+            double before = sanitizeFinite(heightField.sampleScalar(point), 0.0d);
+            double after = sanitizeFinite(depositedField.sampleScalar(point), before);
+            return after - before;
         };
 
         outputValues.put(OUTPUT_HEIGHT_FIELD_ID, depositedField);
         outputValues.put(OUTPUT_SEDIMENT_FIELD_ID, updatedSedimentField);
+        outputValues.put(OUTPUT_DELTA_FIELD_ID, deltaField);
     }
 
     private double getInputDouble(String portId, double fallback) {
@@ -105,5 +115,9 @@ public class DepositionStepNode extends BaseNode {
 
     private double clamp01(double value) {
         return Math.max(0.0d, Math.min(1.0d, value));
+    }
+
+    private double sanitizeFinite(double value, double fallback) {
+        return Double.isFinite(value) ? value : fallback;
     }
 }

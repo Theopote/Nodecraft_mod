@@ -26,6 +26,7 @@ public class ThermalErosionStepNode extends BaseNode {
     private static final String INPUT_RATE_ID = "input_rate";
 
     private static final String OUTPUT_HEIGHT_FIELD_ID = "output_height_field";
+    private static final String OUTPUT_DELTA_FIELD_ID = "output_delta_field";
 
     @NodeProperty(displayName = "Talus", category = "Thermal", order = 1)
     private double talus = 0.7d;
@@ -41,6 +42,7 @@ public class ThermalErosionStepNode extends BaseNode {
         addInputPort(new BasePort(INPUT_RATE_ID, "Rate", "Single-step thermal smoothing strength", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_HEIGHT_FIELD_ID, "Height Field", "Thermally eroded height field", NodeDataType.SCALAR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_DELTA_FIELD_ID, "Delta Field", "Signed height delta after thermal erosion (new - old)", NodeDataType.SCALAR_FIELD, this));
     }
 
     @Override
@@ -48,6 +50,7 @@ public class ThermalErosionStepNode extends BaseNode {
         Object heightObj = inputValues.get(INPUT_HEIGHT_FIELD_ID);
         if (!(heightObj instanceof ScalarFieldData heightField)) {
             outputValues.put(OUTPUT_HEIGHT_FIELD_ID, null);
+            outputValues.put(OUTPUT_DELTA_FIELD_ID, null);
             return;
         }
 
@@ -56,12 +59,12 @@ public class ThermalErosionStepNode extends BaseNode {
         double step = 1.0d;
 
         ScalarFieldData erodedField = point -> {
-            double center = heightField.sampleScalar(point);
+            double center = sanitizeFinite(heightField.sampleScalar(point), 0.0d);
 
-            double hxNeg = heightField.sampleScalar(new Vector3d(point.x - step, point.y, point.z));
-            double hxPos = heightField.sampleScalar(new Vector3d(point.x + step, point.y, point.z));
-            double hzNeg = heightField.sampleScalar(new Vector3d(point.x, point.y, point.z - step));
-            double hzPos = heightField.sampleScalar(new Vector3d(point.x, point.y, point.z + step));
+            double hxNeg = sanitizeFinite(heightField.sampleScalar(new Vector3d(point.x - step, point.y, point.z)), center);
+            double hxPos = sanitizeFinite(heightField.sampleScalar(new Vector3d(point.x + step, point.y, point.z)), center);
+            double hzNeg = sanitizeFinite(heightField.sampleScalar(new Vector3d(point.x, point.y, point.z - step)), center);
+            double hzPos = sanitizeFinite(heightField.sampleScalar(new Vector3d(point.x, point.y, point.z + step)), center);
 
             double neighborhoodMean = (hxNeg + hxPos + hzNeg + hzPos) * 0.25d;
             double deviation = center - neighborhoodMean;
@@ -75,7 +78,14 @@ public class ThermalErosionStepNode extends BaseNode {
             return center - direction * excess * resolvedRate;
         };
 
+        ScalarFieldData deltaField = point -> {
+            double before = sanitizeFinite(heightField.sampleScalar(point), 0.0d);
+            double after = sanitizeFinite(erodedField.sampleScalar(point), before);
+            return after - before;
+        };
+
         outputValues.put(OUTPUT_HEIGHT_FIELD_ID, erodedField);
+        outputValues.put(OUTPUT_DELTA_FIELD_ID, deltaField);
     }
 
     private double getInputDouble(String portId, double fallback) {
@@ -85,5 +95,9 @@ public class ThermalErosionStepNode extends BaseNode {
 
     private double clamp01(double value) {
         return Math.max(0.0d, Math.min(1.0d, value));
+    }
+
+    private double sanitizeFinite(double value, double fallback) {
+        return Double.isFinite(value) ? value : fallback;
     }
 }

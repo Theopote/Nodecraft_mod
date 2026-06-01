@@ -756,24 +756,24 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Height Seed Field | `world.terrain.height_seed_field` | 在 X/Z 平面上生成确定性的大陆尺度初始高程场。 | `HeightSeedFieldNode` |
-| Sample Field On Region | `world.terrain.sample_field_on_region` | 在区域内按规则 X/Z 网格采样标量场。 | `SampleFieldOnRegionNode` |
+| Height Seed Field | `world.terrain.height_seed_field` | 在 X/Z 平面上生成确定性的大陆尺度初始高程场，并对 FBM 采样做有限值安全防护。 | `HeightSeedFieldNode` |
+| Sample Field On Region | `world.terrain.sample_field_on_region` | 按规则 X/Z 网格采样标量场，Region 为可选输入（缺省时使用大范围默认边界）。 | `SampleFieldOnRegionNode` |
 | Combine Height Fields | `world.terrain.combine_height_fields` | 将基础高程场、加法场和减法场组合为单一输出高程场。 | `CombineHeightFieldsNode` |
 | Flow Direction Field | `world.terrain.flow_direction_field` | 从高程场计算下坡流向与坡度强度。 | `FlowDirectionFieldNode` |
 | Flow Accumulation Field | `world.terrain.flow_accumulation_field` | 以可选快速模式或高质量（MFD）模式对径流进行汇流累积。 | `FlowAccumulationFieldNode` |
 | River Mask Field | `world.terrain.river_mask_field` | 从汇流场中提取河道掩膜场。 | `RiverMaskFieldNode` |
 | Precipitation Field | `world.terrain.precipitation_field` | 基于纬度带与地形雨影响应生成降雨场。 | `PrecipitationFieldNode` |
 | Orogenic Uplift Field | `world.terrain.orogenic_uplift_field` | 将板块边界强度转换为造山抬升势能场。 | `OrogenicUpliftFieldNode` |
-| Thermal Erosion Step | `world.terrain.thermal_erosion_step` | 按 talus 阈值执行一次热风化侵蚀步骤。 | `ThermalErosionStepNode` |
-| Hydraulic Erosion Step | `world.terrain.hydraulic_erosion_step` | 基于搬运容量执行一次水力侵蚀-沉积步骤，并可选按流向近似传输泥沙。 | `HydraulicErosionStepNode` |
-| Deposition Step | `world.terrain.deposition_step` | 基于局部搬运容量（flow × slope × capacity）对超载泥沙执行沉积，并更新剩余泥沙场。 | `DepositionStepNode` |
+| Thermal Erosion Step | `world.terrain.thermal_erosion_step` | 按 talus 阈值执行一次热风化侵蚀步骤，并输出签名 Delta 场（new - old）用于迭代叠加与预览。 | `ThermalErosionStepNode` |
+| Hydraulic Erosion Step | `world.terrain.hydraulic_erosion_step` | 基于搬运容量执行一次水力侵蚀-沉积步骤，可选按流向近似传输泥沙，并输出签名 Delta 场。 | `HydraulicErosionStepNode` |
+| Deposition Step | `world.terrain.deposition_step` | 基于局部搬运容量（flow × slope × capacity）对超载泥沙执行沉积、更新剩余泥沙，并输出签名 Delta 场。 | `DepositionStepNode` |
 | Plate Partition Field | `world.terrain.plate_partition_field` | 通过类 Voronoi 分区生成伪板块 ID 与边界强度场。 | `PlatePartitionFieldNode` |
 | Rift Subsidence Field | `world.terrain.rift_subsidence_field` | 从边界强度场生成裂谷/海沟型沉降场。 | `RiftSubsidenceFieldNode` |
 | Temperature Field | `world.terrain.temperature_field` | 按纬度带与海拔递减率构建温度场。 | `TemperatureFieldNode` |
 | Biome Classify | `world.terrain.biome_classify` | 依据温度、降雨和海拔将群系分类编码为标量 ID。 | `BiomeClassifyNode` |
-| Heightfield To Blocks | `world.terrain.heightfield_to_blocks` | 将区域内高程场转换为地形方块放置列表。 | `HeightfieldToBlocksNode` |
-| Biome Field To Blocks | `world.terrain.biome_field_to_blocks` | 使用可配置调色板将群系 ID 场映射为地表方块放置。 | `BiomeFieldToBlocksNode` |
-| Scalar Field Slice To Blocks | `world.terrain.scalar_field_slice_to_blocks` | 在水平切片上将标量场阈值可视化为方块。 | `ScalarFieldSliceToBlocksNode` |
+| Heightfield To Blocks | `world.terrain.heightfield_to_blocks` | 将高程场转换为方块放置，支持可选 Region 默认边界与 Step 下采样预览以提升大区域性能。 | `HeightfieldToBlocksNode` |
+| Biome Field To Blocks | `world.terrain.biome_field_to_blocks` | 将群系 ID 场映射为地表方块放置，支持可选 Region 默认边界与 Step 下采样预览。 | `BiomeFieldToBlocksNode` |
+| Scalar Field Slice To Blocks | `world.terrain.scalar_field_slice_to_blocks` | 在水平切片上将标量场阈值可视化为方块，支持可选 Region 默认边界与有限值安全防护。 | `ScalarFieldSliceToBlocksNode` |
 
 ## world.write（17）
 

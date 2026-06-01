@@ -74,7 +74,7 @@ public class HeightSeedFieldNode extends BaseNode {
             double radial = 1.0d - Math.min(1.0d, distanceToCenter01(point.x, point.z, bounds));
             double continentalMask = lerp(0.6d, 1.0d, radial);
 
-            return blended * continentalMask - seaLevel;
+            return sanitizeFinite(blended * continentalMask - seaLevel, 0.0d);
         };
 
         outputValues.put(OUTPUT_HEIGHT_FIELD_ID, field);
@@ -103,12 +103,16 @@ public class HeightSeedFieldNode extends BaseNode {
             amplitudeSum += amplitude;
             amplitude *= persistence;
             frequency *= lacunarity;
+
+            if (!Double.isFinite(sum) || !Double.isFinite(amplitudeSum) || !Double.isFinite(amplitude) || !Double.isFinite(frequency)) {
+                break;
+            }
         }
 
         if (amplitudeSum <= 1.0e-9d) {
             return 0.0d;
         }
-        return sum / amplitudeSum;
+        return sanitizeFinite(sum / amplitudeSum, 0.0d);
     }
 
     private double sampleValueNoise2d(double x, double z, int seed) {
@@ -117,8 +121,8 @@ public class HeightSeedFieldNode extends BaseNode {
         int x1 = x0 + 1;
         int z1 = z0 + 1;
 
-        double tx = smoothStep(x - x0);
-        double tz = smoothStep(z - z0);
+        double tx = smoothStep(sanitizeFinite(x - x0, 0.0d));
+        double tz = smoothStep(sanitizeFinite(z - z0, 0.0d));
 
         double c00 = randomSigned(x0, z0, seed);
         double c10 = randomSigned(x1, z0, seed);
@@ -127,7 +131,7 @@ public class HeightSeedFieldNode extends BaseNode {
 
         double a = lerp(c00, c10, tx);
         double b = lerp(c01, c11, tx);
-        return lerp(a, b, tz);
+        return sanitizeFinite(lerp(a, b, tz), 0.0d);
     }
 
     private double randomSigned(int x, int z, int seed) {
@@ -161,6 +165,10 @@ public class HeightSeedFieldNode extends BaseNode {
 
     private static double clamp01(double value) {
         return Math.max(0.0d, Math.min(1.0d, value));
+    }
+
+    private static double sanitizeFinite(double value, double fallback) {
+        return Double.isFinite(value) ? value : fallback;
     }
 
     private static double lerp(double a, double b, double t) {
