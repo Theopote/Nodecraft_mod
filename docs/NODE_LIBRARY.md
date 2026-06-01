@@ -764,8 +764,8 @@ Note: For `Deconstruct*` nodes in this category, when `Valid == false`, geometry
 | Precipitation Field | `world.terrain.precipitation_field` | Builds precipitation from latitude bands and terrain rain-shadow response. | `PrecipitationFieldNode` |
 | Orogenic Uplift Field | `world.terrain.orogenic_uplift_field` | Converts boundary intensity into mountain uplift potential. | `OrogenicUpliftFieldNode` |
 | Thermal Erosion Step | `world.terrain.thermal_erosion_step` | Applies one thermal weathering step based on local slope exceeding talus angle. | `ThermalErosionStepNode` |
-| Hydraulic Erosion Step | `world.terrain.hydraulic_erosion_step` | Applies one hydraulic erosion step using flow accumulation as transport energy. | `HydraulicErosionStepNode` |
-| Deposition Step | `world.terrain.deposition_step` | Deposits sediment in low-slope and low-energy zones. | `DepositionStepNode` |
+| Hydraulic Erosion Step | `world.terrain.hydraulic_erosion_step` | Applies one hydraulic erosion-deposition step with carrying capacity and optional flow-driven sediment transport. | `HydraulicErosionStepNode` |
+| Deposition Step | `world.terrain.deposition_step` | Deposits overload sediment above local carrying capacity (flow × slope × capacity) and updates remaining sediment. | `DepositionStepNode` |
 | Plate Partition Field | `world.terrain.plate_partition_field` | Generates pseudo tectonic plate ids and boundary intensity via Voronoi-style partitioning. | `PlatePartitionFieldNode` |
 | Rift Subsidence Field | `world.terrain.rift_subsidence_field` | Builds rift/trench subsidence strength from boundary intensity. | `RiftSubsidenceFieldNode` |
 | Temperature Field | `world.terrain.temperature_field` | Builds temperature from latitude bands and elevation lapse-rate cooling. | `TemperatureFieldNode` |

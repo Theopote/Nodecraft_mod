@@ -765,8 +765,8 @@
 | Precipitation Field | `world.terrain.precipitation_field` | 基于纬度带与地形雨影响应生成降雨场。 | `PrecipitationFieldNode` |
 | Orogenic Uplift Field | `world.terrain.orogenic_uplift_field` | 将板块边界强度转换为造山抬升势能场。 | `OrogenicUpliftFieldNode` |
 | Thermal Erosion Step | `world.terrain.thermal_erosion_step` | 按 talus 阈值执行一次热风化侵蚀步骤。 | `ThermalErosionStepNode` |
-| Hydraulic Erosion Step | `world.terrain.hydraulic_erosion_step` | 使用汇流能量执行一次水力侵蚀并估算输沙。 | `HydraulicErosionStepNode` |
-| Deposition Step | `world.terrain.deposition_step` | 在低坡低能区域执行一次沉积步骤。 | `DepositionStepNode` |
+| Hydraulic Erosion Step | `world.terrain.hydraulic_erosion_step` | 基于搬运容量执行一次水力侵蚀-沉积步骤，并可选按流向近似传输泥沙。 | `HydraulicErosionStepNode` |
+| Deposition Step | `world.terrain.deposition_step` | 基于局部搬运容量（flow × slope × capacity）对超载泥沙执行沉积，并更新剩余泥沙场。 | `DepositionStepNode` |
 | Plate Partition Field | `world.terrain.plate_partition_field` | 通过类 Voronoi 分区生成伪板块 ID 与边界强度场。 | `PlatePartitionFieldNode` |
 | Rift Subsidence Field | `world.terrain.rift_subsidence_field` | 从边界强度场生成裂谷/海沟型沉降场。 | `RiftSubsidenceFieldNode` |
 | Temperature Field | `world.terrain.temperature_field` | 按纬度带与海拔递减率构建温度场。 | `TemperatureFieldNode` |
