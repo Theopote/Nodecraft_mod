@@ -569,7 +569,7 @@ public class ImGuiNodeRenderer {
                         customUIScreenX, customUIStartY, // 使用屏幕坐标
                         customUILogicalWidth,            // 使用逻辑尺寸
                         customUIUnscaledHeight,
-                        canvasZoom, supportsDirectDrawing
+                        canvasZoom, false
                 );
                 customUIRenderer.renderSingleCustomUIWithChildWindow(info);
             }
@@ -696,39 +696,38 @@ public class ImGuiNodeRenderer {
             String portId = port.getId();
             boolean isLegacyInput;
 
-            if (node instanceof GeometryViewerNode) {
-                isLegacyInput =
+            switch (node) {
+                case GeometryViewerNode geometryViewerNode -> isLegacyInput =
                         "input_box_geometry".equals(portId) ||
-                        "input_cylinder_geometry".equals(portId) ||
-                        "input_sphere_geometry".equals(portId) ||
-                        "input_torus_geometry".equals(portId) ||
-                        "input_color".equals(portId) ||
-                        "input_transparency".equals(portId);
-            } else if (node instanceof PreviewGeometryNode) {
-                isLegacyInput =
+                                "input_cylinder_geometry".equals(portId) ||
+                                "input_sphere_geometry".equals(portId) ||
+                                "input_torus_geometry".equals(portId) ||
+                                "input_color".equals(portId) ||
+                                "input_transparency".equals(portId);
+                case PreviewGeometryNode previewGeometryNode -> isLegacyInput =
                         "input_box_geometry".equals(portId) ||
-                        "input_cylinder_geometry".equals(portId) ||
-                        "input_sphere_geometry".equals(portId) ||
-                        "input_torus_geometry".equals(portId) ||
-                        "input_cone_geometry".equals(portId) ||
-                        "input_frustum_cone_geometry".equals(portId) ||
-                        "input_ellipsoid_geometry".equals(portId) ||
-                        "input_hemisphere_geometry".equals(portId) ||
-                        "input_prism_geometry".equals(portId) ||
-                        "input_tetrahedron_geometry".equals(portId) ||
-                        "input_octahedron_geometry".equals(portId) ||
-                        "input_icosahedron_geometry".equals(portId) ||
-                        "input_dodecahedron_geometry".equals(portId);
-            } else if (node instanceof ApplyChangesNode) {
-                isLegacyInput =
+                                "input_cylinder_geometry".equals(portId) ||
+                                "input_sphere_geometry".equals(portId) ||
+                                "input_torus_geometry".equals(portId) ||
+                                "input_cone_geometry".equals(portId) ||
+                                "input_frustum_cone_geometry".equals(portId) ||
+                                "input_ellipsoid_geometry".equals(portId) ||
+                                "input_hemisphere_geometry".equals(portId) ||
+                                "input_prism_geometry".equals(portId) ||
+                                "input_tetrahedron_geometry".equals(portId) ||
+                                "input_octahedron_geometry".equals(portId) ||
+                                "input_icosahedron_geometry".equals(portId) ||
+                                "input_dodecahedron_geometry".equals(portId);
+                case ApplyChangesNode applyChangesNode -> isLegacyInput =
                         "input_box_geometry".equals(portId) ||
-                        "input_cylinder_geometry".equals(portId) ||
-                        "input_sphere_geometry".equals(portId) ||
-                        "input_torus_geometry".equals(portId) ||
-                        "input_preview_ids".equals(portId) ||
-                        "input_notify".equals(portId);
-            } else {
-                return ports;
+                                "input_cylinder_geometry".equals(portId) ||
+                                "input_sphere_geometry".equals(portId) ||
+                                "input_torus_geometry".equals(portId) ||
+                                "input_preview_ids".equals(portId) ||
+                                "input_notify".equals(portId);
+                case null, default -> {
+                    return ports;
+                }
             }
 
             if (isLegacyInput && !port.isConnected()) {
@@ -752,21 +751,7 @@ public class ImGuiNodeRenderer {
                                      mousePos.y >= nodeScreenY && mousePos.y <= nodeScreenY + nodeHeightScaled;
 
         // 检查自定义UI区域的交互状态
-        boolean isCustomUIHoveredEmpty = false;
-        boolean isCustomUIWidgetActive = false;
-        if (nodeHasCustomUI) {
-            java.util.UUID hoveredCustomUINodeId = customUIRenderer.getCustomUIHoveredEmptyNodeId();
-            isCustomUIHoveredEmpty = hoveredCustomUINodeId != null && hoveredCustomUINodeId.equals(nodeId);
-            isCustomUIWidgetActive = customUIRenderer.isCustomUIWidgetActive();
-        }
-
-        // invisibleButton 是否活跃（标准方式）
-        boolean isInvisibleButtonActive = ImGui.isItemActive();
-
-        // 综合判断：节点可拖动条件
-        // 1. 标准方式：invisible button 活跃
-        // 2. 增强方式：鼠标在节点区域内 + 自定义UI空白区域被悬停（无控件活跃）
-        boolean canDragNode = isInvisibleButtonActive || (isMouseInNodeBounds && isCustomUIHoveredEmpty && !isCustomUIWidgetActive);
+        boolean isCustomUIWidgetActive = isIsCustomUIWidgetActive(nodeId, nodeHasCustomUI, isMouseInNodeBounds);
 
         // 检查是否是首次点击 (鼠标刚按下左键)
         if (ImGuiInputAdapter.isMouseClicked(ImGuiMouseButton.Left)) {
@@ -817,6 +802,25 @@ public class ImGuiNodeRenderer {
         if (interaction.isDraggingNode() && ImGuiInputAdapter.isMouseReleased(ImGuiMouseButton.Left)) {
             interaction.tryStopNodeDragging();
         }
+    }
+
+    private boolean isIsCustomUIWidgetActive(UUID nodeId, boolean nodeHasCustomUI, boolean isMouseInNodeBounds) {
+        boolean isCustomUIHoveredEmpty = false;
+        boolean isCustomUIWidgetActive = false;
+        if (nodeHasCustomUI) {
+            UUID hoveredCustomUINodeId = customUIRenderer.getCustomUIHoveredEmptyNodeId();
+            isCustomUIHoveredEmpty = hoveredCustomUINodeId != null && hoveredCustomUINodeId.equals(nodeId);
+            isCustomUIWidgetActive = customUIRenderer.isCustomUIWidgetActive();
+        }
+
+        // invisibleButton 是否活跃（标准方式）
+        boolean isInvisibleButtonActive = ImGui.isItemActive();
+
+        // 综合判断：节点可拖动条件
+        // 1. 标准方式：invisible button 活跃
+        // 2. 增强方式：鼠标在节点区域内 + 自定义UI空白区域被悬停（无控件活跃）
+        boolean canDragNode = isInvisibleButtonActive || (isMouseInNodeBounds && isCustomUIHoveredEmpty && !isCustomUIWidgetActive);
+        return isCustomUIWidgetActive;
     }
 
     public void renderConnectionsDirect(ImDrawList drawList, NodeGraph graph,
