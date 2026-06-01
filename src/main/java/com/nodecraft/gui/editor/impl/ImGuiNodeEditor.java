@@ -288,7 +288,14 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             // 节点渲染会设置 ImGui.invisibleButton，并更新 ImGui.isItemActive() 状态。
             // 在渲染前，在主窗口上下文里预先计算本帧点击目标节点（坐标在此处是正确的）。
             if (ImGuiInputAdapter.isMouseClicked(ImGuiMouseButton.Left)) {
-                interaction.setPendingClickTargetNodeId(getNodeIdUnderMouse(mousePos.x, mousePos.y));
+                UUID clickTargetNodeId = getNodeIdUnderMouse(mousePos.x, mousePos.y);
+                if (clickTargetNodeId == null) {
+                    Map.Entry<UUID, String> clickedPort = interaction.getClickedPort(mousePos, portScreenPositions);
+                    if (clickedPort != null) {
+                        clickTargetNodeId = clickedPort.getKey();
+                    }
+                }
+                interaction.setPendingClickTargetNodeId(clickTargetNodeId);
             } else {
                 interaction.setPendingClickTargetNodeId(null);
             }
@@ -328,7 +335,12 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             interaction.handleCanvasPanning(canvasPos);
 
             // 10. 处理鼠标左键点击：节点选择、选择清除、框选启动、画布平移
-            if (ImGuiInputAdapter.isMouseClicked(ImGuiMouseButton.Left)) {
+            // 注意：当 ImGui 已捕获鼠标（如弹出菜单打开时），不处理画布级别的左键事件，
+            // 否则点击弹出菜单内的按钮会被误判为"画布空白点击"而清除节点选择。
+                // 注意：不能用 WantCaptureMouse（鼠标在画布窗口本身上时也为 true，会破坏框选）。
+                // 只在特定 popup 打开时跳过，避免菜单点击误清除选择集。
+                boolean anyEditorPopupOpen = ImGui.isPopupOpen("NodeContextMenu") || ImGui.isPopupOpen("Node Search");
+                if (ImGuiInputAdapter.isMouseClicked(ImGuiMouseButton.Left) && !anyEditorPopupOpen) {
                 NodeCraft.LOGGER.debug("左键点击检测 - 鼠标位置: ({}, {})", mousePos.x, mousePos.y);
 
                 // 检查点击是否在画布区域内
