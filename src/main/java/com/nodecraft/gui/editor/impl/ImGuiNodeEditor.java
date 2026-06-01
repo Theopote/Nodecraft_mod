@@ -128,14 +128,6 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         );
     }
 
-    public long getGraphDirtyEpoch() {
-        return graphDirtyEpoch;
-    }
-
-    public java.util.Set<UUID> getInvalidatedNodeIds() {
-        return new HashSet<>(invalidatedNodeIds);
-    }
-
     private void markGraphStructureDirty() {
         if (io == null) {
             return;
@@ -294,6 +286,12 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
 
             // 4. 渲染节点（包含节点主体、标题和自定义UI）。
             // 节点渲染会设置 ImGui.invisibleButton，并更新 ImGui.isItemActive() 状态。
+            // 在渲染前，在主窗口上下文里预先计算本帧点击目标节点（坐标在此处是正确的）。
+            if (ImGuiInputAdapter.isMouseClicked(ImGuiMouseButton.Left)) {
+                interaction.setPendingClickTargetNodeId(getNodeIdUnderMouse(mousePos.x, mousePos.y));
+            } else {
+                interaction.setPendingClickTargetNodeId(null);
+            }
             // 【关键修改点】：节点选择和拖拽的启动和持续移动逻辑现在都移到 ImGuiNodeRenderer 内部处理。
             renderer.renderNodesDirect(drawList, canvasPos, currentGraph, nodePositions, portScreenPositions, selectedNodeIds);
 
@@ -836,10 +834,25 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         ImVec2 canvasWindowPos = ImGui.getWindowPos(); // Get ImGui window position
         List<INode> nodes = currentGraph.getNodes();
 
+        // Keep hit-testing in the same layering order as rendering:
+        // 1) unselected nodes, 2) selected nodes.
+        // Then iterate backwards to hit-test the top-most drawn node first.
+        List<INode> renderOrder = new java.util.ArrayList<>(nodes.size());
+        for (INode node : nodes) {
+            if (!selectedNodeIds.contains(node.getId())) {
+                renderOrder.add(node);
+            }
+        }
+        for (INode node : nodes) {
+            if (selectedNodeIds.contains(node.getId())) {
+                renderOrder.add(node);
+            }
+        }
+
         // NodeCraft.LOGGER.debug("getNodeIdUnderMouse: Checking mouse ({}, {}) vs canvas ({}, {})", mouseX, mouseY, canvasWindowPos.x, canvasWindowPos.y);
 
-        for (int i = nodes.size() - 1; i >= 0; i--) { // Iterate backwards to pick top-most node
-            INode node = nodes.get(i);
+        for (int i = renderOrder.size() - 1; i >= 0; i--) { // Iterate backwards to pick top-most node
+            INode node = renderOrder.get(i);
             UUID nodeId = node.getId();
             NodePosition pos = nodePositions.get(nodeId);
 
@@ -1321,17 +1334,10 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         NodeCraft.LOGGER.debug("设置节点显示模式: {}", mode);
     }
 
-    public int getNodeDisplayMode() {
-        return nodeDisplayMode;
-    }
 
     public void setShowNodePreviews(boolean show) {
         this.showNodePreviews = show;
         NodeCraft.LOGGER.debug("设置节点预览显示: {}", show);
-    }
-
-    public boolean isShowNodePreviews() {
-        return showNodePreviews;
     }
 
     // === 节点颜色管理方法 ===
@@ -1375,14 +1381,6 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
      */
     public boolean hasNodeCustomColor(UUID nodeId) {
         return nodeCustomColors.containsKey(nodeId);
-    }
-
-    /**
-     * 获取所有节点自定义颜色的映射
-     * @return 节点颜色映射的副本
-     */
-    public Map<UUID, Integer> getNodeCustomColors() {
-        return new HashMap<>(nodeCustomColors);
     }
 
     // === 节点状态管理方法实现 ===
@@ -1467,21 +1465,6 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         return nodeId == null || !hiddenNodes.contains(nodeId); // 默认可见
     }
 
-    /**
-     * 获取所有禁用节点的集合
-     * @return 禁用节点ID集合的副本
-     */
-    public java.util.Set<UUID> getDisabledNodes() {
-        return new HashSet<>(disabledNodes);
-    }
-
-    /**
-     * 获取所有隐藏节点的集合
-     * @return 隐藏节点ID集合的副本
-     */
-    public java.util.Set<UUID> getHiddenNodes() {
-        return new HashSet<>(hiddenNodes);
-    }
 
     private void clearNodePreviewArtifacts(UUID nodeId) {
         if (nodeId == null) {
@@ -1493,12 +1476,4 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             .clearTrackedPreviewAcrossWorlds(ownerNodeId);
     }
 
-    /**
-     * 清除所有节点状态（禁用和隐藏）
-     */
-    public void clearAllNodeStates() {
-        disabledNodes.clear();
-        hiddenNodes.clear();
-        NodeCraft.LOGGER.debug("清除所有节点状态");
-    }
 }

@@ -528,7 +528,6 @@ public class ImGuiNodeRenderer {
                                 float baseTextLineHeight, float canvasZoom, boolean hasAnyPorts, float baseItemSpacingY) {
         
         float customUIUnscaledHeight = customUIRenderer.getCustomUIHeight(node);
-        float customUIUnscaledRequiredWidth = customUIRenderer.getMinRequiredUIWidth(node);
 
         if (customUIUnscaledHeight > 0) {
             float customUIStartY = nodeScreenY + (baseTextLineHeight + 2 * NodeRenderConstants.NODE_VERTICAL_PADDING) * canvasZoom;
@@ -771,6 +770,13 @@ public class ImGuiNodeRenderer {
 
         // 检查是否是首次点击 (鼠标刚按下左键)
         if (ImGuiInputAdapter.isMouseClicked(ImGuiMouseButton.Left)) {
+            // 重叠场景下，只允许最上层节点处理本次点击。
+            // pendingClickTargetNodeId 在主窗口上下文里预先算好，坐标始终正确。
+            UUID clickTarget = interaction.getPendingClickTargetNodeId();
+            if (!nodeId.equals(clickTarget)) {
+                return;
+            }
+
             // 首先检查鼠标是否在端口区域 - 如果是，优先处理端口连接
             boolean isMouseOnPort = interaction.isMouseOverAnyPortOfNode(nodeId, mousePos, editor.getPortScreenPositions());
 
@@ -787,15 +793,12 @@ public class ImGuiNodeRenderer {
                     interaction.tryStartConnectionCreation(currentHoveredNodeId, currentHoveredPortId, currentIsHoveredPortOutput, editor.getPortScreenPositions());
                     NodeCraft.LOGGER.debug("从节点内部端口区域启动连接创建: NodeId={}, PortId={}", currentHoveredNodeId, currentHoveredPortId);
                 }
-            } else if (canDragNode && !isCustomUIWidgetActive) {
-                // 鼠标点击在节点主体上（包括自定义UI空白区域）
-                // 处理正常的节点选择和拖拽
+            } else if (isMouseInNodeBounds && !isCustomUIWidgetActive) {
+                // 此处已确认是最上层节点（pendingClickTargetNodeId），直接用 isMouseInNodeBounds 判定。
+                // 不使用 isInvisibleButtonActive（canDragNode 的依赖），因为 ImGui 的 InvisibleButton
+                // 在重叠时给"先渲染的节点"优先级，而我们需要让"z 序最高的节点"响应。
                 interaction.handleClickOnNodeBody(nodeId, ImGui.getIO().getKeyCtrl());
-
-                // 立即尝试启动拖拽
                 interaction.tryStartNodeDraggingFromNodeBody(nodeId);
-                
-                // 确保鼠标被捕获，防止窗口拖动
                 ImGui.getIO().setWantCaptureMouse(true);
             }
         }

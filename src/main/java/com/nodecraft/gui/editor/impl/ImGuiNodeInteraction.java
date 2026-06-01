@@ -66,6 +66,10 @@ public class ImGuiNodeInteraction {
     // --- 交互状态追踪：精确区分节点主体、自定义UI和画布的活跃状态 ---
     // 这个变量用于追踪哪个节点的主体（通过invisibleButton）当前是活跃的
     private UUID nodeBodyActive = null;
+
+    // 本帧左键点击应命中的目标节点（在主窗口上下文里预先计算，保证坐标正确）
+    // null 表示本帧没有点击，或点击在空白处（节点不应响应）
+    private UUID pendingClickTargetNodeId = null;
     // 这个变量用于追踪哪个节点的自定义UI（通过ImGui.isItemActive()在child window内部）当前是活跃的
     private UUID nodeCustomUIActive = null;
 
@@ -77,7 +81,6 @@ public class ImGuiNodeInteraction {
     // 常量：用于碰撞检测和布局计算的因子
     private static final float PORT_DETECTION_RADIUS_FACTOR = 4.0f; // 端口检测半径的放大因子（增大以便更容易拖出连接线）
     private static final float REROUTE_PORT_DETECTION_RADIUS_FACTOR = 1.8f; // 中继节点使用更小命中半径，避免抢占节点选择
-    private static final float NODE_CENTER_PRIORITY_FACTOR = 0.7f; // 节点中心区域优先级因子
     private static final float CONNECTION_DETECTION_DISTANCE = 5.0f; // 连接线检测的最大距离
 
     // 视觉反馈相关变量：用于端口高亮动画
@@ -115,21 +118,14 @@ public class ImGuiNodeInteraction {
     public UUID getDraggingNodeId() { return draggingNodeId; } // Added getter for draggingNodeId
 
 
-    /**
-     * 设置框选状态。
-     * @param isBoxSelecting true 表示开始框选，false 表示结束框选。
-     */
-    public void setBoxSelecting(boolean isBoxSelecting) {
-        this.currentState = isBoxSelecting ? InteractionState.BOX_SELECTING : InteractionState.IDLE;
+    /** 设置本帧左键点击的目标节点（在主窗口上下文里预先计算）。 */
+    public void setPendingClickTargetNodeId(UUID nodeId) {
+        this.pendingClickTargetNodeId = nodeId;
     }
 
-    /**
-     * 设置当前有活动节点主体交互（invisibleButton被激活）的节点ID。
-     * 由 ImGuiNodeRenderer 在渲染节点主体时调用。
-     * @param nodeId 正在交互的节点ID。
-     */
-    public void setNodeBodyActive(UUID nodeId) {
-        this.nodeBodyActive = nodeId;
+    /** 获取本帧左键点击的目标节点。 */
+    public UUID getPendingClickTargetNodeId() {
+        return pendingClickTargetNodeId;
     }
 
     /**
@@ -144,53 +140,11 @@ public class ImGuiNodeInteraction {
     }
 
     /**
-     * 检查是否有节点主体正在被交互。
-     * @return true 如果有节点主体正在交互。
-     */
-    public boolean isNodeBodyActive() {
-        return nodeBodyActive != null;
-    }
-
-    /**
-     * 设置当前有活动自定义UI（child window内部ImGui Item被激活）的节点ID。
-     * 由 ImGuiNodeRenderer 在渲染自定义UI时调用。
-     * @param nodeId 正在交互的节点ID。
-     */
-    public void setNodeCustomUIActive(UUID nodeId) {
-        this.nodeCustomUIActive = nodeId;
-        // 当自定义UI激活时，设置鼠标捕获以阻止画布平移和窗口拖动
-        if (nodeId != null) {
-            ImGui.getIO().setWantCaptureMouse(true);
-        }
-    }
-
-    /**
-     * 清除当前有活动自定义UI交互的节点ID。
-     * 由 ImGuiNodeRenderer 在渲染自定义UI时调用。
-     * @param nodeId 刚刚失去交互的节点ID。
-     */
-    public void clearNodeCustomUIActive(UUID nodeId) {
-        if (Objects.equals(this.nodeCustomUIActive, nodeId)) {
-            this.nodeCustomUIActive = null;
-            // 当自定义UI不再激活时，释放鼠标捕获
-            ImGui.getIO().setWantCaptureMouse(false);
-        }
-    }
-
-    /**
      * 检查是否有节点的自定义UI处于激活状态。
      * @return true 如果有节点的自定义UI处于激活状态。
      */
     public boolean isNodeCustomUIActive() {
         return nodeCustomUIActive != null;
-    }
-
-    /**
-     * 获取当前激活的自定义UI节点ID。
-     * @return 当前激活的自定义UI节点ID，如果没有则返回null。
-     */
-    public UUID getNodeCustomUIActive() {
-        return nodeCustomUIActive;
     }
 
     /**
@@ -635,9 +589,12 @@ public class ImGuiNodeInteraction {
      * @return 鼠标下的端口信息（节点ID和端口ID），如果没有则返回null。
      */
     public Map.Entry<UUID, String> getClickedPort(ImVec2 mousePos, Map<UUID, Map<String, ImVec2>> portScreenPositions) {
-        for (Map.Entry<UUID, Map<String, ImVec2>> nodeEntry : portScreenPositions.entrySet()) {
-            UUID nodeId = nodeEntry.getKey();
-            Map<String, ImVec2> ports = nodeEntry.getValue();
+        NodeGraph graph = editor.getCurrentGraph();
+        for (UUID nodeId : getTopMostFirstNodeOrder(graph, portScreenPositions)) {
+            Map<String, ImVec2> ports = portScreenPositions.get(nodeId);
+            if (ports == null) {
+                continue;
+            }
             float detectionRadius = getPortDetectionRadiusForNode(nodeId, null);
 
             for (Map.Entry<String, ImVec2> portEntry : ports.entrySet()) {
@@ -686,9 +643,12 @@ public class ImGuiNodeInteraction {
         hoveredPortId = null;
         isHoveredPortOutput = false;
 
-        for (Map.Entry<UUID, Map<String, ImVec2>> nodeEntry : portScreenPositions.entrySet()) {
-            UUID nodeId = nodeEntry.getKey();
-            Map<String, ImVec2> ports = nodeEntry.getValue();
+        NodeGraph resolvedGraph = graph != null ? graph : editor.getCurrentGraph();
+        for (UUID nodeId : getTopMostFirstNodeOrder(resolvedGraph, portScreenPositions)) {
+            Map<String, ImVec2> ports = portScreenPositions.get(nodeId);
+            if (ports == null) {
+                continue;
+            }
             float detectionRadius = getPortDetectionRadiusForNode(nodeId, graph);
 
             for (Map.Entry<String, ImVec2> portEntry : ports.entrySet()) {
@@ -698,7 +658,7 @@ public class ImGuiNodeInteraction {
                     hoveredNodeId = nodeId;
                     hoveredPortId = portEntry.getKey();
 
-                    INode node = graph.getNode(nodeId);
+                    INode node = resolvedGraph != null ? resolvedGraph.getNode(nodeId) : null;
                     if (node != null) {
                         for (IPort port : node.getOutputPorts()) {
                             if (port.getId().equals(hoveredPortId)) {
@@ -712,6 +672,39 @@ public class ImGuiNodeInteraction {
             }
         }
         return false;
+    }
+
+    /**
+     * 返回用于命中的节点顺序（最上层优先）。
+     * 与渲染层级保持一致：未选中先绘制，选中后绘制；
+     * 命中时反向遍历，即选中节点优先命中。
+     */
+    private java.util.List<UUID> getTopMostFirstNodeOrder(NodeGraph graph, Map<UUID, Map<String, ImVec2>> portScreenPositions) {
+        java.util.List<UUID> drawOrder = new java.util.ArrayList<>();
+
+        if (graph != null) {
+            java.util.Set<UUID> selectedNodeIds = editor.getSelectedNodeIds();
+            for (INode node : graph.getNodes()) {
+                UUID nodeId = node.getId();
+                if (!selectedNodeIds.contains(nodeId) && portScreenPositions.containsKey(nodeId)) {
+                    drawOrder.add(nodeId);
+                }
+            }
+            for (INode node : graph.getNodes()) {
+                UUID nodeId = node.getId();
+                if (selectedNodeIds.contains(nodeId) && portScreenPositions.containsKey(nodeId)) {
+                    drawOrder.add(nodeId);
+                }
+            }
+        } else {
+            drawOrder.addAll(portScreenPositions.keySet());
+        }
+
+        java.util.List<UUID> topMostFirstOrder = new java.util.ArrayList<>(drawOrder.size());
+        for (int i = drawOrder.size() - 1; i >= 0; i--) {
+            topMostFirstOrder.add(drawOrder.get(i));
+        }
+        return topMostFirstOrder;
     }
 
     /**
@@ -831,65 +824,5 @@ public class ImGuiNodeInteraction {
     private ImVec2 getPortScreenPosition(UUID nodeId, String portId, Map<UUID, Map<String, ImVec2>> portScreenPositions) {
         Map<String, ImVec2> ports = portScreenPositions.get(nodeId);
         return (ports != null) ? ports.get(portId) : null;
-    }
-
-    /**
-     * 检查鼠标是否在节点标题区域内。
-     * @param nodeId 节点ID。
-     * @param mousePos 鼠标屏幕位置。
-     * @param nodePositions 节点位置映射。
-     * @return true 如果鼠标在节点标题区域内。
-     */
-    private boolean isMouseInNodeTitleArea(UUID nodeId, ImVec2 mousePos, Map<UUID, NodePosition> nodePositions) {
-        if (nodeId == null) return false;
-
-        NodePosition pos = nodePositions.get(nodeId);
-        if (pos == null) return false;
-
-        float canvasZoom = editor.getCanvasZoom();
-        ImVec2 canvasWindowPos = ImGui.getWindowPos();
-        float nodeScreenX = canvasWindowPos.x + pos.x * canvasZoom + editor.getCanvasOffsetX();
-        float nodeScreenY = canvasWindowPos.y + pos.y * canvasZoom + editor.getCanvasOffsetY();
-
-        float nodeWidthScaled = pos.width * canvasZoom;
-
-        float titleHeightScaled = (ImGui.getTextLineHeight() * canvasZoom) + (10.0f * canvasZoom);
-
-        return mousePos.x >= nodeScreenX && mousePos.x <= nodeScreenX + nodeWidthScaled &&
-                mousePos.y >= nodeScreenY && mousePos.y <= nodeScreenY + titleHeightScaled;
-    }
-
-    /**
-     * 检查鼠标是否在节点中心区域内。
-     * @param nodeId 节点ID。
-     * @param mousePos 鼠标屏幕位置。
-     * @param nodePositions 节点位置映射。
-     * @return true 如果鼠标在节点中心区域内。
-     */
-    private boolean isMouseInNodeCenterArea(UUID nodeId, ImVec2 mousePos, Map<UUID, NodePosition> nodePositions) {
-        if (nodeId == null) return false;
-
-        NodePosition pos = nodePositions.get(nodeId);
-        if (pos == null) return false;
-
-        float canvasZoom = editor.getCanvasZoom();
-        float canvasOffsetX = editor.getCanvasOffsetX();
-        float canvasOffsetY = editor.getCanvasOffsetY();
-        ImVec2 canvasWindowPos = ImGui.getWindowPos();
-
-        float nodeScreenX = canvasWindowPos.x + pos.x * canvasZoom + canvasOffsetX;
-        float nodeScreenY = canvasWindowPos.y + pos.y * canvasZoom + canvasOffsetY;
-
-        float nodeWidth = pos.width * canvasZoom;
-        float nodeHeight = pos.height * canvasZoom;
-
-        float centerX = nodeScreenX + nodeWidth / 2;
-        float centerY = nodeScreenY + nodeHeight / 2;
-
-        float centerAreaWidth = nodeWidth * NODE_CENTER_PRIORITY_FACTOR;
-        float centerAreaHeight = nodeHeight * NODE_CENTER_PRIORITY_FACTOR;
-
-        return mousePos.x >= centerX - centerAreaWidth / 2 && mousePos.x <= centerX + centerAreaWidth / 2 &&
-                mousePos.y >= centerY - centerAreaHeight / 2 && mousePos.y <= centerY + centerAreaHeight / 2;
     }
 }
