@@ -760,7 +760,7 @@
 | Sample Field On Region | `world.terrain.sample_field_on_region` | 在区域内按规则 X/Z 网格采样标量场。 | `SampleFieldOnRegionNode` |
 | Combine Height Fields | `world.terrain.combine_height_fields` | 将基础高程场、加法场和减法场组合为单一输出高程场。 | `CombineHeightFieldsNode` |
 | Flow Direction Field | `world.terrain.flow_direction_field` | 从高程场计算下坡流向与坡度强度。 | `FlowDirectionFieldNode` |
-| Flow Accumulation Field | `world.terrain.flow_accumulation_field` | 依据流向场和可选降雨场估算汇流累积强度。 | `FlowAccumulationFieldNode` |
+| Flow Accumulation Field | `world.terrain.flow_accumulation_field` | 以可选快速模式或高质量（MFD）模式对径流进行汇流累积。 | `FlowAccumulationFieldNode` |
 | River Mask Field | `world.terrain.river_mask_field` | 从汇流场中提取河道掩膜场。 | `RiverMaskFieldNode` |
 | Precipitation Field | `world.terrain.precipitation_field` | 基于纬度带与地形雨影响应生成降雨场。 | `PrecipitationFieldNode` |
 | Orogenic Uplift Field | `world.terrain.orogenic_uplift_field` | 将板块边界强度转换为造山抬升势能场。 | `OrogenicUpliftFieldNode` |

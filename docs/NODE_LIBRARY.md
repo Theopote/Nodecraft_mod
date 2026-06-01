@@ -759,7 +759,7 @@ Note: For `Deconstruct*` nodes in this category, when `Valid == false`, geometry
 | Sample Field On Region | `world.terrain.sample_field_on_region` | Samples a scalar field on a regular X/Z lattice inside a region. | `SampleFieldOnRegionNode` |
 | Combine Height Fields | `world.terrain.combine_height_fields` | Combines base, additive, and subtractive height fields into one output field. | `CombineHeightFieldsNode` |
 | Flow Direction Field | `world.terrain.flow_direction_field` | Computes downslope flow direction and slope magnitude from a height field. | `FlowDirectionFieldNode` |
-| Flow Accumulation Field | `world.terrain.flow_accumulation_field` | Approximates drainage accumulation from a flow field and optional precipitation field. | `FlowAccumulationFieldNode` |
+| Flow Accumulation Field | `world.terrain.flow_accumulation_field` | Routes runoff with selectable fast or high-quality (MFD) flow accumulation. | `FlowAccumulationFieldNode` |
 | River Mask Field | `world.terrain.river_mask_field` | Creates a river-channel mask field from flow accumulation. | `RiverMaskFieldNode` |
 | Precipitation Field | `world.terrain.precipitation_field` | Builds precipitation from latitude bands and terrain rain-shadow response. | `PrecipitationFieldNode` |
 | Orogenic Uplift Field | `world.terrain.orogenic_uplift_field` | Converts boundary intensity into mountain uplift potential. | `OrogenicUpliftFieldNode` |

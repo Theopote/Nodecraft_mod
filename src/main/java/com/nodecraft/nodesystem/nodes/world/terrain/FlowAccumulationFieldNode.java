@@ -18,11 +18,16 @@ import java.util.UUID;
 @NodeInfo(
     id = "world.terrain.flow_accumulation_field",
     displayName = "Flow Accumulation Field",
-    description = "Approximates drainage accumulation from a flow field and optional precipitation field.",
+    description = "Routes runoff with selectable fast or high-quality (MFD) flow accumulation.",
     category = "world.terrain",
     order = 5
 )
 public class FlowAccumulationFieldNode extends BaseNode {
+
+    public enum AccumulationMode {
+        FAST_APPROXIMATE,
+        HIGH_QUALITY_MFD
+    }
 
     private static final String INPUT_REGION_ID = "input_region";
     private static final String INPUT_FLOW_FIELD_ID = "input_flow_field";
@@ -33,6 +38,18 @@ public class FlowAccumulationFieldNode extends BaseNode {
 
     @NodeProperty(displayName = "Iterations", category = "Simulation", order = 1)
     private int iterations = 64;
+
+    @NodeProperty(displayName = "Mode", category = "Simulation", order = 2)
+    private AccumulationMode mode = AccumulationMode.HIGH_QUALITY_MFD;
+
+    @NodeProperty(displayName = "Fast Routed Ratio", category = "Fast", order = 3)
+    private double fastRoutedRatio = 0.35d;
+
+    @NodeProperty(displayName = "Routing Rate", category = "Quality", order = 4)
+    private double routingRate = 0.9d;
+
+    @NodeProperty(displayName = "Normalize Output", category = "Output", order = 5)
+    private boolean normalizeOutput = true;
 
     public FlowAccumulationFieldNode() {
         super(UUID.randomUUID(), "world.terrain.flow_accumulation_field");
@@ -64,6 +81,9 @@ public class FlowAccumulationFieldNode extends BaseNode {
 
         ScalarFieldData rainField = inputValues.get(INPUT_RAIN_FIELD_ID) instanceof ScalarFieldData field ? field : null;
         int resolvedIterations = Math.max(1, getInputInt(INPUT_ITERATIONS_ID, iterations));
+        AccumulationMode resolvedMode = mode == null ? AccumulationMode.HIGH_QUALITY_MFD : mode;
+        double resolvedFastRoutedRatio = clamp01(fastRoutedRatio);
+        double resolvedRoutingRate = clamp01(routingRate);
 
         int minX = min.getX();
         int minZ = min.getZ();
@@ -81,6 +101,7 @@ public class FlowAccumulationFieldNode extends BaseNode {
         int gridDepth = Math.max(1, ((depth - 1) / stride) + 1);
 
         double[][] accumulation = new double[gridDepth][gridWidth];
+        double[][] mobile = new double[gridDepth][gridWidth];
         double[][] rainfall = new double[gridDepth][gridWidth];
         Vector3d samplePoint = new Vector3d();
 
@@ -91,7 +112,7 @@ public class FlowAccumulationFieldNode extends BaseNode {
                 samplePoint.set(worldX, baseY, worldZ);
                 double rain = rainField == null ? 1.0d : Math.max(0.0d, rainField.sampleScalar(samplePoint));
                 rainfall[gz][gx] = rain;
-                accumulation[gz][gx] = rain;
+                mobile[gz][gx] = rain;
             }
         }
 
@@ -102,34 +123,138 @@ public class FlowAccumulationFieldNode extends BaseNode {
             for (int gz = 0; gz < gridDepth; gz++) {
                 int worldZ = minZ + gz * stride;
                 for (int gx = 0; gx < gridWidth; gx++) {
+                    double mass = mobile[gz][gx];
+                    if (mass <= 1.0e-12d) {
+                        continue;
+                    }
+
+                    accumulation[gz][gx] += mass;
+
                     int worldX = minX + gx * stride;
                     samplePoint.set(worldX, baseY, worldZ);
                     flowField.sampleVector(samplePoint, flow);
 
-                    int stepX = (int) Math.signum(flow.x);
-                    int stepZ = (int) Math.signum(flow.z);
-
-                    double routedRatio = flow.lengthSquared() <= 1.0e-12d ? 0.0d : 0.35d;
-                    double total = accumulation[gz][gx] + rainfall[gz][gx] * 0.15d;
-                    double routed = total * routedRatio;
-
-                    int targetX = gx + stepX;
-                    int targetZ = gz + stepZ;
-                    if (isInside(targetX, targetZ, gridWidth, gridDepth) && (stepX != 0 || stepZ != 0)) {
-                        next[gz][gx] += total - routed;
-                        next[targetZ][targetX] += routed;
+                    if (resolvedMode == AccumulationMode.FAST_APPROXIMATE) {
+                        routeFast(gx, gz, mass, flow, resolvedFastRoutedRatio, gridWidth, gridDepth, next);
                     } else {
-                        next[gz][gx] += total;
+                        routeMfd(gx, gz, mass, flow, resolvedRoutingRate, gridWidth, gridDepth, next);
                     }
                 }
             }
 
-            accumulation = next;
+            mobile = next;
+        }
+
+        if (normalizeOutput) {
+            normalizeGrid(accumulation);
         }
 
         FlowGrid flowGrid = new FlowGrid(minX, minZ, baseY, stride, gridWidth, gridDepth, accumulation);
         ScalarFieldData accumulationField = point -> flowGrid.sample(point.x, point.z);
         outputValues.put(OUTPUT_ACCUMULATION_FIELD_ID, accumulationField);
+    }
+
+    private void routeFast(int x,
+                           int z,
+                           double mass,
+                           Vector3d flow,
+                           double routedRatio,
+                           int gridWidth,
+                           int gridDepth,
+                           double[][] next) {
+        int stepX = (int) Math.signum(flow.x);
+        int stepZ = (int) Math.signum(flow.z);
+
+        double flowStrength = Math.min(1.0d, Math.sqrt(flow.x * flow.x + flow.z * flow.z));
+        double routed = mass * routedRatio * flowStrength;
+
+        int targetX = x + stepX;
+        int targetZ = z + stepZ;
+        if (isInside(targetX, targetZ, gridWidth, gridDepth) && (stepX != 0 || stepZ != 0)) {
+            next[z][x] += mass - routed;
+            next[targetZ][targetX] += routed;
+        } else {
+            next[z][x] += mass;
+        }
+    }
+
+    private void routeMfd(int x,
+                          int z,
+                          double mass,
+                          Vector3d flow,
+                          double routingRate,
+                          int gridWidth,
+                          int gridDepth,
+                          double[][] next) {
+        double flowX = flow.x;
+        double flowZ = flow.z;
+        double flowLen = Math.sqrt(flowX * flowX + flowZ * flowZ);
+        if (flowLen <= 1.0e-12d) {
+            next[z][x] += mass;
+            return;
+        }
+
+        int[] dx = {-1, 0, 1, -1, 1, -1, 0, 1};
+        int[] dz = {-1, -1, -1, 0, 0, 1, 1, 1};
+        double[] weights = new double[8];
+        double sum = 0.0d;
+
+        for (int i = 0; i < 8; i++) {
+            int nx = x + dx[i];
+            int nz = z + dz[i];
+            if (!isInside(nx, nz, gridWidth, gridDepth)) {
+                continue;
+            }
+
+            double dirX = dx[i];
+            double dirZ = dz[i];
+            double dot = flowX * dirX + flowZ * dirZ;
+            if (dot <= 0.0d) {
+                continue;
+            }
+
+            double distance = (dirX != 0.0d && dirZ != 0.0d) ? Math.sqrt(2.0d) : 1.0d;
+            double weight = dot / distance;
+            weights[i] = weight;
+            sum += weight;
+        }
+
+        if (sum <= 1.0e-12d) {
+            next[z][x] += mass;
+            return;
+        }
+
+        double routedTotal = mass * routingRate * Math.min(1.0d, flowLen);
+        double remain = mass - routedTotal;
+        next[z][x] += remain;
+
+        for (int i = 0; i < 8; i++) {
+            double weight = weights[i];
+            if (weight <= 0.0d) {
+                continue;
+            }
+            int nx = x + dx[i];
+            int nz = z + dz[i];
+            double share = routedTotal * (weight / sum);
+            next[nz][nx] += share;
+        }
+    }
+
+    private void normalizeGrid(double[][] grid) {
+        double max = 0.0d;
+        for (double[] row : grid) {
+            for (double value : row) {
+                max = Math.max(max, value);
+            }
+        }
+        if (max <= 1.0e-12d) {
+            return;
+        }
+        for (int z = 0; z < grid.length; z++) {
+            for (int x = 0; x < grid[z].length; x++) {
+                grid[z][x] /= max;
+            }
+        }
     }
 
     private int resolveStride(int width, int depth, int maxCells) {
@@ -147,6 +272,10 @@ public class FlowAccumulationFieldNode extends BaseNode {
     private int getInputInt(String portId, int fallback) {
         Object value = inputValues.get(portId);
         return value instanceof Number number ? number.intValue() : fallback;
+    }
+
+    private double clamp01(double value) {
+        return Math.max(0.0d, Math.min(1.0d, value));
     }
 
     private record FlowGrid(int minX, int minZ, int baseY, int stride, int width, int depth, double[][] values) {
