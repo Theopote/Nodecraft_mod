@@ -107,7 +107,9 @@ public class GeometryViewerNode extends BaseCustomUINode {
     private volatile GhostRenderMode cachedGhostRenderMode = null;
     private volatile String cachedPreviewId = null;
     private volatile long lastNonEmptyInputAt = 0L;
+    private volatile long lastTrackedWorldRefreshAt = 0L;
     private static final long EMPTY_INPUT_HOLD_MS = 750;
+    private static final long TRACKED_WORLD_REFRESH_THROTTLE_MS = 200;
 
     private static final String INPUT_BLOCKS_ID = "input_blocks";
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
@@ -183,9 +185,17 @@ public class GeometryViewerNode extends BaseCustomUINode {
             || cachedPreviewBackend != previewBackend
             || cachedGhostRenderMode != ghostRenderMode;
 
+        boolean trackedWorldRefreshSuppressed = previewBackend == PreviewBackend.TRACKED_WORLD
+            && hasWorldContext
+            && !previewDirty
+            && cachedPreviewId != null
+            && (System.currentTimeMillis() - lastTrackedWorldRefreshAt) < TRACKED_WORLD_REFRESH_THROTTLE_MS;
+
         if (previewEnabled && blocksList != null && !blocksList.isEmpty()) {
             lastNonEmptyInputAt = System.currentTimeMillis();
-            if (previewDirty) {
+            if (trackedWorldRefreshSuppressed) {
+                statusMessage = buildSteadyStateStatus(context);
+            } else if (previewDirty) {
                 if (refreshPreview(context, blocksList, effectiveBlockType, trans, color, outlineColor)) {
                     cachePreviewState(geometrySignature, trans, color, outlineColor, effectiveBlockType);
                 } else {
@@ -309,6 +319,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
             statusMessage = "Previewing " + payload.getBlocks().size() + " ghost blocks (" + ghostRenderMode + ")";
         } else {
             cachedPreviewId = previewId;
+            lastTrackedWorldRefreshAt = System.currentTimeMillis();
             int trackedCount = context != null && context.getWorld() != null
                 ? TrackedPreviewPlacementService.getInstance().getTrackedCount(context.getWorld(), getId().toString())
                 : 0;
