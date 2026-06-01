@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **472**
+- Total nodes: **473**
 - Total categories: **52**
 
 ## Category Statistics
@@ -58,7 +58,7 @@
 | `world.query` | 10 |
 | `world.read` | 12 |
 | `world.selection` | 9 |
-| `world.terrain` | 18 |
+| `world.terrain` | 19 |
 | `world.write` | 17 |
 
 ## flow.control (3)
@@ -751,7 +751,7 @@ Note: For `Deconstruct*` nodes in this category, when `Valid == false`, geometry
 | Multi-Region Selection | `world.selection.multi_region` | Aggregates multiple non-contiguous region selections into a region list. | `MultiRegionSelectionNode` |
 | Selected Entity | `world.selection.selected_entity` | Gets information about the entity selected by the player. | `SelectedEntityNode` |
 
-## world.terrain (18)
+## world.terrain (19)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -766,12 +766,13 @@ Note: For `Deconstruct*` nodes in this category, when `Valid == false`, geometry
 | Thermal Erosion Step | `world.terrain.thermal_erosion_step` | Applies one thermal weathering step and outputs a signed delta field (new - old) for iterative stacking/preview. | `ThermalErosionStepNode` |
 | Hydraulic Erosion Step | `world.terrain.hydraulic_erosion_step` | Applies one hydraulic erosion-deposition step with carrying capacity, optional flow-driven transport, and signed delta output. | `HydraulicErosionStepNode` |
 | Deposition Step | `world.terrain.deposition_step` | Deposits overload sediment above local carrying capacity (flow × slope × capacity), updates sediment, and outputs signed delta. | `DepositionStepNode` |
+| Delta Accumulate Field | `world.terrain.delta_accumulate_field` | Applies or reverts delta fields and accumulates them into a combined terrain delta field. | `DeltaAccumulateFieldNode` |
 | Plate Partition Field | `world.terrain.plate_partition_field` | Generates pseudo tectonic plate ids and boundary intensity via Voronoi-style partitioning. | `PlatePartitionFieldNode` |
 | Rift Subsidence Field | `world.terrain.rift_subsidence_field` | Builds rift/trench subsidence strength from boundary intensity. | `RiftSubsidenceFieldNode` |
 | Temperature Field | `world.terrain.temperature_field` | Builds temperature from latitude bands and elevation lapse-rate cooling. | `TemperatureFieldNode` |
 | Biome Classify | `world.terrain.biome_classify` | Classifies a biome index using temperature, precipitation, and elevation. | `BiomeClassifyNode` |
-| Heightfield To Blocks | `world.terrain.heightfield_to_blocks` | Converts height field samples to terrain placements with optional region defaults and Step downsampling for preview performance. | `HeightfieldToBlocksNode` |
-| Biome Field To Blocks | `world.terrain.biome_field_to_blocks` | Maps biome id field to surface placements with optional region defaults and Step downsampling for preview performance. | `BiomeFieldToBlocksNode` |
+| Heightfield To Blocks | `world.terrain.heightfield_to_blocks` | Converts height field samples to terrain placements with optional region defaults, Step downsampling, and optional tile fill previews. | `HeightfieldToBlocksNode` |
+| Biome Field To Blocks | `world.terrain.biome_field_to_blocks` | Maps biome id field to surface placements with optional region defaults, Step downsampling, and optional tile fill previews. | `BiomeFieldToBlocksNode` |
 | Scalar Field Slice To Blocks | `world.terrain.scalar_field_slice_to_blocks` | Visualizes scalar field values on a horizontal slice with optional region defaults and finite-value safety. | `ScalarFieldSliceToBlocksNode` |
 
 ## world.write (17)

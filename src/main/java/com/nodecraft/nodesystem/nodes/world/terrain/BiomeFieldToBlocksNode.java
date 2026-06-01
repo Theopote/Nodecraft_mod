@@ -31,6 +31,7 @@ public class BiomeFieldToBlocksNode extends BaseNode {
     private static final String INPUT_BIOME_ID_FIELD_ID = "input_biome_id_field";
     private static final String INPUT_HEIGHT_FIELD_ID = "input_height_field";
     private static final String INPUT_STEP_ID = "input_step";
+    private static final String INPUT_FILL_TILES_ID = "input_fill_tiles";
 
     private static final String OUTPUT_BLOCK_PLACEMENTS_ID = "output_block_placements";
     private static final String OUTPUT_SURFACE_POINTS_ID = "output_surface_points";
@@ -50,6 +51,10 @@ public class BiomeFieldToBlocksNode extends BaseNode {
         description = "Surface sampling stride for preview downsampling")
     private int step = 1;
 
+    @NodeProperty(displayName = "Fill Tiles", category = "Sampling", order = 3,
+        description = "When true, each sampled biome point is expanded to its Step-sized tile")
+    private boolean fillTiles = false;
+
     public BiomeFieldToBlocksNode() {
         super(UUID.randomUUID(), "world.terrain.biome_field_to_blocks");
 
@@ -57,6 +62,7 @@ public class BiomeFieldToBlocksNode extends BaseNode {
         addInputPort(new BasePort(INPUT_BIOME_ID_FIELD_ID, "Biome Id Field", "Biome class id encoded as scalar", NodeDataType.SCALAR_FIELD, this));
         addInputPort(new BasePort(INPUT_HEIGHT_FIELD_ID, "Height Field", "Terrain height field for surface Y", NodeDataType.SCALAR_FIELD, this));
         addInputPort(new BasePort(INPUT_STEP_ID, "Step", "Surface sampling stride in blocks", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_FILL_TILES_ID, "Fill Tiles", "Expand each sample to a Step-sized tile for smoother previews", NodeDataType.BOOLEAN, this));
 
         addOutputPort(new BasePort(OUTPUT_BLOCK_PLACEMENTS_ID, "Block Placements", "Biome-based surface placements", NodeDataType.BLOCK_PLACEMENT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_POINTS_ID, "Surface Points", "Resolved surface points", NodeDataType.BLOCK_LIST, this));
@@ -68,6 +74,7 @@ public class BiomeFieldToBlocksNode extends BaseNode {
         Object biomeObj = inputValues.get(INPUT_BIOME_ID_FIELD_ID);
         Object heightObj = inputValues.get(INPUT_HEIGHT_FIELD_ID);
         int resolvedStep = Math.max(1, getInputInt(INPUT_STEP_ID, step));
+        boolean resolvedFillTiles = getInputBoolean(INPUT_FILL_TILES_ID, fillTiles);
 
         if (!(biomeObj instanceof ScalarFieldData biomeField)
             || !(heightObj instanceof ScalarFieldData heightField)) {
@@ -93,9 +100,16 @@ public class BiomeFieldToBlocksNode extends BaseNode {
                 int biomeId = (int) Math.round(Math.max(0.0d, sanitizeFinite(biomeField.sampleScalar(samplePoint), 0.0d)));
                 String blockId = palette.get(Math.min(palette.size() - 1, biomeId));
 
-                BlockPos pos = new BlockPos(x, y, z);
-                placements.add(new BlockPlacementData(pos, blockId));
-                surfacePoints.add(pos);
+                int tileMaxX = resolvedFillTiles ? Math.min(bounds.maxX, x + resolvedStep - 1) : x;
+                int tileMaxZ = resolvedFillTiles ? Math.min(bounds.maxZ, z + resolvedStep - 1) : z;
+
+                for (int tx = x; tx <= tileMaxX; tx++) {
+                    for (int tz = z; tz <= tileMaxZ; tz++) {
+                        BlockPos pos = new BlockPos(tx, y, tz);
+                        placements.add(new BlockPlacementData(pos, blockId));
+                        surfacePoints.add(pos);
+                    }
+                }
             }
         }
 
@@ -129,6 +143,11 @@ public class BiomeFieldToBlocksNode extends BaseNode {
     private int getInputInt(String portId, int fallback) {
         Object value = inputValues.get(portId);
         return value instanceof Number number ? number.intValue() : fallback;
+    }
+
+    private boolean getInputBoolean(String portId, boolean fallback) {
+        Object value = inputValues.get(portId);
+        return value instanceof Boolean flag ? flag : fallback;
     }
 
     private double sanitizeFinite(double value, double fallback) {

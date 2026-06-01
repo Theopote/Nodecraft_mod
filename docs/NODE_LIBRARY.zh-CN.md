@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**472**
+- **节点总数**：**473**
 - **分类总数**：**52**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -59,7 +59,7 @@
 | `world.query` | 10 |
 | `world.read` | 12 |
 | `world.selection` | 9 |
-| `world.terrain` | 18 |
+| `world.terrain` | 19 |
 | `world.write` | 17 |
 
 ## flow.control（3）
@@ -752,7 +752,7 @@
 | Multi-Region Selection | `world.selection.multi_region` | Aggregates multiple non-contiguous region selections into a region list. | `MultiRegionSelectionNode` |
 | Selected Entity | `world.selection.selected_entity` | Gets information about the entity selected by the player. | `SelectedEntityNode` |
 
-## world.terrain（18）
+## world.terrain（19）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -767,12 +767,13 @@
 | Thermal Erosion Step | `world.terrain.thermal_erosion_step` | 按 talus 阈值执行一次热风化侵蚀步骤，并输出签名 Delta 场（new - old）用于迭代叠加与预览。 | `ThermalErosionStepNode` |
 | Hydraulic Erosion Step | `world.terrain.hydraulic_erosion_step` | 基于搬运容量执行一次水力侵蚀-沉积步骤，可选按流向近似传输泥沙，并输出签名 Delta 场。 | `HydraulicErosionStepNode` |
 | Deposition Step | `world.terrain.deposition_step` | 基于局部搬运容量（flow × slope × capacity）对超载泥沙执行沉积、更新剩余泥沙，并输出签名 Delta 场。 | `DepositionStepNode` |
+| Delta Accumulate Field | `world.terrain.delta_accumulate_field` | 对 Delta 场执行应用/回退并累积为组合地形 Delta 场，便于多步迭代与撤销链路。 | `DeltaAccumulateFieldNode` |
 | Plate Partition Field | `world.terrain.plate_partition_field` | 通过类 Voronoi 分区生成伪板块 ID 与边界强度场。 | `PlatePartitionFieldNode` |
 | Rift Subsidence Field | `world.terrain.rift_subsidence_field` | 从边界强度场生成裂谷/海沟型沉降场。 | `RiftSubsidenceFieldNode` |
 | Temperature Field | `world.terrain.temperature_field` | 按纬度带与海拔递减率构建温度场。 | `TemperatureFieldNode` |
 | Biome Classify | `world.terrain.biome_classify` | 依据温度、降雨和海拔将群系分类编码为标量 ID。 | `BiomeClassifyNode` |
-| Heightfield To Blocks | `world.terrain.heightfield_to_blocks` | 将高程场转换为方块放置，支持可选 Region 默认边界与 Step 下采样预览以提升大区域性能。 | `HeightfieldToBlocksNode` |
-| Biome Field To Blocks | `world.terrain.biome_field_to_blocks` | 将群系 ID 场映射为地表方块放置，支持可选 Region 默认边界与 Step 下采样预览。 | `BiomeFieldToBlocksNode` |
+| Heightfield To Blocks | `world.terrain.heightfield_to_blocks` | 将高程场转换为方块放置，支持可选 Region 默认边界、Step 下采样预览与可选 Tile Fill 连续预览。 | `HeightfieldToBlocksNode` |
+| Biome Field To Blocks | `world.terrain.biome_field_to_blocks` | 将群系 ID 场映射为地表方块放置，支持可选 Region 默认边界、Step 下采样预览与可选 Tile Fill 连续预览。 | `BiomeFieldToBlocksNode` |
 | Scalar Field Slice To Blocks | `world.terrain.scalar_field_slice_to_blocks` | 在水平切片上将标量场阈值可视化为方块，支持可选 Region 默认边界与有限值安全防护。 | `ScalarFieldSliceToBlocksNode` |
 
 ## world.write（17）

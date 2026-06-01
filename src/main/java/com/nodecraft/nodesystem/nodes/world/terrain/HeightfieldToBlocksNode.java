@@ -33,6 +33,7 @@ public class HeightfieldToBlocksNode extends BaseNode {
     private static final String INPUT_SUBSURFACE_BLOCK_ID = "input_subsurface_block";
     private static final String INPUT_WATER_LEVEL_ID = "input_water_level";
     private static final String INPUT_STEP_ID = "input_step";
+    private static final String INPUT_FILL_TILES_ID = "input_fill_tiles";
 
     private static final String OUTPUT_BLOCK_PLACEMENTS_ID = "output_block_placements";
     private static final String OUTPUT_SURFACE_POINTS_ID = "output_surface_points";
@@ -48,6 +49,10 @@ public class HeightfieldToBlocksNode extends BaseNode {
         description = "Column sampling stride for preview downsampling")
     private int step = 1;
 
+    @NodeProperty(displayName = "Fill Tiles", category = "Sampling", order = 2,
+        description = "When true, each sampled column is expanded to its Step-sized tile for smoother previews")
+    private boolean fillTiles = false;
+
     public HeightfieldToBlocksNode() {
         super(UUID.randomUUID(), "world.terrain.heightfield_to_blocks");
 
@@ -57,6 +62,7 @@ public class HeightfieldToBlocksNode extends BaseNode {
         addInputPort(new BasePort(INPUT_SUBSURFACE_BLOCK_ID, "Subsurface Block", "Inner-layer block id", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_WATER_LEVEL_ID, "Water Level", "Absolute water level in world Y", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_STEP_ID, "Step", "Column sampling stride in blocks", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_FILL_TILES_ID, "Fill Tiles", "Expand each sample to a Step-sized tile for smoother previews", NodeDataType.BOOLEAN, this));
 
         addOutputPort(new BasePort(OUTPUT_BLOCK_PLACEMENTS_ID, "Block Placements", "Generated placements for world write nodes", NodeDataType.BLOCK_PLACEMENT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_POINTS_ID, "Surface Points", "Top point per sampled X/Z column", NodeDataType.BLOCK_LIST, this));
@@ -67,6 +73,7 @@ public class HeightfieldToBlocksNode extends BaseNode {
         Object regionObj = inputValues.get(INPUT_REGION_ID);
         Object heightObj = inputValues.get(INPUT_HEIGHT_FIELD_ID);
         int resolvedStep = Math.max(1, getInputInt(INPUT_STEP_ID, step));
+        boolean resolvedFillTiles = getInputBoolean(INPUT_FILL_TILES_ID, fillTiles);
 
         if (!(heightObj instanceof ScalarFieldData heightField)) {
             outputValues.put(OUTPUT_BLOCK_PLACEMENTS_ID, List.of());
@@ -90,19 +97,26 @@ public class HeightfieldToBlocksNode extends BaseNode {
                 double sampled = sanitizeFinite(heightField.sampleScalar(samplePoint), 0.0d);
 
                 int columnTop = toColumnTopY(sampled, bounds.minY, bounds.maxY);
-                for (int y = bounds.minY; y <= columnTop; y++) {
-                    BlockPos pos = new BlockPos(x, y, z);
-                    String blockId = (y == columnTop) ? surfaceBlock : subsurfaceBlock;
-                    placements.add(new BlockPlacementData(pos, blockId));
-                }
+                int tileMaxX = resolvedFillTiles ? Math.min(bounds.maxX, x + resolvedStep - 1) : x;
+                int tileMaxZ = resolvedFillTiles ? Math.min(bounds.maxZ, z + resolvedStep - 1) : z;
 
-                if (columnTop < waterLevel) {
-                    for (int y = columnTop + 1; y <= Math.min(waterLevel, bounds.maxY); y++) {
-                        placements.add(new BlockPlacementData(new BlockPos(x, y, z), "minecraft:water"));
+                for (int tx = x; tx <= tileMaxX; tx++) {
+                    for (int tz = z; tz <= tileMaxZ; tz++) {
+                        for (int y = bounds.minY; y <= columnTop; y++) {
+                            BlockPos pos = new BlockPos(tx, y, tz);
+                            String blockId = (y == columnTop) ? surfaceBlock : subsurfaceBlock;
+                            placements.add(new BlockPlacementData(pos, blockId));
+                        }
+
+                        if (columnTop < waterLevel) {
+                            for (int y = columnTop + 1; y <= Math.min(waterLevel, bounds.maxY); y++) {
+                                placements.add(new BlockPlacementData(new BlockPos(tx, y, tz), "minecraft:water"));
+                            }
+                        }
+
+                        surfacePoints.add(new BlockPos(tx, columnTop, tz));
                     }
                 }
-
-                surfacePoints.add(new BlockPos(x, columnTop, z));
             }
         }
 
@@ -130,6 +144,11 @@ public class HeightfieldToBlocksNode extends BaseNode {
     private int getInputInt(String portId, int fallback) {
         Object value = inputValues.get(portId);
         return value instanceof Number number ? number.intValue() : fallback;
+    }
+
+    private boolean getInputBoolean(String portId, boolean fallback) {
+        Object value = inputValues.get(portId);
+        return value instanceof Boolean flag ? flag : fallback;
     }
 
     private double sanitizeFinite(double value, double fallback) {
