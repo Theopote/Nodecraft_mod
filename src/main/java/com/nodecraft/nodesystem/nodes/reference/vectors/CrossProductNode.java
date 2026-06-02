@@ -5,7 +5,6 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -22,8 +21,6 @@ import java.util.UUID;
     order = 3
 )
 public class CrossProductNode extends BaseNode {
-
-    private static final double EPS = 1.0e-12d;
 
     // Keep existing port IDs so saved graphs continue to resolve connections.
     private static final String INPUT_A_ID = "input_vector_a";
@@ -58,9 +55,9 @@ public class CrossProductNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d a = toVector(inputValues.get(INPUT_A_ID));
-        Vector3d b = toVector(inputValues.get(INPUT_B_ID));
-        if (a == null || b == null || !isFinite(a) || !isFinite(b)) {
+        Vector3d a = VectorUtils.toVector(inputValues.get(INPUT_A_ID));
+        Vector3d b = VectorUtils.toVector(inputValues.get(INPUT_B_ID));
+        if (!VectorUtils.isFinite(a) || !VectorUtils.isFinite(b)) {
             writeInvalid();
             return;
         }
@@ -70,7 +67,7 @@ public class CrossProductNode extends BaseNode {
 
         outputValues.put(OUTPUT_CROSS_PRODUCT_ID, cross);
         outputValues.put(OUTPUT_MAGNITUDE_ID, magnitude);
-        outputValues.put(OUTPUT_VALID_ID, magnitude >= EPS);
+        outputValues.put(OUTPUT_VALID_ID, magnitude >= VectorUtils.EPS);
     }
 
     private void writeInvalid() {
@@ -79,17 +76,4 @@ public class CrossProductNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
-    private boolean isFinite(Vector3d vector) {
-        return Double.isFinite(vector.x) && Double.isFinite(vector.y) && Double.isFinite(vector.z);
-    }
-
-    private Vector3d toVector(Object value) {
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof Vec3d vector) {
-            return new Vector3d(vector.x, vector.y, vector.z);
-        }
-        return null;
-    }
 }

@@ -22,8 +22,6 @@ import java.util.UUID;
 )
 public class AngleBetweenVectorsNode extends BaseNode {
 
-    private static final double EPS = 1.0e-12d;
-
     private static final String INPUT_A_ID = "input_a";
     private static final String INPUT_B_ID = "input_b";
     private static final String INPUT_REFERENCE_ID = "input_reference";
@@ -72,14 +70,11 @@ public class AngleBetweenVectorsNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object aObj = inputValues.get(INPUT_A_ID);
-        Object bObj = inputValues.get(INPUT_B_ID);
-        Object refObj = inputValues.get(INPUT_REFERENCE_ID);
-        if (!(aObj instanceof Vector3d a) || !(bObj instanceof Vector3d b)) {
-            writeInvalid();
-            return;
-        }
-        if (a.lengthSquared() < EPS || b.lengthSquared() < EPS) {
+        Vector3d a = VectorUtils.toVector(inputValues.get(INPUT_A_ID));
+        Vector3d b = VectorUtils.toVector(inputValues.get(INPUT_B_ID));
+        Vector3d ref = VectorUtils.toVector(inputValues.get(INPUT_REFERENCE_ID));
+        if (!VectorUtils.isFinite(a) || !VectorUtils.isFinite(b)
+            || a.lengthSquared() < VectorUtils.EPS || b.lengthSquared() < VectorUtils.EPS) {
             writeInvalid();
             return;
         }
@@ -92,7 +87,7 @@ public class AngleBetweenVectorsNode extends BaseNode {
         outputValues.put(OUTPUT_RADIANS_ID, angle);
         outputValues.put(OUTPUT_DEGREES_ID, deg);
 
-        if (refObj instanceof Vector3d ref && ref.lengthSquared() >= EPS) {
+        if (VectorUtils.isFinite(ref) && ref.lengthSquared() >= VectorUtils.EPS) {
             Vector3d rn = new Vector3d(ref).normalize();
             Vector3d cross = new Vector3d(an).cross(bn);
             double sinSigned = rn.dot(cross);

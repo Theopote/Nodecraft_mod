@@ -1,87 +1,75 @@
 package com.nodecraft.nodesystem.nodes.reference.vectors;
 
-import com.nodecraft.nodesystem.core.BaseNode;
-import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3d;
+
 import java.util.UUID;
 
 /**
- * Vector Scalar Divide Node: 向量除以标量 (Vector / Scalar)
+ * Divides a vector by a scalar.
  */
 @NodeInfo(
     id = "reference.vectors.vector_scalar_divide",
     displayName = "Vector Scalar Divide",
-    description = "向量除以标量 (Vector / Scalar)",
+    description = "Divides a vector by a scalar.",
     category = "reference.vectors",
     order = 9
 )
 public class VectorScalarDivideNode extends BaseNode {
 
-    // --- 输入端口 IDs ---
     private static final String INPUT_VECTOR_ID = "input_vector";
-    private static final String INPUT_SCALAR_ID = "input_scalar"; // Divisor
+    private static final String INPUT_SCALAR_ID = "input_scalar";
 
-    // --- 输出端口 IDs ---
     private static final String OUTPUT_QUOTIENT_ID = "output_vector_quotient";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
-    // --- 构造函数 ---
     public VectorScalarDivideNode() {
         super(UUID.randomUUID(), "reference.vectors.vector_scalar_divide");
-        
-        // 创建并添加输入端口
-        addInputPort(new BasePort(INPUT_VECTOR_ID, "Vector", "Input vector (Dividend)", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_SCALAR_ID, "Scalar", "Scalar value (Divisor)", NodeDataType.ANY, this)); 
 
-        // 创建并添加输出端口
+        addInputPort(new BasePort(INPUT_VECTOR_ID, "Vector", "Input vector (dividend)", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_SCALAR_ID, "Scalar", "Scalar value (divisor)", NodeDataType.ANY, this));
+
         addOutputPort(new BasePort(OUTPUT_QUOTIENT_ID, "Scaled Vector", "Result V / s", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether division input is valid",
+            NodeDataType.BOOLEAN, this));
     }
 
-    // 添加 getDescription 方法
     @Override
     public String getDescription() {
         return "Outputs the vector divided by the scalar.";
     }
 
-    // 添加 getDisplayName 方法
     @Override
     public String getDisplayName() {
         return "Vector Scale (/)";
     }
 
-    // --- 核心逻辑 ---
-    
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        // 获取输入值
-        Object valVector = inputValues.get(INPUT_VECTOR_ID);
-        Object valScalar = inputValues.get(INPUT_SCALAR_ID);
-
-        // 检查输入类型
-        if (valVector instanceof Vec3d && valScalar instanceof Number) {
-            Vec3d vector = (Vec3d) valVector;
-            double scalar = ((Number) valScalar).doubleValue();
-            
-            // 检查除零
-             if (Math.abs(scalar) < 1e-10) {
-                 // 除零：可以返回原向量、零向量或标记错误 (例如输出 null 或 NaN 向量？Vec3d 没有 NaN)
-                 // 返回零向量可能是安全的默认行为
-                 outputValues.put(OUTPUT_QUOTIENT_ID, Vec3d.ZERO); 
-             } else {
-                 // Vec3d 没有 divide 方法，需要用乘法实现
-                 Vec3d quotient = vector.multiply(1.0 / scalar);
-                 outputValues.put(OUTPUT_QUOTIENT_ID, quotient);
-             }
-        } else {
-            // 如果输入无效
-            outputValues.put(OUTPUT_QUOTIENT_ID, Vec3d.ZERO); // 或者 null
+        Vector3d vector = VectorUtils.toVector(inputValues.get(INPUT_VECTOR_ID));
+        Object scalarObj = inputValues.get(INPUT_SCALAR_ID);
+        if (!VectorUtils.isFinite(vector) || !(scalarObj instanceof Number scalarNumber)) {
+            writeInvalid();
+            return;
         }
+
+        double scalar = scalarNumber.doubleValue();
+        if (!VectorUtils.isFinite(scalar) || Math.abs(scalar) < VectorUtils.EPS) {
+            writeInvalid();
+            return;
+        }
+
+        outputValues.put(OUTPUT_QUOTIENT_ID, vector.mul(1.0d / scalar));
+        outputValues.put(OUTPUT_VALID_ID, true);
     }
 
-    // --- Getters/Setters (不需要) ---
-
-    // --- (反)序列化 (不需要) ---
-} 
+    private void writeInvalid() {
+        outputValues.put(OUTPUT_QUOTIENT_ID, new Vector3d());
+        outputValues.put(OUTPUT_VALID_ID, false);
+    }
+}
