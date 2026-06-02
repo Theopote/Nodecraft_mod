@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.nodecraft.core.item.ModItems; // 统一通过 ModItems 类管理物品注册
-import com.nodecraft.core.item.NodeCraftToolItem;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 import java.util.List;
@@ -18,19 +17,6 @@ public class NodeCraft implements ModInitializer {
 
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-	// NodeCraft工具物品实例，应通过 ModItems 访问，而不是直接在这里注册
-	// 移除此行，由 ModItems 统一管理：private static NodeCraftToolItem NODECRAFT_TOOL_INSTANCE;
-
-	/**
-	 * 获取NodeCraft工具物品实例。
-	 * 此方法应在 ModItems 已经注册物品后调用。
-	 * @return NodeCraftToolItem 实例。
-	 */
-	public static NodeCraftToolItem getNodecraftTool() {
-		// 直接返回 ModItems 中已注册的实例
-		// 确保 ModItems.NODECRAFT_TOOL 在此方法被调用前已初始化 (即 ModItems.registerItems() 已被调用)
-		return ModItems.NODECRAFT_TOOL;
-	}
 
 	@Override
 	public void onInitialize() {
