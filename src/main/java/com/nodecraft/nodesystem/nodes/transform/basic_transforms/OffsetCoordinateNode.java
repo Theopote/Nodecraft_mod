@@ -31,6 +31,7 @@ public class OffsetCoordinateNode extends BaseNode {
     private static final String OUTPUT_X_ID = "output_x";
     private static final String OUTPUT_Y_ID = "output_y";
     private static final String OUTPUT_Z_ID = "output_z";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public OffsetCoordinateNode() {
         super(UUID.randomUUID(), "transform.basic_transforms.move_point");
@@ -44,6 +45,7 @@ public class OffsetCoordinateNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_X_ID, "X", "Offset X result", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Offset Y result", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Offset Z result", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the coordinate offset succeeded", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -59,7 +61,10 @@ public class OffsetCoordinateNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object coordinateObj = inputValues.get(INPUT_COORDINATE_ID);
-        BlockPos source = coordinateObj instanceof BlockPos pos ? pos : BlockPos.ORIGIN;
+        if (!(coordinateObj instanceof BlockPos source)) {
+            writeInvalid();
+            return;
+        }
 
         int offsetX = getInt(INPUT_OFFSET_X_ID);
         int offsetY = getInt(INPUT_OFFSET_Y_ID);
@@ -71,10 +76,19 @@ public class OffsetCoordinateNode extends BaseNode {
         outputValues.put(OUTPUT_X_ID, result.getX());
         outputValues.put(OUTPUT_Y_ID, result.getY());
         outputValues.put(OUTPUT_Z_ID, result.getZ());
+        outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private int getInt(String portId) {
         Object value = inputValues.get(portId);
         return value instanceof Number number ? number.intValue() : 0;
+    }
+
+    private void writeInvalid() {
+        outputValues.put(OUTPUT_COORDINATE_ID, null);
+        outputValues.put(OUTPUT_X_ID, 0);
+        outputValues.put(OUTPUT_Y_ID, 0);
+        outputValues.put(OUTPUT_Z_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
     }
 }

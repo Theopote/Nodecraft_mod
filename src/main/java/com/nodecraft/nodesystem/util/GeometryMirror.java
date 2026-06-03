@@ -21,6 +21,7 @@ import com.nodecraft.nodesystem.datatypes.TetrahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.TorusGeometryData;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
+import org.joml.Vector4d;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -170,19 +171,31 @@ public final class GeometryMirror {
     }
 
     public static Vector3d mirrorPoint(Vector3d point, PlaneData plane) {
-        Vector3d normal = plane.getNormal();
-        double distance = plane.signedDistanceTo(point);
-        Vector3d displacement = new Vector3d(normal).mul(2.0d * distance);
+        Vector4d coefficients = plane.getPlane();
+        Vector3d normal = new Vector3d(coefficients.x, coefficients.y, coefficients.z);
+        double normalLengthSquared = normal.lengthSquared();
+        if (normalLengthSquared <= 1.0e-12d) {
+            return new Vector3d(point);
+        }
+        double signedValue = normal.dot(point) + coefficients.w;
+        Vector3d displacement = new Vector3d(normal).mul(2.0d * signedValue / normalLengthSquared);
         return new Vector3d(point).sub(displacement);
     }
 
     public static Vector3d mirrorDirection(Vector3d direction, PlaneData plane) {
         Vector3d n = plane.getNormal();
-        double s = n.dot(direction);
+        double normalLengthSquared = n.lengthSquared();
+        if (normalLengthSquared <= 1.0e-12d) {
+            return new Vector3d(direction);
+        }
+        double s = n.dot(direction) / normalLengthSquared;
         return new Vector3d(direction).sub(new Vector3d(n).mul(2.0d * s));
     }
 
     private static Matrix3d reflectionMatrix3(Vector3d normal) {
+        if (normal == null || normal.lengthSquared() <= 1.0e-12d) {
+            return new Matrix3d().identity();
+        }
         Vector3d n = new Vector3d(normal).normalize();
         double nx = n.x;
         double ny = n.y;
