@@ -7,7 +7,6 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import imgui.ImGui;
-import imgui.flag.ImGuiCol;
 import imgui.type.ImDouble;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -19,7 +18,7 @@ import java.util.UUID;
 @NodeInfo(
     id = "reference.vectors.vector",
     displayName = "Vector Input",
-    description = "输入一个三维向量，并同时输出 X / Y / Z 分量",
+    description = "Inputs a 3D vector and outputs the vector plus X, Y, and Z components.",
     category = "reference.vectors",
     order = 0
 )
@@ -30,33 +29,35 @@ public class VectorInputNode extends BaseCustomUINode {
     private static final String OUTPUT_Y_ID = "output_y";
     private static final String OUTPUT_Z_ID = "output_z";
 
-    @NodeProperty(displayName = "X", category = "分量", order = 1, description = "向量的 X 分量")
+    @NodeProperty(displayName = "X", category = "Components", order = 1, description = "X component")
     private double x = 0.0;
 
-    @NodeProperty(displayName = "Y", category = "分量", order = 2, description = "向量的 Y 分量")
+    @NodeProperty(displayName = "Y", category = "Components", order = 2, description = "Y component")
     private double y = 0.0;
 
-    @NodeProperty(displayName = "Z", category = "分量", order = 3, description = "向量的 Z 分量")
+    @NodeProperty(displayName = "Z", category = "Components", order = 3, description = "Z component")
     private double z = 0.0;
 
-    @NodeProperty(displayName = "显示标签", category = "UI设置", order = 10, description = "是否显示当前向量摘要")
+    @NodeProperty(displayName = "Show Label", category = "UI Settings", order = 10,
+        description = "Whether to show the current vector summary")
     private boolean showLabel = true;
 
-    @NodeProperty(displayName = "精度", category = "UI设置", order = 11, description = "界面显示保留的小数位数")
+    @NodeProperty(displayName = "Precision", category = "UI Settings", order = 11,
+        description = "Decimal places shown in the UI")
     private int precision = 2;
 
     public VectorInputNode() {
         super(UUID.randomUUID(), "reference.vectors.vector");
-        addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "三维向量", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X 分量", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y 分量", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z 分量", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "3D vector", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X component", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y component", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z component", NodeDataType.DOUBLE, this));
         updateOutput();
     }
 
     @Override
     public String getDescription() {
-        return "输入一个三维向量，并同时输出 X / Y / Z 分量。";
+        return "Inputs a 3D vector and outputs the vector plus X, Y, and Z components.";
     }
 
     @Override
@@ -109,7 +110,8 @@ public class VectorInputNode extends BaseCustomUINode {
         float inputWidth = Math.max(availableWidth - labelWidth - ImGui.getStyle().getItemSpacingX(), l.toPixels(80f));
         l.setItemWidth(inputWidth / Math.max(l.getZoom(), 0.001f));
         ImDouble valueInput = new ImDouble(currentValue);
-        boolean changed = ImGui.inputDouble("##" + label.toLowerCase(), valueInput, 0.0, 0.0, "%." + getSafePrecision() + "f");
+        boolean changed = ImGui.inputDouble("##" + label.toLowerCase(), valueInput, 0.0, 0.0,
+            "%." + getSafePrecision() + "f");
         l.popItemWidth();
         if (changed) {
             setter.accept(valueInput.get());

@@ -5,7 +5,6 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -19,8 +18,6 @@ import java.util.UUID;
     order = 13
 )
 public class ReflectVectorNode extends BaseNode {
-
-    private static final double EPS = 1.0e-12d;
 
     private static final String INPUT_VECTOR_ID = "input_vector";
     private static final String INPUT_NORMAL_ID = "input_normal";
@@ -52,9 +49,9 @@ public class ReflectVectorNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d v = toVector(inputValues.get(INPUT_VECTOR_ID));
-        Vector3d n = toVector(inputValues.get(INPUT_NORMAL_ID));
-        if (v == null || n == null || n.lengthSquared() < EPS) {
+        Vector3d v = VectorUtils.toVector(inputValues.get(INPUT_VECTOR_ID));
+        Vector3d n = VectorUtils.toVector(inputValues.get(INPUT_NORMAL_ID));
+        if (!VectorUtils.isFinite(v) || !VectorUtils.isFinite(n) || n.lengthSquared() < VectorUtils.EPS) {
             outputValues.put(OUTPUT_REFLECTED_ID, new Vector3d());
             outputValues.put(OUTPUT_NORMALIZED_NORMAL_ID, new Vector3d(0.0d, 1.0d, 0.0d));
             outputValues.put(OUTPUT_VALID_ID, false);
@@ -68,15 +65,5 @@ public class ReflectVectorNode extends BaseNode {
         outputValues.put(OUTPUT_REFLECTED_ID, reflected);
         outputValues.put(OUTPUT_NORMALIZED_NORMAL_ID, nn);
         outputValues.put(OUTPUT_VALID_ID, true);
-    }
-
-    private Vector3d toVector(Object value) {
-        if (value instanceof Vector3d v) {
-            return new Vector3d(v);
-        }
-        if (value instanceof Vec3d v) {
-            return new Vector3d(v.x, v.y, v.z);
-        }
-        return null;
     }
 }

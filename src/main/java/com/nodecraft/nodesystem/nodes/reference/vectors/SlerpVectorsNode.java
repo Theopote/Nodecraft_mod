@@ -6,7 +6,6 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -22,8 +21,6 @@ import java.util.UUID;
     order = 16
 )
 public class SlerpVectorsNode extends BaseNode {
-
-    private static final double EPS = 1.0e-12d;
 
     @NodeProperty(displayName = "Shortest Path", category = "Slerp", order = 1)
     private boolean shortestPath = true;
@@ -63,19 +60,24 @@ public class SlerpVectorsNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d aRaw = toVector(inputValues.get(INPUT_A_ID));
-        Vector3d bRaw = toVector(inputValues.get(INPUT_B_ID));
+        Vector3d aRaw = VectorUtils.toVector(inputValues.get(INPUT_A_ID));
+        Vector3d bRaw = VectorUtils.toVector(inputValues.get(INPUT_B_ID));
         Object tObj = inputValues.get(INPUT_T_ID);
-        if (aRaw == null || bRaw == null || !(tObj instanceof Number tNumber)) {
+        if (!VectorUtils.isFinite(aRaw) || !VectorUtils.isFinite(bRaw) || !(tObj instanceof Number tNumber)) {
             writeInvalid();
             return;
         }
-        if (aRaw.lengthSquared() < EPS || bRaw.lengthSquared() < EPS) {
+        if (aRaw.lengthSquared() < VectorUtils.EPS || bRaw.lengthSquared() < VectorUtils.EPS) {
             writeInvalid();
             return;
         }
 
         double t = tNumber.doubleValue();
+        if (!VectorUtils.isFinite(t)) {
+            writeInvalid();
+            return;
+        }
+
         Vector3d a = new Vector3d(aRaw).normalize();
         Vector3d b = new Vector3d(bRaw).normalize();
 
@@ -108,18 +110,8 @@ public class SlerpVectorsNode extends BaseNode {
 
     private void writeInvalid() {
         outputValues.put(OUTPUT_RESULT_ID, new Vector3d());
-        outputValues.put(OUTPUT_ANGLE_ID, 0.0d);
+        outputValues.put(OUTPUT_ANGLE_ID, Double.NaN);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private Vector3d toVector(Object value) {
-        if (value instanceof Vector3d v) {
-            return new Vector3d(v);
-        }
-        if (value instanceof Vec3d v) {
-            return new Vector3d(v.x, v.y, v.z);
-        }
-        return null;
     }
 
     @Override

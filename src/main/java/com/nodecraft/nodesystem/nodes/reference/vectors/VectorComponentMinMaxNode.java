@@ -5,7 +5,6 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -50,9 +49,9 @@ public class VectorComponentMinMaxNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d a = toVector(inputValues.get(INPUT_A_ID));
-        Vector3d b = toVector(inputValues.get(INPUT_B_ID));
-        if (a == null || b == null) {
+        Vector3d a = VectorUtils.toVector(inputValues.get(INPUT_A_ID));
+        Vector3d b = VectorUtils.toVector(inputValues.get(INPUT_B_ID));
+        if (!VectorUtils.isFinite(a) || !VectorUtils.isFinite(b)) {
             outputValues.put(OUTPUT_MIN_ID, new Vector3d());
             outputValues.put(OUTPUT_MAX_ID, new Vector3d());
             outputValues.put(OUTPUT_VALID_ID, false);
@@ -73,15 +72,5 @@ public class VectorComponentMinMaxNode extends BaseNode {
         outputValues.put(OUTPUT_MIN_ID, min);
         outputValues.put(OUTPUT_MAX_ID, max);
         outputValues.put(OUTPUT_VALID_ID, true);
-    }
-
-    private Vector3d toVector(Object value) {
-        if (value instanceof Vector3d v) {
-            return new Vector3d(v);
-        }
-        if (value instanceof Vec3d v) {
-            return new Vector3d(v.x, v.y, v.z);
-        }
-        return null;
     }
 }

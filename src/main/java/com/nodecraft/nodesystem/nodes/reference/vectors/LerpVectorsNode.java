@@ -5,7 +5,6 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -50,16 +49,22 @@ public class LerpVectorsNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d a = toVector(inputValues.get(INPUT_A_ID));
-        Vector3d b = toVector(inputValues.get(INPUT_B_ID));
+        Vector3d a = VectorUtils.toVector(inputValues.get(INPUT_A_ID));
+        Vector3d b = VectorUtils.toVector(inputValues.get(INPUT_B_ID));
         Object tObj = inputValues.get(INPUT_T_ID);
-        if (a == null || b == null || !(tObj instanceof Number tNumber)) {
+        if (!VectorUtils.isFinite(a) || !VectorUtils.isFinite(b) || !(tObj instanceof Number tNumber)) {
             outputValues.put(OUTPUT_RESULT_ID, new Vector3d());
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
 
         double t = tNumber.doubleValue();
+        if (!VectorUtils.isFinite(t)) {
+            outputValues.put(OUTPUT_RESULT_ID, new Vector3d());
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
+        }
+
         Vector3d result = new Vector3d(
             a.x + (b.x - a.x) * t,
             a.y + (b.y - a.y) * t,
@@ -67,15 +72,5 @@ public class LerpVectorsNode extends BaseNode {
         );
         outputValues.put(OUTPUT_RESULT_ID, result);
         outputValues.put(OUTPUT_VALID_ID, true);
-    }
-
-    private Vector3d toVector(Object value) {
-        if (value instanceof Vector3d v) {
-            return new Vector3d(v);
-        }
-        if (value instanceof Vec3d v) {
-            return new Vector3d(v.x, v.y, v.z);
-        }
-        return null;
     }
 }

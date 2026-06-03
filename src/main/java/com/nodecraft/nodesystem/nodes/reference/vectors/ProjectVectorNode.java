@@ -5,7 +5,6 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -19,8 +18,6 @@ import java.util.UUID;
     order = 14
 )
 public class ProjectVectorNode extends BaseNode {
-
-    private static final double EPS = 1.0e-12d;
 
     private static final String INPUT_A_ID = "input_a";
     private static final String INPUT_B_ID = "input_b";
@@ -54,21 +51,21 @@ public class ProjectVectorNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d a = toVector(inputValues.get(INPUT_A_ID));
-        Vector3d b = toVector(inputValues.get(INPUT_B_ID));
-        if (a == null || b == null) {
+        Vector3d a = VectorUtils.toVector(inputValues.get(INPUT_A_ID));
+        Vector3d b = VectorUtils.toVector(inputValues.get(INPUT_B_ID));
+        if (!VectorUtils.isFinite(a) || !VectorUtils.isFinite(b)) {
             outputValues.put(OUTPUT_PROJECTION_ID, new Vector3d());
             outputValues.put(OUTPUT_REJECTION_ID, new Vector3d());
-            outputValues.put(OUTPUT_SCALE_ID, 0.0d);
+            outputValues.put(OUTPUT_SCALE_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
 
         double bLenSq = b.lengthSquared();
-        if (bLenSq < EPS) {
+        if (bLenSq < VectorUtils.EPS) {
             outputValues.put(OUTPUT_PROJECTION_ID, new Vector3d());
             outputValues.put(OUTPUT_REJECTION_ID, new Vector3d(a));
-            outputValues.put(OUTPUT_SCALE_ID, 0.0d);
+            outputValues.put(OUTPUT_SCALE_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
@@ -81,15 +78,5 @@ public class ProjectVectorNode extends BaseNode {
         outputValues.put(OUTPUT_REJECTION_ID, rejection);
         outputValues.put(OUTPUT_SCALE_ID, scale);
         outputValues.put(OUTPUT_VALID_ID, true);
-    }
-
-    private Vector3d toVector(Object value) {
-        if (value instanceof Vector3d v) {
-            return new Vector3d(v);
-        }
-        if (value instanceof Vec3d v) {
-            return new Vector3d(v.x, v.y, v.z);
-        }
-        return null;
     }
 }
