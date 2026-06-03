@@ -53,8 +53,12 @@ public class OffsetPlaneNode extends BaseNode {
         }
 
         double distance = inputValues.get(INPUT_DISTANCE_ID) instanceof Number n ? n.doubleValue() : 0.0d;
+        if (!Double.isFinite(distance)) {
+            writeEmpty();
+            return;
+        }
         Vector3d normal = plane.getNormal();
-        if (normal.lengthSquared() < 1.0e-12d) {
+        if (!PlaneUtils.isUsableNormal(normal)) {
             writeEmpty();
             return;
         }
@@ -75,4 +79,3 @@ public class OffsetPlaneNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 }
-

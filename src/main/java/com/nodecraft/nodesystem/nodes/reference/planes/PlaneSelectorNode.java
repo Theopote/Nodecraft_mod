@@ -33,6 +33,7 @@ public class PlaneSelectorNode extends BaseNode {
     private static final String INPUT_ORIGIN_ID = "input_origin";
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_ORIGIN_ID = "output_origin";
+    private static final String OUTPUT_ORIGIN_VECTOR_ID = "output_origin_vector";
     private static final String OUTPUT_NORMAL_ID = "output_normal";
 
     @NodeProperty(
@@ -71,12 +72,14 @@ public class PlaneSelectorNode extends BaseNode {
         super(UUID.randomUUID(), "reference.planes.world_plane");
 
         addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin",
-            "Optional block-position origin for the selected world plane",
-            NodeDataType.BLOCK_POS, this));
+            "Optional origin for the selected world plane. Supports Point, Vector, Position, or Block Coordinate.",
+            NodeDataType.ANY, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane",
             "Constructed plane data", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_ORIGIN_ID, "Origin",
             "Plane origin as a block position", NodeDataType.BLOCK_POS, this));
+        addOutputPort(new BasePort(OUTPUT_ORIGIN_VECTOR_ID, "Origin Vector",
+            "Plane origin as a vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_NORMAL_ID, "Normal",
             "Plane normal vector", NodeDataType.VECTOR, this));
     }
@@ -89,22 +92,25 @@ public class PlaneSelectorNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         BlockPos origin = resolveOrigin(inputValues.get(INPUT_ORIGIN_ID));
+        Vector3d originVector = new Vector3d(origin.getX(), origin.getY(), origin.getZ());
         Vector3d normal = resolveNormal();
         PlaneData plane = new PlaneData(
-            new Vector3d(origin.getX(), origin.getY(), origin.getZ()),
+            new Vector3d(originVector),
             new Vector3d(normal)
         );
 
         outputValues.put(OUTPUT_PLANE_ID, plane);
         outputValues.put(OUTPUT_ORIGIN_ID, origin);
+        outputValues.put(OUTPUT_ORIGIN_VECTOR_ID, originVector);
         outputValues.put(OUTPUT_NORMAL_ID, normal);
     }
 
     private BlockPos resolveOrigin(Object originObj) {
+        BlockPos fallback = new BlockPos(originX, originY, originZ);
         if (originObj instanceof BlockPos blockPos) {
             return blockPos.toImmutable();
         }
-        return new BlockPos(originX, originY, originZ);
+        return PlaneUtils.toBlockPos(PlaneUtils.resolvePoint(originObj), fallback);
     }
 
     private Vector3d resolveNormal() {

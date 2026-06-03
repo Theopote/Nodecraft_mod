@@ -5,9 +5,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -28,6 +26,7 @@ public class ConstructPlaneNode extends BaseNode {
 
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_NORMALIZED_NORMAL_ID = "output_normalized_normal";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ConstructPlaneNode() {
         super(UUID.randomUUID(), "reference.planes.construct_plane");
@@ -37,6 +36,7 @@ public class ConstructPlaneNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Constructed plane", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_NORMALIZED_NORMAL_ID, "Normalized Normal", "Normalized normal vector", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the origin and normal formed a valid plane", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -51,20 +51,23 @@ public class ConstructPlaneNode extends BaseNode {
 
         PlaneData plane = null;
         Vector3d normalizedNormal = null;
+        boolean valid = false;
 
-        Vector3d originVec = resolvePoint(originObj);
-        if (originVec != null && normalObj instanceof Vector3d normal && normal.lengthSquared() > 1e-9) {
+        Vector3d originVec = PlaneUtils.resolvePoint(originObj);
+        if (PlaneUtils.isFinite(originVec) && normalObj instanceof Vector3d normal && PlaneUtils.isUsableNormal(normal)) {
             normalizedNormal = new Vector3d(normal).normalize();
             plane = new PlaneData(new Vector3d(originVec), normalizedNormal);
+            valid = true;
         }
 
         outputValues.put(OUTPUT_PLANE_ID, plane);
         outputValues.put(OUTPUT_NORMALIZED_NORMAL_ID, normalizedNormal);
+        outputValues.put(OUTPUT_VALID_ID, valid);
     }
 
     @Override
     public Object getNodeState() {
-        return new HashMap<String, Object>();
+        return new HashMap<>();
     }
 
     @Override
@@ -72,16 +75,4 @@ public class ConstructPlaneNode extends BaseNode {
         // stateless
     }
 
-    private Vector3d resolvePoint(Object value) {
-        if (value instanceof PointData pointData) {
-            return pointData.getPosition();
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof BlockPos blockPos) {
-            return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
-        }
-        return null;
-    }
 }
