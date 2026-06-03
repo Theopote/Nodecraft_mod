@@ -7,7 +7,6 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -70,11 +69,11 @@ public class ProjectPointToPlaneNode extends BaseNode {
         Vector3d point = resolvePoint(inputValues.get(INPUT_POINT_ID));
         Object planeObj = inputValues.get(INPUT_PLANE_ID);
 
-        if (point == null || !(planeObj instanceof PlaneData plane)) {
+        if (!OrientationUtils.isFinite(point) || !(planeObj instanceof PlaneData plane) || !OrientationUtils.isUsablePlane(plane)) {
             outputValues.put(OUTPUT_POINT_ID, null);
             outputValues.put(OUTPUT_VECTOR_ID, null);
-            outputValues.put(OUTPUT_DISTANCE_ID, 0.0D);
-            outputValues.put(OUTPUT_SIGNED_DISTANCE_ID, 0.0D);
+            outputValues.put(OUTPUT_DISTANCE_ID, Double.NaN);
+            outputValues.put(OUTPUT_SIGNED_DISTANCE_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
@@ -92,7 +91,7 @@ public class ProjectPointToPlaneNode extends BaseNode {
 
     @Override
     public Object getNodeState() {
-        return new HashMap<String, Object>();
+        return new HashMap<>();
     }
 
     @Override
@@ -101,15 +100,7 @@ public class ProjectPointToPlaneNode extends BaseNode {
     }
 
     private Vector3d resolvePoint(Object value) {
-        if (value instanceof PointData pointData) {
-            return pointData.getPosition();
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof BlockPos blockPos) {
-            return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
-        }
-        return null;
+        Vector3d point = OrientationUtils.resolveVector(value);
+        return OrientationUtils.isFinite(point) ? point : null;
     }
 }

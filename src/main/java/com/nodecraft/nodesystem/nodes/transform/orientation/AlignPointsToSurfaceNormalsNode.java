@@ -6,10 +6,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -34,7 +31,12 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
         Z
     }
 
-    @NodeProperty(displayName = "Local Up Axis", category = "Orientation", order = 1)
+    @NodeProperty(
+        displayName = "Local Up Axis",
+        category = "Orientation",
+        order = 1,
+        description = "Local frame axis that should align to the target surface normal"
+    )
     private UpAxis localUpAxis = UpAxis.Y;
 
     @NodeProperty(displayName = "Use Shortest List", category = "Orientation", order = 2)
@@ -57,8 +59,8 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
     public AlignPointsToSurfaceNormalsNode() {
         super(UUID.randomUUID(), "transform.orientation.align_to_surface");
 
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to align", NodeDataType.LIST, this));
-        addInputPort(new BasePort(INPUT_NORMALS_ID, "Normals", "Target surface normal list", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to align", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_NORMALS_ID, "Normals", "Target surface normal list", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_FORWARD_HINT_ID, "Forward Hint", "Optional forward hint vector for stable tangent orientation", NodeDataType.VECTOR, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Aligned point list", NodeDataType.VECTOR_LIST, this));
@@ -103,7 +105,7 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
         }
 
         Vector3d forwardHint = resolveVector(inputValues.get(INPUT_FORWARD_HINT_ID));
-        if (forwardHint == null || forwardHint.lengthSquared() <= EPS) {
+        if (!OrientationUtils.isUsableDirection(forwardHint)) {
             forwardHint = new Vector3d(1.0d, 0.0d, 0.0d);
         } else {
             forwardHint.normalize();
@@ -118,7 +120,7 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
         for (int i = 0; i < count; i++) {
             Vector3d p = getByMode(points, i);
             Vector3d n = getByMode(normals, i);
-            if (p == null || n == null || n.lengthSquared() <= EPS) {
+            if (!OrientationUtils.isFinite(p) || !OrientationUtils.isUsableDirection(n)) {
                 if (useShortestList) {
                     break;
                 }
@@ -133,9 +135,27 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
             tangent = tangent.sub(new Vector3d(up).mul(tangent.dot(up)));
             if (tangent.lengthSquared() <= EPS) {
                 tangent = new Vector3d(1.0d, 0.0d, 0.0d);
+                tangent.sub(new Vector3d(up).mul(tangent.dot(up)));
+                if (tangent.lengthSquared() <= EPS) {
+                    tangent = new Vector3d(0.0d, 0.0d, 1.0d);
+                    tangent.sub(new Vector3d(up).mul(tangent.dot(up)));
+                }
+            }
+            if (!OrientationUtils.isUsableDirection(tangent)) {
+                if (useShortestList) {
+                    break;
+                }
+                continue;
             }
             tangent.normalize();
-            Vector3d bitangent = new Vector3d(up).cross(tangent).normalize();
+            Vector3d bitangent = new Vector3d(up).cross(tangent);
+            if (!OrientationUtils.isUsableDirection(bitangent)) {
+                if (useShortestList) {
+                    break;
+                }
+                continue;
+            }
+            bitangent.normalize();
 
             Vector3d x = new Vector3d(1.0d, 0.0d, 0.0d);
             Vector3d y = new Vector3d(0.0d, 1.0d, 0.0d);
@@ -208,11 +228,8 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
     }
 
     private Vector3d resolveVector(Object value) {
-        if (value instanceof Vector3d v) return new Vector3d(v);
-        if (value instanceof Vec3d v) return new Vector3d(v.x, v.y, v.z);
-        if (value instanceof PointData p) return new Vector3d(p.getPosition());
-        if (value instanceof BlockPos b) return new Vector3d(b.getX(), b.getY(), b.getZ());
-        return null;
+        Vector3d vector = OrientationUtils.resolveVector(value);
+        return OrientationUtils.isFinite(vector) ? vector : null;
     }
 
     @Override
