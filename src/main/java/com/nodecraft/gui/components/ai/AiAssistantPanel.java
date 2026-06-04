@@ -39,6 +39,9 @@ public final class AiAssistantPanel {
     private static final int AI_HISTORY_MAX_CHARS_PER_MESSAGE = 1800;
     private static final int AI_HISTORY_MAX_TOTAL_CHARS = 9000;
     private static final int AI_LATEST_USER_MESSAGE_MAX_CHARS = 7000;
+    private static final int AI_REMOTE_SCHEMA_LIMIT_DEFAULT = 36;
+    private static final int AI_REMOTE_SCHEMA_LIMIT_GENERATE = 72;
+    private static final int AI_REMOTE_SCHEMA_LIMIT_REPAIR = 96;
     private static final String MODIFY_PARAM_SYSTEM_HINT =
             """
                     If the user asks to modify a specific parameter value on an existing node,
@@ -61,6 +64,8 @@ public final class AiAssistantPanel {
                 Keep graph structure and user intent unchanged as much as possible.
                 Every node.type must exactly match a listed typeId.
                 Every connection.from.port and connection.to.port must exactly match declared port ids for those node types.
+                If a connection cannot be made type-safe using listed nodes and ports, remove that connection.
+                A smaller valid graph is better than an invalid complete graph.
                 """;
             private static final String REMOTE_DSL_TYPE_REPAIR_HINT =
                 """
@@ -68,6 +73,9 @@ public final class AiAssistantPanel {
                     - Fix data type compatibility for all connections.
                     - Do NOT connect scalar values (float/integer/double) directly to geometry inputs.
                     - Do NOT connect vectors to geometry inputs.
+                    - Do NOT connect vectors to list inputs unless the input port explicitly accepts vector data.
+                    - Do NOT guess converters. Use a converter node only if it appears in the provided node library.
+                    - If no compatible path exists, delete the invalid connection and keep the valid nodes.
                     - Ensure output ports and input ports exist on the corresponding node types.
                     - If needed, replace incorrect intermediate nodes with valid ones from the provided node library.
                     - Ensure the output is valid JSON: do NOT include trailing commas, unescaped characters, or markdown tags.
@@ -857,8 +865,9 @@ public final class AiAssistantPanel {
 
         NodeRegistry registry = NodeRegistry.getInstance();
         List<AiNodeSchemaCatalog.NodeSchema> allSchemas = AiNodeSchemaCatalog.collectAll(registry);
-        List<AiNodeSchemaCatalog.NodeSchema> relevantSchemas = AiNodeSchemaCatalog.selectRelevant(allSchemas, userPrompt, 20);
         UserIntent userIntent = AiIntentAnalysisService.classifyIntent(userPrompt);
+        int schemaLimit = resolveRemoteSchemaLimit(userPrompt, userIntent);
+        List<AiNodeSchemaCatalog.NodeSchema> relevantSchemas = AiNodeSchemaCatalog.selectRelevant(allSchemas, userPrompt, schemaLimit);
 
         String systemPrompt = aiSystemPrompt.get();
         if (systemPrompt == null || systemPrompt.isBlank()) {
@@ -874,6 +883,10 @@ public final class AiAssistantPanel {
         NodeCraft.LOGGER.info("[AI_SEND] Intent classified. intent={}, promptPreview={}",
                 userIntent,
                 sanitizeUserPromptForSnapshot(userPrompt));
+        NodeCraft.LOGGER.info("[AI_SEND] Schema context selected. selectedSchemas={}, totalSchemas={}, limit={}",
+                relevantSchemas.size(),
+                allSchemas.size(),
+                schemaLimit);
 
         String userPromptPayload = AiPromptBuilder.buildUserPrompt(
                 userPrompt,
@@ -1008,6 +1021,21 @@ public final class AiAssistantPanel {
 
     private int resolveConversationHistoryLimit() {
         return Math.max(1, Math.min(20, aiConversationHistoryTurns.get()));
+    }
+
+    private int resolveRemoteSchemaLimit(String prompt, UserIntent intent) {
+        if (intent == UserIntent.GENERATE_NEW || looksLikeComplexGenerationPrompt(prompt)) {
+            return AI_REMOTE_SCHEMA_LIMIT_GENERATE;
+        }
+        return AI_REMOTE_SCHEMA_LIMIT_DEFAULT;
+    }
+
+    private boolean looksLikeComplexGenerationPrompt(String prompt) {
+        String text = prompt == null ? "" : prompt.toLowerCase(Locale.ROOT);
+        return containsAny(text,
+                "教堂", "建筑", "城堡", "房子", "结构", "生成", "建造",
+                "cathedral", "church", "building", "castle", "house", "structure", "generate", "build",
+                "gothic", "哥特");
     }
 
     private List<AiChatMessage> getRecentPlanningMessages(int limit, String latestUserPrompt) {
@@ -1186,7 +1214,11 @@ public final class AiAssistantPanel {
 
         NodeRegistry registry = NodeRegistry.getInstance();
         List<AiNodeSchemaCatalog.NodeSchema> allSchemas = AiNodeSchemaCatalog.collectAll(registry);
-        List<AiNodeSchemaCatalog.NodeSchema> relevantSchemas = AiNodeSchemaCatalog.selectRelevant(allSchemas, originalPrompt, 30);
+        List<AiNodeSchemaCatalog.NodeSchema> relevantSchemas = AiNodeSchemaCatalog.selectRelevant(
+                allSchemas,
+                originalPrompt,
+                AI_REMOTE_SCHEMA_LIMIT_REPAIR
+        );
 
         String systemPrompt = aiSystemPrompt.get();
         if (systemPrompt == null || systemPrompt.isBlank()) {
@@ -1244,6 +1276,10 @@ public final class AiAssistantPanel {
             nextAttempt,
             MAX_REMOTE_DSL_REPAIR_ATTEMPTS,
             errorsText);
+        NodeCraft.LOGGER.info("[AI_SEND] Repair schema context selected. selectedSchemas={}, totalSchemas={}, limit={}",
+                relevantSchemas.size(),
+                allSchemas.size(),
+                AI_REMOTE_SCHEMA_LIMIT_REPAIR);
         return true;
     }
 

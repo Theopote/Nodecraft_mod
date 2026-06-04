@@ -84,6 +84,9 @@ public final class AiPromptBuilder {
             - Semantic Aliases: block_pos is compatible with coordinate; vector is compatible with position.
             - Geometry Inheritance: specific geometry outputs can feed generic geometry inputs.
             - Explicit Conversions: if a pair requires an explicit converter node, include that converter node.
+            - Never connect vector outputs directly to geometry inputs.
+            - Never connect vector outputs directly to list inputs unless the listed input port dataType is vector-compatible.
+            - If no listed port pair is type-compatible, omit the connection and return the valid nodes.
 
             # DSL_PLANNING_GUIDANCE
             - Pick node types only from AVAILABLE_NODE_LIBRARY.

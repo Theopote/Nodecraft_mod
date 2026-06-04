@@ -19,15 +19,23 @@ import java.util.Set;
 public final class AiNodeSchemaCatalog {
 
     private static final List<String> ALWAYS_INCLUDE_TYPE_PREFIXES = List.of(
-            "output.execute.apply_changes",
+            "output.execute.",
             "output.preview.",
+            "world.write.",
+            "input.context.",
+            "input.basic.",
             "input.numeric.",
+            "input.type_selectors.",
             "math.scalar_math."
     );
 
         private static final List<String> DIVERSITY_CATEGORY_PREFIXES = List.of(
             "input.",
             "math.",
+            "geometry.",
+            "spatial.",
+            "pattern.",
+            "world.",
             "output."
         );
 
