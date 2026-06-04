@@ -42,6 +42,7 @@ public final class AiAssistantPanel {
     private static final int AI_REMOTE_SCHEMA_LIMIT_DEFAULT = 36;
     private static final int AI_REMOTE_SCHEMA_LIMIT_GENERATE = 72;
     private static final int AI_REMOTE_SCHEMA_LIMIT_REPAIR = 96;
+    private static final int MAX_REMOTE_GRAPH_EXPANSION_ATTEMPTS = 1;
     private static final String MODIFY_PARAM_SYSTEM_HINT =
             """
                     If the user asks to modify a specific parameter value on an existing node,
@@ -123,6 +124,7 @@ public final class AiAssistantPanel {
     private boolean aiPreviewFocusScrollPending = false;
     private final TopologyPreviewState aiTopologyPreviewState = new TopologyPreviewState();
     private int aiRemoteDslRepairAttempts = 0;
+    private int aiRemoteGraphExpansionAttempts = 0;
 
     public AiAssistantPanel(
             AiAssistantComponent aiAssistantComponent,
@@ -855,6 +857,7 @@ public final class AiAssistantPanel {
         }
 
         aiRemoteDslRepairAttempts = 0;
+        aiRemoteGraphExpansionAttempts = 0;
 
         String validation = validateAiSettings();
         if (validation.startsWith("Validation failed")) {
@@ -1149,6 +1152,13 @@ public final class AiAssistantPanel {
             prompt,
             AiPlanDslWorkflowService.fromDsl(parsed.graph())
         );
+
+        if (shouldRequestConnectedGraphExpansion(prompt, enrichedPlan)
+                && tryStartRemoteGraphExpansion(prompt, enrichedPlan, dslOrModelResponse)) {
+            return;
+        }
+
+        aiRemoteGraphExpansionAttempts = 0;
         setPendingAiPlan(fromServiceGraphPlan(enrichedPlan));
         aiPreviewFocusedNodeRef = "";
         aiPreviewFocusScrollPending = false;
@@ -1160,10 +1170,11 @@ public final class AiAssistantPanel {
         if (shouldAutoApplyPlacement) {
             autoAppliedPlacement = applyPlacementPlan(pendingAiPlan);
         }
-        NodeCraft.LOGGER.info("[AI_SEND] Plan parsed. source={}, nodes={}, connections={}, shouldAutoApplyPlacement={}, autoAppliedPlacement={}",
+        NodeCraft.LOGGER.info("[AI_SEND] Plan parsed. source={}, nodes={}, connections={}, nodeTypes={}, shouldAutoApplyPlacement={}, autoAppliedPlacement={}",
             source,
             pendingAiPlan == null || pendingAiPlan.nodes() == null ? 0 : pendingAiPlan.nodes().size(),
             pendingAiPlan == null || pendingAiPlan.connections() == null ? 0 : pendingAiPlan.connections().size(),
+            summarizePlanNodeTypes(pendingAiPlan),
             shouldAutoApplyPlacement,
             autoAppliedPlacement);
         if (pendingAiPlan != null) {
@@ -1283,6 +1294,126 @@ public final class AiAssistantPanel {
         return true;
     }
 
+    private boolean shouldRequestConnectedGraphExpansion(
+            String prompt,
+            AiGraphPlanDslAdapterService.GraphPlan plan
+    ) {
+        if (aiRemoteGraphExpansionAttempts >= MAX_REMOTE_GRAPH_EXPANSION_ATTEMPTS) {
+            return false;
+        }
+        if (AiIntentAnalysisService.classifyIntent(prompt) != UserIntent.GENERATE_NEW) {
+            return false;
+        }
+        if (isPlacementOnlyCanvasPrompt(prompt)) {
+            return false;
+        }
+        if (!looksLikeComplexGenerationPrompt(prompt)) {
+            return false;
+        }
+        int nodeCount = plan == null || plan.nodes() == null ? 0 : plan.nodes().size();
+        int connectionCount = plan == null || plan.connections() == null ? 0 : plan.connections().size();
+        return nodeCount <= 1 || connectionCount == 0;
+    }
+
+    private boolean isPlacementOnlyCanvasPrompt(String prompt) {
+        String text = prompt == null ? "" : prompt.toLowerCase(Locale.ROOT);
+        return containsAny(text,
+                "画布", "节点放到", "放置节点", "添加节点", "canvas", "place node", "add node")
+                && !looksLikeComplexGenerationPrompt(text);
+    }
+
+    private boolean tryStartRemoteGraphExpansion(
+            String originalPrompt,
+            AiGraphPlanDslAdapterService.GraphPlan underspecifiedPlan,
+            String originalModelPayload
+    ) {
+        if (aiRemoteGraphExpansionAttempts >= MAX_REMOTE_GRAPH_EXPANSION_ATTEMPTS) {
+            return false;
+        }
+        if (!aiEnableRemotePlanner.get() || isRemotePlannerBusy()) {
+            return false;
+        }
+
+        String validation = validateAiSettings();
+        if (validation.startsWith("Validation failed")) {
+            aiPlanStatusMessage = validation;
+            addAiChatMessage("assistant", validation);
+            return false;
+        }
+
+        NodeRegistry registry = NodeRegistry.getInstance();
+        List<AiNodeSchemaCatalog.NodeSchema> allSchemas = AiNodeSchemaCatalog.collectAll(registry);
+        List<AiNodeSchemaCatalog.NodeSchema> relevantSchemas = AiNodeSchemaCatalog.selectRelevant(
+                allSchemas,
+                originalPrompt,
+                AI_REMOTE_SCHEMA_LIMIT_REPAIR
+        );
+
+        String systemPrompt = aiSystemPrompt.get();
+        if (systemPrompt == null || systemPrompt.isBlank()) {
+            systemPrompt = AiPromptBuilder.buildSystemPrompt(relevantSchemas);
+        } else {
+            systemPrompt = systemPrompt + "\n\n" + AiPromptBuilder.buildSystemPrompt(relevantSchemas);
+        }
+
+        systemPrompt = systemPrompt + "\n\n"
+                + "You are now in connected graph expansion mode.\n"
+                + "The previous valid DSL was too small for the user's generation request.\n"
+                + "Return JSON only. Expand the plan into a connected workflow with at least 3 nodes and at least 2 valid connections when the library allows it.\n"
+                + "Use output.preview.* or output.execute.* nodes when compatible. Use world.write.* nodes only with compatible block/region/list inputs.\n"
+                + "Do not invent typeIds or ports. If no connected workflow is possible with the listed library, return {\"error\":\"connected_workflow_not_possible:<reason>\"}.\n";
+
+        int nextAttempt = aiRemoteGraphExpansionAttempts + 1;
+        String currentDsl = underspecifiedPlan == null
+                ? ""
+                : AiGraphPlanDslAdapterService.toDslJsonCompact(underspecifiedPlan);
+        String expansionPromptPayload = "Remote planner produced a valid but underspecified graph.\n\n"
+                + "Expansion attempt: " + nextAttempt + " / " + MAX_REMOTE_GRAPH_EXPANSION_ATTEMPTS + "\n"
+                + "Original user prompt:\n"
+                + (originalPrompt == null ? "" : originalPrompt)
+                + "\n\n"
+                + "Current underspecified DSL:\n"
+                + currentDsl
+                + "\n\n"
+                + "Original model payload:\n"
+                + (originalModelPayload == null ? "" : originalModelPayload)
+                + "\n\n"
+                + "Required outcome: return a connected NodeCraft graph, not a single standalone node. Return JSON only.";
+
+        List<AiRemotePlannerService.ConversationMessage> expansionConversation = List.of(
+                new AiRemotePlannerService.ConversationMessage("user", expansionPromptPayload)
+        );
+        AiRemotePlannerService.PlannerConfig config = new AiRemotePlannerService.PlannerConfig(
+                aiApiBaseUrl.get(),
+                resolveEffectiveApiKey(),
+                aiModel.get(),
+                AiProviderModelService.providerStrategyFromIndex(aiProviderStrategyIndex.get(), AI_PROVIDER_STRATEGY_OPTIONS),
+                systemPrompt,
+                aiMaxOutputTokens.get(),
+                aiRequestTimeoutSeconds.get()
+        );
+
+        String requestSnapshot = buildRemoteRequestSnapshot(config, originalPrompt, expansionPromptPayload, relevantSchemas.size());
+        boolean submitted = aiAssistantComponent.submitRemotePlannerRequest(originalPrompt, config, expansionConversation, requestSnapshot);
+        if (!submitted) {
+            return false;
+        }
+
+        aiRemoteGraphExpansionAttempts = nextAttempt;
+        aiPlanStatusMessage = "Remote plan was valid but not connected. Requesting connected graph expansion...";
+        addAiChatMessage("assistant", aiPlanStatusMessage);
+        NodeCraft.LOGGER.info(
+                "[AI_SEND] Started connected graph expansion retry {}/{}. currentNodes={}, currentConnections={}, selectedSchemas={}, totalSchemas={}",
+                nextAttempt,
+                MAX_REMOTE_GRAPH_EXPANSION_ATTEMPTS,
+                underspecifiedPlan == null || underspecifiedPlan.nodes() == null ? 0 : underspecifiedPlan.nodes().size(),
+                underspecifiedPlan == null || underspecifiedPlan.connections() == null ? 0 : underspecifiedPlan.connections().size(),
+                relevantSchemas.size(),
+                allSchemas.size()
+        );
+        return true;
+    }
+
     private boolean shouldAutoApplyPlacementPlan(String prompt, AiGraphPlan plan) {
         if (aiPreviewOnlyMode.get() || plan == null || !plan.isValid()) {
             return false;
@@ -1397,6 +1528,24 @@ public final class AiAssistantPanel {
             return "";
         }
         return " Warning: " + String.join("; ", warnings);
+    }
+
+    private String summarizePlanNodeTypes(AiGraphPlan plan) {
+        if (plan == null || plan.nodes() == null || plan.nodes().isEmpty()) {
+            return "[]";
+        }
+        List<String> types = new ArrayList<>();
+        for (AiPlanNode node : plan.nodes()) {
+            if (node == null || node.typeId() == null || node.typeId().isBlank()) {
+                continue;
+            }
+            types.add(node.ref() + ":" + node.typeId());
+            if (types.size() >= 12) {
+                types.add("...");
+                break;
+            }
+        }
+        return types.toString();
     }
 
     private record PortMeta(String id, String dataType, boolean required) {

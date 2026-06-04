@@ -47,13 +47,14 @@ public final class AiPromptBuilder {
             1. Every node.type must be an exact typeId from AVAILABLE_NODE_LIBRARY.
             2. Every connection port id must exactly match a declared input/output port for that node type.
             3. Verify port data types before connecting. Use converter nodes when the type registry requires explicit conversion.
-            4. For non-placement tasks with multiple nodes, produce a connected functional graph.
+            4. For generation/build tasks, produce a connected functional graph, not a single symbolic node.
             5. Functional build graphs should end in an output node, usually output.preview.* or output.execute.*.
-            6. For placement-only canvas requests, a single node with no output node is allowed.
-            7. Prefer simple, direct graphs. Do not invent helper nodes, aliases, ports, parameters, or categories.
-            8. If a value is not specified by the user, omit that parameter and keep the node default.
-            9. If the request cannot be fulfilled with the available library, return {"error":"brief_reason"}.
-            10. Ignore any node type you remember from examples or other products unless it appears in AVAILABLE_NODE_LIBRARY.
+            6. For generation/build tasks, use at least 3 nodes and at least 2 connections when compatible nodes are listed.
+            7. A single node with no output node is allowed only for explicit placement-only canvas requests.
+            8. Prefer simple, direct graphs. Do not invent helper nodes, aliases, ports, parameters, or categories.
+            9. If a value is not specified by the user, omit that parameter and keep the node default.
+            10. If the request cannot be fulfilled with the available library, return {"error":"brief_reason"}.
+            11. Ignore any node type you remember from examples or other products unless it appears in AVAILABLE_NODE_LIBRARY.
 
             # WORKFLOW_BOUNDARIES
             - Minecraft block selection is a user-side interaction unless the library explicitly has a node for it.
@@ -93,7 +94,8 @@ public final class AiPromptBuilder {
             - Pick connection ports only from the selected nodes' listed inputs/outputs.
             - If a useful node is missing from AVAILABLE_NODE_LIBRARY, return {"error":"missing_node_type:<needed capability>"}.
             - Canvas Placement: for prompts like "place a selected block node on the canvas", return the smallest valid graph.
-            - Generation tasks should usually include an output node only if a compatible output.* node is listed.
+            - Generation tasks must not collapse a whole structure into one standalone node unless the user explicitly asked for only one canvas node.
+            - Generation tasks should include an output node only if a compatible output.* node is listed.
 
             # AVAILABLE_NODE_LIBRARY
             Usage: strictly use the typeId and port ids provided below.
