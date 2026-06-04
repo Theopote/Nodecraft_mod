@@ -5,7 +5,6 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.util.math.Vec3d;
@@ -68,7 +67,7 @@ public class DeconstructSurfaceStripNode extends BaseNode {
         List<LineData> railSegments = new ArrayList<>();
 
         for (int sectionIndex = 0; sectionIndex < sections.size(); sectionIndex++) {
-            sectionPaths.add(createPolyline(sections.get(sectionIndex), closedFlags.get(sectionIndex)));
+            sectionPaths.add(SolidNodeUtils.createPolyline(sections.get(sectionIndex), closedFlags.get(sectionIndex)));
         }
 
         for (int sectionIndex = 0; sectionIndex < sections.size() - 1; sectionIndex++) {
@@ -104,18 +103,4 @@ public class DeconstructSurfaceStripNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
-    private PolylineData createPolyline(List<Vector3d> points, boolean closed) {
-        List<Vec3d> polylinePoints = new ArrayList<>(points.size() + 1);
-        for (Vector3d point : points) {
-            polylinePoints.add(new Vec3d(point.x, point.y, point.z));
-        }
-        if (closed && points.size() >= 2) {
-            Vector3d first = points.getFirst();
-            Vector3d last = points.getLast();
-            if (!first.equals(last)) {
-                polylinePoints.add(new Vec3d(first.x, first.y, first.z));
-            }
-        }
-        return polylinePoints.size() >= 2 ? new PolylineData(polylinePoints) : null;
-    }
 }

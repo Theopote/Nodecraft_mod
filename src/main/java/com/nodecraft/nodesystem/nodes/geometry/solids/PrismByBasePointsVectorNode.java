@@ -4,11 +4,9 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -61,14 +59,14 @@ public class PrismByBasePointsVectorNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object basePointsObj = inputValues.get(INPUT_BASE_POINTS_ID);
-        Object extrusionVectorObj = inputValues.get(INPUT_EXTRUSION_VECTOR_ID);
+        Vector3d extrusionVector = SolidNodeUtils.resolveDirection(inputValues.get(INPUT_EXTRUSION_VECTOR_ID));
 
-        if (!(basePointsObj instanceof List<?> basePointsInput) || !(extrusionVectorObj instanceof Vector3d extrusionVector)) {
+        if (!(basePointsObj instanceof List<?> basePointsInput) || extrusionVector == null) {
             writeEmptyOutputs();
             return;
         }
 
-        List<Vector3d> basePoints = resolvePointList(basePointsInput);
+        List<Vector3d> basePoints = SolidNodeUtils.resolvePointList(basePointsInput);
         double height = extrusionVector.length();
         if (basePoints.size() < 3 || height <= 1.0e-9d) {
             writeEmptyOutputs();
@@ -107,27 +105,4 @@ public class PrismByBasePointsVectorNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
-    private List<Vector3d> resolvePointList(List<?> input) {
-        List<Vector3d> resolved = new ArrayList<>(input.size());
-        for (Object value : input) {
-            Vector3d point = resolvePoint(value);
-            if (point != null) {
-                resolved.add(point);
-            }
-        }
-        return resolved;
-    }
-
-    private Vector3d resolvePoint(Object value) {
-        if (value instanceof PointData pointData) {
-            return pointData.getPosition();
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof BlockPos blockPos) {
-            return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
-        }
-        return null;
-    }
 }

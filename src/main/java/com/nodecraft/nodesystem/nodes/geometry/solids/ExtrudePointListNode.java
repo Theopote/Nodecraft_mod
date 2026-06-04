@@ -6,12 +6,9 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Vector3;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -70,7 +67,7 @@ public class ExtrudePointListNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object pointsObj = inputValues.get(INPUT_POINTS_ID);
-        Vector3d direction = resolveDirection(inputValues.get(INPUT_DIRECTION_ID));
+        Vector3d direction = SolidNodeUtils.resolveDirection(inputValues.get(INPUT_DIRECTION_ID));
 
         if (!(pointsObj instanceof List<?> pointsInput) || direction == null) {
             writeEmptyOutputs();
@@ -87,7 +84,7 @@ public class ExtrudePointListNode extends BaseNode {
         List<LineData> sideSegments = new ArrayList<>();
 
         for (Object entry : pointsInput) {
-            Vector3d point = resolvePoint(entry);
+            Vector3d point = SolidNodeUtils.resolvePoint(entry);
             if (point == null) {
                 continue;
             }
@@ -107,8 +104,8 @@ public class ExtrudePointListNode extends BaseNode {
             return;
         }
 
-        PolylineData sourcePath = createPolyline(sourcePoints, closePath);
-        PolylineData extrudedPath = createPolyline(extrudedPoints, closePath);
+        PolylineData sourcePath = SolidNodeUtils.createPolyline(sourcePoints, closePath);
+        PolylineData extrudedPath = SolidNodeUtils.createPolyline(extrudedPoints, closePath);
         SurfaceStripData surfaceStrip = new SurfaceStripData(
             List.of(List.copyOf(sourcePoints), List.copyOf(extrudedPoints)),
             List.of(closePath, closePath)
@@ -158,44 +155,4 @@ public class ExtrudePointListNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
-    private Vector3d resolvePoint(Object value) {
-        if (value instanceof PointData pointData) {
-            return pointData.getPosition();
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof BlockPos blockPos) {
-            return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
-        }
-        return null;
-    }
-
-    private @Nullable Vector3d resolveDirection(@Nullable Object value) {
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof Vec3d vector) {
-            return new Vector3d(vector.x, vector.y, vector.z);
-        }
-        if (value instanceof Vector3 vector) {
-            return new Vector3d(vector.getX(), vector.getY(), vector.getZ());
-        }
-        return null;
-    }
-
-    private PolylineData createPolyline(List<Vector3d> points, boolean closed) {
-        List<Vec3d> polylinePoints = new ArrayList<>(points.size() + 1);
-        for (Vector3d point : points) {
-            polylinePoints.add(new Vec3d(point.x, point.y, point.z));
-        }
-        if (closed && points.size() >= 2) {
-            Vector3d first = points.getFirst();
-            Vector3d last = points.getLast();
-            if (!first.equals(last)) {
-                polylinePoints.add(new Vec3d(first.x, first.y, first.z));
-            }
-        }
-        return polylinePoints.size() >= 2 ? new PolylineData(polylinePoints) : null;
-    }
 }

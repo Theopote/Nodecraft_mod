@@ -9,8 +9,6 @@ import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Vector3;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -65,7 +63,7 @@ public class ExtrudeProfileNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object profileObj = inputValues.get(INPUT_PROFILE_ID);
-        Vector3d direction = resolveDirection(inputValues.get(INPUT_DIRECTION_ID));
+        Vector3d direction = SolidNodeUtils.resolveDirection(inputValues.get(INPUT_DIRECTION_ID));
 
         if (!(profileObj instanceof PolygonProfileData baseProfile) || direction == null) {
             writeEmptyOutputs();
@@ -126,16 +124,4 @@ public class ExtrudeProfileNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
-    private @Nullable Vector3d resolveDirection(@Nullable Object value) {
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof Vec3d vector) {
-            return new Vector3d(vector.x, vector.y, vector.z);
-        }
-        if (value instanceof Vector3 vector) {
-            return new Vector3d(vector.getX(), vector.getY(), vector.getZ());
-        }
-        return null;
-    }
 }

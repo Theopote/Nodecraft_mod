@@ -5,14 +5,10 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Curve;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -28,8 +24,6 @@ import java.util.UUID;
     order = 5
 )
 public class SweepProfileAlongPathNode extends BaseNode {
-
-    private static final double EPSILON = 1.0e-9d;
 
     @NodeProperty(displayName = "Orient To Path", category = "Sweep", order = 1)
     private boolean orientToPath = true;
@@ -96,8 +90,10 @@ public class SweepProfileAlongPathNode extends BaseNode {
 
         for (int i = 0; i < spinePoints.size(); i++) {
             Vector3d spinePoint = spinePoints.get(i);
-            Vector3d tangent = computeTangent(spinePoints, i);
-            Frame frame = orientToPath ? buildFrame(spinePoint, tangent) : Frame.identity(spinePoint);
+            Vector3d tangent = SolidNodeUtils.computeTangent(spinePoints, i);
+            SolidNodeUtils.Frame frame = orientToPath
+                ? SolidNodeUtils.buildFrame(spinePoint, tangent)
+                : SolidNodeUtils.Frame.identity(spinePoint);
 
             List<Vector3d> uniqueSectionPoints = new ArrayList<>(baseUniquePoints.size());
             for (Vector3d profilePoint : baseUniquePoints) {
@@ -111,7 +107,7 @@ public class SweepProfileAlongPathNode extends BaseNode {
             closedSectionPoints.addAll(uniqueSectionPoints);
             closedSectionPoints.add(new Vector3d(uniqueSectionPoints.get(0)));
 
-            PlaneData sectionPlane = new PlaneData(spinePoint, frame.zAxis);
+            PlaneData sectionPlane = new PlaneData(spinePoint, frame.zAxis());
             PolygonProfileData sectionProfile = new PolygonProfileData(closedSectionPoints, sectionPlane);
 
             sectionProfiles.add(sectionProfile);
@@ -156,92 +152,6 @@ public class SweepProfileAlongPathNode extends BaseNode {
         Object curveObj = inputValues.get(INPUT_CURVE_ID);
         Object pathPointsObj = inputValues.get(INPUT_PATH_POINTS_ID);
 
-        List<Vector3d> spinePoints = new ArrayList<>();
-        if (lineObj instanceof LineData line) {
-            spinePoints.add(fromVec3d(line.getStart()));
-            spinePoints.add(fromVec3d(line.getEnd()));
-        } else if (polylineObj instanceof PolylineData polyline) {
-            for (Vec3d point : polyline.getPoints()) {
-                spinePoints.add(fromVec3d(point));
-            }
-        } else if (curveObj instanceof Curve curve) {
-            for (Vec3d point : curve.getSamplePoints()) {
-                spinePoints.add(fromVec3d(point));
-            }
-        } else if (pathPointsObj instanceof List<?> list) {
-            for (Object entry : list) {
-                if (entry instanceof Vector3d vector) {
-                    spinePoints.add(new Vector3d(vector));
-                }
-            }
-        }
-        return spinePoints;
-    }
-
-    private Vector3d fromVec3d(Vec3d point) {
-        return new Vector3d(point.x, point.y, point.z);
-    }
-
-    private Vector3d computeTangent(List<Vector3d> points, int index) {
-        Vector3d tangent;
-        if (index == 0) {
-            tangent = new Vector3d(points.get(1)).sub(points.get(0));
-        } else if (index == points.size() - 1) {
-            tangent = new Vector3d(points.get(index)).sub(points.get(index - 1));
-        } else {
-            tangent = new Vector3d(points.get(index + 1)).sub(points.get(index - 1));
-        }
-        if (tangent.lengthSquared() <= EPSILON) {
-            return new Vector3d(0.0d, 0.0d, 1.0d);
-        }
-        return tangent.normalize();
-    }
-
-    private Frame buildFrame(Vector3d origin, Vector3d tangent) {
-        Vector3d zAxis = new Vector3d(tangent);
-        if (zAxis.lengthSquared() <= EPSILON) {
-            return Frame.identity(origin);
-        }
-        zAxis.normalize();
-
-        Vector3d referenceUp = Math.abs(zAxis.y) < 0.99d
-            ? new Vector3d(0.0d, 1.0d, 0.0d)
-            : new Vector3d(1.0d, 0.0d, 0.0d);
-        Vector3d xAxis = referenceUp.cross(zAxis, new Vector3d());
-        if (xAxis.lengthSquared() <= EPSILON) {
-            referenceUp.set(0.0d, 0.0d, 1.0d);
-            xAxis = referenceUp.cross(zAxis, new Vector3d());
-        }
-        if (xAxis.lengthSquared() <= EPSILON) {
-            return Frame.identity(origin);
-        }
-        xAxis.normalize();
-
-        Vector3d yAxis = new Vector3d(zAxis).cross(xAxis);
-        if (yAxis.lengthSquared() <= EPSILON) {
-            return Frame.identity(origin);
-        }
-        yAxis.normalize();
-
-        return new Frame(origin, xAxis, yAxis, zAxis);
-    }
-
-    private record Frame(Vector3d origin, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
-        static Frame identity(Vector3d origin) {
-            return new Frame(
-                new Vector3d(origin),
-                new Vector3d(1.0d, 0.0d, 0.0d),
-                new Vector3d(0.0d, 1.0d, 0.0d),
-                new Vector3d(0.0d, 0.0d, 1.0d)
-            );
-        }
-
-        Vector3d transform(Vector3d local) {
-            Vector3d result = new Vector3d(origin);
-            result.add(new Vector3d(xAxis).mul(local.x));
-            result.add(new Vector3d(yAxis).mul(local.y));
-            result.add(new Vector3d(zAxis).mul(local.z));
-            return result;
-        }
+        return SolidNodeUtils.resolveSpinePoints(lineObj, polylineObj, curveObj, pathPointsObj);
     }
 }

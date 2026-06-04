@@ -6,17 +6,14 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -90,7 +87,7 @@ public class ShrinkwrapPointsToVoxelGeometryNode extends BaseNode {
             return;
         }
 
-        List<Vector3d> queries = resolvePointList(inputValues.get(INPUT_POINTS_ID));
+        List<Vector3d> queries = SolidNodeUtils.resolvePointList(inputValues.get(INPUT_POINTS_ID));
         if (queries.isEmpty()) {
             writeInvalid();
             return;
@@ -155,40 +152,6 @@ public class ShrinkwrapPointsToVoxelGeometryNode extends BaseNode {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_DISTANCES_ID, List.of());
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private static List<Vector3d> resolvePointList(Object value) {
-        List<Vector3d> out = new ArrayList<>();
-        if (value instanceof Collection<?> collection) {
-            for (Object entry : collection) {
-                Vector3d p = resolvePoint(entry);
-                if (p != null) {
-                    out.add(p);
-                }
-            }
-            return out;
-        }
-        Vector3d single = resolvePoint(value);
-        if (single != null) {
-            out.add(single);
-        }
-        return out;
-    }
-
-    private static Vector3d resolvePoint(Object value) {
-        if (value instanceof PointData pd) {
-            return new Vector3d(pd.getPosition());
-        }
-        if (value instanceof Vector3d v) {
-            return new Vector3d(v);
-        }
-        if (value instanceof BlockPos bp) {
-            return new Vector3d(bp.getX(), bp.getY(), bp.getZ());
-        }
-        if (value instanceof Vec3d vec) {
-            return new Vector3d(vec.x, vec.y, vec.z);
-        }
-        return null;
     }
 
     public boolean isFillSolid() {

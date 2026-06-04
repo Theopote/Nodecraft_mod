@@ -7,12 +7,9 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -116,7 +113,7 @@ public class RevolveProfileNode extends BaseNode {
 
             List<Vector3d> uniqueSectionPoints = new ArrayList<>(baseUniquePoints.size());
             for (Vector3d point : baseUniquePoints) {
-                Vector3d revolvedPoint = rotateAroundAxis(point, axis.origin(), axis.direction(), currentAngle);
+                Vector3d revolvedPoint = SolidNodeUtils.rotateAroundAxis(point, axis.origin(), axis.direction(), currentAngle);
                 uniqueSectionPoints.add(revolvedPoint);
                 allPoints.add(revolvedPoint);
             }
@@ -125,8 +122,17 @@ public class RevolveProfileNode extends BaseNode {
             closedSectionPoints.addAll(uniqueSectionPoints);
             closedSectionPoints.add(new Vector3d(uniqueSectionPoints.get(0)));
 
-            Vector3d sectionCenter = computeCenter(uniqueSectionPoints);
-            PlaneData sectionPlane = new PlaneData(sectionCenter, axis.direction());
+            Vector3d sectionCenter = SolidNodeUtils.computeCenter(uniqueSectionPoints);
+            Vector3d sectionNormal = SolidNodeUtils.rotateAroundAxis(
+                profile.getPlane().getNormal(),
+                new Vector3d(),
+                axis.direction(),
+                currentAngle
+            );
+            if (sectionNormal.lengthSquared() <= EPSILON) {
+                sectionNormal = new Vector3d(axis.direction());
+            }
+            PlaneData sectionPlane = new PlaneData(sectionCenter, sectionNormal);
             PolygonProfileData sectionProfile = new PolygonProfileData(closedSectionPoints, sectionPlane);
 
             sectionProfiles.add(sectionProfile);
@@ -176,66 +182,12 @@ public class RevolveProfileNode extends BaseNode {
             }
         }
 
-        Vector3d origin = resolvePoint(inputValues.get(INPUT_AXIS_ORIGIN_ID));
-        Vector3d direction = resolveDirection(inputValues.get(INPUT_AXIS_DIRECTION_ID));
+        Vector3d origin = SolidNodeUtils.resolvePoint(inputValues.get(INPUT_AXIS_ORIGIN_ID));
+        Vector3d direction = SolidNodeUtils.resolveDirection(inputValues.get(INPUT_AXIS_DIRECTION_ID));
         if (origin == null || direction == null || direction.lengthSquared() <= EPSILON) {
             return null;
         }
         return new Axis(origin, direction.normalize());
-    }
-
-    private @Nullable Vector3d resolvePoint(@Nullable Object value) {
-        if (value instanceof PointData point) {
-            return point.getPosition();
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof Vec3d vec) {
-            return new Vector3d(vec.x, vec.y, vec.z);
-        }
-        if (value instanceof BlockPos pos) {
-            return new Vector3d(pos.getX(), pos.getY(), pos.getZ());
-        }
-        return null;
-    }
-
-    private @Nullable Vector3d resolveDirection(@Nullable Object value) {
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof Vec3d vec) {
-            return new Vector3d(vec.x, vec.y, vec.z);
-        }
-        if (value instanceof PointData point) {
-            return point.getPosition();
-        }
-        if (value instanceof BlockPos pos) {
-            return new Vector3d(pos.getX(), pos.getY(), pos.getZ());
-        }
-        return null;
-    }
-
-    private Vector3d rotateAroundAxis(Vector3d point, Vector3d axisOrigin, Vector3d axisDirection, double angleRadians) {
-        Vector3d k = new Vector3d(axisDirection).normalize();
-        Vector3d relative = new Vector3d(point).sub(axisOrigin);
-
-        double cos = Math.cos(angleRadians);
-        double sin = Math.sin(angleRadians);
-
-        Vector3d term1 = new Vector3d(relative).mul(cos);
-        Vector3d term2 = new Vector3d(k).cross(relative, new Vector3d()).mul(sin);
-        Vector3d term3 = new Vector3d(k).mul(k.dot(relative) * (1.0d - cos));
-
-        return term1.add(term2).add(term3).add(axisOrigin);
-    }
-
-    private Vector3d computeCenter(List<Vector3d> points) {
-        Vector3d center = new Vector3d();
-        for (Vector3d point : points) {
-            center.add(point);
-        }
-        return points.isEmpty() ? center : center.div(points.size());
     }
 
     private double getInputDouble(String portId, double fallback) {

@@ -6,11 +6,9 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -82,8 +80,8 @@ public class LoftPointListsNode extends BaseNode {
             return;
         }
 
-        List<Vector3d> sourcePoints = resolvePointList(sourceInput);
-        List<Vector3d> targetPoints = resolvePointList(targetInput);
+        List<Vector3d> sourcePoints = SolidNodeUtils.resolvePointList(sourceInput);
+        List<Vector3d> targetPoints = SolidNodeUtils.resolvePointList(targetInput);
         if (sourcePoints.size() < 2 || targetPoints.size() < 2) {
             writeEmptyOutputs();
             return;
@@ -112,8 +110,8 @@ public class LoftPointListsNode extends BaseNode {
             ));
         }
 
-        PolylineData sourcePath = createPolyline(sourcePoints, closeSource);
-        PolylineData targetPath = createPolyline(targetPoints, closeTarget);
+        PolylineData sourcePath = SolidNodeUtils.createPolyline(sourcePoints, closeSource);
+        PolylineData targetPath = SolidNodeUtils.createPolyline(targetPoints, closeTarget);
         SurfaceStripData surfaceStrip = new SurfaceStripData(
             List.of(List.copyOf(pairedSourcePoints), List.copyOf(pairedTargetPoints)),
             List.of(closeSource, closeTarget)
@@ -192,42 +190,4 @@ public class LoftPointListsNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
-    private List<Vector3d> resolvePointList(List<?> input) {
-        List<Vector3d> resolved = new ArrayList<>(input.size());
-        for (Object entry : input) {
-            Vector3d point = resolvePoint(entry);
-            if (point != null) {
-                resolved.add(point);
-            }
-        }
-        return resolved;
-    }
-
-    private Vector3d resolvePoint(Object value) {
-        if (value instanceof PointData pointData) {
-            return pointData.getPosition();
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof BlockPos blockPos) {
-            return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
-        }
-        return null;
-    }
-
-    private PolylineData createPolyline(List<Vector3d> points, boolean closed) {
-        List<Vec3d> polylinePoints = new ArrayList<>(points.size() + 1);
-        for (Vector3d point : points) {
-            polylinePoints.add(new Vec3d(point.x, point.y, point.z));
-        }
-        if (closed && points.size() >= 2) {
-            Vector3d first = points.get(0);
-            Vector3d last = points.get(points.size() - 1);
-            if (!first.equals(last)) {
-                polylinePoints.add(new Vec3d(first.x, first.y, first.z));
-            }
-        }
-        return polylinePoints.size() >= 2 ? new PolylineData(polylinePoints) : null;
-    }
 }
