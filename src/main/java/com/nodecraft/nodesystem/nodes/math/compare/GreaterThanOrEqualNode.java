@@ -47,29 +47,7 @@ public class GreaterThanOrEqualNode extends BaseNode {
         Object valA = inputValues.get(INPUT_A_ID);
         Object valB = inputValues.get(INPUT_B_ID);
 
-        boolean result = false;
-        if (valA instanceof Number && valB instanceof Number) {
-            double numA = ((Number) valA).doubleValue();
-            double numB = ((Number) valB).doubleValue();
-            result = numA >= numB;
-        } else if (valA instanceof String && valB instanceof String) {
-            result = ((String) valA).compareTo((String) valB) >= 0;
-        } else if (valA instanceof String && valB instanceof Number) {
-            try {
-                double numA = Double.parseDouble((String) valA);
-                double numB = ((Number) valB).doubleValue();
-                result = numA >= numB;
-            } catch (NumberFormatException ignored) {
-            }
-        } else if (valA instanceof Number && valB instanceof String) {
-            try {
-                double numA = ((Number) valA).doubleValue();
-                double numB = Double.parseDouble((String) valB);
-                result = numA >= numB;
-            } catch (NumberFormatException ignored) {
-            }
-        }
-
-        outputValues.put(OUTPUT_RESULT_ID, result);
+        CompareUtils.Relation relation = CompareUtils.compare(valA, valB);
+        outputValues.put(OUTPUT_RESULT_ID, relation.greater() || relation.equal());
     }
 }

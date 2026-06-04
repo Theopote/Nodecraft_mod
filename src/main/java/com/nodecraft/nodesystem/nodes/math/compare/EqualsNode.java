@@ -7,7 +7,6 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -48,21 +47,6 @@ public class EqualsNode extends BaseNode {
         Object valA = inputValues.get(INPUT_A_ID);
         Object valB = inputValues.get(INPUT_B_ID);
 
-        boolean result;
-        if (valA == null && valB == null) {
-            result = true;
-        } else if (valA == null || valB == null) {
-            result = false;
-        } else if (valA instanceof Number && valB instanceof Number) {
-            double numA = ((Number) valA).doubleValue();
-            double numB = ((Number) valB).doubleValue();
-            result = Math.abs(numA - numB) < 1e-10;
-        } else if (valA instanceof String || valB instanceof String) {
-            result = Objects.toString(valA, "").equals(Objects.toString(valB, ""));
-        } else {
-            result = Objects.equals(valA, valB);
-        }
-
-        outputValues.put(OUTPUT_RESULT_ID, result);
+        outputValues.put(OUTPUT_RESULT_ID, CompareUtils.equalValues(valA, valB));
     }
 }

@@ -30,8 +30,6 @@ public class CompareNode extends BaseNode {
     private static final String OUTPUT_GREATER_ID = "output_greater";
     private static final String OUTPUT_LESS_ID = "output_less";
 
-    private int compareMode = 0;
-
     public CompareNode() {
         super(UUID.randomUUID(), "math.compare.compare");
 
@@ -63,45 +61,14 @@ public class CompareNode extends BaseNode {
         Object valB = inputValues.get(INPUT_B_ID);
 
         Object modeObj = inputValues.get(INPUT_MODE_ID);
-        int mode = this.compareMode;
-        if (modeObj instanceof Number value) {
-            mode = value.intValue();
-        }
+        int mode = modeObj instanceof Number value ? value.intValue() : 0;
 
-        boolean isEqual = false;
-        boolean isGreater = false;
-        boolean isLess = false;
-
-        if (valA instanceof Number && valB instanceof Number) {
-            double a = ((Number) valA).doubleValue();
-            double b = ((Number) valB).doubleValue();
-            isEqual = Double.compare(a, b) == 0;
-            isGreater = a > b;
-            isLess = a < b;
-        } else if (valA instanceof String && valB instanceof String) {
-            int cmp = ((String) valA).compareTo((String) valB);
-            isEqual = cmp == 0;
-            isGreater = cmp > 0;
-            isLess = cmp < 0;
-        } else if (valA != null && valB != null) {
-            isEqual = valA.equals(valB);
-        } else {
-            isEqual = valA == null && valB == null;
-        }
-
-        boolean result = switch (mode) {
-            case 0 -> isEqual;
-            case 1 -> !isEqual;
-            case 2 -> isGreater;
-            case 3 -> isLess;
-            case 4 -> isGreater || isEqual;
-            case 5 -> isLess || isEqual;
-            default -> isEqual;
-        };
+        CompareUtils.Relation relation = CompareUtils.compare(valA, valB);
+        boolean result = CompareUtils.modeResult(relation, mode);
 
         outputValues.put(OUTPUT_RESULT_ID, result);
-        outputValues.put(OUTPUT_EQUAL_ID, isEqual);
-        outputValues.put(OUTPUT_GREATER_ID, isGreater);
-        outputValues.put(OUTPUT_LESS_ID, isLess);
+        outputValues.put(OUTPUT_EQUAL_ID, relation.equal());
+        outputValues.put(OUTPUT_GREATER_ID, relation.greater());
+        outputValues.put(OUTPUT_LESS_ID, relation.less());
     }
 }
