@@ -13,6 +13,7 @@ public abstract class AbstractPreviewElement {
     protected final String id;
     protected final String ownerNodeId;
     protected final long createdTime;
+    protected volatile long lastUpdatedTime;
     
     protected boolean visible = true;
     protected float opacity = 1.0f;
@@ -24,6 +25,7 @@ public abstract class AbstractPreviewElement {
         this.id = id;
         this.ownerNodeId = ownerNodeId;
         this.createdTime = System.currentTimeMillis();
+        this.lastUpdatedTime = this.createdTime;
         this.options = options != null ? options : new PreviewOptions();
         
         // 从选项中设置基础属性
@@ -113,6 +115,7 @@ public abstract class AbstractPreviewElement {
      */
     public void updateData(Object newData) {
         processData(newData);
+        touch();
     }
     
     /**
@@ -132,6 +135,7 @@ public abstract class AbstractPreviewElement {
             if (newOptions.renderPriority != null) {
                 setRenderPriority(newOptions.renderPriority);
             }
+            touch();
         }
     }
     
@@ -178,13 +182,24 @@ public abstract class AbstractPreviewElement {
     protected long getAge() {
         return System.currentTimeMillis() - createdTime;
     }
+
+    /**
+     * Refresh the expiration timer when an existing preview is updated in place.
+     */
+    protected void touch() {
+        lastUpdatedTime = System.currentTimeMillis();
+    }
+
+    protected long getTimeSinceLastUpdate() {
+        return System.currentTimeMillis() - lastUpdatedTime;
+    }
     
     /**
      * 检查是否过期（如果设置了持续时间）
      */
     protected boolean isExpired() {
         if (options.duration != null && options.duration > 0) {
-            return getAge() > options.duration * 1000L;
+            return getTimeSinceLastUpdate() > options.duration * 1000L;
         }
         return false;
     }

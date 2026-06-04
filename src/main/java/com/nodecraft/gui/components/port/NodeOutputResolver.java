@@ -13,12 +13,20 @@ import java.util.UUID;
 
 final class NodeOutputResolver {
     private static final int MAX_RESOLVE_DEPTH = 20;
+    private static final String PREVIEW_NODE_TYPE_PREFIX = "output.preview.";
 
     private NodeOutputResolver() {
     }
 
     static Object resolveNodeOutput(NodeGraph graph, INode node, String outputPortId) {
         return resolveNodeOutput(graph, node, outputPortId, new java.util.HashSet<>(), 0);
+    }
+
+    static boolean shouldUseCachedOutput(INode node) {
+        if (node == null || node.getTypeId() == null) {
+            return false;
+        }
+        return node.getTypeId().startsWith(PREVIEW_NODE_TYPE_PREFIX);
     }
 
     private static Map<String, Object> collectConnectedInputs(NodeGraph graph, INode node, Set<UUID> visiting, int depth) {
@@ -70,6 +78,11 @@ final class NodeOutputResolver {
     private static Object resolveNodeOutput(NodeGraph graph, INode node, String outputPortId, Set<UUID> visiting, int depth) {
         if (graph == null || node == null || outputPortId == null) {
             return null;
+        }
+
+        if (shouldUseCachedOutput(node)) {
+            Object cached = node.getOutput(outputPortId);
+            return cached != null ? cached : getPortValue(node, outputPortId, false);
         }
 
         if (depth > MAX_RESOLVE_DEPTH) {

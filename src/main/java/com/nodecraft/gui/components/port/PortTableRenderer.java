@@ -160,8 +160,7 @@ public final class PortTableRenderer {
     }
 
     private static boolean shouldUseCachedOutputForSelectedNode(INode selectedNode) {
-        return selectedNode instanceof GeometryViewerNode
-            || selectedNode instanceof PreviewGeometryNode;
+        return NodeOutputResolver.shouldUseCachedOutput(selectedNode);
     }
 
     private static java.util.List<IPort> filterViewerPorts(java.util.List<IPort> ports, INode node, NodeGraph graph) {
