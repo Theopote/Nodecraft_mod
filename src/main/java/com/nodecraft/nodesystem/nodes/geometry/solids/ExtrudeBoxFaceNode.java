@@ -4,7 +4,6 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
@@ -67,7 +66,7 @@ public class ExtrudeBoxFaceNode extends BaseNode {
         Integer resolvedFaceIndex = null;
 
         if (geometryObj instanceof BoxGeometryData sourceGeometry) {
-            int faceIndex = resolveFaceIndex(faceObj, faceIndexObj);
+            int faceIndex = SolidNodeUtils.resolveBoxFaceIndex(faceObj, faceIndexObj);
             if (faceIndex >= 0 && faceIndex <= 5) {
                 double distance = distanceObj instanceof Number number ? number.doubleValue() : 0.0d;
                 extrudedBox = createExtrudedBox(sourceGeometry, faceIndex, distance);
@@ -87,16 +86,6 @@ public class ExtrudeBoxFaceNode extends BaseNode {
         outputValues.put(OUTPUT_RESOLVED_FACE_INDEX_ID, resolvedFaceIndex);
     }
 
-    private int resolveFaceIndex(Object faceObj, Object faceIndexObj) {
-        if (faceObj instanceof BoxFaceData face) {
-            return face.getIndex();
-        }
-        if (faceIndexObj instanceof Number number) {
-            return number.intValue();
-        }
-        return -1;
-    }
-
     private BoxGeometryData createExtrudedBox(BoxGeometryData geometry, int faceIndex, double distance) {
         if (Math.abs(distance) < 1.0e-9d) {
             return null;
@@ -106,45 +95,22 @@ public class ExtrudeBoxFaceNode extends BaseNode {
         Vector3d sourceHalfExtents = geometry.getHalfExtents();
         Matrix3d orientation = geometry.getOrientationMatrix();
 
-        int axis = switch (faceIndex) {
-            case 0, 1 -> 1;
-            case 2, 3 -> 0;
-            case 4, 5 -> 2;
-            default -> throw new IllegalArgumentException("Unsupported box face index: " + faceIndex);
-        };
-        int direction = switch (faceIndex) {
-            case 1, 3, 5 -> 1;
-            default -> -1;
-        };
+        SolidNodeUtils.BoxFaceMapping mapping = SolidNodeUtils.resolveBoxFaceMapping(faceIndex);
 
-        double sourceHalf = getAxisValue(sourceHalfExtents, axis);
+        double sourceHalf = SolidNodeUtils.getAxisValue(sourceHalfExtents, mapping.axis());
         double extrusionHalf = Math.abs(distance) / 2.0d;
         Vector3d extrudedHalfExtents = new Vector3d(sourceHalfExtents);
-        setAxisValue(extrudedHalfExtents, axis, extrusionHalf);
+        SolidNodeUtils.setAxisValue(extrudedHalfExtents, mapping.axis(), extrusionHalf);
 
         Vector3d localCenterOffset = new Vector3d();
-        setAxisValue(localCenterOffset, axis, direction * sourceHalf + (distance / 2.0d));
+        SolidNodeUtils.setAxisValue(
+            localCenterOffset,
+            mapping.axis(),
+            mapping.direction() * sourceHalf + (distance / 2.0d)
+        );
         orientation.transform(localCenterOffset);
 
         Vector3d extrudedCenter = new Vector3d(sourceCenter).add(localCenterOffset);
         return new BoxGeometryData(extrudedCenter, extrudedHalfExtents, orientation, geometry.isOriented());
-    }
-
-    private double getAxisValue(Vector3d vector, int axis) {
-        return switch (axis) {
-            case 0 -> vector.x;
-            case 1 -> vector.y;
-            case 2 -> vector.z;
-            default -> throw new IllegalArgumentException("Unsupported axis: " + axis);
-        };
-    }
-
-    private void setAxisValue(Vector3d vector, int axis, double value) {
-        switch (axis) {
-            case 0 -> vector.x = value;
-            case 1 -> vector.y = value;
-            case 2 -> vector.z = value;
-            default -> throw new IllegalArgumentException("Unsupported axis: " + axis);
-        }
     }
 }

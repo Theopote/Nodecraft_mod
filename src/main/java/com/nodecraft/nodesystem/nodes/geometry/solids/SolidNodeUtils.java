@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.solids;
 
 import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.util.Curve;
@@ -168,6 +169,48 @@ final class SolidNodeUtils {
         return new Vec3d(point.x, point.y, point.z);
     }
 
+    static int resolveBoxFaceIndex(@Nullable Object faceObj, @Nullable Object faceIndexObj) {
+        if (faceObj instanceof BoxFaceData face) {
+            return face.getIndex();
+        }
+        if (faceIndexObj instanceof Number number) {
+            return number.intValue();
+        }
+        return -1;
+    }
+
+    static BoxFaceMapping resolveBoxFaceMapping(int faceIndex) {
+        int axis = switch (faceIndex) {
+            case 0, 1 -> 1;
+            case 2, 3 -> 0;
+            case 4, 5 -> 2;
+            default -> throw new IllegalArgumentException("Unsupported box face index: " + faceIndex);
+        };
+        int direction = switch (faceIndex) {
+            case 1, 3, 5 -> 1;
+            default -> -1;
+        };
+        return new BoxFaceMapping(axis, direction);
+    }
+
+    static double getAxisValue(Vector3d vector, int axis) {
+        return switch (axis) {
+            case 0 -> vector.x;
+            case 1 -> vector.y;
+            case 2 -> vector.z;
+            default -> throw new IllegalArgumentException("Unsupported axis: " + axis);
+        };
+    }
+
+    static void setAxisValue(Vector3d vector, int axis, double value) {
+        switch (axis) {
+            case 0 -> vector.x = value;
+            case 1 -> vector.y = value;
+            case 2 -> vector.z = value;
+            default -> throw new IllegalArgumentException("Unsupported axis: " + axis);
+        }
+    }
+
     private static Vector3d fromVec3d(Vec3d point) {
         return new Vector3d(point.x, point.y, point.z);
     }
@@ -209,5 +252,8 @@ final class SolidNodeUtils {
             result.add(new Vector3d(zAxis).mul(local.z));
             return result;
         }
+    }
+
+    record BoxFaceMapping(int axis, int direction) {
     }
 }

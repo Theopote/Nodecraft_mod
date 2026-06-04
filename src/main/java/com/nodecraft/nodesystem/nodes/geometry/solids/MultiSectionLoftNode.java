@@ -4,11 +4,10 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
+import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -90,33 +89,20 @@ public class MultiSectionLoftNode extends BaseNode {
             sectionPaths.add(profile.getBoundary());
         }
 
-        List<Object> rails = new ArrayList<>(expected);
+        List<PolylineData> rails = new ArrayList<>(expected);
         for (int i = 0; i < expected; i++) {
-            List<Vec3d> railPts = new ArrayList<>(profiles.size());
+            List<net.minecraft.util.math.Vec3d> railPts = new ArrayList<>(profiles.size());
             for (List<Vector3d> section : stripSections) {
                 Vector3d p = section.get(i);
-                railPts.add(new Vec3d(p.x, p.y, p.z));
+                railPts.add(SolidNodeUtils.toVec3d(p));
             }
-            if (railPts.size() >= 2) {
-                rails.add(new com.nodecraft.nodesystem.datatypes.PolylineData(railPts));
-            }
-        }
-
-        List<LineData> segmentRails = new ArrayList<>();
-        for (int s = 0; s < stripSections.size() - 1; s++) {
-            List<Vector3d> a = stripSections.get(s);
-            List<Vector3d> b = stripSections.get(s + 1);
-            for (int i = 0; i < expected; i++) {
-                Vector3d p0 = a.get(i);
-                Vector3d p1 = b.get(i);
-                segmentRails.add(new LineData(new Vec3d(p0.x, p0.y, p0.z), new Vec3d(p1.x, p1.y, p1.z)));
-            }
+            rails.add(new PolylineData(railPts));
         }
 
         SurfaceStripData surface = new SurfaceStripData(stripSections, closedFlags);
         outputValues.put(OUTPUT_PROFILES_ID, List.copyOf(profiles));
         outputValues.put(OUTPUT_SECTION_PATHS_ID, List.copyOf(sectionPaths));
-        outputValues.put(OUTPUT_RAILS_ID, List.copyOf(rails.isEmpty() ? segmentRails : rails));
+        outputValues.put(OUTPUT_RAILS_ID, List.copyOf(rails));
         outputValues.put(OUTPUT_SIDE_SURFACE_ID, surface);
         outputValues.put(OUTPUT_SECTION_COUNT_ID, profiles.size());
         outputValues.put(OUTPUT_VALID_ID, true);
@@ -131,4 +117,3 @@ public class MultiSectionLoftNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 }
-
