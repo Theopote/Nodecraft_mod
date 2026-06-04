@@ -21,6 +21,8 @@ final class AiAssistantSettingsPopupRenderer {
             ImString apiBaseUrl,
             ImString apiKey,
             ImString model,
+            ImInt providerPresetIndex,
+            String[] providerPresetLabels,
             String detectedProviderLabel,
             String[] suggestedModels,
             ImInt providerStrategyIndex,
@@ -35,6 +37,8 @@ final class AiAssistantSettingsPopupRenderer {
     }
 
     interface Actions {
+        void onProviderPresetSelected(int index);
+
         void onValidateLocal();
 
         void onTestRemoteConnection();
@@ -59,6 +63,16 @@ final class AiAssistantSettingsPopupRenderer {
         ImGui.separator();
 
         ImGui.checkbox("Enable remote planner", state.enableRemotePlanner());
+
+        if (state.providerPresetLabels() != null && state.providerPresetLabels().length > 0) {
+            ImGui.text("Provider Preset");
+            ImGui.pushItemWidth(mediumFieldWidth);
+            if (ImGui.combo("##ai_provider_preset", state.providerPresetIndex(), state.providerPresetLabels())) {
+                int index = Math.max(0, Math.min(state.providerPresetLabels().length - 1, state.providerPresetIndex().get()));
+                actions.onProviderPresetSelected(index);
+            }
+            ImGui.popItemWidth();
+        }
 
         ImGui.text("API Base URL");
         ImGui.pushItemWidth(wideFieldWidth);

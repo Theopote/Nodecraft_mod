@@ -228,6 +228,7 @@ public final class AiAssistantPanel {
     }
 
     private void renderAiSettingsPopup() {
+        int providerPresetIndex = AiProviderModelService.resolveProviderPresetIndex(aiApiBaseUrl.get());
         String detectedProviderLabel = AiProviderModelService.resolveDetectedProviderLabel(aiApiBaseUrl.get());
         String[] suggestedModels = AiProviderModelService.resolveSuggestedModels(aiApiBaseUrl.get());
         maybeAutofillModelByProviderChange(detectedProviderLabel, suggestedModels);
@@ -238,6 +239,8 @@ public final class AiAssistantPanel {
                         aiApiBaseUrl,
                         aiApiKey,
                         aiModel,
+                        new ImInt(providerPresetIndex),
+                        AiProviderModelService.providerPresetLabels(),
                         detectedProviderLabel,
                         suggestedModels,
                         aiProviderStrategyIndex,
@@ -250,6 +253,11 @@ public final class AiAssistantPanel {
                         aiSettingsPath
                 ),
                 new AiAssistantSettingsPopupRenderer.Actions() {
+                    @Override
+                    public void onProviderPresetSelected(int index) {
+                        applyProviderPreset(index);
+                    }
+
                     @Override
                     public void onValidateLocal() {
                         aiSettingsStatusMessage = validateAiSettings();
@@ -892,11 +900,24 @@ public final class AiAssistantPanel {
         String requestSnapshot = buildRemoteRequestSnapshot(config, userPrompt, userPromptPayload, relevantSchemas.size());
         boolean submitted = aiAssistantComponent.submitRemotePlannerRequest(userPrompt, config, conversationHistory, requestSnapshot);
         if (submitted) {
+            NodeCraft.LOGGER.info(
+                    "[AI_SEND] Remote planner submitted. provider={}, baseUrl={}, model={}, strategy={}, timeoutSeconds={}, maxOutputTokens={}, schemas={}, historyMessages={}, promptFingerprint={}",
+                    AiProviderModelService.resolveDetectedProviderLabel(config.apiBaseUrl()),
+                    config.apiBaseUrl(),
+                    config.model(),
+                    config.providerStrategy(),
+                    config.timeoutSeconds(),
+                    config.maxOutputTokens(),
+                    relevantSchemas.size(),
+                    conversationHistory.size(),
+                    computePromptFingerprint(userPrompt)
+            );
             aiPlanStatusMessage = "Remote planner request submitted...";
             addAiChatMessage("assistant", "Remote planner request submitted. Streaming output will appear while generating.");
             return;
         }
 
+        NodeCraft.LOGGER.warn("[AI_SEND] Remote planner submit rejected because another request is running.");
         aiPlanStatusMessage = "Remote planner is already running. Please wait for completion or cancel the current request.";
         addAiChatMessage("assistant", aiPlanStatusMessage);
     }
@@ -1024,6 +1045,7 @@ public final class AiAssistantPanel {
 
         if (pollResult.hasException()) {
             String error = "Remote planner failed: " + pollResult.exceptionMessage();
+            NodeCraft.LOGGER.warn("[AI_SEND] Remote planner completed with exception. message={}", pollResult.exceptionMessage());
             aiPlanStatusMessage = error;
             addAiChatMessage("assistant", error);
             return;
@@ -1033,6 +1055,7 @@ public final class AiAssistantPanel {
         AiRemotePlannerService.RemotePlanResult result = pollResult.result();
         if (result == null) {
             String error = "Remote planner failed: unknown error";
+            NodeCraft.LOGGER.warn("[AI_SEND] Remote planner completed with null result.");
             aiPlanStatusMessage = error;
             addAiChatMessage("assistant", error);
             return;
@@ -1040,12 +1063,26 @@ public final class AiAssistantPanel {
 
         if (!result.success()) {
             String error = formatRemoteErrorMessage(result);
+            NodeCraft.LOGGER.warn(
+                    "[AI_SEND] Remote planner failed. category={}, statusCode={}, attempts={}, detail={}",
+                    result.errorCategory(),
+                    result.statusCode(),
+                    result.attempts(),
+                    result.errorMessage()
+            );
             aiPlanStatusMessage = error;
             addAiChatMessage("assistant", error);
             setPendingAiPlan(null);
             return;
         }
 
+        NodeCraft.LOGGER.info(
+                "[AI_SEND] Remote planner succeeded. statusCode={}, attempts={}, structuredPayload={}, modelContentChars={}",
+                result.statusCode(),
+                result.attempts(),
+                result.structuredPayload(),
+                result.modelContent() == null ? 0 : result.modelContent().length()
+        );
         applyDslResponse(prompt, result.modelContent(), result.structuredPayload() ? "remote-tool" : "remote");
     }
 
@@ -1681,6 +1718,7 @@ public final class AiAssistantPanel {
 
     private void cancelRemotePlannerRequest() {
         aiAssistantComponent.cancelRemotePlannerRequest();
+        NodeCraft.LOGGER.info("[AI_SEND] Remote planner request canceled by user.");
         aiPlanStatusMessage = "Remote planner request canceled.";
         addAiChatMessage("assistant", aiPlanStatusMessage);
     }
@@ -1801,6 +1839,36 @@ public final class AiAssistantPanel {
         }
 
         aiLastDetectedProviderLabel = detectedProviderLabel;
+    }
+
+    private void applyProviderPreset(int index) {
+        AiProviderModelService.ProviderPreset[] presets = AiProviderModelService.providerPresets();
+        if (presets == null || presets.length == 0) {
+            return;
+        }
+
+        int safeIndex = Math.max(0, Math.min(presets.length - 1, index));
+        AiProviderModelService.ProviderPreset preset = presets[safeIndex];
+        if (preset.baseUrl() != null && !preset.baseUrl().isBlank()) {
+            aiApiBaseUrl.set(preset.baseUrl());
+        }
+        aiProviderStrategyIndex.set(AiProviderModelService.indexFromProviderStrategy(
+                preset.providerStrategy(),
+                AI_PROVIDER_STRATEGY_OPTIONS
+        ));
+
+        String[] models = preset.models();
+        if (models != null && models.length > 0) {
+            String currentModel = aiModel.get();
+            if (currentModel == null
+                    || currentModel.isBlank()
+                    || !AiProviderModelService.isModelInSuggestions(currentModel, models)) {
+                aiModel.set(models[0]);
+            }
+        }
+
+        aiLastDetectedProviderLabel = preset.label();
+        aiSettingsStatusMessage = "Provider preset applied: " + preset.label() + ".";
     }
 
     private AiGraphPlanDslAdapterService.GraphPlan toServiceGraphPlanForHistory(AiGraphPlan plan) {
