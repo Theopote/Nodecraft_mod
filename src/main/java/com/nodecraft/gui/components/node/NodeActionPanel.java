@@ -93,7 +93,7 @@ public final class NodeActionPanel {
         }
 
         if (ImGui.button("Apply Changes")) {
-            applyChangesNode.resetExecutionId();
+            applyChangesNode.requestApply();
             NodeCraft.LOGGER.info("Triggered Apply Changes for {}", applyChangesNode.getDisplayName());
         }
 

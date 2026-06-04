@@ -70,6 +70,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
 
     private UUID executionId = UUID.randomUUID();
     private final AtomicBoolean isExecuting = new AtomicBoolean(false);
+    private final AtomicBoolean applyRequested = new AtomicBoolean(false);
     private volatile float progressPercentage = 0.0f;
     private volatile String statusMessage = "Idle";
 
@@ -129,7 +130,8 @@ public class ApplyChangesNode extends BaseCustomUINode {
         boolean notify = notifyObj != null ? coerceBoolean(notifyObj) : notifyOnComplete;
         String blockType = (blockTypeObj instanceof String) ? (String) blockTypeObj : "minecraft:stone";
 
-        if (triggerObj == null) {
+        boolean manualTrigger = applyRequested.getAndSet(false);
+        if (triggerObj == null && !manualTrigger) {
             publishOutputs(success, operationCount, executionTime, status);
             return;
         }
@@ -387,6 +389,8 @@ public class ApplyChangesNode extends BaseCustomUINode {
     @Override
     protected float calculateUIHeight() {
         float h = getMediumPadding();
+        h += ImGui.getFrameHeight();
+        h += getSmallPadding();
         h += ImGui.getTextLineHeight();
         h += getSmallPadding();
         if (showProgressBar) {
@@ -408,7 +412,23 @@ public class ApplyChangesNode extends BaseCustomUINode {
             try {
                 float edgeMargin = l.toPixels(getSmallPadding());
                 float progressWidth = Math.max(0.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
+                float buttonWidth = Math.max(0.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
                 l.addVerticalSpacing(getMediumPadding());
+
+                boolean disabled = isExecuting.get();
+                if (disabled) {
+                    ImGui.beginDisabled();
+                }
+                float baseCursorX = ImGui.getCursorPosX();
+                ImGui.setCursorPosX(baseCursorX + edgeMargin);
+                boolean clicked = ImGui.button("Apply Changes", buttonWidth, ImGui.getFrameHeight());
+                if (disabled) {
+                    ImGui.endDisabled();
+                }
+                if (clicked) {
+                    requestApply();
+                }
+                l.addVerticalSpacing(getSmallPadding());
 
                 int statusColor = isExecuting.get() ? 0xFF44AADD : (progressPercentage >= 1.0f ? 0xFF44DD44 : 0xFF888888);
                 ImGui.pushStyleColor(ImGuiCol.Text, statusColor);
@@ -417,12 +437,13 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 l.addVerticalSpacing(getSmallPadding());
 
                 if (showProgressBar) {
-                    float baseCursorX = ImGui.getCursorPosX();
-                    ImGui.setCursorPosX(baseCursorX + edgeMargin);
+                    float progressCursorX = ImGui.getCursorPosX();
+                    ImGui.setCursorPosX(progressCursorX + edgeMargin);
                     ImGui.progressBar(progressPercentage, progressWidth, ImGui.getFrameHeight(), String.format("%.0f%%", progressPercentage * 100));
                 }
 
                 l.addVerticalSpacing(getMediumPadding());
+                return clicked;
             } catch (Exception e) {
                 LOGGER.error("ApplyChangesNode UI render failed", e);
             }
@@ -476,9 +497,16 @@ public class ApplyChangesNode extends BaseCustomUINode {
         return isExecuting.get();
     }
 
-    public void resetExecutionId() {
+    public void requestApply() {
+        applyRequested.set(true);
         executionId = UUID.randomUUID();
+        progressPercentage = 0.0f;
+        statusMessage = "Queued";
         markDirty();
+    }
+
+    public void resetExecutionId() {
+        requestApply();
     }
 
     public PlacementMode getPlacementMode() {
