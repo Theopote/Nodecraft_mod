@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **473**
+- Total nodes: **475**
 - Total categories: **52**
 
 ## Category Statistics
@@ -12,7 +12,7 @@
 | `flow.loop` | 3 |
 | `geometry.architectural_primitives` | 14 |
 | `geometry.boolean` | 19 |
-| `geometry.curves` | 19 |
+| `geometry.curves` | 21 |
 | `geometry.primitives` | 29 |
 | `geometry.profiles` | 24 |
 | `geometry.solids` | 20 |
@@ -120,7 +120,7 @@
 | SDF Blend Material Mask | `geometry.boolean.sdf_blend_material_mask` | Maps SDF distance values to smooth 0..1 blend weights and inside/outside booleans | `SdfBlendMaterialMaskNode` |
 | SDF Domain Warp | `geometry.boolean.sdf_domain_warp` | Applies coordinate-space noise warping before sampling an input SDF | `SdfDomainWarpNode` |
 
-## geometry.curves (19)
+## geometry.curves (21)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -134,7 +134,9 @@
 | Offset Polyline In Plane | `geometry.curves.offset_polyline_plane` | Offsets a polyline in a plane using parallel segments and miters (left is CCW in the plane UV basis) | `PolylineOffsetInPlaneNode` |
 | B-Spline | `geometry.curves.b_spline` | Builds a sampled clamped uniform B-spline from an ordered control point list | `BSplineNode` |
 | Fillet Polyline Corners | `geometry.curves.fillet_polyline_corners` | Fillets interior corners of an open polyline with circular arcs in the work plane | `PolylineCornerFilletNode` |
+| Offset Curve In Plane | `geometry.curves.offset_curve_plane` | Offsets a curve, polyline, or line in a work plane by signed distance. | `OffsetCurveInPlaneNode` |
 | NURBS Curve | `geometry.curves.nurbs` | Builds a sampled clamped uniform NURBS curve from control points and optional per-point weights | `NurbsCurveNode` |
+| Rainbow Curve Offset | `geometry.curves.rainbow_curve_offset` | Generates multiple parallel offset polylines around a space curve using path frames. | `RainbowCurveOffsetNode` |
 | Resample Polyline By Length | `geometry.curves.resample_polyline_length` | Resamples a polyline along its arc length using spacing, or using a total point count (count wins when both are provided) | `ResamplePolylineByLengthNode` |
 | Curve Rebuild By Length | `geometry.curves.rebuild_curve_length` | Rebuilds a curve/path to uniform arc-length samples using spacing, or using a total point count (count wins when both are provided) | `CurveRebuildByLengthNode` |
 | Polyline Length | `geometry.curves.polyline_length` | Computes the total length of a polyline or line segment | `PolylineLengthNode` |

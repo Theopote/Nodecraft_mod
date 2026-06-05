@@ -7,7 +7,6 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import imgui.ImDrawList;
 import imgui.ImGui;
 import imgui.type.ImInt;
 import org.jetbrains.annotations.Nullable;
@@ -68,10 +67,6 @@ public class AngleSliderNode extends BaseCustomUINode {
         description = "显示最小角度和最大角度输入")
     private boolean showRangeInputs = true;
 
-    @NodeProperty(displayName = "启用直接绘制", category = "性能", order = 11,
-        description = "启用后使用只读的直接绘制模式，减少 ImGui 控件开销")
-    private boolean allowDirectDrawing = false;
-
     public AngleSliderNode() {
         super(UUID.randomUUID(), "input.numeric.angle");
         IPort angleOutput = new BasePort(OUTPUT_ANGLE_ID, "Angle", "当前角度值", NodeDataType.DOUBLE, this);
@@ -88,37 +83,6 @@ public class AngleSliderNode extends BaseCustomUINode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         updateOutput();
-    }
-
-    @Override
-    public boolean supportsDirectDrawing() {
-        return allowDirectDrawing;
-    }
-
-    @Override
-    public boolean renderCustomUIDirect(ImDrawList drawList, float screenX, float screenY,
-                                        float width, float height, float zoom) {
-        float padding = 10.0f * zoom;
-        float barHeight = 8.0f * zoom;
-        float barY = screenY + height * 0.5f;
-        float left = screenX + padding;
-        float right = screenX + Math.max(width - padding, padding);
-        float ratio = (float) ((currentAngle - minAngle) / Math.max(maxAngle - minAngle, 1e-6));
-        ratio = Math.max(0.0f, Math.min(1.0f, ratio));
-        float thumbX = left + (right - left) * ratio;
-
-        int trackColor = ImGui.colorConvertFloat4ToU32(0.25f, 0.25f, 0.25f, 1.0f);
-        int fillColor = ImGui.colorConvertFloat4ToU32(0.90f, 0.58f, 0.18f, 1.0f);
-        int textColor = ImGui.colorConvertFloat4ToU32(0.82f, 0.82f, 0.82f, 1.0f);
-        int subTextColor = ImGui.colorConvertFloat4ToU32(0.60f, 0.60f, 0.60f, 1.0f);
-
-        drawList.addText(screenX + padding, screenY + padding, textColor, getCurrentLabel());
-        drawList.addRectFilled(left, barY, right, barY + barHeight, trackColor, barHeight * 0.5f);
-        drawList.addRectFilled(left, barY, thumbX, barY + barHeight, fillColor, barHeight * 0.5f);
-        drawList.addCircleFilled(thumbX, barY + barHeight * 0.5f, 6.0f * zoom, fillColor);
-        drawList.addText(screenX + padding, screenY + height - padding - 14.0f * zoom, subTextColor,
-            String.format("范围 %.0f° ~ %.0f° | 输出 %s", minAngle, maxAngle, angleUnit.getDisplayName()));
-        return false;
     }
 
     @Override
@@ -186,13 +150,6 @@ public class AngleSliderNode extends BaseCustomUINode {
 
             return changed;
         });
-    }
-
-    private String getCurrentLabel() {
-        double outputValue = angleUnit == AngleUnit.RADIANS ? Math.toRadians(currentAngle) : currentAngle;
-        return angleUnit == AngleUnit.RADIANS
-            ? String.format("%.3f %s", outputValue, angleUnit.getSymbol())
-            : String.format("%.1f%s", outputValue, angleUnit.getSymbol());
     }
 
     private void normalizeRange() {
@@ -275,24 +232,12 @@ public class AngleSliderNode extends BaseCustomUINode {
         }
     }
 
-    public boolean isAllowDirectDrawing() {
-        return allowDirectDrawing;
-    }
-
-    public void setAllowDirectDrawing(boolean allowDirectDrawing) {
-        if (this.allowDirectDrawing != allowDirectDrawing) {
-            this.allowDirectDrawing = allowDirectDrawing;
-            markDirty();
-        }
-    }
-
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
         state.put("angle", currentAngle);
         state.put("unit", angleUnit.name());
         state.put("showRangeInputs", showRangeInputs);
-        state.put("allowDirectDrawing", allowDirectDrawing);
         state.put("minAngle", minAngle);
         state.put("maxAngle", maxAngle);
         return state;
@@ -310,9 +255,6 @@ public class AngleSliderNode extends BaseCustomUINode {
             }
             if (map.get("showRangeInputs") instanceof Boolean value) {
                 this.showRangeInputs = value;
-            }
-            if (map.get("allowDirectDrawing") instanceof Boolean value) {
-                this.allowDirectDrawing = value;
             }
             if (map.get("minAngle") instanceof Number value) {
                 this.minAngle = value.doubleValue();
