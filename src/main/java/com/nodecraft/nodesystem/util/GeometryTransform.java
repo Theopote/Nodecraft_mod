@@ -49,6 +49,7 @@ public final class GeometryTransform {
         private final double rotationZDeg;
         private final double scale;
         private final Matrix3d rotation;
+        private final boolean eulerBacked;
 
         public Spec(Vector3d translation, double rotationXDeg, double rotationYDeg, double rotationZDeg, double scale) {
             this.translation = translation == null ? new Vector3d() : new Vector3d(translation);
@@ -61,6 +62,17 @@ public final class GeometryTransform {
                 Math.toRadians(rotationYDeg),
                 Math.toRadians(rotationZDeg)
             );
+            this.eulerBacked = true;
+        }
+
+        private Spec(Vector3d translation, Matrix3d rotation, double scale) {
+            this.translation = translation == null ? new Vector3d() : new Vector3d(translation);
+            this.rotationXDeg = 0.0d;
+            this.rotationYDeg = 0.0d;
+            this.rotationZDeg = 0.0d;
+            this.scale = Math.max(EPS, Math.abs(scale));
+            this.rotation = rotation == null ? new Matrix3d().identity() : new Matrix3d(rotation);
+            this.eulerBacked = false;
         }
 
         public Vector3d translation() {
@@ -86,6 +98,10 @@ public final class GeometryTransform {
         Matrix3d rotationMatrix() {
             return new Matrix3d(rotation);
         }
+
+        boolean isEulerBacked() {
+            return eulerBacked;
+        }
     }
 
     public static GeometryData transform(
@@ -100,6 +116,36 @@ public final class GeometryTransform {
             return null;
         }
         return transform0(geometry, new Spec(translation, rotationXDeg, rotationYDeg, rotationZDeg, scale));
+    }
+
+    public static GeometryData transform(
+        GeometryData geometry,
+        Vector3d translation,
+        Matrix3d rotation,
+        double scale
+    ) {
+        if (geometry == null) {
+            return null;
+        }
+        return transform0(geometry, new Spec(translation, rotation, scale));
+    }
+
+    public static GeometryData transformAround(
+        GeometryData geometry,
+        Vector3d center,
+        Matrix3d rotation,
+        double scale
+    ) {
+        if (geometry == null) {
+            return null;
+        }
+        Vector3d pivot = center == null ? new Vector3d() : new Vector3d(center);
+        Matrix3d resolvedRotation = rotation == null ? new Matrix3d().identity() : new Matrix3d(rotation);
+        double resolvedScale = Math.max(EPS, Math.abs(scale));
+        Vector3d movedPivot = new Vector3d(pivot).mul(resolvedScale);
+        resolvedRotation.transform(movedPivot);
+        Vector3d translation = new Vector3d(pivot).sub(movedPivot);
+        return transform(geometry, translation, resolvedRotation, resolvedScale);
     }
 
     private static GeometryData transform0(GeometryData geometry, Spec spec) {
@@ -257,6 +303,9 @@ public final class GeometryTransform {
             return new DodecahedronGeometryData(transformPoint(dod.getCenter(), t, r, s), dod.getEdgeLength() * s, rLocal);
         }
         if (geometry instanceof SdfGeometryData sdfGeom) {
+            if (!spec.isEulerBacked()) {
+                return null;
+            }
             SignedDistanceFieldData sdf = sdfGeom.getSdf();
             if (sdf == null) {
                 return null;

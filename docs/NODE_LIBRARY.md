@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **477**
+- Total nodes: **482**
 - Total categories: **52**
 
 ## Category Statistics
@@ -39,16 +39,16 @@
 | `output.export` | 4 |
 | `output.preview` | 12 |
 | `pattern.grid` | 4 |
-| `pattern.linear` | 4 |
+| `pattern.linear` | 5 |
 | `pattern.lsystem` | 2 |
-| `pattern.radial` | 3 |
+| `pattern.radial` | 4 |
 | `pattern.surface_volume_distribution` | 9 |
 | `pattern.voronoi_3d` | 1 |
 | `reference.frames` | 4 |
 | `reference.planes` | 6 |
 | `reference.points` | 17 |
 | `reference.vectors` | 18 |
-| `transform.basic_transforms` | 12 |
+| `transform.basic_transforms` | 15 |
 | `transform.deformations` | 8 |
 | `transform.orientation` | 3 |
 | `utilities.assist` | 7 |
@@ -519,7 +519,7 @@
 | Hex Grid | `pattern.grid.hex_grid` | Repeats coordinates on a flat-top hexagonal lattice (X/Z) with configurable spacing | `HexGridNode` |
 | Triangular Grid | `pattern.grid.triangle_grid` | Repeats coordinates on a triangular lattice with alternating row offsets. | `TriangularGridNode` |
 
-## pattern.linear (4)
+## pattern.linear (5)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -527,6 +527,7 @@
 | Along Path | `pattern.linear.along_path` | Repeats a block pattern at each resolved path point from a line, polyline, curve, or point list | `AlongPathNode` |
 | Staggered Array | `pattern.linear.staggered_array` | Repeats coordinates in rows and applies an alternating offset for brick-like staggering | `StaggeredArrayNode` |
 | Path Instances | `pattern.linear.path_instances` | Generates path instance frames (origin + axes) for oriented placement along a path. | `PathInstancesNode` |
+| Linear Array Geometry | `pattern.linear.linear_array_geometry` | Creates repeated geometry copies along a direction vector | `LinearArrayGeometryNode` |
 
 ## pattern.lsystem (2)
 
@@ -535,13 +536,14 @@
 | L-System Expand String | `pattern.lsystem.expand_string` | Expands an L-system axiom using production rules for a fixed number of iterations (longest symbol match; probabilities as weights) | `LSystemExpandStringNode` |
 | L-System Turtle 3D | `pattern.lsystem.turtle_3d` | Traces a 3D polyline from L-system commands: F/f forward, +- yaw, & and ^ pitch, / and \\ roll, [] stack (local turns; angle in degrees) | `LSystemTurtle3DNode` |
 
-## pattern.radial (3)
+## pattern.radial (4)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Polar Array | `pattern.radial.polar_array` | 将坐标列表绕中心点重复旋转排列 | `PolarArrayNode` |
 | Spiral Array | `pattern.radial.spiral_array` | Repeats coordinates along a spiral path around a center point | `SpiralArrayNode` |
 | Phyllotaxis | `pattern.radial.phyllotaxis` | Repeats coordinates using sunflower-like golden-angle distribution. | `PhyllotaxisNode` |
+| Polar Array Geometry | `pattern.radial.polar_array_geometry` | Creates repeated geometry copies around a center point and axis | `PolarArrayGeometryNode` |
 
 ## pattern.surface_volume_distribution (9)
 
@@ -628,7 +630,7 @@
 | Vector Component Min/Max | `reference.vectors.component_minmax` | Computes per-component min and max between vectors A and B. | `VectorComponentMinMaxNode` |
 | Slerp Vectors | `reference.vectors.slerp` | Performs spherical linear interpolation between two direction vectors. | `SlerpVectorsNode` |
 
-## transform.basic_transforms (12)
+## transform.basic_transforms (15)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -644,6 +646,9 @@
 | Mirror Vector List About Plane | `transform.basic_transforms.mirror_vector_list_plane` | Mirrors each point in a list about a plane and outputs Vector3d positions | `MirrorVectorListAboutPlaneNode` |
 | Shear Point List | `transform.basic_transforms.shear` | Applies axial shear deformation to a point list around an origin. | `ShearPointListNode` |
 | Transform Points by Frames | `transform.basic_transforms.transform_by_frames` | Transforms local points by frame origin and basis axes into world-space positions. | `TransformPointsByFramesNode` |
+| Move Geometry | `transform.basic_transforms.move_geometry` | Moves analytic geometry by a translation vector | `MoveGeometryNode` |
+| Rotate Geometry Around Axis | `transform.basic_transforms.rotate_geometry_axis` | Rotates analytic geometry around a center point and arbitrary axis | `RotateGeometryAroundAxisNode` |
+| Scale Geometry Around Point | `transform.basic_transforms.scale_geometry_point` | Uniformly scales analytic geometry around a center point | `ScaleGeometryAroundPointNode` |
 
 ## transform.deformations (8)
 
