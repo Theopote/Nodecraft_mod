@@ -14,6 +14,7 @@ import org.joml.Vector3d;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.DoubleConsumer;
 
 @NodeInfo(
     id = "reference.vectors.vector",
@@ -23,6 +24,10 @@ import java.util.UUID;
     order = 0
 )
 public class VectorInputNode extends BaseCustomUINode {
+
+    private static final String INPUT_X_ID = "input_x";
+    private static final String INPUT_Y_ID = "input_y";
+    private static final String INPUT_Z_ID = "input_z";
 
     private static final String OUTPUT_VECTOR_ID = "output_vector";
     private static final String OUTPUT_X_ID = "output_x";
@@ -48,6 +53,9 @@ public class VectorInputNode extends BaseCustomUINode {
 
     public VectorInputNode() {
         super(UUID.randomUUID(), "reference.vectors.vector");
+        addInputPort(new BasePort(INPUT_X_ID, "X", "Optional X component override", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_Y_ID, "Y", "Optional Y component override", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_Z_ID, "Z", "Optional Z component override", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "3D vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X component", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y component", NodeDataType.DOUBLE, this));
@@ -89,19 +97,23 @@ public class VectorInputNode extends BaseCustomUINode {
 
             l.addVerticalSpacing(getMediumPadding());
 
-            changed |= renderComponentInput("X", availableWidth, l, x, this::setX, baseCursorX, edgeMargin);
+            changed |= renderComponentInput("X", INPUT_X_ID, availableWidth, l, getResolvedX(), this::setX,
+                baseCursorX, edgeMargin);
             l.addVerticalSpacing(getSmallPadding());
-            changed |= renderComponentInput("Y", availableWidth, l, y, this::setY, baseCursorX, edgeMargin);
+            changed |= renderComponentInput("Y", INPUT_Y_ID, availableWidth, l, getResolvedY(), this::setY,
+                baseCursorX, edgeMargin);
             l.addVerticalSpacing(getSmallPadding());
-            changed |= renderComponentInput("Z", availableWidth, l, z, this::setZ, baseCursorX, edgeMargin);
+            changed |= renderComponentInput("Z", INPUT_Z_ID, availableWidth, l, getResolvedZ(), this::setZ,
+                baseCursorX, edgeMargin);
 
             l.addVerticalSpacing(getSmallPadding());
             return changed;
         });
     }
 
-    private boolean renderComponentInput(String label, float availableWidth, LayoutHelper l, double currentValue,
-                                         java.util.function.DoubleConsumer setter, float baseCursorX, float edgeMargin) {
+    private boolean renderComponentInput(String label, String inputPortId, float availableWidth, LayoutHelper l,
+                                         double currentValue, DoubleConsumer setter, float baseCursorX,
+                                         float edgeMargin) {
         float labelWidth = ImGui.calcTextSize(label).x;
         ImGui.setCursorPosX(baseCursorX + edgeMargin);
         ImGui.text(label);
@@ -110,10 +122,20 @@ public class VectorInputNode extends BaseCustomUINode {
         float inputWidth = Math.max(availableWidth - labelWidth - ImGui.getStyle().getItemSpacingX(), l.toPixels(80f));
         l.setItemWidth(inputWidth / Math.max(l.getZoom(), 0.001f));
         ImDouble valueInput = new ImDouble(currentValue);
+        boolean hasOverride = isInputConnected(inputPortId);
+        if (hasOverride) {
+            ImGui.beginDisabled();
+        }
         boolean changed = ImGui.inputDouble("##" + label.toLowerCase(), valueInput, 0.0, 0.0,
             "%." + getSafePrecision() + "f");
+        if (hasOverride) {
+            ImGui.endDisabled();
+            if (ImGui.isItemHovered()) {
+                ImGui.setTooltip(label + " is driven by an input connection.");
+            }
+        }
         l.popItemWidth();
-        if (changed) {
+        if (changed && !hasOverride) {
             setter.accept(valueInput.get());
         }
         return changed;
@@ -124,12 +146,40 @@ public class VectorInputNode extends BaseCustomUINode {
     }
 
     private void updateOutput() {
-        Vector3d vector = new Vector3d(x, y, z);
+        double resolvedX = getResolvedX();
+        double resolvedY = getResolvedY();
+        double resolvedZ = getResolvedZ();
+        Vector3d vector = new Vector3d(resolvedX, resolvedY, resolvedZ);
         outputValues.put(OUTPUT_VECTOR_ID, vector);
-        outputValues.put(OUTPUT_X_ID, x);
-        outputValues.put(OUTPUT_Y_ID, y);
-        outputValues.put(OUTPUT_Z_ID, z);
+        outputValues.put(OUTPUT_X_ID, resolvedX);
+        outputValues.put(OUTPUT_Y_ID, resolvedY);
+        outputValues.put(OUTPUT_Z_ID, resolvedZ);
         syncOutputPorts();
+    }
+
+    private double getResolvedX() {
+        return resolveComponent(INPUT_X_ID, x);
+    }
+
+    private double getResolvedY() {
+        return resolveComponent(INPUT_Y_ID, y);
+    }
+
+    private double getResolvedZ() {
+        return resolveComponent(INPUT_Z_ID, z);
+    }
+
+    private double resolveComponent(String inputPortId, double fallback) {
+        Object value = inputValues.get(inputPortId);
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        return fallback;
+    }
+
+    private boolean isInputConnected(String inputPortId) {
+        return inputPorts.stream()
+            .anyMatch(port -> inputPortId.equals(port.getId()) && port.isConnected());
     }
 
     public double getX() {
