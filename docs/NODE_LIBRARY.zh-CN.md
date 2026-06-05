@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**482**
+- **节点总数**：**485**
 - **分类总数**：**52**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -51,7 +51,7 @@
 | `reference.vectors` | 18 |
 | `transform.basic_transforms` | 15 |
 | `transform.deformations` | 8 |
-| `transform.orientation` | 3 |
+| `transform.orientation` | 6 |
 | `utilities.assist` | 7 |
 | `utilities.fileio` | 1 |
 | `utilities.organization` | 8 |
@@ -664,13 +664,16 @@
 | Lattice Deform Point List | `transform.deformations.lattice_deform` | Free-form deformation: trilinear blend of control displacements on a uniform (nx+1)(ny+1)(nz+1) lattice in an axis-aligned box | `LatticeDeformPointListNode` |
 | Spherical Displace | `transform.deformations.spherical_displace` | Applies radial displacement with spherical distance falloff around a center point. | `SphericalDisplaceNode` |
 
-## transform.orientation（3）
+## transform.orientation（6）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Project Point To Plane | `transform.orientation.project_to_plane` | Projects a geometric point onto a plane and reports the projection distance | `ProjectPointToPlaneNode` |
 | Rotate Vector | `transform.orientation.rotate_vector` | Rotates a vector around an axis by an angle in radians | `RotateVectorNode` |
 | Align Points To Surface Normals | `transform.orientation.align_to_surface` | Builds oriented frames per point by aligning local up axis to surface normals. | `AlignPointsToSurfaceNormalsNode` |
+| Project Points To Plane | `transform.orientation.project_points_to_plane` | Projects a list of points or vectors onto a target plane | `ProjectPointsToPlaneNode` |
+| Project Curve To Plane | `transform.orientation.project_curve_to_plane` | Projects a curve, polyline, or line onto a target plane | `ProjectCurveToPlaneNode` |
+| Project Profile To Plane | `transform.orientation.project_profile_to_plane` | Projects a polygon profile boundary onto a target plane | `ProjectProfileToPlaneNode` |
 
 ## utilities.assist（7）
 
