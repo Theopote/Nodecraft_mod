@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **485**
+- Total nodes: **486**
 - Total categories: **52**
 
 ## Category Statistics
@@ -12,7 +12,7 @@
 | `flow.loop` | 3 |
 | `geometry.architectural_primitives` | 14 |
 | `geometry.boolean` | 19 |
-| `geometry.curves` | 21 |
+| `geometry.curves` | 22 |
 | `geometry.primitives` | 29 |
 | `geometry.profiles` | 24 |
 | `geometry.solids` | 22 |
@@ -120,7 +120,7 @@
 | SDF Blend Material Mask | `geometry.boolean.sdf_blend_material_mask` | Maps SDF distance values to smooth 0..1 blend weights and inside/outside booleans | `SdfBlendMaterialMaskNode` |
 | SDF Domain Warp | `geometry.boolean.sdf_domain_warp` | Applies coordinate-space noise warping before sampling an input SDF | `SdfDomainWarpNode` |
 
-## geometry.curves (21)
+## geometry.curves (22)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -145,6 +145,7 @@
 | Parabola On Plane | `geometry.curves.parabola_curve` | Builds a sampled parabola on a plane from vertex, curvature, x-range, and segment count | `ParabolaOnPlaneNode` |
 | Helix Curve | `geometry.curves.helix` | Builds a sampled helix from center, axis, radius, pitch, turns, and segment count. | `HelixCurveNode` |
 | Infinity Curve On Plane | `geometry.curves.infinity_curve` | Builds a sampled figure-eight (lemniscate-like) curve on a plane | `InfinityCurveOnPlaneNode` |
+| Voxelize Curve | `geometry.curves.voxelize_curve` | Converts a curve, polyline, or line directly into voxel block coordinates using cylindrical path segments | `VoxelizeCurveNode` |
 
 ## geometry.primitives (29)
 

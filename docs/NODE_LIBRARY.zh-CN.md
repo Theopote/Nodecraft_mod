@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**485**
+- **节点总数**：**486**
 - **分类总数**：**52**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -13,7 +13,7 @@
 | `flow.loop` | 3 |
 | `geometry.architectural_primitives` | 14 |
 | `geometry.boolean` | 19 |
-| `geometry.curves` | 21 |
+| `geometry.curves` | 22 |
 | `geometry.primitives` | 29 |
 | `geometry.profiles` | 24 |
 | `geometry.solids` | 22 |
@@ -121,7 +121,7 @@
 | SDF Blend Material Mask | `geometry.boolean.sdf_blend_material_mask` | Maps SDF distance values to smooth 0..1 blend weights and inside/outside booleans | `SdfBlendMaterialMaskNode` |
 | SDF Domain Warp | `geometry.boolean.sdf_domain_warp` | Applies coordinate-space noise warping before sampling an input SDF | `SdfDomainWarpNode` |
 
-## geometry.curves（21）
+## geometry.curves（22）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -146,6 +146,7 @@
 | Parabola On Plane | `geometry.curves.parabola_curve` | Builds a sampled parabola on a plane from vertex, curvature, x-range, and segment count | `ParabolaOnPlaneNode` |
 | Helix Curve | `geometry.curves.helix` | Builds a sampled helix from center, axis, radius, pitch, turns, and segment count. | `HelixCurveNode` |
 | Infinity Curve On Plane | `geometry.curves.infinity_curve` | Builds a sampled figure-eight (lemniscate-like) curve on a plane | `InfinityCurveOnPlaneNode` |
+| Voxelize Curve | `geometry.curves.voxelize_curve` | Converts a curve, polyline, or line directly into voxel block coordinates using cylindrical path segments | `VoxelizeCurveNode` |
 
 ## geometry.primitives（29）
 
