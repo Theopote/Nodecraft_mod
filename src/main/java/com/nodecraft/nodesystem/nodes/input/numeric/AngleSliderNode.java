@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import imgui.ImDrawList;
 import imgui.ImGui;
-import imgui.flag.ImGuiCol;
 import imgui.type.ImInt;
 import org.jetbrains.annotations.Nullable;
 
@@ -125,8 +124,6 @@ public class AngleSliderNode extends BaseCustomUINode {
     @Override
     protected float calculateUIHeight() {
         float height = getMediumPadding();
-        height += ImGui.getTextLineHeight();
-        height += getSmallPadding();
         if (showRangeInputs) {
             height += ImGui.getFrameHeight();
             height += getMediumPadding();
@@ -134,8 +131,6 @@ public class AngleSliderNode extends BaseCustomUINode {
         height += ImGui.getFrameHeight();
         height += getMediumPadding();
         height += ImGui.getFrameHeight();
-        height += getMediumPadding();
-        height += ImGui.getTextLineHeight();
         height += getMediumPadding();
         return height;
     }
@@ -152,14 +147,6 @@ public class AngleSliderNode extends BaseCustomUINode {
             float availableWidth = l.getAvailableContentWidth(width);
 
             l.addVerticalSpacing(getMediumPadding());
-
-            String labelText = getCurrentLabel();
-            float labelWidth = ImGui.calcTextSize(labelText).x;
-            setCenterX(availableWidth, labelWidth);
-            ImGui.pushStyleColor(ImGuiCol.Text, 0.80f, 0.80f, 0.80f, 1.0f);
-            ImGui.text(labelText);
-            ImGui.popStyleColor();
-            l.addVerticalSpacing(getSmallPadding());
 
             if (showRangeInputs) {
                 float itemWidth = Math.max((availableWidth - l.toPixels(8.0f)) / 2.0f, l.toPixels(80.0f));
@@ -195,14 +182,6 @@ public class AngleSliderNode extends BaseCustomUINode {
                 changed = true;
             }
             l.popItemWidth();
-            l.addVerticalSpacing(getMediumPadding());
-
-            String hintText = allowDirectDrawing ? "已启用直接绘制: 画布中会以只读方式渲染" : "拖动滑动条即可输出角度";
-            float hintWidth = ImGui.calcTextSize(hintText).x;
-            setCenterX(availableWidth, hintWidth);
-            ImGui.pushStyleColor(ImGuiCol.Text, 0.58f, 0.58f, 0.58f, 1.0f);
-            ImGui.text(hintText);
-            ImGui.popStyleColor();
             l.addVerticalSpacing(getMediumPadding());
 
             return changed;
