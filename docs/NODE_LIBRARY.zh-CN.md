@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**473**
+- **节点总数**：**472**
 - **分类总数**：**52**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -11,14 +11,14 @@
 |---|---:|
 | `flow.control` | 3 |
 | `flow.loop` | 3 |
-| `geometry.boolean` | 18 |
+| `geometry.architectural_primitives` | 14 |
+| `geometry.boolean` | 19 |
 | `geometry.curves` | 19 |
 | `geometry.primitives` | 29 |
-| `geometry.architectural_primitives` | 14 |
 | `geometry.profiles` | 24 |
 | `geometry.solids` | 20 |
 | `input.context` | 4 |
-| `input.numeric` | 9 |
+| `input.numeric` | 8 |
 | `input.type_selectors` | 5 |
 | `input.values` | 4 |
 | `material.basic_assignment` | 3 |
@@ -66,7 +66,7 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Branch | `flow.control.branch` | Routes an input signal to True or False output based on condition; returns early with both outputs null when signal is null. | `BranchNode` |
+| Branch | `flow.control.branch` | Routes an input signal to True or False output based on condition. | `BranchNode` |
 | Sequence | `flow.control.sequence` | Replicates one signal to ordered sequence outputs. | `SequenceNode` |
 | Do Once | `flow.control.do_once` | Allows a signal to pass once per execution context, unless reset. | `DoOnceNode` |
 
@@ -78,30 +78,48 @@
 | Accumulator | `flow.loop.accumulator` | Accumulates list values into a single result. | `AccumulatorNode` |
 | While Loop | `flow.loop.while` | Processes input values while condition remains true, with iteration safety limits. | `WhileLoopNode` |
 
-## geometry.boolean（18）
-
-体素 CSG 与 SDF 分两段排序（0–4 体素，10–23 SDF）。工作流示例见 [geometry-boolean-workflows.zh-CN.md](geometry-boolean-workflows.zh-CN.md)。
+## geometry.architectural_primitives（14）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Bounding Box | `geometry.boolean.bounding_box` | 从方块列表或区域计算轴对齐包围盒 | `BoundingBoxNode` |
-| Geometry Bounds | `geometry.boolean.geometry_bounds` | 从任意 GeometryData 计算轴对齐包围盒（含 Difference 基底∪刀具） | `GeometryBoundsNode` |
-| Combine Geometry | `geometry.boolean.union` | 合并多路几何；烘焙为体素并集（非 SDF smooth union） | `GeometryUnionNode` |
-| Difference | `geometry.boolean.difference` | 体素差集：从基底几何减去刀具几何 | `DifferenceNode` |
-| Intersection | `geometry.boolean.intersection` | 体素交集：保留两路几何重叠部分 | `IntersectionNode` |
-| SDF Sphere | `geometry.boolean.sdf_sphere` | 球体 SDF 图元（中心 + 半径） | `SdfSphereNode` |
-| SDF Box | `geometry.boolean.sdf_box` | 轴对齐盒 SDF 图元（中心 + 半轴） | `SdfBoxNode` |
-| SDF Capsule | `geometry.boolean.sdf_capsule` | 胶囊 SDF 图元（两端点 + 半径） | `SdfCapsuleNode` |
-| SDF Torus | `geometry.boolean.sdf_torus` | 环面 SDF 图元（Y 轴，主次半径） | `SdfTorusNode` |
-| SDF Boolean | `geometry.boolean.sdf_boolean` | SDF 并/交/差；Smooth K=0 硬布尔，>0 平滑融合 | `SdfBooleanNode` |
-| SDF To Geometry | `geometry.boolean.sdf_to_geometry` | SDF 转 GeometryData；支持自动包围盒与 Padding | `SdfToGeometryNode` |
-| SDF Sample Point | `geometry.boolean.sdf_sample_point` | 单点采样 SDF 距离与内外判定 | `SdfSamplePointNode` |
-| SDF Sample Points | `geometry.boolean.sdf_sample_points` | 多点采样 SDF，输出距离/内外列表 | `SdfSamplePointsNode` |
-| SDF Gradient At Point | `geometry.boolean.sdf_gradient_point` | 单点 SDF 梯度（法向近似） | `SdfGradientPointNode` |
-| SDF Noise Displace | `geometry.boolean.sdf_noise_displace` | 确定性噪声位移 SDF | `SdfNoiseDisplaceNode` |
-| SDF Transform | `geometry.boolean.sdf_transform` | 平移 / 旋转 / 均匀缩放 SDF | `SdfTransformNode` |
-| SDF Blend Material Mask | `geometry.boolean.sdf_blend_material_mask` | 距离列表映射为 0–1 混合权重与内外掩膜 | `SdfBlendMaterialMaskNode` |
-| SDF Domain Warp | `geometry.boolean.sdf_domain_warp` | 采样前对坐标做噪声域扭曲 | `SdfDomainWarpNode` |
+| Window Array | `geometry.architectural_primitives.window_array` | Generates a rectangular array of inset window opening boxes on a box face | `WindowArrayNode` |
+| Door Array | `geometry.architectural_primitives.door_array` | Generates a rectangular array of inset door opening boxes on a box face | `DoorArrayNode` |
+| Column Grid | `geometry.architectural_primitives.column_grid` | Generates a rectangular grid of columns on a box face | `ColumnGridNode` |
+| Railing | `geometry.architectural_primitives.railing` | Generates a straight railing or balustrade along a line segment | `RailingNode` |
+| Staircase | `geometry.architectural_primitives.staircase` | Generates architectural staircases from a line segment | `StaircaseNode` |
+| Roof Generator | `geometry.architectural_primitives.roof_generator` | Generates configurable roof volumes from a box face footprint | `RoofGeneratorNode` |
+| Facade Panel Array | `geometry.architectural_primitives.facade_panel_array` | Generates a rectangular array of facade panels on a box face | `FacadePanelArrayNode` |
+| Arch Opening | `geometry.architectural_primitives.arch_opening` | Generates a rectangular, round, or pointed arch opening volume | `ArchOpeningNode` |
+| Wall With Openings | `geometry.architectural_primitives.wall_with_openings` | Generates a wall slab with an opening grid | `WallWithOpeningsNode` |
+| Pilaster / Cornice | `geometry.architectural_primitives.pilaster_cornice` | Generates pilasters and a cornice along a box face | `PilasterOrCorniceNode` |
+| Array Along Curve | `geometry.architectural_primitives.array_along_curve` | Places repeated columns, posts, or panels along a curve or polyline path | `ArrayAlongCurveNode` |
+| Deconstruct Architectural Opening | `geometry.architectural_primitives.deconstruct_opening` | Flattens architectural opening geometry into component lists and bounds | `DeconstructArchitecturalOpeningNode` |
+| Floor Slab With Beams | `geometry.architectural_primitives.floor_slab_with_beams` | Generates a floor slab and a configurable support beam grid | `FloorSlabWithBeamsNode` |
+| Molding Profile | `geometry.architectural_primitives.molding_profile` | Generates decorative molding cross-section profiles | `MoldingProfileNode` |
+
+## geometry.boolean（19）
+
+| 节点名称 | 节点 ID | 说明 | 类名 |
+|---|---|---|---|
+| Bounding Box | `geometry.boolean.bounding_box` | Calculates an axis-aligned bounding box from a block list or region | `BoundingBoxNode` |
+| Geometry Bounds | `geometry.boolean.geometry_bounds` | Calculates an axis-aligned bounding box from any supported geometry | `GeometryBoundsNode` |
+| Combine Geometry | `geometry.boolean.union` | Merges multiple geometry inputs into one composite value (voxel union when baked; not SDF smooth union) | `GeometryUnionNode` |
+| Difference | `geometry.boolean.difference` | Creates a voxel-evaluated difference geometry value by subtracting cutter geometry from a base geometry | `DifferenceNode` |
+| Intersection | `geometry.boolean.intersection` | Creates a voxel-evaluated intersection geometry value from two geometry inputs | `IntersectionNode` |
+| SDF Sphere | `geometry.boolean.sdf_sphere` | Builds a sphere signed-distance-field primitive from center and radius | `SdfSphereNode` |
+| SDF Box | `geometry.boolean.sdf_box` | Builds an axis-aligned box signed-distance-field primitive from center and half extents | `SdfBoxNode` |
+| SDF Capsule | `geometry.boolean.sdf_capsule` | Builds a capsule signed-distance-field primitive from segment endpoints and radius | `SdfCapsuleNode` |
+| SDF Torus | `geometry.boolean.sdf_torus` | Builds a torus signed-distance-field primitive around the Y axis from center and radii | `SdfTorusNode` |
+| SDF Boolean | `geometry.boolean.sdf_boolean` | Combines two SDF inputs with union/intersection/difference and optional smooth blending | `SdfBooleanNode` |
+| SDF Smooth Boolean (Legacy) | `geometry.boolean.sdf_smooth_boolean` | Deprecated: use SDF Boolean with Smooth K > 0 for the same smooth union/intersection/difference | `SdfSmoothBooleanNode` |
+| SDF To Geometry | `geometry.boolean.sdf_to_geometry` | Wraps an SDF into GeometryData with explicit or auto-estimated sampling bounds for block baking | `SdfToGeometryNode` |
+| SDF Sample Point | `geometry.boolean.sdf_sample_point` | Samples signed distance at a query point and reports inside/outside state | `SdfSamplePointNode` |
+| SDF Sample Points | `geometry.boolean.sdf_sample_points` | Samples signed distance for each query point and outputs distance and inside lists | `SdfSamplePointsNode` |
+| SDF Gradient At Point | `geometry.boolean.sdf_gradient_point` | Samples SDF gradient at a point and outputs a normalized normal-like direction | `SdfGradientPointNode` |
+| SDF Noise Displace | `geometry.boolean.sdf_noise_displace` | Applies deterministic pseudo-noise displacement to an input SDF | `SdfNoiseDisplaceNode` |
+| SDF Transform | `geometry.boolean.sdf_transform` | Applies translation, rotation, and uniform scale to an input SDF | `SdfTransformNode` |
+| SDF Blend Material Mask | `geometry.boolean.sdf_blend_material_mask` | Maps SDF distance values to smooth 0..1 blend weights and inside/outside booleans | `SdfBlendMaterialMaskNode` |
+| SDF Domain Warp | `geometry.boolean.sdf_domain_warp` | Applies coordinate-space noise warping before sampling an input SDF | `SdfDomainWarpNode` |
 
 ## geometry.curves（19）
 
@@ -128,8 +146,6 @@
 | Infinity Curve On Plane | `geometry.curves.infinity_curve` | Builds a sampled figure-eight (lemniscate-like) curve on a plane | `InfinityCurveOnPlaneNode` |
 
 ## geometry.primitives（29）
-
-说明：本分类中的 `Deconstruct*` 节点在 `Valid == false` 时，几何/向量类输出端口可能为 `null`。建议下游先检查 `Valid` 再处理这些输出。
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -162,25 +178,6 @@
 | Dodecahedron By Center Edge | `geometry.primitives.dodecahedron` | Constructs a regular dodecahedron from a center point, edge length, and optional orientation | `DodecahedronByCenterEdgeNode` |
 | Deconstruct Icosahedron | `geometry.primitives.deconstruct_icosahedron` | Extracts center, edge length, vertices, bounds, and analytical values from icosahedron geometry | `DeconstructIcosahedronNode` |
 | Deconstruct Dodecahedron | `geometry.primitives.deconstruct_dodecahedron` | Extracts center, edge length, vertices, bounds, and analytical values from dodecahedron geometry | `DeconstructDodecahedronNode` |
-
-## geometry.architectural_primitives（14）
-
-| 节点名称 | 节点 ID | 说明 | 类名 |
-|---|---|---|---|
-| Window Array | `geometry.architectural_primitives.window_array` | Generates a rectangular array of inset window opening boxes on a box face | `WindowArrayNode` |
-| Door Array | `geometry.architectural_primitives.door_array` | Generates a rectangular array of inset door opening boxes on a box face | `DoorArrayNode` |
-| Column Grid | `geometry.architectural_primitives.column_grid` | Generates a rectangular grid of columns on a box face | `ColumnGridNode` |
-| Railing | `geometry.architectural_primitives.railing` | Generates a straight railing or balustrade along a line segment | `RailingNode` |
-| Staircase | `geometry.architectural_primitives.staircase` | Generates straight, U-shaped, double-run/switchback, or vertical spiral staircases from a path line, with landing split, turn-gap, direction, radius, and spiral height controls | `StaircaseNode` |
-| Roof Generator | `geometry.architectural_primitives.roof_generator` | Generates flat, shed, gable, asymmetric gable, hip, cross-gable, or M-shaped roofs from a box face footprint, with ridge direction, ridge ratio, inset, overhang, eave drop, peak ratio, valley drop, and secondary wing scale, height, and offset controls | `RoofGeneratorNode` |
-| Facade Panel Array | `geometry.architectural_primitives.facade_panel_array` | Generates a rectangular array of facade panels on a box face | `FacadePanelArrayNode` |
-| Arch Opening | `geometry.architectural_primitives.arch_opening` | Generates a rectangular, round, or pointed arch opening volume | `ArchOpeningNode` |
-| Wall With Openings | `geometry.architectural_primitives.wall_with_openings` | Generates a wall slab with an opening grid | `WallWithOpeningsNode` |
-| Pilaster / Cornice | `geometry.architectural_primitives.pilaster_cornice` | Generates pilasters and a cornice along a box face | `PilasterOrCorniceNode` |
-| Array Along Curve | `geometry.architectural_primitives.array_along_curve` | Places repeated columns, posts, or panels along a curve or polyline path | `ArrayAlongCurveNode` |
-| Deconstruct Architectural Opening | `geometry.architectural_primitives.deconstruct_opening` | Flattens architectural opening geometry into component lists and bounds | `DeconstructArchitecturalOpeningNode` |
-| Floor Slab With Beams | `geometry.architectural_primitives.floor_slab_with_beams` | Generates a floor slab and a configurable support beam grid | `FloorSlabWithBeamsNode` |
-| Molding Profile | `geometry.architectural_primitives.molding_profile` | Generates decorative molding cross-section profiles | `MoldingProfileNode` |
 
 ## geometry.profiles（24）
 
@@ -215,7 +212,7 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Extrude Profile | `geometry.solids.extrude` | Extrudes a polygon profile by a direction vector into a top profile and side surface strip | `ExtrudeProfileNode` |
+| Extrude Profile | `geometry.solids.extrude` | Extrudes a polygon profile by a direction vector and emits prism geometry plus side surface strip data | `ExtrudeProfileNode` |
 | Extrude Point List | `geometry.solids.extrude_from_points` | Extrudes an ordered point list by a direction vector and emits source path, top path, and side segments | `ExtrudePointListNode` |
 | Extrude Box Face | `geometry.solids.extrude_box_face` | Extrudes a box face into a new box segment and returns a composite geometry | `ExtrudeBoxFaceNode` |
 | Loft Profiles | `geometry.solids.loft` | Lofts two polygon profiles with matching edge counts into a side surface strip | `LoftProfilesNode` |
@@ -245,7 +242,7 @@
 | Dimension Info | `input.context.dimension_info` | Gets the current dimension and basic dimension traits from the active Minecraft world. | `DimensionInfoNode` |
 | Current Time | `input.context.current_time` | Gets the current time and weather state from the active Minecraft world. | `CurrentTimeNode` |
 
-## input.numeric（9）
+## input.numeric（8）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -255,7 +252,6 @@
 | Float Slider | `input.numeric.float_slider` | 输出一个可通过滑动条调节的浮点数。 | `FloatSliderNode` |
 | Angle Slider | `input.numeric.angle` | 输出一个可通过滑动条调节的角度值，支持度和弧度输出。 | `AngleSliderNode` |
 | Circular Angle Picker | `input.numeric.angle_picker` | 通过圆形表盘选择角度，同时输出度和弧度。 | `CircularAngleNode` |
-| Vector Input | `input.numeric.vector_input` | Inputs a 3D vector and outputs vector + X/Y/Z components. | `VectorInputNode` |
 | 2D Vector Input | `input.numeric.vector2_input` | Inputs a 2D vector (X/Y or U/V) and outputs vector + components. | `Vector2InputNode` |
 | Range Input | `input.numeric.range` | Defines a numeric interval and outputs min/max/span plus a range object. | `RangeInputNode` |
 
@@ -376,7 +372,7 @@
 | Map List | `math.list.map_list` | Applies a scalar operation to each numeric item in a list. | `MapListNode` |
 | Reduce List | `math.list.reduce` | Reduces a list into a single value using a selected operation. | `ReduceListNode` |
 | Chunk List | `math.list.chunk` | Splits a list into fixed-size chunks. | `ChunkListNode` |
-| Transpose List of Lists | `math.list.transpose` | Transposes a list of lists by swapping rows and columns. Empty list input is treated as a valid empty result. | `TransposeListNode` |
+| Transpose List of Lists | `math.list.transpose` | Transposes a list of lists by swapping rows and columns. | `TransposeListNode` |
 | Combine Lists | `math.list.combine_lists` | Combines multiple lists into a single list by index. | `CombineListsNode` |
 | Dispatch List | `math.list.dispatch_list` | Splits a list into two based on boolean conditions | `DispatchListNode` |
 | Filter List | `math.list.filter_list` | Filters a list based on boolean conditions | `FilterListNode` |
@@ -470,7 +466,7 @@
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Value Monitor | `output.debug.value_monitor` | 将任意输出连到输入，在面板上查看该输出的数据和类型 | `ValueMonitorNode` |
-| Print To Chat | `output.debug.print_to_chat` | 在 Trigger 输入触发时将格式化后的消息发送到玩家聊天栏，并支持可选聊天颜色。 | `PrintToChatNode` |
+| Print To Chat | `output.debug.print_to_chat` | 将输入数据显示到游戏聊天框 | `PrintToChatNode` |
 | Execution Timer | `output.debug.execution_timer` | 测量连接到此节点的计算分支所花费的时间 | `ExecutionTimerNode` |
 | Panel | `output.debug.data_inspector` | 显示连接到其输入端口的原始数据（文本形式） | `PanelNode` |
 
@@ -478,8 +474,8 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Apply Changes | `output.execute.apply_changes` | Applies explicit placements or voxelized geometry to the world, with synchronous execution respecting the configured timeout. | `ApplyChangesNode` |
-| Clear Preview | `output.execute.clear_preview` | Clears all active previews. | `ClearAllPreviewsNode` |
+| Apply Changes | `output.execute.apply_changes` | Applies explicit placements or voxelized geometry to the world. | `ApplyChangesNode` |
+| Clear Preview | `output.execute.clear_preview` | Clears all active previews | `ClearAllPreviewsNode` |
 | Bake Geometry To Blocks | `output.execute.bake_geometry_to_blocks` | Bakes any supported geometry into Minecraft block coordinates for final execution | `GeometryToBlocksNode` |
 | Undo Last Bake | `output.execute.undo_last_bake` | Reverts the most recent recorded bake or apply-changes operation | `UndoLastBakeNode` |
 | Bake Surface Strip To Blocks | `output.execute.bake_surface_strip_to_blocks` | Bakes a surface strip into block coordinates for final execution | `SurfaceStripToBlocksNode` |
@@ -588,15 +584,15 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Coordinate Input | `reference.points.point_from_coordinates` | 输入一个整数坐标，并同时输出 Coordinate / Block Pos / X / Y / Z | `CoordinateInputNode` |
+| Coordinate Input | `reference.points.point_from_coordinates` | Inputs an integer coordinate and outputs Coordinate, Block Pos, X, Y, and Z. | `CoordinateInputNode` |
 | Block To Point | `reference.points.point_from_block` | Explicitly converts a block coordinate into a geometric point, with optional block-center offset | `BlockToPointNode` |
-| 构建坐标 | `reference.points.construct_coordinate` | 通过 X / Y / Z 数值输入构建坐标，并输出 Coordinate / Block Pos / X / Y / Z | `ConstructCoordinateNode` |
+| Construct Coordinate | `reference.points.construct_coordinate` | Constructs a block coordinate from X, Y, and Z integer components. | `ConstructCoordinateNode` |
 | Point Along Vector | `reference.points.point_along_vector` | Creates a new point by moving a start point along a direction vector by a distance | `PointAlongVectorNode` |
 | Block To Vector | `reference.points.block_to_vector` | Explicitly converts a block coordinate into a Vector3d position, with optional block-center offset. | `BlockToVectorNode` |
-| Deconstruct Coordinate | `reference.points.deconstruct_point` | 将坐标分解为X、Y、Z分量 | `DeconstructCoordinateNode` |
+| Deconstruct Coordinate | `reference.points.deconstruct_point` | Extracts X, Y, and Z integer components from a block coordinate. | `DeconstructCoordinateNode` |
 | Mid Point | `reference.points.mid_point` | Computes the midpoint between two input points | `MidpointNode` |
 | Distance Between Points | `reference.points.distance_between_points` | Computes the distance between two input points | `DistanceNode` |
-| Closest Point | `reference.points.closest_point` | 在坐标列表中找到距离指定点最近的点 | `ClosestPointNode` |
+| Closest Point | `reference.points.closest_point` | Finds the closest point in a point collection to a reference point. | `ClosestPointNode` |
 | Point List Center | `reference.points.point_list_center` | Calculates the average geometric center of a point list | `PointListCenterNode` |
 | Point List Bounds | `reference.points.point_list_bounds` | Calculates an axis-aligned bounding box from a list of geometric points | `PointListBoundsNode` |
 | Get Box Corner | `reference.points.get_box_corner` | Gets a single corner from box geometry by index | `GetBoxCornerNode` |
@@ -610,17 +606,17 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Vector Input | `reference.vectors.vector` | 输入一个三维向量，并同时输出 X / Y / Z 分量 | `VectorInputNode` |
-| Deconstruct Vector | `reference.vectors.deconstruct_vector` | 输出向量的X、Y、Z分量 | `DeconstructVectorNode` |
-| 构建向量 | `reference.vectors.construct_vector` | 通过 X / Y / Z 数值输入构建向量，并输出 Vector / X / Y / Z | `ConstructVectorNode` |
-| Normalize Vector | `reference.vectors.normalize_vector` | 将向量归一化为单位长度 | `NormalizeVectorNode` |
-| Cross Product | `reference.vectors.cross_product` | 计算两个向量的叉积（A × B） | `CrossProductNode` |
-| Dot Product | `reference.vectors.dot_product` | 计算两个向量的点积（A · B） | `DotProductNode` |
-| Vector Length | `reference.vectors.vector_length` | 计算向量的长度（模长） | `VectorLengthNode` |
-| Vector Addition (+) | `reference.vectors.vector_addition` | 计算两个向量的和，输出A + B | `VectorAdditionNode` |
-| Vector Subtraction (-) | `reference.vectors.vector_subtraction` | 计算两个向量的差，输出A - B | `VectorSubtractionNode` |
-| Vector Scalar Multiply | `reference.vectors.vector_scalar_multiply` | 向量与标量相乘 (Vector * Scalar) | `VectorScalarMultiplyNode` |
-| Vector Scalar Divide | `reference.vectors.vector_scalar_divide` | 向量除以标量 (Vector / Scalar) | `VectorScalarDivideNode` |
+| Vector Input | `reference.vectors.vector` | Inputs a 3D vector from panel values or optional X/Y/Z input ports, then outputs the vector and components. | `VectorInputNode` |
+| Construct Vector | `reference.vectors.construct_vector` | Constructs a Vector3d from X, Y, and Z components. | `ConstructVectorNode` |
+| Deconstruct Vector | `reference.vectors.deconstruct_vector` | Outputs the X, Y, and Z components of a vector. | `DeconstructVectorNode` |
+| Normalize Vector | `reference.vectors.normalize_vector` | Normalizes a vector to unit length. | `NormalizeVectorNode` |
+| Cross Product | `reference.vectors.cross_product` | Computes the cross product A x B and its magnitude. | `CrossProductNode` |
+| Dot Product | `reference.vectors.dot_product` | Computes the dot product of vectors A and B. | `DotProductNode` |
+| Vector Length | `reference.vectors.vector_length` | Computes the length (magnitude) of a vector. | `VectorLengthNode` |
+| Vector Addition (+) | `reference.vectors.vector_addition` | Computes the vector sum A + B. | `VectorAdditionNode` |
+| Vector Subtraction (-) | `reference.vectors.vector_subtraction` | Computes the vector difference A - B. | `VectorSubtractionNode` |
+| Vector Scalar Multiply | `reference.vectors.vector_scalar_multiply` | Multiplies a vector by a scalar. | `VectorScalarMultiplyNode` |
+| Vector Scalar Divide | `reference.vectors.vector_scalar_divide` | Divides a vector by a scalar. | `VectorScalarDivideNode` |
 | Angle Between Vectors | `reference.vectors.angle_between` | Angle between two vectors in radians and degrees; optional reference vector yields a signed angle | `AngleBetweenVectorsNode` |
 | Lerp Vectors | `reference.vectors.lerp_vectors` | Linearly interpolates between vector A and B using parameter T. | `LerpVectorsNode` |
 | Reflect Vector | `reference.vectors.reflect` | Reflects an input vector around a normal vector using v - 2(v·n)n. | `ReflectVectorNode` |
@@ -633,9 +629,9 @@
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Offset Coordinate | `transform.basic_transforms.move_point` | Offsets a single block coordinate by integer X, Y, Z amounts | `OffsetCoordinateNode` |
-| Offset Coordinates | `transform.basic_transforms.move_points` | 对坐标列表中的每个坐标应用偏移量 | `OffsetCoordinatesNode` |
-| Rotate Coordinates | `transform.basic_transforms.rotate_points` | 绕指定轴和中心点旋转坐标列表 | `RotateCoordinatesNode` |
-| Scale Coordinates | `transform.basic_transforms.scale_points` | 以指定中心点为基准缩放坐标列表 | `ScaleCoordinatesNode` |
+| Offset Coordinates | `transform.basic_transforms.move_points` | Translates a list of block coordinates by a vector | `OffsetCoordinatesNode` |
+| Rotate Coordinates | `transform.basic_transforms.rotate_points` | Rotates a list of block coordinates around a point and axis | `RotateCoordinatesNode` |
+| Scale Coordinates | `transform.basic_transforms.scale_points` | Scales a list of block coordinates relative to a center point | `ScaleCoordinatesNode` |
 | Mirror Coordinates | `transform.basic_transforms.mirror_points` | 沿指定平面镜像坐标列表 | `MirrorCoordinatesNode` |
 | Offset Box Face | `transform.basic_transforms.offset_face` | Offsets a box face along its normal without modifying the source box geometry | `OffsetBoxFaceNode` |
 | Inset Box Face | `transform.basic_transforms.inset_face` | Creates an inset or outset reference face boundary from a box face without modifying the source box | `InsetBoxFaceNode` |
@@ -663,7 +659,7 @@
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Project Point To Plane | `transform.orientation.project_to_plane` | Projects a geometric point onto a plane and reports the projection distance | `ProjectPointToPlaneNode` |
-| Rotate Vector | `transform.orientation.rotate_vector` | 绕指定轴旋转向量 | `RotateVectorNode` |
+| Rotate Vector | `transform.orientation.rotate_vector` | Rotates a vector around an axis by an angle in radians | `RotateVectorNode` |
 | Align Points To Surface Normals | `transform.orientation.align_to_surface` | Builds oriented frames per point by aligning local up axis to surface normals. | `AlignPointsToSurfaceNormalsNode` |
 
 ## utilities.assist（7）
@@ -672,7 +668,7 @@
 |---|---|---|---|
 | Block List Morphology | `utilities.morphology.block_list_morphology` | Dilates or erodes a block list using 6- or 26-neighbor morphology iterations (Connectivity property) | `BlockListMorphologyNode` |
 | String Format | `utilities.assist.string_format` | Formats strings with placeholders like {0}, {1} from dynamic values. | `StringFormatNode` |
-| Assert / Validate | `utilities.assist.assert` | Validates a condition with boolean truthy coercion and optionally throws to stop execution when it fails. | `AssertNode` |
+| Assert / Validate | `utilities.assist.assert` | Validates a boolean condition and optionally throws to stop execution when it fails. | `AssertNode` |
 | Reroute | `utilities.assist.reroute` | 用于整理连线的中继节点，仅透传输入到输出 | `RerouteNode` |
 | Signal Fork | `utilities.assist.signal_fork` | 将一路输入透传到两路输出，便于连线分流 | `SignalForkNode` |
 | Signal Merge | `utilities.assist.signal_merge` | 将两路输入按优先级汇聚为一路输出 | `SignalMergeNode` |
@@ -756,25 +752,25 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Height Seed Field | `world.terrain.height_seed_field` | 在 X/Z 平面上生成确定性的大陆尺度初始高程场，并对 FBM 采样做有限值安全防护。 | `HeightSeedFieldNode` |
-| Sample Field On Region | `world.terrain.sample_field_on_region` | 按规则 X/Z 网格采样标量场，Region 为可选输入（缺省时使用大范围默认边界）。 | `SampleFieldOnRegionNode` |
-| Combine Height Fields | `world.terrain.combine_height_fields` | 将基础高程场、加法场和减法场组合为单一输出高程场。 | `CombineHeightFieldsNode` |
-| Flow Direction Field | `world.terrain.flow_direction_field` | 从高程场计算下坡流向与坡度强度。 | `FlowDirectionFieldNode` |
-| Flow Accumulation Field | `world.terrain.flow_accumulation_field` | 以可选快速模式或高质量（MFD）模式对径流进行汇流累积。 | `FlowAccumulationFieldNode` |
-| River Mask Field | `world.terrain.river_mask_field` | 从汇流场中提取河道掩膜场。 | `RiverMaskFieldNode` |
-| Precipitation Field | `world.terrain.precipitation_field` | 基于纬度带与地形雨影响应生成降雨场。 | `PrecipitationFieldNode` |
-| Orogenic Uplift Field | `world.terrain.orogenic_uplift_field` | 将板块边界强度转换为造山抬升势能场。 | `OrogenicUpliftFieldNode` |
-| Thermal Erosion Step | `world.terrain.thermal_erosion_step` | 按 talus 阈值执行一次热风化侵蚀步骤，并输出签名 Delta 场（new - old）用于迭代叠加与预览。 | `ThermalErosionStepNode` |
-| Hydraulic Erosion Step | `world.terrain.hydraulic_erosion_step` | 基于搬运容量执行一次水力侵蚀-沉积步骤，可选按流向近似传输泥沙，并输出签名 Delta 场。 | `HydraulicErosionStepNode` |
-| Deposition Step | `world.terrain.deposition_step` | 基于局部搬运容量（flow × slope × capacity）对超载泥沙执行沉积、更新剩余泥沙，并输出签名 Delta 场。 | `DepositionStepNode` |
-| Delta Accumulate Field | `world.terrain.delta_accumulate_field` | 对 Delta 场执行应用/回退并累积为组合地形 Delta 场，便于多步迭代与撤销链路。 | `DeltaAccumulateFieldNode` |
-| Plate Partition Field | `world.terrain.plate_partition_field` | 通过类 Voronoi 分区生成伪板块 ID 与边界强度场。 | `PlatePartitionFieldNode` |
-| Rift Subsidence Field | `world.terrain.rift_subsidence_field` | 从边界强度场生成裂谷/海沟型沉降场。 | `RiftSubsidenceFieldNode` |
-| Temperature Field | `world.terrain.temperature_field` | 按纬度带与海拔递减率构建温度场。 | `TemperatureFieldNode` |
-| Biome Classify | `world.terrain.biome_classify` | 依据温度、降雨和海拔将群系分类编码为标量 ID。 | `BiomeClassifyNode` |
-| Heightfield To Blocks | `world.terrain.heightfield_to_blocks` | 将高程场转换为方块放置，支持可选 Region 默认边界、Step 下采样预览与可选 Tile Fill 连续预览。 | `HeightfieldToBlocksNode` |
-| Biome Field To Blocks | `world.terrain.biome_field_to_blocks` | 将群系 ID 场映射为地表方块放置，支持可选 Region 默认边界、Step 下采样预览与可选 Tile Fill 连续预览。 | `BiomeFieldToBlocksNode` |
-| Scalar Field Slice To Blocks | `world.terrain.scalar_field_slice_to_blocks` | 在水平切片上将标量场阈值可视化为方块，支持可选 Region 默认边界与有限值安全防护。 | `ScalarFieldSliceToBlocksNode` |
+| Height Seed Field | `world.terrain.height_seed_field` | Builds a deterministic continental-scale seed height field over X/Z. | `HeightSeedFieldNode` |
+| Sample Field On Region | `world.terrain.sample_field_on_region` | Samples a scalar field on a regular X/Z lattice inside a region. | `SampleFieldOnRegionNode` |
+| Combine Height Fields | `world.terrain.combine_height_fields` | Combines base, additive, and subtractive height fields into one output field. | `CombineHeightFieldsNode` |
+| Flow Direction Field | `world.terrain.flow_direction_field` | Computes downslope flow direction and slope magnitude from a height field. | `FlowDirectionFieldNode` |
+| Flow Accumulation Field | `world.terrain.flow_accumulation_field` | Routes runoff with selectable fast or high-quality (MFD) flow accumulation. | `FlowAccumulationFieldNode` |
+| River Mask Field | `world.terrain.river_mask_field` | Creates a river-channel mask field from flow accumulation. | `RiverMaskFieldNode` |
+| Precipitation Field | `world.terrain.precipitation_field` | Builds precipitation from latitude bands and terrain rain-shadow response. | `PrecipitationFieldNode` |
+| Orogenic Uplift Field | `world.terrain.orogenic_uplift_field` | Converts boundary intensity into mountain uplift potential. | `OrogenicUpliftFieldNode` |
+| Thermal Erosion Step | `world.terrain.thermal_erosion_step` | Applies one thermal weathering step based on local slope exceeding talus angle. | `ThermalErosionStepNode` |
+| Hydraulic Erosion Step | `world.terrain.hydraulic_erosion_step` | Applies one hydraulic erosion-deposition step with carrying capacity and optional flow-driven sediment transport. | `HydraulicErosionStepNode` |
+| Deposition Step | `world.terrain.deposition_step` | Deposits sediment in low-slope and low-energy zones. | `DepositionStepNode` |
+| Delta Accumulate Field | `world.terrain.delta_accumulate_field` | Applies or reverts delta fields and accumulates them into a combined terrain delta field. | `DeltaAccumulateFieldNode` |
+| Plate Partition Field | `world.terrain.plate_partition_field` | Generates pseudo tectonic plate ids and boundary intensity via Voronoi-style partitioning. | `PlatePartitionFieldNode` |
+| Rift Subsidence Field | `world.terrain.rift_subsidence_field` | Builds rift/trench subsidence strength from boundary intensity. | `RiftSubsidenceFieldNode` |
+| Temperature Field | `world.terrain.temperature_field` | Builds temperature from latitude bands and elevation lapse-rate cooling. | `TemperatureFieldNode` |
+| Biome Classify | `world.terrain.biome_classify` | Classifies a biome index using temperature, precipitation, and elevation. | `BiomeClassifyNode` |
+| Heightfield To Blocks | `world.terrain.heightfield_to_blocks` | Converts a height field inside a region to terrain block placements. | `HeightfieldToBlocksNode` |
+| Biome Field To Blocks | `world.terrain.biome_field_to_blocks` | Maps biome id field to surface block placements using a configurable palette. | `BiomeFieldToBlocksNode` |
+| Scalar Field Slice To Blocks | `world.terrain.scalar_field_slice_to_blocks` | Visualizes scalar field values on a horizontal slice using low/high block thresholds. | `ScalarFieldSliceToBlocksNode` |
 
 ## world.write（17）
 

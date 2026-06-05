@@ -19,7 +19,7 @@ import java.util.function.DoubleConsumer;
 @NodeInfo(
     id = "reference.vectors.vector",
     displayName = "Vector Input",
-    description = "Inputs a 3D vector and outputs the vector plus X, Y, and Z components.",
+    description = "Inputs a 3D vector from panel values or optional X/Y/Z input ports, then outputs the vector and components.",
     category = "reference.vectors",
     order = 0
 )
@@ -65,7 +65,7 @@ public class VectorInputNode extends BaseCustomUINode {
 
     @Override
     public String getDescription() {
-        return "Inputs a 3D vector and outputs the vector plus X, Y, and Z components.";
+        return "Inputs a 3D vector from panel values or optional X/Y/Z input ports, then outputs the vector and components.";
     }
 
     @Override
