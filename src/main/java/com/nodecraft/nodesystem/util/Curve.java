@@ -97,17 +97,13 @@ public class Curve {
         if (controlPoints.size() < 2) {
             return samples;
         }
-        
-        switch (curveType) {
-            case LINEAR:
-                return getLinearSamples();
-            case BEZIER:
-                return getBezierSamples();
-            case SPLINE:
-                return getSplineSamples();
-            default:
-                return samples;
-        }
+
+        return switch (curveType) {
+            case LINEAR -> getLinearSamples();
+            case BEZIER -> getBezierSamples();
+            case SPLINE -> getSplineSamples();
+            default -> samples;
+        };
     }
     
     /**
@@ -202,6 +198,6 @@ public class Curve {
             }
             working = next;
         }
-        return working.get(0);
+        return working.getFirst();
     }
 } 

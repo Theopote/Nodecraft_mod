@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**486**
+- **节点总数**：**490**
 - **分类总数**：**52**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -13,7 +13,7 @@
 | `flow.loop` | 3 |
 | `geometry.architectural_primitives` | 14 |
 | `geometry.boolean` | 19 |
-| `geometry.curves` | 22 |
+| `geometry.curves` | 24 |
 | `geometry.primitives` | 29 |
 | `geometry.profiles` | 24 |
 | `geometry.solids` | 22 |
@@ -47,10 +47,10 @@
 | `pattern.voronoi_3d` | 1 |
 | `reference.frames` | 4 |
 | `reference.planes` | 6 |
-| `reference.points` | 17 |
+| `reference.points` | 18 |
 | `reference.vectors` | 18 |
 | `transform.basic_transforms` | 15 |
-| `transform.deformations` | 8 |
+| `transform.deformations` | 9 |
 | `transform.orientation` | 6 |
 | `utilities.assist` | 7 |
 | `utilities.fileio` | 1 |
@@ -121,7 +121,7 @@
 | SDF Blend Material Mask | `geometry.boolean.sdf_blend_material_mask` | Maps SDF distance values to smooth 0..1 blend weights and inside/outside booleans | `SdfBlendMaterialMaskNode` |
 | SDF Domain Warp | `geometry.boolean.sdf_domain_warp` | Applies coordinate-space noise warping before sampling an input SDF | `SdfDomainWarpNode` |
 
-## geometry.curves（22）
+## geometry.curves（24）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -147,6 +147,8 @@
 | Helix Curve | `geometry.curves.helix` | Builds a sampled helix from center, axis, radius, pitch, turns, and segment count. | `HelixCurveNode` |
 | Infinity Curve On Plane | `geometry.curves.infinity_curve` | Builds a sampled figure-eight (lemniscate-like) curve on a plane | `InfinityCurveOnPlaneNode` |
 | Voxelize Curve | `geometry.curves.voxelize_curve` | Converts a curve, polyline, or line directly into voxel block coordinates using cylindrical path segments | `VoxelizeCurveNode` |
+| Blend Curves | `geometry.curves.blend_curves` | Creates a smooth transition curve between two curve, polyline, or line endpoints | `BlendCurvesNode` |
+| Tween Curves | `geometry.curves.tween_curves` | Creates evenly spaced intermediate curves between two curve, polyline, or line inputs | `TweenCurvesNode` |
 
 ## geometry.primitives（29）
 
@@ -587,7 +589,7 @@
 | Box Face To Plane | `reference.planes.block_face_plane` | Explicitly converts a box face into its supporting plane and related face frame data | `BoxFaceToPlaneNode` |
 | Offset Plane | `reference.planes.offset_plane` | Offsets a plane along its normal by a signed distance | `OffsetPlaneNode` |
 
-## reference.points（17）
+## reference.points（18）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -608,6 +610,7 @@
 | Deconstruct Box Face | `reference.points.deconstruct_face` | Extracts corners, edges, plane, center, and normal from a box face | `DeconstructBoxFaceNode` |
 | Deconstruct Face Edge | `reference.points.deconstruct_edge` | Extracts endpoints, midpoint, direction, vector, and length from a face edge | `DeconstructFaceEdgeNode` |
 | Project Point To Polyline | `reference.points.project_to_polyline` | Projects a point onto the closest location on a polyline or line segment | `ProjectPointToPolylineNode` |
+| Closest Point To Object | `reference.points.closest_point_to_object` | Finds the nearest point from a query point to a curve, path, surface strip, or voxelized geometry | `ClosestPointToObjectNode` |
 
 ## reference.vectors（18）
 
@@ -652,7 +655,7 @@
 | Rotate Geometry Around Axis | `transform.basic_transforms.rotate_geometry_axis` | Rotates analytic geometry around a center point and arbitrary axis | `RotateGeometryAroundAxisNode` |
 | Scale Geometry Around Point | `transform.basic_transforms.scale_geometry_point` | Uniformly scales analytic geometry around a center point | `ScaleGeometryAroundPointNode` |
 
-## transform.deformations（8）
+## transform.deformations（9）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -664,6 +667,7 @@
 | Relax Point List | `transform.deformations.relax_points` | Laplacian-style smoothing using k nearest neighbors (uniform grid hash for speed; capped point count) | `RelaxPointListNode` |
 | Lattice Deform Point List | `transform.deformations.lattice_deform` | Free-form deformation: trilinear blend of control displacements on a uniform (nx+1)(ny+1)(nz+1) lattice in an axis-aligned box | `LatticeDeformPointListNode` |
 | Spherical Displace | `transform.deformations.spherical_displace` | Applies radial displacement with spherical distance falloff around a center point. | `SphericalDisplaceNode` |
+| Twist Geometry | `transform.deformations.twist_geometry` | Applies an axial twist domain deformation to SDF or geometry, outputting a twisted SDF-backed Geometry | `TwistGeometryNode` |
 
 ## transform.orientation（6）
 
