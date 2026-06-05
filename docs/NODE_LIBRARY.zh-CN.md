@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**490**
+- **节点总数**：**492**
 - **分类总数**：**52**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -39,8 +39,8 @@
 | `output.execute` | 6 |
 | `output.export` | 4 |
 | `output.preview` | 12 |
-| `pattern.grid` | 4 |
-| `pattern.linear` | 5 |
+| `pattern.grid` | 5 |
+| `pattern.linear` | 6 |
 | `pattern.lsystem` | 2 |
 | `pattern.radial` | 4 |
 | `pattern.surface_volume_distribution` | 9 |
@@ -514,16 +514,17 @@
 | Preview Profiles | `output.preview.preview_profiles` | Previews polygon profile boundaries and optional normal indicators | `PreviewPolygonProfilesNode` |
 | Preview Geometry | `output.preview.preview_geometry` | Previews analytic geometry directly (semi-transparent fill + outline) before voxelization | `PreviewGeometryNode` |
 
-## pattern.grid（4）
+## pattern.grid（5）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Grid Array | `pattern.grid.grid_array` | 在平面或三维网格上重复坐标列表 | `GridArrayNode` |
 | Facade Grid | `pattern.grid.facade_grid` | Generates facade cell centers and boundaries on a box face | `FacadeGridNode` |
+| Grid Array Geometry | `pattern.grid.grid_array_geometry` | Creates rectangular or box arrays of geometry using X, Y, and optional Z directions | `GridArrayGeometryNode` |
 | Hex Grid | `pattern.grid.hex_grid` | Repeats coordinates on a flat-top hexagonal lattice (X/Z) with configurable spacing | `HexGridNode` |
 | Triangular Grid | `pattern.grid.triangle_grid` | Repeats coordinates on a triangular lattice with alternating row offsets. | `TriangularGridNode` |
 
-## pattern.linear（5）
+## pattern.linear（6）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -532,6 +533,7 @@
 | Staggered Array | `pattern.linear.staggered_array` | Repeats coordinates in rows and applies an alternating offset for brick-like staggering | `StaggeredArrayNode` |
 | Path Instances | `pattern.linear.path_instances` | Generates path instance frames (origin + axes) for oriented placement along a path. | `PathInstancesNode` |
 | Linear Array Geometry | `pattern.linear.linear_array_geometry` | Creates repeated geometry copies along a direction vector | `LinearArrayGeometryNode` |
+| Curve Array Geometry | `pattern.linear.curve_array_geometry` | Creates repeated geometry copies along a curve, polyline, or line path with optional tangent orientation | `CurveArrayGeometryNode` |
 
 ## pattern.lsystem（2）
 
