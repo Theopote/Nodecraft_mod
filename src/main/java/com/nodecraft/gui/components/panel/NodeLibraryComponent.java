@@ -661,7 +661,7 @@ public class NodeLibraryComponent implements EditorComponent {
         for (DisplayCategory topCategory : topLevelCategories) {
             List<DisplayCategory> children = childCategoriesMap.get(topCategory.getId());
             if (topCategory.getNodes().isEmpty() && children != null && children.size() == 1) {
-                DisplayCategory promotedChild = children.get(0);
+                DisplayCategory promotedChild = children.getFirst();
                 if (promotedChild.getId().endsWith(".legacy")) {
                     promotedTopLevelCategories.add(promotedChild);
                     childCategoriesMap.remove(topCategory.getId());
