@@ -829,7 +829,7 @@ public class NodeLibraryComponent implements EditorComponent {
             ImVec2 rectMin = ImGui.getItemRectMin();
             ImDrawList drawList = ImGui.getWindowDrawList();
 
-            drawGridPlaceholderIcon(drawList, rectMin, tileSide, nodeCategory);
+            drawNodeIcon(drawList, rectMin, node, nodeCategory, tileSide);
             handleNodeInteraction(node, nodeCategory, displayCategory, tileSide);
 
             if (selected && selectCallback != null) {
@@ -1041,7 +1041,7 @@ public class NodeLibraryComponent implements EditorComponent {
 
     private void drawNodeIcon(ImDrawList drawList, ImVec2 topLeft, NodeInfo node, String nodeCategory, float iconSize) {
         String nodeId = node.getId();
-        int textureId = iconManager.loadNodeIcon(nodeId, nodeCategory);
+        int textureId = iconManager.loadNodeIcon(nodeId, nodeCategory, node.getIcon());
 
         if (textureId > 0) {
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);

@@ -37,4 +37,15 @@ public @interface NodeInfo {
      * Lower values appear first.
      */
     int order() default Integer.MAX_VALUE;
+
+    /**
+     * Optional icon override.
+     * <p>
+     * Accepted values are either a node icon id such as
+     * {@code geometry/primitives/sphere} or a full resource path such as
+     * {@code textures/icons/nodes/geometry/primitives/sphere.svg}.
+     * When omitted, the UI derives the icon path from {@link #id()} and
+     * {@link #category()}.
+     */
+    String icon() default "";
 }

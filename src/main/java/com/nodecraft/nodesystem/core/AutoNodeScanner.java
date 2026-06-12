@@ -161,6 +161,7 @@ public final class AutoNodeScanner {
             String description = annotation.description();
             String category = annotation.category();
             int order = annotation.order();
+            String icon = annotation.icon();
 
             if (id.isEmpty()) {
                 id = nodeClass.getSimpleName().toLowerCase();
@@ -186,6 +187,9 @@ public final class AutoNodeScanner {
             Class<? extends INode> castedClass = (Class<? extends INode>) nodeClass;
             com.nodecraft.gui.node.NodeInfo nodeInfo =
                 new com.nodecraft.gui.node.NodeInfo(id, displayName, description, category, order, castedClass);
+            if (icon != null && !icon.isBlank()) {
+                nodeInfo.setIcon(icon.trim());
+            }
 
             boolean success = registry.registerNode(nodeInfo);
             if (success && !validateRegisteredNodeMetadata(registry, id, category, castedClass)) {
