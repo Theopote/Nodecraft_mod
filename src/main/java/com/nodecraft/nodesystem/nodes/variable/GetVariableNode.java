@@ -15,7 +15,7 @@ import java.util.UUID;
 @NodeInfo(
     id = "variable.get",
     displayName = "Get Variable",
-    description = "Reads a value by variable name from the execution scope.",
+    description = "Reads a value by user variable name from the execution scope. Exists means the name exists, even when its stored value is null.",
     category = "variable",
     order = 1
 )

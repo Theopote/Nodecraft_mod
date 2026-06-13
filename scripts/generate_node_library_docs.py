@@ -80,6 +80,14 @@ def write_en(path, entries):
     for cat in categories:
         categories[cat].sort(key=lambda x: (x["order"], x["display"].lower()))
     sorted_cats = sorted(categories.keys(), key=lambda x: x.lower())
+    category_notes = {
+        "variable": [
+            "`variable` nodes read and write execution-scope state. The graph executor only guarantees order through explicit connections, so connect a Set/Remove/Clear output into downstream nodes when the write must happen first.",
+            "User variable names must not start with `__nodecraft.`; that prefix is reserved for internal runtime data.",
+            "`Exists` reports whether a name is present even when the stored value is `null`. Use Remove Variable to delete a name instead of storing `null` as a deletion marker.",
+            "Variable List hides internal variables by default. Frame Local Variable clears its frame before writing when both Clear Frame and Write are true.",
+        ],
+    }
 
     lines = [
         "# NodeCraft Node Library",
@@ -102,6 +110,14 @@ def write_en(path, entries):
                 "",
                 f"## {cat} ({len(categories[cat])})",
                 "",
+            ]
+        )
+        if cat in category_notes:
+            for note in category_notes[cat]:
+                lines.append(f"- {note}")
+            lines.append("")
+        lines.extend(
+            [
                 "| Node Name | Node ID | Description | Class |",
                 "|---|---|---|---|",
             ]
@@ -173,6 +189,14 @@ def write_zh(path, entries):
     for cat in categories:
         categories[cat].sort(key=lambda x: (x["order"], x["display"].lower()))
     sorted_cats = sorted(categories.keys(), key=lambda x: x.lower())
+    category_notes = {
+        "variable": [
+            "`variable` 节点会读写执行作用域状态。图执行器只通过显式连线保证顺序；当写入必须先发生时，请把 Set/Remove/Clear 的输出连接到下游节点。",
+            "用户变量名不能以 `__nodecraft.` 开头；该前缀保留给内部运行时数据。",
+            "`Exists` 表示名称是否存在，即使存储值为 `null` 也会为 true。要删除名称请使用 Remove Variable，不要把 `null` 当作删除标记。",
+            "Variable List 默认隐藏内部变量。Frame Local Variable 在 Clear Frame 与 Write 同时为 true 时，会先清空 frame，再把 Value 写入 Name。",
+        ],
+    }
 
     lines = [
         f"# NodeCraft {T['title']}",
@@ -196,6 +220,14 @@ def write_zh(path, entries):
                 "",
                 f"## {cat}{LP}{len(categories[cat])}{RP}",
                 "",
+            ]
+        )
+        if cat in category_notes:
+            for note in category_notes[cat]:
+                lines.append(f"- {note}")
+            lines.append("")
+        lines.extend(
+            [
                 f"| {T['col_name']} | {T['col_id']} | {T['col_desc']} | {T['col_class']} |",
                 "|---|---|---|---|",
             ]

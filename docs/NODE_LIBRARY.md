@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **512**
+- Total nodes: **514**
 - Total categories: **53**
 
 ## Category Statistics
@@ -55,7 +55,7 @@
 | `utilities.assist` | 7 |
 | `utilities.fileio` | 2 |
 | `utilities.organization` | 8 |
-| `variable` | 4 |
+| `variable` | 6 |
 | `world.query` | 10 |
 | `world.read` | 12 |
 | `world.selection` | 9 |
@@ -738,14 +738,21 @@
 | Comment | `utilities.organization.comment` | 在画布上添加文本注释 | `CommentNode` |
 | Group | `utilities.organization.group` | 将选中的节点打包成一个可视化组 | `GroupNode` |
 
-## variable (4)
+## variable (6)
+
+- `variable` nodes read and write execution-scope state. The graph executor only guarantees order through explicit connections, so connect a Set/Remove/Clear output into downstream nodes when the write must happen first.
+- User variable names must not start with `__nodecraft.`; that prefix is reserved for internal runtime data.
+- `Exists` reports whether a name is present even when the stored value is `null`. Use Remove Variable to delete a name instead of storing `null` as a deletion marker.
+- Variable List hides internal variables by default. Frame Local Variable clears its frame before writing when both Clear Frame and Write are true.
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Set Variable | `variable.set` | Stores a value under a variable name in the execution scope. | `SetVariableNode` |
-| Get Variable | `variable.get` | Reads a value by variable name from the execution scope. | `GetVariableNode` |
-| Variable List | `variable.list` | Lists variables currently available in the execution scope. | `VariableListNode` |
-| Frame Local Variable | `variable.frame_local` | Reads or writes variables in an isolated frame-local namespace. | `FrameLocalVariableNode` |
+| Set Variable | `variable.set` | Stores a value under a user variable name in the execution scope. Connect an output to downstream nodes when write order matters. | `SetVariableNode` |
+| Get Variable | `variable.get` | Reads a value by user variable name from the execution scope. Exists means the name exists, even when its stored value is null. | `GetVariableNode` |
+| Variable List | `variable.list` | Lists user variables currently available in the execution scope. | `VariableListNode` |
+| Frame Local Variable | `variable.frame_local` | Reads or writes variables in an isolated frame-local namespace. When Clear Frame and Write are both true, the frame is cleared first, then Value is written to Name. | `FrameLocalVariableNode` |
+| Remove Variable | `variable.remove` | Removes a user variable from the execution scope. | `RemoveVariableNode` |
+| Clear Variables | `variable.clear` | Clears user variables from the execution scope. | `ClearVariablesNode` |
 
 ## world.query (10)
 

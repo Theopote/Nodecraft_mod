@@ -15,7 +15,7 @@ import java.util.UUID;
 @NodeInfo(
     id = "variable.set",
     displayName = "Set Variable",
-    description = "Stores a value under a variable name in the execution scope.",
+    description = "Stores a value under a user variable name in the execution scope. Connect an output to downstream nodes when write order matters.",
     category = "variable",
     order = 0
 )

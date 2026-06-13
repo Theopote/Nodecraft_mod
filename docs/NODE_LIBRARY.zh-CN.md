@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**512**
+- **节点总数**：**514**
 - **分类总数**：**53**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -56,7 +56,7 @@
 | `utilities.assist` | 7 |
 | `utilities.fileio` | 2 |
 | `utilities.organization` | 8 |
-| `variable` | 4 |
+| `variable` | 6 |
 | `world.query` | 10 |
 | `world.read` | 12 |
 | `world.selection` | 9 |
@@ -739,14 +739,21 @@
 | Comment | `utilities.organization.comment` | 在画布上添加文本注释 | `CommentNode` |
 | Group | `utilities.organization.group` | 将选中的节点打包成一个可视化组 | `GroupNode` |
 
-## variable（4）
+## variable（6）
+
+- `variable` 节点会读写执行作用域状态。图执行器只通过显式连线保证顺序；当写入必须先发生时，请把 Set/Remove/Clear 的输出连接到下游节点。
+- 用户变量名不能以 `__nodecraft.` 开头；该前缀保留给内部运行时数据。
+- `Exists` 表示名称是否存在，即使存储值为 `null` 也会为 true。要删除名称请使用 Remove Variable，不要把 `null` 当作删除标记。
+- Variable List 默认隐藏内部变量。Frame Local Variable 在 Clear Frame 与 Write 同时为 true 时，会先清空 frame，再把 Value 写入 Name。
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Set Variable | `variable.set` | Stores a value under a variable name in the execution scope. | `SetVariableNode` |
-| Get Variable | `variable.get` | Reads a value by variable name from the execution scope. | `GetVariableNode` |
-| Variable List | `variable.list` | Lists variables currently available in the execution scope. | `VariableListNode` |
-| Frame Local Variable | `variable.frame_local` | Reads or writes variables in an isolated frame-local namespace. | `FrameLocalVariableNode` |
+| Set Variable | `variable.set` | Stores a value under a user variable name in the execution scope. Connect an output to downstream nodes when write order matters. | `SetVariableNode` |
+| Get Variable | `variable.get` | Reads a value by user variable name from the execution scope. Exists means the name exists, even when its stored value is null. | `GetVariableNode` |
+| Variable List | `variable.list` | Lists user variables currently available in the execution scope. | `VariableListNode` |
+| Frame Local Variable | `variable.frame_local` | Reads or writes variables in an isolated frame-local namespace. When Clear Frame and Write are both true, the frame is cleared first, then Value is written to Name. | `FrameLocalVariableNode` |
+| Remove Variable | `variable.remove` | Removes a user variable from the execution scope. | `RemoveVariableNode` |
+| Clear Variables | `variable.clear` | Clears user variables from the execution scope. | `ClearVariablesNode` |
 
 ## world.query（10）
 

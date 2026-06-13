@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @NodeInfo(
     id = "variable.frame_local",
     displayName = "Frame Local Variable",
-    description = "Reads or writes variables in an isolated frame-local namespace.",
+    description = "Reads or writes variables in an isolated frame-local namespace. When Clear Frame and Write are both true, the frame is cleared first, then Value is written to Name.",
     category = "variable",
     order = 3
 )

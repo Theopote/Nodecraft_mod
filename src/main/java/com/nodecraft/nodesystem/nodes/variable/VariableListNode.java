@@ -19,7 +19,7 @@ import java.util.UUID;
 @NodeInfo(
     id = "variable.list",
     displayName = "Variable List",
-    description = "Lists variables currently available in the execution scope.",
+    description = "Lists user variables currently available in the execution scope.",
     category = "variable",
     order = 2
 )
