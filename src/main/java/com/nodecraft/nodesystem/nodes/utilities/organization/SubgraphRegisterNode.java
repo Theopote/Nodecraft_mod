@@ -14,7 +14,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @NodeInfo(
     id = "utilities.organization.subgraph_register",
@@ -25,13 +24,12 @@ import java.util.concurrent.ConcurrentHashMap;
 )
 public class SubgraphRegisterNode extends BaseNode {
 
-    private static final Map<String, Object> FALLBACK_REGISTRY = new ConcurrentHashMap<>();
-
     @NodeProperty(displayName = "Default Ref", category = "Subgraph Register", order = 1)
     private String defaultRef = "subgraph";
 
     private static final String INPUT_SUBGRAPH_REF_ID = "input_subgraph_ref";
     private static final String INPUT_SUBGRAPH_GRAPH_ID = "input_subgraph_graph";
+    private static final String INPUT_REGISTER_ID = "input_register";
     private static final String INPUT_OVERWRITE_ID = "input_overwrite";
 
     private static final String OUTPUT_SUCCESS_ID = "output_success";
@@ -44,6 +42,7 @@ public class SubgraphRegisterNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_SUBGRAPH_REF_ID, "Subgraph Ref", "Reference key to register", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_SUBGRAPH_GRAPH_ID, "Subgraph Graph", "Graph object / SavedGraph / JSON string", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_REGISTER_ID, "Register", "When connected, false prevents registration", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_OVERWRITE_ID, "Overwrite", "Whether existing key can be replaced", NodeDataType.BOOLEAN, this));
 
         addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether registration succeeded", NodeDataType.BOOLEAN, this));
@@ -66,9 +65,26 @@ public class SubgraphRegisterNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         String ref = resolveRef(inputValues.get(INPUT_SUBGRAPH_REF_ID));
         Object graphObj = inputValues.get(INPUT_SUBGRAPH_GRAPH_ID);
+        boolean register = !Boolean.FALSE.equals(inputValues.get(INPUT_REGISTER_ID));
         boolean overwrite = Boolean.TRUE.equals(inputValues.get(INPUT_OVERWRITE_ID));
 
+        if (context == null) {
+            outputValues.put(OUTPUT_SUCCESS_ID, false);
+            outputValues.put(OUTPUT_REF_ID, ref == null ? "" : ref);
+            outputValues.put(OUTPUT_REGISTRY_ID, Map.of());
+            outputValues.put(OUTPUT_MESSAGE_ID, "Missing execution context.");
+            return;
+        }
+
         Map<String, Object> registry = getOrCreateRegistry(context);
+        if (!register) {
+            outputValues.put(OUTPUT_SUCCESS_ID, false);
+            outputValues.put(OUTPUT_REF_ID, ref == null ? "" : ref);
+            outputValues.put(OUTPUT_REGISTRY_ID, new LinkedHashMap<>(registry));
+            outputValues.put(OUTPUT_MESSAGE_ID, "Registration disabled.");
+            return;
+        }
+
         if (ref == null || ref.isBlank()) {
             outputValues.put(OUTPUT_SUCCESS_ID, false);
             outputValues.put(OUTPUT_REF_ID, "");
@@ -113,16 +129,13 @@ public class SubgraphRegisterNode extends BaseNode {
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> getOrCreateRegistry(@Nullable ExecutionContext context) {
-        if (context != null) {
-            Object existing = context.getVariable(GraphIOKeys.SUBGRAPH_REGISTRY_KEY);
-            if (existing instanceof Map<?, ?> map) {
-                return (Map<String, Object>) map;
-            }
-            Map<String, Object> created = new LinkedHashMap<>();
-            context.setVariable(GraphIOKeys.SUBGRAPH_REGISTRY_KEY, created);
-            return created;
+        Object existing = context.getVariable(GraphIOKeys.SUBGRAPH_REGISTRY_KEY);
+        if (existing instanceof Map<?, ?> map) {
+            return (Map<String, Object>) map;
         }
-        return FALLBACK_REGISTRY;
+        Map<String, Object> created = new LinkedHashMap<>();
+        context.setVariable(GraphIOKeys.SUBGRAPH_REGISTRY_KEY, created);
+        return created;
     }
 
     private NodeGraph toNodeGraph(Object value) {
@@ -151,4 +164,3 @@ public class SubgraphRegisterNode extends BaseNode {
         }
     }
 }
-

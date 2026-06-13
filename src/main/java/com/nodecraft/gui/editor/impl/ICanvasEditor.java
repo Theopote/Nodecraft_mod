@@ -1,4 +1,4 @@
-﻿package com.nodecraft.gui.editor.impl;
+package com.nodecraft.gui.editor.impl;
 
 import java.util.Map;
 import java.util.UUID;

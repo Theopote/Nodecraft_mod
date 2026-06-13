@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @NodeInfo(
     id = "utilities.organization.graph_output",
@@ -23,8 +22,6 @@ import java.util.concurrent.ConcurrentHashMap;
 )
 public class GraphOutputNode extends BaseNode {
 
-    private static final Map<String, Object> FALLBACK_OUTPUTS = new ConcurrentHashMap<>();
-
     @NodeProperty(displayName = "Output Name", category = "Graph IO", order = 1)
     private String outputName = "output";
 
@@ -34,6 +31,7 @@ public class GraphOutputNode extends BaseNode {
     private static final String OUTPUT_VALUE_ID = "output_value";
     private static final String OUTPUT_NAME_ID = "output_name";
     private static final String OUTPUT_OUTPUTS_ID = "output_outputs";
+    private static final String OUTPUT_ERROR_ID = "output_error";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public GraphOutputNode() {
@@ -45,6 +43,7 @@ public class GraphOutputNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_VALUE_ID, "Value", "Output value passthrough", NodeDataType.ANY, this));
         addOutputPort(new BasePort(OUTPUT_NAME_ID, "Name", "Resolved output name", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_OUTPUTS_ID, "Outputs", "Current graph output map snapshot", NodeDataType.ANY, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Why graph output was not published", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether output name is valid", NodeDataType.BOOLEAN, this));
     }
 
@@ -63,20 +62,27 @@ public class GraphOutputNode extends BaseNode {
         Object value = inputValues.get(INPUT_VALUE_ID);
         String name = resolveOutputName(inputValues.get(INPUT_NAME_OVERRIDE_ID));
         if (name == null || name.isBlank()) {
-            outputValues.put(OUTPUT_VALUE_ID, value);
-            outputValues.put(OUTPUT_NAME_ID, "");
-            outputValues.put(OUTPUT_OUTPUTS_ID, Map.of());
-            outputValues.put(OUTPUT_VALID_ID, false);
+            writeResult(value, "", Map.of(), false, "Output name is empty");
+            return;
+        }
+
+        if (context == null) {
+            writeResult(value, name, Map.of(), false, "Missing execution context");
             return;
         }
 
         Map<String, Object> outputMap = getOrCreateOutputMap(context);
         outputMap.put(name, value);
 
+        writeResult(value, name, new LinkedHashMap<>(outputMap), true, "");
+    }
+
+    private void writeResult(Object value, String name, Map<String, Object> outputs, boolean valid, String error) {
         outputValues.put(OUTPUT_VALUE_ID, value);
         outputValues.put(OUTPUT_NAME_ID, name);
-        outputValues.put(OUTPUT_OUTPUTS_ID, new LinkedHashMap<>(outputMap));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_OUTPUTS_ID, outputs);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+        outputValues.put(OUTPUT_VALID_ID, valid);
     }
 
     private String resolveOutputName(Object nameOverrideObj) {
@@ -91,16 +97,13 @@ public class GraphOutputNode extends BaseNode {
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> getOrCreateOutputMap(@Nullable ExecutionContext context) {
-        if (context != null) {
-            Object existing = context.getVariable(GraphIOKeys.GRAPH_OUTPUTS_KEY);
-            if (existing instanceof Map<?, ?> map) {
-                return (Map<String, Object>) map;
-            }
-            Map<String, Object> created = new LinkedHashMap<>();
-            context.setVariable(GraphIOKeys.GRAPH_OUTPUTS_KEY, created);
-            return created;
+        Object existing = context.getVariable(GraphIOKeys.GRAPH_OUTPUTS_KEY);
+        if (existing instanceof Map<?, ?> map) {
+            return (Map<String, Object>) map;
         }
-        return FALLBACK_OUTPUTS;
+        Map<String, Object> created = new LinkedHashMap<>();
+        context.setVariable(GraphIOKeys.GRAPH_OUTPUTS_KEY, created);
+        return created;
     }
 
     @Override

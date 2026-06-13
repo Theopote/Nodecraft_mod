@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 @NodeInfo(
@@ -32,7 +31,6 @@ import java.util.regex.Pattern;
 )
 public class SubgraphNode extends BaseNode {
 
-    private static final Map<String, Object> FALLBACK_CALLS = new ConcurrentHashMap<>();
     private static final Pattern NON_ALNUM_UNDERSCORE = Pattern.compile("[^a-zA-Z0-9_]");
 
     private static final String DYNAMIC_INPUT_PREFIX = "dynamic_input_key_";
@@ -612,19 +610,18 @@ public class SubgraphNode extends BaseNode {
 
     @SuppressWarnings("unchecked")
     private void recordCallMetadata(@Nullable ExecutionContext context, String subgraphRefName, Map<String, Object> metadata) {
-        if (context != null) {
-            Object existing = context.getVariable(GraphIOKeys.SUBGRAPH_CALLS_KEY);
-            Map<String, Object> calls;
-            if (existing instanceof Map<?, ?> map) {
-                calls = (Map<String, Object>) map;
-            } else {
-                calls = new LinkedHashMap<>();
-                context.setVariable(GraphIOKeys.SUBGRAPH_CALLS_KEY, calls);
-            }
-            calls.put(subgraphRefName + "::" + getId(), new LinkedHashMap<>(metadata));
+        if (context == null) {
             return;
         }
-        FALLBACK_CALLS.put(subgraphRefName + "::" + getId(), new LinkedHashMap<>(metadata));
+        Object existing = context.getVariable(GraphIOKeys.SUBGRAPH_CALLS_KEY);
+        Map<String, Object> calls;
+        if (existing instanceof Map<?, ?> map) {
+            calls = (Map<String, Object>) map;
+        } else {
+            calls = new LinkedHashMap<>();
+            context.setVariable(GraphIOKeys.SUBGRAPH_CALLS_KEY, calls);
+        }
+        calls.put(subgraphRefName + "::" + getId(), new LinkedHashMap<>(metadata));
     }
 
     @Override

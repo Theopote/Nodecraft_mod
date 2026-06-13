@@ -13,18 +13,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @NodeInfo(
     id = "utilities.organization.preset",
-    displayName = "Node Preset",
-    description = "Saves, loads, and deletes named node presets in execution context.",
+    displayName = "Runtime Preset",
+    description = "Saves, loads, and deletes named runtime presets in execution context.",
     category = "utilities.organization",
     order = 7
 )
 public class NodePresetNode extends BaseNode {
-
-    private static final Map<String, Object> FALLBACK_PRESETS = new ConcurrentHashMap<>();
 
     @NodeProperty(displayName = "Default Preset Name", category = "Preset", order = 1)
     private String defaultPresetName = "preset";
@@ -78,6 +75,11 @@ public class NodePresetNode extends BaseNode {
         boolean load = Boolean.TRUE.equals(inputValues.get(INPUT_LOAD_ID));
         boolean delete = Boolean.TRUE.equals(inputValues.get(INPUT_DELETE_ID));
 
+        if (context == null) {
+            writeResult(defaultValue, false, false, Map.of(), "Missing execution context.");
+            return;
+        }
+
         Map<String, Object> presets = getOrCreatePresets(context);
 
         if (presetName == null || presetName.isBlank()) {
@@ -130,16 +132,12 @@ public class NodePresetNode extends BaseNode {
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> getOrCreatePresets(@Nullable ExecutionContext context) {
-        if (context != null) {
-            Object existing = context.getVariable(GraphIOKeys.NODE_PRESETS_KEY);
-            if (existing instanceof Map<?, ?> map) {
-                return (Map<String, Object>) map;
-            }
-            Map<String, Object> created = new LinkedHashMap<>();
-            context.setVariable(GraphIOKeys.NODE_PRESETS_KEY, created);
-            return created;
+        Object existing = context.getVariable(GraphIOKeys.NODE_PRESETS_KEY);
+        if (existing instanceof Map<?, ?> map) {
+            return (Map<String, Object>) map;
         }
-        return FALLBACK_PRESETS;
+        Map<String, Object> created = new LinkedHashMap<>();
+        context.setVariable(GraphIOKeys.NODE_PRESETS_KEY, created);
+        return created;
     }
 }
-
