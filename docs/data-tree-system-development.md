@@ -221,6 +221,7 @@ Targets:
 - Loft Profiles: started; source/target section points use `{0}` and `{1}`, rails use `{railIndex}`.
 - Loft Point Lists: started; source/target paths and point rows use `{0}` and `{1}`, rails use `{railIndex}`.
 - Multi Section Loft: started; profiles, section paths, and section points use `{sectionIndex}`, rails use `{vertexIndex}`.
+- Section Cut: started; multi-plane cuts output profiles, boundaries, slice blocks, and slice points using `{planeIndex}` paths.
 - Surface Strip To Geometry
 - Bake / Preview nodes
 
@@ -240,6 +241,7 @@ Current implementation notes:
 - `Bake Geometry To Blocks` accepts `Geometry Tree` and outputs `Blocks Tree`, preserving source branch paths.
 - `Bake Surface Strip To Blocks` accepts `Surface Strip Tree` and outputs `Blocks Tree`, preserving source branch paths.
 - Tree-aware bake nodes compute `Region` from all valid branch items, not only the first input object.
+- `Section Cut` accepts a `Planes` list and adds list/tree outputs for section profiles, boundary contours, slice blocks, and projected slice points.
 
 Bake nodes should eventually support:
 
