@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.SurfaceStripBridge;
 import org.jetbrains.annotations.Nullable;
 
@@ -67,15 +68,13 @@ public class SurfaceStripToBlocksNode extends BaseNode {
 
         if (surfaceStripTreeObj instanceof DataTreeData surfaceStripTree && surfaceStripTree.getBranchCount() > 0) {
             List<DataTreeData.Branch> blockBranches = new ArrayList<>();
-            SurfaceStripData firstSurfaceStrip = null;
             for (DataTreeData.Branch branch : surfaceStripTree.getBranches()) {
                 BlockPosList branchBlocks = new BlockPosList();
                 for (Object item : branch.items()) {
                     if (item instanceof SurfaceStripData surfaceStrip) {
-                        if (firstSurfaceStrip == null) {
-                            firstSurfaceStrip = surfaceStrip;
-                        }
                         branchBlocks.addAll(SurfaceStripBridge.voxelize(surfaceStrip, longitudinalSteps, mode).getPositions());
+                        region = GeometryVoxelizer.unionBoundingRegions(region, SurfaceStripBridge.createBoundingRegion(surfaceStrip));
+                        valid = true;
                     }
                 }
                 if (!branchBlocks.isEmpty()) {
@@ -84,10 +83,6 @@ public class SurfaceStripToBlocksNode extends BaseNode {
                 }
             }
             blocksTree = new DataTreeData(blockBranches);
-            if (firstSurfaceStrip != null) {
-                region = SurfaceStripBridge.createBoundingRegion(firstSurfaceStrip);
-                valid = true;
-            }
         } else if (surfaceStripObj instanceof SurfaceStripData surfaceStrip) {
             blocks = SurfaceStripBridge.voxelize(surfaceStrip, longitudinalSteps, mode);
             blocksTree = new DataTreeData(List.of(new DataTreeData.Branch(List.of(0), new ArrayList<Object>(blocks.getPositions()))));

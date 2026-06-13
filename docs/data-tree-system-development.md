@@ -239,6 +239,7 @@ Current implementation notes:
 - `Surface Strip To Geometry` accepts `Surface Strip Tree` and outputs `Geometry Tree`, preserving source branch paths.
 - `Bake Geometry To Blocks` accepts `Geometry Tree` and outputs `Blocks Tree`, preserving source branch paths.
 - `Bake Surface Strip To Blocks` accepts `Surface Strip Tree` and outputs `Blocks Tree`, preserving source branch paths.
+- Tree-aware bake nodes compute `Region` from all valid branch items, not only the first input object.
 
 Bake nodes should eventually support:
 

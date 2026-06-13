@@ -65,15 +65,12 @@ public class GeometryToBlocksNode extends BaseNode {
 
         if (geometryTreeObj instanceof DataTreeData geometryTree && geometryTree.getBranchCount() > 0) {
             List<DataTreeData.Branch> blockBranches = new ArrayList<>();
-            GeometryData firstGeometry = null;
             for (DataTreeData.Branch branch : geometryTree.getBranches()) {
                 BlockPosList branchBlocks = new BlockPosList();
                 for (Object item : branch.items()) {
                     if (item instanceof GeometryData geometry) {
-                        if (firstGeometry == null) {
-                            firstGeometry = geometry;
-                        }
                         branchBlocks.addAll(GeometryVoxelizer.voxelize(geometry, fillGeometry).getPositions());
+                        region = GeometryVoxelizer.unionBoundingRegions(region, GeometryVoxelizer.createBoundingRegion(geometry));
                     }
                 }
                 if (!branchBlocks.isEmpty()) {
@@ -82,9 +79,6 @@ public class GeometryToBlocksNode extends BaseNode {
                 }
             }
             blocksTree = new DataTreeData(blockBranches);
-            if (firstGeometry != null) {
-                region = GeometryVoxelizer.createBoundingRegion(firstGeometry);
-            }
         } else if (geometryObj instanceof GeometryData geometry) {
             blocks = GeometryVoxelizer.voxelize(geometry, fillGeometry);
             blocksTree = new DataTreeData(List.of(new DataTreeData.Branch(List.of(0), new ArrayList<Object>(blocks.getPositions()))));
