@@ -93,6 +93,7 @@ public enum NodeDataType {
     FILE_PATH("file_path", "File Path", String.class),
 
     LIST("list", "List", java.util.List.class),
+    DATA_TREE("data_tree", "Data Tree", DataTreeData.class),
     COORDINATE_LIST("coordinate_list", "Coordinate List", java.util.List.class),
     BLOCK_INFO_LIST("block_info_list", "Block Info List", java.util.List.class),
     BLOCK_PLACEMENT_LIST("block_placement_list", "Block Placement List", java.util.List.class),

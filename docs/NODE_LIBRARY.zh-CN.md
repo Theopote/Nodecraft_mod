@@ -1,8 +1,8 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**498**
-- **分类总数**：**52**
+- **节点总数**：**506**
+- **分类总数**：**53**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
 ## 分类统计
@@ -28,6 +28,7 @@
 | `material.pattern_mapping` | 4 |
 | `material.surface_aging` | 3 |
 | `math.compare` | 7 |
+| `math.data_tree` | 8 |
 | `math.fields` | 17 |
 | `math.list` | 22 |
 | `math.logic` | 6 |
@@ -348,6 +349,19 @@
 | Less Than or Equal (<=) | `math.compare.less_than_or_equal` | Returns true when A is less than or equal to B. | `LessThanOrEqualNode` |
 | Greater Than (>) | `math.compare.greater_than` | Returns true when A is greater than B. | `GreaterThanNode` |
 | Greater Than or Equal (>=) | `math.compare.greater_than_or_equal` | Returns true when A is greater than or equal to B. | `GreaterThanOrEqualNode` |
+
+## math.data_tree（8）
+
+| 节点名称 | 节点 ID | 说明 | 类名 |
+|---|---|---|---|
+| Graft List | `math.data_tree.graft_list` | Converts each list item into its own data tree branch | `GraftListNode` |
+| Flatten Tree | `math.data_tree.flatten` | Flattens all data tree branches into a single list | `FlattenTreeNode` |
+| Partition List To Tree | `math.data_tree.partition_list` | Splits a list into fixed-size data tree branches | `PartitionListToTreeNode` |
+| Tree Branch | `math.data_tree.branch` | Gets one branch from a data tree by path | `TreeBranchNode` |
+| Tree Item | `math.data_tree.item` | Gets one item from a data tree branch by path and index | `TreeItemNode` |
+| Tree Statistics | `math.data_tree.statistics` | Reports branch count, item count, depth, paths, and branch sizes for a data tree | `TreeStatisticsNode` |
+| Tree Viewer | `math.data_tree.viewer` | Outputs a readable summary of a data tree for debugging | `TreeViewerNode` |
+| Merge Trees | `math.data_tree.merge` | Merges two data trees or lists into one data tree | `MergeTreesNode` |
 
 ## math.fields（17）
 
