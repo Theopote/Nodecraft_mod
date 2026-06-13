@@ -98,6 +98,19 @@ public class InsetBoxFaceNode extends BaseNode {
         }
 
         double requestedDistance = distanceObj instanceof Number number ? number.doubleValue() : 0.0d;
+        if (!Double.isFinite(requestedDistance)) {
+            outputValues.put(OUTPUT_FACE_ID, null);
+            outputValues.put(OUTPUT_POLYLINE_ID, null);
+            outputValues.put(OUTPUT_POINTS_ID, List.of());
+            outputValues.put(OUTPUT_CORNERS_ID, List.of());
+            outputValues.put(OUTPUT_CENTER_ID, null);
+            outputValues.put(OUTPUT_NORMAL_ID, face.getNormal());
+            outputValues.put(OUTPUT_PLANE_ID, face.getPlane());
+            outputValues.put(OUTPUT_EDGES_ID, List.of());
+            outputValues.put(OUTPUT_EFFECTIVE_DISTANCE_ID, 0.0d);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
+        }
 
         Vector3d c0 = corners.get(0);
         Vector3d c1 = corners.get(1);
@@ -125,8 +138,9 @@ public class InsetBoxFaceNode extends BaseNode {
         uAxis.normalize();
         vAxis.normalize();
 
-        double maxInset = Math.min(width, height) * 0.5d;
-        double effectiveDistance = Math.max(-Double.MAX_VALUE, Math.min(requestedDistance, maxInset));
+        double maxInset = Math.max(0.0d, Math.min(width, height) * 0.5d - 1.0e-6d);
+        double maxOutset = Math.max(width, height) * 10.0d;
+        double effectiveDistance = Math.max(-maxOutset, Math.min(requestedDistance, maxInset));
 
         List<Vector3d> insetCorners = List.of(
             new Vector3d(c0).add(new Vector3d(uAxis).mul(effectiveDistance)).add(new Vector3d(vAxis).mul(effectiveDistance)),
@@ -147,7 +161,7 @@ public class InsetBoxFaceNode extends BaseNode {
             face.getCornerIndices(),
             insetCorners,
             insetCenter,
-            face.getNormal()
+            new Vector3d(face.getNormal())
         );
 
         List<Vec3d> polylinePoints = new ArrayList<>(5);
@@ -174,8 +188,9 @@ public class InsetBoxFaceNode extends BaseNode {
         outputValues.put(OUTPUT_POINTS_ID, List.copyOf(closedPoints));
         outputValues.put(OUTPUT_CORNERS_ID, insetCorners);
         outputValues.put(OUTPUT_CENTER_ID, insetCenter);
-        outputValues.put(OUTPUT_NORMAL_ID, face.getNormal());
-        outputValues.put(OUTPUT_PLANE_ID, new PlaneData(insetCenter, face.getNormal()));
+        Vector3d normal = new Vector3d(face.getNormal());
+        outputValues.put(OUTPUT_NORMAL_ID, normal);
+        outputValues.put(OUTPUT_PLANE_ID, new PlaneData(insetCenter, normal));
         outputValues.put(OUTPUT_EDGES_ID, edges);
         outputValues.put(OUTPUT_EFFECTIVE_DISTANCE_ID, effectiveDistance);
         outputValues.put(OUTPUT_VALID_ID, true);

@@ -49,6 +49,7 @@ public class ShearPointListNode extends BaseNode {
 
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_COUNT_ID = "output_count";
+    private static final String OUTPUT_SKIPPED_COUNT_ID = "output_skipped_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ShearPointListNode() {
@@ -61,6 +62,7 @@ public class ShearPointListNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sheared point list", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output points", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_SKIPPED_COUNT_ID, "Skipped Count", "Number of input items that could not be parsed as points", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when shear was applied", NodeDataType.BOOLEAN, this));
     }
 
@@ -88,11 +90,17 @@ public class ShearPointListNode extends BaseNode {
         }
         double kU = resolveDouble(inputValues.get(INPUT_FACTOR_U_ID), factorU);
         double kV = resolveDouble(inputValues.get(INPUT_FACTOR_V_ID), factorV);
+        if (!isFinite(origin) || !Double.isFinite(kU) || !Double.isFinite(kV)) {
+            writeInvalid();
+            return;
+        }
 
         List<Vector3d> out = new ArrayList<>(pointList.size());
+        int skippedCount = 0;
         for (Object entry : pointList) {
             Vector3d p = resolvePoint(entry);
-            if (p == null) {
+            if (p == null || !isFinite(p)) {
+                skippedCount++;
                 continue;
             }
             out.add(applyShear(p, origin, kU, kV));
@@ -104,6 +112,7 @@ public class ShearPointListNode extends BaseNode {
         }
         outputValues.put(OUTPUT_POINTS_ID, List.copyOf(out));
         outputValues.put(OUTPUT_COUNT_ID, out.size());
+        outputValues.put(OUTPUT_SKIPPED_COUNT_ID, skippedCount);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
@@ -128,6 +137,7 @@ public class ShearPointListNode extends BaseNode {
     private void writeInvalid() {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
+        outputValues.put(OUTPUT_SKIPPED_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
@@ -141,6 +151,13 @@ public class ShearPointListNode extends BaseNode {
         if (value instanceof PointData p) return new Vector3d(p.getPosition());
         if (value instanceof BlockPos b) return new Vector3d(b.getX(), b.getY(), b.getZ());
         return null;
+    }
+
+    private boolean isFinite(Vector3d vector) {
+        return vector != null
+            && Double.isFinite(vector.x)
+            && Double.isFinite(vector.y)
+            && Double.isFinite(vector.z);
     }
 
     @Override

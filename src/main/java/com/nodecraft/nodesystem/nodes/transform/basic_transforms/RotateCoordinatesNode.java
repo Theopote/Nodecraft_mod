@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.transform.basic_transforms;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -17,7 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "transform.basic_transforms.rotate_points",
+    id = "transform.basic_transforms.rotate_coordinates",
     displayName = "Rotate Coordinates",
     description = "Rotates a list of block coordinates around a point and axis",
     category = "transform.basic_transforms",
@@ -29,7 +30,11 @@ public class RotateCoordinatesNode extends BaseNode {
         X_AXIS, Y_AXIS, Z_AXIS, CUSTOM
     }
 
+    @NodeProperty(displayName = "Default Axis", category = "Rotation", order = 1)
     private RotationAxis rotationAxis = RotationAxis.Y_AXIS;
+
+    @NodeProperty(displayName = "Default Angle", category = "Rotation", order = 2)
+    private double defaultAngle = 0.0d;
 
     private static final String INPUT_COORDINATES_ID = "input_coordinates";
     private static final String INPUT_CENTER_ID = "input_center";
@@ -37,10 +42,13 @@ public class RotateCoordinatesNode extends BaseNode {
     private static final String INPUT_ANGLE_ID = "input_angle";
 
     private static final String OUTPUT_COORDINATES_ID = "output_coordinates";
+    private static final String OUTPUT_EFFECTIVE_AXIS_ID = "output_effective_axis";
+    private static final String OUTPUT_EFFECTIVE_ANGLE_ID = "output_effective_angle";
+    private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public RotateCoordinatesNode() {
-        super(UUID.randomUUID(), "transform.basic_transforms.rotate_points");
+        super(UUID.randomUUID(), "transform.basic_transforms.rotate_coordinates");
 
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "The coordinates to rotate", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Rotation center point", NodeDataType.BLOCK_POS, this));
@@ -48,6 +56,9 @@ public class RotateCoordinatesNode extends BaseNode {
         addInputPort(new BasePort(INPUT_ANGLE_ID, "Angle", "Rotation angle in degrees", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_COORDINATES_ID, "Coordinates", "Rotated coordinates", NodeDataType.BLOCK_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_EFFECTIVE_AXIS_ID, "Effective Axis", "Rotation axis actually used", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_EFFECTIVE_ANGLE_ID, "Effective Angle", "Rotation angle actually used in degrees", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output coordinates", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the coordinate rotation succeeded", NodeDataType.BOOLEAN, this));
     }
 
@@ -69,16 +80,14 @@ public class RotateCoordinatesNode extends BaseNode {
         Object angleObj = inputValues.get(INPUT_ANGLE_ID);
 
         BlockPosList result = new BlockPosList();
-        if (!(coordinatesObj instanceof BlockPosList coordinates)
-            || !(centerObj instanceof BlockPos centerPos)
-            || !(axisObj instanceof Vector3d axisInput)
-            || !(angleObj instanceof Number angleNumber)) {
+        if (!(coordinatesObj instanceof BlockPosList coordinates)) {
             writeResult(result, false);
             return;
         }
 
-        Vector3d axis = new Vector3d(axisInput);
-        double angleDegrees = angleNumber.doubleValue();
+        BlockPos centerPos = centerObj instanceof BlockPos pos ? pos : BlockPos.ORIGIN;
+        Vector3d axis = axisObj instanceof Vector3d axisInput ? new Vector3d(axisInput) : axisFromProperty();
+        double angleDegrees = angleObj instanceof Number angleNumber ? angleNumber.doubleValue() : defaultAngle;
         if (!isFinite(axis) || axis.lengthSquared() <= 1.0e-12d || !Double.isFinite(angleDegrees)) {
             writeResult(result, false);
             return;
@@ -100,12 +109,28 @@ public class RotateCoordinatesNode extends BaseNode {
             ));
         }
 
-        writeResult(result, true);
+        writeResult(result, true, axis, angleDegrees);
     }
 
     private void writeResult(BlockPosList result, boolean valid) {
+        writeResult(result, valid, new Vector3d(), 0.0d);
+    }
+
+    private void writeResult(BlockPosList result, boolean valid, Vector3d effectiveAxis, double effectiveAngle) {
         outputValues.put(OUTPUT_COORDINATES_ID, result);
+        outputValues.put(OUTPUT_EFFECTIVE_AXIS_ID, effectiveAxis);
+        outputValues.put(OUTPUT_EFFECTIVE_ANGLE_ID, effectiveAngle);
+        outputValues.put(OUTPUT_COUNT_ID, result.size());
         outputValues.put(OUTPUT_VALID_ID, valid);
+    }
+
+    private Vector3d axisFromProperty() {
+        RotationAxis axis = rotationAxis == null ? RotationAxis.Y_AXIS : rotationAxis;
+        return switch (axis) {
+            case X_AXIS -> new Vector3d(1.0d, 0.0d, 0.0d);
+            case Z_AXIS -> new Vector3d(0.0d, 0.0d, 1.0d);
+            case Y_AXIS, CUSTOM -> new Vector3d(0.0d, 1.0d, 0.0d);
+        };
     }
 
     private boolean isFinite(Vector3d vector) {
@@ -123,10 +148,22 @@ public class RotateCoordinatesNode extends BaseNode {
         }
     }
 
+    public double getDefaultAngle() {
+        return defaultAngle;
+    }
+
+    public void setDefaultAngle(double defaultAngle) {
+        if (Double.compare(this.defaultAngle, defaultAngle) != 0) {
+            this.defaultAngle = defaultAngle;
+            markDirty();
+        }
+    }
+
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
         state.put("rotationAxis", rotationAxis.name());
+        state.put("defaultAngle", defaultAngle);
         return state;
     }
 
@@ -140,6 +177,9 @@ public class RotateCoordinatesNode extends BaseNode {
                 setRotationAxis(RotationAxis.valueOf(axisName));
             } catch (IllegalArgumentException ignored) {
             }
+        }
+        if (stateMap.get("defaultAngle") instanceof Number value) {
+            setDefaultAngle(value.doubleValue());
         }
     }
 }

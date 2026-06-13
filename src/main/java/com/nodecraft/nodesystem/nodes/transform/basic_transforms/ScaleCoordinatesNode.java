@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.transform.basic_transforms;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -15,7 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    id = "transform.basic_transforms.scale_points",
+    id = "transform.basic_transforms.scale_coordinates",
     displayName = "Scale Coordinates",
     description = "Scales a list of block coordinates relative to a center point",
     category = "transform.basic_transforms",
@@ -29,12 +30,15 @@ public class ScaleCoordinatesNode extends BaseNode {
     private static final String INPUT_SCALE_VECTOR_ID = "input_scale_vector";
 
     private static final String OUTPUT_COORDINATES_ID = "output_coordinates";
+    private static final String OUTPUT_EFFECTIVE_SCALE_ID = "output_effective_scale";
+    private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
+    @NodeProperty(displayName = "Use Uniform Scaling", category = "Scale", order = 1)
     private boolean useUniformScaling = true;
 
     public ScaleCoordinatesNode() {
-        super(UUID.randomUUID(), "transform.basic_transforms.scale_points");
+        super(UUID.randomUUID(), "transform.basic_transforms.scale_coordinates");
 
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "The coordinates to scale", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Scaling center point", NodeDataType.BLOCK_POS, this));
@@ -42,6 +46,8 @@ public class ScaleCoordinatesNode extends BaseNode {
         addInputPort(new BasePort(INPUT_SCALE_VECTOR_ID, "Scale Vector", "Non-uniform scaling vector (XYZ)", NodeDataType.VECTOR, this));
 
         addOutputPort(new BasePort(OUTPUT_COORDINATES_ID, "Coordinates", "Scaled coordinates", NodeDataType.BLOCK_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_EFFECTIVE_SCALE_ID, "Effective Scale", "Scale vector actually applied", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output coordinates", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the coordinate scale succeeded", NodeDataType.BOOLEAN, this));
     }
 
@@ -63,11 +69,12 @@ public class ScaleCoordinatesNode extends BaseNode {
         Object scaleVectorObj = inputValues.get(INPUT_SCALE_VECTOR_ID);
 
         BlockPosList result = new BlockPosList();
-        if (!(coordinatesObj instanceof BlockPosList coordinates) || !(centerObj instanceof BlockPos centerPos)) {
+        if (!(coordinatesObj instanceof BlockPosList coordinates)) {
             writeResult(result, false);
             return;
         }
 
+        BlockPos centerPos = centerObj instanceof BlockPos pos ? pos : BlockPos.ORIGIN;
         Vector3d scale = resolveScale(scaleFactorObj, scaleVectorObj);
         if (!isFinite(scale)) {
             writeResult(result, false);
@@ -87,7 +94,7 @@ public class ScaleCoordinatesNode extends BaseNode {
             ));
         }
 
-        writeResult(result, true);
+        writeResult(result, true, scale);
     }
 
     private Vector3d resolveScale(Object scaleFactorObj, Object scaleVectorObj) {
@@ -102,7 +109,13 @@ public class ScaleCoordinatesNode extends BaseNode {
     }
 
     private void writeResult(BlockPosList result, boolean valid) {
+        writeResult(result, valid, new Vector3d(1.0d, 1.0d, 1.0d));
+    }
+
+    private void writeResult(BlockPosList result, boolean valid, Vector3d effectiveScale) {
         outputValues.put(OUTPUT_COORDINATES_ID, result);
+        outputValues.put(OUTPUT_EFFECTIVE_SCALE_ID, effectiveScale);
+        outputValues.put(OUTPUT_COUNT_ID, result.size());
         outputValues.put(OUTPUT_VALID_ID, valid);
     }
 

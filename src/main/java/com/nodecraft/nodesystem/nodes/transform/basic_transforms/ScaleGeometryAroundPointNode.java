@@ -31,6 +31,7 @@ public class ScaleGeometryAroundPointNode extends BaseNode {
     private static final String INPUT_SCALE_ID = "input_scale";
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
+    private static final String OUTPUT_EFFECTIVE_SCALE_ID = "output_effective_scale";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ScaleGeometryAroundPointNode() {
@@ -41,6 +42,7 @@ public class ScaleGeometryAroundPointNode extends BaseNode {
         addInputPort(new BasePort(INPUT_SCALE_ID, "Scale", "Uniform scale factor", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Scaled geometry", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_EFFECTIVE_SCALE_ID, "Effective Scale", "Scale factor actually applied", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when geometry was scaled", NodeDataType.BOOLEAN, this));
     }
 
@@ -64,7 +66,7 @@ public class ScaleGeometryAroundPointNode extends BaseNode {
             return;
         }
 
-        Vector3d translation = new Vector3d(center).sub(new Vector3d(center).mul(Math.abs(scale)));
+        Vector3d translation = new Vector3d(center).mul(1.0d - scale);
         GeometryData scaled = GeometryTransform.transform(geometry, translation, 0.0d, 0.0d, 0.0d, scale);
         writeResult(scaled, scaled != null);
     }
@@ -103,6 +105,7 @@ public class ScaleGeometryAroundPointNode extends BaseNode {
 
     private void writeResult(@Nullable GeometryData geometry, boolean valid) {
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
+        outputValues.put(OUTPUT_EFFECTIVE_SCALE_ID, valid ? getInputDouble(INPUT_SCALE_ID, defaultScale) : 0.0d);
         outputValues.put(OUTPUT_VALID_ID, valid);
     }
 }

@@ -35,6 +35,9 @@ public class RotateGeometryAroundAxisNode extends BaseNode {
     private static final String INPUT_ANGLE_ID = "input_angle";
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
+    private static final String OUTPUT_EFFECTIVE_AXIS_ID = "output_effective_axis";
+    private static final String OUTPUT_EFFECTIVE_ANGLE_ID = "output_effective_angle";
+    private static final String OUTPUT_ERROR_ID = "output_error";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public RotateGeometryAroundAxisNode() {
@@ -46,6 +49,9 @@ public class RotateGeometryAroundAxisNode extends BaseNode {
         addInputPort(new BasePort(INPUT_ANGLE_ID, "Angle", "Rotation angle in degrees", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Rotated geometry", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_EFFECTIVE_AXIS_ID, "Effective Axis", "Normalized rotation axis actually used", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_EFFECTIVE_ANGLE_ID, "Effective Angle", "Rotation angle actually used in degrees", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when rotation fails", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when geometry was rotated", NodeDataType.BOOLEAN, this));
     }
 
@@ -58,7 +64,7 @@ public class RotateGeometryAroundAxisNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
         if (!(geometryObj instanceof GeometryData geometry)) {
-            writeResult(null, false);
+            writeResult(null, new Vector3d(), 0.0d, false, "Missing geometry input");
             return;
         }
 
@@ -66,7 +72,7 @@ public class RotateGeometryAroundAxisNode extends BaseNode {
         Vector3d axis = inputValues.get(INPUT_AXIS_ID) instanceof Vector3d value ? new Vector3d(value) : new Vector3d(0.0d, 1.0d, 0.0d);
         double angle = getInputDouble(INPUT_ANGLE_ID, defaultAngle);
         if (!isFinite(center) || !isFinite(axis) || axis.lengthSquared() <= 1.0e-12d || !Double.isFinite(angle)) {
-            writeResult(null, false);
+            writeResult(null, new Vector3d(), 0.0d, false, "Center, axis, or angle is invalid");
             return;
         }
 
@@ -74,7 +80,7 @@ public class RotateGeometryAroundAxisNode extends BaseNode {
         Quaterniond quaternion = new Quaterniond(new AxisAngle4d(Math.toRadians(angle), axis.x, axis.y, axis.z));
         Matrix3d rotation = new Matrix3d().set(quaternion);
         GeometryData rotated = GeometryTransform.transformAround(geometry, center, rotation, 1.0d);
-        writeResult(rotated, rotated != null);
+        writeResult(rotated, axis, angle, rotated != null, rotated == null ? "Unsupported geometry rotation" : "");
     }
 
     public double getDefaultAngle() {
@@ -109,8 +115,11 @@ public class RotateGeometryAroundAxisNode extends BaseNode {
         return Double.isFinite(vector.x) && Double.isFinite(vector.y) && Double.isFinite(vector.z);
     }
 
-    private void writeResult(@Nullable GeometryData geometry, boolean valid) {
+    private void writeResult(@Nullable GeometryData geometry, Vector3d effectiveAxis, double effectiveAngle, boolean valid, String error) {
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
+        outputValues.put(OUTPUT_EFFECTIVE_AXIS_ID, effectiveAxis);
+        outputValues.put(OUTPUT_EFFECTIVE_ANGLE_ID, effectiveAngle);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
         outputValues.put(OUTPUT_VALID_ID, valid);
     }
 }

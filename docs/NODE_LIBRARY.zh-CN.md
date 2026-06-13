@@ -667,11 +667,11 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Offset Coordinate | `transform.basic_transforms.move_point` | Offsets a single block coordinate by integer X, Y, Z amounts | `OffsetCoordinateNode` |
-| Offset Coordinates | `transform.basic_transforms.move_points` | Translates a list of block coordinates by a vector | `OffsetCoordinatesNode` |
-| Rotate Coordinates | `transform.basic_transforms.rotate_points` | Rotates a list of block coordinates around a point and axis | `RotateCoordinatesNode` |
-| Scale Coordinates | `transform.basic_transforms.scale_points` | Scales a list of block coordinates relative to a center point | `ScaleCoordinatesNode` |
-| Mirror Coordinates | `transform.basic_transforms.mirror_points` | 沿指定平面镜像坐标列表 | `MirrorCoordinatesNode` |
+| Offset Coordinate | `transform.basic_transforms.offset_coordinate` | Offsets a single block coordinate by integer X, Y, Z amounts or a rounded vector | `OffsetCoordinateNode` |
+| Offset Coordinates | `transform.basic_transforms.offset_coordinates` | Offsets a list of block coordinates by a rounded vector | `OffsetCoordinatesNode` |
+| Rotate Coordinates | `transform.basic_transforms.rotate_coordinates` | Rotates a list of block coordinates around a point and axis | `RotateCoordinatesNode` |
+| Scale Coordinates | `transform.basic_transforms.scale_coordinates` | Scales a list of block coordinates relative to a center point | `ScaleCoordinatesNode` |
+| Mirror Coordinates | `transform.basic_transforms.mirror_coordinates` | Mirrors a block coordinate list across a plane and snaps results to the block grid | `MirrorCoordinatesNode` |
 | Offset Box Face | `transform.basic_transforms.offset_face` | Offsets a box face along its normal without modifying the source box geometry | `OffsetBoxFaceNode` |
 | Inset Box Face | `transform.basic_transforms.inset_face` | Creates an inset or outset reference face boundary from a box face without modifying the source box | `InsetBoxFaceNode` |
 | Mirror Geometry About Plane | `transform.basic_transforms.mirror_geometry_plane` | Mirrors analytic geometry about a plane (recursive for composites and boolean geometry nodes) | `MirrorGeometryAboutPlaneNode` |

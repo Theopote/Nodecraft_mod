@@ -34,6 +34,7 @@ public class MirrorVectorListAboutPlaneNode extends BaseNode {
 
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_COUNT_ID = "output_count";
+    private static final String OUTPUT_SKIPPED_COUNT_ID = "output_skipped_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public MirrorVectorListAboutPlaneNode() {
@@ -51,6 +52,9 @@ public class MirrorVectorListAboutPlaneNode extends BaseNode {
             NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
             "Number of mirrored points",
+            NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_SKIPPED_COUNT_ID, "Skipped Count",
+            "Number of input items that could not be parsed as points",
             NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when mirroring succeeded",
@@ -75,44 +79,51 @@ public class MirrorVectorListAboutPlaneNode extends BaseNode {
             return;
         }
 
-        List<Vector3d> sources = resolvePoints(inputValues.get(INPUT_POINTS_ID));
-        if (sources.isEmpty()) {
+        ResolvedPoints sources = resolvePoints(inputValues.get(INPUT_POINTS_ID));
+        if (sources.points().isEmpty()) {
             writeInvalid();
             return;
         }
 
-        List<Vector3d> mirrored = new ArrayList<>(sources.size());
-        for (Vector3d p : sources) {
+        List<Vector3d> mirrored = new ArrayList<>(sources.points().size());
+        for (Vector3d p : sources.points()) {
             mirrored.add(GeometryMirror.mirrorPoint(p, plane));
         }
 
         outputValues.put(OUTPUT_POINTS_ID, mirrored);
         outputValues.put(OUTPUT_COUNT_ID, mirrored.size());
+        outputValues.put(OUTPUT_SKIPPED_COUNT_ID, sources.skippedCount());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private void writeInvalid() {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
+        outputValues.put(OUTPUT_SKIPPED_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
-    private static List<Vector3d> resolvePoints(Object value) {
+    private static ResolvedPoints resolvePoints(Object value) {
         List<Vector3d> out = new ArrayList<>();
+        int skipped = 0;
         if (value instanceof Collection<?> collection) {
             for (Object entry : collection) {
                 Vector3d p = resolvePoint(entry);
                 if (p != null) {
                     out.add(p);
+                } else {
+                    skipped++;
                 }
             }
-            return out;
+            return new ResolvedPoints(out, skipped);
         }
         Vector3d single = resolvePoint(value);
         if (single != null) {
             out.add(single);
+        } else if (value != null) {
+            skipped = 1;
         }
-        return out;
+        return new ResolvedPoints(out, skipped);
     }
 
     private static Vector3d resolvePoint(Object value) {
@@ -126,5 +137,8 @@ public class MirrorVectorListAboutPlaneNode extends BaseNode {
             return new Vector3d(bp.getX(), bp.getY(), bp.getZ());
         }
         return null;
+    }
+
+    private record ResolvedPoints(List<Vector3d> points, int skippedCount) {
     }
 }

@@ -42,6 +42,8 @@ public class TransformPointsByFramesNode extends BaseNode {
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_FRAME_COUNT_ID = "output_frame_count";
+    private static final String OUTPUT_USED_FRAME_COUNT_ID = "output_used_frame_count";
+    private static final String OUTPUT_SKIPPED_FRAME_COUNT_ID = "output_skipped_frame_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public TransformPointsByFramesNode() {
@@ -55,7 +57,9 @@ public class TransformPointsByFramesNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "World-space transformed points", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output points", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_FRAME_COUNT_ID, "Frame Count", "Number of frames actually used", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_FRAME_COUNT_ID, "Frame Count", "Number of candidate frames", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_USED_FRAME_COUNT_ID, "Used Frame Count", "Number of frames actually used", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_SKIPPED_FRAME_COUNT_ID, "Skipped Frame Count", "Number of frames skipped because data was missing or invalid", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when frame transform succeeded", NodeDataType.BOOLEAN, this));
     }
 
@@ -105,12 +109,15 @@ public class TransformPointsByFramesNode extends BaseNode {
         }
 
         List<Vector3d> out = new ArrayList<>(frameCount * localPoints.size());
+        int usedFrameCount = 0;
+        int skippedFrameCount = 0;
         for (int i = 0; i < frameCount; i++) {
             Vector3d origin = getByMode(origins, i);
             Vector3d xAxis = getByMode(xAxes, i);
             Vector3d yAxis = getByMode(yAxes, i);
             Vector3d zAxis = getByMode(zAxes, i);
             if (origin == null || xAxis == null || yAxis == null || zAxis == null) {
+                skippedFrameCount++;
                 if (useShortestFrameList) {
                     break;
                 }
@@ -120,10 +127,14 @@ public class TransformPointsByFramesNode extends BaseNode {
             Vector3d x = new Vector3d(xAxis);
             Vector3d y = new Vector3d(yAxis);
             Vector3d z = new Vector3d(zAxis);
+            if (!isFinite(origin) || !isUsableAxis(x) || !isUsableAxis(y) || !isUsableAxis(z)) {
+                skippedFrameCount++;
+                continue;
+            }
             if (normalizeAxes) {
-                normalizeSafe(x);
-                normalizeSafe(y);
-                normalizeSafe(z);
+                x.normalize();
+                y.normalize();
+                z.normalize();
             }
 
             for (Vector3d local : localPoints) {
@@ -133,6 +144,7 @@ public class TransformPointsByFramesNode extends BaseNode {
                     .add(new Vector3d(z).mul(local.z));
                 out.add(world);
             }
+            usedFrameCount++;
         }
 
         if (out.isEmpty()) {
@@ -142,6 +154,8 @@ public class TransformPointsByFramesNode extends BaseNode {
         outputValues.put(OUTPUT_POINTS_ID, List.copyOf(out));
         outputValues.put(OUTPUT_COUNT_ID, out.size());
         outputValues.put(OUTPUT_FRAME_COUNT_ID, frameCount);
+        outputValues.put(OUTPUT_USED_FRAME_COUNT_ID, usedFrameCount);
+        outputValues.put(OUTPUT_SKIPPED_FRAME_COUNT_ID, skippedFrameCount);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
@@ -149,6 +163,8 @@ public class TransformPointsByFramesNode extends BaseNode {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_FRAME_COUNT_ID, 0);
+        outputValues.put(OUTPUT_USED_FRAME_COUNT_ID, 0);
+        outputValues.put(OUTPUT_SKIPPED_FRAME_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
@@ -158,17 +174,11 @@ public class TransformPointsByFramesNode extends BaseNode {
         return useShortestFrameList ? null : list.get(list.size() - 1);
     }
 
-    private void normalizeSafe(Vector3d v) {
-        if (v.lengthSquared() > 1.0e-12d) {
-            v.normalize();
-        }
-    }
-
     private List<Vector3d> resolvePoints(List<?> raw) {
         List<Vector3d> out = new ArrayList<>(raw.size());
         for (Object entry : raw) {
             Vector3d point = resolvePoint(entry);
-            if (point != null) {
+            if (point != null && isFinite(point)) {
                 out.add(point);
             }
         }
@@ -181,6 +191,17 @@ public class TransformPointsByFramesNode extends BaseNode {
         if (value instanceof PointData p) return new Vector3d(p.getPosition());
         if (value instanceof BlockPos b) return new Vector3d(b.getX(), b.getY(), b.getZ());
         return null;
+    }
+
+    private boolean isUsableAxis(Vector3d axis) {
+        return isFinite(axis) && axis.lengthSquared() > 1.0e-12d;
+    }
+
+    private boolean isFinite(Vector3d vector) {
+        return vector != null
+            && Double.isFinite(vector.x)
+            && Double.isFinite(vector.y)
+            && Double.isFinite(vector.z);
     }
 
     @Override

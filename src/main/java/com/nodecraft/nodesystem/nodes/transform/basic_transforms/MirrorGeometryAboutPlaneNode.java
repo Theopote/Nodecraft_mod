@@ -28,6 +28,7 @@ public class MirrorGeometryAboutPlaneNode extends BaseNode {
     private static final String INPUT_PLANE_ID = "input_plane";
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
+    private static final String OUTPUT_ERROR_ID = "output_error";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public MirrorGeometryAboutPlaneNode() {
@@ -43,6 +44,9 @@ public class MirrorGeometryAboutPlaneNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry",
             "Mirrored geometry",
             NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Error message when mirroring fails",
+            NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when mirroring succeeded",
             NodeDataType.BOOLEAN, this));
@@ -63,17 +67,20 @@ public class MirrorGeometryAboutPlaneNode extends BaseNode {
         Object geomObj = inputValues.get(INPUT_GEOMETRY_ID);
         Object planeObj = inputValues.get(INPUT_PLANE_ID);
         if (!(geomObj instanceof GeometryData geometry) || !(planeObj instanceof PlaneData plane)) {
-            outputValues.put(OUTPUT_GEOMETRY_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            writeResult(null, false, "Missing geometry or plane input");
             return;
         }
         GeometryData mirrored = GeometryMirror.mirror(geometry, plane);
         if (mirrored == null) {
-            outputValues.put(OUTPUT_GEOMETRY_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            writeResult(null, false, "Unsupported geometry type or invalid mirror plane");
             return;
         }
-        outputValues.put(OUTPUT_GEOMETRY_ID, mirrored);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        writeResult(mirrored, true, "");
+    }
+
+    private void writeResult(@Nullable GeometryData geometry, boolean valid, String error) {
+        outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+        outputValues.put(OUTPUT_VALID_ID, valid);
     }
 }

@@ -378,16 +378,16 @@ reference.vectors.vector|reference.vectors|Vector Input
 reference.vectors.vector2_input|reference.vectors|2D Vector Input
 transform.basic_transforms.inset_face|transform.basic_transforms|Inset Box Face
 transform.basic_transforms.mirror_geometry_plane|transform.basic_transforms|Mirror Geometry About Plane
-transform.basic_transforms.mirror_points|transform.basic_transforms|Mirror Coordinates
+transform.basic_transforms.mirror_coordinates|transform.basic_transforms|Mirror Coordinates
 transform.basic_transforms.mirror_vector_list_plane|transform.basic_transforms|Mirror Vector List About Plane
 transform.basic_transforms.move_geometry|transform.basic_transforms|Move Geometry
-transform.basic_transforms.move_point|transform.basic_transforms|Offset Coordinate
-transform.basic_transforms.move_points|transform.basic_transforms|Offset Coordinates
+transform.basic_transforms.offset_coordinate|transform.basic_transforms|Offset Coordinate
+transform.basic_transforms.offset_coordinates|transform.basic_transforms|Offset Coordinates
 transform.basic_transforms.offset_face|transform.basic_transforms|Offset Box Face
 transform.basic_transforms.rotate_geometry_axis|transform.basic_transforms|Rotate Geometry Around Axis
-transform.basic_transforms.rotate_points|transform.basic_transforms|Rotate Coordinates
+transform.basic_transforms.rotate_coordinates|transform.basic_transforms|Rotate Coordinates
 transform.basic_transforms.scale_geometry_point|transform.basic_transforms|Scale Geometry Around Point
-transform.basic_transforms.scale_points|transform.basic_transforms|Scale Coordinates
+transform.basic_transforms.scale_coordinates|transform.basic_transforms|Scale Coordinates
 transform.basic_transforms.shear|transform.basic_transforms|Shear Point List
 transform.basic_transforms.transform_by_frames|transform.basic_transforms|Transform Points by Frames
 transform.basic_transforms.transform_geometry|transform.basic_transforms|Transform Geometry

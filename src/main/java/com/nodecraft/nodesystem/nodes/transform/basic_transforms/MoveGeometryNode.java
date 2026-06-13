@@ -36,6 +36,8 @@ public class MoveGeometryNode extends BaseNode {
     private static final String INPUT_TRANSLATION_ID = "input_translation";
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
+    private static final String OUTPUT_EFFECTIVE_TRANSLATION_ID = "output_effective_translation";
+    private static final String OUTPUT_ERROR_ID = "output_error";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public MoveGeometryNode() {
@@ -45,6 +47,8 @@ public class MoveGeometryNode extends BaseNode {
         addInputPort(new BasePort(INPUT_TRANSLATION_ID, "Translation", "Translation vector override", NodeDataType.VECTOR, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Moved geometry", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_EFFECTIVE_TRANSLATION_ID, "Effective Translation", "Translation vector actually applied", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when move fails", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when geometry was moved", NodeDataType.BOOLEAN, this));
     }
 
@@ -57,15 +61,19 @@ public class MoveGeometryNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
         if (!(geometryObj instanceof GeometryData geometry)) {
-            writeResult(null, false);
+            writeResult(null, new Vector3d(), false, "Missing geometry input");
             return;
         }
 
         Vector3d translation = inputValues.get(INPUT_TRANSLATION_ID) instanceof Vector3d vector
             ? new Vector3d(vector)
             : new Vector3d(x, y, z);
+        if (!isFinite(translation)) {
+            writeResult(null, new Vector3d(), false, "Translation contains NaN or Infinity");
+            return;
+        }
         GeometryData moved = GeometryTransform.transform(geometry, translation, 0.0d, 0.0d, 0.0d, 1.0d);
-        writeResult(moved, moved != null);
+        writeResult(moved, translation, moved != null, moved == null ? "Unsupported geometry move" : "");
     }
 
     public double getX() {
@@ -116,8 +124,17 @@ public class MoveGeometryNode extends BaseNode {
         if (map.get("z") instanceof Number value) setZ(value.doubleValue());
     }
 
-    private void writeResult(@Nullable GeometryData geometry, boolean valid) {
+    private boolean isFinite(Vector3d vector) {
+        return vector != null
+            && Double.isFinite(vector.x)
+            && Double.isFinite(vector.y)
+            && Double.isFinite(vector.z);
+    }
+
+    private void writeResult(@Nullable GeometryData geometry, Vector3d effectiveTranslation, boolean valid, String error) {
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
+        outputValues.put(OUTPUT_EFFECTIVE_TRANSLATION_ID, effectiveTranslation);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
         outputValues.put(OUTPUT_VALID_ID, valid);
     }
 }

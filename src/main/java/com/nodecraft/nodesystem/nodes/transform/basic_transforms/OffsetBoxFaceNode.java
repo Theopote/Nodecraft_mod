@@ -72,7 +72,7 @@ public class OffsetBoxFaceNode extends BaseNode {
         }
 
         double distance = distanceObj instanceof Number number ? number.doubleValue() : 0.0d;
-        Vector3d normal = face.getNormal();
+        Vector3d normal = new Vector3d(face.getNormal());
         if (!Double.isFinite(distance) || !isUsableVector(normal)) {
             writeInvalid();
             return;

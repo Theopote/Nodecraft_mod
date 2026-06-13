@@ -49,6 +49,7 @@ public class TransformGeometryNode extends BaseNode {
     private static final String INPUT_SCALE_ID = "input_scale";
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
+    private static final String OUTPUT_ERROR_ID = "output_error";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public TransformGeometryNode() {
@@ -62,6 +63,7 @@ public class TransformGeometryNode extends BaseNode {
         addInputPort(new BasePort(INPUT_SCALE_ID, "Scale", "Uniform scale factor", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Transformed geometry", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when transform fails", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when transform succeeded", NodeDataType.BOOLEAN, this));
     }
 
@@ -79,8 +81,7 @@ public class TransformGeometryNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object geomObj = inputValues.get(INPUT_GEOMETRY_ID);
         if (!(geomObj instanceof GeometryData geometry)) {
-            outputValues.put(OUTPUT_GEOMETRY_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            writeResult(null, false, "Missing geometry input");
             return;
         }
 
@@ -92,9 +93,21 @@ public class TransformGeometryNode extends BaseNode {
         double rz = getInputDouble(INPUT_ROT_Z_ID, rotationZ);
         double s = getInputDouble(INPUT_SCALE_ID, scale);
 
+        if (!isFinite(translation)) {
+            writeResult(null, false, "Translation contains NaN or Infinity");
+            return;
+        }
+        if (!Double.isFinite(rx) || !Double.isFinite(ry) || !Double.isFinite(rz)) {
+            writeResult(null, false, "Rotation contains NaN or Infinity");
+            return;
+        }
+        if (!Double.isFinite(s) || Math.abs(s) <= 1.0e-9d) {
+            writeResult(null, false, "Scale must be finite and non-zero");
+            return;
+        }
+
         GeometryData transformed = GeometryTransform.transform(geometry, translation, rx, ry, rz, s);
-        outputValues.put(OUTPUT_GEOMETRY_ID, transformed);
-        outputValues.put(OUTPUT_VALID_ID, transformed != null);
+        writeResult(transformed, transformed != null, transformed == null ? "Unsupported geometry transform" : "");
     }
 
     @Override
@@ -127,5 +140,18 @@ public class TransformGeometryNode extends BaseNode {
     private double getInputDouble(String portId, double fallback) {
         Object value = inputValues.get(portId);
         return value instanceof Number number ? number.doubleValue() : fallback;
+    }
+
+    private boolean isFinite(Vector3d vector) {
+        return vector != null
+            && Double.isFinite(vector.x)
+            && Double.isFinite(vector.y)
+            && Double.isFinite(vector.z);
+    }
+
+    private void writeResult(@Nullable GeometryData geometry, boolean valid, String error) {
+        outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+        outputValues.put(OUTPUT_VALID_ID, valid);
     }
 }
