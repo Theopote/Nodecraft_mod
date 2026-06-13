@@ -1485,7 +1485,7 @@ public final class AiAssistantPanel {
     }
 
     private boolean containsAny(String text, String... keywords) {
-        if (text == null || text.isBlank() || keywords == null || keywords.length == 0) {
+        if (text == null || text.isBlank() || keywords == null) {
             return false;
         }
         for (String keyword : keywords) {
@@ -1867,12 +1867,8 @@ public final class AiAssistantPanel {
             return true;
         }
 
-        if ("geometry".equals(inputType) && (outputType.contains("geometry") || outputType.contains("sphere")
-                || outputType.contains("box") || outputType.contains("cylinder") || outputType.contains("torus"))) {
-            return true;
-        }
-
-        return false;
+        return "geometry".equals(inputType) && (outputType.contains("geometry") || outputType.contains("sphere")
+                || outputType.contains("box") || outputType.contains("cylinder") || outputType.contains("torus"));
     }
 
     private boolean shouldAutoWireInputPort(PortMeta input) {
@@ -1901,11 +1897,8 @@ public final class AiAssistantPanel {
             return false;
         }
         String outputId = safeLower(output.id());
-        if (containsAny(outputId,
-                "status", "valid", "notify", "message", "progress", "debug", "log")) {
-            return false;
-        }
-        return true;
+        return !containsAny(outputId,
+                "status", "valid", "notify", "message", "progress", "debug", "log");
     }
 
     private boolean isInputCategory(String category) {

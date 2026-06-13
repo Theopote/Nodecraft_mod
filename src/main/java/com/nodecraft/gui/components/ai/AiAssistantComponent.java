@@ -25,7 +25,6 @@ public class AiAssistantComponent implements EditorComponent {
     private static final int MAX_CHAT_MESSAGES = 120;
     private static final int MAX_CHAT_TOTAL_CHARS = 50000;
     private static final int MAX_CHAT_MESSAGE_CHARS = 3000;
-    private static final int MAX_STREAMING_BUFFER_CHARS = 6000;
 
     private boolean visible = true;
     private UUID selectedNodeId = null;
@@ -315,7 +314,7 @@ public class AiAssistantComponent implements EditorComponent {
 
     private void trimChatMessagesForCapacity() {
         while (chatMessages.size() > MAX_CHAT_MESSAGES) {
-            chatMessages.remove(0);
+            chatMessages.removeFirst();
         }
 
         int totalChars = 0;
@@ -324,7 +323,7 @@ public class AiAssistantComponent implements EditorComponent {
         }
 
         while (totalChars > MAX_CHAT_TOTAL_CHARS && !chatMessages.isEmpty()) {
-            AiChatMessage removed = chatMessages.remove(0);
+            AiChatMessage removed = chatMessages.removeFirst();
             totalChars -= removed.content() == null ? 0 : removed.content().length();
         }
     }
