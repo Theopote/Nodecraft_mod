@@ -359,6 +359,7 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
         if (client == null || client.player == null) {
             return 0.0D;
         }
-        return client.player.getPos().distanceTo(pickedEntityExactPosition);
+        Vec3d playerPos = new Vec3d(client.player.getX(), client.player.getY(), client.player.getZ());
+        return playerPos.distanceTo(pickedEntityExactPosition);
     }
 }
