@@ -233,7 +233,7 @@
 | Prism By Profile Vector | `geometry.solids.extrude_profile` | Constructs prism geometry from a polygon profile and an extrusion vector | `PrismByProfileVectorNode` |
 | Thicken Surface | `geometry.solids.thicken_surface` | Thickens a surface strip into two offset layers with optional cap strips and a reusable geometry approximation | `ThickenSurfaceNode` |
 | Prism By Base Points Vector | `geometry.solids.extrude_profile_from_points` | Constructs prism geometry from an ordered base polygon and an extrusion vector | `PrismByBasePointsVectorNode` |
-| Section Cut | `geometry.solids.section_cut` | Cuts geometry by a plane and outputs a section profile extracted from voxelized intersection points. | `SectionCutNode` |
+| Section Cut | `geometry.solids.section_cut` | Cuts geometry by one or more planes and traces voxel slice contours as section profiles, boundaries, blocks, and tree-grouped data. | `SectionCutNode` |
 | Deconstruct Surface Strip | `geometry.solids.deconstruct_surface_strip` | Breaks a surface strip into section paths, flattened points, and rail segments | `DeconstructSurfaceStripNode` |
 | Multi-Section Loft | `geometry.solids.loft_multi_section` | Lofts multiple polygon sections into one surface strip with close, flip, seam, and resample options. | `MultiSectionLoftNode` |
 | Extract Surface Strip Range | `geometry.solids.extract_surface_strip_range` | Extracts a contiguous section range from a surface strip as a smaller surface strip | `ExtractSurfaceStripRangeNode` |
