@@ -5,6 +5,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
+import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
@@ -13,7 +15,9 @@ import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.SurfaceStripBridge;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -36,8 +40,10 @@ public class SurfaceStripToGeometryNode extends BaseNode {
     private int longitudinalSteps = 4;
 
     private static final String INPUT_SURFACE_STRIP_ID = "input_surface_strip";
+    private static final String INPUT_SURFACE_STRIP_TREE_ID = "input_surface_strip_tree";
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
+    private static final String OUTPUT_GEOMETRY_TREE_ID = "output_geometry_tree";
     private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
@@ -46,8 +52,10 @@ public class SurfaceStripToGeometryNode extends BaseNode {
         super(UUID.randomUUID(), "geometry.solids.surface_strip_to_geometry");
 
         addInputPort(new BasePort(INPUT_SURFACE_STRIP_ID, "Surface Strip", "Surface strip to convert into geometry", NodeDataType.SURFACE_STRIP, this));
+        addInputPort(new BasePort(INPUT_SURFACE_STRIP_TREE_ID, "Surface Strip Tree", "Optional tree of surface strips to convert per branch", NodeDataType.DATA_TREE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry approximation of the surface strip", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_TREE_ID, "Geometry Tree", "Generated geometry grouped by source surface strip tree branch", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding region of the generated geometry", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Generated geometry segment count", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when geometry was generated", NodeDataType.BOOLEAN, this));
@@ -61,19 +69,47 @@ public class SurfaceStripToGeometryNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object surfaceStripObj = inputValues.get(INPUT_SURFACE_STRIP_ID);
+        Object surfaceStripTreeObj = inputValues.get(INPUT_SURFACE_STRIP_TREE_ID);
         GeometryData geometry = null;
+        DataTreeData geometryTree = DataTreeData.empty();
         RegionData region = null;
         int count = 0;
 
-        if (surfaceStripObj instanceof SurfaceStripData surfaceStrip) {
+        if (surfaceStripTreeObj instanceof DataTreeData surfaceStripTree && surfaceStripTree.getBranchCount() > 0) {
+            List<DataTreeData.Branch> geometryBranches = new ArrayList<>();
+            List<GeometryData> geometries = new ArrayList<>();
+            for (DataTreeData.Branch branch : surfaceStripTree.getBranches()) {
+                List<GeometryData> branchGeometries = new ArrayList<>();
+                for (Object item : branch.items()) {
+                    if (item instanceof SurfaceStripData surfaceStrip) {
+                        GeometryData branchGeometry = SurfaceStripBridge.toGeometry(surfaceStrip, longitudinalSteps, mode, radius);
+                        if (branchGeometry != null) {
+                            branchGeometries.add(branchGeometry);
+                            geometries.add(branchGeometry);
+                            count += SurfaceStripBridge.estimateGeometrySegmentCount(surfaceStrip, longitudinalSteps, mode);
+                        }
+                    }
+                }
+                if (!branchGeometries.isEmpty()) {
+                    geometryBranches.add(new DataTreeData.Branch(branch.path(), new ArrayList<>(branchGeometries)));
+                }
+            }
+            geometryTree = new DataTreeData(geometryBranches);
+            geometry = geometries.isEmpty() ? null : new CompositeGeometryData(geometries);
+            if (geometry != null) {
+                region = GeometryVoxelizer.createBoundingRegion(geometry);
+            }
+        } else if (surfaceStripObj instanceof SurfaceStripData surfaceStrip) {
             geometry = SurfaceStripBridge.toGeometry(surfaceStrip, longitudinalSteps, mode, radius);
             count = SurfaceStripBridge.estimateGeometrySegmentCount(surfaceStrip, longitudinalSteps, mode);
             if (geometry != null) {
+                geometryTree = new DataTreeData(List.of(new DataTreeData.Branch(List.of(0), List.of(geometry))));
                 region = GeometryVoxelizer.createBoundingRegion(geometry);
             }
         }
 
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
+        outputValues.put(OUTPUT_GEOMETRY_TREE_ID, geometryTree);
         outputValues.put(OUTPUT_REGION_ID, region);
         outputValues.put(OUTPUT_COUNT_ID, count);
         outputValues.put(OUTPUT_VALID_ID, geometry != null);

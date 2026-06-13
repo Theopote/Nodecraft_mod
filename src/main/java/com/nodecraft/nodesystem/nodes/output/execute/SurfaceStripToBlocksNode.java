@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -12,7 +13,9 @@ import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.SurfaceStripBridge;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -32,8 +35,10 @@ public class SurfaceStripToBlocksNode extends BaseNode {
     private int longitudinalSteps = 4;
 
     private static final String INPUT_SURFACE_STRIP_ID = "input_surface_strip";
+    private static final String INPUT_SURFACE_STRIP_TREE_ID = "input_surface_strip_tree";
 
     private static final String OUTPUT_BLOCKS_ID = "output_blocks";
+    private static final String OUTPUT_BLOCKS_TREE_ID = "output_blocks_tree";
     private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
@@ -42,8 +47,10 @@ public class SurfaceStripToBlocksNode extends BaseNode {
         super(UUID.randomUUID(), "output.execute.bake_surface_strip_to_blocks");
 
         addInputPort(new BasePort(INPUT_SURFACE_STRIP_ID, "Surface Strip", "Surface strip to approximate on the block grid", NodeDataType.SURFACE_STRIP, this));
+        addInputPort(new BasePort(INPUT_SURFACE_STRIP_TREE_ID, "Surface Strip Tree", "Optional tree of surface strips to bake per branch", NodeDataType.DATA_TREE, this));
 
         addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Approximated block lattice for the surface strip", NodeDataType.BLOCK_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCKS_TREE_ID, "Blocks Tree", "Approximated blocks grouped by source surface strip tree branch", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding region of the surface strip", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Generated block count", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a surface strip was resolved", NodeDataType.BOOLEAN, this));
@@ -52,17 +59,44 @@ public class SurfaceStripToBlocksNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object surfaceStripObj = inputValues.get(INPUT_SURFACE_STRIP_ID);
+        Object surfaceStripTreeObj = inputValues.get(INPUT_SURFACE_STRIP_TREE_ID);
         BlockPosList blocks = new BlockPosList();
+        DataTreeData blocksTree = DataTreeData.empty();
         RegionData region = null;
         boolean valid = false;
 
-        if (surfaceStripObj instanceof SurfaceStripData surfaceStrip) {
+        if (surfaceStripTreeObj instanceof DataTreeData surfaceStripTree && surfaceStripTree.getBranchCount() > 0) {
+            List<DataTreeData.Branch> blockBranches = new ArrayList<>();
+            SurfaceStripData firstSurfaceStrip = null;
+            for (DataTreeData.Branch branch : surfaceStripTree.getBranches()) {
+                BlockPosList branchBlocks = new BlockPosList();
+                for (Object item : branch.items()) {
+                    if (item instanceof SurfaceStripData surfaceStrip) {
+                        if (firstSurfaceStrip == null) {
+                            firstSurfaceStrip = surfaceStrip;
+                        }
+                        branchBlocks.addAll(SurfaceStripBridge.voxelize(surfaceStrip, longitudinalSteps, mode).getPositions());
+                    }
+                }
+                if (!branchBlocks.isEmpty()) {
+                    blocks.addAll(branchBlocks.getPositions());
+                    blockBranches.add(new DataTreeData.Branch(branch.path(), new ArrayList<>(branchBlocks.getPositions())));
+                }
+            }
+            blocksTree = new DataTreeData(blockBranches);
+            if (firstSurfaceStrip != null) {
+                region = SurfaceStripBridge.createBoundingRegion(firstSurfaceStrip);
+                valid = true;
+            }
+        } else if (surfaceStripObj instanceof SurfaceStripData surfaceStrip) {
             blocks = SurfaceStripBridge.voxelize(surfaceStrip, longitudinalSteps, mode);
+            blocksTree = new DataTreeData(List.of(new DataTreeData.Branch(List.of(0), new ArrayList<Object>(blocks.getPositions()))));
             region = SurfaceStripBridge.createBoundingRegion(surfaceStrip);
             valid = true;
         }
 
         outputValues.put(OUTPUT_BLOCKS_ID, blocks);
+        outputValues.put(OUTPUT_BLOCKS_TREE_ID, blocksTree);
         outputValues.put(OUTPUT_REGION_ID, region);
         outputValues.put(OUTPUT_COUNT_ID, blocks.size());
         outputValues.put(OUTPUT_VALID_ID, valid);
