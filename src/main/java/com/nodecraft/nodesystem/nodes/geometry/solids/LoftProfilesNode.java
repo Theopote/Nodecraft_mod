@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
@@ -32,7 +33,9 @@ public class LoftProfilesNode extends BaseNode {
     private static final String OUTPUT_TARGET_PROFILE_ID = "output_target_profile";
     private static final String OUTPUT_SOURCE_POINTS_ID = "output_source_points";
     private static final String OUTPUT_TARGET_POINTS_ID = "output_target_points";
+    private static final String OUTPUT_SECTION_POINTS_TREE_ID = "output_section_points_tree";
     private static final String OUTPUT_RAIL_SEGMENTS_ID = "output_rail_segments";
+    private static final String OUTPUT_RAIL_SEGMENTS_TREE_ID = "output_rail_segments_tree";
     private static final String OUTPUT_SIDE_SURFACE_ID = "output_side_surface";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
@@ -47,7 +50,9 @@ public class LoftProfilesNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_TARGET_PROFILE_ID, "Target Profile", "Resolved target polygon profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_SOURCE_POINTS_ID, "Source Points", "Closed source polygon points", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_TARGET_POINTS_ID, "Target Points", "Closed target polygon points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SECTION_POINTS_TREE_ID, "Section Points Tree", "Source and target section points keyed as {0} and {1}", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_ID, "Rail Segments", "Segments connecting corresponding source and target vertices", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_TREE_ID, "Rail Segments Tree", "Loft rail segments keyed by rail index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SIDE_SURFACE_ID, "Side Surface", "Side strip surface between the two profiles", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of loft rails", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when both profiles are compatible for lofting", NodeDataType.BOOLEAN, this));
@@ -94,7 +99,9 @@ public class LoftProfilesNode extends BaseNode {
         outputValues.put(OUTPUT_TARGET_PROFILE_ID, targetProfile);
         outputValues.put(OUTPUT_SOURCE_POINTS_ID, sourceProfile.getClosedPoints());
         outputValues.put(OUTPUT_TARGET_POINTS_ID, targetProfile.getClosedPoints());
+        outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, SolidDataTreeUtils.indexedGroupTree(List.of(sourceUniquePoints, targetUniquePoints)));
         outputValues.put(OUTPUT_RAIL_SEGMENTS_ID, List.copyOf(railSegments));
+        outputValues.put(OUTPUT_RAIL_SEGMENTS_TREE_ID, SolidDataTreeUtils.indexedValueTree(railSegments));
         outputValues.put(OUTPUT_SIDE_SURFACE_ID, sideSurface);
         outputValues.put(OUTPUT_COUNT_ID, railSegments.size());
         outputValues.put(OUTPUT_VALID_ID, true);
@@ -105,7 +112,9 @@ public class LoftProfilesNode extends BaseNode {
         outputValues.put(OUTPUT_TARGET_PROFILE_ID, null);
         outputValues.put(OUTPUT_SOURCE_POINTS_ID, List.of());
         outputValues.put(OUTPUT_TARGET_POINTS_ID, List.of());
+        outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_RAIL_SEGMENTS_ID, List.of());
+        outputValues.put(OUTPUT_RAIL_SEGMENTS_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_SIDE_SURFACE_ID, null);
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);

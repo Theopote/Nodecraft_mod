@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -59,8 +60,11 @@ public class SweepPointListAlongPathNode extends BaseNode {
 
     private static final String OUTPUT_SPINE_POINTS_ID = "output_spine_points";
     private static final String OUTPUT_SECTION_PATHS_ID = "output_section_paths";
+    private static final String OUTPUT_SECTION_PATHS_TREE_ID = "output_section_paths_tree";
     private static final String OUTPUT_ALL_POINTS_ID = "output_all_points";
+    private static final String OUTPUT_SECTION_POINTS_TREE_ID = "output_section_points_tree";
     private static final String OUTPUT_RAIL_SEGMENTS_ID = "output_rail_segments";
+    private static final String OUTPUT_RAIL_SEGMENTS_TREE_ID = "output_rail_segments_tree";
     private static final String OUTPUT_SURFACE_STRIP_ID = "output_surface_strip";
     private static final String OUTPUT_SECTION_COUNT_ID = "output_section_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
@@ -78,8 +82,11 @@ public class SweepPointListAlongPathNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_SPINE_POINTS_ID, "Spine Points", "Resolved spine point list", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "List of swept section polylines", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_TREE_ID, "Section Paths Tree", "Section paths keyed by section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_ALL_POINTS_ID, "All Points", "Flattened list of all swept section points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SECTION_POINTS_TREE_ID, "Section Points Tree", "Section points keyed by section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_ID, "Rail Segments", "Line segments connecting corresponding section points", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_TREE_ID, "Rail Segments Tree", "Rail segments grouped by source section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip", "Reusable strip surface made of swept sections", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_COUNT_ID, "Section Count", "Number of swept sections along the spine", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a profile and spine were resolved", NodeDataType.BOOLEAN, this));
@@ -136,18 +143,23 @@ public class SweepPointListAlongPathNode extends BaseNode {
         }
 
         List<LineData> railSegments = new ArrayList<>();
+        List<List<LineData>> railSegmentRows = new ArrayList<>();
         for (int sectionIndex = 0; sectionIndex < sections.size() - 1; sectionIndex++) {
             List<Vector3d> current = sections.get(sectionIndex);
             List<Vector3d> next = sections.get(sectionIndex + 1);
             int segmentCount = Math.min(current.size(), next.size());
+            List<LineData> row = new ArrayList<>(segmentCount);
             for (int pointIndex = 0; pointIndex < segmentCount; pointIndex++) {
                 Vector3d start = current.get(pointIndex);
                 Vector3d end = next.get(pointIndex);
-                railSegments.add(new LineData(
+                LineData rail = new LineData(
                     new Vec3d(start.x, start.y, start.z),
                     new Vec3d(end.x, end.y, end.z)
-                ));
+                );
+                railSegments.add(rail);
+                row.add(rail);
             }
+            railSegmentRows.add(row);
         }
 
         List<Boolean> sectionClosedFlags = new ArrayList<>(sections.size());
@@ -158,8 +170,11 @@ public class SweepPointListAlongPathNode extends BaseNode {
 
         outputValues.put(OUTPUT_SPINE_POINTS_ID, List.copyOf(spinePoints));
         outputValues.put(OUTPUT_SECTION_PATHS_ID, List.copyOf(sectionPaths));
+        outputValues.put(OUTPUT_SECTION_PATHS_TREE_ID, SolidDataTreeUtils.indexedValueTree(sectionPaths));
         outputValues.put(OUTPUT_ALL_POINTS_ID, List.copyOf(allPoints));
+        outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, SolidDataTreeUtils.indexedGroupTree(sections));
         outputValues.put(OUTPUT_RAIL_SEGMENTS_ID, List.copyOf(railSegments));
+        outputValues.put(OUTPUT_RAIL_SEGMENTS_TREE_ID, SolidDataTreeUtils.indexedGroupTree(railSegmentRows));
         outputValues.put(OUTPUT_SURFACE_STRIP_ID, surfaceStrip);
         outputValues.put(OUTPUT_SECTION_COUNT_ID, sections.size());
         outputValues.put(OUTPUT_VALID_ID, true);
@@ -272,8 +287,11 @@ public class SweepPointListAlongPathNode extends BaseNode {
     private void writeEmptyOutputs() {
         outputValues.put(OUTPUT_SPINE_POINTS_ID, List.of());
         outputValues.put(OUTPUT_SECTION_PATHS_ID, List.of());
+        outputValues.put(OUTPUT_SECTION_PATHS_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_ALL_POINTS_ID, List.of());
+        outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_RAIL_SEGMENTS_ID, List.of());
+        outputValues.put(OUTPUT_RAIL_SEGMENTS_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_SURFACE_STRIP_ID, null);
         outputValues.put(OUTPUT_SECTION_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);

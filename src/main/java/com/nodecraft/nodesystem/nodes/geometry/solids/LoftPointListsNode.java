@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
@@ -42,9 +43,12 @@ public class LoftPointListsNode extends BaseNode {
 
     private static final String OUTPUT_SOURCE_POINTS_ID = "output_source_points";
     private static final String OUTPUT_TARGET_POINTS_ID = "output_target_points";
+    private static final String OUTPUT_SECTION_POINTS_TREE_ID = "output_section_points_tree";
     private static final String OUTPUT_SOURCE_PATH_ID = "output_source_path";
     private static final String OUTPUT_TARGET_PATH_ID = "output_target_path";
+    private static final String OUTPUT_SECTION_PATHS_TREE_ID = "output_section_paths_tree";
     private static final String OUTPUT_RAIL_SEGMENTS_ID = "output_rail_segments";
+    private static final String OUTPUT_RAIL_SEGMENTS_TREE_ID = "output_rail_segments_tree";
     private static final String OUTPUT_SURFACE_STRIP_ID = "output_surface_strip";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
@@ -57,9 +61,12 @@ public class LoftPointListsNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_SOURCE_POINTS_ID, "Source Points", "Resolved source point list", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_TARGET_POINTS_ID, "Target Points", "Resolved target point list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SECTION_POINTS_TREE_ID, "Section Points Tree", "Paired source and target points keyed as {0} and {1}", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SOURCE_PATH_ID, "Source Path", "Polyline describing the source contour", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_TARGET_PATH_ID, "Target Path", "Polyline describing the target contour", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_TREE_ID, "Section Paths Tree", "Source and target paths keyed as {0} and {1}", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_ID, "Rail Segments", "List of line segments connecting source and target pairs", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_TREE_ID, "Rail Segments Tree", "Loft rail segments keyed by rail index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip", "Reusable strip surface connecting the loft sections", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of loft rail segments", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when both point lists were resolved", NodeDataType.BOOLEAN, this));
@@ -119,9 +126,12 @@ public class LoftPointListsNode extends BaseNode {
 
         outputValues.put(OUTPUT_SOURCE_POINTS_ID, List.copyOf(sourcePoints));
         outputValues.put(OUTPUT_TARGET_POINTS_ID, List.copyOf(targetPoints));
+        outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, SolidDataTreeUtils.indexedGroupTree(List.of(pairedSourcePoints, pairedTargetPoints)));
         outputValues.put(OUTPUT_SOURCE_PATH_ID, sourcePath);
         outputValues.put(OUTPUT_TARGET_PATH_ID, targetPath);
+        outputValues.put(OUTPUT_SECTION_PATHS_TREE_ID, SolidDataTreeUtils.indexedValueTree(List.of(sourcePath, targetPath)));
         outputValues.put(OUTPUT_RAIL_SEGMENTS_ID, List.copyOf(railSegments));
+        outputValues.put(OUTPUT_RAIL_SEGMENTS_TREE_ID, SolidDataTreeUtils.indexedValueTree(railSegments));
         outputValues.put(OUTPUT_SURFACE_STRIP_ID, surfaceStrip);
         outputValues.put(OUTPUT_COUNT_ID, railSegments.size());
         outputValues.put(OUTPUT_VALID_ID, sourcePath != null && targetPath != null);
@@ -182,9 +192,12 @@ public class LoftPointListsNode extends BaseNode {
     private void writeEmptyOutputs() {
         outputValues.put(OUTPUT_SOURCE_POINTS_ID, List.of());
         outputValues.put(OUTPUT_TARGET_POINTS_ID, List.of());
+        outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_SOURCE_PATH_ID, null);
         outputValues.put(OUTPUT_TARGET_PATH_ID, null);
+        outputValues.put(OUTPUT_SECTION_PATHS_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_RAIL_SEGMENTS_ID, List.of());
+        outputValues.put(OUTPUT_RAIL_SEGMENTS_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_SURFACE_STRIP_ID, null);
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);

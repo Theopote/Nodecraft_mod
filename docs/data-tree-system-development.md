@@ -211,13 +211,16 @@ Current implementation notes:
 
 ### Phase 4: Solid and Voxel Bake
 
+Status: started.
+
 Targets:
 
-- Sweep Profile Along Path
-- Sweep Point List Along Path
-- Sweep 2 Rails
-- Loft Profiles
-- Multi Section Loft
+- Sweep Profile Along Path: started; section profiles, section paths, and section points use `{sectionIndex}`.
+- Sweep Point List Along Path: started; section paths, section points, and rail segment rows use `{sectionIndex}`.
+- Sweep 2 Rails: started; section paths, section points, and rail segment rows use `{sectionIndex}`.
+- Loft Profiles: started; source/target section points use `{0}` and `{1}`, rails use `{railIndex}`.
+- Loft Point Lists: started; source/target paths and point rows use `{0}` and `{1}`, rails use `{railIndex}`.
+- Multi Section Loft: started; profiles, section paths, and section points use `{sectionIndex}`, rails use `{vertexIndex}`.
 - Surface Strip To Geometry
 - Bake / Preview nodes
 
@@ -226,6 +229,13 @@ Recommended output rule:
 ```text
 Sections, profiles, strips, generated blocks, and material groups should remain branch-addressable until the user chooses to flatten.
 ```
+
+Current implementation notes:
+
+- Existing flat outputs are preserved.
+- Sweep nodes expose section trees so downstream operations can work per profile/section.
+- Loft nodes expose section point trees and rail trees so users can operate on cross-section rows or connecting rails independently.
+- `SurfaceStripData` remains the compact reusable surface representation; tree outputs are parallel diagnostic/modeling views.
 
 Bake nodes should eventually support:
 

@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
+import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -59,8 +60,11 @@ public class SweepProfileAlongPathNode extends BaseNode {
 
     private static final String OUTPUT_SPINE_POINTS_ID = "output_spine_points";
     private static final String OUTPUT_SECTION_PROFILES_ID = "output_section_profiles";
+    private static final String OUTPUT_SECTION_PROFILES_TREE_ID = "output_section_profiles_tree";
     private static final String OUTPUT_SECTION_PATHS_ID = "output_section_paths";
+    private static final String OUTPUT_SECTION_PATHS_TREE_ID = "output_section_paths_tree";
     private static final String OUTPUT_ALL_POINTS_ID = "output_all_points";
+    private static final String OUTPUT_SECTION_POINTS_TREE_ID = "output_section_points_tree";
     private static final String OUTPUT_SURFACE_STRIP_ID = "output_surface_strip";
     private static final String OUTPUT_SECTION_COUNT_ID = "output_section_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
@@ -78,8 +82,11 @@ public class SweepProfileAlongPathNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_SPINE_POINTS_ID, "Spine Points", "Resolved spine point list", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PROFILES_ID, "Section Profiles", "Polygon profiles generated along the path", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SECTION_PROFILES_TREE_ID, "Section Profiles Tree", "Section profiles keyed by section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "Boundary polylines for each swept section", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_TREE_ID, "Section Paths Tree", "Section paths keyed by section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_ALL_POINTS_ID, "All Points", "Flattened list of all swept section points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SECTION_POINTS_TREE_ID, "Section Points Tree", "Section points keyed by section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip", "Reusable strip surface made of swept sections", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_COUNT_ID, "Section Count", "Number of swept sections along the spine", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a profile and spine were resolved", NodeDataType.BOOLEAN, this));
@@ -159,8 +166,11 @@ public class SweepProfileAlongPathNode extends BaseNode {
 
         outputValues.put(OUTPUT_SPINE_POINTS_ID, List.copyOf(spinePoints));
         outputValues.put(OUTPUT_SECTION_PROFILES_ID, List.copyOf(sectionProfiles));
+        outputValues.put(OUTPUT_SECTION_PROFILES_TREE_ID, SolidDataTreeUtils.indexedValueTree(sectionProfiles));
         outputValues.put(OUTPUT_SECTION_PATHS_ID, List.copyOf(sectionPaths));
+        outputValues.put(OUTPUT_SECTION_PATHS_TREE_ID, SolidDataTreeUtils.indexedValueTree(sectionPaths));
         outputValues.put(OUTPUT_ALL_POINTS_ID, List.copyOf(allPoints));
+        outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, SolidDataTreeUtils.indexedGroupTree(stripSections));
         outputValues.put(OUTPUT_SURFACE_STRIP_ID, surfaceStrip);
         outputValues.put(OUTPUT_SECTION_COUNT_ID, stripSections.size());
         outputValues.put(OUTPUT_VALID_ID, true);
@@ -272,8 +282,11 @@ public class SweepProfileAlongPathNode extends BaseNode {
     private void writeEmptyOutputs() {
         outputValues.put(OUTPUT_SPINE_POINTS_ID, List.of());
         outputValues.put(OUTPUT_SECTION_PROFILES_ID, List.of());
+        outputValues.put(OUTPUT_SECTION_PROFILES_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_SECTION_PATHS_ID, List.of());
+        outputValues.put(OUTPUT_SECTION_PATHS_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_ALL_POINTS_ID, List.of());
+        outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_SURFACE_STRIP_ID, null);
         outputValues.put(OUTPUT_SECTION_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);

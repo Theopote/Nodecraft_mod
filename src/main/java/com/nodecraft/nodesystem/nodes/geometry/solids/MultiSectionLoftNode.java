@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
@@ -56,8 +57,12 @@ public class MultiSectionLoftNode extends BaseNode {
     private static final String INPUT_PROFILES_ID = "input_profiles";
 
     private static final String OUTPUT_PROFILES_ID = "output_profiles";
+    private static final String OUTPUT_PROFILES_TREE_ID = "output_profiles_tree";
     private static final String OUTPUT_SECTION_PATHS_ID = "output_section_paths";
+    private static final String OUTPUT_SECTION_PATHS_TREE_ID = "output_section_paths_tree";
+    private static final String OUTPUT_SECTION_POINTS_TREE_ID = "output_section_points_tree";
     private static final String OUTPUT_RAILS_ID = "output_rails";
+    private static final String OUTPUT_RAILS_TREE_ID = "output_rails_tree";
     private static final String OUTPUT_SIDE_SURFACE_ID = "output_side_surface";
     private static final String OUTPUT_SECTION_COUNT_ID = "output_section_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
@@ -67,8 +72,12 @@ public class MultiSectionLoftNode extends BaseNode {
         addInputPort(new BasePort(INPUT_PROFILES_ID, "Profiles", "Ordered polygon profile list", NodeDataType.LIST, this));
 
         addOutputPort(new BasePort(OUTPUT_PROFILES_ID, "Profiles", "Resolved section profiles", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PROFILES_TREE_ID, "Profiles Tree", "Resolved section profiles keyed by section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "Boundary path for each section", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_TREE_ID, "Section Paths Tree", "Section paths keyed by section index", NodeDataType.DATA_TREE, this));
+        addOutputPort(new BasePort(OUTPUT_SECTION_POINTS_TREE_ID, "Section Points Tree", "Section points keyed by section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_RAILS_ID, "Rails", "Polyline rails connecting corresponding vertices across sections", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_RAILS_TREE_ID, "Rails Tree", "Loft rails keyed by vertex index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SIDE_SURFACE_ID, "Side Surface", "Lofted side strip across all sections", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_COUNT_ID, "Section Count", "Number of loft sections", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when multi-section loft succeeds", NodeDataType.BOOLEAN, this));
@@ -143,8 +152,12 @@ public class MultiSectionLoftNode extends BaseNode {
 
         SurfaceStripData surface = new SurfaceStripData(stripSections, closedFlags);
         outputValues.put(OUTPUT_PROFILES_ID, List.copyOf(profiles));
+        outputValues.put(OUTPUT_PROFILES_TREE_ID, SolidDataTreeUtils.indexedValueTree(profiles));
         outputValues.put(OUTPUT_SECTION_PATHS_ID, List.copyOf(sectionPaths));
+        outputValues.put(OUTPUT_SECTION_PATHS_TREE_ID, SolidDataTreeUtils.indexedValueTree(sectionPaths));
+        outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, SolidDataTreeUtils.indexedGroupTree(stripSections));
         outputValues.put(OUTPUT_RAILS_ID, List.copyOf(rails));
+        outputValues.put(OUTPUT_RAILS_TREE_ID, SolidDataTreeUtils.indexedValueTree(rails));
         outputValues.put(OUTPUT_SIDE_SURFACE_ID, surface);
         outputValues.put(OUTPUT_SECTION_COUNT_ID, profiles.size());
         outputValues.put(OUTPUT_VALID_ID, true);
@@ -275,8 +288,12 @@ public class MultiSectionLoftNode extends BaseNode {
 
     private void writeInvalid() {
         outputValues.put(OUTPUT_PROFILES_ID, List.of());
+        outputValues.put(OUTPUT_PROFILES_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_SECTION_PATHS_ID, List.of());
+        outputValues.put(OUTPUT_SECTION_PATHS_TREE_ID, DataTreeData.empty());
+        outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_RAILS_ID, List.of());
+        outputValues.put(OUTPUT_RAILS_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_SIDE_SURFACE_ID, null);
         outputValues.put(OUTPUT_SECTION_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
