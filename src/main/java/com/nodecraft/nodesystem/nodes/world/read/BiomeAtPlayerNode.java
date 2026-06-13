@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.registry.RegistryKey;
+import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -25,6 +26,8 @@ public class BiomeAtPlayerNode extends BaseNode {
     private static final String OUTPUT_IS_SNOWY_ID = "output_is_snowy";
     private static final String OUTPUT_IS_HOT_ID = "output_is_hot";
     private static final String OUTPUT_HAS_PRECIPITATION_ID = "output_has_precipitation";
+    private static final String OUTPUT_PLAYER_POSITION_ID = "output_player_position";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public BiomeAtPlayerNode() {
         super(UUID.randomUUID(), "world.read.biome_at_player");
@@ -32,17 +35,20 @@ public class BiomeAtPlayerNode extends BaseNode {
         IPort biomeIdOutput = new BasePort(OUTPUT_BIOME_ID, "Biome ID", "The biome registry id", NodeDataType.STRING, this);
         addOutputPort(biomeIdOutput);
 
-        IPort isOceanOutput = new BasePort(OUTPUT_IS_OCEAN_ID, "Is Ocean", "Whether the biome is an ocean biome", NodeDataType.BOOLEAN, this);
+        IPort isOceanOutput = new BasePort(OUTPUT_IS_OCEAN_ID, "Looks Ocean", "Whether the biome id looks like an ocean biome", NodeDataType.BOOLEAN, this);
         addOutputPort(isOceanOutput);
 
-        IPort isSnowyOutput = new BasePort(OUTPUT_IS_SNOWY_ID, "Is Snowy", "Whether the biome is snowy or frozen", NodeDataType.BOOLEAN, this);
+        IPort isSnowyOutput = new BasePort(OUTPUT_IS_SNOWY_ID, "Looks Snowy", "Whether the biome id looks snowy or frozen", NodeDataType.BOOLEAN, this);
         addOutputPort(isSnowyOutput);
 
-        IPort isHotOutput = new BasePort(OUTPUT_IS_HOT_ID, "Is Hot", "Whether the biome is hot", NodeDataType.BOOLEAN, this);
+        IPort isHotOutput = new BasePort(OUTPUT_IS_HOT_ID, "Looks Hot", "Whether the biome id looks hot", NodeDataType.BOOLEAN, this);
         addOutputPort(isHotOutput);
 
-        IPort hasPrecipitationOutput = new BasePort(OUTPUT_HAS_PRECIPITATION_ID, "Has Precipitation", "Whether the biome receives precipitation", NodeDataType.BOOLEAN, this);
+        IPort hasPrecipitationOutput = new BasePort(OUTPUT_HAS_PRECIPITATION_ID, "Estimated Precipitation", "Whether the biome id suggests precipitation", NodeDataType.BOOLEAN, this);
         addOutputPort(hasPrecipitationOutput);
+
+        addOutputPort(new BasePort(OUTPUT_PLAYER_POSITION_ID, "Player Position", "Player block position used for the biome query", NodeDataType.BLOCK_POS, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether player biome read succeeded", NodeDataType.BOOLEAN, this));
 
         resetOutputs();
     }
@@ -76,6 +82,8 @@ public class BiomeAtPlayerNode extends BaseNode {
             outputValues.put(OUTPUT_IS_SNOWY_ID, isSnowy);
             outputValues.put(OUTPUT_IS_HOT_ID, isHot);
             outputValues.put(OUTPUT_HAS_PRECIPITATION_ID, hasPrecipitation);
+            outputValues.put(OUTPUT_PLAYER_POSITION_ID, context.getPlayer().getBlockPos());
+            outputValues.put(OUTPUT_VALID_ID, true);
         } catch (Exception e) {
             resetOutputs();
         }
@@ -87,6 +95,8 @@ public class BiomeAtPlayerNode extends BaseNode {
         outputValues.put(OUTPUT_IS_SNOWY_ID, false);
         outputValues.put(OUTPUT_IS_HOT_ID, false);
         outputValues.put(OUTPUT_HAS_PRECIPITATION_ID, false);
+        outputValues.put(OUTPUT_PLAYER_POSITION_ID, BlockPos.ORIGIN);
+        outputValues.put(OUTPUT_VALID_ID, false);
     }
 
     @Override

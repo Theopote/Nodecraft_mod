@@ -1,110 +1,118 @@
 package com.nodecraft.nodesystem.nodes.world.read;
 
+import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.block.BlockState;
+import net.minecraft.fluid.FluidState;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+
 import java.util.UUID;
 
-/**
- * Get Block 节点: 获取指定坐标的 MinecraftBlock 信息。
- */
 @NodeInfo(
     id = "world.read.get_block",
     displayName = "Get Block",
-    description = "获取指定坐标的方块信息",
+    description = "Reads block state, type, light, fluid, and block-entity presence at a block position.",
     category = "world.read",
     order = 0
 )
 public class GetBlockNode extends BaseNode {
 
-    // --- 节点属性 ---
-    private String description = "获取指定坐标的方块信息";
-
-    // --- 输入端口 IDs ---
     private static final String INPUT_COORDINATE_ID = "input_coordinate";
 
-    // --- 输出端口 IDs ---
     private static final String OUTPUT_BLOCK_ID = "output_block";
     private static final String OUTPUT_BLOCK_TYPE_ID = "output_block_type";
     private static final String OUTPUT_IS_AIR_ID = "output_is_air";
     private static final String OUTPUT_IS_SOLID_ID = "output_is_solid";
     private static final String OUTPUT_LIGHT_LEVEL_ID = "output_light_level";
+    private static final String OUTPUT_HAS_BLOCK_ENTITY_ID = "output_has_block_entity";
+    private static final String OUTPUT_FLUID_TYPE_ID = "output_fluid_type";
+    private static final String OUTPUT_HAS_FLUID_ID = "output_has_fluid";
+    private static final String OUTPUT_IS_REPLACEABLE_ID = "output_is_replaceable";
+    private static final String OUTPUT_LUMINANCE_ID = "output_luminance";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
-    // --- 构造函数 ---
     public GetBlockNode() {
         super(UUID.randomUUID(), "world.read.get_block");
-        
-        // 创建并添加输入端口
-        addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate", 
-                "要查询的方块坐标", NodeDataType.BLOCK_POS, this));
 
-        // 创建并添加输出端口
-        addOutputPort(new BasePort(OUTPUT_BLOCK_ID, "Block", 
-                "方块对象", NodeDataType.MINECRAFT_BLOCK, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCK_TYPE_ID, "Block Type", 
-                "方块类型ID", NodeDataType.BLOCK_TYPE, this));
-        addOutputPort(new BasePort(OUTPUT_IS_AIR_ID, "Is Air", 
-                "是否为空气方块", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_IS_SOLID_ID, "Is Solid", 
-                "是否为实心方块", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_LIGHT_LEVEL_ID, "Light Level", 
-                "方块光照等级", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate", "Block position to read", NodeDataType.BLOCK_POS, this));
+
+        addOutputPort(new BasePort(OUTPUT_BLOCK_ID, "Block State", "Minecraft BlockState object", NodeDataType.BLOCK_INFO, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCK_TYPE_ID, "Block Type", "Block registry id", NodeDataType.BLOCK_TYPE, this));
+        addOutputPort(new BasePort(OUTPUT_IS_AIR_ID, "Is Air", "Whether the block is air", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_IS_SOLID_ID, "Is Solid", "Whether the block is solid at this position", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_LIGHT_LEVEL_ID, "Light Level", "World light level at the position", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_HAS_BLOCK_ENTITY_ID, "Has Block Entity", "Whether a block entity exists at the position", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_FLUID_TYPE_ID, "Fluid Type", "Fluid registry id at the position", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_HAS_FLUID_ID, "Has Fluid", "Whether any fluid is present", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_IS_REPLACEABLE_ID, "Is Replaceable", "Whether the block state is replaceable", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_LUMINANCE_ID, "Luminance", "Block state's emitted light value", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether block read succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when block read fails", NodeDataType.STRING, this));
     }
 
     @Override
     public String getDescription() {
-        return this.description;
+        return "Reads block state, type, light, fluid, and block-entity presence at a block position.";
     }
 
-    // --- 核心逻辑 ---
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        // 默认输出值
-        Object blockObj = null;
+        BlockState blockState = null;
         String blockType = "";
         boolean isAir = true;
         boolean isSolid = false;
         int lightLevel = 0;
-        
-        // 获取输入坐标
-        Object coordinateObj = inputValues.get(INPUT_COORDINATE_ID);
-        
-        // 检查执行上下文和坐标输入是否有效
-        if (context != null && context.getWorld() != null && coordinateObj instanceof BlockPos) {
-            BlockPos pos = (BlockPos) coordinateObj;
-            
+        boolean hasBlockEntity = false;
+        String fluidType = "";
+        boolean hasFluid = false;
+        boolean isReplaceable = false;
+        int luminance = 0;
+        boolean valid = false;
+        String error = "";
+
+        BlockPos pos = WorldReadUtils.resolveBlockPos(inputValues.get(INPUT_COORDINATE_ID));
+        if (context == null || context.getWorld() == null) {
+            error = "Execution context or world is missing.";
+        } else if (pos == null) {
+            error = "Coordinate input must resolve to a block position.";
+        } else {
             try {
-                // 从世界获取方块状态
-                BlockState blockState = context.getWorld().getBlockState(pos);
-                blockObj = blockState;
-                
-                // 获取方块类型ID（如 "minecraft:stone"）
-                blockType = Registries.BLOCK.getId(blockState.getBlock()).toString();
-                
-                // 检查是否为空气
+                blockState = context.getWorld().getBlockState(pos);
+                blockType = WorldReadUtils.blockId(blockState);
                 isAir = blockState.isAir();
-                
-                // 检查是否为实心方块（有完整碰撞箱）
                 isSolid = blockState.isSolidBlock(context.getWorld(), pos);
-                
-                // 获取光照等级
                 lightLevel = context.getWorld().getLightLevel(pos);
+                hasBlockEntity = context.getWorld().getBlockEntity(pos) != null;
+                FluidState fluidState = context.getWorld().getFluidState(pos);
+                hasFluid = !fluidState.isEmpty();
+                fluidType = hasFluid ? Registries.FLUID.getId(fluidState.getFluid()).toString() : "";
+                isReplaceable = blockState.isReplaceable();
+                luminance = blockState.getLuminance();
+                valid = true;
             } catch (Exception e) {
-                System.err.println("Error getting block at " + pos + ": " + e.getMessage());
+                error = "Error getting block at " + pos + ": " + e.getMessage();
+                NodeCraft.LOGGER.warn(error);
             }
         }
-        
-        // 设置输出值
-        outputValues.put(OUTPUT_BLOCK_ID, blockObj);
+
+        outputValues.put(OUTPUT_BLOCK_ID, blockState);
         outputValues.put(OUTPUT_BLOCK_TYPE_ID, blockType);
         outputValues.put(OUTPUT_IS_AIR_ID, isAir);
         outputValues.put(OUTPUT_IS_SOLID_ID, isSolid);
         outputValues.put(OUTPUT_LIGHT_LEVEL_ID, lightLevel);
+        outputValues.put(OUTPUT_HAS_BLOCK_ENTITY_ID, hasBlockEntity);
+        outputValues.put(OUTPUT_FLUID_TYPE_ID, fluidType);
+        outputValues.put(OUTPUT_HAS_FLUID_ID, hasFluid);
+        outputValues.put(OUTPUT_IS_REPLACEABLE_ID, isReplaceable);
+        outputValues.put(OUTPUT_LUMINANCE_ID, luminance);
+        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_ERROR_ID, error);
     }
-} 
+}

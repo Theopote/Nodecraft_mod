@@ -7,193 +7,143 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
-
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
-/**
- * Get Points in Region 节点: 从一个 Region 获取其包含的所有 Coordinate
- */
 @NodeInfo(
     id = "world.read.get_points_in_region",
     displayName = "Get Points In Region",
-    description = "获取区域内的所有坐标点",
+    description = "Generates or filters block positions inside a region with optional uniform sampling.",
     category = "world.read",
     order = 5
 )
 public class GetPointsInRegionNode extends BaseNode {
 
-    // --- 节点属性 ---
-    private String description = "获取区域内的所有坐标点";
-    private boolean filterFromCoordinates = false; // 默认不从坐标列表筛选
+    private boolean filterFromCoordinates = false;
 
-    // --- 输入端口 IDs ---
     private static final String INPUT_REGION_ID = "input_region";
     private static final String INPUT_COORDINATES_ID = "input_coordinates";
     private static final String INPUT_MAX_POINTS_ID = "input_max_points";
+    private static final String INPUT_USE_INPUT_COORDINATES_ID = "input_use_input_coordinates";
 
-    // --- 输出端口 IDs ---
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_COUNT_ID = "output_count";
+    private static final String OUTPUT_TOTAL_POSSIBLE_ID = "output_total_possible";
+    private static final String OUTPUT_SAMPLED_ID = "output_sampled";
+    private static final String OUTPUT_HIT_LIMIT_ID = "output_hit_limit";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
-    // --- 构造函数 ---
     public GetPointsInRegionNode() {
         super(UUID.randomUUID(), "world.read.get_points_in_region");
-        
-        // 创建并添加输入端口
-        addInputPort(new BasePort(INPUT_REGION_ID, "Region", 
-                "要获取点的区域", NodeDataType.REGION, this));
-        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", 
-                "（可选）用于筛选的坐标列表", NodeDataType.BLOCK_LIST, this));
-        addInputPort(new BasePort(INPUT_MAX_POINTS_ID, "Max Points", 
-                "最大返回点数（0表示无限制）", NodeDataType.INTEGER, this));
 
-        // 创建并添加输出端口
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", 
-                "区域内的坐标点", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", 
-                "坐标点数量", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_REGION_ID, "Region", "Region to read", NodeDataType.REGION, this));
+        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Optional coordinates to filter", NodeDataType.BLOCK_LIST, this));
+        addInputPort(new BasePort(INPUT_MAX_POINTS_ID, "Max Points", "Maximum returned points; 0 means unlimited", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_USE_INPUT_COORDINATES_ID, "Use Input Coordinates", "Filter input coordinates instead of generating region points", NodeDataType.BOOLEAN, this));
+
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Block positions inside the region", NodeDataType.BLOCK_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Returned point count", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_TOTAL_POSSIBLE_ID, "Total Possible", "Total possible points before Max Points is applied", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_SAMPLED_ID, "Sampled", "Whether generated output was uniformly sampled", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "Whether Max Points limited the output", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the region input was valid", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return this.description;
+        return "Generates or filters block positions inside a region with optional uniform sampling.";
     }
 
-    // --- 核心逻辑 ---
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        // 获取输入值
+        BlockPosList result = new BlockPosList();
+        long totalPossible = 0L;
+        boolean sampled = false;
+        boolean hitLimit = false;
+        boolean valid = false;
+
         Object regionObj = inputValues.get(INPUT_REGION_ID);
         Object coordinatesObj = inputValues.get(INPUT_COORDINATES_ID);
-        Object maxPointsObj = inputValues.get(INPUT_MAX_POINTS_ID);
-        
-        // 默认空的坐标列表
-        BlockPosList result = new BlockPosList();
-        
-        // 检查区域输入是否合法
-        if (regionObj instanceof RegionData) {
-            RegionData region = (RegionData) regionObj;
-            
-            // 确保区域完整
-            if (region.isComplete()) {
-                // 获取最大点数（0表示无限制）
-                int maxPoints = (maxPointsObj instanceof Number) 
-                    ? ((Number) maxPointsObj).intValue() 
-                    : 0;
-                maxPoints = Math.max(0, maxPoints); // 确保非负
-                
-                if (filterFromCoordinates && coordinatesObj instanceof BlockPosList) {
-                    // 从坐标列表中筛选区域内的点
-                    BlockPosList coordinates = (BlockPosList) coordinatesObj;
-                    filterPointsInRegion(coordinates, region, maxPoints, result);
-                } else {
-                    // 获取区域内的所有点
-                    generatePointsInRegion(region, maxPoints, result);
-                }
+        int maxPoints = inputValues.get(INPUT_MAX_POINTS_ID) instanceof Number n ? Math.max(0, n.intValue()) : 0;
+        boolean useInputCoordinates = inputValues.get(INPUT_USE_INPUT_COORDINATES_ID) instanceof Boolean value
+            ? value
+            : filterFromCoordinates;
+
+        if (regionObj instanceof RegionData region && region.isComplete()) {
+            totalPossible = WorldReadUtils.volume(region);
+            valid = true;
+            if (useInputCoordinates && coordinatesObj instanceof BlockPosList coordinates) {
+                filterPointsInRegion(coordinates, region, maxPoints, result);
+                hitLimit = maxPoints > 0 && result.size() >= maxPoints;
+            } else {
+                sampled = maxPoints > 0 && totalPossible > maxPoints;
+                generatePointsInRegion(region, maxPoints, sampled, result);
+                hitLimit = sampled;
             }
         }
-        
-        // 设置输出值
+
         outputValues.put(OUTPUT_POINTS_ID, result);
         outputValues.put(OUTPUT_COUNT_ID, result.size());
+        outputValues.put(OUTPUT_TOTAL_POSSIBLE_ID, (int) Math.min(Integer.MAX_VALUE, totalPossible));
+        outputValues.put(OUTPUT_SAMPLED_ID, sampled);
+        outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
+        outputValues.put(OUTPUT_VALID_ID, valid);
     }
-    
-    /**
-     * 从坐标列表中筛选出区域内的点
-     * @param coordinates 坐标列表
-     * @param region 区域
-     * @param maxPoints 最大点数（0表示无限制）
-     * @param result 结果列表
-     */
-    private void filterPointsInRegion(BlockPosList coordinates, RegionData region, 
-                                     int maxPoints, BlockPosList result) {
-        // 获取区域的最小最大坐标
-        BlockPos minCorner = region.getMinCorner();
-        BlockPos maxCorner = region.getMaxCorner();
-        
-        // 遍历坐标列表
+
+    private void filterPointsInRegion(BlockPosList coordinates, RegionData region, int maxPoints, BlockPosList result) {
+        BlockPos min = region.getMinCorner();
+        BlockPos max = region.getMaxCorner();
+        if (min == null || max == null) {
+            return;
+        }
         for (BlockPos pos : coordinates) {
-            // 检查点是否在区域内
-            if (isPointInRegion(pos, minCorner, maxCorner)) {
-                // 添加到结果列表
+            if (isPointInRegion(pos, min, max)) {
                 result.add(pos);
-                
-                // 如果达到最大点数，停止添加
                 if (maxPoints > 0 && result.size() >= maxPoints) {
-                    break;
+                    return;
                 }
             }
         }
     }
-    
-    /**
-     * 生成区域内的所有点
-     * @param region 区域
-     * @param maxPoints 最大点数（0表示无限制）
-     * @param result 结果列表
-     */
-    private void generatePointsInRegion(RegionData region, int maxPoints, BlockPosList result) {
-        // 获取区域的最小最大坐标
-        BlockPos minCorner = region.getMinCorner();
-        BlockPos maxCorner = region.getMaxCorner();
-        
-        // 计算区域尺寸
-        int sizeX = maxCorner.getX() - minCorner.getX() + 1;
-        int sizeY = maxCorner.getY() - minCorner.getY() + 1;
-        int sizeZ = maxCorner.getZ() - minCorner.getZ() + 1;
-        
-        // 计算总点数
-        long totalPoints = (long) sizeX * sizeY * sizeZ;
-        
-        // 如果需要限制点数且总点数很大，使用采样策略
-        if (maxPoints > 0 && totalPoints > maxPoints && totalPoints > 1000000) {
-            // 大区域采样策略
-            sampleLargeRegion(minCorner, maxCorner, maxPoints, result);
-        } else {
-            // 直接遍历所有点
-            for (BlockPos pos : region.getAllBlocks()) {
-                result.add(pos);
-                
-                // 如果达到最大点数，停止添加
-                if (maxPoints > 0 && result.size() >= maxPoints) {
-                    break;
-                }
+
+    private void generatePointsInRegion(RegionData region, int maxPoints, boolean sampled, BlockPosList result) {
+        BlockPos min = region.getMinCorner();
+        BlockPos max = region.getMaxCorner();
+        if (min == null || max == null) {
+            return;
+        }
+
+        if (sampled) {
+            sampleRegion(min, max, maxPoints, result);
+            return;
+        }
+
+        for (BlockPos pos : BlockPos.iterate(min, max)) {
+            result.add(pos);
+            if (maxPoints > 0 && result.size() >= maxPoints) {
+                return;
             }
         }
     }
-    
-    /**
-     * 对大区域进行采样
-     * @param minCorner 最小角坐标
-     * @param maxCorner 最大角坐标
-     * @param maxPoints 最大点数
-     * @param result 结果列表
-     */
-    private void sampleLargeRegion(BlockPos minCorner, BlockPos maxCorner, 
-                                  int maxPoints, BlockPosList result) {
-        // 计算区域尺寸
-        int sizeX = maxCorner.getX() - minCorner.getX() + 1;
-        int sizeY = maxCorner.getY() - minCorner.getY() + 1;
-        int sizeZ = maxCorner.getZ() - minCorner.getZ() + 1;
-        
-        // 计算总点数
+
+    private void sampleRegion(BlockPos min, BlockPos max, int maxPoints, BlockPosList result) {
+        int sizeX = max.getX() - min.getX() + 1;
+        int sizeY = max.getY() - min.getY() + 1;
+        int sizeZ = max.getZ() - min.getZ() + 1;
         long totalPoints = (long) sizeX * sizeY * sizeZ;
-        
-        // 计算采样步长（确保均匀分布）
-        double stepFactor = Math.cbrt((double) totalPoints / maxPoints);
+        double stepFactor = Math.cbrt((double) totalPoints / Math.max(1, maxPoints));
         int stepX = Math.max(1, (int) Math.ceil(stepFactor));
         int stepY = Math.max(1, (int) Math.ceil(stepFactor));
         int stepZ = Math.max(1, (int) Math.ceil(stepFactor));
-        
-        // 采样区域
-        for (int x = minCorner.getX(); x <= maxCorner.getX(); x += stepX) {
-            for (int y = minCorner.getY(); y <= maxCorner.getY(); y += stepY) {
-                for (int z = minCorner.getZ(); z <= maxCorner.getZ(); z += stepZ) {
+
+        for (int x = min.getX(); x <= max.getX(); x += stepX) {
+            for (int y = min.getY(); y <= max.getY(); y += stepY) {
+                for (int z = min.getZ(); z <= max.getZ(); z += stepZ) {
                     result.add(new BlockPos(x, y, z));
-                    
-                    // 如果达到最大点数，停止添加
                     if (result.size() >= maxPoints) {
                         return;
                     }
@@ -201,51 +151,33 @@ public class GetPointsInRegionNode extends BaseNode {
             }
         }
     }
-    
-    /**
-     * 检查点是否在区域内
-     * @param pos 需要检查的点
-     * @param minCorner 区域最小角坐标
-     * @param maxCorner 区域最大角坐标
-     * @return 如果点在区域内返回true
-     */
-    private boolean isPointInRegion(BlockPos pos, BlockPos minCorner, BlockPos maxCorner) {
-        return pos.getX() >= minCorner.getX() && pos.getX() <= maxCorner.getX()
-            && pos.getY() >= minCorner.getY() && pos.getY() <= maxCorner.getY()
-            && pos.getZ() >= minCorner.getZ() && pos.getZ() <= maxCorner.getZ();
+
+    private boolean isPointInRegion(BlockPos pos, BlockPos min, BlockPos max) {
+        return pos.getX() >= min.getX() && pos.getX() <= max.getX()
+            && pos.getY() >= min.getY() && pos.getY() <= max.getY()
+            && pos.getZ() >= min.getZ() && pos.getZ() <= max.getZ();
     }
-    
-    // --- Getters/Setters for Properties ---
-    
+
     public boolean isFilterFromCoordinates() {
         return filterFromCoordinates;
     }
-    
+
     public void setFilterFromCoordinates(boolean filterFromCoordinates) {
         this.filterFromCoordinates = filterFromCoordinates;
         markDirty();
     }
-    
-    // --- 节点状态序列化 ---
-    
+
     @Override
     public Object getNodeState() {
-        java.util.Map<String, Object> state = new java.util.HashMap<>();
+        Map<String, Object> state = new HashMap<>();
         state.put("filterFromCoordinates", filterFromCoordinates);
         return state;
     }
-    
+
     @Override
     public void setNodeState(Object state) {
-        if (state instanceof java.util.Map) {
-            java.util.Map<?, ?> stateMap = (java.util.Map<?, ?>) state;
-            
-            if (stateMap.containsKey("filterFromCoordinates")) {
-                Object filterObj = stateMap.get("filterFromCoordinates");
-                if (filterObj instanceof Boolean) {
-                    setFilterFromCoordinates((Boolean) filterObj);
-                }
-            }
+        if (state instanceof Map<?, ?> stateMap && stateMap.get("filterFromCoordinates") instanceof Boolean value) {
+            setFilterFromCoordinates(value);
         }
     }
-} 
+}

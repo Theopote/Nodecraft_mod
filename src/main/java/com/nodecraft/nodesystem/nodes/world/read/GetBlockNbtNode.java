@@ -23,21 +23,27 @@ import java.util.UUID;
 public class GetBlockNbtNode extends BaseNode {
 
     private static final String INPUT_COORDINATE_ID = "input_coordinate";
+    private static final String INPUT_MAX_STRING_LENGTH_ID = "input_max_string_length";
 
     private static final String OUTPUT_HAS_BLOCK_ENTITY_ID = "output_has_block_entity";
     private static final String OUTPUT_NBT_ID = "output_nbt";
     private static final String OUTPUT_NBT_STRING_ID = "output_nbt_string";
     private static final String OUTPUT_SUCCESS_ID = "output_success";
+    private static final String OUTPUT_NBT_SIZE_ID = "output_nbt_size";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public GetBlockNbtNode() {
         super(UUID.randomUUID(), "world.read.get_block_nbt");
 
         addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate", "Block position to inspect", NodeDataType.BLOCK_POS, this));
+        addInputPort(new BasePort(INPUT_MAX_STRING_LENGTH_ID, "Max String Length", "Maximum SNBT string length; 0 means unlimited", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_HAS_BLOCK_ENTITY_ID, "Has Block Entity", "Whether this block has block-entity data", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_NBT_ID, "NBT", "Block-entity NBT compound", NodeDataType.NBT_COMPOUND, this));
         addOutputPort(new BasePort(OUTPUT_NBT_STRING_ID, "NBT String", "SNBT string representation", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether NBT read succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_NBT_SIZE_ID, "NBT Size", "Length of the full SNBT string before truncation", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when NBT read fails", NodeDataType.STRING, this));
     }
 
     @Override
@@ -47,8 +53,17 @@ public class GetBlockNbtNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        if (context == null || context.getWorld() == null || !(inputValues.get(INPUT_COORDINATE_ID) instanceof BlockPos pos)) {
-            writeInvalid();
+        BlockPos pos = WorldReadUtils.resolveBlockPos(inputValues.get(INPUT_COORDINATE_ID));
+        int maxStringLength = inputValues.get(INPUT_MAX_STRING_LENGTH_ID) instanceof Number n
+            ? Math.max(0, n.intValue())
+            : WorldReadUtils.DEFAULT_MAX_NBT_STRING_LENGTH;
+
+        if (context == null || context.getWorld() == null) {
+            writeInvalid("Execution context or world is missing.");
+            return;
+        }
+        if (pos == null) {
+            writeInvalid("Coordinate input must resolve to a block position.");
             return;
         }
 
@@ -58,15 +73,20 @@ public class GetBlockNbtNode extends BaseNode {
             outputValues.put(OUTPUT_NBT_ID, null);
             outputValues.put(OUTPUT_NBT_STRING_ID, "");
             outputValues.put(OUTPUT_SUCCESS_ID, false);
+            outputValues.put(OUTPUT_NBT_SIZE_ID, 0);
+            outputValues.put(OUTPUT_ERROR_ID, "");
             return;
         }
 
         NbtCompound nbt = extractBlockEntityNbt(blockEntity, context);
         boolean success = nbt != null;
+        String fullString = success ? nbt.toString() : "";
         outputValues.put(OUTPUT_HAS_BLOCK_ENTITY_ID, true);
         outputValues.put(OUTPUT_NBT_ID, success ? nbt : null);
-        outputValues.put(OUTPUT_NBT_STRING_ID, success ? nbt.toString() : "");
+        outputValues.put(OUTPUT_NBT_STRING_ID, WorldReadUtils.truncate(fullString, maxStringLength));
         outputValues.put(OUTPUT_SUCCESS_ID, success);
+        outputValues.put(OUTPUT_NBT_SIZE_ID, fullString.length());
+        outputValues.put(OUTPUT_ERROR_ID, success ? "" : "Unable to extract block entity NBT.");
     }
 
     private @Nullable NbtCompound extractBlockEntityNbt(BlockEntity blockEntity, ExecutionContext context) {
@@ -121,10 +141,12 @@ public class GetBlockNbtNode extends BaseNode {
         return null;
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_HAS_BLOCK_ENTITY_ID, false);
         outputValues.put(OUTPUT_NBT_ID, null);
         outputValues.put(OUTPUT_NBT_STRING_ID, "");
         outputValues.put(OUTPUT_SUCCESS_ID, false);
+        outputValues.put(OUTPUT_NBT_SIZE_ID, 0);
+        outputValues.put(OUTPUT_ERROR_ID, error);
     }
 }

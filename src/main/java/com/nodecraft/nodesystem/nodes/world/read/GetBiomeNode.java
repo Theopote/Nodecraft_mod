@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.world.read;
 
+import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -27,6 +28,8 @@ public class GetBiomeNode extends BaseNode {
     private static final String OUTPUT_BIOME_TEMP_ID = "output_biome_temperature";
     private static final String OUTPUT_IS_OCEAN_ID = "output_is_ocean";
     private static final String OUTPUT_DOWNFALL_ID = "output_downfall";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public GetBiomeNode() {
         super(UUID.randomUUID(), "world.read.get_biome");
@@ -36,8 +39,10 @@ public class GetBiomeNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_BIOME_ID, "Biome", "Biome object", NodeDataType.BIOME, this));
         addOutputPort(new BasePort(OUTPUT_BIOME_NAME_ID, "Biome Name", "Biome registry id", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_BIOME_TEMP_ID, "Temperature", "Biome base temperature", NodeDataType.FLOAT, this));
-        addOutputPort(new BasePort(OUTPUT_IS_OCEAN_ID, "Is Ocean", "Whether the biome id looks like an ocean biome", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_DOWNFALL_ID, "Downfall", "Biome downfall value", NodeDataType.FLOAT, this));
+        addOutputPort(new BasePort(OUTPUT_IS_OCEAN_ID, "Looks Ocean", "Whether the biome id looks like an ocean biome", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_DOWNFALL_ID, "Estimated Downfall", "Estimated downfall inferred from biome id", NodeDataType.FLOAT, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether biome read succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when biome read fails", NodeDataType.STRING, this));
     }
 
     @Override
@@ -52,9 +57,15 @@ public class GetBiomeNode extends BaseNode {
         float temperature = 0.0f;
         boolean isOcean = false;
         float downfall = 0.0f;
+        boolean valid = false;
+        String error = "";
 
-        Object coordinateObj = inputValues.get(INPUT_COORDINATE_ID);
-        if (context != null && context.getWorld() != null && coordinateObj instanceof BlockPos pos) {
+        BlockPos pos = WorldReadUtils.resolveBlockPos(inputValues.get(INPUT_COORDINATE_ID));
+        if (context == null || context.getWorld() == null) {
+            error = "Execution context or world is missing.";
+        } else if (pos == null) {
+            error = "Coordinate input must resolve to a block position.";
+        } else {
             try {
                 var biomeEntry = context.getWorld().getBiome(pos);
                 var biome = biomeEntry.value();
@@ -66,8 +77,10 @@ public class GetBiomeNode extends BaseNode {
                 temperature = biome.getTemperature();
                 isOcean = biomeName.contains("ocean");
                 downfall = biomeName.contains("desert") || biomeName.contains("nether") ? 0.0f : 0.5f;
+                valid = true;
             } catch (Exception e) {
-                System.err.println("Error getting biome at " + pos + ": " + e.getMessage());
+                error = "Error getting biome at " + pos + ": " + e.getMessage();
+                NodeCraft.LOGGER.warn(error);
             }
         }
 
@@ -76,5 +89,7 @@ public class GetBiomeNode extends BaseNode {
         outputValues.put(OUTPUT_BIOME_TEMP_ID, temperature);
         outputValues.put(OUTPUT_IS_OCEAN_ID, isOcean);
         outputValues.put(OUTPUT_DOWNFALL_ID, downfall);
+        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_ERROR_ID, error);
     }
 }

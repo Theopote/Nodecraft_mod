@@ -773,12 +773,12 @@
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Get Block | `world.read.get_block` | 获取指定坐标的方块信息 | `GetBlockNode` |
-| Get Blocks In Region | `world.read.get_blocks_in_region` | 获取区域内所有方块的列表 | `GetBlocksInRegionNode` |
-| Find Blocks | `world.read.find_blocks` | 在区域内按方块类型查找坐标列表 | `FindBlocksNode` |
+| Get Block | `world.read.get_block` | Reads block state, type, light, fluid, and block-entity presence at a block position. | `GetBlockNode` |
+| Get Blocks In Region | `world.read.get_blocks_in_region` | Reads block states and coordinates inside a region with scan limits. | `GetBlocksInRegionNode` |
+| Find Blocks | `world.read.find_blocks` | Finds matching block positions inside a region using block type or exact block state matching. | `FindBlocksNode` |
 | Get Biome | `world.read.get_biome` | Gets the biome registry id and basic climate data for a block position | `GetBiomeNode` |
 | Biome At Player | `world.read.biome_at_player` | Gets the biome at the player's current position | `BiomeAtPlayerNode` |
-| Get Points In Region | `world.read.get_points_in_region` | 获取区域内的所有坐标点 | `GetPointsInRegionNode` |
+| Get Points In Region | `world.read.get_points_in_region` | Generates or filters block positions inside a region with optional uniform sampling. | `GetPointsInRegionNode` |
 | Get Heightmap | `world.read.get_heightmap` | Reads the top Y value for each X/Z column inside a region | `GetHeightmapNode` |
 | Get Surface Blocks | `world.read.get_surface_blocks` | Gets the top visible block for each X/Z column inside a region | `GetSurfaceBlocksNode` |
 | Scan Region By Type | `world.read.scan_region_by_type` | Scans a region and returns per-block-type counts for analysis and conditional building | `ScanRegionByTypeNode` |
