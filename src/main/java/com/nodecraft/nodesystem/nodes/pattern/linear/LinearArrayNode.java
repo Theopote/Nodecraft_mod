@@ -4,12 +4,15 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
 
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -38,6 +41,7 @@ public class LinearArrayNode extends BaseNode {
 
     // --- 输出端口 IDs ---
     private static final String OUTPUT_ARRAY_COORDINATES_ID = "output_array_coordinates";
+    private static final String OUTPUT_ARRAY_TREE_ID = "output_array_tree";
 
     // --- 构造函数 ---
     public LinearArrayNode() {
@@ -58,6 +62,8 @@ public class LinearArrayNode extends BaseNode {
         // 创建并添加输出端口
         addOutputPort(new BasePort(OUTPUT_ARRAY_COORDINATES_ID, "Array Coordinates", 
                 "The resulting array of coordinates", NodeDataType.BLOCK_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_ARRAY_TREE_ID, "Array Tree",
+                "One branch per emitted coordinate copy", NodeDataType.DATA_TREE, this));
     }
 
     @Override
@@ -77,6 +83,7 @@ public class LinearArrayNode extends BaseNode {
         
         // 默认空的坐标列表
         BlockPosList result = new BlockPosList();
+        List<DataTreeData.Branch> branches = new ArrayList<>();
         
         // 检查输入是否为方块坐标列表
         if (coordinatesObj instanceof BlockPosList) {
@@ -85,6 +92,7 @@ public class LinearArrayNode extends BaseNode {
             // 如果输入坐标列表为空，直接返回空结果
             if (coordinates.isEmpty()) {
                 outputValues.put(OUTPUT_ARRAY_COORDINATES_ID, result);
+                outputValues.put(OUTPUT_ARRAY_TREE_ID, DataTreeData.empty());
                 return;
             }
             
@@ -112,7 +120,7 @@ public class LinearArrayNode extends BaseNode {
                 count = Math.max(1, count); // 确保至少复制一次
                 
                 // 创建线性阵列
-                createLinearArray(coordinates, direction, distance, count, includeOriginal, result);
+                createLinearArray(coordinates, direction, distance, count, includeOriginal, result, branches);
             } 
             else if (!useDirection && endPointObj instanceof BlockPos && countObj instanceof Number) {
                 // 使用终点和计数
@@ -132,8 +140,10 @@ public class LinearArrayNode extends BaseNode {
                 if (totalDistance < 0.0001 || count < 1) {
                     if (includeOriginal) {
                         result.addAll(coordinates.getPositions());
+                        addCopyBranch(branches, coordinates.getPositions());
                     }
                     outputValues.put(OUTPUT_ARRAY_COORDINATES_ID, result);
+                    outputValues.put(OUTPUT_ARRAY_TREE_ID, new DataTreeData(branches));
                     return;
                 }
                 
@@ -142,7 +152,7 @@ public class LinearArrayNode extends BaseNode {
                 distance = totalDistance / count;
                 
                 // 创建线性阵列
-                createLinearArray(coordinates, direction, distance, count, includeOriginal, result);
+                createLinearArray(coordinates, direction, distance, count, includeOriginal, result, branches);
             }
             else {
                 // 输入不完整，但仍然可能使用默认值创建阵列
@@ -152,12 +162,13 @@ public class LinearArrayNode extends BaseNode {
                 }
                 
                 // 使用默认参数创建线性阵列
-                createLinearArray(coordinates, direction, distance, count, includeOriginal, result);
+                createLinearArray(coordinates, direction, distance, count, includeOriginal, result, branches);
             }
         }
         
         // 设置输出值
         outputValues.put(OUTPUT_ARRAY_COORDINATES_ID, result);
+        outputValues.put(OUTPUT_ARRAY_TREE_ID, new DataTreeData(branches));
     }
     
     /**
@@ -171,10 +182,11 @@ public class LinearArrayNode extends BaseNode {
      */
     private void createLinearArray(BlockPosList sourceCoords, Vector3d direction, 
                                 double distance, int count, boolean includeOriginal,
-                                BlockPosList result) {
+                                BlockPosList result, List<DataTreeData.Branch> branches) {
         // 将原始坐标添加到结果中（如果需要）
         if (includeOriginal) {
             result.addAll(sourceCoords.getPositions());
+            addCopyBranch(branches, sourceCoords.getPositions());
         }
         
         // 计算实际的位移向量（方向 * 距离）
@@ -184,6 +196,7 @@ public class LinearArrayNode extends BaseNode {
         for (int i = 1; i <= count; i++) {
             // 计算当前实例的位移
             Vector3d currentDisplacement = new Vector3d(displacement).mul(i);
+            List<BlockPos> copyPositions = new ArrayList<>();
             
             // 添加平移后的每个坐标
             for (BlockPos pos : sourceCoords) {
@@ -196,8 +209,14 @@ public class LinearArrayNode extends BaseNode {
                 
                 // 添加到结果列表
                 result.add(newPos);
+                copyPositions.add(newPos);
             }
+            addCopyBranch(branches, copyPositions);
         }
+    }
+
+    private void addCopyBranch(List<DataTreeData.Branch> branches, List<BlockPos> positions) {
+        branches.add(new DataTreeData.Branch(List.of(branches.size()), new ArrayList<>(positions)));
     }
     
     // --- Getters/Setters for Properties ---

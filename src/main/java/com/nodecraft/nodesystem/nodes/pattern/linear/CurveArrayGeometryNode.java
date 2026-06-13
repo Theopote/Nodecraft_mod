@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
+import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PointData;
@@ -54,6 +55,8 @@ public class CurveArrayGeometryNode extends BaseNode {
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_GEOMETRIES_ID = "output_geometries";
     private static final String OUTPUT_ORIGINS_ID = "output_origins";
+    private static final String OUTPUT_GEOMETRY_TREE_ID = "output_geometry_tree";
+    private static final String OUTPUT_ORIGIN_TREE_ID = "output_origin_tree";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
@@ -72,6 +75,8 @@ public class CurveArrayGeometryNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing all path copies", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRIES_ID, "Geometries", "List of copied geometry values", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_ORIGINS_ID, "Origins", "Path frame origins used for each copy", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_TREE_ID, "Geometry Tree", "One branch per emitted geometry copy", NodeDataType.DATA_TREE, this));
+        addOutputPort(new BasePort(OUTPUT_ORIGIN_TREE_ID, "Origin Tree", "Path origins keyed by copy branch", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of emitted geometry copies", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the array was generated", NodeDataType.BOOLEAN, this));
     }
@@ -238,8 +243,18 @@ public class CurveArrayGeometryNode extends BaseNode {
         outputValues.put(OUTPUT_GEOMETRIES_ID, List.copyOf(copies));
         outputValues.put(OUTPUT_GEOMETRY_ID, copies.isEmpty() ? null : new CompositeGeometryData(copies));
         outputValues.put(OUTPUT_ORIGINS_ID, List.copyOf(origins));
+        outputValues.put(OUTPUT_GEOMETRY_TREE_ID, buildTree(copies));
+        outputValues.put(OUTPUT_ORIGIN_TREE_ID, buildTree(origins));
         outputValues.put(OUTPUT_COUNT_ID, copies.size());
         outputValues.put(OUTPUT_VALID_ID, valid);
+    }
+
+    private DataTreeData buildTree(List<?> values) {
+        List<DataTreeData.Branch> branches = new ArrayList<>(values.size());
+        for (int i = 0; i < values.size(); i++) {
+            branches.add(new DataTreeData.Branch(List.of(i), List.of(values.get(i))));
+        }
+        return new DataTreeData(branches);
     }
 
     public boolean isOrientToPath() {

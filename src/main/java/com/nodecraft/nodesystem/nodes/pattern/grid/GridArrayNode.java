@@ -4,12 +4,15 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
 
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -48,6 +51,7 @@ public class GridArrayNode extends BaseNode {
 
     // --- 输出端口 IDs ---
     private static final String OUTPUT_GRID_COORDINATES_ID = "output_grid_coordinates";
+    private static final String OUTPUT_GRID_TREE_ID = "output_grid_tree";
 
     // --- 构造函数 ---
     public GridArrayNode() {
@@ -84,6 +88,8 @@ public class GridArrayNode extends BaseNode {
         // 创建并添加输出端口
         addOutputPort(new BasePort(OUTPUT_GRID_COORDINATES_ID, "Grid Coordinates", 
                 "The resulting grid array of coordinates", NodeDataType.BLOCK_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_GRID_TREE_ID, "Grid Tree",
+                "One branch per grid cell using {x;y} or {x;y;z} paths", NodeDataType.DATA_TREE, this));
     }
 
     @Override
@@ -99,6 +105,7 @@ public class GridArrayNode extends BaseNode {
         
         // 默认空的坐标列表
         BlockPosList result = new BlockPosList();
+        List<DataTreeData.Branch> branches = new ArrayList<>();
         
         // 检查输入是否为方块坐标列表
         if (coordinatesObj instanceof BlockPosList) {
@@ -107,6 +114,7 @@ public class GridArrayNode extends BaseNode {
             // 如果输入坐标列表为空，直接返回空结果
             if (coordinates.isEmpty()) {
                 outputValues.put(OUTPUT_GRID_COORDINATES_ID, result);
+                outputValues.put(OUTPUT_GRID_TREE_ID, DataTreeData.empty());
                 return;
             }
             
@@ -145,18 +153,19 @@ public class GridArrayNode extends BaseNode {
                                  xDirection, xDistance, xCount,
                                  yDirection, yDistance, yCount,
                                  zDirection, zDistance, zCount,
-                                 includeOriginal, result);
+                                 includeOriginal, result, branches);
             } else {
                 // 2D网格
                 create2DGridArray(coordinates, 
                                  xDirection, xDistance, xCount,
                                  yDirection, yDistance, yCount,
-                                 includeOriginal, result);
+                                 includeOriginal, result, branches);
             }
         }
         
         // 设置输出值
         outputValues.put(OUTPUT_GRID_COORDINATES_ID, result);
+        outputValues.put(OUTPUT_GRID_TREE_ID, new DataTreeData(branches));
     }
     
     /**
@@ -165,7 +174,7 @@ public class GridArrayNode extends BaseNode {
     private void create2DGridArray(BlockPosList sourceCoords,
                                 Vector3d xDir, double xDist, int xCount,
                                 Vector3d yDir, double yDist, int yCount,
-                                boolean includeOriginal, BlockPosList result) {
+                                boolean includeOriginal, BlockPosList result, List<DataTreeData.Branch> branches) {
         // 创建X和Y方向的位移向量
         Vector3d xDisplacement = new Vector3d(xDir).mul(xDist);
         Vector3d yDisplacement = new Vector3d(yDir).mul(yDist);
@@ -180,6 +189,7 @@ public class GridArrayNode extends BaseNode {
                 if (x == 0 && y == 0 && !includeOriginal) {
                     continue;
                 }
+                List<BlockPos> copyPositions = new ArrayList<>();
                 
                 // 计算X位移
                 Vector3d xOffset = new Vector3d(xDisplacement).mul(x);
@@ -197,7 +207,9 @@ public class GridArrayNode extends BaseNode {
                     
                     // 添加到结果列表
                     result.add(newPos);
+                    copyPositions.add(newPos);
                 }
+                addCopyBranch(branches, List.of(x, y), copyPositions);
             }
         }
     }
@@ -209,7 +221,7 @@ public class GridArrayNode extends BaseNode {
                                 Vector3d xDir, double xDist, int xCount,
                                 Vector3d yDir, double yDist, int yCount,
                                 Vector3d zDir, double zDist, int zCount,
-                                boolean includeOriginal, BlockPosList result) {
+                                boolean includeOriginal, BlockPosList result, List<DataTreeData.Branch> branches) {
         // 创建X、Y和Z方向的位移向量
         Vector3d xDisplacement = new Vector3d(xDir).mul(xDist);
         Vector3d yDisplacement = new Vector3d(yDir).mul(yDist);
@@ -229,6 +241,7 @@ public class GridArrayNode extends BaseNode {
                     if (x == 0 && y == 0 && z == 0 && !includeOriginal) {
                         continue;
                     }
+                    List<BlockPos> copyPositions = new ArrayList<>();
                     
                     // 计算X位移
                     Vector3d xOffset = new Vector3d(xDisplacement).mul(x);
@@ -246,10 +259,16 @@ public class GridArrayNode extends BaseNode {
                         
                         // 添加到结果列表
                         result.add(newPos);
+                        copyPositions.add(newPos);
                     }
+                    addCopyBranch(branches, List.of(x, y, z), copyPositions);
                 }
             }
         }
+    }
+
+    private void addCopyBranch(List<DataTreeData.Branch> branches, List<Integer> path, List<BlockPos> positions) {
+        branches.add(new DataTreeData.Branch(path, new ArrayList<>(positions)));
     }
     
     /**

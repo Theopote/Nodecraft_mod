@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
+import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryTransform;
@@ -45,6 +46,8 @@ public class GridArrayGeometryNode extends BaseNode {
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_GEOMETRIES_ID = "output_geometries";
     private static final String OUTPUT_OFFSETS_ID = "output_offsets";
+    private static final String OUTPUT_GEOMETRY_TREE_ID = "output_geometry_tree";
+    private static final String OUTPUT_OFFSET_TREE_ID = "output_offset_tree";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
@@ -65,6 +68,8 @@ public class GridArrayGeometryNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing all grid copies", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRIES_ID, "Geometries", "List of copied geometry values", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_OFFSETS_ID, "Offsets", "Offset vectors used for each copy", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_TREE_ID, "Geometry Tree", "One branch per grid position using {x;y;z} paths", NodeDataType.DATA_TREE, this));
+        addOutputPort(new BasePort(OUTPUT_OFFSET_TREE_ID, "Offset Tree", "Offset vectors keyed by grid position paths", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of emitted geometry copies", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the grid array was generated", NodeDataType.BOOLEAN, this));
     }
@@ -96,6 +101,7 @@ public class GridArrayGeometryNode extends BaseNode {
         int capacity = xCount * yCount * zCount;
         List<GeometryData> copies = new ArrayList<>(capacity);
         List<Vector3d> offsets = new ArrayList<>(capacity);
+        List<List<Integer>> paths = new ArrayList<>(capacity);
 
         for (int z = 0; z < zCount; z++) {
             for (int y = 0; y < yCount; y++) {
@@ -112,12 +118,13 @@ public class GridArrayGeometryNode extends BaseNode {
                     if (copy != null) {
                         copies.add(copy);
                         offsets.add(offset);
+                        paths.add(zCount > 1 ? List.of(x, y, z) : List.of(x, y));
                     }
                 }
             }
         }
 
-        writeResult(copies, offsets, !copies.isEmpty());
+        writeResult(copies, offsets, paths, !copies.isEmpty());
     }
 
     private @Nullable Vector3d resolveStep(String directionId, String distanceId, Vector3d fallbackDirection, double fallbackDistance) {
@@ -139,11 +146,26 @@ public class GridArrayGeometryNode extends BaseNode {
     }
 
     private void writeResult(List<GeometryData> copies, List<Vector3d> offsets, boolean valid) {
+        writeResult(copies, offsets, List.of(), valid);
+    }
+
+    private void writeResult(List<GeometryData> copies, List<Vector3d> offsets, List<List<Integer>> paths, boolean valid) {
         outputValues.put(OUTPUT_GEOMETRIES_ID, List.copyOf(copies));
         outputValues.put(OUTPUT_GEOMETRY_ID, copies.isEmpty() ? null : new CompositeGeometryData(copies));
         outputValues.put(OUTPUT_OFFSETS_ID, List.copyOf(offsets));
+        outputValues.put(OUTPUT_GEOMETRY_TREE_ID, buildTree(copies, paths));
+        outputValues.put(OUTPUT_OFFSET_TREE_ID, buildTree(offsets, paths));
         outputValues.put(OUTPUT_COUNT_ID, copies.size());
         outputValues.put(OUTPUT_VALID_ID, valid);
+    }
+
+    private DataTreeData buildTree(List<?> values, List<List<Integer>> paths) {
+        List<DataTreeData.Branch> branches = new ArrayList<>(values.size());
+        for (int i = 0; i < values.size(); i++) {
+            List<Integer> path = i < paths.size() ? paths.get(i) : List.of(i);
+            branches.add(new DataTreeData.Branch(path, List.of(values.get(i))));
+        }
+        return new DataTreeData(branches);
     }
 
     public boolean isIncludeOriginal() {

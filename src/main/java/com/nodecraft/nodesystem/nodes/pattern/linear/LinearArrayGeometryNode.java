@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
+import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryTransform;
@@ -36,6 +37,7 @@ public class LinearArrayGeometryNode extends BaseNode {
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_GEOMETRIES_ID = "output_geometries";
+    private static final String OUTPUT_GEOMETRY_TREE_ID = "output_geometry_tree";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
@@ -49,6 +51,7 @@ public class LinearArrayGeometryNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing all copies", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRIES_ID, "Geometries", "List of copied geometry values", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_TREE_ID, "Geometry Tree", "One branch per emitted geometry copy", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of emitted geometry copies", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the array was generated", NodeDataType.BOOLEAN, this));
     }
@@ -128,8 +131,17 @@ public class LinearArrayGeometryNode extends BaseNode {
 
     private void writeResult(List<GeometryData> copies, boolean valid) {
         outputValues.put(OUTPUT_GEOMETRIES_ID, List.copyOf(copies));
+        outputValues.put(OUTPUT_GEOMETRY_TREE_ID, buildCopyTree(copies));
         outputValues.put(OUTPUT_GEOMETRY_ID, copies.isEmpty() ? null : new CompositeGeometryData(copies));
         outputValues.put(OUTPUT_COUNT_ID, copies.size());
         outputValues.put(OUTPUT_VALID_ID, valid);
+    }
+
+    private DataTreeData buildCopyTree(List<GeometryData> copies) {
+        List<DataTreeData.Branch> branches = new ArrayList<>(copies.size());
+        for (int i = 0; i < copies.size(); i++) {
+            branches.add(new DataTreeData.Branch(List.of(i), List.of(copies.get(i))));
+        }
+        return new DataTreeData(branches);
     }
 }

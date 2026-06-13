@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
 
@@ -13,6 +14,8 @@ import org.joml.AxisAngle4d;
 import org.joml.Matrix4d;
 import org.joml.Quaterniond;
 import org.joml.Vector3d;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -39,6 +42,7 @@ public class PolarArrayNode extends BaseNode {
 
     // --- 输出端口 IDs ---
     private static final String OUTPUT_ARRAY_COORDINATES_ID = "output_array_coordinates";
+    private static final String OUTPUT_ARRAY_TREE_ID = "output_array_tree";
 
     // --- 构造函数 ---
     public PolarArrayNode() {
@@ -59,6 +63,8 @@ public class PolarArrayNode extends BaseNode {
         // 创建并添加输出端口
         addOutputPort(new BasePort(OUTPUT_ARRAY_COORDINATES_ID, "Array Coordinates", 
                 "The resulting polar array of coordinates", NodeDataType.BLOCK_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_ARRAY_TREE_ID, "Array Tree",
+                "One branch per emitted coordinate copy", NodeDataType.DATA_TREE, this));
     }
 
     // 添加 getDescription 方法
@@ -85,6 +91,7 @@ public class PolarArrayNode extends BaseNode {
         
         // 默认空的坐标列表
         BlockPosList result = new BlockPosList();
+        List<DataTreeData.Branch> branches = new ArrayList<>();
         
         // 检查输入是否合法
         if (coordinatesObj instanceof BlockPosList && 
@@ -102,6 +109,7 @@ public class PolarArrayNode extends BaseNode {
             // 如果输入坐标列表为空，直接返回空结果
             if (coordinates.isEmpty()) {
                 outputValues.put(OUTPUT_ARRAY_COORDINATES_ID, result);
+                outputValues.put(OUTPUT_ARRAY_TREE_ID, DataTreeData.empty());
                 return;
             }
             
@@ -119,11 +127,12 @@ public class PolarArrayNode extends BaseNode {
             double angleIncrement = Math.toRadians(totalAngleDegrees) / count;
             
             // 创建极坐标阵列
-            createPolarArray(coordinates, centerPos, axis, count, angleIncrement, includeOriginal, result);
+            createPolarArray(coordinates, centerPos, axis, count, angleIncrement, includeOriginal, result, branches);
         }
         
         // 设置输出值
         outputValues.put(OUTPUT_ARRAY_COORDINATES_ID, result);
+        outputValues.put(OUTPUT_ARRAY_TREE_ID, new DataTreeData(branches));
     }
     
     /**
@@ -138,13 +147,14 @@ public class PolarArrayNode extends BaseNode {
      */
     private void createPolarArray(BlockPosList sourceCoords, BlockPos center, Vector3d axis, 
                                int count, double angleIncrement, boolean includeOriginal,
-                               BlockPosList result) {
+                               BlockPosList result, List<DataTreeData.Branch> branches) {
         // 将中心点转换为向量
         Vector3d centerVec = new Vector3d(center.getX(), center.getY(), center.getZ());
         
         // 如果需要，添加原始坐标
         if (includeOriginal) {
             result.addAll(sourceCoords.getPositions());
+            addCopyBranch(branches, sourceCoords.getPositions());
         }
         
         // 对于每个实例，创建一个旋转副本
@@ -154,6 +164,7 @@ public class PolarArrayNode extends BaseNode {
             
             // 创建旋转矩阵
             Matrix4d rotationMatrix = createRotationMatrix(centerVec, axis, angle);
+            List<BlockPos> copyPositions = new ArrayList<>();
             
             // 对源坐标列表中的每个坐标应用旋转
             for (BlockPos pos : sourceCoords) {
@@ -172,8 +183,14 @@ public class PolarArrayNode extends BaseNode {
                 
                 // 添加到结果列表
                 result.add(rotatedPos);
+                copyPositions.add(rotatedPos);
             }
+            addCopyBranch(branches, copyPositions);
         }
+    }
+
+    private void addCopyBranch(List<DataTreeData.Branch> branches, List<BlockPos> positions) {
+        branches.add(new DataTreeData.Branch(List.of(branches.size()), new ArrayList<>(positions)));
     }
     
     /**
