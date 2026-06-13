@@ -1,0 +1,261 @@
+# NodeCraft Data Tree System Development
+
+## Purpose
+
+NodeCraft uses nodes to model Minecraft worlds. A plain list is not enough for many modeling workflows because it loses grouping information. Data Tree Lite keeps that grouping:
+
+- Building -> floor -> room -> wall -> block
+- Array result -> copy index -> generated geometry
+- Sweep or loft -> section index -> section points
+- Curve voxelize -> curve index -> generated blocks
+- Surface divide -> row or column -> sampled points
+
+The goal is not to copy the full Grasshopper Data Tree feature set immediately. The goal is to provide a small, predictable hierarchical list model that can grow into the modeling nodes.
+
+## Data Model
+
+Runtime type:
+
+```text
+com.nodecraft.nodesystem.datatypes.DataTreeData
+```
+
+Port type:
+
+```text
+NodeDataType.DATA_TREE
+```
+
+A tree contains ordered branches. Each branch has:
+
+```text
+path:  List<Integer>
+items: List<Object>
+```
+
+Path examples:
+
+```text
+{}
+{0}
+{0;1}
+{2;4;3}
+```
+
+Paths are integer addresses. UI and node inputs should accept common path forms where practical:
+
+```text
+0
+{0}
+{0;1}
+0;1
+0/1
+0.1
+```
+
+## Current Core Nodes
+
+Category:
+
+```text
+math.data_tree
+```
+
+Implemented nodes:
+
+| Node | Purpose |
+|---|---|
+| Graft List | Converts each list item into one branch. |
+| Flatten Tree | Converts all branches into one plain list. |
+| Partition List To Tree | Splits a list into fixed-size branches. |
+| Tree Branch | Gets one branch by path. |
+| Tree Item | Gets one item by path and index. |
+| Tree Statistics | Reports branch count, item count, max depth, paths, and branch sizes. |
+| Tree Viewer | Outputs a readable tree summary. |
+| Merge Trees | Merges two trees or lists. |
+| Simplify Tree | Removes the common leading path prefix. |
+| Shift Path | Removes leading path levels or prepends zero levels. |
+| Tree Paths | Outputs branch paths as strings and index lists. |
+| Cull Empty Branches | Removes branches with no items. |
+| Entwine | Combines up to four sources into source-indexed branches. |
+
+## Design Rules
+
+### Keep List Compatibility Explicit
+
+Do not make every list port implicitly accept trees. Tree-to-list conversion should stay explicit through `Flatten Tree`, `Tree Branch`, or modeling-node-specific tree handling. This prevents accidental loss of branch structure.
+
+### Preserve Branch Semantics
+
+When a modeling node receives a tree, it should preserve source branch paths where possible. If the node expands one branch into many branches, append a new path level instead of flattening.
+
+Examples:
+
+```text
+Input branch {3} with 5 curves
+Curve Voxelize output:
+{3;0}, {3;1}, {3;2}, {3;3}, {3;4}
+```
+
+```text
+Input branch {1} with one profile and one path
+Sweep output sections:
+{1;0}, {1;1}, {1;2}, ...
+```
+
+### Avoid Hidden Flattening
+
+Flattening should only happen when:
+
+- the user uses `Flatten Tree`
+- a node is documented to flatten
+- a preview or bake node has an explicit flatten/group mode
+
+### Output Diagnostics
+
+Tree-producing nodes should expose basic diagnostics when useful:
+
+```text
+Branch Count
+Item Count
+Valid
+```
+
+Debugging tools should expose:
+
+```text
+Path Strings
+Branch Sizes
+Summary
+```
+
+## Modeling Node Integration Plan
+
+### Phase 1: Core Tree Tools
+
+Status: started.
+
+Required additions after the current node set:
+
+- Replace Branch
+- Insert Branch
+- Path Mapper Lite
+- Tree To Nested List
+- Nested List To Tree
+- Explode Tree
+
+### Phase 2: Array Nodes
+
+Array nodes should support tree output first because array workflows naturally create groups.
+
+Targets:
+
+- Linear Array
+- Polar Array
+- Rectangle Array
+- Box Array
+- Curve Array
+
+Recommended output rule:
+
+```text
+Each copy is one branch.
+Nested arrays append dimensions as path levels.
+```
+
+Examples:
+
+```text
+Linear Array: {0}, {1}, {2}
+Rectangle Array: {row;column}
+Box Array: {x;y;z}
+```
+
+### Phase 3: Curve and Surface Nodes
+
+Targets:
+
+- Curve Voxelize
+- Tween Curve
+- Join/Smooth Curve workflows
+- Surface Divide
+- Surface Sample
+- Closest Point To Object
+
+Recommended output rule:
+
+```text
+One source object produces one branch.
+Sub-results append new path levels.
+```
+
+### Phase 4: Solid and Voxel Bake
+
+Targets:
+
+- Sweep Profile Along Path
+- Sweep Point List Along Path
+- Sweep 2 Rails
+- Loft Profiles
+- Multi Section Loft
+- Surface Strip To Geometry
+- Bake / Preview nodes
+
+Recommended output rule:
+
+```text
+Sections, profiles, strips, generated blocks, and material groups should remain branch-addressable until the user chooses to flatten.
+```
+
+Bake nodes should eventually support:
+
+- one group per branch
+- block palette by branch
+- branch path as generated object name or tag
+- preview color by branch
+
+## UI Plan
+
+Short term:
+
+- `Tree Viewer` string summary.
+- `Tree Statistics` for numeric debugging.
+- Path inputs accept strings such as `{0;1}`.
+
+Medium term:
+
+- Custom Tree Viewer UI with collapsible branches.
+- Port tooltip summary: `Data Tree: 12 branches / 240 items`.
+- Path input widget in the property panel.
+
+Long term:
+
+- Branch preview colors.
+- Bake grouping by branch.
+- Tree-aware wire preview in the editor.
+
+## Implementation Checklist
+
+- Add new tree nodes under `src/main/java/com/nodecraft/nodesystem/nodes/math/data_tree`.
+- Use `NodeDataType.DATA_TREE` for tree ports.
+- Keep helper logic in `DataTreeNodeUtils`.
+- Use `DataTreeData.parsePath` and `DataTreeData.formatPath` for path IO.
+- Update node library docs after adding nodes:
+
+```text
+python scripts/generate_node_library_docs.py
+```
+
+- Compile after Java changes:
+
+```text
+.\gradlew --no-daemon --console plain compileJava
+```
+
+## Open Decisions
+
+- Whether to allow duplicate paths and merge their items, or reject duplicates.
+- Whether branch paths should support negative indices. Current design does not.
+- Whether tree-aware modeling nodes should add parallel tree outputs or replace existing list outputs.
+- How much of Grasshopper Path Mapper syntax should be exposed to users.
+- Whether custom Data Tree UI should live in the generic node custom UI system or as a special viewer component.

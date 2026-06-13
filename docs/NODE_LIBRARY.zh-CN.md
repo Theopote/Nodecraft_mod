@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**506**
+- **节点总数**：**511**
 - **分类总数**：**53**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -28,7 +28,7 @@
 | `material.pattern_mapping` | 4 |
 | `material.surface_aging` | 3 |
 | `math.compare` | 7 |
-| `math.data_tree` | 8 |
+| `math.data_tree` | 13 |
 | `math.fields` | 17 |
 | `math.list` | 22 |
 | `math.logic` | 6 |
@@ -350,7 +350,7 @@
 | Greater Than (>) | `math.compare.greater_than` | Returns true when A is greater than B. | `GreaterThanNode` |
 | Greater Than or Equal (>=) | `math.compare.greater_than_or_equal` | Returns true when A is greater than or equal to B. | `GreaterThanOrEqualNode` |
 
-## math.data_tree（8）
+## math.data_tree（13）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -362,6 +362,11 @@
 | Tree Statistics | `math.data_tree.statistics` | Reports branch count, item count, depth, paths, and branch sizes for a data tree | `TreeStatisticsNode` |
 | Tree Viewer | `math.data_tree.viewer` | Outputs a readable summary of a data tree for debugging | `TreeViewerNode` |
 | Merge Trees | `math.data_tree.merge` | Merges two data trees or lists into one data tree | `MergeTreesNode` |
+| Simplify Tree | `math.data_tree.simplify` | Removes the common leading path prefix from all data tree branches | `SimplifyTreeNode` |
+| Shift Path | `math.data_tree.shift_path` | Moves data tree paths up by removing leading levels or down by adding zero levels | `ShiftPathNode` |
+| Tree Paths | `math.data_tree.paths` | Outputs data tree branch paths as strings and path index lists | `TreePathsNode` |
+| Cull Empty Branches | `math.data_tree.cull_empty` | Removes empty branches from a data tree | `CullEmptyBranchesNode` |
+| Entwine | `math.data_tree.entwine` | Combines up to four trees or lists into source-indexed data tree branches | `EntwineNode` |
 
 ## math.fields（17）
 
