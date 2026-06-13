@@ -4,7 +4,6 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -28,6 +27,7 @@ public class PointToBlockIfGridNode extends BaseNode {
     private static final String OUTPUT_COORDINATE_ID = "output_coordinate";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_IS_GRID_POINT_ID = "output_is_grid_point";
+    private static final String OUTPUT_NEAREST_COORDINATE_ID = "output_nearest_coordinate";
     private static final String OUTPUT_DISTANCE_ID = "output_distance";
     private static final String OUTPUT_OFFSET_VECTOR_ID = "output_offset_vector";
 
@@ -46,6 +46,8 @@ public class PointToBlockIfGridNode extends BaseNode {
             "True when the input could be resolved to a geometric point", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_IS_GRID_POINT_ID, "Is Grid Point",
             "True when the point lies on the integer grid within tolerance", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_NEAREST_COORDINATE_ID, "Nearest Coordinate",
+            "Nearest integer block coordinate, even when the input is not grid-aligned", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_DISTANCE_ID, "Distance",
             "Distance from the point to the nearest integer grid coordinate", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_OFFSET_VECTOR_ID, "Offset Vector",
@@ -64,11 +66,12 @@ public class PointToBlockIfGridNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d point = resolvePoint(inputValues.get(INPUT_POINT_ID));
+        Vector3d point = WorldSelectionResolveUtils.resolveVector3d(inputValues.get(INPUT_POINT_ID));
         if (point == null) {
             outputValues.put(OUTPUT_COORDINATE_ID, null);
             outputValues.put(OUTPUT_VALID_ID, false);
             outputValues.put(OUTPUT_IS_GRID_POINT_ID, false);
+            outputValues.put(OUTPUT_NEAREST_COORDINATE_ID, BlockPos.ORIGIN);
             outputValues.put(OUTPUT_DISTANCE_ID, 0.0D);
             outputValues.put(OUTPUT_OFFSET_VECTOR_ID, new Vector3d());
             return;
@@ -85,10 +88,12 @@ public class PointToBlockIfGridNode extends BaseNode {
         );
         double distance = offset.length();
         boolean isGridPoint = distance <= Math.max(0.0D, tolerance);
+        BlockPos nearest = new BlockPos(nearestX, nearestY, nearestZ);
 
-        outputValues.put(OUTPUT_COORDINATE_ID, isGridPoint ? new BlockPos(nearestX, nearestY, nearestZ) : null);
+        outputValues.put(OUTPUT_COORDINATE_ID, isGridPoint ? nearest : null);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_IS_GRID_POINT_ID, isGridPoint);
+        outputValues.put(OUTPUT_NEAREST_COORDINATE_ID, nearest);
         outputValues.put(OUTPUT_DISTANCE_ID, distance);
         outputValues.put(OUTPUT_OFFSET_VECTOR_ID, offset);
     }
@@ -119,16 +124,4 @@ public class PointToBlockIfGridNode extends BaseNode {
         }
     }
 
-    private Vector3d resolvePoint(Object value) {
-        if (value instanceof PointData pointData) {
-            return pointData.getPosition();
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof BlockPos blockPos) {
-            return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
-        }
-        return null;
-    }
 }

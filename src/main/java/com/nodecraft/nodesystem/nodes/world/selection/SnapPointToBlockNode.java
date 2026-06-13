@@ -4,7 +4,6 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -76,7 +75,7 @@ public class SnapPointToBlockNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d point = resolvePoint(inputValues.get(INPUT_POINT_ID));
+        Vector3d point = WorldSelectionResolveUtils.resolveVector3d(inputValues.get(INPUT_POINT_ID));
         if (point == null) {
             outputValues.put(OUTPUT_COORDINATE_ID, BlockPos.ORIGIN);
             outputValues.put(OUTPUT_X_ID, 0);
@@ -151,16 +150,4 @@ public class SnapPointToBlockNode extends BaseNode {
         };
     }
 
-    private Vector3d resolvePoint(Object value) {
-        if (value instanceof PointData pointData) {
-            return pointData.getPosition();
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof BlockPos blockPos) {
-            return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
-        }
-        return null;
-    }
 }

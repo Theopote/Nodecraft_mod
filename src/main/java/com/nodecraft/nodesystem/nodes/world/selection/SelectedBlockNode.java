@@ -130,6 +130,13 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     )
 
     // --- 输入验证状态 ---
+    public String getSelectedPositionForPanel() {
+        if (pickedBlockPosition == null) {
+            return "";
+        }
+        return pickedBlockPosition.getX() + ", " + pickedBlockPosition.getY() + ", " + pickedBlockPosition.getZ();
+    }
+
     private volatile String inputValidationError = null;
     private volatile boolean hasInputValidationWarning = false;
     private volatile String inputValidationWarning = null;
@@ -228,7 +235,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         }
         
         // 更新输入端口的可用性
-        updateInputPortAvailability();
+        // Keep existing X/Y/Z graph connections intact; picked blocks simply take priority.
         
         // 如果没有拾取方块，尝试从输入端口获取坐标
         if (!hasPickedBlock) {
@@ -252,13 +259,13 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 IPort zPort = getInputPort(INPUT_Z_ID);
                 
                 if (xPort != null && xPort.isConnected()) {
-                    xPort.disconnect();
+                    NodeCraft.LOGGER.debug("Keeping X input connection for picked block node {}", getId());
                 }
                 if (yPort != null && yPort.isConnected()) {
-                    yPort.disconnect();
+                    NodeCraft.LOGGER.debug("Keeping Y input connection for picked block node {}", getId());
                 }
                 if (zPort != null && zPort.isConnected()) {
-                    zPort.disconnect();
+                    NodeCraft.LOGGER.debug("Keeping Z input connection for picked block node {}", getId());
                 }
             }
         } catch (Exception e) {
@@ -865,6 +872,16 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         
         markDirty();
     }
+
+    public void onNodeRemoved() {
+        SelectionVisualFeedback.getInstance().clearFeedback(getId().toString());
+        clearBlockPreview();
+
+        NodeEditorInteractionManager interactionManager = NodeEditorInteractionManager.getInstance();
+        if (interactionManager.isCurrentInteractionNode(getId().toString())) {
+            interactionManager.cancelCurrentInteraction();
+        }
+    }
     
     /**
      * 统一的幽灵方块预览更新方法
@@ -1112,8 +1129,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             if (hasPickedBlock || hasInputCoordinates()) {
                 // 默认展开状态显示区
                 String headerText = hasPickedBlock ? "已选方块信息##info" : "输入坐标方块##info";
-                boolean infoExpandedNow = false;
-                infoSectionExpanded = false;
+                boolean infoExpandedNow = ImGui.collapsingHeader(headerText);
+                infoSectionExpanded = infoExpandedNow;
                 if (infoExpandedNow) {
                     ImGui.indent(); // 缩进内容
                     addVerticalSpacing(getSmallPadding(), zoom);
@@ -1203,8 +1220,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             }
 
             // === 3. 高级设置区 ===
-            boolean settingsExpandedNow = false;
-            settingsSectionExpanded = false;
+            boolean settingsExpandedNow = ImGui.collapsingHeader("Advanced Settings##settings");
+            settingsSectionExpanded = settingsExpandedNow;
             if (settingsExpandedNow) {
                 addVerticalSpacing(getSmallPadding(), zoom);
                 

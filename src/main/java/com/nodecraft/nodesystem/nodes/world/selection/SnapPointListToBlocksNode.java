@@ -4,7 +4,6 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import net.minecraft.util.math.BlockPos;
@@ -84,7 +83,7 @@ public class SnapPointListToBlocksNode extends BaseNode {
         int skippedCount = 0;
 
         for (Object entry : values) {
-            Vector3d point = resolvePoint(entry);
+            Vector3d point = WorldSelectionResolveUtils.resolveVector3d(entry);
             if (point == null) {
                 skippedCount++;
                 continue;
@@ -171,16 +170,4 @@ public class SnapPointListToBlocksNode extends BaseNode {
         };
     }
 
-    private Vector3d resolvePoint(Object value) {
-        if (value instanceof PointData pointData) {
-            return pointData.getPosition();
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof BlockPos blockPos) {
-            return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
-        }
-        return null;
-    }
 }

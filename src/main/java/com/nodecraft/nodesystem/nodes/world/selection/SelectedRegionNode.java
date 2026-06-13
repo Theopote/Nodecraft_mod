@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
@@ -14,6 +15,7 @@ import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.Vector3;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -51,6 +53,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
     private static final String OUTPUT_POS2_Z_ID = "output_pos2_z";
     private static final String OUTPUT_MIN_POS_ID = "output_min_pos";
     private static final String OUTPUT_MAX_POS_ID = "output_max_pos";
+    private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_SIZE_X_ID = "output_size_x";
     private static final String OUTPUT_SIZE_Y_ID = "output_size_y";
     private static final String OUTPUT_SIZE_Z_ID = "output_size_z";
@@ -122,6 +125,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
         addOutputPort(new BasePort(OUTPUT_POS2_Z_ID, "Pos2 Z", "Z coordinate of position 2", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_MIN_POS_ID, "Min Position", "The minimum corner position", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_MAX_POS_ID, "Max Position", "The maximum corner position", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Selected region data for downstream world nodes", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_SIZE_X_ID, "Size X", "Width of the selection on X", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_SIZE_Y_ID, "Size Y", "Height of the selection on Y", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_SIZE_Z_ID, "Size Z", "Depth of the selection on Z", NodeDataType.INTEGER, this));
@@ -346,6 +350,10 @@ public class SelectedRegionNode extends BaseCustomUINode {
 
         outputValues.put(OUTPUT_MIN_POS_ID, new Vector3d(minX, minY, minZ));
         outputValues.put(OUTPUT_MAX_POS_ID, new Vector3d(maxX, maxY, maxZ));
+        outputValues.put(OUTPUT_REGION_ID, new RegionData(
+            new BlockPos((int) minX, (int) minY, (int) minZ),
+            new BlockPos((int) maxX, (int) maxY, (int) maxZ)
+        ));
 
         int sizeX = (int) (maxX - minX) + 1;
         int sizeY = (int) (maxY - minY) + 1;
@@ -370,6 +378,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_POS2_Z_ID, 0);
         outputValues.put(OUTPUT_MIN_POS_ID, zeroVec);
         outputValues.put(OUTPUT_MAX_POS_ID, zeroVec);
+        outputValues.put(OUTPUT_REGION_ID, null);
         outputValues.put(OUTPUT_SIZE_X_ID, 0);
         outputValues.put(OUTPUT_SIZE_Y_ID, 0);
         outputValues.put(OUTPUT_SIZE_Z_ID, 0);

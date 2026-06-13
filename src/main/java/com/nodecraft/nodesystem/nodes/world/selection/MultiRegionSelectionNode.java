@@ -4,12 +4,9 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Coordinate;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -38,6 +35,8 @@ public class MultiRegionSelectionNode extends BaseNode {
     private static final String OUTPUT_BOUNDS_REGION_ID = "output_bounds_region";
     private static final String OUTPUT_MIN_ID = "output_min";
     private static final String OUTPUT_MAX_ID = "output_max";
+    private static final String OUTPUT_MIN_BLOCK_ID = "output_min_block";
+    private static final String OUTPUT_MAX_BLOCK_ID = "output_max_block";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public MultiRegionSelectionNode() {
@@ -55,6 +54,8 @@ public class MultiRegionSelectionNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_BOUNDS_REGION_ID, "Bounds Region", "Overall bounds covering all regions", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_MIN_ID, "Bounds Min", "Overall min corner", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_MAX_ID, "Bounds Max", "Overall max corner", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_MIN_BLOCK_ID, "Bounds Min Block", "Overall min corner as a block position", NodeDataType.BLOCK_POS, this));
+        addOutputPort(new BasePort(OUTPUT_MAX_BLOCK_ID, "Bounds Max Block", "Overall max corner as a block position", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether at least one region exists", NodeDataType.BOOLEAN, this));
     }
 
@@ -85,6 +86,8 @@ public class MultiRegionSelectionNode extends BaseNode {
             outputValues.put(OUTPUT_BOUNDS_REGION_ID, null);
             outputValues.put(OUTPUT_MIN_ID, null);
             outputValues.put(OUTPUT_MAX_ID, null);
+            outputValues.put(OUTPUT_MIN_BLOCK_ID, BlockPos.ORIGIN);
+            outputValues.put(OUTPUT_MAX_BLOCK_ID, BlockPos.ORIGIN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
@@ -120,6 +123,8 @@ public class MultiRegionSelectionNode extends BaseNode {
         outputValues.put(OUTPUT_BOUNDS_REGION_ID, bounds);
         outputValues.put(OUTPUT_MIN_ID, min != null ? new Vector3d(min.getX(), min.getY(), min.getZ()) : null);
         outputValues.put(OUTPUT_MAX_ID, max != null ? new Vector3d(max.getX(), max.getY(), max.getZ()) : null);
+        outputValues.put(OUTPUT_MIN_BLOCK_ID, min != null ? min : BlockPos.ORIGIN);
+        outputValues.put(OUTPUT_MAX_BLOCK_ID, max != null ? max : BlockPos.ORIGIN);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
@@ -144,20 +149,11 @@ public class MultiRegionSelectionNode extends BaseNode {
         }
         int count = Math.min(mins.size(), maxs.size());
         for (int i = 0; i < count; i++) {
-            BlockPos min = resolvePos(mins.get(i));
-            BlockPos max = resolvePos(maxs.get(i));
+            BlockPos min = WorldSelectionResolveUtils.resolveBlockPos(mins.get(i));
+            BlockPos max = WorldSelectionResolveUtils.resolveBlockPos(maxs.get(i));
             if (min != null && max != null) {
                 out.add(new RegionData(min, max));
             }
         }
-    }
-
-    private @Nullable BlockPos resolvePos(Object value) {
-        if (value instanceof BlockPos pos) return pos.toImmutable();
-        if (value instanceof Vector3d v) return BlockPos.ofFloored(v.x, v.y, v.z);
-        if (value instanceof Vec3d v) return BlockPos.ofFloored(v.x, v.y, v.z);
-        if (value instanceof PointData p) return BlockPos.ofFloored(p.getPosition().x, p.getPosition().y, p.getPosition().z);
-        if (value instanceof Coordinate c) return new BlockPos(c.getX(), c.getY(), c.getZ());
-        return null;
     }
 }

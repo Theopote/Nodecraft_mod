@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.world.selection;
 
+import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -11,6 +12,7 @@ import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.visual.SelectionVisualFeedback;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 
@@ -44,15 +46,18 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
     private boolean showHighlight = true;
 
     private static final String OUTPUT_ENTITY_ID = "output_entity_id";
+    private static final String OUTPUT_ENTITY_UUID = "output_entity_uuid";
     private static final String OUTPUT_ENTITY_TYPE = "output_entity_type";
     private static final String OUTPUT_ENTITY_POSITION = "output_entity_position";
+    private static final String OUTPUT_EXACT_POSITION = "output_exact_position";
+    private static final String OUTPUT_DISTANCE_TO_PLAYER = "output_distance_to_player";
     private static final String OUTPUT_ENTITY_X = "output_entity_x";
     private static final String OUTPUT_ENTITY_Y = "output_entity_y";
     private static final String OUTPUT_ENTITY_Z = "output_entity_z";
     private static final String OUTPUT_HAS_ENTITY = "output_has_entity";
 
     private volatile String pickedEntityId;
-    private volatile String pickedEntityType = "minecraft:pig";
+    private volatile String pickedEntityType = "";
     private volatile Coordinate pickedEntityPosition;
     private volatile Vec3d pickedEntityExactPosition;
     private volatile boolean hasPickedEntity = false;
@@ -61,8 +66,11 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
         super(UUID.randomUUID(), "world.selection.selected_entity");
 
         addOutputPort(new BasePort(OUTPUT_ENTITY_ID, "Entity ID", "The unique identifier of the entity", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_ENTITY_UUID, "UUID", "Entity UUID string when available", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_ENTITY_TYPE, "Entity Type", "The type of the entity", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_ENTITY_POSITION, "Entity Position", "The block coordinates of the entity", NodeDataType.COORDINATE, this));
+        addOutputPort(new BasePort(OUTPUT_EXACT_POSITION, "Exact Position", "Exact entity position as a vector", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_DISTANCE_TO_PLAYER, "Distance To Player", "Distance from the current player to the selected entity", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_ENTITY_X, "Entity X", "The X coordinate of the entity", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_ENTITY_Y, "Entity Y", "The Y coordinate of the entity", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_ENTITY_Z, "Entity Z", "The Z coordinate of the entity", NodeDataType.INTEGER, this));
@@ -93,6 +101,7 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
     private void updateOutputsWithPickedEntity() {
         outputValues.put(OUTPUT_HAS_ENTITY, hasPickedEntity);
         outputValues.put(OUTPUT_ENTITY_ID, pickedEntityId != null ? pickedEntityId : "");
+        outputValues.put(OUTPUT_ENTITY_UUID, pickedEntityId != null ? pickedEntityId : "");
         outputValues.put(OUTPUT_ENTITY_TYPE, pickedEntityType);
 
         if (pickedEntityPosition != null) {
@@ -106,13 +115,20 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
             outputValues.put(OUTPUT_ENTITY_Y, 0);
             outputValues.put(OUTPUT_ENTITY_Z, 0);
         }
+        outputValues.put(OUTPUT_EXACT_POSITION, pickedEntityExactPosition != null
+            ? new org.joml.Vector3d(pickedEntityExactPosition.x, pickedEntityExactPosition.y, pickedEntityExactPosition.z)
+            : new org.joml.Vector3d());
+        outputValues.put(OUTPUT_DISTANCE_TO_PLAYER, distanceToPlayer());
     }
 
     private void resetOutputs() {
         outputValues.put(OUTPUT_HAS_ENTITY, false);
         outputValues.put(OUTPUT_ENTITY_ID, "");
-        outputValues.put(OUTPUT_ENTITY_TYPE, "minecraft:pig");
+        outputValues.put(OUTPUT_ENTITY_UUID, "");
+        outputValues.put(OUTPUT_ENTITY_TYPE, "");
         outputValues.put(OUTPUT_ENTITY_POSITION, new Coordinate(0, 0, 0));
+        outputValues.put(OUTPUT_EXACT_POSITION, new org.joml.Vector3d());
+        outputValues.put(OUTPUT_DISTANCE_TO_PLAYER, 0.0D);
         outputValues.put(OUTPUT_ENTITY_X, 0);
         outputValues.put(OUTPUT_ENTITY_Y, 0);
         outputValues.put(OUTPUT_ENTITY_Z, 0);
@@ -145,7 +161,7 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
     public void clearPickedEntity() {
         hasPickedEntity = false;
         pickedEntityId = null;
-        pickedEntityType = "minecraft:pig";
+        pickedEntityType = "";
         pickedEntityPosition = null;
         pickedEntityExactPosition = null;
 
@@ -220,7 +236,7 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
 
             addVerticalSpacing(getSmallPadding(), zoom);
         } catch (Exception e) {
-            System.err.println("SelectedEntityNode UI render failed: " + e.getMessage());
+            NodeCraft.LOGGER.warn("SelectedEntityNode UI render failed: {}", e.getMessage(), e);
         }
 
         return changed;
@@ -333,5 +349,16 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
 
     public void onNodeDeselected() {
         // Keep highlight active as part of the node behavior.
+    }
+
+    private double distanceToPlayer() {
+        if (!hasPickedEntity || pickedEntityExactPosition == null) {
+            return 0.0D;
+        }
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client == null || client.player == null) {
+            return 0.0D;
+        }
+        return client.player.getPos().distanceTo(pickedEntityExactPosition);
     }
 }
