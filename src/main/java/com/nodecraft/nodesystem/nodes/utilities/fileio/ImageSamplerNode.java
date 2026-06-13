@@ -73,6 +73,8 @@ public class ImageSamplerNode extends BaseNode {
     private static final String OUTPUT_GRAYSCALE_ID = "output_grayscale";
     private static final String OUTPUT_SAMPLE_X_ID = "output_sample_x";
     private static final String OUTPUT_SAMPLE_Y_ID = "output_sample_y";
+    private static final String OUTPUT_RESOLVED_MODE_ID = "output_resolved_mode";
+    private static final String OUTPUT_ERROR_ID = "output_error";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ImageSamplerNode() {
@@ -94,6 +96,8 @@ public class ImageSamplerNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_GRAYSCALE_ID, "Grayscale", "Luma grayscale value in 0..1", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SAMPLE_X_ID, "Sample X", "Resolved pixel-space X coordinate", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SAMPLE_Y_ID, "Sample Y", "Resolved pixel-space Y coordinate", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_RESOLVED_MODE_ID, "Resolved Mode", "Coordinate mode used for this sample", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Why sampling failed", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the image sample succeeded", NodeDataType.BOOLEAN, this));
     }
 
@@ -111,13 +115,14 @@ public class ImageSamplerNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         ImageView image = resolveImage();
         if (image == null) {
-            writeInvalid();
+            writeInvalid("Invalid image inputs");
             return;
         }
 
         double x;
         double y;
-        if ((coordinateMode == CoordinateMode.PIXEL) || hasNumber(INPUT_X_ID) || hasNumber(INPUT_Y_ID)) {
+        CoordinateMode resolvedMode = coordinateMode == null ? CoordinateMode.UV : coordinateMode;
+        if (resolvedMode == CoordinateMode.PIXEL) {
             x = getInputDouble(INPUT_X_ID, 0.0d);
             y = getInputDouble(INPUT_Y_ID, 0.0d);
         } else {
@@ -136,7 +141,7 @@ public class ImageSamplerNode extends BaseNode {
             : sampleBilinear(image, x, y);
 
         if (color == null) {
-            writeInvalid();
+            writeInvalid("Sample coordinate resolved outside image data");
             return;
         }
 
@@ -148,6 +153,8 @@ public class ImageSamplerNode extends BaseNode {
         outputValues.put(OUTPUT_GRAYSCALE_ID, grayscale(color));
         outputValues.put(OUTPUT_SAMPLE_X_ID, resolveCoordinate(x, image.width));
         outputValues.put(OUTPUT_SAMPLE_Y_ID, resolveCoordinate(y, image.height));
+        outputValues.put(OUTPUT_RESOLVED_MODE_ID, resolvedMode.name());
+        outputValues.put(OUTPUT_ERROR_ID, "");
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
@@ -268,15 +275,11 @@ public class ImageSamplerNode extends BaseNode {
         return value instanceof Number number ? number.doubleValue() : fallback;
     }
 
-    private boolean hasNumber(String portId) {
-        return inputValues.get(portId) instanceof Number;
-    }
-
     private double clamp01(double value) {
         return Math.max(0.0d, Math.min(1.0d, value));
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_COLOR_ID, ColorData.BLACK);
         outputValues.put(OUTPUT_RED_ID, 0.0d);
         outputValues.put(OUTPUT_GREEN_ID, 0.0d);
@@ -285,6 +288,8 @@ public class ImageSamplerNode extends BaseNode {
         outputValues.put(OUTPUT_GRAYSCALE_ID, 0.0d);
         outputValues.put(OUTPUT_SAMPLE_X_ID, 0.0d);
         outputValues.put(OUTPUT_SAMPLE_Y_ID, 0.0d);
+        outputValues.put(OUTPUT_RESOLVED_MODE_ID, coordinateMode == null ? CoordinateMode.UV.name() : coordinateMode.name());
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
