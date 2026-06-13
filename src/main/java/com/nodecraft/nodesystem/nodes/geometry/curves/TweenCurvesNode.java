@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
@@ -59,8 +60,11 @@ public class TweenCurvesNode extends AbstractCurveNode {
     private static final String INPUT_SAMPLES_ID = "input_samples";
 
     private static final String OUTPUT_CURVES_ID = "output_curves";
+    private static final String OUTPUT_CURVES_TREE_ID = "output_curves_tree";
     private static final String OUTPUT_POLYLINES_ID = "output_polylines";
+    private static final String OUTPUT_POLYLINES_TREE_ID = "output_polylines_tree";
     private static final String OUTPUT_POINT_ROWS_ID = "output_point_rows";
+    private static final String OUTPUT_POINT_ROWS_TREE_ID = "output_point_rows_tree";
     private static final String OUTPUT_FIRST_POLYLINE_ID = "output_first_polyline";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
@@ -87,10 +91,16 @@ public class TweenCurvesNode extends AbstractCurveNode {
 
         addOutputPort(new BasePort(OUTPUT_CURVES_ID, "Curves",
             "Generated tween curves as Curve list", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_CURVES_TREE_ID, "Curves Tree",
+            "Generated tween curves keyed by tween index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_POLYLINES_ID, "Polylines",
             "Generated tween curves as Polyline list", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POLYLINES_TREE_ID, "Polyline Tree",
+            "Generated tween polylines keyed by tween index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_POINT_ROWS_ID, "Point Rows",
             "Generated tween points; each row is one tween curve", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINT_ROWS_TREE_ID, "Point Row Tree",
+            "Tween curve point rows keyed by tween index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_FIRST_POLYLINE_ID, "First Polyline",
             "First generated tween polyline for single-curve workflows", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
@@ -144,8 +154,11 @@ public class TweenCurvesNode extends AbstractCurveNode {
         }
 
         outputValues.put(OUTPUT_CURVES_ID, List.copyOf(curves));
+        outputValues.put(OUTPUT_CURVES_TREE_ID, buildValueTree(curves));
         outputValues.put(OUTPUT_POLYLINES_ID, List.copyOf(polylines));
+        outputValues.put(OUTPUT_POLYLINES_TREE_ID, buildValueTree(polylines));
         outputValues.put(OUTPUT_POINT_ROWS_ID, List.copyOf(pointRows));
+        outputValues.put(OUTPUT_POINT_ROWS_TREE_ID, buildPointRowTree(pointRows));
         outputValues.put(OUTPUT_FIRST_POLYLINE_ID, polylines.getFirst());
         outputValues.put(OUTPUT_COUNT_ID, polylines.size());
         outputValues.put(OUTPUT_VALID_ID, true);
@@ -308,11 +321,30 @@ public class TweenCurvesNode extends AbstractCurveNode {
 
     private void writeInvalid() {
         outputValues.put(OUTPUT_CURVES_ID, List.of());
+        outputValues.put(OUTPUT_CURVES_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_POLYLINES_ID, List.of());
+        outputValues.put(OUTPUT_POLYLINES_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_POINT_ROWS_ID, List.of());
+        outputValues.put(OUTPUT_POINT_ROWS_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_FIRST_POLYLINE_ID, null);
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
+    }
+
+    private DataTreeData buildValueTree(List<?> values) {
+        List<DataTreeData.Branch> branches = new ArrayList<>(values.size());
+        for (int i = 0; i < values.size(); i++) {
+            branches.add(new DataTreeData.Branch(List.of(i), List.of(values.get(i))));
+        }
+        return new DataTreeData(branches);
+    }
+
+    private DataTreeData buildPointRowTree(List<List<Vector3d>> pointRows) {
+        List<DataTreeData.Branch> branches = new ArrayList<>(pointRows.size());
+        for (int i = 0; i < pointRows.size(); i++) {
+            branches.add(new DataTreeData.Branch(List.of(i), new ArrayList<>(pointRows.get(i))));
+        }
+        return new DataTreeData(branches);
     }
 
     private record ResampledPath(List<Vector3d> points, boolean closed) {

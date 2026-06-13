@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
+import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
@@ -51,7 +52,9 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
     private static final String INPUT_COUNT_ID = "input_count";
 
     private static final String OUTPUT_BLOCKS_ID = "output_blocks";
+    private static final String OUTPUT_BLOCKS_TREE_ID = "output_blocks_tree";
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
+    private static final String OUTPUT_SEGMENT_GEOMETRY_TREE_ID = "output_segment_geometry_tree";
     private static final String OUTPUT_POLYLINE_ID = "output_polyline";
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_REGION_ID = "output_region";
@@ -70,7 +73,9 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Optional rebuild sample count; overrides spacing", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Voxelized curve block coordinates", NodeDataType.BLOCK_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCKS_TREE_ID, "Blocks Tree", "Voxelized blocks grouped as one branch for this curve", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite cylinder geometry used for voxelization", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_SEGMENT_GEOMETRY_TREE_ID, "Segment Geometry Tree", "Cylinder segment geometry keyed by path segment index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Sampled path used for voxelization", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled path points as Vector3d list", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding region of the generated curve blocks", NodeDataType.REGION, this));
@@ -113,7 +118,9 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
         }
 
         outputValues.put(OUTPUT_BLOCKS_ID, blocks);
+        outputValues.put(OUTPUT_BLOCKS_TREE_ID, buildBlockTree(blocks));
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
+        outputValues.put(OUTPUT_SEGMENT_GEOMETRY_TREE_ID, buildSegmentTree(cylinders));
         outputValues.put(OUTPUT_POLYLINE_ID, polyline);
         outputValues.put(OUTPUT_POINTS_ID, List.copyOf(sampled.points()));
         outputValues.put(OUTPUT_REGION_ID, region);
@@ -292,13 +299,27 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
 
     private void writeInvalid() {
         outputValues.put(OUTPUT_BLOCKS_ID, new BlockPosList());
+        outputValues.put(OUTPUT_BLOCKS_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_GEOMETRY_ID, null);
+        outputValues.put(OUTPUT_SEGMENT_GEOMETRY_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_POLYLINE_ID, null);
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_REGION_ID, null);
         outputValues.put(OUTPUT_LENGTH_ID, 0.0d);
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
+    }
+
+    private DataTreeData buildBlockTree(BlockPosList blocks) {
+        return new DataTreeData(List.of(new DataTreeData.Branch(List.of(0), new ArrayList<>(blocks.getPositions()))));
+    }
+
+    private DataTreeData buildSegmentTree(List<GeometryData> segments) {
+        List<DataTreeData.Branch> branches = new ArrayList<>(segments.size());
+        for (int i = 0; i < segments.size(); i++) {
+            branches.add(new DataTreeData.Branch(List.of(i), List.of(segments.get(i))));
+        }
+        return new DataTreeData(branches);
     }
 
     private record SampledPath(List<Vector3d> points, boolean closed, double length) {

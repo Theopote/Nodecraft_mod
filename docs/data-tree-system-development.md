@@ -183,14 +183,17 @@ Current implementation notes:
 
 ### Phase 3: Curve and Surface Nodes
 
+Status: started.
+
 Targets:
 
-- Curve Voxelize
-- Tween Curve
+- Curve Voxelize: started; blocks are grouped under `{0}`, path segment geometry uses `{segmentIndex}`.
+- Tween Curve: started; generated curves, polylines, and point rows use `{tweenIndex}`.
 - Join/Smooth Curve workflows
 - Surface Divide
 - Surface Sample
 - Closest Point To Object
+- Surface Strip Deconstruct: started; section paths and section points use `{sectionIndex}`, rail segments use source section index.
 
 Recommended output rule:
 
@@ -198,6 +201,13 @@ Recommended output rule:
 One source object produces one branch.
 Sub-results append new path levels.
 ```
+
+Current implementation notes:
+
+- `Voxelize Curve` keeps flat `Blocks` and adds `Blocks Tree`.
+- `Voxelize Curve` also exposes `Segment Geometry Tree` so downstream workflows can inspect or group generated cylinder segments.
+- `Tween Curves` keeps flat curve/polyline/point-row lists and adds tree outputs keyed by tween index.
+- `Deconstruct Surface Strip` keeps flat outputs and adds section/rail tree outputs keyed by section index.
 
 ### Phase 4: Solid and Voxel Bake
 
