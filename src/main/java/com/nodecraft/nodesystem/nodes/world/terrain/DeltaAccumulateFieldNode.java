@@ -16,7 +16,7 @@ import java.util.UUID;
     displayName = "Delta Accumulate Field",
     description = "Applies or reverts delta fields and accumulates them into a combined terrain delta field.",
     category = "world.terrain",
-    order = 12
+    order = 13
 )
 public class DeltaAccumulateFieldNode extends BaseNode {
 

@@ -22,7 +22,7 @@ import java.util.UUID;
     displayName = "Plate Partition Field",
     description = "Generates pseudo tectonic plate ids and boundary intensity via Voronoi-style partitioning.",
     category = "world.terrain",
-    order = 12
+    order = 2
 )
 public class PlatePartitionFieldNode extends BaseNode {
 

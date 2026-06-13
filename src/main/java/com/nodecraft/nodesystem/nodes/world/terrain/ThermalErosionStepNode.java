@@ -17,7 +17,7 @@ import java.util.UUID;
     displayName = "Thermal Erosion Step",
     description = "Applies one thermal weathering step based on local slope exceeding talus angle.",
     category = "world.terrain",
-    order = 9
+    order = 10
 )
 public class ThermalErosionStepNode extends BaseNode {
 

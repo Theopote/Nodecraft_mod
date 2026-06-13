@@ -20,7 +20,7 @@ import java.util.UUID;
     displayName = "Flow Accumulation Field",
     description = "Routes runoff with selectable fast or high-quality (MFD) flow accumulation.",
     category = "world.terrain",
-    order = 5
+    order = 7
 )
 public class FlowAccumulationFieldNode extends BaseNode {
 
@@ -35,6 +35,13 @@ public class FlowAccumulationFieldNode extends BaseNode {
     private static final String INPUT_ITERATIONS_ID = "input_iterations";
 
     private static final String OUTPUT_ACCUMULATION_FIELD_ID = "output_accumulation_field";
+    private static final String OUTPUT_STRIDE_ID = "output_stride";
+    private static final String OUTPUT_GRID_WIDTH_ID = "output_grid_width";
+    private static final String OUTPUT_GRID_DEPTH_ID = "output_grid_depth";
+    private static final String OUTPUT_CELL_COUNT_ID = "output_cell_count";
+    private static final String OUTPUT_WAS_DOWNSAMPLED_ID = "output_was_downsampled";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     @NodeProperty(displayName = "Iterations", category = "Simulation", order = 1)
     private int iterations = 64;
@@ -60,6 +67,13 @@ public class FlowAccumulationFieldNode extends BaseNode {
         addInputPort(new BasePort(INPUT_ITERATIONS_ID, "Iterations", "Routing iterations", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_ACCUMULATION_FIELD_ID, "Accumulation Field", "Drainage accumulation estimate", NodeDataType.SCALAR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_STRIDE_ID, "Stride", "Actual grid stride used for routing", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_GRID_WIDTH_ID, "Grid Width", "Internal routing grid width", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_GRID_DEPTH_ID, "Grid Depth", "Internal routing grid depth", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_CELL_COUNT_ID, "Cell Count", "Internal routing cell count", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_WAS_DOWNSAMPLED_ID, "Was Downsampled", "True when the region was routed with stride > 1", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether accumulation succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when accumulation failed", NodeDataType.STRING, this));
     }
 
     @Override
@@ -68,14 +82,14 @@ public class FlowAccumulationFieldNode extends BaseNode {
         Object flowObj = inputValues.get(INPUT_FLOW_FIELD_ID);
 
         if (!(regionObj instanceof RegionData region) || !region.isComplete() || !(flowObj instanceof VectorFieldData flowField)) {
-            outputValues.put(OUTPUT_ACCUMULATION_FIELD_ID, null);
+            writeInvalid("Missing complete region or flow field input.");
             return;
         }
 
         BlockPos min = region.getMinCorner();
         BlockPos max = region.getMaxCorner();
         if (min == null || max == null) {
-            outputValues.put(OUTPUT_ACCUMULATION_FIELD_ID, null);
+            writeInvalid("Region bounds are incomplete.");
             return;
         }
 
@@ -92,7 +106,7 @@ public class FlowAccumulationFieldNode extends BaseNode {
         int depth = max.getZ() - minZ + 1;
 
         if (width <= 0 || depth <= 0) {
-            outputValues.put(OUTPUT_ACCUMULATION_FIELD_ID, null);
+            writeInvalid("Region has no X/Z area.");
             return;
         }
 
@@ -152,6 +166,24 @@ public class FlowAccumulationFieldNode extends BaseNode {
         FlowGrid flowGrid = new FlowGrid(minX, minZ, baseY, stride, gridWidth, gridDepth, accumulation);
         ScalarFieldData accumulationField = point -> flowGrid.sample(point.x, point.z);
         outputValues.put(OUTPUT_ACCUMULATION_FIELD_ID, accumulationField);
+        outputValues.put(OUTPUT_STRIDE_ID, stride);
+        outputValues.put(OUTPUT_GRID_WIDTH_ID, gridWidth);
+        outputValues.put(OUTPUT_GRID_DEPTH_ID, gridDepth);
+        outputValues.put(OUTPUT_CELL_COUNT_ID, gridWidth * gridDepth);
+        outputValues.put(OUTPUT_WAS_DOWNSAMPLED_ID, stride > 1);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_ACCUMULATION_FIELD_ID, null);
+        outputValues.put(OUTPUT_STRIDE_ID, 0);
+        outputValues.put(OUTPUT_GRID_WIDTH_ID, 0);
+        outputValues.put(OUTPUT_GRID_DEPTH_ID, 0);
+        outputValues.put(OUTPUT_CELL_COUNT_ID, 0);
+        outputValues.put(OUTPUT_WAS_DOWNSAMPLED_ID, false);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error);
     }
 
     private void routeFast(int x,

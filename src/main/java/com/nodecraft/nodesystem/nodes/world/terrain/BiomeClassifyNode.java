@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
@@ -24,6 +25,23 @@ public class BiomeClassifyNode extends BaseNode {
     private static final String INPUT_HEIGHT_FIELD_ID = "input_height_field";
 
     private static final String OUTPUT_BIOME_ID_FIELD_ID = "output_biome_id_field";
+    private static final String OUTPUT_BIOME_LABELS_ID = "output_biome_labels";
+    private static final String OUTPUT_BIOME_COUNT_ID = "output_biome_count";
+    private static final String OUTPUT_LEGEND_ID = "output_legend";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
+
+    private static final List<String> BIOME_LABELS = List.of(
+        "Hot Desert",
+        "Savanna",
+        "Temperate Steppe",
+        "Temperate Grassland",
+        "Temperate Forest",
+        "Tundra",
+        "Boreal Forest",
+        "Alpine",
+        "Tropical Rainforest"
+    );
 
     public BiomeClassifyNode() {
         super(UUID.randomUUID(), "world.terrain.biome_classify");
@@ -33,6 +51,11 @@ public class BiomeClassifyNode extends BaseNode {
         addInputPort(new BasePort(INPUT_HEIGHT_FIELD_ID, "Height Field", "Height field used for alpine override", NodeDataType.SCALAR_FIELD, this));
 
         addOutputPort(new BasePort(OUTPUT_BIOME_ID_FIELD_ID, "Biome Id Field", "Biome class id encoded as scalar", NodeDataType.SCALAR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_BIOME_LABELS_ID, "Biome Labels", "Biome labels ordered by scalar id", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_BIOME_COUNT_ID, "Biome Count", "Number of biome classes in the legend", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_LEGEND_ID, "Legend", "Human-readable biome id legend entries", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether classification succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when classification failed", NodeDataType.STRING, this));
     }
 
     @Override
@@ -45,6 +68,11 @@ public class BiomeClassifyNode extends BaseNode {
             || !(precipitationObj instanceof ScalarFieldData precipitationField)
             || !(heightObj instanceof ScalarFieldData heightField)) {
             outputValues.put(OUTPUT_BIOME_ID_FIELD_ID, null);
+            outputValues.put(OUTPUT_BIOME_LABELS_ID, BIOME_LABELS);
+            outputValues.put(OUTPUT_BIOME_COUNT_ID, BIOME_LABELS.size());
+            outputValues.put(OUTPUT_LEGEND_ID, legendEntries());
+            outputValues.put(OUTPUT_VALID_ID, false);
+            outputValues.put(OUTPUT_ERROR_ID, "Missing temperature, precipitation, or height field input.");
             return;
         }
 
@@ -86,6 +114,17 @@ public class BiomeClassifyNode extends BaseNode {
         };
 
         outputValues.put(OUTPUT_BIOME_ID_FIELD_ID, biomeIdField);
+        outputValues.put(OUTPUT_BIOME_LABELS_ID, BIOME_LABELS);
+        outputValues.put(OUTPUT_BIOME_COUNT_ID, BIOME_LABELS.size());
+        outputValues.put(OUTPUT_LEGEND_ID, legendEntries());
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private List<String> legendEntries() {
+        return java.util.stream.IntStream.range(0, BIOME_LABELS.size())
+            .mapToObj(index -> index + " = " + BIOME_LABELS.get(index))
+            .toList();
     }
 
     private double clamp01(double value) {

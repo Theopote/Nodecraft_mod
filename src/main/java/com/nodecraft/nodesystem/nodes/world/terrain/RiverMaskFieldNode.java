@@ -16,7 +16,7 @@ import java.util.UUID;
     displayName = "River Mask Field",
     description = "Creates a river-channel mask field from flow accumulation.",
     category = "world.terrain",
-    order = 6
+    order = 8
 )
 public class RiverMaskFieldNode extends BaseNode {
 

@@ -16,7 +16,7 @@ import java.util.UUID;
     displayName = "Rift Subsidence Field",
     description = "Builds rift/trench subsidence strength from boundary intensity.",
     category = "world.terrain",
-    order = 13
+    order = 4
 )
 public class RiftSubsidenceFieldNode extends BaseNode {
 
@@ -25,6 +25,8 @@ public class RiftSubsidenceFieldNode extends BaseNode {
     private static final String INPUT_WIDTH_ID = "input_width";
 
     private static final String OUTPUT_SUBSIDENCE_FIELD_ID = "output_subsidence_field";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     @NodeProperty(displayName = "Strength", category = "Subsidence", order = 1)
     private double strength = 0.8d;
@@ -40,6 +42,8 @@ public class RiftSubsidenceFieldNode extends BaseNode {
         addInputPort(new BasePort(INPUT_WIDTH_ID, "Width", "Boundary spread width; larger gives broader basins", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_SUBSIDENCE_FIELD_ID, "Subsidence Field", "Rift basin/trench subsidence contribution", NodeDataType.SCALAR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the field was created", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when field creation failed", NodeDataType.STRING, this));
     }
 
     @Override
@@ -47,6 +51,8 @@ public class RiftSubsidenceFieldNode extends BaseNode {
         Object boundaryObj = inputValues.get(INPUT_BOUNDARY_FIELD_ID);
         if (!(boundaryObj instanceof ScalarFieldData boundaryField)) {
             outputValues.put(OUTPUT_SUBSIDENCE_FIELD_ID, null);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            outputValues.put(OUTPUT_ERROR_ID, "Missing boundary field input.");
             return;
         }
 
@@ -55,14 +61,13 @@ public class RiftSubsidenceFieldNode extends BaseNode {
 
         ScalarFieldData subsidenceField = point -> {
             double boundary = clamp01(boundaryField.sampleScalar(point));
-
-            // Map boundary proximity to a smooth bell-like response.
-            double proximity = 1.0d - boundary;
-            double shaped = Math.exp(-(proximity * proximity) / (2.0d * resolvedWidth * resolvedWidth));
+            double shaped = Math.pow(boundary, resolvedWidth);
             return shaped * resolvedStrength;
         };
 
         outputValues.put(OUTPUT_SUBSIDENCE_FIELD_ID, subsidenceField);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     private double getInputDouble(String portId, double fallback) {

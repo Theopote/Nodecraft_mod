@@ -16,7 +16,7 @@ import java.util.UUID;
     displayName = "Deposition Step",
     description = "Deposits sediment in low-slope and low-energy zones.",
     category = "world.terrain",
-    order = 11
+    order = 12
 )
 public class DepositionStepNode extends BaseNode {
 

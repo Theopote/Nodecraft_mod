@@ -16,7 +16,7 @@ import java.util.UUID;
     displayName = "Orogenic Uplift Field",
     description = "Converts boundary intensity into mountain uplift potential.",
     category = "world.terrain",
-    order = 8
+    order = 3
 )
 public class OrogenicUpliftFieldNode extends BaseNode {
 

@@ -16,7 +16,7 @@ import java.util.UUID;
     displayName = "Combine Height Fields",
     description = "Combines base, additive, and subtractive height fields into one output field.",
     category = "world.terrain",
-    order = 3
+    order = 5
 )
 public class CombineHeightFieldsNode extends BaseNode {
 

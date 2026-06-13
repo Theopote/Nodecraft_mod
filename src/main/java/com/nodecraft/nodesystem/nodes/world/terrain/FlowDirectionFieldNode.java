@@ -18,7 +18,7 @@ import java.util.UUID;
     displayName = "Flow Direction Field",
     description = "Computes downslope flow direction and slope magnitude from a height field.",
     category = "world.terrain",
-    order = 4
+    order = 6
 )
 public class FlowDirectionFieldNode extends BaseNode {
 

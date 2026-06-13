@@ -18,7 +18,7 @@ import java.util.UUID;
     displayName = "Hydraulic Erosion Step",
     description = "Applies one hydraulic erosion-deposition step with carrying capacity and optional flow-driven sediment transport.",
     category = "world.terrain",
-    order = 10
+    order = 11
 )
 public class HydraulicErosionStepNode extends BaseNode {
 

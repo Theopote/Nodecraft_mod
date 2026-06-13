@@ -20,7 +20,7 @@ import java.util.UUID;
     displayName = "Precipitation Field",
     description = "Builds precipitation from latitude bands and terrain rain-shadow response.",
     category = "world.terrain",
-    order = 7
+    order = 9
 )
 public class PrecipitationFieldNode extends BaseNode {
 
