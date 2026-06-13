@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @NodeInfo(
     id = "utilities.assist.string_format",
@@ -26,6 +28,8 @@ import java.util.UUID;
     order = 6
 )
 public class StringFormatNode extends BaseNode {
+
+    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{(\\d+)\\}");
 
     @NodeProperty(displayName = "Template", category = "Format", order = 1)
     private String template = "{0}";
@@ -41,6 +45,9 @@ public class StringFormatNode extends BaseNode {
 
     private static final String OUTPUT_TEXT_ID = "output_text";
     private static final String OUTPUT_LENGTH_ID = "output_length";
+    private static final String OUTPUT_USED_VALUE_COUNT_ID = "output_used_value_count";
+    private static final String OUTPUT_MISSING_PLACEHOLDER_COUNT_ID = "output_missing_placeholder_count";
+    private static final String OUTPUT_MESSAGE_ID = "output_message";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public StringFormatNode() {
@@ -53,6 +60,9 @@ public class StringFormatNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_TEXT_ID, "Text", "Formatted output text", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Formatted text length", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_USED_VALUE_COUNT_ID, "Used Value Count", "Number of input values consumed by placeholders", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_MISSING_PLACEHOLDER_COUNT_ID, "Missing Placeholder Count", "Number of placeholders without a matching value", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_MESSAGE_ID, "Message", "Formatting warning or status message", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when formatting produced output", NodeDataType.BOOLEAN, this));
     }
 
@@ -68,9 +78,17 @@ public class StringFormatNode extends BaseNode {
             result = result.replace("{" + i + "}", valueToString(values.get(i)));
         }
 
+        PlaceholderStats stats = analyzePlaceholders(resolvedTemplate, values.size());
+        String message = stats.missingCount() > 0
+            ? "Missing values for " + stats.missingCount() + " placeholder(s)."
+            : "ok";
+
         outputValues.put(OUTPUT_TEXT_ID, result);
         outputValues.put(OUTPUT_LENGTH_ID, result.length());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_USED_VALUE_COUNT_ID, stats.usedCount());
+        outputValues.put(OUTPUT_MISSING_PLACEHOLDER_COUNT_ID, stats.missingCount());
+        outputValues.put(OUTPUT_MESSAGE_ID, message);
+        outputValues.put(OUTPUT_VALID_ID, stats.missingCount() == 0);
     }
 
     @Override
@@ -112,6 +130,30 @@ public class StringFormatNode extends BaseNode {
         return values;
     }
 
+    private PlaceholderStats analyzePlaceholders(String text, int valueCount) {
+        Matcher matcher = PLACEHOLDER_PATTERN.matcher(text == null ? "" : text);
+        int used = 0;
+        int missing = 0;
+        boolean[] usedIndexes = new boolean[Math.max(0, valueCount)];
+        while (matcher.find()) {
+            int index;
+            try {
+                index = Integer.parseInt(matcher.group(1));
+            } catch (NumberFormatException ignored) {
+                continue;
+            }
+            if (index >= 0 && index < valueCount) {
+                if (!usedIndexes[index]) {
+                    usedIndexes[index] = true;
+                    used++;
+                }
+            } else {
+                missing++;
+            }
+        }
+        return new PlaceholderStats(used, missing);
+    }
+
     private String valueToString(Object value) {
         if (value == null) {
             return "null";
@@ -151,5 +193,7 @@ public class StringFormatNode extends BaseNode {
         }
         return String.valueOf(value);
     }
-}
 
+    private record PlaceholderStats(int usedCount, int missingCount) {
+    }
+}

@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.utilities.assist;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -11,13 +12,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * 标签中继节点：带文本标签的中继节点，便于在连线上做语义标注。
- */
 @NodeInfo(
     id = "utilities.assist.tag_relay",
     displayName = "Tag Relay",
-    description = "用于标注语义的中继节点，输入输出保持透传",
+    description = "Passes a signal through while adding a visual semantic tag.",
     category = "utilities.assist"
 )
 public class TagRelayNode extends BaseNode {
@@ -45,27 +43,17 @@ public class TagRelayNode extends BaseNode {
         NAMED_COLOR_RULES.put("note", "#7CB342");
     }
 
-    private String tag = "标签";
+    @NodeProperty(displayName = "Tag", category = "Relay", order = 1)
+    private String tag = "Tag";
+
+    @NodeProperty(displayName = "Color", category = "Relay", order = 2)
     private String color = DEFAULT_COLOR_HEX;
 
     public TagRelayNode() {
         super(UUID.randomUUID(), "utilities.assist.tag_relay");
 
-        addInputPort(new BasePort(
-            INPUT_SIGNAL_ID,
-            "输入",
-            "需要透传的输入信号",
-            NodeDataType.ANY,
-            this
-        ));
-
-        addOutputPort(new BasePort(
-            OUTPUT_SIGNAL_ID,
-            "输出",
-            "透传后的输出信号",
-            NodeDataType.ANY,
-            this
-        ));
+        addInputPort(new BasePort(INPUT_SIGNAL_ID, "Input", "Signal to pass through", NodeDataType.ANY, this));
+        addOutputPort(new BasePort(OUTPUT_SIGNAL_ID, "Output", "Passed-through signal", NodeDataType.ANY, this));
     }
 
     @Override
@@ -113,26 +101,18 @@ public class TagRelayNode extends BaseNode {
         if (colorToken.isEmpty() || "auto".equalsIgnoreCase(colorToken)) {
             return mapColorByTag(tag);
         }
-
         if (isValidHexColor(colorToken)) {
             return normalizeHexColor(colorToken);
         }
-
         String mappedNamedColor = mapColorByKeyword(colorToken.toLowerCase());
-        if (mappedNamedColor != null) {
-            return mappedNamedColor;
-        }
-
-        return mapColorByTag(tag);
+        return mappedNamedColor != null ? mappedNamedColor : mapColorByTag(tag);
     }
 
     private static String mapColorByTag(String tagText) {
         if (tagText == null || tagText.isBlank()) {
             return DEFAULT_COLOR_HEX;
         }
-
-        String lowerTag = tagText.toLowerCase();
-        String mapped = mapColorByKeyword(lowerTag);
+        String mapped = mapColorByKeyword(tagText.toLowerCase());
         return mapped != null ? mapped : DEFAULT_COLOR_HEX;
     }
 
@@ -149,17 +129,14 @@ public class TagRelayNode extends BaseNode {
         if (value == null) {
             return false;
         }
-
         String trimmed = value.trim();
         if (!trimmed.startsWith("#")) {
             return false;
         }
-
         int length = trimmed.length();
         if (length != 7 && length != 9) {
             return false;
         }
-
         for (int i = 1; i < length; i++) {
             char c = trimmed.charAt(i);
             boolean isHexDigit = (c >= '0' && c <= '9')
@@ -187,17 +164,14 @@ public class TagRelayNode extends BaseNode {
     @Override
     public void setNodeState(@Nullable Object state) {
         if (state instanceof Map<?, ?> values) {
-            Object valueTag = values.get("tag");
-            if (valueTag instanceof String tagText) {
+            if (values.get("tag") instanceof String tagText) {
                 setTag(tagText);
             }
-            Object valueColor = values.get("color");
-            if (valueColor instanceof String colorText) {
+            if (values.get("color") instanceof String colorText) {
                 setColor(colorText);
             }
             return;
         }
-
         if (state instanceof Object[] values && values.length >= 2) {
             if (values[0] instanceof String valueTag) {
                 setTag(valueTag);

@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.utilities.assist;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -36,6 +37,7 @@ public class SignalMergeNode extends BaseCustomUINode {
     private static final String OUTPUT_SOURCE_ID = "output_source";
 
     private volatile int inputBranchCount = DEFAULT_INPUT_BRANCHES;
+    @NodeProperty(displayName = "Prefer Primary", category = "Merge", order = 1)
     private boolean preferPrimary = true;
 
     public SignalMergeNode() {
