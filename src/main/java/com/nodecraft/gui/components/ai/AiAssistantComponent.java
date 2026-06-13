@@ -167,6 +167,12 @@ public class AiAssistantComponent implements EditorComponent {
         trimChatMessagesForCapacity();
     }
 
+    public void clearConversationState() {
+        chatMessages.clear();
+        pendingPlan = null;
+        clearRemoteDebugState();
+    }
+
     public void addChatMessage(String role, String content, long timestampMs) {
         if (content == null || content.isBlank()) {
             return;

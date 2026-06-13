@@ -50,6 +50,8 @@ final class AiAssistantMainPanelRenderer {
         void renderPlanPreviewSection();
 
         void onSubmitPrompt();
+
+        void clearConversation();
     }
 
     static int renderMainPanel(State state, Actions actions) {
@@ -62,7 +64,7 @@ final class AiAssistantMainPanelRenderer {
 
         actions.renderPlanPreviewSection();
 
-        int chatCount = renderChatHistory(state);
+        int chatCount = renderChatHistory(state, actions);
         renderPromptInput(state, actions);
         renderLanguageDiagnostics(state);
         renderModeHint(state);
@@ -211,10 +213,21 @@ final class AiAssistantMainPanelRenderer {
         }
     }
 
-    private static int renderChatHistory(State state) {
+    private static int renderChatHistory(State state, Actions actions) {
         float inputBlockHeight = ImGui.getFrameHeightWithSpacing() * 3.2f;
         float historyHeight = Math.max(120.0f, ImGui.getContentRegionAvailY() - inputBlockHeight);
         int updatedCount = state.lastRenderedChatCount();
+
+        ImGui.separator();
+        ImGui.text("Conversation");
+        boolean hasMessages = state.chatMessages() != null && !state.chatMessages().isEmpty();
+        if (!state.busy() && hasMessages) {
+            ImGui.sameLine();
+            if (ImGui.smallButton("Clear Chat")) {
+                actions.clearConversation();
+                return 0;
+            }
+        }
 
         if (ImGui.beginChild("aiChatHistory", 0.0f, historyHeight, true)) {
             if (state.chatMessages() == null || state.chatMessages().isEmpty()) {

@@ -230,6 +230,11 @@ public final class AiAssistantPanel {
                         aiPlanStatusMessage = "Send clicked. Preparing request...";
                         submitAiPrompt();
                     }
+
+                    @Override
+                    public void clearConversation() {
+                        clearAiConversation();
+                    }
                 }
         );
 
@@ -447,6 +452,24 @@ public final class AiAssistantPanel {
         }
         aiAssistantComponent.addChatMessage(role == null ? "assistant" : role, content, System.currentTimeMillis());
         saveAiSessionStateToDisk();
+    }
+
+    private void clearAiConversation() {
+        if (isRemotePlannerBusy()) {
+            aiPlanStatusMessage = "Cannot clear chat while AI is generating.";
+            return;
+        }
+
+        aiAssistantComponent.clearConversationState();
+        aiPromptInput.clear();
+        aiTopologyPreviewState.reset();
+        aiPreviewFocusedNodeRef = "";
+        aiPreviewFocusScrollPending = false;
+        lastRenderedChatCount = 0;
+        aiRemoteDslRepairAttempts = 0;
+        aiRemoteGraphExpansionAttempts = 0;
+        aiPlanStatusMessage = "Chat cleared.";
+        saveAiSessionStateToDiskNow();
     }
 
     private void setPendingAiPlan(AiGraphPlan plan) {
