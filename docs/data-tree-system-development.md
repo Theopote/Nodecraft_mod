@@ -247,13 +247,15 @@ Current implementation notes:
 - `Contour` creates regular parallel section planes and reuses the same traced contour extraction as `Section Cut`.
 - `Assign Block Type` accepts `Blocks Tree` and outputs positions, block ids, and block placements with the original branch paths preserved.
 - `Block Palette` accepts `Blocks Tree` or `Block Placements Tree`; tree input is assigned by branch so each branch can become a material group without flattening.
+- `Weighted Block Palette` accepts `Blocks Tree` or `Block Placements Tree`; weighted choices preserve branch paths and remain deterministic for a fixed seed.
+- `Merge Block Placements` accepts matching placement-list and placement-tree inputs, then outputs both a flat placement list and a merged `Block Placements Tree`.
 - `Preview Blocks` accepts `Block Placements Tree` and previews the per-placement block ids instead of falling back to one preview block type.
 - `Apply Changes` accepts `Block Placements Tree` and applies all valid branch items as execution-ready placements.
 
 Bake nodes should eventually support:
 
 - one group per branch: started through placement-tree preview/apply, but branch names/tags still need explicit metadata.
-- block palette by branch: started in `Block Palette`; bake/preview should keep honoring those branch groups.
+- block palette by branch: started in `Block Palette` and `Weighted Block Palette`; bake/preview should keep honoring those branch groups.
 - branch path as generated object name or tag
 - preview color by branch
 

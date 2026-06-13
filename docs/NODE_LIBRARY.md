@@ -291,7 +291,7 @@
 |---|---|---|---|
 | Assign Block Type | `material.basic_assignment.assign_block_type` | Assigns a single block type to flat or tree-grouped block positions | `AssignBlockTypeNode` |
 | Block Palette | `material.basic_assignment.block_palette` | Assigns palette block types to flat positions or tree branches | `BlockPaletteNode` |
-| Weighted Block Palette | `material.basic_assignment.weighted_palette` | Assigns block types using weighted random palette probabilities. | `WeightedBlockPaletteNode` |
+| Weighted Block Palette | `material.basic_assignment.weighted_palette` | Assigns weighted random block types to flat positions or tree branches. | `WeightedBlockPaletteNode` |
 
 ## material.block_state (6)
 
@@ -510,7 +510,7 @@
 | Bake Geometry To Blocks | `output.execute.bake_geometry_to_blocks` | Bakes any supported geometry into Minecraft block coordinates for final execution | `GeometryToBlocksNode` |
 | Undo Last Bake | `output.execute.undo_last_bake` | Reverts the most recent recorded bake or apply-changes operation | `UndoLastBakeNode` |
 | Bake Surface Strip To Blocks | `output.execute.bake_surface_strip_to_blocks` | Bakes a surface strip into block coordinates for final execution | `SurfaceStripToBlocksNode` |
-| Merge Block Placements | `output.execute.merge_block_placements` | Concatenates multiple block placement lists into one execution-ready placement list | `MergeBlockPlacementsNode` |
+| Merge Block Placements | `output.execute.merge_block_placements` | Merges block placement lists and placement trees into execution-ready placements | `MergeBlockPlacementsNode` |
 
 ## output.export (4)
 
