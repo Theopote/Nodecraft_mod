@@ -40,25 +40,9 @@ public final class AiAssistantPanel {
     private static final int AI_HISTORY_MAX_CHARS_PER_MESSAGE = 1800;
     private static final int AI_HISTORY_MAX_TOTAL_CHARS = 9000;
     private static final int AI_LATEST_USER_MESSAGE_MAX_CHARS = 7000;
-    private static final int AI_REMOTE_SCHEMA_LIMIT_DEFAULT = 36;
-    private static final int AI_REMOTE_SCHEMA_LIMIT_GENERATE = 72;
     private static final int AI_REMOTE_SCHEMA_LIMIT_REPAIR = 96;
     private static final int MAX_REMOTE_GRAPH_EXPANSION_ATTEMPTS = 1;
-    private static final String MODIFY_PARAM_SYSTEM_HINT =
-            """
-                    If the user asks to modify a specific parameter value on an existing node,
-                    return only the affected node with its updated params. Keep all other nodes and connections unchanged.
-                    Use the same node ids as in the "Current plan in effect" JSON.""";
-    private static final String RESTRUCTURE_SYSTEM_HINT =
-            """
-                    If the user asks to restructure, delete, or optimize the existing graph:
-                    - Analyze the 'Current canvas graph snapshot' and connections carefully.
-                    - Perform the requested structural changes (e.g., deleting, replacing, or inserting nodes and changing connections).
-                    - Retain all other nodes and connections that the user did not ask to modify.
-                    - Reuse the existing node IDs (e.g. n1, n2, or short UUIDs like 8ef1a2c3) for any nodes that are retained.
-                    - Output the complete, updated graph containing both retained nodes and new/modified nodes.
-                    """;
-        private static final String REMOTE_DSL_REPAIR_SYSTEM_HINT =
+    private static final String REMOTE_DSL_REPAIR_SYSTEM_HINT =
             """
                 You are now in DSL repair mode.
                 You must fix ONLY invalid node type ids / invalid port ids based on the provided node library schema.
@@ -90,6 +74,7 @@ public final class AiAssistantPanel {
     };
 
     private final AiAssistantComponent aiAssistantComponent;
+    private final AiRemotePlanningOrchestrator remotePlanningOrchestrator = new AiRemotePlanningOrchestrator();
     private final Supplier<NodeGraph> nodeGraphSupplier;
     private final Consumer<String> clipboardCopier;
 
@@ -902,33 +887,6 @@ public final class AiAssistantPanel {
             return;
         }
 
-        NodeRegistry registry = NodeRegistry.getInstance();
-        List<AiNodeSchemaCatalog.NodeSchema> allSchemas = AiNodeSchemaCatalog.collectAll(registry);
-        UserIntent userIntent = AiIntentAnalysisService.classifyIntent(userPrompt);
-        int schemaLimit = resolveRemoteSchemaLimit(userPrompt, userIntent);
-        List<AiNodeSchemaCatalog.NodeSchema> relevantSchemas = AiNodeSchemaCatalog.selectRelevant(allSchemas, userPrompt, schemaLimit);
-
-        String systemPrompt = aiSystemPrompt.get();
-        if (systemPrompt == null || systemPrompt.isBlank()) {
-            systemPrompt = AiPromptBuilder.buildSystemPrompt(relevantSchemas);
-        } else {
-            systemPrompt = systemPrompt + "\n\n" + AiPromptBuilder.buildSystemPrompt(relevantSchemas);
-        }
-        if (userIntent == UserIntent.MODIFY_PARAM) {
-            systemPrompt = systemPrompt + "\n\n" + MODIFY_PARAM_SYSTEM_HINT;
-        } else if (userIntent == UserIntent.RESTRUCTURE) {
-            systemPrompt = systemPrompt + "\n\n" + RESTRUCTURE_SYSTEM_HINT;
-        }
-        NodeCraft.LOGGER.info("[AI_SEND] Intent classified. intent={}, promptChars={}, promptFingerprint={}",
-                userIntent,
-                userPrompt == null ? 0 : userPrompt.length(),
-                computePromptFingerprint(userPrompt));
-        logAiDebug("[AI_SEND] Prompt preview: {}", sanitizeUserPromptForSnapshot(userPrompt));
-        NodeCraft.LOGGER.info("[AI_SEND] Schema context selected. selectedSchemas={}, totalSchemas={}, limit={}",
-                relevantSchemas.size(),
-                allSchemas.size(),
-                schemaLimit);
-
         String userPromptPayload = AiPromptBuilder.buildUserPrompt(
                 userPrompt,
                 AiPromptContextService.buildSelectionContextSummary(
@@ -941,18 +899,41 @@ public final class AiAssistantPanel {
         );
         List<AiRemotePlannerService.ConversationMessage> conversationHistory =
                 buildConversationHistory(userPrompt, userPromptPayload);
-        AiRemotePlannerService.PlannerConfig config = new AiRemotePlannerService.PlannerConfig(
-                aiApiBaseUrl.get(),
-                resolveEffectiveApiKey(),
-                aiModel.get(),
-                AiProviderModelService.providerStrategyFromIndex(aiProviderStrategyIndex.get(), AI_PROVIDER_STRATEGY_OPTIONS),
-                systemPrompt,
-                aiMaxOutputTokens.get(),
-                aiRequestTimeoutSeconds.get()
+        AiRemotePlanningOrchestrator.PreparedRequest preparedRequest = remotePlanningOrchestrator.prepareInitialRequest(
+                new AiRemotePlanningOrchestrator.RequestSettings(
+                        aiApiBaseUrl.get(),
+                        resolveEffectiveApiKey(),
+                        aiModel.get(),
+                        AiProviderModelService.providerStrategyFromIndex(aiProviderStrategyIndex.get(), AI_PROVIDER_STRATEGY_OPTIONS),
+                        aiSystemPrompt.get(),
+                        aiMaxOutputTokens.get(),
+                        aiRequestTimeoutSeconds.get(),
+                        aiUseSelectionContext.get(),
+                        aiDebugLoggingEnabled.get(),
+                        aiIncludePromptPreviewInDebug.get()
+                ),
+                userPrompt,
+                userPromptPayload,
+                looksLikeComplexGenerationPrompt(userPrompt)
         );
 
-        String requestSnapshot = buildRemoteRequestSnapshot(config, userPrompt, userPromptPayload, relevantSchemas.size());
-        boolean submitted = aiAssistantComponent.submitRemotePlannerRequest(userPrompt, config, conversationHistory, requestSnapshot);
+        NodeCraft.LOGGER.info("[AI_SEND] Intent classified. intent={}, promptChars={}, promptFingerprint={}",
+                preparedRequest.userIntent(),
+                userPrompt == null ? 0 : userPrompt.length(),
+                preparedRequest.promptFingerprint());
+        logAiDebug("[AI_SEND] Prompt preview: {}", sanitizeUserPromptForSnapshot(userPrompt));
+        NodeCraft.LOGGER.info("[AI_SEND] Schema context selected. selectedSchemas={}, totalSchemas={}, limit={}",
+                preparedRequest.selectedSchemaCount(),
+                preparedRequest.totalSchemaCount(),
+                preparedRequest.schemaLimit());
+
+        AiRemotePlannerService.PlannerConfig config = preparedRequest.config();
+        boolean submitted = aiAssistantComponent.submitRemotePlannerRequest(
+                userPrompt,
+                config,
+                conversationHistory,
+                preparedRequest.requestSnapshot()
+        );
         if (submitted) {
             NodeCraft.LOGGER.info(
                     "[AI_SEND] Remote planner submitted. provider={}, baseUrl={}, model={}, strategy={}, timeoutSeconds={}, maxOutputTokens={}, schemas={}, historyMessages={}, promptFingerprint={}",
@@ -962,9 +943,9 @@ public final class AiAssistantPanel {
                     config.providerStrategy(),
                     config.timeoutSeconds(),
                     config.maxOutputTokens(),
-                    relevantSchemas.size(),
+                    preparedRequest.selectedSchemaCount(),
                     conversationHistory.size(),
-                    computePromptFingerprint(userPrompt)
+                    preparedRequest.promptFingerprint()
             );
             aiPlanStatusMessage = "Remote planner request submitted...";
             addAiChatMessage("assistant", "Remote planner request submitted. Streaming output will appear while generating.");
@@ -1062,13 +1043,6 @@ public final class AiAssistantPanel {
 
     private int resolveConversationHistoryLimit() {
         return Math.max(1, Math.min(20, aiConversationHistoryTurns.get()));
-    }
-
-    private int resolveRemoteSchemaLimit(String prompt, UserIntent intent) {
-        if (intent == UserIntent.GENERATE_NEW || looksLikeComplexGenerationPrompt(prompt)) {
-            return AI_REMOTE_SCHEMA_LIMIT_GENERATE;
-        }
-        return AI_REMOTE_SCHEMA_LIMIT_DEFAULT;
     }
 
     private boolean looksLikeComplexGenerationPrompt(String prompt) {
