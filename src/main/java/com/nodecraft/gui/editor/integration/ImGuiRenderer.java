@@ -55,7 +55,7 @@ public class ImGuiRenderer {
     
     private static final String FONT_RESOURCE_PATH = "assets/nodecraft/fonts/NotoSansSC-Regular.ttf";
     private static final float BASE_FONT_SIZE = 18.0f;
-    private static final double BASE_MINECRAFT_GUI_SCALE = 2.0d;
+    private static final float DEFAULT_UI_SCALE = 1.0f;
     private static final float MIN_UI_SCALE = 0.85f;
     private static final float MAX_UI_SCALE = 2.25f;
     private static final float UI_SCALE_EPSILON = 0.05f;
@@ -324,23 +324,13 @@ public class ImGuiRenderer {
     }
 
     private float resolveCurrentUiScale() {
-        try {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client == null || client.getWindow() == null) {
-                return 1.0f;
-            }
-            return scaleForMinecraftGuiScale(client.getWindow().getScaleFactor());
-        } catch (Exception e) {
-            NodeCraft.LOGGER.debug("Unable to resolve Minecraft GUI scale for ImGui: {}", e.getMessage());
-            return 1.0f;
-        }
+        return DEFAULT_UI_SCALE;
     }
 
     static float scaleForMinecraftGuiScale(double minecraftGuiScale) {
-        if (!Double.isFinite(minecraftGuiScale) || minecraftGuiScale <= 0.0d) {
-            return 1.0f;
-        }
-        return normalizeUiScale((float) (minecraftGuiScale / BASE_MINECRAFT_GUI_SCALE));
+        // Minecraft GUI Scale is a logical UI preference and can change when a window is
+        // maximized. ImGui framebuffer scaling already handles physical Retina/HiDPI pixels.
+        return DEFAULT_UI_SCALE;
     }
 
     private static float getScaledFontSize(float uiScale) {
