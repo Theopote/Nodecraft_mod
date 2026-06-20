@@ -27,6 +27,7 @@ public final class AiPromptBuilder {
         }
 
         String schemaText = GSON.toJson(schemaJson);
+        String schemaRevision = AiNodeSchemaExporter.computeRevision(schemas);
 
         return """
             # ROLE
@@ -98,6 +99,7 @@ public final class AiPromptBuilder {
             - Generation tasks should include an output node only if a compatible output.* node is listed.
 
             # AVAILABLE_NODE_LIBRARY
+            Runtime schema revision: """ + schemaRevision + "\n" + """
             Usage: strictly use the typeId and port ids provided below.
             Allowed typeIds in this request:
             """ + buildAllowedTypeIdList(schemas) + "\n\n" + """

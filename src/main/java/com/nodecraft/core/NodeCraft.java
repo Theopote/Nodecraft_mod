@@ -6,10 +6,12 @@ import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.nodecraft.gui.ai.AiNodeSchemaExporter;
 
 import com.nodecraft.core.item.ModItems; // 统一通过 ModItems 类管理物品注册
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
+import java.nio.file.Path;
 import java.util.List;
 
 public class NodeCraft implements ModInitializer {
@@ -28,6 +30,7 @@ public class NodeCraft implements ModInitializer {
 		// 2. 初始化节点系统
 		// (确保在物品注册后进行，如果节点有物品依赖，或者 RegistryScan 需要确保所有 ModItems 已加载)
 		initializeNodeSystem();
+		exportAiNodeSchema(NodeRegistry.getInstance());
 
 		// 3. 初始化世界交互模块
 		initializeWorldInteraction();
@@ -81,6 +84,11 @@ public class NodeCraft implements ModInitializer {
 				LOGGER.debug("  ... (还有 {} 个节点)", allNodeIds.size() - 10);
 			}
 		}
+	}
+
+
+	private void exportAiNodeSchema(NodeRegistry registry) {
+		AiNodeSchemaExporter.writeLatestExports(registry, Path.of("config", MOD_ID));
 	}
 
 	private void initializeWorldInteraction() {
