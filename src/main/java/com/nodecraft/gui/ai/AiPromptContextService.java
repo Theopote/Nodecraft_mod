@@ -183,8 +183,36 @@ public final class AiPromptContextService {
         return switch (value) {
             case String text -> text.length() <= 32 ? text : text.substring(0, 32) + "...";
             case Collection<?> collection -> "list(size=" + collection.size() + ")";
-            case Map<?, ?> map -> "map(size=" + map.size() + ")";
+            case Map<?, ?> map -> formatNestedMap(map);
             default -> value.getClass().getSimpleName();
         };
+    }
+
+    private static String formatNestedMap(Map<?, ?> map) {
+        if (map.isEmpty()) {
+            return "{}";
+        }
+        StringBuilder sb = new StringBuilder("{");
+        int index = 0;
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            if (index > 0) {
+                sb.append(", ");
+            }
+            if (index >= 6) {
+                sb.append("...");
+                break;
+            }
+            sb.append(entry.getKey()).append("=");
+            Object nestedValue = entry.getValue();
+            if (nestedValue instanceof Number || nestedValue instanceof Boolean) {
+                sb.append(nestedValue);
+            } else if (nestedValue instanceof String text) {
+                sb.append(text.length() <= 32 ? text : text.substring(0, 32) + "...");
+            } else {
+                sb.append(nestedValue == null ? "null" : nestedValue.getClass().getSimpleName());
+            }
+            index++;
+        }
+        return sb.append("}").toString();
     }
 }
