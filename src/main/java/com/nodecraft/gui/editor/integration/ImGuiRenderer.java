@@ -54,11 +54,17 @@ public class ImGuiRenderer {
     private final ViewportCloseDetector closeDetector = ViewportCloseDetector.getInstance();
     
     private static final String FONT_RESOURCE_PATH = "assets/nodecraft/fonts/NotoSansSC-Regular.ttf";
+    private static final float BASE_FONT_SIZE = 18.0f;
+    private static final double BASE_MINECRAFT_GUI_SCALE = 2.0d;
+    private static final float MIN_UI_SCALE = 0.85f;
+    private static final float MAX_UI_SCALE = 2.25f;
+    private static final float UI_SCALE_EPSILON = 0.05f;
     
     // 字体相关变量，用于存储加载后的字体数据
     private byte[] fontDataBytes; // 存储字体文件的字节数组
     private ImFontConfig baseFontConfig; // 基础字体配置
     private short[] chineseGlyphRanges; // 中文字符范围
+    private float currentUiScale = 1.0f;
 
     /**
      * 私有构造函数，实现单例模式。
@@ -109,8 +115,10 @@ public class ImGuiRenderer {
                 return;
             }
 
+            currentUiScale = resolveCurrentUiScale();
+
             // 5. 加载字体
-            loadCustomFonts(io);
+            loadCustomFonts(io, currentUiScale);
             
             // 6. 初始化 GLFW 和 OpenGL3 后端
             imGuiGlfw.init(windowHandle, true); // true表示安装回调
@@ -195,20 +203,21 @@ public class ImGuiRenderer {
      * 加载并构建自定义字体。
      * @param io ImGuiIO 实例。
      */
-    private void loadCustomFonts(ImGuiIO io) {
+    private void loadCustomFonts(ImGuiIO io, float uiScale) {
         if (fontDataBytes == null || chineseGlyphRanges == null || baseFontConfig == null) {
             NodeCraft.LOGGER.error("字体数据未预加载或加载失败，无法加载自定义字体。");
-            fallbackToDefaultFont(io);
+            fallbackToDefaultFont(io, uiScale);
             return;
         }
         
         try {
             io.getFonts().clear();
 
-            boolean loadedFromSystem = tryLoadSystemChineseFont(io);
+            float fontSize = getScaledFontSize(uiScale);
+            boolean loadedFromSystem = tryLoadSystemChineseFont(io, fontSize);
             if (!loadedFromSystem) {
                 ImFontConfig fontConfig = getImFontConfig();
-                io.getFonts().addFontFromMemoryTTF(fontDataBytes, 18.0f, fontConfig, chineseGlyphRanges);
+                io.getFonts().addFontFromMemoryTTF(fontDataBytes, fontSize, fontConfig, chineseGlyphRanges);
                 NodeCraft.LOGGER.info("已加载内置中文字体。");
             }
 
@@ -217,17 +226,17 @@ public class ImGuiRenderer {
             // 构建字体图集
             if (!io.getFonts().build()) {
                 NodeCraft.LOGGER.error("字体构建失败，尝试回退到默认字体。");
-                fallbackToDefaultFont(io);
+                fallbackToDefaultFont(io, uiScale);
             } else {
                 NodeCraft.LOGGER.info("成功构建所有字体。");
             }
         } catch (Exception e) {
             NodeCraft.LOGGER.error("加载自定义字体时出错", e);
-            fallbackToDefaultFont(io);
+            fallbackToDefaultFont(io, uiScale);
         }
     }
 
-    private boolean tryLoadSystemChineseFont(ImGuiIO io) {
+    private boolean tryLoadSystemChineseFont(ImGuiIO io, float fontSize) {
         String[] fontPaths = {
                 "C:/Windows/Fonts/msyh.ttc",
                 "C:/Windows/Fonts/msyhbd.ttc",
@@ -243,7 +252,7 @@ public class ImGuiRenderer {
 
                 ImFontConfig config = getImFontConfig();
                 config.setGlyphRanges(io.getFonts().getGlyphRangesChineseFull());
-                io.getFonts().addFontFromFileTTF(fontPath, 18.0f, config);
+                io.getFonts().addFontFromFileTTF(fontPath, fontSize, config);
                 NodeCraft.LOGGER.info("已加载系统字体: {}", fontPath);
                 return true;
             } catch (Exception e) {
@@ -269,7 +278,7 @@ public class ImGuiRenderer {
      * 回退到默认字体。
      * @param io ImGuiIO 实例。
      */
-    private void fallbackToDefaultFont(ImGuiIO io) {
+    private void fallbackToDefaultFont(ImGuiIO io, float uiScale) {
         NodeCraft.LOGGER.warn("正在使用默认字体，中文可能无法正确显示。");
         try {
             io.getFonts().clear(); // 清除所有字体
@@ -281,12 +290,14 @@ public class ImGuiRenderer {
             
             // 直接添加默认字体，不指定字符范围，因为 addFontDefault 不支持
             io.getFonts().addFontDefault(defaultFontConfig);
+            io.setFontGlobalScale(normalizeUiScale(uiScale));
             
             // 构建默认字体图集
             if (!io.getFonts().build()) {
                 NodeCraft.LOGGER.error("构建默认字体失败，回退到ImGui内置最简字体。");
                 io.getFonts().clear(); // 确保清除所有
                 io.getFonts().addFontDefault(); // ImGui内置的最小字体
+                io.setFontGlobalScale(normalizeUiScale(uiScale));
                 io.getFonts().build();
             }
         } catch (Exception e) {
@@ -295,6 +306,51 @@ public class ImGuiRenderer {
         }
     }
     
+    private void updateUiScaleIfNeeded(ImGuiIO io) {
+        float nextUiScale = resolveCurrentUiScale();
+        if (Math.abs(nextUiScale - currentUiScale) < UI_SCALE_EPSILON) {
+            return;
+        }
+
+        float previousUiScale = currentUiScale;
+        currentUiScale = nextUiScale;
+
+        loadCustomFonts(io, nextUiScale);
+        resetPixelStoreStateForImGuiTextureUpload();
+        imGuiGl3.updateFontsTexture();
+        applyEditorStyleForCurrentContext();
+
+        NodeCraft.LOGGER.info("ImGui UI scale changed from {} to {}", previousUiScale, nextUiScale);
+    }
+
+    private float resolveCurrentUiScale() {
+        try {
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client == null || client.getWindow() == null) {
+                return 1.0f;
+            }
+            return scaleForMinecraftGuiScale(client.getWindow().getScaleFactor());
+        } catch (Exception e) {
+            NodeCraft.LOGGER.debug("Unable to resolve Minecraft GUI scale for ImGui: {}", e.getMessage());
+            return 1.0f;
+        }
+    }
+
+    static float scaleForMinecraftGuiScale(double minecraftGuiScale) {
+        if (!Double.isFinite(minecraftGuiScale) || minecraftGuiScale <= 0.0d) {
+            return 1.0f;
+        }
+        return normalizeUiScale((float) (minecraftGuiScale / BASE_MINECRAFT_GUI_SCALE));
+    }
+
+    private static float getScaledFontSize(float uiScale) {
+        return BASE_FONT_SIZE * normalizeUiScale(uiScale);
+    }
+
+    private static float normalizeUiScale(float uiScale) {
+        return Math.max(MIN_UI_SCALE, Math.min(MAX_UI_SCALE, uiScale));
+    }
+
     /**
      * 开始 ImGui 帧渲染。
      * 必须在每次 ImGui 绘制前调用。
@@ -325,6 +381,8 @@ public class ImGuiRenderer {
                 GLFW.glfwGetCursorPos(window.getHandle(), xBuffer, yBuffer);
                 io.setMousePos((float) xBuffer.get(0), (float) yBuffer.get(0));
             }
+
+            updateUiScaleIfNeeded(io);
 
             imGuiGlfw.newFrame();
             ImGui.newFrame();
@@ -432,13 +490,13 @@ public class ImGuiRenderer {
      */
     public void applyEditorStyleForCurrentContext() {
         primaryContext = ImGui.getCurrentContext();
-        setupMinecraftStyle();
+        setupMinecraftStyle(currentUiScale);
     }
 
-    private void setupMinecraftStyle() {
+    private void setupMinecraftStyle(float uiScale) {
         ImGui.styleColorsDark(); // 使用暗色主题作为基础
 
-        var style = getImGuiStyle();
+        var style = getImGuiStyle(uiScale);
 
         // 颜色主题
         style.setColor(ImGuiCol.WindowBg, 0.16f, 0.16f, 0.20f, 0.72f);
@@ -460,31 +518,32 @@ public class ImGuiRenderer {
         style.setColor(ImGuiCol.Text, 0.90f, 0.90f, 0.90f, 1.00f);
     }
 
-    private static @NotNull ImGuiStyle getImGuiStyle() {
+    private static @NotNull ImGuiStyle getImGuiStyle(float uiScale) {
         var style = ImGui.getStyle();
+        float scale = normalizeUiScale(uiScale);
 
         // 窗口圆角
-        style.setWindowRounding(4.0f);
-        style.setFrameRounding(2.0f);
-        style.setTabRounding(2.0f);
-        style.setPopupRounding(2.0f);
-        style.setScrollbarRounding(3.0f);
-        style.setGrabRounding(2.0f);
+        style.setWindowRounding(4.0f * scale);
+        style.setFrameRounding(2.0f * scale);
+        style.setTabRounding(2.0f * scale);
+        style.setPopupRounding(2.0f * scale);
+        style.setScrollbarRounding(3.0f * scale);
+        style.setGrabRounding(2.0f * scale);
 
         // 间距和内边距
-        style.setWindowPadding(10.0f, 10.0f);
-        style.setFramePadding(6.0f, 6.0f);
-        style.setItemSpacing(8.0f, 8.0f);
-        style.setItemInnerSpacing(5.0f, 5.0f);
+        style.setWindowPadding(10.0f * scale, 10.0f * scale);
+        style.setFramePadding(6.0f * scale, 6.0f * scale);
+        style.setItemSpacing(8.0f * scale, 8.0f * scale);
+        style.setItemInnerSpacing(5.0f * scale, 5.0f * scale);
 
         // 边框和最小尺寸
-        style.setWindowBorderSize(1.5f);
-        style.setFrameBorderSize(1.0f);
-        style.setWindowMinSize(400.0f, 300.0f);
+        style.setWindowBorderSize(1.5f * scale);
+        style.setFrameBorderSize(1.0f * scale);
+        style.setWindowMinSize(400.0f * scale, 300.0f * scale);
 
         // 滚动条和抓取柄大小
-        style.setGrabMinSize(12.0f);
-        style.setScrollbarSize(18.0f);
+        style.setGrabMinSize(12.0f * scale);
+        style.setScrollbarSize(18.0f * scale);
 
         // 标题对齐
         style.setWindowTitleAlign(0.5f, 0.5f); // 居中对齐
