@@ -159,7 +159,14 @@ public class NodeExecutor {
             Map<String, Object> inputs = collectNodeInputs(node);
             try {
                 if (node instanceof BaseNode baseNode && context != null) {
-                    baseNode.compute(inputs, context);
+                    if (requiresWorldThread(node)) {
+                        context.callOnWorldThread(() -> {
+                            baseNode.compute(inputs, context);
+                            return null;
+                        });
+                    } else {
+                        baseNode.compute(inputs, context);
+                    }
                 } else {
                     node.compute(inputs);
                 }
@@ -273,6 +280,17 @@ public class NodeExecutor {
         }
 
         inputs.put(portId, value);
+    }
+
+    static boolean requiresWorldThread(INode node) {
+        if (node == null || node.getTypeId() == null) {
+            return false;
+        }
+        String typeId = node.getTypeId();
+        return typeId.startsWith("world.")
+                || typeId.startsWith("input.context.")
+                || typeId.startsWith("output.execute.")
+                || typeId.startsWith("output.preview.");
     }
 
     private static final class NodeExecutorThreadFactory implements ThreadFactory {

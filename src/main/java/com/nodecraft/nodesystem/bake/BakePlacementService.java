@@ -172,13 +172,25 @@ public class BakePlacementService {
     }
 
     public boolean undoLast(World world) {
-        BakeHistory.UndoRecord record = history.pop();
-        if (record == null || world == null) {
+        if (world == null) {
             return false;
         }
-        record.apply(world);
-        NodeCraft.LOGGER.debug("Undid {} baked blocks", record.size());
-        return true;
+        boolean success = history.undoLast(world);
+        if (success) {
+            NodeCraft.LOGGER.debug("Undid last baked transaction");
+        }
+        return success;
+    }
+
+    public boolean redoLast(World world) {
+        if (world == null) {
+            return false;
+        }
+        boolean success = history.redoLast(world);
+        if (success) {
+            NodeCraft.LOGGER.debug("Redid last baked transaction");
+        }
+        return success;
     }
 
     public int getQueueSize() {

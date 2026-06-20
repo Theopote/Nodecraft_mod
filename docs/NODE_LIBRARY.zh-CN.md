@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**519**
+- **节点总数**：**521**
 - **分类总数**：**54**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -37,7 +37,7 @@
 | `math.sequence` | 3 |
 | `math.trigonometry` | 14 |
 | `output.debug` | 4 |
-| `output.execute` | 7 |
+| `output.execute` | 8 |
 | `output.export` | 4 |
 | `output.preview` | 12 |
 | `pattern.grid` | 5 |
@@ -62,7 +62,7 @@
 | `world.read` | 12 |
 | `world.selection` | 9 |
 | `world.terrain` | 19 |
-| `world.write` | 17 |
+| `world.write` | 18 |
 
 ## flow.control（3）
 
@@ -505,7 +505,7 @@
 | Execution Timer | `output.debug.execution_timer` | 测量连接到此节点的计算分支所花费的时间 | `ExecutionTimerNode` |
 | Panel | `output.debug.data_inspector` | 显示连接到其输入端口的原始数据（文本形式） | `PanelNode` |
 
-## output.execute（7）
+## output.execute（8）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -514,6 +514,7 @@
 | Bake Geometry To Blocks | `output.execute.bake_geometry_to_blocks` | Bakes any supported geometry into Minecraft block coordinates for final execution | `GeometryToBlocksNode` |
 | SDF To Blocks | `output.execute.sdf_to_blocks` | Voxelizes a signed distance field directly into Minecraft block coordinates | `SdfToBlocksNode` |
 | Undo Last Bake | `output.execute.undo_last_bake` | Reverts the most recent recorded bake or apply-changes operation | `UndoLastBakeNode` |
+| Redo Last Bake | `output.execute.redo_last_bake` | 重新应用最近撤销的 bake 或 apply-changes 操作 | `RedoLastBakeNode` |
 | Bake Surface Strip To Blocks | `output.execute.bake_surface_strip_to_blocks` | Bakes a surface strip into block coordinates for final execution | `SurfaceStripToBlocksNode` |
 | Merge Block Placements | `output.execute.merge_block_placements` | Merges block placement lists and placement trees into execution-ready placements | `MergeBlockPlacementsNode` |
 
@@ -836,7 +837,7 @@
 | Scalar Field Slice To Blocks | `world.terrain.scalar_field_slice_to_blocks` | Visualizes scalar field values on a horizontal slice using low/high block thresholds. | `ScalarFieldSliceToBlocksNode` |
 | Sample Field On Region | `world.terrain.sample_field_on_region` | Samples a scalar field on a regular X/Z lattice inside a region. | `SampleFieldOnRegionNode` |
 
-## world.write（17）
+## world.write（18）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -848,6 +849,7 @@
 | Clear Blocks | `world.write.remove_blocks` | Clears blocks at explicit coordinates by replacing them with air | `RemoveBlocksNode` |
 | Set Block NBT | `world.write.set_block_nbt` | 向目标位置已有的方块实体写入或合并 NBT 数据 | `SetBlockNbtNode` |
 | Undo Last World Write | `world.write.undo_last_write` | Reverts the most recent recorded world.write block placement operation | `UndoLastWorldWriteNode` |
+| Redo Last World Write | `world.write.redo_last_write` | 重新应用最近撤销的 world.write 方块操作 | `RedoLastWorldWriteNode` |
 | Peek Last World Write Undo | `world.write.peek_last_undo` | Inspects the latest world.write undo record and outputs affected count and region bounds | `PeekLastWorldWriteUndoNode` |
 | Clear World Write Undo History | `world.write.clear_undo_history` | Clears all recorded world.write undo history entries | `ClearWorldWriteUndoHistoryNode` |
 | Apply Redstone Power | `world.write.apply_redstone_power` | Places a temporary redstone power source next to a target block | `ApplyRedstonePowerNode` |

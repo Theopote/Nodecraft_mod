@@ -10,14 +10,81 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 烘焙历史记录，用于撤销 (Undo) 操作。
- * 记录每次 Bake 时被覆盖的原有方块信息。
+ * Undo/redo transaction history for baked world changes.
  */
 public class BakeHistory {
 
-    /**
-     * 单次 Bake 操作的 Undo 记录
-     */
+    private static final int MAX_UNDO_STACK_SIZE = 32;
+
+    private final List<UndoRecord> undoStack = new ArrayList<>();
+    private final List<UndoRecord> redoStack = new ArrayList<>();
+
+    public void push(UndoRecord record) {
+        if (record == null || record.size() == 0) {
+            return;
+        }
+        undoStack.add(record);
+        redoStack.clear();
+        trim(undoStack);
+    }
+
+    public UndoRecord pop() {
+        return undoStack.isEmpty() ? null : undoStack.remove(undoStack.size() - 1);
+    }
+
+    public UndoRecord peek() {
+        return undoStack.isEmpty() ? null : undoStack.get(undoStack.size() - 1);
+    }
+
+    public boolean undoLast(World world) {
+        UndoRecord record = pop();
+        if (record == null || world == null) {
+            return false;
+        }
+        UndoRecord redoRecord = record.applyAndCaptureInverse(world);
+        if (redoRecord != null && redoRecord.size() > 0) {
+            redoStack.add(redoRecord);
+            trim(redoStack);
+        }
+        return true;
+    }
+
+    public boolean redoLast(World world) {
+        UndoRecord record = redoStack.isEmpty() ? null : redoStack.remove(redoStack.size() - 1);
+        if (record == null || world == null) {
+            return false;
+        }
+        UndoRecord undoRecord = record.applyAndCaptureInverse(world);
+        if (undoRecord != null && undoRecord.size() > 0) {
+            undoStack.add(undoRecord);
+            trim(undoStack);
+        }
+        return true;
+    }
+
+    public boolean hasUndo() {
+        return !undoStack.isEmpty();
+    }
+
+    public int size() {
+        return undoStack.size();
+    }
+
+    public int redoSize() {
+        return redoStack.size();
+    }
+
+    public void clear() {
+        undoStack.clear();
+        redoStack.clear();
+    }
+
+    private void trim(List<UndoRecord> stack) {
+        while (stack.size() > MAX_UNDO_STACK_SIZE) {
+            stack.remove(0);
+        }
+    }
+
     public static class UndoRecord {
         private final UUID bakeId;
         private final List<BlockPos> positions = new ArrayList<>();
@@ -28,6 +95,9 @@ public class BakeHistory {
         }
 
         public void add(BlockPos pos, BlockState previousState) {
+            if (pos == null || previousState == null) {
+                return;
+            }
             positions.add(pos.toImmutable());
             previousStates.add(previousState);
         }
@@ -36,48 +106,37 @@ public class BakeHistory {
             return positions.size();
         }
 
-        /** 应用撤销：恢复原有方块 */
         public void apply(World world) {
-            if (world == null) return;
-            for (int i = 0; i < positions.size(); i++) {
-                BlockPos pos = positions.get(i);
-                BlockState prev = previousStates.get(i);
-                if (prev != null && pos != null) {
-                    world.setBlockState(pos, prev, 3); // Block.NOTIFY_ALL
-                }
-            }
+            applyAndCaptureInverse(world);
             positions.clear();
             previousStates.clear();
         }
 
-        public UUID getBakeId() { return bakeId; }
-        public List<BlockPos> getPositions() { return Collections.unmodifiableList(positions); }
-        public List<BlockState> getPreviousStates() { return Collections.unmodifiableList(previousStates); }
-    }
+        private UndoRecord applyAndCaptureInverse(World world) {
+            if (world == null) {
+                return null;
+            }
+            UndoRecord inverse = new UndoRecord(bakeId);
+            for (int i = 0; i < positions.size(); i++) {
+                BlockPos pos = positions.get(i);
+                BlockState targetState = previousStates.get(i);
+                BlockState currentState = world.getBlockState(pos);
+                inverse.add(pos, currentState);
+                world.setBlockState(pos, targetState, 3);
+            }
+            return inverse;
+        }
 
-    private static final int MAX_UNDO_STACK_SIZE = 32;
-    private final List<UndoRecord> undoStack = new ArrayList<>();
+        public UUID getBakeId() {
+            return bakeId;
+        }
 
-    /** 压入一条 Undo 记录 */
-    public void push(UndoRecord record) {
-        if (record == null || record.size() == 0) return;
-        undoStack.add(record);
-        while (undoStack.size() > MAX_UNDO_STACK_SIZE) {
-            undoStack.remove(0);
+        public List<BlockPos> getPositions() {
+            return Collections.unmodifiableList(positions);
+        }
+
+        public List<BlockState> getPreviousStates() {
+            return Collections.unmodifiableList(previousStates);
         }
     }
-
-    /** 弹出并返回最后一条记录，用于撤销 */
-    public UndoRecord pop() {
-        return undoStack.isEmpty() ? null : undoStack.remove(undoStack.size() - 1);
-    }
-
-    /** 获取最后一条记录（不移除） */
-    public UndoRecord peek() {
-        return undoStack.isEmpty() ? null : undoStack.get(undoStack.size() - 1);
-    }
-
-    public boolean hasUndo() { return !undoStack.isEmpty(); }
-    public int size() { return undoStack.size(); }
-    public void clear() { undoStack.clear(); }
 }

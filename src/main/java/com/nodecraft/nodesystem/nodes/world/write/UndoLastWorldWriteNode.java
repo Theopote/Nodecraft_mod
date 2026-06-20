@@ -54,7 +54,7 @@ public class UndoLastWorldWriteNode extends BaseNode {
                     status = "No recorded world.write history";
                 } else {
                     restoredCount = record.size();
-                    success = record.apply(context.getWorld());
+                    success = history.undoLast(context.getWorld());
                     remaining = history.size();
                     status = success ? "Restored " + restoredCount + " blocks" : "Undo failed";
                     if (!success) {
@@ -70,4 +70,3 @@ public class UndoLastWorldWriteNode extends BaseNode {
         outputValues.put(OUTPUT_STATUS_ID, status);
     }
 }
-

@@ -5,7 +5,12 @@ import com.nodecraft.nodesystem.minecraft.PlayerAccessor;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.function.Supplier;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,6 +44,35 @@ public class ExecutionContext implements com.nodecraft.nodesystem.api.ExecutionC
     
     public World getWorld() {
         return world;
+    }
+
+    /**
+     * Runs world-sensitive work on the owning Minecraft server thread when possible.
+     *
+     * <p>Node graph math can run on worker threads, but Minecraft world and chunk
+     * reads are not generally thread-safe. Query/read/write nodes should enter
+     * through this helper so server worlds are accessed from the tick thread.</p>
+     */
+    public <T> T callOnWorldThread(Supplier<T> supplier) {
+        if (supplier == null) {
+            return null;
+        }
+        if (world instanceof ServerWorld serverWorld) {
+            MinecraftServer server = serverWorld.getServer();
+            if (server.isOnThread()) {
+                return supplier.get();
+            }
+            try {
+                CompletableFuture<T> future = server.submit(supplier);
+                return future.get();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Failed to run node work on the Minecraft server thread", e);
+            } catch (ExecutionException e) {
+                throw new IllegalStateException("Node work failed on the Minecraft server thread", e.getCause());
+            }
+        }
+        return supplier.get();
     }
     
     @Nullable
