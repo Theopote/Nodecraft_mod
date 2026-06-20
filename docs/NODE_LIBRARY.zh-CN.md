@@ -54,7 +54,7 @@
 | `transform.deformations` | 10 |
 | `transform.orientation` | 6 |
 | `utilities.assist` | 6 |
-| `utilities.fileio` | 2 |
+| `utilities.fileio` | 3 |
 | `utilities.morphology` | 1 |
 | `utilities.organization` | 7 |
 | `variable` | 6 |
@@ -725,11 +725,12 @@
 | Signal Merge | `utilities.assist.signal_merge` | 将两路输入按优先级汇聚为一路输出 | `SignalMergeNode` |
 | Tag Relay | `utilities.assist.tag_relay` | Passes a signal through while adding a visual semantic tag. | `TagRelayNode` |
 
-## utilities.fileio（2）
+## utilities.fileio（3）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Read Image | `utilities.fileio.read_image` | Reads a local image file and outputs dimensions, colors, and grayscale samples | `ReadImageNode` |
+| Import VOX | `utilities.fileio.import_vox` | 导入 MagicaVoxel .vox 文件，输出方块坐标、Block Placements、颜色和调色板索引 | `ImportVoxNode` |
 | Image Sampler | `utilities.fileio.image_sampler` | Samples color, channels, and grayscale values from image pixels using UV or pixel coordinates | `ImageSamplerNode` |
 
 ## utilities.morphology（1）
