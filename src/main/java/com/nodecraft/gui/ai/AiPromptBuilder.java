@@ -61,6 +61,11 @@ public final class AiPromptBuilder {
             - Minecraft block selection is a user-side interaction unless the library explicitly has a node for it.
             - Treat selection nodes as graph inputs, not as the final goal.
             - If the request references the selected block/area/node, use the supplied editor context.
+            - CURRENT_WORLD_CONTEXT is a point-in-time snapshot captured when the request was submitted.
+            - Minecraft region maximum coordinates are inclusive.
+            - Prefer runtime input.context.* nodes for changing player position or view when compatible nodes are available.
+            - Use fixed coordinates for explicit selected regions and anchors.
+            - Never claim to observe terrain, blocks, or structures that are absent from CURRENT_WORLD_CONTEXT.
 
             # DSL_FORMAT
             {
@@ -163,9 +168,20 @@ public final class AiPromptBuilder {
     }
 
     public static String buildUserPrompt(String prompt, String selectionContext) {
-        String context = selectionContext == null || selectionContext.isBlank()
-                ? "No selection context provided."
-                : selectionContext;
+        return buildUserPrompt(prompt, selectionContext, null);
+    }
+
+    public static String buildUserPrompt(
+            String prompt,
+            String editorContext,
+            AiWorldContextSnapshot worldContext
+    ) {
+        String context = editorContext == null || editorContext.isBlank()
+                ? "No editor context provided."
+                : editorContext;
+        String worldContextJson = worldContext == null
+                ? "{\"enabled\":false}"
+                : GSON.toJson(worldContext);
         String userRequest = prompt == null ? "" : prompt;
         return "User request (original language, do not assume English):\n"
                 + userRequest + "\n\n"
@@ -174,6 +190,8 @@ public final class AiPromptBuilder {
                 + "Return a single JSON object and no prose.\n\n"
                 + "Editor context:\n"
                 + context + "\n\n"
+                + "CURRENT_WORLD_CONTEXT (JSON):\n"
+                + worldContextJson + "\n\n"
                 + "Return JSON only.";
     }
 }

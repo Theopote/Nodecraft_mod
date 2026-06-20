@@ -54,6 +54,8 @@ public final class AiAssistantPanel {
     private final ImString aiPromptInput = new ImString("", 2048);
     private final ImBoolean aiUseSelectionContext = new ImBoolean(true);
     private final ImBoolean aiIncludeGraphContext = new ImBoolean(true);
+    private final ImBoolean aiIncludePlayerWorldContext = new ImBoolean(false);
+    private final ImBoolean aiIncludeSelectedWorldRegionContext = new ImBoolean(false);
     private final List<AiChatMessage> aiChatMessages;
     private final ImString aiApiBaseUrl = new ImString("https://api.openai.com/v1", 512);
     private final ImString aiApiKey = new ImString("", 512);
@@ -87,6 +89,7 @@ public final class AiAssistantPanel {
     private final TopologyPreviewState aiTopologyPreviewState = new TopologyPreviewState();
     private int aiRemoteDslRepairAttempts = 0;
     private int aiRemoteGraphExpansionAttempts = 0;
+    private AiWorldContextSnapshot aiLastWorldContextSnapshot = null;
 
     public AiAssistantPanel(
             AiAssistantComponent aiAssistantComponent,
@@ -145,6 +148,8 @@ public final class AiAssistantPanel {
                 plannerBusy,
                         aiUseSelectionContext,
                         aiIncludeGraphContext,
+                        aiIncludePlayerWorldContext,
+                        aiIncludeSelectedWorldRegionContext,
                         aiPreviewOnlyMode,
                         aiPatchApplyMode,
                         aiPatchRemoveScopedConnections,
@@ -461,6 +466,8 @@ public final class AiAssistantPanel {
                 aiEnableRemotePlanner.get(),
                 aiAutoLayoutBeforeApply.get(),
                 aiIncludeGraphContext.get(),
+                aiIncludePlayerWorldContext.get(),
+                aiIncludeSelectedWorldRegionContext.get(),
                 aiPreviewOnlyMode.get(),
                 aiPatchApplyMode.get(),
                 aiPatchRemoveScopedConnections.get(),
@@ -487,6 +494,8 @@ public final class AiAssistantPanel {
         aiEnableRemotePlanner.set(data.enableRemotePlanner());
         aiAutoLayoutBeforeApply.set(data.autoLayoutBeforeApply());
         aiIncludeGraphContext.set(data.includeGraphContext());
+        aiIncludePlayerWorldContext.set(data.includePlayerWorldContext());
+        aiIncludeSelectedWorldRegionContext.set(data.includeSelectedWorldRegionContext());
         aiPreviewOnlyMode.set(data.previewOnlyMode());
         aiPatchApplyMode.set(data.patchApplyMode());
         aiPatchRemoveScopedConnections.set(data.patchRemoveScopedConnections());
@@ -853,6 +862,19 @@ public final class AiAssistantPanel {
         aiRemoteDslRepairAttempts = 0;
         aiRemoteGraphExpansionAttempts = 0;
 
+        INode selectedNode = getSelectedNode();
+        NodeGraph graph = getNodeGraph();
+        AiWorldContextSnapshot worldContext = null;
+        if (aiIncludePlayerWorldContext.get() || aiIncludeSelectedWorldRegionContext.get()) {
+            worldContext = AiWorldContextService.capture(
+                    graph,
+                    selectedNode,
+                    aiIncludePlayerWorldContext.get(),
+                    aiIncludeSelectedWorldRegionContext.get()
+            );
+        }
+        aiLastWorldContextSnapshot = worldContext;
+
         String validation = validateAiSettings();
         if (validation.startsWith("Validation failed")) {
             aiPlanStatusMessage = validation;
@@ -865,10 +887,11 @@ public final class AiAssistantPanel {
                 AiPromptContextService.buildSelectionContextSummary(
                         aiUseSelectionContext.get(),
                         aiIncludeGraphContext.get(),
-                getSelectedNode(),
-                resolveSelectedNodePosition(),
-                        getNodeGraph()
-                )
+                        selectedNode,
+                        resolveSelectedNodePosition(),
+                        graph
+                ),
+                worldContext
         );
         List<AiRemotePlannerService.ConversationMessage> conversationHistory =
                 buildConversationHistory(userPrompt, userPromptPayload);

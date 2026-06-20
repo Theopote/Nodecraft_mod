@@ -39,6 +39,8 @@ public final class AiSettingsStore {
             boolean enableRemotePlanner,
             boolean autoLayoutBeforeApply,
             boolean includeGraphContext,
+            boolean includePlayerWorldContext,
+            boolean includeSelectedWorldRegionContext,
             boolean previewOnlyMode,
             boolean patchApplyMode,
             boolean patchRemoveScopedConnections,
@@ -66,6 +68,8 @@ public final class AiSettingsStore {
                 false,
                 true,
                 true,
+                false,
+                false,
                 false,
                 false,
                 false,
@@ -119,6 +123,8 @@ public final class AiSettingsStore {
                     root.has("enableRemotePlanner") && root.get("enableRemotePlanner").getAsBoolean(),
                     !root.has("autoLayoutBeforeApply") || root.get("autoLayoutBeforeApply").getAsBoolean(),
                     !root.has("includeGraphContext") || root.get("includeGraphContext").getAsBoolean(),
+                    root.has("includePlayerWorldContext") && root.get("includePlayerWorldContext").getAsBoolean(),
+                    root.has("includeSelectedWorldRegionContext") && root.get("includeSelectedWorldRegionContext").getAsBoolean(),
                     root.has("previewOnlyMode") && root.get("previewOnlyMode").getAsBoolean(),
                     root.has("patchApplyMode") && root.get("patchApplyMode").getAsBoolean(),
                     root.has("patchRemoveScopedConnections") && root.get("patchRemoveScopedConnections").getAsBoolean(),
@@ -159,6 +165,8 @@ public final class AiSettingsStore {
             root.addProperty("enableRemotePlanner", data.enableRemotePlanner());
             root.addProperty("autoLayoutBeforeApply", data.autoLayoutBeforeApply());
             root.addProperty("includeGraphContext", data.includeGraphContext());
+            root.addProperty("includePlayerWorldContext", data.includePlayerWorldContext());
+            root.addProperty("includeSelectedWorldRegionContext", data.includeSelectedWorldRegionContext());
             root.addProperty("previewOnlyMode", data.previewOnlyMode());
             root.addProperty("patchApplyMode", data.patchApplyMode());
             root.addProperty("patchRemoveScopedConnections", data.patchRemoveScopedConnections());

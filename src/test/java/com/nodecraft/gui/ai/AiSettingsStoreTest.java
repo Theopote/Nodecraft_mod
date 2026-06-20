@@ -62,6 +62,8 @@ class AiSettingsStoreTest {
                 defaults.enableRemotePlanner(),
                 defaults.autoLayoutBeforeApply(),
                 defaults.includeGraphContext(),
+                defaults.includePlayerWorldContext(),
+                defaults.includeSelectedWorldRegionContext(),
                 defaults.previewOnlyMode(),
                 defaults.patchApplyMode(),
                 defaults.patchRemoveScopedConnections(),

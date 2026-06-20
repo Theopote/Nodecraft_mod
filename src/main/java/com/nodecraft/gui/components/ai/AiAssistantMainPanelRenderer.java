@@ -20,6 +20,8 @@ final class AiAssistantMainPanelRenderer {
             boolean busy,
             ImBoolean useSelectionContext,
             ImBoolean includeGraphContext,
+            ImBoolean includePlayerWorldContext,
+            ImBoolean includeSelectedWorldRegionContext,
             ImBoolean previewOnlyMode,
             ImBoolean patchApplyMode,
             ImBoolean patchRemoveScopedConnections,
@@ -150,6 +152,11 @@ final class AiAssistantMainPanelRenderer {
     private static void renderModeOptions(State state) {
         ImGui.checkbox("Use selected node as context", state.useSelectionContext());
         ImGui.checkbox("Include current graph", state.includeGraphContext());
+        ImGui.checkbox("Include player position and view", state.includePlayerWorldContext());
+        ImGui.checkbox("Include selected world region", state.includeSelectedWorldRegionContext());
+        if (state.includePlayerWorldContext().get() || state.includeSelectedWorldRegionContext().get()) {
+            ImGui.textDisabled("Enabled world context is sent to the configured remote planner.");
+        }
         ImGui.checkbox("Press Enter to send", state.enterToSend());
 
         if (!ImGui.treeNode("Advanced apply options")) {
