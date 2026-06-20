@@ -7,6 +7,8 @@ import java.util.UUID;
 import java.util.List;
 import java.util.HashSet;
 import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.editor.NodeEditorFactory;
@@ -57,6 +59,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
     private boolean isOpen = false;
     private NodeGraph currentGraph;
     private Map<UUID, NodePosition> nodePositions = new HashMap<>();
+    private final Deque<SubgraphEditContext> subgraphEditStack = new ArrayDeque<>();
     // portScreenPositions 存储的是端口的屏幕坐标 (已缩放)，每帧更新
     private Map<UUID, Map<String, ImVec2>> portScreenPositions = new HashMap<>();
 
@@ -318,6 +321,19 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             interaction.updateHoveredPort(mousePos, portScreenPositions, currentGraph);
             interaction.updateHoveredConnection(mousePos, portScreenPositions, currentGraph);
             renderHoveredPortTooltip(currentGraph, interaction);
+
+            if (ImGui.isMouseDoubleClicked(ImGuiMouseButton.Left)
+                    && !interaction.isHoveringConnection()
+                    && !interaction.isCreatingConnection()
+                    && !interaction.isDraggingNode()
+                    && !interaction.isBoxSelecting()
+                    && currentGraph != null) {
+                UUID doubleClickedNodeId = getNodeIdUnderMouse(mousePos.x, mousePos.y);
+                if (doubleClickedNodeId != null && openSubgraphNode(doubleClickedNodeId)) {
+                    ImGui.getIO().setWantCaptureMouse(true);
+                    return;
+                }
+            }
 
             // 6.5 双击连接线自动插入中继节点（Reroute）
             if (ImGui.isMouseDoubleClicked(ImGuiMouseButton.Left)
@@ -1196,6 +1212,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             : "Extracted Subgraph";
 
         try {
+            syncGraphNodePositions(currentGraph, nodePositions);
             SubgraphExtractionService.ExtractionResult extraction = SubgraphExtractionService.extract(currentGraph, selection, subgraphName);
             String embeddedGraphJson = GraphSerializer.toJson(extraction.savedGraph());
             Map<String, Object> subgraphState = buildSubgraphNodeState(extraction, subgraphName, embeddedGraphJson);
@@ -1243,6 +1260,89 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             }
         } catch (Exception e) {
             NodeCraft.LOGGER.error("Failed to create subgraph from selection: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+
+    public boolean openSelectedSubgraph() {
+        if (selectedNodeIds.size() != 1) {
+            return false;
+        }
+        return openSubgraphNode(selectedNodeIds.iterator().next());
+    }
+
+    public boolean closeCurrentSubgraph() {
+        if (subgraphEditStack.isEmpty() || currentGraph == null) {
+            return false;
+        }
+
+        SubgraphEditContext context = subgraphEditStack.pop();
+        try {
+            syncGraphNodePositions(currentGraph, nodePositions);
+            SavedGraph savedGraph = toSavedGraphWithPositions(currentGraph, nodePositions);
+            String embeddedGraphJson = GraphSerializer.toJson(savedGraph);
+
+            INode wrapperNode = context.parentGraph().getNode(context.wrapperNodeId());
+            if (wrapperNode instanceof BaseNode wrapperBase) {
+                Map<String, Object> state = copyStateMap(wrapperBase.getNodeState());
+                state.put("embeddedGraphJson", embeddedGraphJson);
+                wrapperBase.setNodeState(state);
+            } else {
+                NodeCraft.LOGGER.warn("Cannot write edited subgraph back because wrapper node is missing: {}", context.wrapperNodeId());
+            }
+
+            currentGraph = context.parentGraph();
+            nodePositions = copyNodePositions(context.parentPositions());
+            clearSelectedNodes();
+            if (currentGraph.getNode(context.wrapperNodeId()) != null) {
+                selectedNodeIds.add(context.wrapperNodeId());
+                setSelectedNodeId(context.wrapperNodeId());
+            }
+            markGraphStructureDirty();
+            NodeCraft.LOGGER.info("Closed subgraph editor and wrote changes back to wrapper {}", context.wrapperNodeId());
+            return true;
+        } catch (Exception e) {
+            subgraphEditStack.push(context);
+            NodeCraft.LOGGER.error("Failed to close subgraph editor: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+
+    public boolean isEditingSubgraph() {
+        return !subgraphEditStack.isEmpty();
+    }
+
+    private boolean openSubgraphNode(UUID wrapperNodeId) {
+        if (currentGraph == null || wrapperNodeId == null) {
+            return false;
+        }
+        INode wrapperNode = currentGraph.getNode(wrapperNodeId);
+        if (!isSubgraphNode(wrapperNode)) {
+            return false;
+        }
+
+        String embeddedGraphJson = stateString(wrapperNode instanceof BaseNode baseNode ? baseNode.getNodeState() : null, "embeddedGraphJson");
+        if (embeddedGraphJson == null || embeddedGraphJson.isBlank()) {
+            return false;
+        }
+
+        try {
+            SavedGraph savedGraph = GraphSerializer.fromJson(embeddedGraphJson);
+            LoadedGraph loadedGraph = loadSavedGraphForEditing(savedGraph);
+            if (loadedGraph.graph().getNodes().isEmpty()) {
+                return false;
+            }
+
+            syncGraphNodePositions(currentGraph, nodePositions);
+            subgraphEditStack.push(new SubgraphEditContext(currentGraph, copyNodePositions(nodePositions), wrapperNodeId));
+            currentGraph = loadedGraph.graph();
+            nodePositions = loadedGraph.positions();
+            clearSelectedNodes();
+            markGraphStructureDirty();
+            NodeCraft.LOGGER.info("Opened embedded subgraph from wrapper {}", wrapperNodeId);
+            return true;
+        } catch (Exception e) {
+            NodeCraft.LOGGER.error("Failed to open embedded subgraph: {}", e.getMessage(), e);
             return false;
         }
     }
@@ -1455,6 +1555,102 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         }
     }
 
+    private static SavedGraph toSavedGraphWithPositions(NodeGraph graph, Map<UUID, NodePosition> positions) {
+        SavedGraph savedGraph = GraphSerializer.toSavedGraph(graph);
+        savedGraph.nodePositions = new LinkedHashMap<>();
+        if (positions != null) {
+            for (Map.Entry<UUID, NodePosition> entry : positions.entrySet()) {
+                if (entry.getKey() == null || entry.getValue() == null) {
+                    continue;
+                }
+                savedGraph.nodePositions.put(
+                    entry.getKey().toString(),
+                    new SavedPosition(entry.getValue().x, entry.getValue().y)
+                );
+            }
+        }
+        return savedGraph;
+    }
+
+    private static LoadedGraph loadSavedGraphForEditing(SavedGraph savedGraph) {
+        NodeGraph graph = new NodeGraph(savedGraph != null && savedGraph.graphName != null ? savedGraph.graphName : "Subgraph");
+        Map<UUID, NodePosition> positions = new HashMap<>();
+        if (savedGraph == null || savedGraph.nodes == null) {
+            return new LoadedGraph(graph, positions);
+        }
+
+        NodeRegistry registry = NodeRegistry.getInstance();
+        Map<String, BaseNode> loadedNodes = new HashMap<>();
+        for (SavedNode savedNode : savedGraph.nodes) {
+            if (savedNode == null || savedNode.typeId == null || savedNode.nodeId == null) {
+                continue;
+            }
+            INode node = registry.createNodeInstance(savedNode.typeId);
+            if (!(node instanceof BaseNode baseNode)) {
+                continue;
+            }
+            baseNode.setNodeState(savedNode.state);
+            graph.addNode(baseNode);
+            loadedNodes.put(savedNode.nodeId, baseNode);
+
+            SavedPosition savedPosition = savedGraph.nodePositions != null ? savedGraph.nodePositions.get(savedNode.nodeId) : null;
+            float x = savedPosition != null ? savedPosition.x : 0.0f;
+            float y = savedPosition != null ? savedPosition.y : 0.0f;
+            positions.put(baseNode.getId(), new NodePosition(x, y));
+            baseNode.setPosition(x, y);
+        }
+
+        if (savedGraph.connections != null) {
+            for (SavedConnection connection : savedGraph.connections) {
+                BaseNode source = loadedNodes.get(connection.sourceNodeId);
+                BaseNode target = loadedNodes.get(connection.targetNodeId);
+                if (source != null && target != null) {
+                    graph.connect(source.getId(), connection.sourcePortId, target.getId(), connection.targetPortId);
+                }
+            }
+        }
+
+        return new LoadedGraph(graph, positions);
+    }
+
+    private static Map<UUID, NodePosition> copyNodePositions(Map<UUID, NodePosition> source) {
+        Map<UUID, NodePosition> copy = new HashMap<>();
+        if (source == null) {
+            return copy;
+        }
+        for (Map.Entry<UUID, NodePosition> entry : source.entrySet()) {
+            if (entry.getKey() != null && entry.getValue() != null) {
+                copy.put(entry.getKey(), entry.getValue().copy());
+            }
+        }
+        return copy;
+    }
+
+    private static Map<String, Object> copyStateMap(Object state) {
+        Map<String, Object> copy = new LinkedHashMap<>();
+        if (state instanceof Map<?, ?> map) {
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (entry.getKey() instanceof String key) {
+                    copy.put(key, entry.getValue());
+                }
+            }
+        }
+        return copy;
+    }
+
+    private static void syncGraphNodePositions(NodeGraph graph, Map<UUID, NodePosition> positions) {
+        if (graph == null || positions == null) {
+            return;
+        }
+        for (Map.Entry<UUID, NodePosition> entry : positions.entrySet()) {
+            INode node = graph.getNode(entry.getKey());
+            NodePosition position = entry.getValue();
+            if (node != null && position != null) {
+                node.setPosition(position.x, position.y);
+            }
+        }
+    }
+
     private NodePosition selectionCenter(java.util.Set<UUID> selection) {
         float minX = Float.MAX_VALUE;
         float minY = Float.MAX_VALUE;
@@ -1563,6 +1759,12 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
     }
 
     private record BoundaryOutputSource(String nodeId, String portId) {
+    }
+
+    private record LoadedGraph(NodeGraph graph, Map<UUID, NodePosition> positions) {
+    }
+
+    private record SubgraphEditContext(NodeGraph parentGraph, Map<UUID, NodePosition> parentPositions, UUID wrapperNodeId) {
     }
 
     @Override
