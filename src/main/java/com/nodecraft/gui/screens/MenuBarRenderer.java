@@ -162,6 +162,20 @@ public class MenuBarRenderer {
                         new MessageDialog("Subgraph", "Failed to create subgraph from current selection.").show();
                     }
                 }
+
+                boolean canOpenSubgraph = editor != null && editor.getSelectedNodeIds().size() == 1;
+                if (ImGui.menuItem("Open Subgraph", null, false, canOpenSubgraph)) {
+                    if (editor != null && !editor.openSelectedSubgraph()) {
+                        new MessageDialog("Subgraph", "Selected node is not an editable embedded subgraph.").show();
+                    }
+                }
+
+                boolean canCloseSubgraph = editor != null && editor.isEditingSubgraph();
+                if (ImGui.menuItem("Close Subgraph", null, false, canCloseSubgraph)) {
+                    if (editor != null && !editor.closeCurrentSubgraph()) {
+                        new MessageDialog("Subgraph", "Failed to close current subgraph.").show();
+                    }
+                }
                 
                 boolean canDissolveSubgraph = editor != null && editor.getSelectedNodeIds().size() == 1;
                 if (ImGui.menuItem("Dissolve Subgraph", null, false, canDissolveSubgraph)) {

@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.nodes.utilities.organization.GraphInputNode;
+import com.nodecraft.nodesystem.nodes.utilities.organization.GraphOutputNode;
 import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.jetbrains.annotations.Nullable;
@@ -30,6 +32,8 @@ class ImGuiNodeEditorSubgraphTest {
         registry.clear();
         registry.registerNode(new NodeInfo("test.pass", "Pass", "test pass node", "test", 0, PassNode.class));
         registry.registerNode(new NodeInfo("utilities.organization.subgraph", "Subgraph", "subgraph node", "utilities.organization", 0, SubgraphNode.class));
+        registry.registerNode(new NodeInfo("utilities.organization.graph_input", "Graph Input", "graph input", "utilities.organization", 0, GraphInputNode.class));
+        registry.registerNode(new NodeInfo("utilities.organization.graph_output", "Graph Output", "graph output", "utilities.organization", 0, GraphOutputNode.class));
     }
 
     @AfterEach
@@ -79,6 +83,43 @@ class ImGuiNodeEditorSubgraphTest {
         assertFalse(graph.getNodes().stream().anyMatch(SubgraphNode.class::isInstance));
         assertTrue(hasConnectionFrom(graph, source.getId()));
         assertTrue(hasConnectionTo(graph, sink.getId()));
+    }
+
+    @Test
+    void opensAndClosesEmbeddedSubgraphEditor() {
+        NodeGraph graph = new NodeGraph("open close");
+        PassNode source = new PassNode();
+        PassNode selected = new PassNode();
+        PassNode sink = new PassNode();
+        graph.addNode(source);
+        graph.addNode(selected);
+        graph.addNode(sink);
+        graph.connect(source.getId(), "out", selected.getId(), "in");
+        graph.connect(selected.getId(), "out", sink.getId(), "in");
+
+        Map<UUID, NodePosition> positions = new HashMap<>();
+        positions.put(source.getId(), new NodePosition(0, 0));
+        positions.put(selected.getId(), new NodePosition(120, 0));
+        positions.put(sink.getId(), new NodePosition(240, 0));
+
+        ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
+        editor.setCurrentGraph(graph);
+        editor.setNodePositions(positions);
+        editor.clearSelectedNodes();
+        editor.getSelectedNodeIds().add(selected.getId());
+        editor.setSelectedNodeId(selected.getId());
+
+        assertTrue(editor.createSubgraphFromSelection());
+        UUID wrapperId = editor.getSelectedNodeId();
+        assertTrue(editor.openSelectedSubgraph());
+        assertTrue(editor.isEditingSubgraph());
+        assertEquals(3, editor.getCurrentGraph().getNodes().size());
+
+        assertTrue(editor.closeCurrentSubgraph());
+        assertFalse(editor.isEditingSubgraph());
+        assertEquals(graph, editor.getCurrentGraph());
+        assertEquals(wrapperId, editor.getSelectedNodeId());
+        assertTrue(editor.getCurrentGraph().getNode(wrapperId) instanceof SubgraphNode);
     }
 
     private static boolean hasConnectionFrom(NodeGraph graph, UUID sourceNodeId) {

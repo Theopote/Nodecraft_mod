@@ -132,6 +132,8 @@ public interface ICanvasEditor {
 
     boolean createSubgraphFromSelection();
 
+    boolean openSelectedSubgraph();
+
     boolean dissolveSelectedSubgraph();
     
     /**

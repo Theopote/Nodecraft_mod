@@ -92,6 +92,9 @@ public class ImGuiNodeMenus {
                             }
                             ImGui.separator();
                         } else if (isSubgraphNode(node)) {
+                            if (ImGui.menuItem("Open Subgraph")) {
+                                openSubgraphTarget(rightClickedNodeId);
+                            }
                             if (ImGui.menuItem("Dissolve Subgraph")) {
                                 dissolveSubgraphTarget(rightClickedNodeId);
                             }
@@ -459,6 +462,31 @@ public class ImGuiNodeMenus {
             }
         } catch (Exception e) {
             NodeCraft.LOGGER.error("Failed to dissolve subgraph from context menu: {}", e.getMessage(), e);
+            editor.clearSelectedNodes();
+            editor.getSelectedNodeIds().addAll(backupSelection);
+            editor.setSelectedNodeId(backupPrimary);
+        }
+    }
+
+    private void openSubgraphTarget(UUID nodeId) {
+        if (nodeId == null) {
+            return;
+        }
+
+        Set<UUID> backupSelection = new HashSet<>(editor.getSelectedNodeIds());
+        UUID backupPrimary = editor.getSelectedNodeId();
+
+        try {
+            editor.clearSelectedNodes();
+            editor.getSelectedNodeIds().add(nodeId);
+            editor.setSelectedNodeId(nodeId);
+            if (!editor.openSelectedSubgraph()) {
+                editor.clearSelectedNodes();
+                editor.getSelectedNodeIds().addAll(backupSelection);
+                editor.setSelectedNodeId(backupPrimary);
+            }
+        } catch (Exception e) {
+            NodeCraft.LOGGER.error("Failed to open subgraph from context menu: {}", e.getMessage(), e);
             editor.clearSelectedNodes();
             editor.getSelectedNodeIds().addAll(backupSelection);
             editor.setSelectedNodeId(backupPrimary);
