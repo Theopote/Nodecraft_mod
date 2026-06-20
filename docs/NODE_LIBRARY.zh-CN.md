@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**517**
+- **节点总数**：**519**
 - **分类总数**：**54**
 - **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
 
@@ -41,7 +41,7 @@
 | `output.export` | 4 |
 | `output.preview` | 12 |
 | `pattern.grid` | 5 |
-| `pattern.linear` | 6 |
+| `pattern.linear` | 7 |
 | `pattern.lsystem` | 2 |
 | `pattern.radial` | 4 |
 | `pattern.surface_volume_distribution` | 9 |
@@ -58,7 +58,7 @@
 | `utilities.morphology` | 1 |
 | `utilities.organization` | 7 |
 | `variable` | 6 |
-| `world.query` | 10 |
+| `world.query` | 11 |
 | `world.read` | 12 |
 | `world.selection` | 9 |
 | `world.terrain` | 19 |
@@ -553,7 +553,7 @@
 | Hex Grid | `pattern.grid.hex_grid` | Repeats coordinates on a flat-top hexagonal lattice (X/Z) with configurable spacing | `HexGridNode` |
 | Triangular Grid | `pattern.grid.triangle_grid` | Repeats coordinates on a triangular lattice with alternating row offsets. | `TriangularGridNode` |
 
-## pattern.linear（6）
+## pattern.linear（7）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -561,6 +561,7 @@
 | Along Path | `pattern.linear.along_path` | Repeats a block pattern at each resolved path point from a line, polyline, curve, or point list | `AlongPathNode` |
 | Staggered Array | `pattern.linear.staggered_array` | Repeats coordinates in rows and applies an alternating offset for brick-like staggering | `StaggeredArrayNode` |
 | Path Instances | `pattern.linear.path_instances` | Generates path instance frames (origin + axes) for oriented placement along a path. | `PathInstancesNode` |
+| Instance on Points | `pattern.linear.instance_on_points` | 在每个输入点上实例化方块或方块放置模板 | `InstanceOnPointsNode` |
 | Linear Array Geometry | `pattern.linear.linear_array_geometry` | Creates repeated geometry copies along a direction vector | `LinearArrayGeometryNode` |
 | Curve Array Geometry | `pattern.linear.curve_array_geometry` | Creates repeated geometry copies along a curve, polyline, or line path with optional tangent orientation | `CurveArrayGeometryNode` |
 
@@ -764,7 +765,7 @@
 | Remove Variable | `variable.remove` | Removes a user variable from the execution scope. | `RemoveVariableNode` |
 | Clear Variables | `variable.clear` | Clears user variables from the execution scope. | `ClearVariablesNode` |
 
-## world.query（10）
+## world.query（11）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -772,6 +773,7 @@
 | Get Fluid Level | `world.query.get_fluid_level` | Gets the fluid state, type, and level for a block position | `GetFluidLevelNode` |
 | Is Grid Point | `world.query.is_grid_point` | Checks whether a geometric point already lies on the block grid without snapping | `IsGridPointNode` |
 | Filter Grid Points | `world.query.filter_grid_points` | Splits a point list into grid-aligned points and off-grid points without snapping | `FilterGridPointsNode` |
+| Filter Points By Rule | `world.query.filter_points_by_rule` | 按高度和可选表面坡度规则过滤点集 | `FilterPointsByRuleNode` |
 | Point In Region | `world.query.is_point_in_region` | Tests whether the center of a block position lies inside a region. | `IsPointInRegionNode` |
 | Raycast | `world.query.raycast` | Casts a ray in world space and returns nearest block/entity hit information. | `RaycastNode` |
 | Flood Fill | `world.query.flood_fill` | Runs BFS flood fill from a seed block using 6 or 26-neighbor connectivity. | `FloodFillNode` |

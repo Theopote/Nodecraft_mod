@@ -44,6 +44,24 @@ final class WorldWriteNbtUtils {
 
     static @Nullable NbtCompound parseSnbt(String text) {
         try {
+            Method readCompound = StringNbtReader.class.getMethod("readCompound", String.class);
+            Object result = readCompound.invoke(null, text);
+            if (result instanceof NbtCompound nbt) {
+                return nbt;
+            }
+        } catch (Exception ignored) {
+        }
+
+        try {
+            Method readCompoundAsArgument = StringNbtReader.class.getMethod("readCompoundAsArgument", StringReader.class);
+            Object result = readCompoundAsArgument.invoke(null, new StringReader(text));
+            if (result instanceof NbtCompound nbt) {
+                return nbt;
+            }
+        } catch (Exception ignored) {
+        }
+
+        try {
             Method parse = StringNbtReader.class.getMethod("parse", String.class);
             Object result = parse.invoke(null, text);
             if (result instanceof NbtCompound nbt) {
