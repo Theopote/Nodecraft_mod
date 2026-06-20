@@ -8,8 +8,11 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.RaycastContext;
 
 public final class AiWorldContextService {
+
+    private static final double CROSSHAIR_RAYCAST_DISTANCE = 100.0d;
 
     private AiWorldContextService() {
     }
@@ -55,14 +58,25 @@ public final class AiWorldContextService {
                 null,
                 capturedAtMs,
                 player,
-                captureCrosshairTarget(client),
+                captureCrosshairTarget(client, look),
                 selectedRegion
         );
     }
 
-    private static AiWorldContextSnapshot.CrosshairTarget captureCrosshairTarget(MinecraftClient client) {
-        HitResult target = client.crosshairTarget;
-        if (!(target instanceof BlockHitResult blockHit) || blockHit.getType() == HitResult.Type.MISS) {
+    private static AiWorldContextSnapshot.CrosshairTarget captureCrosshairTarget(
+            MinecraftClient client,
+            Vec3d lookDirection
+    ) {
+        Vec3d start = new Vec3d(client.player.getX(), client.player.getEyeY(), client.player.getZ());
+        Vec3d end = start.add(lookDirection.multiply(CROSSHAIR_RAYCAST_DISTANCE));
+        BlockHitResult blockHit = client.world.raycast(new RaycastContext(
+                start,
+                end,
+                RaycastContext.ShapeType.OUTLINE,
+                RaycastContext.FluidHandling.NONE,
+                client.player
+        ));
+        if (blockHit == null || blockHit.getType() == HitResult.Type.MISS) {
             return AiWorldContextSnapshot.CrosshairTarget.miss();
         }
         BlockPos pos = blockHit.getBlockPos();

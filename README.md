@@ -45,6 +45,12 @@ For a faster compile-only check:
 
 The AI Assistant can create or modify graph plans from natural-language prompts. Remote planning is optional and can be configured from the assistant settings panel.
 
+The assistant can optionally attach a structured snapshot of the current player position/view and
+completed world-region selection to a planning request. These world-context options are disabled by
+default because enabled coordinates, block targets, and region bounds are sent to the configured
+remote planner. Dynamic world context is captured once when a request is submitted and reused for
+validation or graph-expansion retries.
+
 Supported configuration includes:
 
 - API base URL
