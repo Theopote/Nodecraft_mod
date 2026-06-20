@@ -17,8 +17,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -39,7 +40,7 @@ public class NodeExecutor {
     private final Map<UUID, NodeState> nodeStates = new HashMap<>();
     private final AtomicBoolean isExecuting = new AtomicBoolean(false);
     private volatile CompletableFuture<Boolean> executionFuture;
-    private final Executor executorService;
+    private final ExecutorService executorService;
 
     private enum NodeState {
         NOT_VISITED,
@@ -60,7 +61,7 @@ public class NodeExecutor {
         this.graph = graph;
         this.context = context;
         this.executionScopeNodeIds = executionScopeNodeIds == null ? null : new HashSet<>(executionScopeNodeIds);
-        this.executorService = Executors.newSingleThreadExecutor();
+        this.executorService = Executors.newSingleThreadExecutor(new NodeExecutorThreadFactory());
     }
 
     public CompletableFuture<Boolean> executeAsync() {
@@ -77,6 +78,7 @@ public class NodeExecutor {
                 executionFuture.completeExceptionally(e);
             } finally {
                 isExecuting.set(false);
+                executorService.shutdown();
             }
         }, executorService);
         return executionFuture;
@@ -94,6 +96,7 @@ public class NodeExecutor {
             return false;
         } finally {
             isExecuting.set(false);
+            executorService.shutdown();
         }
     }
 
@@ -112,6 +115,7 @@ public class NodeExecutor {
         if (isExecuting.get() && executionFuture != null && !executionFuture.isDone()) {
             executionFuture.cancel(true);
             isExecuting.set(false);
+            executorService.shutdownNow();
             clearGraphPreviews();
         }
     }
@@ -269,5 +273,16 @@ public class NodeExecutor {
         }
 
         inputs.put(portId, value);
+    }
+
+    private static final class NodeExecutorThreadFactory implements ThreadFactory {
+        private static int sequence = 1;
+
+        @Override
+        public synchronized Thread newThread(Runnable runnable) {
+            Thread thread = new Thread(runnable, "nodecraft-graph-worker-" + sequence++);
+            thread.setDaemon(true);
+            return thread;
+        }
     }
 }

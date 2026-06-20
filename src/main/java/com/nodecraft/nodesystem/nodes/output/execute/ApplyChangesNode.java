@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.bake.BakePlacementService;
+import com.nodecraft.nodesystem.bake.BakeTask;
 import com.nodecraft.nodesystem.bake.PlacementMode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
@@ -68,6 +69,12 @@ public class ApplyChangesNode extends BaseCustomUINode {
 
     @NodeProperty(displayName = "Solid Geometry", category = "Geometry", order = 7)
     private boolean solidGeometry = true;
+
+    @NodeProperty(displayName = "Blocks Per Tick", category = "Performance", order = 8)
+    private int blocksPerTick = BakePlacementService.DEFAULT_BLOCKS_PER_TICK;
+
+    @NodeProperty(displayName = "Tick Budget Ms", category = "Performance", order = 9)
+    private int tickBudgetMillis = 4;
 
     private UUID executionId = UUID.randomUUID();
     private final AtomicBoolean isExecuting = new AtomicBoolean(false);
@@ -304,23 +311,22 @@ public class ApplyChangesNode extends BaseCustomUINode {
             }
 
             List<BlockPlacementData> placementBatch = entry.getValue();
-            boolean hasStateOverrides = placementBatch.stream().anyMatch(placement -> placement.stateData() != null && !placement.stateData().isEmpty());
-
-            if (useAsyncBake && !hasStateOverrides) {
-                List<BlockPos> positions = new ArrayList<>(placementBatch.size());
+            if (useAsyncBake) {
+                List<BakeTask.Placement> queuedPlacements = new ArrayList<>(placementBatch.size());
                 for (BlockPlacementData placement : placementBatch) {
-                    positions.add(placement.pos().toImmutable());
+                    BlockState state = applyBlockStateData(defaultState, placement.stateData());
+                    queuedPlacements.add(new BakeTask.Placement(placement.pos(), state));
                 }
-                BakePlacementService.getInstance().enqueue(
+                BakePlacementService.getInstance().enqueuePlacements(
                     context.getWorld(),
-                    new ArrayList<>(positions),
-                    defaultState,
+                    queuedPlacements,
                     placementMode,
                     recordUndo,
-                    1000,
+                    blocksPerTick,
+                    tickBudgetNanos(),
                     null
                 );
-                count += positions.size();
+                count += queuedPlacements.size();
             } else {
                 for (BlockPlacementData placement : placementBatch) {
                     if (isTimedOut(deadlineMillis)) {
@@ -373,7 +379,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 targetState,
                 placementMode,
                 recordUndo,
-                1000,
+                blocksPerTick,
                 null
             );
             return new ApplyResult(blocks.size(), false);
@@ -577,6 +583,34 @@ public class ApplyChangesNode extends BaseCustomUINode {
         }
     }
 
+    public int getBlocksPerTick() {
+        return blocksPerTick;
+    }
+
+    public void setBlocksPerTick(int value) {
+        int resolved = Math.max(1, value);
+        if (blocksPerTick != resolved) {
+            blocksPerTick = resolved;
+            markDirty();
+        }
+    }
+
+    public int getTickBudgetMillis() {
+        return tickBudgetMillis;
+    }
+
+    public void setTickBudgetMillis(int value) {
+        int resolved = Math.max(1, value);
+        if (tickBudgetMillis != resolved) {
+            tickBudgetMillis = resolved;
+            markDirty();
+        }
+    }
+
+    private long tickBudgetNanos() {
+        return Math.max(1L, tickBudgetMillis) * 1_000_000L;
+    }
+
     private record ApplyResult(int operationCount, boolean timedOut) {
     }
 
@@ -591,6 +625,8 @@ public class ApplyChangesNode extends BaseCustomUINode {
         state.put("useAsyncBake", useAsyncBake);
         state.put("recordUndo", recordUndo);
         state.put("solidGeometry", solidGeometry);
+        state.put("blocksPerTick", blocksPerTick);
+        state.put("tickBudgetMillis", tickBudgetMillis);
         return state;
     }
 
@@ -631,6 +667,12 @@ public class ApplyChangesNode extends BaseCustomUINode {
         }
         if ((value = map.get("solidGeometry")) instanceof Boolean boolValue) {
             setSolidGeometry(boolValue);
+        }
+        if ((value = map.get("blocksPerTick")) instanceof Number numberValue) {
+            setBlocksPerTick(numberValue.intValue());
+        }
+        if ((value = map.get("tickBudgetMillis")) instanceof Number numberValue) {
+            setTickBudgetMillis(numberValue.intValue());
         }
     }
 }

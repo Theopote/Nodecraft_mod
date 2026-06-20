@@ -2,7 +2,6 @@ package com.nodecraft.nodesystem.bake;
 
 import com.nodecraft.core.NodeCraft;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
@@ -15,17 +14,20 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Bake 放置服务：异步、分 tick 放置方块，避免主线程卡顿。
- * 每 tick 处理一批方块（默认 1000 个），由 ServerTickEvents 驱动。
+ * Server-tick driven placement queue for large block writes.
  */
 public class BakePlacementService {
 
-    private static final int DEFAULT_BLOCKS_PER_TICK = 1000;
+    public static final int DEFAULT_BLOCKS_PER_TICK = 2000;
+    public static final long DEFAULT_TICK_BUDGET_NANOS = 4_000_000L;
+
     private static BakePlacementService instance;
-    private boolean tickRegistered = false;
 
     private final Deque<BakeTask> queue = new ArrayDeque<>();
     private final BakeHistory history = new BakeHistory();
+    private boolean tickRegistered = false;
+    private int defaultBlocksPerTick = DEFAULT_BLOCKS_PER_TICK;
+    private long defaultTickBudgetNanos = DEFAULT_TICK_BUDGET_NANOS;
 
     public static synchronized BakePlacementService getInstance() {
         if (instance == null) {
@@ -34,76 +36,134 @@ public class BakePlacementService {
         return instance;
     }
 
-    /** 注册到 Fabric ServerTickEvents（应在 mod 初始化时调用一次） */
-    public void registerTickHandler() {
-        if (tickRegistered) return;
+    public synchronized void registerTickHandler() {
+        if (tickRegistered) {
+            return;
+        }
         ServerTickEvents.END_SERVER_TICK.register(this::onServerTick);
         tickRegistered = true;
-        NodeCraft.LOGGER.debug("BakePlacementService 已注册到 ServerTickEvents");
+        NodeCraft.LOGGER.debug("BakePlacementService registered with ServerTickEvents");
     }
 
     private void onServerTick(MinecraftServer server) {
         processTick();
     }
 
-    /**
-     * 提交一个 Bake 任务（由节点调用）
-     *
-     * @param world         世界
-     * @param positions     要放置的坐标列表
-     * @param targetState   目标方块状态
-     * @param mode          放置模式（覆盖 / 增量）
-     * @param recordUndo    是否记录 Undo
-     * @param blocksPerTick 每 tick 处理数量
-     * @param onComplete    完成回调（可为 null）
-     * @return 任务 ID
-     */
-    public UUID enqueue(
-            World world,
-            List<BlockPos> positions,
-            BlockState targetState,
-            PlacementMode mode,
-            boolean recordUndo,
-            int blocksPerTick,
-            Runnable onComplete) {
+    public UUID enqueue(World world,
+                        List<BlockPos> positions,
+                        BlockState targetState,
+                        PlacementMode mode,
+                        boolean recordUndo,
+                        int blocksPerTick,
+                        Runnable onComplete) {
+        if (positions == null || targetState == null) {
+            return null;
+        }
+        List<BakeTask.Placement> placements = new ArrayList<>(positions.size());
+        for (BlockPos pos : positions) {
+            if (pos != null) {
+                placements.add(new BakeTask.Placement(pos, targetState));
+            }
+        }
+        return enqueuePlacements(world, placements, mode, recordUndo, blocksPerTick, defaultTickBudgetNanos, onComplete);
+    }
 
-        if (world == null || positions == null || positions.isEmpty() || targetState == null) {
-            NodeCraft.LOGGER.warn("BakePlacementService: 无效的 enqueue 参数");
+    public UUID enqueuePlacements(World world,
+                                  List<BakeTask.Placement> placements,
+                                  PlacementMode mode,
+                                  boolean recordUndo,
+                                  int blocksPerTick,
+                                  long tickBudgetNanos,
+                                  Runnable onComplete) {
+        if (world == null || placements == null || placements.isEmpty()) {
+            NodeCraft.LOGGER.warn("BakePlacementService: invalid enqueue request");
             return null;
         }
 
         UUID taskId = UUID.randomUUID();
-        BakeTask task = new BakeTask(taskId, world, new ArrayList<>(positions), targetState, mode,
-                recordUndo, Math.max(1, blocksPerTick), onComplete);
+        BakeTask task = new BakeTask(
+            taskId,
+            world,
+            placements,
+            mode,
+            recordUndo,
+            resolveBlocksPerTick(blocksPerTick),
+            resolveTickBudgetNanos(tickBudgetNanos),
+            onComplete
+        );
         synchronized (queue) {
             queue.addLast(task);
         }
-        NodeCraft.LOGGER.debug("Bake 任务已入队: {} 个方块, 模式={}", positions.size(), mode);
+        NodeCraft.LOGGER.debug("Queued bake task {} with {} placements", taskId, placements.size());
         return taskId;
     }
 
-    /** 每 tick 处理一批 */
     void processTick() {
-        BakeTask task;
-        synchronized (queue) {
-            task = queue.peekFirst();
-        }
-        if (task == null) return;
-
-        task.processTick();
-
-        if (task.isCompleted()) {
+        long deadline = System.nanoTime() + defaultTickBudgetNanos;
+        while (System.nanoTime() < deadline) {
+            BakeTask task;
             synchronized (queue) {
-                queue.pollFirst();
+                task = queue.peekFirst();
             }
-            // 将 Undo 记录推入历史（供 UndoLastBakeNode 使用）
-            if (!task.getUndoRecords().isEmpty()) {
-                BakeHistory.UndoRecord record = new BakeHistory.UndoRecord(task.getTaskId());
-                for (BakeTask.BakeUndoRecord ur : task.getUndoRecords()) {
-                    record.add(ur.pos(), ur.previousState());
+            if (task == null) {
+                return;
+            }
+
+            task.processTick();
+            if (!task.isCompleted()) {
+                return;
+            }
+
+            synchronized (queue) {
+                if (queue.peekFirst() == task) {
+                    queue.pollFirst();
+                } else {
+                    queue.remove(task);
                 }
-                history.push(record);
             }
+            finishTask(task);
+        }
+    }
+
+    public boolean cancelTask(UUID taskId) {
+        if (taskId == null) {
+            return false;
+        }
+        synchronized (queue) {
+            for (BakeTask task : queue) {
+                if (taskId.equals(task.getTaskId())) {
+                    task.cancel();
+                    queue.remove(task);
+                    NodeCraft.LOGGER.info("Cancelled bake task {}", taskId);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public int cancelAll() {
+        int count = 0;
+        synchronized (queue) {
+            for (BakeTask task : queue) {
+                task.cancel();
+                count++;
+            }
+            queue.clear();
+        }
+        if (count > 0) {
+            NodeCraft.LOGGER.info("Cancelled {} queued bake tasks", count);
+        }
+        return count;
+    }
+
+    public List<TaskSnapshot> getTaskSnapshots() {
+        synchronized (queue) {
+            List<TaskSnapshot> snapshots = new ArrayList<>(queue.size());
+            for (BakeTask task : queue) {
+                snapshots.add(TaskSnapshot.from(task));
+            }
+            return snapshots;
         }
     }
 
@@ -111,18 +171,83 @@ public class BakePlacementService {
         return history;
     }
 
-    /** 撤销最后一次 Bake（由 UndoLastBakeNode 或 UI 调用） */
     public boolean undoLast(World world) {
         BakeHistory.UndoRecord record = history.pop();
-        if (record == null || world == null) return false;
+        if (record == null || world == null) {
+            return false;
+        }
         record.apply(world);
-        NodeCraft.LOGGER.debug("已撤销 {} 个方块", record.size());
+        NodeCraft.LOGGER.debug("Undid {} baked blocks", record.size());
         return true;
     }
 
     public int getQueueSize() {
         synchronized (queue) {
             return queue.size();
+        }
+    }
+
+    public int getDefaultBlocksPerTick() {
+        return defaultBlocksPerTick;
+    }
+
+    public void setDefaultBlocksPerTick(int defaultBlocksPerTick) {
+        this.defaultBlocksPerTick = Math.max(1, defaultBlocksPerTick);
+    }
+
+    public long getDefaultTickBudgetNanos() {
+        return defaultTickBudgetNanos;
+    }
+
+    public void setDefaultTickBudgetNanos(long defaultTickBudgetNanos) {
+        this.defaultTickBudgetNanos = Math.max(1L, defaultTickBudgetNanos);
+    }
+
+    private void finishTask(BakeTask task) {
+        if (task.isCancelled()) {
+            return;
+        }
+        if (!task.getUndoRecords().isEmpty()) {
+            BakeHistory.UndoRecord record = new BakeHistory.UndoRecord(task.getTaskId());
+            for (BakeTask.BakeUndoRecord ur : task.getUndoRecords()) {
+                record.add(ur.pos(), ur.previousState());
+            }
+            history.push(record);
+        }
+        NodeCraft.LOGGER.debug(
+            "Bake task {} completed. placed={}, skipped={}, total={}",
+            task.getTaskId(),
+            task.getPlacedCount(),
+            task.getSkippedCount(),
+            task.getTotalCount()
+        );
+    }
+
+    private int resolveBlocksPerTick(int blocksPerTick) {
+        return blocksPerTick > 0 ? blocksPerTick : defaultBlocksPerTick;
+    }
+
+    private long resolveTickBudgetNanos(long tickBudgetNanos) {
+        return tickBudgetNanos > 0L ? tickBudgetNanos : defaultTickBudgetNanos;
+    }
+
+    public record TaskSnapshot(UUID taskId,
+                               int placedCount,
+                               int skippedCount,
+                               int totalCount,
+                               int remainingCount,
+                               double progress,
+                               boolean cancelled) {
+        static TaskSnapshot from(BakeTask task) {
+            return new TaskSnapshot(
+                task.getTaskId(),
+                task.getPlacedCount(),
+                task.getSkippedCount(),
+                task.getTotalCount(),
+                task.getRemainingCount(),
+                task.getProgress(),
+                task.isCancelled()
+            );
         }
     }
 }
