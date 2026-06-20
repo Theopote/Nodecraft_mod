@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.nodes.utilities.assist.TagRelayNode;
+import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphNode;
 import com.nodecraft.nodesystem.nodes.output.execute.ApplyChangesNode;
 import com.nodecraft.nodesystem.nodes.output.preview.PreviewGeometryNode;
 import com.nodecraft.nodesystem.nodes.output.preview.GeometryViewerNode;
@@ -114,7 +115,7 @@ public class ImGuiNodeRenderer {
             return;
         }
 
-        String nodeDisplayName = node.getDisplayName();
+        String nodeDisplayName = nodeTitle(node);
         float unscaledTitleTextWidth = cache.getCachedTextWidth(nodeDisplayName);
 
         List<IPort> visibleInputPorts = getVisibleInputPorts(node);
@@ -221,6 +222,13 @@ public class ImGuiNodeRenderer {
         int baseNodeColor = colorCache.baseColor;
         int nodeBgColor = colorCache.nodeBgColor;
         int borderColor = colorCache.borderColor;
+        boolean subgraphNode = node instanceof SubgraphNode;
+
+        if (subgraphNode) {
+            baseNodeColor = ImGui.colorConvertFloat4ToU32(0.08f, 0.48f, 0.52f, 1.0f);
+            nodeBgColor = ImGui.colorConvertFloat4ToU32(0.07f, 0.11f, 0.13f, 0.98f);
+            borderColor = ImGui.colorConvertFloat4ToU32(0.26f, 0.84f, 0.82f, 1.0f);
+        }
 
         if (node instanceof TagRelayNode tagRelayNode) {
             int mappedColor = parseHexColorToU32(tagRelayNode.getResolvedColorHex(), baseNodeColor);
@@ -273,6 +281,13 @@ public class ImGuiNodeRenderer {
             drawList.addRectFilled(nodeScreenX, nodeScreenY, nodeScreenX + finalNodeWidthScaled, nodeScreenY + (baseTextLineHeight + 2 * NodeRenderConstants.NODE_VERTICAL_PADDING) * canvasZoom, baseNodeColor, nodeCornerRadiusScaled, ImDrawFlags.RoundCornersTop);
         }
         drawList.addRect(nodeScreenX, nodeScreenY, nodeScreenX + finalNodeWidthScaled, nodeScreenY + finalNodeHeightScaled, borderColor, nodeCornerRadiusScaled, 0, nodeBorderThicknessScaled);
+        if (subgraphNode) {
+            drawList.addRect(nodeScreenX - 2.0f * canvasZoom, nodeScreenY - 2.0f * canvasZoom,
+                    nodeScreenX + finalNodeWidthScaled + 2.0f * canvasZoom,
+                    nodeScreenY + finalNodeHeightScaled + 2.0f * canvasZoom,
+                    borderColor, nodeCornerRadiusScaled + 2.0f * canvasZoom, 0,
+                    Math.max(1.0f, nodeBorderThicknessScaled * 0.65f));
+        }
 
         // 为禁用节点添加虚线边框覆盖
         if (isDisabled) {
@@ -295,10 +310,11 @@ public class ImGuiNodeRenderer {
         }
 
         if (!compactRerouteNode) {
-            float titleTextWidthUnscaled = cache.getCachedTextWidth(node.getDisplayName());
+            String title = nodeTitle(node);
+            float titleTextWidthUnscaled = cache.getCachedTextWidth(title);
             float titleX = nodeScreenX + (finalNodeWidthScaled - titleTextWidthUnscaled * canvasZoom) / 2;
             float titleY = nodeScreenY + ((baseTextLineHeight + 2 * NodeRenderConstants.NODE_VERTICAL_PADDING) * canvasZoom - scaledTextLineHeight) / 2;
-            drawList.addText(font, baseFontSize * canvasZoom, titleX, titleY, textColor, node.getDisplayName());
+            drawList.addText(font, baseFontSize * canvasZoom, titleX, titleY, textColor, title);
 
             if (node instanceof TagRelayNode tagRelayNode) {
                 renderTagRelayBadge(drawList, tagRelayNode, nodeScreenX, nodeScreenY, finalNodeWidthScaled,
@@ -392,7 +408,7 @@ public class ImGuiNodeRenderer {
             unscaledPortsContentWidth += maxOutputTextWidthUnscaled + NodeRenderConstants.PORT_CIRCLE_TO_TEXT_PADDING + NodeRenderConstants.PORT_RADIUS_UNSCALED * 2;
         }
 
-        float titleTextWidthUnscaled = cache.getCachedTextWidth(node.getDisplayName());
+        float titleTextWidthUnscaled = cache.getCachedTextWidth(nodeTitle(node));
         float unscaledEffectiveContentWidthForPorts = Math.max(titleTextWidthUnscaled, unscaledPortsContentWidth);
 
         float unscaledAvailableWidthForInputText = 0;
@@ -434,6 +450,10 @@ public class ImGuiNodeRenderer {
                     hoveredNodeId, hoveredPortId, isHoveredPortOutput, shouldHighlight,
                     highlightSinValue, highlightCosValue, unscaledAvailableWidthForOutputText, portScreenPositions, showPortLabels);
         }
+    }
+
+    private static String nodeTitle(INode node) {
+        return node instanceof SubgraphNode ? "SUBGRAPH  " + node.getDisplayName() : node.getDisplayName();
     }
 
     private void renderInputPorts(ImDrawList drawList, List<IPort> visibleInputPorts, UUID nodeId, float nodeScreenX, float portYOffset,

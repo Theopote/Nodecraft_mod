@@ -27,12 +27,16 @@ import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.io.SavedPosition;
+import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 import imgui.ImDrawList;
 import imgui.ImGui;
 import imgui.ImVec2;
+import imgui.flag.ImGuiInputTextFlags;
 import imgui.flag.ImGuiMouseButton;
+import imgui.flag.ImGuiWindowFlags;
+import imgui.type.ImString;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.server.integrated.IntegratedServer;
@@ -60,6 +64,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
     private NodeGraph currentGraph;
     private Map<UUID, NodePosition> nodePositions = new HashMap<>();
     private final Deque<SubgraphEditContext> subgraphEditStack = new ArrayDeque<>();
+    private UUID subgraphRenameNodeId;
+    private final ImString subgraphRenameBuffer = new ImString(128);
+    private boolean openSubgraphRenamePopup;
     // portScreenPositions 存储的是端口的屏幕坐标 (已缩放)，每帧更新
     private Map<UUID, Map<String, ImVec2>> portScreenPositions = new HashMap<>();
 
@@ -281,6 +288,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
 
             // 获取当前鼠标位置
             ImVec2 mousePos = ImGui.getIO().getMousePos();
+            if (handleSubgraphNavigationClick(canvasPos, mousePos)) {
+                return;
+            }
 
             // 2.0 在绘制前先处理节点拖动位移，确保本帧节点背景与自定义UI同步移动
             applyNodeDragMovementBeforeRender();
@@ -292,13 +302,34 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             // 这一步会更新 NodePosition 中的 width/height 字段，并填充 portScreenPositions
             renderer.calculatePortPositions(canvasPos, currentGraph, nodePositions, portScreenPositions);
 
+            boolean subgraphDoubleClickConsumed = false;
+            if (ImGui.isMouseDoubleClicked(ImGuiMouseButton.Left)
+                    && !interaction.isCreatingConnection()
+                    && !interaction.isBoxSelecting()
+                    && currentGraph != null) {
+                UUID doubleClickedNodeId = getNodeIdUnderMouse(mousePos.x, mousePos.y);
+                INode doubleClickedNode = doubleClickedNodeId != null
+                    ? currentGraph.getNode(doubleClickedNodeId)
+                    : null;
+                if (doubleClickedNode instanceof SubgraphNode) {
+                    subgraphDoubleClickConsumed = true;
+                    if (isMouseOverNodeHeader(doubleClickedNodeId, mousePos, canvasPos)) {
+                        requestSubgraphRename(doubleClickedNodeId);
+                        ImGui.getIO().setWantCaptureMouse(true);
+                    } else if (openSubgraphNode(doubleClickedNodeId)) {
+                        ImGui.getIO().setWantCaptureMouse(true);
+                        return;
+                    }
+                }
+            }
+
             // 3. 渲染背景连接线（未选中节点之间的连接）
             renderer.renderConnectionsDirect(drawList, currentGraph, portScreenPositions, selectedNodeIds);
 
             // 4. 渲染节点（包含节点主体、标题和自定义UI）。
             // 节点渲染会设置 ImGui.invisibleButton，并更新 ImGui.isItemActive() 状态。
             // 在渲染前，在主窗口上下文里预先计算本帧点击目标节点（坐标在此处是正确的）。
-            if (ImGuiInputAdapter.isMouseClicked(ImGuiMouseButton.Left)) {
+            if (ImGuiInputAdapter.isMouseClicked(ImGuiMouseButton.Left) && !subgraphDoubleClickConsumed) {
                 UUID clickTargetNodeId = getNodeIdUnderMouse(mousePos.x, mousePos.y);
                 if (clickTargetNodeId == null) {
                     Map.Entry<UUID, String> clickedPort = interaction.getClickedPort(mousePos, portScreenPositions);
@@ -321,19 +352,6 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             interaction.updateHoveredPort(mousePos, portScreenPositions, currentGraph);
             interaction.updateHoveredConnection(mousePos, portScreenPositions, currentGraph);
             renderHoveredPortTooltip(currentGraph, interaction);
-
-            if (ImGui.isMouseDoubleClicked(ImGuiMouseButton.Left)
-                    && !interaction.isHoveringConnection()
-                    && !interaction.isCreatingConnection()
-                    && !interaction.isDraggingNode()
-                    && !interaction.isBoxSelecting()
-                    && currentGraph != null) {
-                UUID doubleClickedNodeId = getNodeIdUnderMouse(mousePos.x, mousePos.y);
-                if (doubleClickedNodeId != null && openSubgraphNode(doubleClickedNodeId)) {
-                    ImGui.getIO().setWantCaptureMouse(true);
-                    return;
-                }
-            }
 
             // 6.5 双击连接线自动插入中继节点（Reroute）
             if (ImGui.isMouseDoubleClicked(ImGuiMouseButton.Left)
@@ -466,16 +484,131 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             // 15. 处理节点搜索弹窗
             menus.renderNodeSearchPopup(); // 渲染搜索弹窗（如果弹窗已打开）
             maybeAutoExecutePreviewGraph();
+            renderSubgraphRenamePopup();
+            renderSubgraphNavigationOverlay(canvasPos);
 
         } catch (Exception e) {
             NodeCraft.LOGGER.error("渲染ImGui编辑器时出错: {}", e.getMessage(), e);
         }
     }
 
+    /** Keeps nested-graph navigation above canvas content without creating a separate top-level window. */
+    private void renderSubgraphNavigationOverlay(ImVec2 canvasPos) {
+        if (subgraphEditStack.isEmpty() || canvasPos == null) {
+            return;
+        }
+
+        int depth = subgraphEditStack.size();
+        String graphName = shortSubgraphName(currentGraph != null ? currentGraph.getName() : null);
+        String contextLabel = "SUBGRAPH " + depth + "  /  " + graphName;
+        float buttonX = canvasPos.x + 12.0f;
+        float buttonY = canvasPos.y + 12.0f;
+        float buttonWidth = 116.0f;
+        float buttonHeight = 30.0f;
+        ImVec2 mousePos = ImGui.getIO().getMousePos();
+        boolean hovered = isInside(mousePos, buttonX, buttonY, buttonWidth, buttonHeight);
+
+        ImDrawList overlay = ImGui.getWindowDrawList();
+        int buttonColor = ImGui.colorConvertFloat4ToU32(
+            hovered ? 0.28f : 0.20f,
+            hovered ? 0.50f : 0.38f,
+            hovered ? 0.66f : 0.52f,
+            1.0f
+        );
+        int borderColor = ImGui.colorConvertFloat4ToU32(0.42f, 0.78f, 0.98f, 1.0f);
+        int textColor = ImGui.colorConvertFloat4ToU32(0.95f, 0.97f, 1.0f, 1.0f);
+        overlay.addRectFilled(buttonX, buttonY, buttonX + buttonWidth, buttonY + buttonHeight, buttonColor, 4.0f);
+        overlay.addRect(buttonX, buttonY, buttonX + buttonWidth, buttonY + buttonHeight, borderColor, 4.0f);
+        String buttonText = "< Parent";
+        float buttonTextX = buttonX + (buttonWidth - ImGui.calcTextSize(buttonText).x) * 0.5f;
+        float buttonTextY = buttonY + (buttonHeight - ImGui.getTextLineHeight()) * 0.5f;
+        overlay.addText(buttonTextX, buttonTextY, textColor, buttonText);
+        overlay.addText(buttonX + buttonWidth + 10.0f, buttonTextY, borderColor, contextLabel);
+    }
+
+    private boolean handleSubgraphNavigationClick(ImVec2 canvasPos, ImVec2 mousePos) {
+        if (subgraphEditStack.isEmpty() || canvasPos == null || mousePos == null) {
+            return false;
+        }
+        float buttonX = canvasPos.x + 12.0f;
+        float buttonY = canvasPos.y + 12.0f;
+        if (!isInside(mousePos, buttonX, buttonY, 116.0f, 30.0f)) {
+            return false;
+        }
+        ImGui.getIO().setWantCaptureMouse(true);
+        if (ImGuiInputAdapter.isMouseClicked(ImGuiMouseButton.Left)) {
+            closeCurrentSubgraph();
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean isInside(ImVec2 point, float x, float y, float width, float height) {
+        return point != null
+            && point.x >= x && point.x <= x + width
+            && point.y >= y && point.y <= y + height;
+    }
+
+    private void requestSubgraphRename(UUID nodeId) {
+        INode node = currentGraph != null ? currentGraph.getNode(nodeId) : null;
+        if (!(node instanceof SubgraphNode)) {
+            return;
+        }
+        subgraphRenameNodeId = nodeId;
+        subgraphRenameBuffer.set(node.getDisplayName());
+        openSubgraphRenamePopup = true;
+    }
+
+    private void renderSubgraphRenamePopup() {
+        if (openSubgraphRenamePopup) {
+            ImGui.openPopup("Rename Subgraph");
+            openSubgraphRenamePopup = false;
+        }
+        if (!ImGui.beginPopupModal("Rename Subgraph", ImGuiWindowFlags.AlwaysAutoResize)) {
+            return;
+        }
+        ImGui.text("Name");
+        ImGui.setNextItemWidth(280.0f);
+        boolean submit = ImGui.inputText(
+            "##subgraph_name",
+            subgraphRenameBuffer,
+            ImGuiInputTextFlags.EnterReturnsTrue
+        );
+        submit |= ImGui.button("Rename", 92.0f, 26.0f);
+        ImGui.sameLine();
+        boolean cancel = ImGui.button("Cancel", 92.0f, 26.0f);
+        if (submit && renameSubgraphNode(subgraphRenameNodeId, subgraphRenameBuffer.get())) {
+            subgraphRenameNodeId = null;
+            ImGui.closeCurrentPopup();
+        } else if (cancel) {
+            subgraphRenameNodeId = null;
+            ImGui.closeCurrentPopup();
+        }
+        ImGui.endPopup();
+    }
+
+    private boolean isMouseOverNodeHeader(UUID nodeId, ImVec2 mousePos, ImVec2 canvasPos) {
+        NodePosition position = nodePositions.get(nodeId);
+        if (position == null || mousePos == null || canvasPos == null) {
+            return false;
+        }
+        float nodeX = canvasPos.x + position.x * canvasZoom + canvasOffsetX;
+        float nodeY = canvasPos.y + position.y * canvasZoom + canvasOffsetY;
+        float nodeWidth = (position.width > 0.0f ? position.width : 150.0f) * canvasZoom;
+        float headerHeight = (ImGui.getTextLineHeight() + 2.0f * NodeRenderConstants.NODE_VERTICAL_PADDING) * canvasZoom;
+        return mousePos.x >= nodeX && mousePos.x <= nodeX + nodeWidth
+            && mousePos.y >= nodeY && mousePos.y <= nodeY + headerHeight;
+    }
+
+    private static String shortSubgraphName(String name) {
+        String resolved = name == null || name.isBlank() ? "Embedded Graph" : name.trim();
+        return resolved.length() <= 42 ? resolved : resolved.substring(0, 39) + "...";
+    }
+
     /**
-     * 在渲染前应用节点拖动位移。
-     * 这样可以避免“本帧先绘制后位移”导致的节点背景与自定义UI视觉不同步。
+     * Applies node drag movement before rendering so the node body and custom UI move in the same frame.
      */
+
     private void applyNodeDragMovementBeforeRender() {
         if (!interaction.isDraggingNode() || !ImGuiInputAdapter.isMouseDown(ImGuiMouseButton.Left)) {
             return;
@@ -1577,6 +1710,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         String primaryOutputKey = outputKeys.isEmpty() ? "out" : outputKeys.getFirst();
 
         Map<String, Object> state = new LinkedHashMap<>();
+        state.put("displayName", subgraphName);
         state.put("subgraphRef", keyToken(subgraphName));
         state.put("inputKey", primaryInputKey);
         state.put("outputKey", primaryOutputKey);
@@ -1587,6 +1721,36 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         state.put("emitDebugTrace", true);
         state.put("embeddedGraphJson", embeddedGraphJson);
         return state;
+    }
+
+    boolean renameSubgraphNode(UUID nodeId, String requestedName) {
+        if (currentGraph == null || nodeId == null || requestedName == null) {
+            return false;
+        }
+        String name = requestedName.trim();
+        INode node = currentGraph.getNode(nodeId);
+        if (!(node instanceof SubgraphNode subgraphNode) || name.isEmpty()) {
+            return false;
+        }
+        if (name.equals(subgraphNode.getDisplayName())) {
+            return true;
+        }
+
+        boolean wasRecording = history != null && history.isRecording();
+        syncGraphNodePositions(currentGraph, nodePositions);
+        SavedGraph before = wasRecording ? toSavedGraphWithPositions(currentGraph, nodePositions) : null;
+        Map<String, Object> state = copyStateMap(subgraphNode.getNodeState());
+        state.put("displayName", name);
+        subgraphNode.setNodeState(state);
+        markGraphStructureDirty();
+        if (wasRecording) {
+            history.recordGraphTransaction(
+                "Rename Subgraph",
+                before,
+                toSavedGraphWithPositions(currentGraph, nodePositions)
+            );
+        }
+        return true;
     }
 
     private void reconnectSubgraphBoundaries(UUID wrapperNodeId, SubgraphExtractionService.ExtractionResult extraction) {

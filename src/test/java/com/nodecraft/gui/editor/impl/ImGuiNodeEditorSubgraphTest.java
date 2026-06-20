@@ -176,6 +176,26 @@ class ImGuiNodeEditorSubgraphTest {
         assertEquals(5, embeddedNodeCount(findSubgraphNode(editor.getCurrentGraph())));
     }
 
+    @Test
+    void renamesSubgraphAsSingleUndoRedoTransaction() {
+        ImGuiNodeEditor editor = prepareLinearSelectionGraph();
+        assertTrue(editor.createSubgraphFromSelection());
+        editor.getHistory().clear();
+
+        SubgraphNode wrapper = findSubgraphNode(editor.getCurrentGraph());
+        assertNotNull(wrapper);
+        String originalName = wrapper.getDisplayName();
+
+        assertTrue(editor.renameSubgraphNode(wrapper.getId(), "Castle Wall"));
+        assertEquals("Castle Wall", findSubgraphNode(editor.getCurrentGraph()).getDisplayName());
+        assertEquals(ImGuiNodeHistory.ActionType.GRAPH_TRANSACTION, editor.getHistory().getUndoTopActionType());
+
+        assertTrue(editor.undo());
+        assertEquals(originalName, findSubgraphNode(editor.getCurrentGraph()).getDisplayName());
+        assertTrue(editor.redo());
+        assertEquals("Castle Wall", findSubgraphNode(editor.getCurrentGraph()).getDisplayName());
+    }
+
     private static ImGuiNodeEditor prepareLinearSelectionGraph() {
         NodeGraph graph = new NodeGraph("transaction");
         PassNode source = new PassNode();

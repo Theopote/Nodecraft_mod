@@ -36,6 +36,8 @@ public class SubgraphNode extends BaseNode {
     private static final String DYNAMIC_INPUT_PREFIX = "dynamic_input_key_";
     private static final String DYNAMIC_OUTPUT_PREFIX = "dynamic_output_key_";
 
+    private String displayName = "Subgraph";
+
     @NodeProperty(displayName = "Subgraph Ref", category = "Subgraph", order = 1)
     private String subgraphRef = "subgraph";
 
@@ -110,7 +112,7 @@ public class SubgraphNode extends BaseNode {
 
     @Override
     public String getDisplayName() {
-        return "Subgraph";
+        return displayName == null || displayName.isBlank() ? "Subgraph" : displayName;
     }
 
     @Override
@@ -637,6 +639,7 @@ public class SubgraphNode extends BaseNode {
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
+        state.put("displayName", getDisplayName());
         state.put("subgraphRef", subgraphRef);
         state.put("inputKey", inputKey);
         state.put("outputKey", outputKey);
@@ -653,6 +656,10 @@ public class SubgraphNode extends BaseNode {
     public void setNodeState(Object state) {
         if (!(state instanceof Map<?, ?> map)) {
             return;
+        }
+        Object displayNameObj = map.get("displayName");
+        if (displayNameObj instanceof String value && !value.isBlank()) {
+            displayName = value.trim();
         }
         Object subgraphRefObj = map.get("subgraphRef");
         if (subgraphRefObj instanceof String value) {
