@@ -1,10 +1,12 @@
 package com.nodecraft.gui.editor.impl;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.List;
 import java.util.HashSet;
+import java.util.ArrayList;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.editor.NodeEditorFactory;
@@ -16,7 +18,9 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.NodeExecutor;
+import com.nodecraft.nodesystem.graph.GraphSerializer;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.graph.SubgraphExtractionService;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 import imgui.ImDrawList;
@@ -1175,6 +1179,161 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
             markGraphStructureDirty();
         }
         return result;
+    }
+
+    public boolean createSubgraphFromSelection() {
+        if (currentGraph == null || selectedNodeIds.isEmpty()) {
+            return false;
+        }
+
+        java.util.Set<UUID> selection = new java.util.LinkedHashSet<>(selectedNodeIds);
+        String subgraphName = currentGraph.getName() != null && !currentGraph.getName().isBlank()
+            ? currentGraph.getName() + " Selection"
+            : "Extracted Subgraph";
+
+        try {
+            SubgraphExtractionService.ExtractionResult extraction = SubgraphExtractionService.extract(currentGraph, selection, subgraphName);
+            String embeddedGraphJson = GraphSerializer.toJson(extraction.savedGraph());
+            Map<String, Object> subgraphState = buildSubgraphNodeState(extraction, subgraphName, embeddedGraphJson);
+            NodePosition wrapperPosition = selectionCenter(selection);
+
+            boolean wasRecording = history != null && history.isRecording();
+            if (wasRecording) {
+                history.pauseRecording();
+            }
+            try {
+                INode wrapper = addNodeWithState(
+                    "utilities.organization.subgraph",
+                    null,
+                    wrapperPosition.x,
+                    wrapperPosition.y,
+                    subgraphState
+                );
+                if (wrapper == null) {
+                    return false;
+                }
+
+                for (UUID nodeId : new ArrayList<>(selection)) {
+                    if (currentGraph.removeNode(nodeId)) {
+                        removeNodePosition(nodeId);
+                        removeSelectedNode(nodeId);
+                    }
+                }
+
+                reconnectSubgraphBoundaries(wrapper.getId(), extraction);
+                clearSelectedNodes();
+                setSelectedNodeId(wrapper.getId());
+                markGraphStructureDirty();
+                NodeCraft.LOGGER.info(
+                    "Created subgraph '{}' from {} nodes. inputs={}, outputs={}",
+                    subgraphName,
+                    selection.size(),
+                    extraction.inputBindings().size(),
+                    extraction.outputBindings().size()
+                );
+                return true;
+            } finally {
+                if (wasRecording) {
+                    history.resumeRecording();
+                }
+            }
+        } catch (Exception e) {
+            NodeCraft.LOGGER.error("Failed to create subgraph from selection: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+
+    private Map<String, Object> buildSubgraphNodeState(
+        SubgraphExtractionService.ExtractionResult extraction,
+        String subgraphName,
+        String embeddedGraphJson
+    ) {
+        List<String> inputKeys = extraction.inputKeys();
+        List<String> outputKeys = extraction.outputKeys();
+        String primaryInputKey = inputKeys.isEmpty() ? "in" : inputKeys.get(0);
+        String primaryOutputKey = outputKeys.isEmpty() ? "out" : outputKeys.get(0);
+
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("subgraphRef", keyToken(subgraphName));
+        state.put("inputKey", primaryInputKey);
+        state.put("outputKey", primaryOutputKey);
+        state.put("strictMode", true);
+        state.put("maxCallDepth", 8);
+        state.put("additionalInputKeys", joinAdditionalKeys(inputKeys));
+        state.put("additionalOutputKeys", joinAdditionalKeys(outputKeys));
+        state.put("emitDebugTrace", true);
+        state.put("embeddedGraphJson", embeddedGraphJson);
+        return state;
+    }
+
+    private void reconnectSubgraphBoundaries(UUID wrapperNodeId, SubgraphExtractionService.ExtractionResult extraction) {
+        for (SubgraphExtractionService.InputBinding binding : extraction.inputBindings()) {
+            currentGraph.connect(
+                binding.externalSourceNodeId(),
+                binding.externalSourcePortId(),
+                wrapperNodeId,
+                dynamicInputPortId(binding.inputKey())
+            );
+        }
+
+        for (SubgraphExtractionService.OutputBinding binding : extraction.outputBindings()) {
+            currentGraph.connect(
+                wrapperNodeId,
+                dynamicOutputPortId(binding.outputKey()),
+                binding.externalTargetNodeId(),
+                binding.externalTargetPortId()
+            );
+        }
+    }
+
+    private NodePosition selectionCenter(java.util.Set<UUID> selection) {
+        float minX = Float.MAX_VALUE;
+        float minY = Float.MAX_VALUE;
+        float maxX = -Float.MAX_VALUE;
+        float maxY = -Float.MAX_VALUE;
+        boolean found = false;
+
+        for (UUID nodeId : selection) {
+            NodePosition position = nodePositions.get(nodeId);
+            if (position == null) {
+                continue;
+            }
+            float width = position.width > 0 ? position.width : 180.0f;
+            float height = position.height > 0 ? position.height : 90.0f;
+            minX = Math.min(minX, position.x);
+            minY = Math.min(minY, position.y);
+            maxX = Math.max(maxX, position.x + width);
+            maxY = Math.max(maxY, position.y + height);
+            found = true;
+        }
+
+        if (!found) {
+            return new NodePosition(0.0f, 0.0f);
+        }
+        return new NodePosition((minX + maxX) / 2.0f - 100.0f, (minY + maxY) / 2.0f - 45.0f);
+    }
+
+    private static String joinAdditionalKeys(List<String> keys) {
+        if (keys == null || keys.size() <= 1) {
+            return "";
+        }
+        return String.join(",", keys.subList(1, keys.size()));
+    }
+
+    private static String dynamicInputPortId(String key) {
+        return "dynamic_input_key_" + keyToken(key);
+    }
+
+    private static String dynamicOutputPortId(String key) {
+        return "dynamic_output_key_" + keyToken(key);
+    }
+
+    private static String keyToken(String key) {
+        if (key == null || key.isBlank()) {
+            return "empty";
+        }
+        String normalized = key.trim().replaceAll("[^a-zA-Z0-9_]", "_");
+        return normalized.isEmpty() ? "empty" : normalized;
     }
 
     @Override

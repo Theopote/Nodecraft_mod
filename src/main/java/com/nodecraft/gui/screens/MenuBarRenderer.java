@@ -84,6 +84,7 @@ public class MenuBarRenderer {
                     saveNodeGraph(true);
                 }
                 ImGui.separator();
+
                 if (ImGui.menuItem("关闭编辑器")) {
                     closeAction.run(); // 调用关闭回调
                 }
@@ -155,6 +156,12 @@ public class MenuBarRenderer {
                 }
                 
                 ImGui.separator();
+
+                if (ImGui.menuItem("Create Subgraph From Selection", null, false, hasSelection)) {
+                    if (editor != null && !editor.createSubgraphFromSelection()) {
+                        new MessageDialog("Subgraph", "Failed to create subgraph from current selection.").show();
+                    }
+                }
                 
                 // 分组功能暂未实现
                 if (ImGui.menuItem("组选择", null, false, false)) {

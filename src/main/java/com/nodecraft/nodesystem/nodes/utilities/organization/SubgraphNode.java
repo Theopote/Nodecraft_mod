@@ -60,6 +60,8 @@ public class SubgraphNode extends BaseNode {
     @NodeProperty(displayName = "Emit Debug Trace", category = "Subgraph", order = 8)
     private boolean emitDebugTrace = true;
 
+    private String embeddedGraphJson = "";
+
     private static final String INPUT_SUBGRAPH_REF_ID = "input_subgraph_ref";
     private static final String INPUT_SUBGRAPH_GRAPH_ID = "input_subgraph_graph";
     private static final String INPUT_VALUE_ID = "input_value";
@@ -100,7 +102,10 @@ public class SubgraphNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_DEBUG_TRACE_ID, "Debug Trace", "Debug messages for subgraph mapping/execution", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether subgraph mapping/execution succeeded", NodeDataType.BOOLEAN, this));
 
-        rebuildDynamicPorts(List.of(resolveInputKey()), List.of(resolveOutputKey()));
+        rebuildDynamicPorts(
+            resolveRequestedKeys(resolveInputKey(), additionalInputKeys, null),
+            resolveRequestedKeys(resolveOutputKey(), additionalOutputKeys, null)
+        );
     }
 
     @Override
@@ -483,6 +488,11 @@ public class SubgraphNode extends BaseNode {
             return cloneGraph(direct);
         }
 
+        NodeGraph embedded = toNodeGraph(embeddedGraphJson);
+        if (embedded != null) {
+            return cloneGraph(embedded);
+        }
+
         if (context == null) {
             return null;
         }
@@ -635,6 +645,7 @@ public class SubgraphNode extends BaseNode {
         state.put("additionalInputKeys", additionalInputKeys);
         state.put("additionalOutputKeys", additionalOutputKeys);
         state.put("emitDebugTrace", emitDebugTrace);
+        state.put("embeddedGraphJson", embeddedGraphJson);
         return state;
     }
 
@@ -675,7 +686,14 @@ public class SubgraphNode extends BaseNode {
         if (emitDebugTraceObj instanceof Boolean value) {
             emitDebugTrace = value;
         }
-        rebuildDynamicPorts(List.of(resolveInputKey()), List.of(resolveOutputKey()));
+        Object embeddedGraphJsonObj = map.get("embeddedGraphJson");
+        if (embeddedGraphJsonObj instanceof String value) {
+            embeddedGraphJson = value;
+        }
+        rebuildDynamicPorts(
+            resolveRequestedKeys(resolveInputKey(), additionalInputKeys, null),
+            resolveRequestedKeys(resolveOutputKey(), additionalOutputKeys, null)
+        );
     }
 
     private record NestedExecutionResult(boolean executed, boolean success, Map<String, Object> outputs, @Nullable String errorMessage) {
