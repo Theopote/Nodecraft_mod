@@ -991,6 +991,11 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
 
     public void setCurrentGraph(NodeGraph graph) {
         this.currentGraph = graph;
+        subgraphEditStack.clear();
+        clearSelectedNodes();
+        if (history != null) {
+            history.clear();
+        }
     }
 
     @Override
