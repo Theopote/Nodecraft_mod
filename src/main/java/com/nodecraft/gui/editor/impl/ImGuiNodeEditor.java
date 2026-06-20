@@ -189,7 +189,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
                         String nodeType = testNodeTypes[i];
                         try {
                             float x = startX + (addedCount % 4) * spacingX; // 每行4个节点
-                            float y = startY + (addedCount / 4) * spacingY;
+                            float y = startY + ((float) addedCount / 4) * spacingY;
 
                             INode node = addNode(nodeType, x, y);
                             if (node != null) {
@@ -1519,8 +1519,8 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
     ) {
         List<String> inputKeys = extraction.inputKeys();
         List<String> outputKeys = extraction.outputKeys();
-        String primaryInputKey = inputKeys.isEmpty() ? "in" : inputKeys.get(0);
-        String primaryOutputKey = outputKeys.isEmpty() ? "out" : outputKeys.get(0);
+        String primaryInputKey = inputKeys.isEmpty() ? "in" : inputKeys.getFirst();
+        String primaryOutputKey = outputKeys.isEmpty() ? "out" : outputKeys.getFirst();
 
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("subgraphRef", keyToken(subgraphName));
@@ -1851,8 +1851,8 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
         }
         positions.sort(java.util.Comparator.comparingDouble(position -> position.x + getSafeWidth(position) / 2.0f));
 
-        NodePosition first = positions.get(0);
-        NodePosition last = positions.get(positions.size() - 1);
+        NodePosition first = positions.getFirst();
+        NodePosition last = positions.getLast();
         float firstCenter = first.x + getSafeWidth(first) / 2.0f;
         float lastCenter = last.x + getSafeWidth(last) / 2.0f;
         float step = (lastCenter - firstCenter) / (positions.size() - 1);
