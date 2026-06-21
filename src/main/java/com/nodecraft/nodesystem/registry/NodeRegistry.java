@@ -1,6 +1,8 @@
 package com.nodecraft.nodesystem.registry;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.core.exception.NodeExecutionException;
+import com.nodecraft.core.exception.NodeValidationException;
 import com.nodecraft.gui.node.NodeInfo;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.spi.INodeProvider;
@@ -229,25 +231,25 @@ public class NodeRegistry {
         String resolvedNodeId = normalizeNodeId(nodeId);
         NodeInfo nodeInfo = nodeInfoMap.get(resolvedNodeId);
         if (nodeInfo == null) {
-            throw new IllegalArgumentException("Unregistered node type ID: " + nodeId);
+            throw new NodeValidationException("Unregistered node type ID: " + nodeId);
         }
 
         Class<? extends INode> nodeClass = nodeInfo.getNodeClass();
         if (nodeClass == null) {
-            throw new IllegalArgumentException("Node type '" + nodeId + "' (" + nodeInfo.getDisplayName() + ") has no implementation class.");
+            throw new NodeValidationException("Node type '" + nodeId + "' (" + nodeInfo.getDisplayName() + ") has no implementation class.");
         }
 
         try {
             return nodeClass.getDeclaredConstructor().newInstance();
         } catch (NoSuchMethodException e) {
             NodeCraft.LOGGER.error("Node class {} is missing a no-argument constructor.", nodeClass.getName(), e);
-            throw new RuntimeException("Node class " + nodeClass.getName() + " is missing a no-argument constructor.", e);
+            throw new NodeExecutionException("Node class " + nodeClass.getName() + " is missing a no-argument constructor.", e);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
             NodeCraft.LOGGER.error("Failed to instantiate node {} ({}).", nodeId, nodeClass.getName(), e);
-            throw new RuntimeException("Failed to instantiate node " + nodeId + ": " + e.getMessage(), e);
+            throw new NodeExecutionException("Failed to instantiate node " + nodeId + ": " + e.getMessage(), e);
         } catch (Exception e) {
             NodeCraft.LOGGER.error("Unexpected error while instantiating node {} ({}).", nodeId, nodeClass.getName(), e);
-            throw new RuntimeException("Unexpected error while instantiating node " + nodeId + ": " + e.getMessage(), e);
+            throw new NodeExecutionException("Unexpected error while instantiating node " + nodeId + ": " + e.getMessage(), e);
         }
     }
 

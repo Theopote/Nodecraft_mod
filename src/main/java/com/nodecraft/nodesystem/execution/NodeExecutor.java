@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.TrackedPreviewPlacementService;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -303,7 +304,7 @@ public class NodeExecutor {
         private static int sequence = 1;
 
         @Override
-        public synchronized Thread newThread(Runnable runnable) {
+        public synchronized Thread newThread(@NonNull Runnable runnable) {
             Thread thread = new Thread(runnable, "nodecraft-graph-worker-" + sequence++);
             thread.setDaemon(true);
             return thread;

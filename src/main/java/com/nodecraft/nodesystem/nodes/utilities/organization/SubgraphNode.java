@@ -160,9 +160,7 @@ public class SubgraphNode extends BaseNode {
         debugTrace.add("inputKeys=" + inputKeys);
         debugTrace.add("outputKeys=" + outputKeys);
 
-        Object mappedInputValue = inputMap.containsKey(resolvedInputKey)
-            ? inputMap.get(resolvedInputKey)
-            : primaryValue;
+        Object mappedInputValue = inputMap.getOrDefault(resolvedInputKey, primaryValue);
 
         Map<String, Object> resolvedInputs = new LinkedHashMap<>(inputMap);
         resolvedInputs.putIfAbsent(resolvedInputKey, mappedInputValue);
@@ -589,7 +587,6 @@ public class SubgraphNode extends BaseNode {
         return stack.contains(ref);
     }
 
-    @SuppressWarnings("unchecked")
     private List<String> normalizeCallStack(Object raw) {
         if (raw instanceof List<?> list) {
             List<String> normalized = new ArrayList<>();
@@ -604,7 +601,6 @@ public class SubgraphNode extends BaseNode {
         return new ArrayList<>();
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, Object> toStringObjectMap(Object value) {
         if (!(value instanceof Map<?, ?> map)) {
             return new LinkedHashMap<>();

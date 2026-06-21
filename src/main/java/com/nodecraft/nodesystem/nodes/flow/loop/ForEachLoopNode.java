@@ -88,8 +88,8 @@ public class ForEachLoopNode extends BaseNode {
             pairs.add(pair);
         }
 
-        Object firstItem = items.isEmpty() ? null : items.get(0);
-        Object lastItem = items.isEmpty() ? null : items.get(items.size() - 1);
+        Object firstItem = items.isEmpty() ? null : items.getFirst();
+        Object lastItem = items.isEmpty() ? null : items.getLast();
 
         outputValues.put(OUTPUT_ITEMS_ID, items);
         outputValues.put(OUTPUT_INDICES_ID, indices);
@@ -101,24 +101,28 @@ public class ForEachLoopNode extends BaseNode {
     }
 
     private boolean coerceEnabled(Object value) {
-        if (value == null) {
-            return true;
-        }
-        if (value instanceof Boolean booleanValue) {
-            return booleanValue;
-        }
-        if (value instanceof Number number) {
-            return number.doubleValue() != 0.0d;
-        }
-        if (value instanceof String stringValue) {
-            String normalized = stringValue.trim();
-            if (normalized.isEmpty()) {
-                return false;
+        switch (value) {
+            case null -> {
+                return true;
             }
-            return switch (normalized.toLowerCase(Locale.ROOT)) {
-                case "true", "yes", "1", "on" -> true;
-                default -> false;
-            };
+            case Boolean booleanValue -> {
+                return booleanValue;
+            }
+            case Number number -> {
+                return number.doubleValue() != 0.0d;
+            }
+            case String stringValue -> {
+                String normalized = stringValue.trim();
+                if (normalized.isEmpty()) {
+                    return false;
+                }
+                return switch (normalized.toLowerCase(Locale.ROOT)) {
+                    case "true", "yes", "1", "on" -> true;
+                    default -> false;
+                };
+            }
+            default -> {
+            }
         }
         return true;
     }

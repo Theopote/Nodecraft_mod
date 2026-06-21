@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.core.exception.NodeValidationException;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
@@ -232,7 +233,7 @@ public class ImGuiNodeIO {
                         NodeCraft.LOGGER.warn("无法加载节点：实例不是 BaseNode 类型。Type ID={}, Saved ID={}, Actual Type={}",
                             savedNode.typeId, savedNode.nodeId, iNode.getClass().getName());
                     }
-                } catch (IllegalArgumentException e) {
+                } catch (NodeValidationException e) {
                     skippedUnknownNodeTypes++;
                     NodeCraft.LOGGER.warn("跳过未注册节点类型: {} (Saved ID: {})", savedNode.typeId, savedNode.nodeId);
                 }
