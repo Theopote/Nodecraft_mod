@@ -121,6 +121,40 @@ class GraphSerializerTest {
     }
 
     @Test
+    void roundTripPreservesNodePositions() {
+        NodeGraph original = new NodeGraph("positioned");
+        PassNode left = new PassNode();
+        PassNode right = new PassNode();
+        left.setPosition(12.5, 34.0);
+        right.setPosition(88.0, 16.25);
+        original.addNode(left);
+        original.addNode(right);
+
+        SavedGraph saved = GraphSerializer.toSavedGraph(original);
+        assertEquals(12.5f, saved.nodePositions.get(left.getId().toString()).x);
+        assertEquals(34.0f, saved.nodePositions.get(left.getId().toString()).y);
+        assertEquals(88.0f, saved.nodePositions.get(right.getId().toString()).x);
+        assertEquals(16.25f, saved.nodePositions.get(right.getId().toString()).y);
+
+        NodeGraph loaded = GraphSerializer.fromSavedGraph(saved);
+        PassNode loadedLeft = loaded.getNodes().stream()
+            .filter(node -> Math.abs(node.getPositionX() - 12.5) < 0.001)
+            .map(PassNode.class::cast)
+            .findFirst()
+            .orElseThrow();
+        PassNode loadedRight = loaded.getNodes().stream()
+            .filter(node -> Math.abs(node.getPositionX() - 88.0) < 0.001)
+            .map(PassNode.class::cast)
+            .findFirst()
+            .orElseThrow();
+
+        assertEquals(12.5, loadedLeft.getPositionX(), 0.001);
+        assertEquals(34.0, loadedLeft.getPositionY(), 0.001);
+        assertEquals(88.0, loadedRight.getPositionX(), 0.001);
+        assertEquals(16.25, loadedRight.getPositionY(), 0.001);
+    }
+
+    @Test
     void migrateCompatibilityNodesRemapsLegacyTypeIds() {
         SavedGraph savedGraph = new SavedGraph();
         savedGraph.graphName = "legacy";

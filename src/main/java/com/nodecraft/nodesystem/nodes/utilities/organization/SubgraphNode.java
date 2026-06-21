@@ -335,7 +335,6 @@ public class SubgraphNode extends BaseNode {
             }
             if (primaryOutputKey.equals(key)) {
                 mapped.put(key, primaryFallback);
-                availableOutputs.putIfAbsent(key, primaryFallback);
             } else {
                 mapped.put(key, null);
             }

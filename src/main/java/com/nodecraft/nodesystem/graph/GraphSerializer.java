@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
+import com.nodecraft.nodesystem.io.SavedPosition;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +51,10 @@ public class GraphSerializer {
                 savedNode.typeId = registry.resolveCanonicalNodeId(baseNode.getTypeId());
                 savedNode.state = baseNode.getNodeState();
                 savedGraph.nodes.add(savedNode);
+                savedGraph.nodePositions.put(
+                    savedNode.nodeId,
+                    new SavedPosition((float) baseNode.getPositionX(), (float) baseNode.getPositionY())
+                );
             } else {
                 LOGGER.warn("Skipping non-BaseNode while saving: {}", node.getId());
             }
@@ -100,6 +105,12 @@ public class GraphSerializer {
                 if (iNode instanceof BaseNode newNode) {
                     try {
                         newNode.setNodeState(savedNode.state);
+                        if (savedGraph.nodePositions != null) {
+                            SavedPosition savedPosition = savedGraph.nodePositions.get(savedNode.nodeId);
+                            if (savedPosition != null) {
+                                newNode.setPosition(savedPosition.x, savedPosition.y);
+                            }
+                        }
                         loadedNodesMap.put(savedNode.nodeId, newNode);
                         graph.addNode(newNode);
                     } catch (Exception e) {
