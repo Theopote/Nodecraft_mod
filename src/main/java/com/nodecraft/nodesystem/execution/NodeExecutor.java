@@ -24,11 +24,17 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Executes a node graph in topological order.
+ * Executes a node graph as a DAG dataflow engine using static topological order.
  *
- * <p>The executor now supports an optional partial execution scope. When a scope
- * is provided, only nodes inside that scope are recomputed. Upstream nodes
- * outside the scope reuse their previously computed outputs.</p>
+ * <p>Each node is evaluated at most once per run. Data dependencies come from port
+ * connections; cycles are rejected because they are invalid in this model. Flow
+ * control nodes ({@code Branch}, {@code Sequence}, {@code ForEach}, etc.) route or
+ * transform values within a single pass—they do not trigger exec-style re-entry or
+ * skip downstream nodes on unselected branches.</p>
+ *
+ * <p>Partial execution scope: when a scope is provided, only nodes inside that scope
+ * are recomputed. Upstream nodes outside the scope reuse their previously computed
+ * outputs.</p>
  */
 public class NodeExecutor {
 

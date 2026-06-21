@@ -17,7 +17,7 @@ import java.util.UUID;
 @NodeInfo(
     id = "flow.loop.for_each",
     displayName = "For Each Loop",
-    description = "Iterates over a list and exposes derived iteration data.",
+    description = "Dataflow: expands a list into items, indices, and pairs in one pass. Does not re-run downstream nodes per element.",
     category = "flow.loop",
     order = 0
 )

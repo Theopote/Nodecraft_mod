@@ -13,7 +13,7 @@ import java.util.UUID;
 @NodeInfo(
     id = "flow.control.sequence",
     displayName = "Sequence",
-    description = "Replicates one signal to ordered sequence outputs.",
+    description = "Dataflow: replicates one value to Step 1..N outputs in a single pass. Does not enforce step-by-step exec ordering.",
     category = "flow.control",
     order = 1
 )

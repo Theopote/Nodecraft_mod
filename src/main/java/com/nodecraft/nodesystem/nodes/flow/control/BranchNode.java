@@ -12,7 +12,7 @@ import java.util.UUID;
 @NodeInfo(
     id = "flow.control.branch",
     displayName = "Branch",
-    description = "Routes an input signal to True or False output based on condition.",
+    description = "Dataflow: routes a value to True or False output by condition. Does not skip downstream nodes; unselected branch outputs null.",
     category = "flow.control",
     order = 0
 )
