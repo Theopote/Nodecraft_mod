@@ -143,6 +143,7 @@ public class PreviewRenderer {
 
             AbstractPreviewElement element = createPreviewElement(previewType, previewId, ownerNodeId, data, options);
             if (element != null) {
+                enforceActivePreviewLimit();
                 activeElements.put(previewId, element);
 
                 // 维护节点到预览的映射，使用线程安全的CopyOnWriteArrayList
@@ -452,8 +453,14 @@ public class PreviewRenderer {
         }
 
         // 直接按优先级顺序渲染元素
+        int renderedThisFrame = 0;
+        int renderBudget = settings.maxElementsPerFrame;
+        outer:
         for (List<AbstractPreviewElement> priorityGroup : prioritizedElements.values()) {
             for (AbstractPreviewElement element : priorityGroup) {
+                if (renderedThisFrame >= renderBudget) {
+                    break outer;
+                }
                 // 避免并发删除后旧快照元素被渲染（可能已执行 cleanup）。
                 if (activeElements.get(element.getId()) != element) {
                     continue;
@@ -461,11 +468,28 @@ public class PreviewRenderer {
                 if (element.isVisible() && element.shouldRender(camera)) {
                     try {
                         element.render(matrices, camera, partialTicks, globalOpacity);
+                        renderedThisFrame++;
                     } catch (Exception e) {
                         NodeCraft.LOGGER.error("Error rendering preview element " + element.getId() + ": " + e.getMessage(), e);
                     }
                 }
             }
+        }
+    }
+
+    private void enforceActivePreviewLimit() {
+        int limit = settings.maxActivePreviews;
+        while (activeElements.size() >= limit) {
+            Iterator<String> iterator = activeElements.keySet().iterator();
+            if (!iterator.hasNext()) {
+                break;
+            }
+            hidePreview(iterator.next());
+            NodeCraft.LOGGER.warn(
+                    "Active preview limit {} reached; evicted an older preview element (remaining={})",
+                    limit,
+                    activeElements.size()
+            );
         }
     }
     
@@ -613,6 +637,7 @@ public class PreviewRenderer {
         
         // 性能设置
         public volatile int maxElementsPerFrame = 1000;
+        public volatile int maxActivePreviews = 2048;
         public volatile float lodDistance = 64.0f;
         
         /**
@@ -675,6 +700,14 @@ public class PreviewRenderer {
          */
         public void setMaxElementsPerFrame(int maxElements) {
             this.maxElementsPerFrame = Math.max(1, maxElements);
+        }
+
+        /**
+         * Sets the maximum number of concurrently registered preview elements.
+         * @param maxPreviews maximum active previews (&gt;0)
+         */
+        public void setMaxActivePreviews(int maxPreviews) {
+            this.maxActivePreviews = Math.max(1, maxPreviews);
         }
         
         /**

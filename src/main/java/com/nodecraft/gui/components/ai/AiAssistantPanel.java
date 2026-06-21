@@ -1599,8 +1599,7 @@ public final class AiAssistantPanel {
             return Map.of();
         }
         try {
-            INode node = registry.createNodeInstance(typeId);
-            return toStateMap(node == null ? null : node.getNodeState());
+            return registry.getDefaultNodeState(typeId);
         } catch (Exception ignored) {
             return Map.of();
         }

@@ -11,6 +11,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -29,6 +30,8 @@ public class NodeRegistry {
     private final Map<String, NodeCategory> categoryMap = new ConcurrentHashMap<>();
     private volatile boolean initialized = false;
     private volatile List<NodeCategory> sortedCategoriesCache = null;
+    private volatile long introspectionEpoch = 0L;
+    private final Map<String, Map<String, Object>> defaultNodeStateCache = new ConcurrentHashMap<>();
 
     private NodeRegistry() {
         // Singleton.
@@ -114,6 +117,7 @@ public class NodeRegistry {
             category.sealNodes();
         }
         initialized = true;
+        introspectionEpoch++;
         NodeCraft.LOGGER.info("NodeRegistry initialized. Loaded {} providers, {} categories, and {} nodes.",
                 providerCount, categoryMap.size(), nodeInfoMap.size());
     }
@@ -254,6 +258,49 @@ public class NodeRegistry {
     }
 
     /**
+     * Returns an immutable snapshot of a freshly constructed node's default {@link INode#getNodeState()}.
+     * Results are cached per type until the registry is cleared or re-initialized.
+     */
+    public Map<String, Object> getDefaultNodeState(String nodeId) {
+        String resolvedNodeId = normalizeNodeId(nodeId);
+        if (resolvedNodeId == null) {
+            return Map.of();
+        }
+        Map<String, Object> cached = defaultNodeStateCache.computeIfAbsent(resolvedNodeId, this::buildDefaultNodeStateSnapshot);
+        return cached.isEmpty() ? Map.of() : Map.copyOf(cached);
+    }
+
+    /**
+     * Monotonic counter bumped whenever registry metadata caches must be rebuilt.
+     */
+    public long getIntrospectionEpoch() {
+        return introspectionEpoch;
+    }
+
+    private Map<String, Object> buildDefaultNodeStateSnapshot(String resolvedNodeId) {
+        try {
+            INode node = createNodeInstance(resolvedNodeId);
+            return snapshotNodeState(node == null ? null : node.getNodeState());
+        } catch (Exception e) {
+            NodeCraft.LOGGER.debug("Unable to capture default node state for {}: {}", resolvedNodeId, e.getMessage());
+            return Map.of();
+        }
+    }
+
+    private static Map<String, Object> snapshotNodeState(Object state) {
+        if (!(state instanceof Map<?, ?> rawMap) || rawMap.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Object> normalized = new HashMap<>();
+        for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
+            if (entry.getKey() instanceof String key && !key.isBlank()) {
+                normalized.put(key, entry.getValue());
+            }
+        }
+        return normalized.isEmpty() ? Map.of() : Map.copyOf(normalized);
+    }
+
+    /**
      * Returns the category for the given category ID.
      *
      * @param categoryId category ID
@@ -334,6 +381,8 @@ public class NodeRegistry {
     private void clearInternal() {
         nodeInfoMap.clear();
         categoryMap.clear();
+        defaultNodeStateCache.clear();
+        introspectionEpoch++;
         invalidateCategoryCache();
         // The initialized flag is managed by initialize() and clear().
     }

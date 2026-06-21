@@ -105,7 +105,11 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
         if (options != null && options.particleDensity != null) {
             quality = options.particleDensity;
         }
-        return Math.max(MIN_QUALITY, Math.min(MAX_QUALITY, quality));
+        quality = Math.max(MIN_QUALITY, Math.min(MAX_QUALITY, quality));
+        if (options != null && Boolean.TRUE.equals(options.enableLOD)) {
+            quality = Math.max(MIN_QUALITY, Math.min(quality, 12));
+        }
+        return quality;
     }
 
     private void collectGeometry(Object data, List<GeometryData> target) {

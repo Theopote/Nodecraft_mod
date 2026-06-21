@@ -60,10 +60,42 @@ public final class AiNodeSchemaCatalog {
     }
 
     public static List<NodeSchema> collectAll(NodeRegistry registry) {
-        List<NodeSchema> schemas = new ArrayList<>();
         if (registry == null) {
-            return schemas;
+            return List.of();
         }
+
+        long epoch = registry.getIntrospectionEpoch();
+        List<NodeSchema> cached = cachedSchemas;
+        if (cached != null && cachedEpoch == epoch) {
+            return cached;
+        }
+
+        synchronized (AiNodeSchemaCatalog.class) {
+            if (cachedSchemas != null && cachedEpoch == registry.getIntrospectionEpoch()) {
+                return cachedSchemas;
+            }
+            List<NodeSchema> built = buildAll(registry);
+            cachedSchemas = List.copyOf(built);
+            cachedEpoch = registry.getIntrospectionEpoch();
+            return cachedSchemas;
+        }
+    }
+
+    /**
+     * Clears cached AI schema metadata. Normally driven by {@link NodeRegistry} epoch changes.
+     */
+    public static void invalidateCache() {
+        synchronized (AiNodeSchemaCatalog.class) {
+            cachedSchemas = null;
+            cachedEpoch = -1L;
+        }
+    }
+
+    private static volatile List<NodeSchema> cachedSchemas;
+    private static volatile long cachedEpoch = -1L;
+
+    private static List<NodeSchema> buildAll(NodeRegistry registry) {
+        List<NodeSchema> schemas = new ArrayList<>();
 
         List<String> nodeIds = new ArrayList<>(registry.getAllNodeIds());
         nodeIds.sort(String::compareToIgnoreCase);
