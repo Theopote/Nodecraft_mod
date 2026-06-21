@@ -4,11 +4,9 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -23,12 +21,16 @@ public final class ExecutionFlowGraph {
 
     private final boolean hasExecEdges;
     private final Set<UUID> entryNodeIds;
-    private final Map<UUID, Set<UUID>> execSuccessors;
+    private final Map<UUID, Map<String, Set<UUID>>> execSuccessorsBySourcePort;
 
-    private ExecutionFlowGraph(boolean hasExecEdges, Set<UUID> entryNodeIds, Map<UUID, Set<UUID>> execSuccessors) {
+    private ExecutionFlowGraph(
+            boolean hasExecEdges,
+            Set<UUID> entryNodeIds,
+            Map<UUID, Map<String, Set<UUID>>> execSuccessorsBySourcePort
+    ) {
         this.hasExecEdges = hasExecEdges;
         this.entryNodeIds = Set.copyOf(entryNodeIds);
-        this.execSuccessors = copySuccessorMap(execSuccessors);
+        this.execSuccessorsBySourcePort = copySuccessorMap(execSuccessorsBySourcePort);
     }
 
     public static ExecutionFlowGraph analyze(NodeGraph graph) {
@@ -36,14 +38,10 @@ public final class ExecutionFlowGraph {
             return new ExecutionFlowGraph(false, Set.of(), Map.of());
         }
 
-        Map<UUID, Set<UUID>> successors = new HashMap<>();
+        Map<UUID, Map<String, Set<UUID>>> successorsByPort = new HashMap<>();
         Set<UUID> nodesWithIncomingExec = new HashSet<>();
         Set<UUID> execParticipatingNodes = new HashSet<>();
         boolean hasExecEdges = false;
-
-        for (INode node : graph.getNodes()) {
-            successors.computeIfAbsent(node.getId(), ignored -> new LinkedHashSet<>());
-        }
 
         for (NodeGraph.Connection connection : graph.getConnections()) {
             if (!ExecutionPortKind.isExecConnection(connection)) {
@@ -52,9 +50,13 @@ public final class ExecutionFlowGraph {
             hasExecEdges = true;
             UUID sourceId = connection.sourceNode.getId();
             UUID targetId = connection.targetNode.getId();
+            String sourcePortId = connection.sourcePort.getId();
             execParticipatingNodes.add(sourceId);
             execParticipatingNodes.add(targetId);
-            successors.computeIfAbsent(sourceId, ignored -> new LinkedHashSet<>()).add(targetId);
+            successorsByPort
+                    .computeIfAbsent(sourceId, ignored -> new HashMap<>())
+                    .computeIfAbsent(sourcePortId, ignored -> new LinkedHashSet<>())
+                    .add(targetId);
             nodesWithIncomingExec.add(targetId);
         }
 
@@ -69,7 +71,7 @@ public final class ExecutionFlowGraph {
             }
         }
 
-        return new ExecutionFlowGraph(true, entryNodes, successors);
+        return new ExecutionFlowGraph(true, entryNodes, successorsByPort);
     }
 
     public boolean hasExecEdges() {
@@ -80,11 +82,30 @@ public final class ExecutionFlowGraph {
         return entryNodeIds;
     }
 
+    public Set<UUID> execSuccessors(UUID nodeId, String sourcePortId) {
+        if (nodeId == null || sourcePortId == null) {
+            return Set.of();
+        }
+        Map<String, Set<UUID>> byPort = execSuccessorsBySourcePort.get(nodeId);
+        if (byPort == null) {
+            return Set.of();
+        }
+        return byPort.getOrDefault(sourcePortId, Set.of());
+    }
+
     public Set<UUID> execSuccessors(UUID nodeId) {
         if (nodeId == null) {
             return Set.of();
         }
-        return execSuccessors.getOrDefault(nodeId, Set.of());
+        Map<String, Set<UUID>> byPort = execSuccessorsBySourcePort.get(nodeId);
+        if (byPort == null || byPort.isEmpty()) {
+            return Set.of();
+        }
+        Set<UUID> merged = new LinkedHashSet<>();
+        for (Set<UUID> targets : byPort.values()) {
+            merged.addAll(targets);
+        }
+        return Set.copyOf(merged);
     }
 
     /**
@@ -111,10 +132,14 @@ public final class ExecutionFlowGraph {
         return Set.copyOf(reachable);
     }
 
-    private static Map<UUID, Set<UUID>> copySuccessorMap(Map<UUID, Set<UUID>> source) {
-        Map<UUID, Set<UUID>> copy = new HashMap<>();
-        for (Map.Entry<UUID, Set<UUID>> entry : source.entrySet()) {
-            copy.put(entry.getKey(), Set.copyOf(entry.getValue()));
+    private static Map<UUID, Map<String, Set<UUID>>> copySuccessorMap(Map<UUID, Map<String, Set<UUID>>> source) {
+        Map<UUID, Map<String, Set<UUID>>> copy = new HashMap<>();
+        for (Map.Entry<UUID, Map<String, Set<UUID>>> entry : source.entrySet()) {
+            Map<String, Set<UUID>> portCopy = new HashMap<>();
+            for (Map.Entry<String, Set<UUID>> portEntry : entry.getValue().entrySet()) {
+                portCopy.put(portEntry.getKey(), Set.copyOf(portEntry.getValue()));
+            }
+            copy.put(entry.getKey(), Map.copyOf(portCopy));
         }
         return Map.copyOf(copy);
     }

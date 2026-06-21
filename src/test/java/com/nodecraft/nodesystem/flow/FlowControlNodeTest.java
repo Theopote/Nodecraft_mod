@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -119,6 +120,45 @@ class FlowControlNodeTest {
         assertEquals("once", second.get("output_blocked"));
         assertEquals(false, second.get("output_did_execute"));
         assertEquals(true, second.get("output_has_executed"));
+    }
+
+    @Test
+    void sequenceFiresExecStepsInOrder() {
+        SequenceNode sequence = new SequenceNode();
+        sequence.compute(Map.of(
+                "input_signal", "go",
+                "input_step_count", 3
+        ));
+
+        assertEquals(List.of("exec_step_1", "exec_step_2", "exec_step_3"), List.copyOf(sequence.getActiveExecOutputPortIds()));
+        assertEquals(Boolean.TRUE, sequence.getOutput(SequenceNode.execStepPortId(1)));
+        assertNull(sequence.getOutput(SequenceNode.execStepPortId(4)));
+    }
+
+    @Test
+    void doOnceRoutesExecOutputsByGateState() {
+        DoOnceNode gate = new DoOnceNode();
+        gate.compute(Map.of("input_signal", "once"));
+
+        assertEquals(Set.of("exec_out"), gate.getActiveExecOutputPortIds());
+        assertEquals(Boolean.TRUE, gate.getOutput("exec_out"));
+
+        gate.compute(Map.of("input_signal", "once"));
+        assertEquals(Set.of("exec_blocked"), gate.getActiveExecOutputPortIds());
+        assertEquals(Boolean.TRUE, gate.getOutput("exec_blocked"));
+    }
+
+    @Test
+    void branchRoutesExecOutputsByCondition() {
+        BranchNode branch = new BranchNode();
+        branch.compute(Map.of(
+                "input_condition", true,
+                "input_signal", "payload"
+        ));
+
+        assertEquals(Set.of("exec_true"), branch.getActiveExecOutputPortIds());
+        assertEquals(Boolean.TRUE, branch.getOutput("exec_true"));
+        assertNull(branch.getOutput("exec_false"));
     }
 
     @Test

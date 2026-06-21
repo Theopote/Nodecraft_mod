@@ -32,8 +32,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * topological order (legacy behaviour). When exec edges exist, only the exec frontier runs
  * nodes; data inputs are pulled lazily from upstream data ports.</p>
  *
- * <p>Flow-control nodes such as {@code flow.control.branch} still operate as data routers today.
- * Exec ports are the foundation for true branch skipping in a follow-up phase.</p>
+ * <p>Flow-control nodes with exec ports ({@code flow.control.branch}, {@code flow.control.sequence},
+ * {@code flow.control.do_once}) route execution via {@link ExecRoutingNode}.</p>
  */
 public class NodeExecutor {
 
@@ -240,46 +240,89 @@ public class NodeExecutor {
                 partialExecution ? executionScopeNodeIds.size() : 0
         );
 
-        int executedCount = 0;
+        int[] executedCount = {0};
         Set<UUID> recomputedThisRun = new HashSet<>();
         NodeExecutionCache executionCache = graph.getExecutionCache();
         ArrayDeque<UUID> frontier = new ArrayDeque<>(flowGraph.entryNodeIds());
 
-        while (!frontier.isEmpty()) {
-            if (Thread.currentThread().isInterrupted()) {
-                lastExecutionProfile = profiler.finish();
-                clearGraphPreviews();
-                return false;
-            }
-
-            UUID nodeId = frontier.removeFirst();
-            INode node = graph.getNode(nodeId);
-            if (node == null) {
-                continue;
-            }
-
-            Set<UUID> visiting = new HashSet<>();
-            ensureDataUpstreamForInputs(node, recomputedThisRun, executionCache, guard, visiting);
-
-            if (!shouldExecuteNode(node, recomputedThisRun, executionCache)) {
-                nodeStates.put(node.getId(), NodeState.VISITED);
-            } else if (computeNode(node, recomputedThisRun, executionCache, guard)) {
-                executedCount++;
-            } else {
-                return false;
-            }
-
-            for (UUID nextId : flowGraph.execSuccessors(nodeId)) {
-                frontier.addLast(nextId);
-            }
+        if (!drainExecFrontier(frontier, flowGraph, guard, recomputedThisRun, executionCache, () -> executedCount[0]++)) {
+            lastExecutionProfile = profiler.finish();
+            clearGraphPreviews();
+            return false;
         }
 
         lastExecutionProfile = profiler.finish();
         LOGGER.debug(
                 "Exec-flow graph execution finished. executed={}, profile={}",
-                executedCount,
+                executedCount[0],
                 lastExecutionProfile.formatSummary(5)
         );
+        return true;
+    }
+
+    private boolean drainExecFrontier(
+            ArrayDeque<UUID> frontier,
+            ExecutionFlowGraph flowGraph,
+            ExecutionRunGuard guard,
+            Set<UUID> recomputedThisRun,
+            NodeExecutionCache executionCache,
+            Runnable onNodeExecuted
+    ) {
+        while (!frontier.isEmpty()) {
+            if (Thread.currentThread().isInterrupted()) {
+                return false;
+            }
+
+            UUID nodeId = frontier.removeFirst();
+            if (!processExecNode(nodeId, flowGraph, guard, recomputedThisRun, executionCache, frontier, onNodeExecuted)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean processExecNode(
+            UUID nodeId,
+            ExecutionFlowGraph flowGraph,
+            ExecutionRunGuard guard,
+            Set<UUID> recomputedThisRun,
+            NodeExecutionCache executionCache,
+            ArrayDeque<UUID> frontier,
+            Runnable onNodeExecuted
+    ) {
+        INode node = graph.getNode(nodeId);
+        if (node == null) {
+            return true;
+        }
+
+        Set<UUID> visiting = new HashSet<>();
+        ensureDataUpstreamForInputs(node, recomputedThisRun, executionCache, guard, visiting);
+
+        if (!shouldExecuteNode(node, recomputedThisRun, executionCache)) {
+            nodeStates.put(node.getId(), NodeState.VISITED);
+        } else if (computeNode(node, recomputedThisRun, executionCache, guard)) {
+            onNodeExecuted.run();
+        } else {
+            return false;
+        }
+
+        if (ExecRouting.drainExecPortsSequentially(node)) {
+            for (String portId : ExecRouting.orderedActiveExecOutputPortIds(node)) {
+                ArrayDeque<UUID> stepFrontier = new ArrayDeque<>();
+                for (UUID nextId : flowGraph.execSuccessors(nodeId, portId)) {
+                    stepFrontier.addLast(nextId);
+                }
+                if (!drainExecFrontier(stepFrontier, flowGraph, guard, recomputedThisRun, executionCache, onNodeExecuted)) {
+                    return false;
+                }
+            }
+        } else {
+            for (String portId : ExecRouting.orderedActiveExecOutputPortIds(node)) {
+                for (UUID nextId : flowGraph.execSuccessors(nodeId, portId)) {
+                    frontier.addLast(nextId);
+                }
+            }
+        }
         return true;
     }
 

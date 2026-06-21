@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import org.junit.jupiter.api.Test;
 
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -47,7 +48,39 @@ class ExecutionFlowGraphTest {
         assertEquals(1, flow.entryNodeIds().size());
         assertTrue(flow.entryNodeIds().contains(entry.getId()));
         assertTrue(flow.execSuccessors(entry.getId()).contains(middle.getId()));
+        assertTrue(flow.execSuccessors(entry.getId(), "exec_out").contains(middle.getId()));
         assertEquals(3, flow.reachableExecNodeIds().size());
+    }
+
+    @Test
+    void execSuccessorsAreScopedToSourcePort() {
+        NodeGraph graph = new NodeGraph("exec-port-scope");
+        ExecForkNode fork = new ExecForkNode("fork");
+        ExecNode trueSink = new ExecNode("true-sink");
+        ExecNode falseSink = new ExecNode("false-sink");
+        graph.addNode(fork);
+        graph.addNode(trueSink);
+        graph.addNode(falseSink);
+        graph.connect(fork.getId(), "exec_true", trueSink.getId(), "exec_in");
+        graph.connect(fork.getId(), "exec_false", falseSink.getId(), "exec_in");
+
+        ExecutionFlowGraph flow = ExecutionFlowGraph.analyze(graph);
+
+        assertEquals(Set.of(trueSink.getId()), flow.execSuccessors(fork.getId(), "exec_true"));
+        assertEquals(Set.of(falseSink.getId()), flow.execSuccessors(fork.getId(), "exec_false"));
+    }
+
+    private static final class ExecForkNode extends BaseNode {
+        private ExecForkNode(String suffix) {
+            super(UUID.randomUUID(), "test.exec.fork." + suffix);
+            addOutputPort(new BasePort("exec_true", "Exec True", "output", NodeDataType.EXEC, this));
+            addOutputPort(new BasePort("exec_false", "Exec False", "output", NodeDataType.EXEC, this));
+        }
+
+        @Override
+        public void processNode(com.nodecraft.nodesystem.execution.ExecutionContext context) {
+            outputValues.put("exec_true", Boolean.TRUE);
+        }
     }
 
     private static final class StubNode extends BaseNode {

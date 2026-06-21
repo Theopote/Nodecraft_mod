@@ -46,26 +46,48 @@ Activated automatically when at least one `exec → exec` connection exists.
 | `NodeDataType.EXEC` | Execution-control port type |
 | `TypeConversionRegistry` | `exec` connects only to `exec` |
 | `ExecutionPortKind` | Classifies data vs exec connections |
-| `ExecutionFlowGraph` | Entry nodes + exec adjacency |
+| `ExecutionFlowGraph` | Entry nodes + exec adjacency **per source port** |
 | `ExecutionRunGuard` / `ExecutionRunLimits` | Step/time circuit breaker |
 | `NodeExecutor` | Chooses dataflow vs exec-flow; guard in both modes |
 | `GraphExecutionPlanner` / dirty propagation | Ignore exec edges for data topo |
 
+## Implemented in P0-A (slice 2)
+
+| Component | Role |
+|-----------|------|
+| `ExecRoutingNode` / `ExecRouting` | Resolve fired exec output ports after compute |
+| `BranchNode` exec ports | `exec_in`, `exec_true`, `exec_false` + conditional routing |
+| `NodeExecutor` exec frontier | Enqueues only targets of **fired** exec ports |
+
+Legacy data outputs (`output_true` / `output_false`) remain for dataflow graphs without exec wires.
+
 ---
 
-## Not done yet (P0-A slice 2 / P0-B)
+## Implemented in P0-A (slice 3)
 
-1. **Exec ports on flow nodes** — e.g. `Branch` fires `exec_true` OR `exec_false`, not both data outputs
-2. **Conditional exec routing** — scheduler follows one exec pin based on node result
-3. **Multi-trigger / loop bodies** — `ForEach` / `While` as exec drivers, not list expanders only
-4. **Editor UX** — white exec wires, entry-node markers, live exec highlight
-5. **Partial exec + exec mode** — reconcile incremental cache with repeated exec visits
+| Component | Role |
+|-----------|------|
+| `ExecRoutingNode.drainExecPortsSequentially()` | Sequence drains each step subtree before firing the next |
+| `SequenceNode` exec ports | `exec_in`, `exec_step_1..8` with ordered sequential routing |
+| `DoOnceNode` exec ports | `exec_in`, `exec_out`, `exec_blocked` gate routing |
+| `NodeExecutor.drainExecFrontier()` | Recursive frontier drain for sequential exec fan-out |
 
-Until slice 2 lands, use:
+Legacy data outputs on Sequence (`output_step_N`) and DoOnce (`output_first_pass` / `output_blocked`) remain for dataflow graphs without exec wires.
 
-- `math.logic.if` for **value** selection
-- `flow.control.do_once` + `ExecutionContext` variables for **once-per-run** side effects
-- `ExecutionRunLimits` tightening for stress tests
+---
+
+## Not done yet (P0-B)
+
+1. **Loop exec drivers** — `ForEach` / `While` as exec-driven iteration
+2. **Editor UX** — exec wire styling, live exec highlight
+3. **Partial exec + exec mode** — reconcile incremental cache with repeated exec visits
+
+Recommended patterns today:
+
+- `flow.control.branch` with **exec_true/exec_false** for conditional side effects
+- `flow.control.sequence` with **exec_step_N** for ordered side-effect chains
+- `flow.control.do_once` with **exec_out/exec_blocked** for once-per-run gates
+- `math.logic.if` for **value** selection in dataflow-only graphs
 
 ---
 
@@ -74,6 +96,8 @@ Until slice 2 lands, use:
 ### Connecting exec ports
 
 Only `exec → exec` is allowed. Data ports cannot mix with exec ports on the same edge.
+
+Flow-control `exec_in` ports accept **multiple incoming exec wires** so paths can merge (e.g. loop-back into `DoOnce`).
 
 ### Guard defaults
 
@@ -90,7 +114,7 @@ new NodeExecutor(graph, context, null, IncrementalExecutionOptions.defaults(), n
 
 ### Tests
 
-- `ExecFlowExecutorTest` — skip off-frontier nodes, lazy data pull, cycle guard
+- `ExecFlowExecutorTest` — skip off-frontier nodes, lazy data pull, branch/sequence/do-once exec routing, cycle guard
 - `ExecutionFlowGraphTest` — topology analysis
 - `FlowControlNodeTest.branchDoesNotSkipEitherDownstreamNodeInExecutor` — documents dataflow limitation
 

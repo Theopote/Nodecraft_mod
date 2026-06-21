@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.flow.control;
 
+import com.nodecraft.nodesystem.api.ExecRoutingNode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -9,20 +10,24 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @NodeInfo(
     id = "flow.control.do_once",
     displayName = "Do Once",
-    description = "Allows a signal to pass once per execution context, unless reset.",
+    description = "Passes exec/data once per run unless reset. Wire exec_out for first pass and exec_blocked for repeats.",
     category = "flow.control",
     order = 2
 )
-public class DoOnceNode extends BaseNode {
+public class DoOnceNode extends BaseNode implements ExecRoutingNode {
 
+    private static final String INPUT_EXEC_ID = "exec_in";
     private static final String INPUT_SIGNAL_ID = "input_signal";
     private static final String INPUT_RESET_ID = "input_reset";
 
+    private static final String OUTPUT_EXEC_OUT_ID = "exec_out";
+    private static final String OUTPUT_EXEC_BLOCKED_ID = "exec_blocked";
     private static final String OUTPUT_FIRST_PASS_ID = "output_first_pass";
     private static final String OUTPUT_BLOCKED_ID = "output_blocked";
     private static final String OUTPUT_DID_EXECUTE_ID = "output_did_execute";
@@ -32,18 +37,27 @@ public class DoOnceNode extends BaseNode {
 
     private final String contextStateKey;
     private boolean fallbackExecuted;
+    private transient Set<String> activeExecOutputs = Set.of();
 
     public DoOnceNode() {
         super(UUID.randomUUID(), "flow.control.do_once");
         this.contextStateKey = "flow.do_once.executed." + getId();
 
+        addInputPort(new BasePort(INPUT_EXEC_ID, "Exec In", "Incoming execution pulse", NodeDataType.EXEC, this, true, false));
         addInputPort(new BasePort(INPUT_SIGNAL_ID, "Signal", "Signal that should pass only once", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_RESET_ID, "Reset", "Resets execution gate when true", NodeDataType.BOOLEAN, this));
 
+        addOutputPort(new BasePort(OUTPUT_EXEC_OUT_ID, "Exec Out", "Fires on first pass", NodeDataType.EXEC, this));
+        addOutputPort(new BasePort(OUTPUT_EXEC_BLOCKED_ID, "Exec Blocked", "Fires when gate is already consumed", NodeDataType.EXEC, this));
         addOutputPort(new BasePort(OUTPUT_FIRST_PASS_ID, "First Pass", "Signal when first execution passes", NodeDataType.ANY, this));
         addOutputPort(new BasePort(OUTPUT_BLOCKED_ID, "Blocked", "Signal when execution is blocked", NodeDataType.ANY, this));
         addOutputPort(new BasePort(OUTPUT_DID_EXECUTE_ID, "Did Execute", "Whether this tick passed the signal", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_HAS_EXECUTED_ID, "Has Executed", "Whether the gate is already consumed", NodeDataType.BOOLEAN, this));
+    }
+
+    @Override
+    public Set<String> getActiveExecOutputPortIds() {
+        return activeExecOutputs;
     }
 
     @Override
@@ -52,16 +66,27 @@ public class DoOnceNode extends BaseNode {
         Object signal = inputValues.get(INPUT_SIGNAL_ID);
         boolean hasSignal = signal != null;
 
+        activeExecOutputs = Set.of();
+        outputValues.put(OUTPUT_EXEC_OUT_ID, null);
+        outputValues.put(OUTPUT_EXEC_BLOCKED_ID, null);
+
         applyReset(context, reset);
 
         boolean alreadyExecuted = readExecutedState(context);
         if (hasSignal && !alreadyExecuted) {
             writeExecutedState(context, true);
+            activeExecOutputs = Set.of(OUTPUT_EXEC_OUT_ID);
+            outputValues.put(OUTPUT_EXEC_OUT_ID, Boolean.TRUE);
             outputValues.put(OUTPUT_FIRST_PASS_ID, signal);
             outputValues.put(OUTPUT_BLOCKED_ID, null);
             outputValues.put(OUTPUT_DID_EXECUTE_ID, true);
             outputValues.put(OUTPUT_HAS_EXECUTED_ID, true);
             return;
+        }
+
+        if (hasSignal && alreadyExecuted) {
+            activeExecOutputs = Set.of(OUTPUT_EXEC_BLOCKED_ID);
+            outputValues.put(OUTPUT_EXEC_BLOCKED_ID, Boolean.TRUE);
         }
 
         outputValues.put(OUTPUT_FIRST_PASS_ID, null);
@@ -95,7 +120,6 @@ public class DoOnceNode extends BaseNode {
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
-        // Only fallback state is serialized; ExecutionContext-backed state is runtime-only.
         state.put(STATE_KEY_FALLBACK_EXECUTED, fallbackExecuted);
         return state;
     }
@@ -111,4 +135,3 @@ public class DoOnceNode extends BaseNode {
         }
     }
 }
-
