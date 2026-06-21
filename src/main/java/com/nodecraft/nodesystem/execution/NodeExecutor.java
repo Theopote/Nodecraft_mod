@@ -27,11 +27,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Executes a node graph as a DAG dataflow engine using static topological order.
  *
- * <p>Each node is evaluated at most once per run. Data dependencies come from port
- * connections; cycles are rejected because they are invalid in this model. Flow
- * control nodes ({@code Branch}, {@code Sequence}, {@code ForEach}, etc.) route or
- * transform values within a single pass—they do not trigger exec-style re-entry or
- * skip downstream nodes on unselected branches.</p>
+ * <p>Each node is evaluated at most once per run in topological order. The
+ * {@link ExecutorService} only offloads {@link #executeAsync()} onto a single
+ * background worker thread; node bodies still run serially inside that worker.</p>
+ *
+ * <p>Data dependencies come from port connections; cycles are rejected. Flow control
+ * nodes route values in a single pass and do not skip unselected branches.</p>
+ *
+ * <p>Parallel-ready batches are computed by {@link GraphExecutionPlanner} but are not
+ * executed concurrently yet. See {@link #getLastExecutionProfile()} for per-run timing.</p>
  *
  * <p>Partial execution scope: when a scope is provided, only nodes inside that scope
  * are recomputed. Upstream nodes outside the scope reuse their previously computed
@@ -47,7 +51,9 @@ public class NodeExecutor {
     private final Map<UUID, NodeState> nodeStates = new HashMap<>();
     private final AtomicBoolean isExecuting = new AtomicBoolean(false);
     private volatile CompletableFuture<Boolean> executionFuture;
-    private final ExecutorService executorService;
+    private final ExecutionProfiler profiler = new ExecutionProfiler();
+    private volatile ExecutionProfiler.Profile lastExecutionProfile = new ExecutionProfiler.Profile(0L, 0, List.of());
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor(new NodeExecutorThreadFactory());
 
     private enum NodeState {
         NOT_VISITED,
@@ -68,7 +74,10 @@ public class NodeExecutor {
         this.graph = graph;
         this.context = context;
         this.executionScopeNodeIds = executionScopeNodeIds == null ? null : new HashSet<>(executionScopeNodeIds);
-        this.executorService = Executors.newSingleThreadExecutor(new NodeExecutorThreadFactory());
+    }
+
+    public ExecutionProfiler.Profile getLastExecutionProfile() {
+        return lastExecutionProfile;
     }
 
     public CompletableFuture<Boolean> executeAsync() {
@@ -137,24 +146,30 @@ public class NodeExecutor {
             nodeStates.put(node.getId(), NodeState.NOT_VISITED);
         }
 
-        List<INode> sortedNodes = topologicalSort();
-        if (sortedNodes == null) {
+        GraphExecutionPlanner.ExecutionPlan plan = GraphExecutionPlanner.plan(graph);
+        if (plan.hasCycle()) {
             LOGGER.error("Node graph contains a cycle and cannot be executed.");
             clearGraphPreviews();
+            lastExecutionProfile = new ExecutionProfiler.Profile(0L, 0, List.of());
             return false;
         }
 
+        List<INode> sortedNodes = plan.topologicalOrder();
         boolean partialExecution = executionScopeNodeIds != null && !executionScopeNodeIds.isEmpty();
+        profiler.beginRun();
         LOGGER.debug(
-                "Starting {} node graph execution. nodes={}, scopeSize={}",
+                "Starting {} node graph execution. nodes={}, levels={}, maxParallelWidth={}, scopeSize={}",
                 partialExecution ? "partial" : "full",
                 sortedNodes.size(),
+                plan.levels().size(),
+                plan.maxParallelWidth(),
                 partialExecution ? executionScopeNodeIds.size() : 0
         );
 
         int executedCount = 0;
         for (INode node : sortedNodes) {
             if (Thread.currentThread().isInterrupted()) {
+                lastExecutionProfile = profiler.finish();
                 clearGraphPreviews();
                 return false;
             }
@@ -164,6 +179,7 @@ public class NodeExecutor {
             }
 
             Map<String, Object> inputs = collectNodeInputs(node);
+            long startedAt = System.nanoTime();
             try {
                 if (node instanceof BaseNode baseNode && context != null) {
                     if (requiresWorldThread(node)) {
@@ -177,21 +193,25 @@ public class NodeExecutor {
                 } else {
                     node.compute(inputs);
                 }
+                profiler.recordNode(node, System.nanoTime() - startedAt);
                 executedCount++;
                 nodeStates.put(node.getId(), NodeState.VISITED);
             } catch (Exception e) {
                 LOGGER.error("Node {} failed during execution: {}", node.getDisplayName(), e.getMessage(), e);
                 nodeStates.put(node.getId(), NodeState.ERROR);
+                lastExecutionProfile = profiler.finish();
                 clearGraphPreviews();
                 return false;
             }
         }
 
+        lastExecutionProfile = profiler.finish();
         LOGGER.debug(
-                "Node graph execution finished. executed={}/{}, mode={}",
+                "Node graph execution finished. executed={}/{}, mode={}, profile={}",
                 executedCount,
                 sortedNodes.size(),
-                partialExecution ? "partial" : "full"
+                partialExecution ? "partial" : "full",
+                lastExecutionProfile.formatSummary(5)
         );
         return true;
     }
@@ -209,41 +229,6 @@ public class NodeExecutor {
 
     private boolean shouldExecuteNode(INode node) {
         return executionScopeNodeIds == null || executionScopeNodeIds.isEmpty() || executionScopeNodeIds.contains(node.getId());
-    }
-
-    private List<INode> topologicalSort() {
-        List<INode> result = new ArrayList<>();
-        Set<UUID> visited = new HashSet<>();
-        Set<UUID> temporaryMarked = new HashSet<>();
-
-        for (INode node : graph.getNodes()) {
-            if (!visited.contains(node.getId()) && !visit(node, visited, temporaryMarked, result)) {
-                return null;
-            }
-        }
-
-        return result;
-    }
-
-    private boolean visit(INode node, Set<UUID> visited, Set<UUID> temporaryMarked, List<INode> result) {
-        if (temporaryMarked.contains(node.getId())) {
-            return false;
-        }
-
-        if (!visited.contains(node.getId())) {
-            temporaryMarked.add(node.getId());
-            for (NodeGraph.Connection connection : graph.getConnections()) {
-                if (connection.targetNode.getId().equals(node.getId())
-                        && !visit(connection.sourceNode, visited, temporaryMarked, result)) {
-                    return false;
-                }
-            }
-            temporaryMarked.remove(node.getId());
-            visited.add(node.getId());
-            result.add(node);
-        }
-
-        return true;
     }
 
     private Map<String, Object> collectNodeInputs(INode node) {

@@ -89,6 +89,24 @@ class NodeExecutorIntegrationTest {
     }
 
     @Test
+    void recordsExecutionProfileAfterSuccessfulRun() {
+        NodeGraph graph = new NodeGraph("profile");
+        PassThroughNode source = new PassThroughNode("source", "value");
+        PassThroughNode sink = new PassThroughNode("sink", null);
+        graph.addNode(source);
+        graph.addNode(sink);
+        graph.connect(source.getId(), "out", sink.getId(), "in");
+
+        NodeExecutor executor = new NodeExecutor(graph);
+        assertTrue(executor.executeSync());
+
+        ExecutionProfiler.Profile profile = executor.getLastExecutionProfile();
+        assertEquals(2, profile.executedNodeCount());
+        assertTrue(profile.totalNanos() >= 0L);
+        assertEquals(2, profile.nodeTimings().size());
+    }
+
+    @Test
     void setAndGetVariableRoundTripWithinSingleExecution() {
         NodeGraph graph = new NodeGraph("variables");
         PassThroughNode value = new PassThroughNode("value", 42);
