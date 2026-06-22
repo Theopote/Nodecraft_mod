@@ -237,6 +237,9 @@ public class NodeLibraryComponent implements EditorComponent {
     // Search manager.
     private final NodeSearchManager searchManager = new NodeSearchManager();
     private UUID selectedNodeId;
+    private UUID cachedRecommendationNodeId;
+    private NodeRecommendationContext cachedRecommendationContext;
+    private List<NodeRecommendation> cachedRecommendations = List.of();
 
     /**
      * Callback used when the user selects a node from the library.
@@ -428,13 +431,14 @@ public class NodeLibraryComponent implements EditorComponent {
             case "nodeSelected" -> {
                 if (data instanceof UUID nodeId) {
                     selectedNodeId = nodeId;
+                    refreshRecommendationCache();
                 } else {
-                    selectedNodeId = null;
+                    clearRecommendationCache();
                 }
                 return true;
             }
             case "nodeSelectionCleared", "graphChanged" -> {
-                selectedNodeId = null;
+                clearRecommendationCache();
                 return true;
             }
             default -> {
@@ -443,38 +447,60 @@ public class NodeLibraryComponent implements EditorComponent {
         }
     }
 
-    private void renderSuggestedSection() {
-        if (selectedNodeId == null || !searchManager.getSearchTerm().isEmpty()) {
+    private void clearRecommendationCache() {
+        selectedNodeId = null;
+        cachedRecommendationNodeId = null;
+        cachedRecommendationContext = null;
+        cachedRecommendations = List.of();
+    }
+
+    private void refreshRecommendationCache() {
+        if (selectedNodeId == null) {
+            clearRecommendationCache();
+            return;
+        }
+        if (selectedNodeId.equals(cachedRecommendationNodeId) && cachedRecommendationContext != null) {
             return;
         }
 
         ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
         NodeGraph graph = editor != null ? editor.getCurrentGraph() : null;
         if (graph == null) {
+            cachedRecommendations = List.of();
             return;
         }
 
         INode selectedNode = graph.getNode(selectedNodeId);
         if (selectedNode == null) {
+            cachedRecommendations = List.of();
             return;
         }
 
         NodeRecommendations.get().initialize();
-        NodeRecommendationContext context = NodeRecommendationContext.forSelectedNode(
+        cachedRecommendationContext = NodeRecommendationContext.forSelectedNode(
                 selectedNodeId,
                 (float) selectedNode.getPositionX(),
                 (float) selectedNode.getPositionY(),
                 5);
-        List<NodeRecommendation> recommendations = NodeRecommendations.get().recommend(graph, context);
-        if (recommendations.isEmpty()) {
+        cachedRecommendations = NodeRecommendations.get().recommend(graph, cachedRecommendationContext);
+        cachedRecommendationNodeId = selectedNodeId;
+    }
+
+    private void renderSuggestedSection() {
+        if (selectedNodeId == null || !searchManager.getSearchTerm().isEmpty()) {
             return;
         }
 
+        if (cachedRecommendations.isEmpty()) {
+            return;
+        }
+
+        ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
         ImGui.textColored(0.55f, 0.85f, 1.0f, 1.0f, "推荐下游");
-        for (NodeRecommendation recommendation : recommendations) {
+        for (NodeRecommendation recommendation : cachedRecommendations) {
             if (ImGui.selectable("  " + recommendation.displayName() + "##suggest_" + recommendation.nodeId())) {
-                if (editor != null) {
-                    editor.applyRecommendation(context, recommendation);
+                if (editor != null && cachedRecommendationContext != null) {
+                    editor.applyRecommendation(cachedRecommendationContext, recommendation);
                 }
             }
             if (ImGui.isItemHovered()) {

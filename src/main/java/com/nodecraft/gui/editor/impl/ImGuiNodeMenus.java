@@ -29,6 +29,9 @@ public class ImGuiNodeMenus {
     
     // 节点右键菜单状态
     private UUID rightClickedNodeId = null;
+    private UUID cachedMenuRecommendationNodeId = null;
+    private NodeRecommendationContext cachedMenuRecommendationContext;
+    private List<NodeRecommendation> cachedMenuRecommendations = List.of();
     
     // 节点搜索弹窗状态
     private float nodeSearchPosX = 0;
@@ -848,28 +851,32 @@ public class ImGuiNodeMenus {
             return;
         }
 
-        NodeRecommendations.get().initialize();
-        NodePosition nodePos = editor.getNodePosition(node.getId());
-        float placementX = nodePos != null ? (float) nodePos.x : (float) node.getPositionX();
-        float placementY = nodePos != null ? (float) nodePos.y : (float) node.getPositionY();
-        NodeRecommendationContext context = NodeRecommendationContext.forSelectedNode(
-                node.getId(),
-                placementX,
-                placementY,
-                8);
+        UUID nodeId = node.getId();
+        if (!nodeId.equals(cachedMenuRecommendationNodeId) || cachedMenuRecommendationContext == null) {
+            NodeRecommendations.get().initialize();
+            NodePosition nodePos = editor.getNodePosition(nodeId);
+            float placementX = nodePos != null ? (float) nodePos.x : (float) node.getPositionX();
+            float placementY = nodePos != null ? (float) nodePos.y : (float) node.getPositionY();
+            cachedMenuRecommendationContext = NodeRecommendationContext.forSelectedNode(
+                    nodeId,
+                    placementX,
+                    placementY,
+                    8);
+            cachedMenuRecommendations = NodeRecommendations.get()
+                    .recommend(editor.getCurrentGraph(), cachedMenuRecommendationContext);
+            cachedMenuRecommendationNodeId = nodeId;
+        }
 
-        List<NodeRecommendation> recommendations = NodeRecommendations.get()
-                .recommend(editor.getCurrentGraph(), context);
-        if (recommendations.isEmpty()) {
+        if (cachedMenuRecommendations.isEmpty()) {
             return;
         }
 
         if (ImGui.beginMenu("添加下游节点")) {
             try {
-                for (NodeRecommendation recommendation : recommendations) {
+                for (NodeRecommendation recommendation : cachedMenuRecommendations) {
                     if (ImGui.menuItem(recommendation.displayName())) {
                         if (editor instanceof ImGuiNodeEditor imguiEditor) {
-                            imguiEditor.applyRecommendation(context, recommendation);
+                            imguiEditor.applyRecommendation(cachedMenuRecommendationContext, recommendation);
                         }
                     }
                 }

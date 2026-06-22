@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -158,26 +159,41 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
             }
         }
 
+        boolean collapseByType = context.trigger() == RecommendationTrigger.SELECTION_PANEL
+                || context.trigger() == RecommendationTrigger.NODE_CONTEXT_MENU;
         if (context.direction() == RecommendationDirection.DOWNSTREAM) {
-            for (IPort port : sourceNode.getOutputPorts()) {
-                if (port.getDataType() == NodeDataType.EXEC) {
-                    continue;
-                }
-                ports.add(new SourcePortContext(port.getId(), port.getDataType()));
-            }
+            collectPorts(sourceNode.getOutputPorts(), ports, collapseByType);
         } else {
-            for (IPort port : sourceNode.getInputPorts()) {
-                if (port.getDataType() == NodeDataType.EXEC) {
-                    continue;
-                }
-                ports.add(new SourcePortContext(port.getId(), port.getDataType()));
-            }
+            collectPorts(sourceNode.getInputPorts(), ports, collapseByType);
         }
 
         if (ports.isEmpty() && context.sourceDataType() != null) {
             ports.add(new SourcePortContext(context.sourcePortId(), context.sourceDataType()));
         }
         return ports;
+    }
+
+    private static void collectPorts(List<IPort> nodePorts, List<SourcePortContext> ports, boolean collapseByType) {
+        if (collapseByType) {
+            Map<NodeDataType, String> uniqueByType = new LinkedHashMap<>();
+            for (IPort port : nodePorts) {
+                if (port.getDataType() == NodeDataType.EXEC) {
+                    continue;
+                }
+                uniqueByType.putIfAbsent(port.getDataType(), port.getId());
+            }
+            for (Map.Entry<NodeDataType, String> entry : uniqueByType.entrySet()) {
+                ports.add(new SourcePortContext(entry.getValue(), entry.getKey()));
+            }
+            return;
+        }
+
+        for (IPort port : nodePorts) {
+            if (port.getDataType() == NodeDataType.EXEC) {
+                continue;
+            }
+            ports.add(new SourcePortContext(port.getId(), port.getDataType()));
+        }
     }
 
     private String resolvePreferredPortId(

@@ -7,31 +7,27 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 public final class NodePortIndex {
 
     private volatile List<NodeSchema> cachedSchemas = List.of();
+    private volatile Map<NodeDataType, List<CandidatePort>> downstreamByOutputType = Map.of();
+    private volatile Map<NodeDataType, List<CandidatePort>> upstreamByInputType = Map.of();
     private volatile long cachedEpoch = -1L;
 
     public List<NodeSchema> schemas() {
-        NodeRegistry registry = NodeRegistry.getInstance();
-        long epoch = registry.getIntrospectionEpoch();
-        if (cachedSchemas != null && cachedEpoch == epoch) {
-            return cachedSchemas;
-        }
-        synchronized (this) {
-            if (cachedEpoch != registry.getIntrospectionEpoch()) {
-                cachedSchemas = AiNodeSchemaCatalog.collectAll(registry);
-                cachedEpoch = registry.getIntrospectionEpoch();
-            }
-            return cachedSchemas;
-        }
+        ensureIndexesBuilt();
+        return cachedSchemas;
     }
 
     public void invalidate() {
         synchronized (this) {
             cachedSchemas = List.of();
+            downstreamByOutputType = Map.of();
+            upstreamByInputType = Map.of();
             cachedEpoch = -1L;
         }
         AiNodeSchemaCatalog.invalidateCache();
@@ -41,44 +37,82 @@ public final class NodePortIndex {
         if (outputType == null) {
             return List.of();
         }
-        List<CandidatePort> candidates = new ArrayList<>();
-        for (NodeSchema schema : schemas()) {
-            for (PortSchema input : schema.inputs()) {
-                NodeDataType inputType = parseType(input.dataType());
-                if (NodeDataType.isConnectableTo(outputType, inputType)) {
-                    candidates.add(new CandidatePort(
-                            schema.typeId(),
-                            schema.displayName(),
-                            schema.category(),
-                            input.id(),
-                            inputType,
-                            input.required()));
-                }
-            }
-        }
-        return candidates;
+        ensureIndexesBuilt();
+        return downstreamByOutputType.getOrDefault(outputType, List.of());
     }
 
     public List<CandidatePort> findUpstreamCandidates(NodeDataType inputType) {
         if (inputType == null) {
             return List.of();
         }
-        List<CandidatePort> candidates = new ArrayList<>();
-        for (NodeSchema schema : schemas()) {
+        ensureIndexesBuilt();
+        return upstreamByInputType.getOrDefault(inputType, List.of());
+    }
+
+    private void ensureIndexesBuilt() {
+        NodeRegistry registry = NodeRegistry.getInstance();
+        long epoch = registry.getIntrospectionEpoch();
+        if (cachedEpoch == epoch && !cachedSchemas.isEmpty()) {
+            return;
+        }
+        synchronized (this) {
+            if (cachedEpoch == epoch && !cachedSchemas.isEmpty()) {
+                return;
+            }
+            cachedSchemas = AiNodeSchemaCatalog.collectAll(registry);
+            rebuildCompatibilityIndexes();
+            cachedEpoch = epoch;
+        }
+    }
+
+    private void rebuildCompatibilityIndexes() {
+        Map<NodeDataType, List<CandidatePort>> downstream = new EnumMap<>(NodeDataType.class);
+        Map<NodeDataType, List<CandidatePort>> upstream = new EnumMap<>(NodeDataType.class);
+
+        for (NodeSchema schema : cachedSchemas) {
+            for (PortSchema input : schema.inputs()) {
+                NodeDataType inputType = parseType(input.dataType());
+                CandidatePort candidate = new CandidatePort(
+                        schema.typeId(),
+                        schema.displayName(),
+                        schema.category(),
+                        input.id(),
+                        inputType,
+                        input.required());
+                for (NodeDataType outputType : NodeDataType.values()) {
+                    if (NodeDataType.isConnectableTo(outputType, inputType)) {
+                        downstream.computeIfAbsent(outputType, ignored -> new ArrayList<>()).add(candidate);
+                    }
+                }
+            }
+
             for (PortSchema output : schema.outputs()) {
                 NodeDataType outputType = parseType(output.dataType());
-                if (NodeDataType.isConnectableTo(outputType, inputType)) {
-                    candidates.add(new CandidatePort(
-                            schema.typeId(),
-                            schema.displayName(),
-                            schema.category(),
-                            output.id(),
-                            outputType,
-                            true));
+                CandidatePort candidate = new CandidatePort(
+                        schema.typeId(),
+                        schema.displayName(),
+                        schema.category(),
+                        output.id(),
+                        outputType,
+                        true);
+                for (NodeDataType inputType : NodeDataType.values()) {
+                    if (NodeDataType.isConnectableTo(outputType, inputType)) {
+                        upstream.computeIfAbsent(inputType, ignored -> new ArrayList<>()).add(candidate);
+                    }
                 }
             }
         }
-        return candidates;
+
+        downstreamByOutputType = freezeIndex(downstream);
+        upstreamByInputType = freezeIndex(upstream);
+    }
+
+    private static Map<NodeDataType, List<CandidatePort>> freezeIndex(Map<NodeDataType, List<CandidatePort>> mutable) {
+        Map<NodeDataType, List<CandidatePort>> frozen = new EnumMap<>(NodeDataType.class);
+        for (Map.Entry<NodeDataType, List<CandidatePort>> entry : mutable.entrySet()) {
+            frozen.put(entry.getKey(), List.copyOf(entry.getValue()));
+        }
+        return Map.copyOf(frozen);
     }
 
     public CandidatePort findPort(String nodeId, String portId, RecommendationDirection direction) {
