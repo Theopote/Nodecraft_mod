@@ -90,10 +90,20 @@ Legacy list outputs on loop nodes remain for dataflow graphs without exec wires.
 
 ---
 
-## Not done yet (P0-B remainder)
+## Implemented in P0-B (slice 2)
 
-1. **Live exec highlight during preview run** — animate active exec frontier in editor
-2. **Partial exec + exec mode** — reconcile incremental cache with repeated exec visits
+| Component | Role |
+|-----------|------|
+| `ExecFrontierSnapshot` | Live exec frontier state for editor highlighting |
+| `NodeExecutor.getExecFrontierSnapshot()` | Publishes active node, pending frontier, and fired exec wires |
+| Editor exec highlight | Cyan node glow + brighter exec wires during preview execution |
+| Partial exec + exec mode | Exec frontier visits bypass preview cache skip; loop body resets force recompute |
+
+---
+
+## Not done yet
+
+1. **Partial exec scope planning** — include exec downstream in dirty invalidation scope automatically
 
 Recommended patterns today:
 
@@ -114,6 +124,10 @@ Only `exec → exec` is allowed. Data ports cannot mix with exec ports on the sa
 
 Flow-control `exec_in` ports accept **multiple incoming exec wires** so paths can merge (e.g. loop-back into `DoOnce`).
 
+During auto-preview execution, exec graphs highlight the **active node**, **pending frontier nodes**, and **fired exec wires** in the node editor.
+
+Partial preview runs (`IncrementalExecutionOptions.previewDefaults()`) still skip cached dataflow nodes, but **exec frontier visits always recompute** scoped nodes. Loop body subtrees reset via `forcedExecRecomputeNodeIds` so ForEach/While iterations do not reuse stale cache.
+
 ### Guard defaults
 
 ```java
@@ -130,6 +144,8 @@ new NodeExecutor(graph, context, null, IncrementalExecutionOptions.defaults(), n
 ### Tests
 
 - `ExecFlowExecutorTest` — skip off-frontier nodes, lazy data pull, branch/sequence/do-once/for-each/while exec routing, cycle guard
+- `ExecFrontierSnapshotTest` — exec wire matching helpers
+- `NodeExecutorIntegrationTest.partialExecExecFlowRecomputesCachedLoopNodesDespitePreviewCacheSkip` — partial exec + exec loops
 - `ExecutionFlowGraphTest` — topology analysis
 - `FlowControlNodeTest.branchDoesNotSkipEitherDownstreamNodeInExecutor` — documents dataflow limitation
 

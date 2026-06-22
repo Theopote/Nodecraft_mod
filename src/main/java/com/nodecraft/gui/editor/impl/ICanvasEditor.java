@@ -2,6 +2,7 @@ package com.nodecraft.gui.editor.impl;
 
 import java.util.Map;
 import java.util.UUID;
+import com.nodecraft.nodesystem.execution.ExecFrontierSnapshot;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.api.INode;
@@ -16,6 +17,13 @@ public interface ICanvasEditor {
         ALIGN_LEFT,
         ALIGN_CENTER,
         DISTRIBUTE_HORIZONTAL
+    }
+
+    /**
+     * Returns the live exec frontier snapshot while preview execution is running.
+     */
+    default ExecFrontierSnapshot getActiveExecFrontierSnapshot() {
+        return ExecFrontierSnapshot.EMPTY;
     }
 
     float getCanvasZoom();

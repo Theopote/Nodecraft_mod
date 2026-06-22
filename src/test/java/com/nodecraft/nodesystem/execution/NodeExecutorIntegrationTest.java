@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.nodes.math.logic.IfNode;
+import com.nodecraft.nodesystem.nodes.flow.loop.WhileLoopNode;
 import com.nodecraft.nodesystem.nodes.variable.GetVariableNode;
 import com.nodecraft.nodesystem.nodes.variable.SetVariableNode;
 import org.jetbrains.annotations.Nullable;
@@ -187,6 +188,77 @@ class NodeExecutorIntegrationTest {
         assertTrue(new NodeExecutor(graph, context).executeSync());
         assertEquals(42, getVariable.getOutput("output_value"));
         assertEquals(true, getVariable.getOutput("output_exists"));
+    }
+
+    @Test
+    void partialExecExecFlowRecomputesCachedLoopNodesDespitePreviewCacheSkip() {
+        NodeGraph graph = new NodeGraph("partial-exec-while");
+        PassThroughNode condition = new PassThroughNode("condition", Boolean.TRUE);
+        ExecCountingStepNode entry = new ExecCountingStepNode("entry");
+        WhileLoopNode whileLoop = new WhileLoopNode();
+        ExecCountingStepNode bodyStep = new ExecCountingStepNode("body");
+
+        graph.addNode(condition);
+        graph.addNode(entry);
+        graph.addNode(whileLoop);
+        graph.addNode(bodyStep);
+
+        graph.connect(entry.getId(), "exec_out", whileLoop.getId(), "exec_in");
+        graph.connect(condition.getId(), "out", whileLoop.getId(), "input_condition");
+        graph.connect(whileLoop.getId(), "exec_body", bodyStep.getId(), "exec_in");
+        graph.connect(bodyStep.getId(), "exec_out", whileLoop.getId(), "exec_in");
+
+        ExecutionRunLimits limits = new ExecutionRunLimits(6L, 5_000L);
+
+        NodeExecutor fullRun = new NodeExecutor(graph, null, null, IncrementalExecutionOptions.defaults(), limits);
+        assertFalse(fullRun.executeSync());
+        int afterFullRun = bodyStep.executions();
+        assertTrue(afterFullRun >= 2);
+
+        Set<UUID> scope = Set.of(entry.getId(), whileLoop.getId(), bodyStep.getId(), condition.getId());
+        NodeExecutor partialRun = new NodeExecutor(
+                graph,
+                null,
+                scope,
+                IncrementalExecutionOptions.previewDefaults(),
+                limits
+        );
+        assertFalse(partialRun.executeSync());
+        assertTrue(bodyStep.executions() > afterFullRun, "exec frontier visits should bypass preview cache skip");
+    }
+
+    @Test
+    void execFlowClearsFrontierSnapshotAfterRun() {
+        NodeGraph graph = new NodeGraph("exec-snapshot-clear");
+        ExecCountingStepNode entry = new ExecCountingStepNode("entry");
+        ExecCountingStepNode sink = new ExecCountingStepNode("sink");
+        graph.addNode(entry);
+        graph.addNode(sink);
+        graph.connect(entry.getId(), "exec_out", sink.getId(), "exec_in");
+
+        NodeExecutor executor = new NodeExecutor(graph);
+        assertTrue(executor.executeSync());
+        assertFalse(executor.getExecFrontierSnapshot().isActive());
+    }
+
+    private static final class ExecCountingStepNode extends BaseNode {
+        private final AtomicInteger executions = new AtomicInteger();
+
+        private ExecCountingStepNode(String suffix) {
+            super(UUID.randomUUID(), "test.exec." + suffix);
+            addInputPort(new BasePort("exec_in", "Exec In", "input", NodeDataType.EXEC, this, true, false));
+            addOutputPort(new BasePort("exec_out", "Exec Out", "output", NodeDataType.EXEC, this));
+        }
+
+        @Override
+        public void processNode(@Nullable ExecutionContext context) {
+            executions.incrementAndGet();
+            outputValues.put("exec_out", Boolean.TRUE);
+        }
+
+        int executions() {
+            return executions.get();
+        }
     }
 
     private static final class PassThroughNode extends BaseNode {

@@ -18,6 +18,7 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.execution.ExecFrontierSnapshot;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.IncrementalExecutionOptions;
 import com.nodecraft.nodesystem.execution.IncrementalExecutionPlanner;
@@ -1234,6 +1235,14 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
     @Override
     public float getCanvasZoom() {
         return canvasZoom;
+    }
+
+    @Override
+    public ExecFrontierSnapshot getActiveExecFrontierSnapshot() {
+        if (autoPreviewExecutor != null && autoPreviewExecutor.isExecuting()) {
+            return autoPreviewExecutor.getExecFrontierSnapshot();
+        }
+        return ExecFrontierSnapshot.EMPTY;
     }
 
     @Override

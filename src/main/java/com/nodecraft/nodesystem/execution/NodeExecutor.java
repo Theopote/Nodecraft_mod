@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -47,6 +48,10 @@ public class NodeExecutor {
     private final IncrementalExecutionOptions incrementalOptions;
     private final ExecutionRunLimits runLimits;
     private final Map<UUID, NodeState> nodeStates = new HashMap<>();
+    private final Set<UUID> forcedExecRecomputeNodeIds = new HashSet<>();
+    private volatile ExecFrontierSnapshot execFrontierSnapshot = ExecFrontierSnapshot.EMPTY;
+    private volatile long execStepSeq = 0L;
+    private boolean execFlowMode = false;
     private final AtomicBoolean isExecuting = new AtomicBoolean(false);
     private volatile CompletableFuture<Boolean> executionFuture;
     private final ExecutionProfiler profiler = new ExecutionProfiler();
@@ -97,6 +102,10 @@ public class NodeExecutor {
 
     public ExecutionProfiler.Profile getLastExecutionProfile() {
         return lastExecutionProfile;
+    }
+
+    public ExecFrontierSnapshot getExecFrontierSnapshot() {
+        return execFrontierSnapshot;
     }
 
     public CompletableFuture<Boolean> executeAsync() {
@@ -160,24 +169,33 @@ public class NodeExecutor {
     }
 
     private boolean executeGraph() {
+        execFlowMode = false;
+        forcedExecRecomputeNodeIds.clear();
+        execFrontierSnapshot = ExecFrontierSnapshot.EMPTY;
         nodeStates.clear();
         for (INode node : graph.getNodes()) {
             nodeStates.put(node.getId(), NodeState.NOT_VISITED);
         }
 
-        GraphExecutionPlanner.ExecutionPlan plan = GraphExecutionPlanner.plan(graph);
-        if (plan.hasCycle()) {
-            LOGGER.error("Node graph contains a data dependency cycle and cannot be executed.");
-            clearGraphPreviews();
-            lastExecutionProfile = new ExecutionProfiler.Profile(0L, 0, List.of());
-            return false;
-        }
+        try {
+            GraphExecutionPlanner.ExecutionPlan plan = GraphExecutionPlanner.plan(graph);
+            if (plan.hasCycle()) {
+                LOGGER.error("Node graph contains a data dependency cycle and cannot be executed.");
+                clearGraphPreviews();
+                lastExecutionProfile = new ExecutionProfiler.Profile(0L, 0, List.of());
+                return false;
+            }
 
-        ExecutionFlowGraph flowGraph = ExecutionFlowGraph.analyze(graph);
-        if (flowGraph.hasExecEdges()) {
-            return executeExecFlowGraph(flowGraph);
+            ExecutionFlowGraph flowGraph = ExecutionFlowGraph.analyze(graph);
+            if (flowGraph.hasExecEdges()) {
+                return executeExecFlowGraph(flowGraph);
+            }
+            return executeDataflowGraph(plan);
+        } finally {
+            execFlowMode = false;
+            forcedExecRecomputeNodeIds.clear();
+            execFrontierSnapshot = ExecFrontierSnapshot.EMPTY;
         }
-        return executeDataflowGraph(plan);
     }
 
     private boolean executeDataflowGraph(GraphExecutionPlanner.ExecutionPlan plan) {
@@ -232,6 +250,7 @@ public class NodeExecutor {
             return false;
         }
 
+        execFlowMode = true;
         boolean partialExecution = executionScopeNodeIds != null && !executionScopeNodeIds.isEmpty();
         ExecutionRunGuard guard = new ExecutionRunGuard(runLimits);
         profiler.beginRun();
@@ -276,6 +295,7 @@ public class NodeExecutor {
             }
 
             UUID nodeId = frontier.removeFirst();
+            publishExecActive(nodeId, frontier);
             if (!processExecNode(nodeId, flowGraph, guard, recomputedThisRun, executionCache, frontier, onNodeExecuted)) {
                 return false;
             }
@@ -300,7 +320,7 @@ public class NodeExecutor {
         Set<UUID> visiting = new HashSet<>();
         ensureDataUpstreamForInputs(node, recomputedThisRun, executionCache, guard, visiting);
 
-        if (!shouldExecuteNode(node, recomputedThisRun, executionCache)) {
+        if (!shouldExecuteNode(node, recomputedThisRun, executionCache, true)) {
             nodeStates.put(node.getId(), NodeState.VISITED);
         } else if (computeNode(node, recomputedThisRun, executionCache, guard)) {
             onNodeExecuted.run();
@@ -314,20 +334,28 @@ public class NodeExecutor {
 
         if (ExecRouting.drainExecPortsSequentially(node)) {
             for (String portId : ExecRouting.orderedActiveExecOutputPortIds(node)) {
+                LinkedHashSet<ExecFrontierSnapshot.ExecWire> firedWires = new LinkedHashSet<>();
                 ArrayDeque<UUID> stepFrontier = new ArrayDeque<>();
                 for (UUID nextId : flowGraph.execSuccessors(nodeId, portId)) {
+                    firedWires.add(resolveExecWire(nodeId, portId, nextId));
                     stepFrontier.addLast(nextId);
                 }
+                publishExecRouting(nodeId, firedWires, stepFrontier);
                 if (!drainExecFrontier(stepFrontier, flowGraph, guard, recomputedThisRun, executionCache, onNodeExecuted)) {
                     return false;
                 }
             }
         } else {
+            LinkedHashSet<ExecFrontierSnapshot.ExecWire> firedWires = new LinkedHashSet<>();
+            LinkedHashSet<UUID> pending = new LinkedHashSet<>(frontier);
             for (String portId : ExecRouting.orderedActiveExecOutputPortIds(node)) {
                 for (UUID nextId : flowGraph.execSuccessors(nodeId, portId)) {
+                    firedWires.add(resolveExecWire(nodeId, portId, nextId));
                     frontier.addLast(nextId);
+                    pending.add(nextId);
                 }
             }
+            publishExecRouting(nodeId, firedWires, pending);
         }
         return true;
     }
@@ -350,7 +378,13 @@ public class NodeExecutor {
             loopNode.prepareExecLoopIteration(iteration);
             resetExecSubtreeVisited(bodyEntryIds, flowGraph);
 
-            ArrayDeque<UUID> bodyFrontier = new ArrayDeque<>(bodyEntryIds);
+            LinkedHashSet<ExecFrontierSnapshot.ExecWire> bodyWires = new LinkedHashSet<>();
+            ArrayDeque<UUID> bodyFrontier = new ArrayDeque<>();
+            for (UUID bodyEntryId : bodyEntryIds) {
+                bodyWires.add(resolveExecWire(nodeId, bodyPortId, bodyEntryId));
+                bodyFrontier.addLast(bodyEntryId);
+            }
+            publishExecRouting(nodeId, bodyWires, bodyFrontier);
             if (!drainExecFrontier(bodyFrontier, flowGraph, guard, recomputedThisRun, executionCache, onNodeExecuted)) {
                 return false;
             }
@@ -360,8 +394,63 @@ public class NodeExecutor {
             return true;
         }
 
-        ArrayDeque<UUID> completeFrontier = new ArrayDeque<>(flowGraph.execSuccessors(nodeId, completePortId));
+        LinkedHashSet<ExecFrontierSnapshot.ExecWire> completeWires = new LinkedHashSet<>();
+        ArrayDeque<UUID> completeFrontier = new ArrayDeque<>();
+        for (UUID nextId : flowGraph.execSuccessors(nodeId, completePortId)) {
+            completeWires.add(resolveExecWire(nodeId, completePortId, nextId));
+            completeFrontier.addLast(nextId);
+        }
+        publishExecRouting(nodeId, completeWires, completeFrontier);
         return drainExecFrontier(completeFrontier, flowGraph, guard, recomputedThisRun, executionCache, onNodeExecuted);
+    }
+
+    private void publishExecActive(UUID activeNodeId, ArrayDeque<UUID> pendingFrontier) {
+        if (!execFlowMode || activeNodeId == null) {
+            return;
+        }
+        execFrontierSnapshot = new ExecFrontierSnapshot(
+                true,
+                Set.of(activeNodeId),
+                Set.of(),
+                new LinkedHashSet<>(pendingFrontier),
+                ++execStepSeq
+        );
+    }
+
+    private void publishExecRouting(
+            UUID activeNodeId,
+            Set<ExecFrontierSnapshot.ExecWire> activeExecWires,
+            Collection<UUID> pendingNodeIds
+    ) {
+        if (!execFlowMode || activeNodeId == null) {
+            return;
+        }
+        execFrontierSnapshot = new ExecFrontierSnapshot(
+                true,
+                Set.of(activeNodeId),
+                activeExecWires,
+                pendingNodeIds == null ? Set.of() : new LinkedHashSet<>(pendingNodeIds),
+                ++execStepSeq
+        );
+    }
+
+    private ExecFrontierSnapshot.ExecWire resolveExecWire(UUID sourceNodeId, String sourcePortId, UUID targetNodeId) {
+        for (NodeGraph.Connection connection : graph.getConnections()) {
+            if (!ExecutionPortKind.isExecConnection(connection)) {
+                continue;
+            }
+            if (connection.sourceNode.getId().equals(sourceNodeId)
+                    && connection.sourcePort.getId().equals(sourcePortId)
+                    && connection.targetNode.getId().equals(targetNodeId)) {
+                return new ExecFrontierSnapshot.ExecWire(
+                        sourceNodeId,
+                        sourcePortId,
+                        targetNodeId,
+                        connection.targetPort.getId()
+                );
+            }
+        }
+        return new ExecFrontierSnapshot.ExecWire(sourceNodeId, sourcePortId, targetNodeId, "exec_in");
     }
 
     private void resetExecSubtreeVisited(Set<UUID> entryNodeIds, ExecutionFlowGraph flowGraph) {
@@ -377,6 +466,7 @@ public class NodeExecutor {
                 continue;
             }
             nodeStates.put(current, NodeState.NOT_VISITED);
+            forcedExecRecomputeNodeIds.add(current);
             for (UUID nextId : flowGraph.execSuccessors(current)) {
                 if (!seen.contains(nextId)) {
                     queue.addLast(nextId);
@@ -467,7 +557,12 @@ public class NodeExecutor {
         }
     }
 
-    private boolean shouldExecuteNode(INode node, Set<UUID> recomputedThisRun, NodeExecutionCache executionCache) {
+    private boolean shouldExecuteNode(
+            INode node,
+            Set<UUID> recomputedThisRun,
+            NodeExecutionCache executionCache,
+            boolean execFrontierVisit
+    ) {
         if (executionScopeNodeIds == null || executionScopeNodeIds.isEmpty()) {
             return true;
         }
@@ -477,12 +572,22 @@ public class NodeExecutor {
         if (node instanceof BaseNode baseNode && baseNode.isDirty()) {
             return true;
         }
+        if (execFlowMode && execFrontierVisit) {
+            return true;
+        }
+        if (forcedExecRecomputeNodeIds.remove(node.getId())) {
+            return true;
+        }
         if (incrementalOptions.skipCachedNodesInPartialScope()
                 && executionCache.hasValidCachedOutput(node)
                 && !requiresRecomputeDueToScopedUpstream(node, recomputedThisRun)) {
             return false;
         }
         return true;
+    }
+
+    private boolean shouldExecuteNode(INode node, Set<UUID> recomputedThisRun, NodeExecutionCache executionCache) {
+        return shouldExecuteNode(node, recomputedThisRun, executionCache, false);
     }
 
     private boolean requiresRecomputeDueToScopedUpstream(INode node, Set<UUID> recomputedThisRun) {

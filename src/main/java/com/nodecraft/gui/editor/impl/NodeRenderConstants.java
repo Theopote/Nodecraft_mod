@@ -37,6 +37,8 @@ public class NodeRenderConstants {
     public static final int PORT_COLOR_EXEC_HIGHLIGHT = ImGui.colorConvertFloat4ToU32(1.0f, 1.0f, 1.0f, 1.0f);
     public static final int CONNECTION_COLOR_EXEC = ImGui.colorConvertFloat4ToU32(0.92f, 0.92f, 1.0f, 0.95f);
     public static final int CONNECTION_COLOR_EXEC_HIGHLIGHT = ImGui.colorConvertFloat4ToU32(1.0f, 1.0f, 0.75f, 1.0f);
+    public static final int EXEC_FRONTIER_NODE_COLOR = ImGui.colorConvertFloat4ToU32(0.45f, 0.95f, 1.0f, 1.0f);
+    public static final int EXEC_FRONTIER_PENDING_NODE_COLOR = ImGui.colorConvertFloat4ToU32(0.35f, 0.65f, 0.85f, 0.85f);
 
     // Precomputed port border colors.
     public static final int PORT_INPUT_BORDER_COLOR = adjustBrightnessFast(PORT_COLOR_INPUT, 1.5f);
