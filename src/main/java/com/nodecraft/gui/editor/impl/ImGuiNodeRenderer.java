@@ -471,12 +471,10 @@ public class ImGuiNodeRenderer {
             float currentPortY = portYOffset + i * (scaledTextLineHeight + scaledPortVerticalSpacing) + scaledTextLineHeight / 2;
 
             boolean isPortHighlighted = shouldHighlight && nodeId.equals(hoveredNodeId) && port.getId().equals(hoveredPortId) && !isHoveredPortOutput;
-            int portColor = NodeRenderConstants.PORT_COLOR_INPUT;
-            int portBorderColor = NodeRenderConstants.PORT_INPUT_BORDER_COLOR;
+            int portColor = NodeRenderConstants.getInputPortFillColor(port, isPortHighlighted);
+            int portBorderColor = NodeRenderConstants.getPortBorderColor(port, true, isPortHighlighted, navHighlightColor);
 
             if (isPortHighlighted) {
-                portColor = NodeRenderConstants.PORT_COLOR_INPUT_HIGHLIGHT;
-                portBorderColor = navHighlightColor;
                 float pulseScale = 1.0f + 0.3f * highlightSinValue;
                 float portOuterRadiusAnim = portRadiusScaled * pulseScale;
 
@@ -518,12 +516,10 @@ public class ImGuiNodeRenderer {
             float outputTextX = outputPortCircleX - portRadiusScaled - scaledPortCircleToTextPadding - (displayTextWidthUnscaled * canvasZoom);
 
             boolean isPortHighlighted = shouldHighlight && nodeId.equals(hoveredNodeId) && port.getId().equals(hoveredPortId) && isHoveredPortOutput;
-            int portColor = NodeRenderConstants.PORT_COLOR_OUTPUT;
-            int portBorderColor = NodeRenderConstants.PORT_OUTPUT_BORDER_COLOR;
+            int portColor = NodeRenderConstants.getOutputPortFillColor(port, isPortHighlighted);
+            int portBorderColor = NodeRenderConstants.getPortBorderColor(port, false, isPortHighlighted, navHighlightColor);
 
             if (isPortHighlighted) {
-                portColor = NodeRenderConstants.PORT_COLOR_OUTPUT_HIGHLIGHT;
-                portBorderColor = navHighlightColor;
                 float pulseScale = 1.0f + 0.3f * highlightSinValue;
                 float portOuterRadiusAnim = portRadiusScaled * pulseScale;
 

@@ -3,6 +3,7 @@ package com.nodecraft.gui.editor.impl;
 import java.util.Map;
 import java.util.UUID;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.execution.ExecutionPortKind;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import imgui.ImDrawList;
 import imgui.ImGui;
@@ -207,9 +208,21 @@ public class ConnectionRenderer {
                         connection.targetPort.getId().equals(hoveredTargetPortId);
 
                 boolean typeMismatch = !NodeDataType.isConnectableTo(connection.sourcePort.getDataType(), connection.targetPort.getDataType());
-                int normalColor = typeMismatch ? typeMismatchLineColor : lineColor;
-                int currentLineColor = isCurrentConnectionHovered ? hoveredLineColor : normalColor;
-                float currentThickness = isCurrentConnectionHovered ? hoveredLineThickness : normalLineThickness;
+                boolean isExecConnection = ExecutionPortKind.isExecConnection(connection);
+                int normalColor;
+                if (typeMismatch) {
+                    normalColor = typeMismatchLineColor;
+                } else if (isExecConnection) {
+                    normalColor = NodeRenderConstants.CONNECTION_COLOR_EXEC;
+                } else {
+                    normalColor = lineColor;
+                }
+                int currentLineColor = isCurrentConnectionHovered
+                        ? (isExecConnection ? NodeRenderConstants.CONNECTION_COLOR_EXEC_HIGHLIGHT : hoveredLineColor)
+                        : normalColor;
+                float currentThickness = isCurrentConnectionHovered
+                        ? hoveredLineThickness
+                        : (isExecConnection ? normalLineThickness + (0.75f * canvasZoom) : normalLineThickness);
 
                 drawList.addBezierCubic(
                         startX, startY,
@@ -221,8 +234,14 @@ public class ConnectionRenderer {
                 );
 
                 if (isCurrentConnectionHovered) {
-                    drawList.addCircleFilled(startX, startY, highlightPortRadius, NodeRenderConstants.PORT_COLOR_OUTPUT_HIGHLIGHT);
-                    drawList.addCircleFilled(endX, endY, highlightPortRadius, NodeRenderConstants.PORT_COLOR_INPUT_HIGHLIGHT);
+                    int sourceHighlight = isExecConnection
+                            ? NodeRenderConstants.PORT_COLOR_EXEC_HIGHLIGHT
+                            : NodeRenderConstants.PORT_COLOR_OUTPUT_HIGHLIGHT;
+                    int targetHighlight = isExecConnection
+                            ? NodeRenderConstants.PORT_COLOR_EXEC_HIGHLIGHT
+                            : NodeRenderConstants.PORT_COLOR_INPUT_HIGHLIGHT;
+                    drawList.addCircleFilled(startX, startY, highlightPortRadius, sourceHighlight);
+                    drawList.addCircleFilled(endX, endY, highlightPortRadius, targetHighlight);
                 }
             }
         }

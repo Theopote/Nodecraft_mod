@@ -7,6 +7,8 @@ import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.nodes.flow.control.BranchNode;
 import com.nodecraft.nodesystem.nodes.flow.control.DoOnceNode;
 import com.nodecraft.nodesystem.nodes.flow.control.SequenceNode;
+import com.nodecraft.nodesystem.nodes.flow.loop.ForEachLoopNode;
+import com.nodecraft.nodesystem.nodes.flow.loop.WhileLoopNode;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
@@ -194,6 +196,105 @@ class ExecFlowExecutorTest {
         assertEquals(1, passSink.executions());
         assertEquals(1, loopBack.executions());
         assertEquals(1, blockedSink.executions());
+    }
+
+    @Test
+    void forEachExecFlowRunsBodyOncePerItem() {
+        NodeGraph graph = new NodeGraph("foreach-exec");
+        List<Object> captured = new ArrayList<>();
+
+        ExecStepNode entry = new ExecStepNode("entry", null);
+        PassThroughNode listSource = new PassThroughNode("list", List.of("a", "b", "c"));
+        ForEachLoopNode forEach = new ForEachLoopNode();
+        ItemCaptureNode bodySink = new ItemCaptureNode(captured);
+        ExecStepNode completeSink = new ExecStepNode("complete", null);
+
+        graph.addNode(entry);
+        graph.addNode(listSource);
+        graph.addNode(forEach);
+        graph.addNode(bodySink);
+        graph.addNode(completeSink);
+
+        assertTrue(graph.connect(entry.getId(), "exec_out", forEach.getId(), "exec_in"));
+        assertTrue(graph.connect(listSource.getId(), "out", forEach.getId(), "input_list"));
+        assertTrue(graph.connect(forEach.getId(), "exec_body", bodySink.getId(), "exec_in"));
+        assertTrue(graph.connect(forEach.getId(), "exec_complete", completeSink.getId(), "exec_in"));
+        assertTrue(graph.connect(forEach.getId(), "output_item", bodySink.getId(), "in"));
+
+        assertTrue(new NodeExecutor(graph).executeSync());
+        assertEquals(List.of("a", "b", "c"), captured);
+        assertEquals(3, bodySink.executions());
+        assertEquals(1, completeSink.executions());
+    }
+
+    @Test
+    void whileExecFlowSkipsBodyWhenConditionIsFalse() {
+        NodeGraph graph = new NodeGraph("while-exec-false");
+        ExecStepNode entry = new ExecStepNode("entry", null);
+        PassThroughNode condition = new PassThroughNode("condition", Boolean.FALSE);
+        WhileLoopNode whileLoop = new WhileLoopNode();
+        ExecStepNode bodySink = new ExecStepNode("body_sink", null);
+        ExecStepNode completeSink = new ExecStepNode("complete_sink", null);
+
+        graph.addNode(entry);
+        graph.addNode(condition);
+        graph.addNode(whileLoop);
+        graph.addNode(bodySink);
+        graph.addNode(completeSink);
+
+        assertTrue(graph.connect(entry.getId(), "exec_out", whileLoop.getId(), "exec_in"));
+        assertTrue(graph.connect(condition.getId(), "out", whileLoop.getId(), "input_condition"));
+        assertTrue(graph.connect(whileLoop.getId(), "exec_body", bodySink.getId(), "exec_in"));
+        assertTrue(graph.connect(whileLoop.getId(), "exec_complete", completeSink.getId(), "exec_in"));
+
+        assertTrue(new NodeExecutor(graph).executeSync());
+        assertEquals(0, bodySink.executions());
+        assertEquals(1, completeSink.executions());
+    }
+
+    @Test
+    void whileExecFlowRepeatsBodyUntilGuardStops() {
+        NodeGraph graph = new NodeGraph("while-exec-loop");
+        ExecStepNode entry = new ExecStepNode("entry", null);
+        PassThroughNode condition = new PassThroughNode("condition", Boolean.TRUE);
+        WhileLoopNode whileLoop = new WhileLoopNode();
+        ExecStepNode bodyStep = new ExecStepNode("body_step", null);
+
+        graph.addNode(entry);
+        graph.addNode(condition);
+        graph.addNode(whileLoop);
+        graph.addNode(bodyStep);
+
+        assertTrue(graph.connect(entry.getId(), "exec_out", whileLoop.getId(), "exec_in"));
+        assertTrue(graph.connect(condition.getId(), "out", whileLoop.getId(), "input_condition"));
+        assertTrue(graph.connect(whileLoop.getId(), "exec_body", bodyStep.getId(), "exec_in"));
+        assertTrue(graph.connect(bodyStep.getId(), "exec_out", whileLoop.getId(), "exec_in"));
+
+        ExecutionRunLimits limits = new ExecutionRunLimits(6L, 5_000L);
+        assertFalse(new NodeExecutor(graph, null, null, null, limits).executeSync());
+        assertTrue(bodyStep.executions() >= 2);
+    }
+
+    private static final class ItemCaptureNode extends BaseNode {
+        private final List<Object> captured;
+        private final AtomicInteger executions = new AtomicInteger();
+
+        private ItemCaptureNode(List<Object> captured) {
+            super(UUID.randomUUID(), "test.foreach.capture");
+            this.captured = captured;
+            addInputPort(new BasePort("exec_in", "Exec In", "input", NodeDataType.EXEC, this, false, false));
+            addInputPort(new BasePort("in", "In", "input", NodeDataType.ANY, this, false, false));
+        }
+
+        @Override
+        public void processNode(@Nullable ExecutionContext context) {
+            executions.incrementAndGet();
+            captured.add(inputValues.get("in"));
+        }
+
+        int executions() {
+            return executions.get();
+        }
     }
 
     private static final class ExecStepNode extends BaseNode {

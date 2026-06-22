@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.flow.loop;
 
+import com.nodecraft.nodesystem.api.ExecRoutingNode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
@@ -13,17 +14,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @NodeInfo(
     id = "flow.loop.while",
     displayName = "While Loop",
-    description = "Processes input values while condition remains true, with iteration safety limits.",
+    description = "Routes exec flow while condition is true. Wire exec_body for loop body and loop exec back to exec_in; exec_complete fires when condition is false.",
     category = "flow.loop",
     order = 2
 )
-public class WhileLoopNode extends BaseNode {
+public class WhileLoopNode extends BaseNode implements ExecRoutingNode {
 
+    private static final String INPUT_EXEC_ID = "exec_in";
     private static final int MIN_ITERATIONS = 1;
     private static final int MAX_ITERATIONS_CAP = 100000;
 
@@ -37,19 +40,26 @@ public class WhileLoopNode extends BaseNode {
     private static final String INPUT_CONDITION_ID = "input_condition";
     private static final String INPUT_MAX_ITERATIONS_ID = "input_max_iterations";
 
+    private static final String OUTPUT_EXEC_BODY_ID = "exec_body";
+    private static final String OUTPUT_EXEC_COMPLETE_ID = "exec_complete";
     private static final String OUTPUT_VALUES_ID = "output_values";
     private static final String OUTPUT_ITERATIONS_ID = "output_iterations";
     private static final String OUTPUT_TERMINATED_BY_CONDITION_ID = "output_terminated_by_condition";
     private static final String OUTPUT_HIT_LIMIT_ID = "output_hit_limit";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
+    private transient Set<String> activeExecOutputs = Set.of();
+
     public WhileLoopNode() {
         super(UUID.randomUUID(), "flow.loop.while");
 
+        addInputPort(new BasePort(INPUT_EXEC_ID, "Exec In", "Incoming execution pulse", NodeDataType.EXEC, this, true, false));
         addInputPort(new BasePort(INPUT_VALUES_ID, "Values", "Values to process while condition is true", NodeDataType.LIST, this));
         addInputPort(new BasePort(INPUT_CONDITION_ID, "Condition", "Boolean or boolean-list condition", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_MAX_ITERATIONS_ID, "Max Iterations", "Optional iteration cap override", NodeDataType.INTEGER, this));
 
+        addOutputPort(new BasePort(OUTPUT_EXEC_BODY_ID, "Exec Body", "Fires while condition is true", NodeDataType.EXEC, this));
+        addOutputPort(new BasePort(OUTPUT_EXEC_COMPLETE_ID, "Exec Complete", "Fires when condition is false", NodeDataType.EXEC, this));
         addOutputPort(new BasePort(OUTPUT_VALUES_ID, "Values", "Values processed before loop terminated", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_ITERATIONS_ID, "Iterations", "Number of iterations executed", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_TERMINATED_BY_CONDITION_ID, "Terminated By Condition", "Whether loop stopped because condition became false", NodeDataType.BOOLEAN, this));
@@ -58,10 +68,19 @@ public class WhileLoopNode extends BaseNode {
     }
 
     @Override
+    public Set<String> getActiveExecOutputPortIds() {
+        return activeExecOutputs;
+    }
+
+    @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object valuesObj = inputValues.get(INPUT_VALUES_ID);
         Object conditionObj = inputValues.get(INPUT_CONDITION_ID);
         int limit = resolveLimit(inputValues.get(INPUT_MAX_ITERATIONS_ID));
+
+        activeExecOutputs = Set.of();
+        outputValues.put(OUTPUT_EXEC_BODY_ID, null);
+        outputValues.put(OUTPUT_EXEC_COMPLETE_ID, null);
 
         if (!(valuesObj instanceof List<?> values)) {
             outputValues.put(OUTPUT_VALUES_ID, List.of());
@@ -69,30 +88,39 @@ public class WhileLoopNode extends BaseNode {
             outputValues.put(OUTPUT_TERMINATED_BY_CONDITION_ID, false);
             outputValues.put(OUTPUT_HIT_LIMIT_ID, false);
             outputValues.put(OUTPUT_VALID_ID, false);
+        } else {
+            List<Object> output = new ArrayList<>();
+            int iterations = 0;
+            boolean terminatedByCondition = false;
+
+            for (int i = 0; i < values.size() && i < limit; i++) {
+                boolean condition = resolveConditionAt(conditionObj, i);
+                if (!condition) {
+                    terminatedByCondition = true;
+                    break;
+                }
+                output.add(values.get(i));
+                iterations++;
+            }
+
+            boolean hitLimit = values.size() > iterations && iterations >= limit && !terminatedByCondition;
+
+            outputValues.put(OUTPUT_VALUES_ID, output);
+            outputValues.put(OUTPUT_ITERATIONS_ID, iterations);
+            outputValues.put(OUTPUT_TERMINATED_BY_CONDITION_ID, terminatedByCondition);
+            outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
+            outputValues.put(OUTPUT_VALID_ID, true);
+        }
+
+        boolean continueLoop = resolveConditionAt(conditionObj, 0);
+        if (continueLoop) {
+            activeExecOutputs = Set.of(OUTPUT_EXEC_BODY_ID);
+            outputValues.put(OUTPUT_EXEC_BODY_ID, Boolean.TRUE);
             return;
         }
 
-        List<Object> output = new ArrayList<>();
-        int iterations = 0;
-        boolean terminatedByCondition = false;
-
-        for (int i = 0; i < values.size() && i < limit; i++) {
-            boolean condition = resolveConditionAt(conditionObj, i);
-            if (!condition) {
-                terminatedByCondition = true;
-                break;
-            }
-            output.add(values.get(i));
-            iterations++;
-        }
-
-        boolean hitLimit = values.size() > iterations && iterations >= limit && !terminatedByCondition;
-
-        outputValues.put(OUTPUT_VALUES_ID, output);
-        outputValues.put(OUTPUT_ITERATIONS_ID, iterations);
-        outputValues.put(OUTPUT_TERMINATED_BY_CONDITION_ID, terminatedByCondition);
-        outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        activeExecOutputs = Set.of(OUTPUT_EXEC_COMPLETE_ID);
+        outputValues.put(OUTPUT_EXEC_COMPLETE_ID, Boolean.TRUE);
     }
 
     private int resolveLimit(Object inputLimit) {

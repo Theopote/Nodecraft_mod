@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.nodes.flow.control.BranchNode;
 import com.nodecraft.nodesystem.nodes.flow.control.DoOnceNode;
 import com.nodecraft.nodesystem.nodes.flow.control.SequenceNode;
 import com.nodecraft.nodesystem.nodes.flow.loop.ForEachLoopNode;
+import com.nodecraft.nodesystem.nodes.flow.loop.WhileLoopNode;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
@@ -146,6 +147,30 @@ class FlowControlNodeTest {
         gate.compute(Map.of("input_signal", "once"));
         assertEquals(Set.of("exec_blocked"), gate.getActiveExecOutputPortIds());
         assertEquals(Boolean.TRUE, gate.getOutput("exec_blocked"));
+    }
+
+    @Test
+    void whileRoutesExecOutputsByCondition() {
+        WhileLoopNode whileLoop = new WhileLoopNode();
+        whileLoop.compute(Map.of("input_condition", true));
+        assertEquals(Set.of("exec_body"), whileLoop.getActiveExecOutputPortIds());
+
+        whileLoop.compute(Map.of("input_condition", false));
+        assertEquals(Set.of("exec_complete"), whileLoop.getActiveExecOutputPortIds());
+    }
+
+    @Test
+    void forEachExposesPerItemOutputsDuringExecLoop() {
+        ForEachLoopNode forEach = new ForEachLoopNode();
+        forEach.compute(Map.of("input_list", List.of("a", "b")));
+
+        forEach.prepareExecLoopIteration(0);
+        assertEquals("a", forEach.getOutput("output_item"));
+        assertEquals(0, forEach.getOutput("output_index"));
+
+        forEach.prepareExecLoopIteration(1);
+        assertEquals("b", forEach.getOutput("output_item"));
+        assertEquals(1, forEach.getOutput("output_index"));
     }
 
     @Test

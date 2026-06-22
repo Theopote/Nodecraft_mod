@@ -33,10 +33,15 @@ public class NodeRenderConstants {
     public static final int PORT_COLOR_OUTPUT = ImGui.colorConvertFloat4ToU32(1.0f, 0.7f, 0.4f, 1.0f);
     public static final int PORT_COLOR_INPUT_HIGHLIGHT = ImGui.colorConvertFloat4ToU32(0.5f, 0.8f, 1.0f, 1.0f);
     public static final int PORT_COLOR_OUTPUT_HIGHLIGHT = ImGui.colorConvertFloat4ToU32(1.0f, 0.8f, 0.5f, 1.0f);
+    public static final int PORT_COLOR_EXEC = ImGui.colorConvertFloat4ToU32(0.95f, 0.95f, 1.0f, 1.0f);
+    public static final int PORT_COLOR_EXEC_HIGHLIGHT = ImGui.colorConvertFloat4ToU32(1.0f, 1.0f, 1.0f, 1.0f);
+    public static final int CONNECTION_COLOR_EXEC = ImGui.colorConvertFloat4ToU32(0.92f, 0.92f, 1.0f, 0.95f);
+    public static final int CONNECTION_COLOR_EXEC_HIGHLIGHT = ImGui.colorConvertFloat4ToU32(1.0f, 1.0f, 0.75f, 1.0f);
 
     // Precomputed port border colors.
     public static final int PORT_INPUT_BORDER_COLOR = adjustBrightnessFast(PORT_COLOR_INPUT, 1.5f);
     public static final int PORT_OUTPUT_BORDER_COLOR = adjustBrightnessFast(PORT_COLOR_OUTPUT, 1.5f);
+    public static final int PORT_EXEC_BORDER_COLOR = adjustBrightnessFast(PORT_COLOR_EXEC, 1.35f);
 
     // Cache cleanup parameters.
     public static final int CACHE_CLEANUP_INTERVAL = 1000;
@@ -69,6 +74,34 @@ public class NodeRenderConstants {
                 ? categoryName.substring(0, categoryName.indexOf(" / "))
                 : categoryName;
         return CATEGORY_COLORS.getOrDefault(topLevelCategory.toLowerCase(), DEFAULT_CATEGORY_COLOR);
+    }
+
+    public static boolean isExecPort(com.nodecraft.nodesystem.api.IPort port) {
+        return port != null && port.getDataType() == com.nodecraft.nodesystem.api.NodeDataType.EXEC;
+    }
+
+    public static int getInputPortFillColor(com.nodecraft.nodesystem.api.IPort port, boolean highlighted) {
+        if (isExecPort(port)) {
+            return highlighted ? PORT_COLOR_EXEC_HIGHLIGHT : PORT_COLOR_EXEC;
+        }
+        return highlighted ? PORT_COLOR_INPUT_HIGHLIGHT : PORT_COLOR_INPUT;
+    }
+
+    public static int getOutputPortFillColor(com.nodecraft.nodesystem.api.IPort port, boolean highlighted) {
+        if (isExecPort(port)) {
+            return highlighted ? PORT_COLOR_EXEC_HIGHLIGHT : PORT_COLOR_EXEC;
+        }
+        return highlighted ? PORT_COLOR_OUTPUT_HIGHLIGHT : PORT_COLOR_OUTPUT;
+    }
+
+    public static int getPortBorderColor(com.nodecraft.nodesystem.api.IPort port, boolean isInput, boolean highlighted, int navHighlightColor) {
+        if (highlighted) {
+            return navHighlightColor;
+        }
+        if (isExecPort(port)) {
+            return PORT_EXEC_BORDER_COLOR;
+        }
+        return isInput ? PORT_INPUT_BORDER_COLOR : PORT_OUTPUT_BORDER_COLOR;
     }
 
     /**

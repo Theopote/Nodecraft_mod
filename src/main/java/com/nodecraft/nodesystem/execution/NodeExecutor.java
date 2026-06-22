@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.execution;
 
+import com.nodecraft.nodesystem.api.ExecLoopNode;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -14,6 +15,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -306,6 +308,10 @@ public class NodeExecutor {
             return false;
         }
 
+        if (node instanceof ExecLoopNode loopNode) {
+            return drainExecLoop(loopNode, nodeId, flowGraph, guard, recomputedThisRun, executionCache, onNodeExecuted);
+        }
+
         if (ExecRouting.drainExecPortsSequentially(node)) {
             for (String portId : ExecRouting.orderedActiveExecOutputPortIds(node)) {
                 ArrayDeque<UUID> stepFrontier = new ArrayDeque<>();
@@ -324,6 +330,59 @@ public class NodeExecutor {
             }
         }
         return true;
+    }
+
+    private boolean drainExecLoop(
+            ExecLoopNode loopNode,
+            UUID nodeId,
+            ExecutionFlowGraph flowGraph,
+            ExecutionRunGuard guard,
+            Set<UUID> recomputedThisRun,
+            NodeExecutionCache executionCache,
+            Runnable onNodeExecuted
+    ) {
+        String bodyPortId = loopNode.execBodyPortId();
+        String completePortId = loopNode.execCompletePortId();
+        Set<UUID> bodyEntryIds = new LinkedHashSet<>(flowGraph.execSuccessors(nodeId, bodyPortId));
+
+        int iterationCount = loopNode.execLoopIterationCount();
+        for (int iteration = 0; iteration < iterationCount; iteration++) {
+            loopNode.prepareExecLoopIteration(iteration);
+            resetExecSubtreeVisited(bodyEntryIds, flowGraph);
+
+            ArrayDeque<UUID> bodyFrontier = new ArrayDeque<>(bodyEntryIds);
+            if (!drainExecFrontier(bodyFrontier, flowGraph, guard, recomputedThisRun, executionCache, onNodeExecuted)) {
+                return false;
+            }
+        }
+
+        if (completePortId == null) {
+            return true;
+        }
+
+        ArrayDeque<UUID> completeFrontier = new ArrayDeque<>(flowGraph.execSuccessors(nodeId, completePortId));
+        return drainExecFrontier(completeFrontier, flowGraph, guard, recomputedThisRun, executionCache, onNodeExecuted);
+    }
+
+    private void resetExecSubtreeVisited(Set<UUID> entryNodeIds, ExecutionFlowGraph flowGraph) {
+        if (entryNodeIds == null || entryNodeIds.isEmpty()) {
+            return;
+        }
+
+        ArrayDeque<UUID> queue = new ArrayDeque<>(entryNodeIds);
+        Set<UUID> seen = new HashSet<>();
+        while (!queue.isEmpty()) {
+            UUID current = queue.removeFirst();
+            if (!seen.add(current)) {
+                continue;
+            }
+            nodeStates.put(current, NodeState.NOT_VISITED);
+            for (UUID nextId : flowGraph.execSuccessors(current)) {
+                if (!seen.contains(nextId)) {
+                    queue.addLast(nextId);
+                }
+            }
+        }
     }
 
     private void ensureDataUpstreamForInputs(

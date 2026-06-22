@@ -76,17 +76,32 @@ Legacy data outputs on Sequence (`output_step_N`) and DoOnce (`output_first_pass
 
 ---
 
-## Not done yet (P0-B)
+## Implemented in P0-B (slice 1)
 
-1. **Loop exec drivers** — `ForEach` / `While` as exec-driven iteration
-2. **Editor UX** — exec wire styling, live exec highlight
-3. **Partial exec + exec mode** — reconcile incremental cache with repeated exec visits
+| Component | Role |
+|-----------|------|
+| `ExecLoopNode` | ForEach-style repeated body drain with per-iteration output refresh |
+| `ForEachLoopNode` exec ports | `exec_in`, `exec_body`, `exec_complete` + `output_item` / `output_index` |
+| `WhileLoopNode` exec ports | `exec_in`, `exec_body`, `exec_complete` with condition-based routing |
+| `NodeExecutor.drainExecLoop()` | Resets body subtree visit state between iterations |
+| Editor exec styling | White exec ports and brighter exec wires in `ConnectionRenderer` / `ImGuiNodeRenderer` |
+
+Legacy list outputs on loop nodes remain for dataflow graphs without exec wires.
+
+---
+
+## Not done yet (P0-B remainder)
+
+1. **Live exec highlight during preview run** — animate active exec frontier in editor
+2. **Partial exec + exec mode** — reconcile incremental cache with repeated exec visits
 
 Recommended patterns today:
 
 - `flow.control.branch` with **exec_true/exec_false** for conditional side effects
 - `flow.control.sequence` with **exec_step_N** for ordered side-effect chains
 - `flow.control.do_once` with **exec_out/exec_blocked** for once-per-run gates
+- `flow.loop.for_each` with **exec_body** for per-item side effects
+- `flow.loop.while` with **exec_body** loop-back to **exec_in** for conditional loops
 - `math.logic.if` for **value** selection in dataflow-only graphs
 
 ---
@@ -114,7 +129,7 @@ new NodeExecutor(graph, context, null, IncrementalExecutionOptions.defaults(), n
 
 ### Tests
 
-- `ExecFlowExecutorTest` — skip off-frontier nodes, lazy data pull, branch/sequence/do-once exec routing, cycle guard
+- `ExecFlowExecutorTest` — skip off-frontier nodes, lazy data pull, branch/sequence/do-once/for-each/while exec routing, cycle guard
 - `ExecutionFlowGraphTest` — topology analysis
 - `FlowControlNodeTest.branchDoesNotSkipEitherDownstreamNodeInExecutor` — documents dataflow limitation
 
