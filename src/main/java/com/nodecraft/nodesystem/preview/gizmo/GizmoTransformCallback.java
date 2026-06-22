@@ -5,7 +5,6 @@ import org.joml.Vector3d;
 /**
  * Receives live transform edits from an interactive gizmo.
  */
-@FunctionalInterface
 public interface GizmoTransformCallback {
 
     /**
@@ -14,6 +13,9 @@ public interface GizmoTransformCallback {
      * @param scaleDelta multiplicative scale delta for the current drag step
      */
     void onTransformDelta(Vector3d translationDelta, Vector3d rotationDeltaDeg, double scaleDelta);
+
+    default void onDragBegin() {
+    }
 
     default void onTransformCommit() {
     }

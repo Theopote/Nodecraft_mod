@@ -490,6 +490,13 @@ public class ImGuiNodeHistory {
         addAction(action);
     }
 
+    public void recordNodeStateChange(UUID nodeId, Object beforeState, Object afterState, String label) {
+        if (!isRecording || nodeId == null || beforeState == null || afterState == null) {
+            return;
+        }
+        addAction(new NodeStateChangeAction(nodeId, beforeState, afterState, label));
+    }
+
     private static class AiPatchAction extends HistoryAction {
         private final String summary;
         private final Map<UUID, Object> previousStates;
@@ -581,7 +588,59 @@ public class ImGuiNodeHistory {
             }
         }
     }
-    
+
+    private static class NodeStateChangeAction extends HistoryAction {
+        private final UUID nodeId;
+        private final Object beforeState;
+        private final Object afterState;
+        private final String label;
+
+        private NodeStateChangeAction(UUID nodeId, Object beforeState, Object afterState, String label) {
+            this.nodeId = nodeId;
+            this.beforeState = deepCopyState(beforeState);
+            this.afterState = deepCopyState(afterState);
+            this.label = label != null ? label : "Node State Change";
+        }
+
+        @Override
+        public ActionType getType() {
+            return ActionType.NODE_STATE_CHANGE;
+        }
+
+        @Override
+        public boolean undo(ICanvasEditor editor) {
+            return applyState(editor, beforeState);
+        }
+
+        @Override
+        public boolean redo(ICanvasEditor editor) {
+            return applyState(editor, afterState);
+        }
+
+        private boolean applyState(ICanvasEditor editor, Object state) {
+            NodeGraph graph = editor.getCurrentGraph();
+            if (graph == null) {
+                return false;
+            }
+            INode node = graph.getNode(nodeId);
+            if (!(node instanceof BaseNode baseNode)) {
+                return false;
+            }
+            baseNode.setNodeState(deepCopyState(state));
+            baseNode.markDirty();
+            NodeCraft.LOGGER.info("Applied {} for node {}", label, nodeId);
+            return true;
+        }
+
+        private static Object deepCopyState(Object state) {
+            if (state == null) {
+                return null;
+            }
+            com.google.gson.Gson gson = new com.google.gson.Gson();
+            return gson.fromJson(gson.toJson(state), Object.class);
+        }
+    }
+
     /**
      * 历史操作基类
      */
@@ -976,7 +1035,8 @@ public class ImGuiNodeHistory {
         ADD_CONNECTION,
         REMOVE_CONNECTION,
         GRAPH_TRANSACTION,
-        AI_PATCH
+        AI_PATCH,
+        NODE_STATE_CHANGE
     }
     
     /**

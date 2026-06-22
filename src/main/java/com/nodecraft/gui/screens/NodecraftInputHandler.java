@@ -1,6 +1,7 @@
 package com.nodecraft.gui.screens;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.nodesystem.preview.gizmo.GizmoModeShortcuts;
 import com.nodecraft.gui.components.panel.CanvasComponent;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
 import com.nodecraft.minecraft.client.GhostCameraManager;
@@ -38,7 +39,10 @@ public class NodecraftInputHandler {
         GLFW.GLFW_KEY_KP_SUBTRACT,
         GLFW.GLFW_KEY_0,
         GLFW.GLFW_KEY_KP_0,
-        GLFW.GLFW_KEY_HOME
+        GLFW.GLFW_KEY_HOME,
+        GLFW.GLFW_KEY_G,
+        GLFW.GLFW_KEY_R,
+        GLFW.GLFW_KEY_S
     };
 
     private final NodecraftScreen parentScreen;
@@ -155,6 +159,10 @@ public class NodecraftInputHandler {
             && (ImGui.getIO().getWantTextInput() || ImGui.isAnyItemActive());
 
         if (handleGlobalShortcuts(editor, keyCode, isCtrlPressed, textInputActive)) {
+            return true;
+        }
+
+        if (!isCtrlPressed && GizmoModeShortcuts.handleKey(keyCode, textInputActive)) {
             return true;
         }
 

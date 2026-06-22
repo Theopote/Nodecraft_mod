@@ -128,15 +128,15 @@ public class TransformationGizmoElement extends AbstractPreviewElement implement
     }
 
     private boolean showsMove() {
-        return gizmoData != null && (gizmoData.showsMove() || "all".equalsIgnoreCase(gizmoType));
+        return gizmoData != null && gizmoData.showsMove();
     }
 
     private boolean showsRotate() {
-        return gizmoData != null && (gizmoData.showsRotate() || "all".equalsIgnoreCase(gizmoType));
+        return gizmoData != null && gizmoData.showsRotate();
     }
 
     private boolean showsScale() {
-        return gizmoData != null && (gizmoData.showsScale() || "all".equalsIgnoreCase(gizmoType));
+        return gizmoData != null && gizmoData.showsScale();
     }
 
     private double resolveAxisLength(Camera camera) {
@@ -521,6 +521,11 @@ public class TransformationGizmoElement extends AbstractPreviewElement implement
         activeHandle = handle;
         beingDragged = true;
         beginDrag(rayStart, rayDirection, handle);
+
+        GizmoTransformCallback callback = GizmoBindingRegistry.get(getOwnerNodeId());
+        if (callback != null) {
+            callback.onDragBegin();
+        }
         return true;
     }
 

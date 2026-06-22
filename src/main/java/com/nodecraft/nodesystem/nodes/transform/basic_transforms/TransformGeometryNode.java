@@ -7,11 +7,11 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.preview.PreviewManager;
-import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.nodesystem.preview.TransformGizmoPreviewData;
-import com.nodecraft.nodesystem.preview.gizmo.GizmoBindingRegistry;
-import com.nodecraft.nodesystem.preview.gizmo.GizmoTransformCallback;
+import com.nodecraft.nodesystem.preview.gizmo.GizmoNodeSupport;
+import com.nodecraft.nodesystem.preview.gizmo.GizmoOrientation;
+import com.nodecraft.nodesystem.preview.gizmo.GizmoPortConstraints;
+import com.nodecraft.nodesystem.preview.gizmo.GizmoTransformTarget;
 import com.nodecraft.nodesystem.util.GeometryTransform;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -28,7 +28,7 @@ import java.util.UUID;
     category = "transform.basic_transforms",
     order = 9
 )
-public class TransformGeometryNode extends BaseNode {
+public class TransformGeometryNode extends BaseNode implements GizmoTransformTarget {
 
     @NodeProperty(displayName = "Translation X", category = "Transform", order = 1)
     private double translationX = 0.0d;
@@ -98,9 +98,7 @@ public class TransformGeometryNode extends BaseNode {
             return;
         }
 
-        Vector3d translation = inputValues.get(INPUT_TRANSLATION_ID) instanceof Vector3d t
-            ? new Vector3d(t)
-            : new Vector3d(translationX, translationY, translationZ);
+        Vector3d translation = resolveTranslation();
         double rx = getInputDouble(INPUT_ROT_X_ID, rotationX);
         double ry = getInputDouble(INPUT_ROT_Y_ID, rotationY);
         double rz = getInputDouble(INPUT_ROT_Z_ID, rotationZ);
@@ -124,57 +122,120 @@ public class TransformGeometryNode extends BaseNode {
 
         GeometryData transformed = GeometryTransform.transform(geometry, translation, rx, ry, rz, s);
         writeResult(transformed, transformed != null, transformed == null ? "Unsupported geometry transform" : "");
-        updateGizmoPreview(translation);
+        updateGizmoPreview();
     }
 
-    private void updateGizmoPreview(Vector3d translation) {
-        String ownerId = getId().toString();
+    private void updateGizmoPreview() {
         if (!showGizmo) {
             hideGizmoPreview();
             return;
         }
-
-        GizmoBindingRegistry.register(ownerId, createGizmoCallback());
-        TransformGizmoPreviewData data = new TransformGizmoPreviewData(
-            new Vec3d(translation.x, translation.y, translation.z),
-            new Vec3d(1.0d, 0.0d, 0.0d),
-            new Vec3d(0.0d, 1.0d, 0.0d),
-            new Vec3d(0.0d, 0.0d, 1.0d),
-            2.0d,
-            gizmoMode
-        );
-        PreviewOptions options = PreviewOptions.createTransformGizmo();
-        options.gizmoType = gizmoMode;
-        PreviewManager.showTransformGizmo(ownerId, data, options);
-    }
-
-    private GizmoTransformCallback createGizmoCallback() {
-        return (translationDelta, rotationDeltaDeg, scaleDelta) -> {
-            if (translationDelta.lengthSquared() > 1.0e-12d) {
-                translationX += translationDelta.x;
-                translationY += translationDelta.y;
-                translationZ += translationDelta.z;
-            }
-            if (rotationDeltaDeg.lengthSquared() > 1.0e-12d) {
-                rotationX += rotationDeltaDeg.x;
-                rotationY += rotationDeltaDeg.y;
-                rotationZ += rotationDeltaDeg.z;
-            }
-            if (Math.abs(scaleDelta - 1.0d) > 1.0e-9d && Double.isFinite(scaleDelta) && scaleDelta > 1.0e-9d) {
-                scale *= scaleDelta;
-            }
-            markDirty();
-        };
+        GizmoNodeSupport.showForTarget(getId().toString(), this);
     }
 
     private void hideGizmoPreview() {
-        GizmoBindingRegistry.unregister(getId().toString());
-        PreviewManager.hideNodePreviewType(getId().toString(), "transformation_gizmo");
+        GizmoNodeSupport.hide(getId().toString(), getId());
     }
 
     @Override
     public void onNodeRemoved() {
         hideGizmoPreview();
+    }
+
+    @Override
+    public UUID getNodeId() {
+        return getId();
+    }
+
+    @Override
+    public String getGizmoMode() {
+        return gizmoMode;
+    }
+
+    @Override
+    public void setGizmoMode(String mode) {
+        if (mode == null || mode.isBlank()) {
+            return;
+        }
+        String normalized = mode.trim().toLowerCase();
+        if (!normalized.equals(gizmoMode)) {
+            gizmoMode = normalized;
+            markDirty();
+        }
+    }
+
+    @Override
+    public GizmoPortConstraints getGizmoPortConstraints() {
+        return GizmoPortConstraints.fromNode(
+            this,
+            INPUT_TRANSLATION_ID,
+            INPUT_ROT_X_ID,
+            INPUT_ROT_Y_ID,
+            INPUT_ROT_Z_ID,
+            INPUT_SCALE_ID
+        );
+    }
+
+    @Override
+    public TransformGizmoPreviewData buildGizmoPreviewData() {
+        GizmoPortConstraints constraints = getGizmoPortConstraints();
+        String effectiveMode = constraints.resolveEffectiveMode(gizmoMode);
+        if ("none".equals(effectiveMode)) {
+            return null;
+        }
+
+        Vector3d translation = resolveTranslation();
+        GizmoOrientation.LocalAxes axes = GizmoOrientation.fromEulerDegrees(rotationX, rotationY, rotationZ);
+        return new TransformGizmoPreviewData(
+            new Vec3d(translation.x, translation.y, translation.z),
+            axes.xAxis(),
+            axes.yAxis(),
+            axes.zAxis(),
+            2.0d,
+            effectiveMode,
+            constraints.moveEnabled(),
+            constraints.rotateEnabled(),
+            constraints.scaleEnabled()
+        );
+    }
+
+    @Override
+    public void applyGizmoDelta(Vector3d translationDelta, Vector3d rotationDeltaDeg, double scaleDelta) {
+        if (translationDelta.lengthSquared() > 1.0e-12d && getGizmoPortConstraints().moveEnabled()) {
+            translationX += translationDelta.x;
+            translationY += translationDelta.y;
+            translationZ += translationDelta.z;
+        }
+        if (rotationDeltaDeg.lengthSquared() > 1.0e-12d && getGizmoPortConstraints().rotateEnabled()) {
+            rotationX += rotationDeltaDeg.x;
+            rotationY += rotationDeltaDeg.y;
+            rotationZ += rotationDeltaDeg.z;
+        }
+        if (Math.abs(scaleDelta - 1.0d) > 1.0e-9d && Double.isFinite(scaleDelta) && scaleDelta > 1.0e-9d
+            && getGizmoPortConstraints().scaleEnabled()) {
+            scale *= scaleDelta;
+        }
+    }
+
+    @Override
+    public Object captureGizmoUndoState() {
+        return getNodeState();
+    }
+
+    @Override
+    public void restoreGizmoUndoState(Object state) {
+        setNodeState(state);
+    }
+
+    @Override
+    public void markGizmoDirty() {
+        markDirty();
+    }
+
+    private Vector3d resolveTranslation() {
+        return inputValues.get(INPUT_TRANSLATION_ID) instanceof Vector3d vector
+            ? new Vector3d(vector)
+            : new Vector3d(translationX, translationY, translationZ);
     }
 
     @Override

@@ -10,6 +10,9 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.PreviewBackend;
 import com.nodecraft.nodesystem.preview.PreviewGuideBuilder;
 import com.nodecraft.nodesystem.preview.PreviewManager;
+import com.nodecraft.nodesystem.preview.gizmo.GizmoGraphBinding;
+import com.nodecraft.nodesystem.preview.gizmo.GizmoNodeSupport;
+import com.nodecraft.nodesystem.preview.gizmo.GizmoTransformTarget;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.nodesystem.preview.PreviewSampling;
 import com.nodecraft.nodesystem.preview.TextLabelPreviewData;
@@ -119,6 +122,14 @@ public class GeometryViewerNode extends BaseCustomUINode {
     @NodeProperty(displayName = "Show Direction Vector", category = "Guides", order = 14)
     private boolean showDirectionVector = true;
 
+    @NodeProperty(displayName = "Show Transform Gizmo", category = "Gizmo", order = 15)
+    private boolean showTransformGizmo = false;
+
+    @NodeProperty(displayName = "Gizmo Mode", category = "Gizmo", order = 16)
+    private String gizmoMode = "all";
+
+    private volatile UUID lastGizmoBindingNodeId = null;
+
     private volatile int lastBlockCount = 0;
     private volatile int lastRenderedPreviewCount = 0;
     private volatile boolean lastPreviewSampled = false;
@@ -136,6 +147,8 @@ public class GeometryViewerNode extends BaseCustomUINode {
     private volatile boolean cachedShowDimensionLabels = false;
     private volatile boolean cachedShowPivotAxes = false;
     private volatile boolean cachedShowDirectionVector = false;
+    private volatile boolean cachedShowTransformGizmo = false;
+    private volatile String cachedGizmoMode = null;
     private volatile String cachedPreviewId = null;
     private volatile long lastNonEmptyInputAt = 0L;
     private volatile long lastPreviewInputChangeAt = 0L;
@@ -221,7 +234,9 @@ public class GeometryViewerNode extends BaseCustomUINode {
             || cachedDraftPreviewBlocks != sanitizePreviewLimit(draftPreviewBlocks, 5000)
             || cachedShowDimensionLabels != showDimensionLabels
             || cachedShowPivotAxes != showPivotAxes
-            || cachedShowDirectionVector != showDirectionVector;
+            || cachedShowDirectionVector != showDirectionVector
+            || cachedShowTransformGizmo != showTransformGizmo
+            || !Objects.equals(cachedGizmoMode, gizmoMode);
 
         long now = System.currentTimeMillis();
         if (previewDirty) {
@@ -286,6 +301,8 @@ public class GeometryViewerNode extends BaseCustomUINode {
         cachedShowDimensionLabels = showDimensionLabels;
         cachedShowPivotAxes = showPivotAxes;
         cachedShowDirectionVector = showDirectionVector;
+        cachedShowTransformGizmo = showTransformGizmo;
+        cachedGizmoMode = gizmoMode;
     }
 
     private boolean refreshPreview(
@@ -410,6 +427,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
             PreviewManager.hideNodePreviewType(ownerId, "text_labels");
             PreviewManager.hideNodePreviewType(ownerId, "frame_axes");
             PreviewManager.hideNodePreviewType(ownerId, "vectors");
+            hideTransformGizmoPreview();
             return;
         }
 
@@ -454,6 +472,51 @@ public class GeometryViewerNode extends BaseCustomUINode {
         } else {
             PreviewManager.hideNodePreviewType(ownerId, "vectors");
         }
+
+        refreshTransformGizmo(guide);
+    }
+
+    private void refreshTransformGizmo(PreviewGuideBuilder.GuideData guide) {
+        String ownerId = getId().toString();
+        if (!showTransformGizmo) {
+            hideTransformGizmoPreview();
+            return;
+        }
+
+        GizmoTransformTarget target = GizmoGraphBinding.findUpstreamTransformTarget(getId(), INPUT_GEOMETRY_ID);
+        if (target == null) {
+            hideTransformGizmoPreview();
+            return;
+        }
+
+        lastGizmoBindingNodeId = target.getNodeId();
+        double axisLength = Math.max(1.0d, guide.axisLength());
+        GizmoNodeSupport.showForTarget(ownerId, target, guide.pivot(), axisLength, gizmoMode);
+    }
+
+    private void hideTransformGizmoPreview() {
+        GizmoNodeSupport.hide(getId().toString(), lastGizmoBindingNodeId);
+        lastGizmoBindingNodeId = null;
+    }
+
+    public void setGizmoMode(String mode) {
+        if (mode == null || mode.isBlank()) {
+            return;
+        }
+        String normalized = mode.trim().toLowerCase();
+        if (!normalized.equals(gizmoMode)) {
+            gizmoMode = normalized;
+            markDirty();
+        }
+    }
+
+    public String getGizmoMode() {
+        return gizmoMode;
+    }
+
+    @Override
+    public void onNodeRemoved() {
+        hideTransformGizmoPreview();
     }
 
     private int sanitizePreviewLimit(int value, int fallback) {
@@ -526,7 +589,10 @@ public class GeometryViewerNode extends BaseCustomUINode {
         cachedShowDimensionLabels = false;
         cachedShowPivotAxes = false;
         cachedShowDirectionVector = false;
+        cachedShowTransformGizmo = false;
+        cachedGizmoMode = null;
         cachedPreviewId = null;
+        hideTransformGizmoPreview();
         lastRenderedPreviewCount = 0;
         lastPreviewSampled = false;
         pendingFullPreviewRefresh = false;
@@ -755,6 +821,8 @@ public class GeometryViewerNode extends BaseCustomUINode {
         state.put("showDimensionLabels", showDimensionLabels);
         state.put("showPivotAxes", showPivotAxes);
         state.put("showDirectionVector", showDirectionVector);
+        state.put("showTransformGizmo", showTransformGizmo);
+        state.put("gizmoMode", gizmoMode);
         return state;
     }
 
@@ -811,6 +879,13 @@ public class GeometryViewerNode extends BaseCustomUINode {
         }
         if (map.get("showDirectionVector") instanceof Boolean value) {
             setShowDirectionVector(value);
+        }
+        if (map.get("showTransformGizmo") instanceof Boolean value) {
+            showTransformGizmo = value;
+            markDirty();
+        }
+        if (map.get("gizmoMode") instanceof String value) {
+            setGizmoMode(value);
         }
     }
 
