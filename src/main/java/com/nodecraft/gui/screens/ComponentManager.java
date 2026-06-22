@@ -6,6 +6,7 @@ import java.util.List;
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.components.panel.CanvasComponent;
 import com.nodecraft.gui.components.EditorComponent;
+import com.nodecraft.gui.components.panel.LeftPanelComponent;
 import com.nodecraft.gui.components.panel.NodeLibraryComponent;
 import com.nodecraft.gui.components.PropertyPanelComponent;
 import com.nodecraft.gui.editor.base.INodeEditor;
@@ -23,7 +24,7 @@ public class ComponentManager {
     private final INodeEditor currentEditor;
     private Screen parentScreen;
 
-    private NodeLibraryComponent nodeLibraryComponent;
+    private LeftPanelComponent leftPanelComponent;
     private CanvasComponent canvasComponent;
     private PropertyPanelComponent propertyPanelComponent;
 
@@ -72,8 +73,8 @@ public class ComponentManager {
 
             CallbackHandler localHandler = new CallbackHandler(/* this.statusBarComponent */);
 
-            this.nodeLibraryComponent = new NodeLibraryComponent(localHandler);
-            registerComponent(this.nodeLibraryComponent, LayoutConstraints.createNodePanel(
+            this.leftPanelComponent = new LeftPanelComponent(localHandler);
+            registerComponent(this.leftPanelComponent, LayoutConstraints.createNodePanel(
                 EditorConstants.NODE_PANEL_WIDTH_RATIO, EditorConstants.MIN_PANEL_WIDTH));
             
             if (this.currentEditor == null) {
@@ -111,7 +112,7 @@ public class ComponentManager {
      * 清理所有组件引用。
      */
     public void cleanup() {
-        nodeLibraryComponent = null;
+        leftPanelComponent = null;
         canvasComponent = null;
         propertyPanelComponent = null;
         editorComponents.clear();
@@ -120,8 +121,12 @@ public class ComponentManager {
 
     // --- Getters for components ---
 
+    public LeftPanelComponent getLeftPanelComponent() {
+        return leftPanelComponent;
+    }
+
     public NodeLibraryComponent getNodeLibraryComponent() {
-        return nodeLibraryComponent;
+        return leftPanelComponent != null ? leftPanelComponent.getNodeLibraryComponent() : null;
     }
 
     public CanvasComponent getCanvasComponent() {

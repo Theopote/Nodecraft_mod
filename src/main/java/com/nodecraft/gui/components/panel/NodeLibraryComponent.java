@@ -324,16 +324,7 @@ public class NodeLibraryComponent implements EditorComponent {
             }
 
             try {
-                // Search bar.
-                renderSearchBar();
-
-                renderSuggestedSection();
-
-                ImGui.separator();
-                ImGui.spacing();
-
-                // Node categories.
-                renderNodeCategories();
+                renderContent(nodePanelWidth, contentHeight, windowPaddingX);
             } finally {
                 // Only end the child window after a successful beginChild call.
                 ImGui.endChild();
@@ -342,6 +333,17 @@ public class NodeLibraryComponent implements EditorComponent {
             NodeCraft.LOGGER.error("Failed to render node library: {}", e.getMessage());
             NodeCraft.LOGGER.error("Failed to render node library: {}", e.getMessage(), e);
         }
+    }
+
+    /**
+     * Renders node library body without an outer child window (for tabbed left panel).
+     */
+    public void renderContent(float width, float height, float paddingX) {
+        renderSearchBar();
+        renderSuggestedSection();
+        ImGui.separator();
+        ImGui.spacing();
+        renderNodeCategories();
     }
 
     /**

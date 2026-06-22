@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "id": "architectural_styles",
+      "displayName": "建筑风格",
+      "presets": [
+        {
+          "id": "style.medieval_castle",
+          "displayName": "中世纪城堡",
+          "description": "塔楼、幕墙与门楼模块化模板（筹备中）",
+          "kind": "placeholder"
+        },
+        {
+          "id": "style.modern_building",
+          "displayName": "现代建筑",
+          "description": "框架、幕墙与模块化体量模板（筹备中）",
+          "kind": "placeholder"
+        },
+        {
+          "id": "style.eastern_palace",
+          "displayName": "东方宫殿",
+          "description": "院落、台基与屋顶体系模板（筹备中）",
+          "kind": "placeholder"
+        },
+        {
+          "id": "style.sci_fi_structure",
+          "displayName": "科幻结构",
+          "description": "有机壳体与结构框架模板（筹备中）",
+          "kind": "placeholder"
+        }
+      ]
+    },
+    {
+      "id": "building_elements",
+      "displayName": "建筑元素",
+      "presets": [
+        {
+          "id": "element.door_window_array",
+          "displayName": "门窗阵列",
+          "description": "立面开洞与窗洞阵列工作流（筹备中）",
+          "kind": "placeholder"
+        },
+        {
+          "id": "element.stair_system",
+          "displayName": "楼梯系统",
+          "description": "直跑/折返楼梯生成链（筹备中）",
+          "kind": "placeholder"
+        },
+        {
+          "id": "element.roof_generator",
+          "displayName": "屋顶生成器",
+          "description": "坡屋顶与檐口模板（筹备中）",
+          "kind": "placeholder"
+        },
+        {
+          "id": "element.decorative_pattern",
+          "displayName": "装饰纹样",
+          "description": "重复纹样与浮雕带（筹备中）",
+          "kind": "placeholder"
+        }
+      ]
+    },
+    {
+      "id": "workflows",
+      "displayName": "工作流",
+      "presets": [
+        {
+          "id": "workflow.heightmap_terrain",
+          "displayName": "从高度图生成地形",
+          "description": "高度图 → 地形体素 → 落地（筹备中）",
+          "kind": "placeholder"
+        },
+        {
+          "id": "workflow.procedural_city_block",
+          "displayName": "程序化城市街区",
+          "description": "街区网格 → 体量 → 材质（筹备中）",
+          "kind": "placeholder"
+        },
+        {
+          "id": "workflow.organic_sdf",
+          "displayName": "有机曲面建模",
+          "description": "SDF 链 → 体素化 → 预览（筹备中）",
+          "kind": "placeholder"
+        }
+      ]
+    },
+    {
+      "id": "composites",
+      "displayName": "节点组合",
+      "presets": [
+        {
+          "id": "composite.textured_box",
+          "displayName": "创建带材质的立方体",
+          "description": "Box → Assign Block Type → Geometry Viewer",
+          "kind": "composite",
+          "nodes": [
+            { "ref": "box", "typeId": "geometry.primitives.box", "x": 0, "y": 0 },
+            { "ref": "material", "typeId": "material.basic_assignment.assign_block_type", "x": 300, "y": 0 },
+            { "ref": "viewer", "typeId": "output.preview.geometry_viewer", "x": 600, "y": 0 }
+          ],
+          "connections": [
+            { "fromRef": "box", "fromPort": "output_geometry", "toRef": "material", "toPort": "input_geometry" },
+            { "fromRef": "material", "fromPort": "output_positions", "toRef": "viewer", "toPort": "input_blocks" }
+          ]
+        },
+        {
+          "id": "composite.array_transform_deform",
+          "displayName": "阵列并变形",
+          "description": "Box → Linear Array → Transform Geometry",
+          "kind": "composite",
+          "nodes": [
+            { "ref": "box", "typeId": "geometry.primitives.box", "x": 0, "y": 0 },
+            { "ref": "array", "typeId": "pattern.linear.linear_array_geometry", "x": 300, "y": 0 },
+            { "ref": "transform", "typeId": "transform.basic_transforms.transform_geometry", "x": 600, "y": 0 }
+          ],
+          "connections": [
+            { "fromRef": "box", "fromPort": "output_geometry", "toRef": "array", "toPort": "input_geometry" },
+            { "fromRef": "array", "fromPort": "output_geometry", "toRef": "transform", "toPort": "input_geometry" }
+          ]
+        },
+        {
+          "id": "composite.boolean_cut_bake",
+          "displayName": "布尔切割",
+          "description": "Box A + Box B → Difference → Bake Geometry To Blocks",
+          "kind": "composite",
+          "nodes": [
+            { "ref": "base", "typeId": "geometry.primitives.box", "x": 0, "y": 0 },
+            { "ref": "cutter", "typeId": "geometry.primitives.box", "x": 0, "y": 180 },
+            { "ref": "difference", "typeId": "geometry.boolean.difference", "x": 320, "y": 80 },
+            { "ref": "bake", "typeId": "output.execute.bake_geometry_to_blocks", "x": 620, "y": 80 }
+          ],
+          "connections": [
+            { "fromRef": "base", "fromPort": "output_geometry", "toRef": "difference", "toPort": "input_base" },
+            { "fromRef": "cutter", "fromPort": "output_geometry", "toRef": "difference", "toPort": "input_cutter" },
+            { "fromRef": "difference", "fromPort": "output_geometry", "toRef": "bake", "toPort": "input_geometry" }
+          ]
+        }
+      ]
+    }
+  ]
+}

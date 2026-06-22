@@ -4,6 +4,7 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.components.panel.CanvasComponent;
 import com.nodecraft.gui.components.EditorComponent;
 import com.nodecraft.gui.components.PropertyPanelComponent;
+import com.nodecraft.gui.components.panel.LeftPanelComponent;
 import com.nodecraft.gui.editor.integration.ImGuiInputAdapter;
 import com.nodecraft.gui.layout.LayoutDimensions;
 import com.nodecraft.gui.layout.LayoutManager;
@@ -168,7 +169,7 @@ public class LayoutRenderer {
 
         // 获取组件布局
         CanvasComponent canvasComponent = componentManager.getCanvasComponent();
-        EditorComponent nodePanel = componentManager.getNodeLibraryComponent();
+        EditorComponent nodePanel = componentManager.getLeftPanelComponent();
 
         if (canvasComponent == null) return;
 
@@ -367,11 +368,12 @@ public class LayoutRenderer {
                     // 为非画布组件创建Child窗口
                     String childId = "child_" + component.getComponentId();
 
-                    // 判断是否是属性面板，决定是否有边框和滚动行为
+                    // 属性面板与左侧面板使用 Tab + 内层滚动，外层 child 禁用滚动
                     boolean isPropertyPanel = component instanceof PropertyPanelComponent;
-                    boolean hasBorder = isPropertyPanel;
+                    boolean isLeftPanel = component instanceof LeftPanelComponent;
+                    boolean hasBorder = isPropertyPanel || isLeftPanel;
                     int childFlags = 0;
-                    if (isPropertyPanel) {
+                    if (isPropertyPanel || isLeftPanel) {
                         childFlags = imgui.flag.ImGuiWindowFlags.NoScrollbar | imgui.flag.ImGuiWindowFlags.NoScrollWithMouse;
                     }
 
