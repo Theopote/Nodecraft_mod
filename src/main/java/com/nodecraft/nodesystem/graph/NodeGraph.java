@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -381,15 +382,87 @@ public class NodeGraph {
     }
 
     /**
-     * Returns the dirty impact set for a changed node, including the node itself
-     * and every downstream dependency.
+     * Returns all downstream node ids reachable from the given source node via exec edges only.
+     * The source node itself is not included.
+     */
+    public Set<UUID> getExecDownstreamNodeIds(UUID sourceNodeId) {
+        Set<UUID> downstream = new LinkedHashSet<>();
+        if (sourceNodeId == null || !nodeMap.containsKey(sourceNodeId)) {
+            return downstream;
+        }
+
+        ArrayDeque<UUID> queue = new ArrayDeque<>();
+        queue.add(sourceNodeId);
+
+        while (!queue.isEmpty()) {
+            UUID current = queue.removeFirst();
+            for (Connection connection : connections) {
+                if (!ExecutionPortKind.isExecConnection(connection)) {
+                    continue;
+                }
+                if (!connection.sourceNode.getId().equals(current)) {
+                    continue;
+                }
+
+                UUID targetId = connection.targetNode.getId();
+                if (sourceNodeId.equals(targetId)) {
+                    continue;
+                }
+                if (downstream.add(targetId)) {
+                    queue.addLast(targetId);
+                }
+            }
+        }
+
+        return downstream;
+    }
+
+    /**
+     * Returns the dirty impact set for a changed node, including the node itself,
+     * every data downstream dependency, and (when exec wires exist) exec downstream nodes.
      */
     public Set<UUID> getDirtyImpactNodeIds(UUID sourceNodeId) {
-        Set<UUID> impacted = getDownstreamNodeIds(sourceNodeId);
+        Set<UUID> impacted = new LinkedHashSet<>(getDownstreamNodeIds(sourceNodeId));
         if (sourceNodeId != null && nodeMap.containsKey(sourceNodeId)) {
             impacted.add(sourceNodeId);
         }
-        return impacted;
+        if (hasExecConnections()) {
+            expandExecDownstreamClosure(impacted);
+        }
+        return Set.copyOf(impacted);
+    }
+
+    private boolean hasExecConnections() {
+        for (Connection connection : connections) {
+            if (ExecutionPortKind.isExecConnection(connection)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void expandExecDownstreamClosure(Set<UUID> impacted) {
+        if (impacted.isEmpty()) {
+            return;
+        }
+
+        ArrayDeque<UUID> queue = new ArrayDeque<>(impacted);
+        while (!queue.isEmpty()) {
+            UUID current = queue.removeFirst();
+            for (Connection connection : connections) {
+                if (!ExecutionPortKind.isExecConnection(connection)) {
+                    continue;
+                }
+                if (!connection.sourceNode.getId().equals(current)) {
+                    continue;
+                }
+
+                UUID targetId = connection.targetNode.getId();
+                if (impacted.add(targetId)) {
+                    queue.addLast(targetId);
+                }
+            }
+        }
     }
 
     private IPort findOutputPort(INode node, String portId) {

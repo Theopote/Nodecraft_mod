@@ -98,12 +98,13 @@ Legacy list outputs on loop nodes remain for dataflow graphs without exec wires.
 | `NodeExecutor.getExecFrontierSnapshot()` | Publishes active node, pending frontier, and fired exec wires |
 | Editor exec highlight | Cyan node glow + brighter exec wires during preview execution |
 | Partial exec + exec mode | Exec frontier visits bypass preview cache skip; loop body resets force recompute |
+| `NodeGraph.getDirtyImpactNodeIds()` | Unions data downstream with exec downstream closure when exec wires exist |
 
 ---
 
 ## Not done yet
 
-1. **Partial exec scope planning** — include exec downstream in dirty invalidation scope automatically
+None for P0 exec-flow control. Future: richer exec-only upstream scope when leaf exec nodes are dirtied directly.
 
 Recommended patterns today:
 
@@ -128,6 +129,8 @@ During auto-preview execution, exec graphs highlight the **active node**, **pend
 
 Partial preview runs (`IncrementalExecutionOptions.previewDefaults()`) still skip cached dataflow nodes, but **exec frontier visits always recompute** scoped nodes. Loop body subtrees reset via `forcedExecRecomputeNodeIds` so ForEach/While iterations do not reuse stale cache.
 
+Dirty invalidation scope (`IncrementalExecutionPlanner.resolveInvalidationScope`) includes **data downstream plus exec downstream closure**, so a changed condition node also marks exec-connected sinks for partial preview.
+
 ### Guard defaults
 
 ```java
@@ -146,7 +149,7 @@ new NodeExecutor(graph, context, null, IncrementalExecutionOptions.defaults(), n
 - `ExecFlowExecutorTest` — skip off-frontier nodes, lazy data pull, branch/sequence/do-once/for-each/while exec routing, cycle guard
 - `ExecFrontierSnapshotTest` — exec wire matching helpers
 - `NodeExecutorIntegrationTest.partialExecExecFlowRecomputesCachedLoopNodesDespitePreviewCacheSkip` — partial exec + exec loops
-- `ExecutionFlowGraphTest` — topology analysis
+- `IncrementalExecutionPlannerTest` — exec downstream included in dirty invalidation scope
 - `FlowControlNodeTest.branchDoesNotSkipEitherDownstreamNodeInExecutor` — documents dataflow limitation
 
 ---

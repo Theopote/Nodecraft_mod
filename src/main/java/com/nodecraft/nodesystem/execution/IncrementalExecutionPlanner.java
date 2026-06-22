@@ -17,6 +17,9 @@ public final class IncrementalExecutionPlanner {
 
     /**
      * Returns the changed node plus every downstream dependent that must recompute.
+     *
+     * <p>Includes data downstream and, when the graph has exec wires, exec downstream closure
+     * so partial preview runs cover exec side-effect chains.</p>
      */
     public static Set<UUID> resolveInvalidationScope(NodeGraph graph, UUID changedNodeId) {
         if (graph == null || changedNodeId == null) {
