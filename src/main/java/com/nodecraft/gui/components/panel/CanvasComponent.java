@@ -7,6 +7,9 @@ import java.util.Objects; // 导入 Objects
 import java.util.UUID;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.preset.GraphPresetApplier;
+import com.nodecraft.gui.preset.GraphPresetCatalog;
+import com.nodecraft.gui.preset.GraphPresetRules;
 import com.nodecraft.gui.editor.base.INodeEditor;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
 import com.nodecraft.gui.editor.impl.NodePosition;
@@ -36,6 +39,7 @@ public class CanvasComponent implements EditorComponent {
         static final float GRID_THICKNESS = 1.0f;
         static final int MAJOR_LINE_INTERVAL = 5;
         static final String DRAG_DROP_PAYLOAD_TYPE = "DND_NODE_FROM_LIBRARY";
+        static final String PRESET_DRAG_DROP_PAYLOAD_TYPE = GraphPresetCatalog.PRESET_DRAG_PAYLOAD;
     }
     
     // 画布状态
@@ -55,6 +59,7 @@ public class CanvasComponent implements EditorComponent {
     
     // 拖放状态跟踪 - 用于防止拖放时触发框选
     private static boolean isNodeDragDropActive = false;
+    private static boolean isPresetDragDropActive = false;
     
     // 样式设置 (现在使用常量初始化，但保留字段以便未来可能的动态修改)
     private float[] canvasBackgroundColor = CanvasConstants.DEFAULT_BACKGROUND_COLOR.clone(); 
@@ -460,90 +465,116 @@ public class CanvasComponent implements EditorComponent {
      * 处理拖放目标
      */
     private void handleDragDropTarget(ImVec2 canvasScreenPos, ImVec2 canvasSize) {
-        Object activePayload = ImGui.getDragDropPayload(CanvasConstants.DRAG_DROP_PAYLOAD_TYPE);
-        if (activePayload == null) {
+        Object nodePayload = ImGui.getDragDropPayload(CanvasConstants.DRAG_DROP_PAYLOAD_TYPE);
+        Object presetPayload = ImGui.getDragDropPayload(CanvasConstants.PRESET_DRAG_DROP_PAYLOAD_TYPE);
+        if (nodePayload == null && presetPayload == null) {
             isNodeDragDropActive = false;
+            isPresetDragDropActive = false;
             return;
         }
 
         ImGui.setCursorScreenPos(canvasScreenPos.x, canvasScreenPos.y);
         ImGui.invisibleButton("##canvasDropTarget", canvasSize.x, canvasSize.y);
-        
+
         boolean dragDropTargetBegin = false;
         try {
-            NodeCraft.LOGGER.debug("尝试开始拖放目标检测...");
             dragDropTargetBegin = ImGui.beginDragDropTarget();
-            
-            if (dragDropTargetBegin) {
-                // 设置拖放状态为活跃
-                isNodeDragDropActive = true;
-                NodeCraft.LOGGER.debug("拖放目标已激活，期望接收类型: {}", CanvasConstants.DRAG_DROP_PAYLOAD_TYPE);
-                
-                // 使用acceptDragDropPayload方法获取原始数据
-                Object payload = ImGui.acceptDragDropPayload(CanvasConstants.DRAG_DROP_PAYLOAD_TYPE);
-                
-                if (payload != null) {
-                    NodeCraft.LOGGER.debug("接收到拖放数据，类型: {}", payload.getClass().getName());
-                    
-                    String nodeId;
-                    if (payload instanceof byte[] payloadBytes) {
-                        // 如果是字节数组，转换为字符串
-                        nodeId = new String(payloadBytes, java.nio.charset.StandardCharsets.UTF_8);
-                        NodeCraft.LOGGER.debug("将字节数组[{}字节]转换为字符串: {}", payloadBytes.length, nodeId);
-                    } else if (payload instanceof String) {
-                        // 如果直接是字符串，直接使用
-                        nodeId = (String) payload;
-                        NodeCraft.LOGGER.debug("直接使用字符串类型的拖放数据: {}", nodeId);
-                    } else {
-                        // 记录未知类型并跳过处理
-                        NodeCraft.LOGGER.error("拖放数据类型未知: {}", payload.getClass().getName());
-                        ImGui.endDragDropTarget();
-                        // 重置拖放状态
-                        isNodeDragDropActive = false;
-                        return;
-                    }
-                    
-                    ImGuiIO io = ImGui.getIO();
-                    float dropX = (io.getMousePosX() - canvasScreenPos.x - canvasOffsetX) / canvasZoom;
-                    float dropY = (io.getMousePosY() - canvasScreenPos.y - canvasOffsetY) / canvasZoom;
-                    
-                    NodeCraft.LOGGER.info("节点已拖放到画布: {} 在位置 ({}, {})", nodeId, dropX, dropY);
-                    
-                    if (dropCallback != null) {
-                        NodeCraft.LOGGER.debug("调用回调函数处理节点拖放: {}", nodeId);
-                        dropCallback.onNodeDropped(nodeId, dropX, dropY);
-                    } else {
-                        NodeCraft.LOGGER.warn("拖放回调未设置，无法处理节点拖放");
-                    }
-                    
-                    // 拖放完成，重置状态
-                    isNodeDragDropActive = false;
-                } else {
-                    NodeCraft.LOGGER.debug("接收到空的拖放数据");
-                }
-                
-                ImGui.endDragDropTarget();
-                NodeCraft.LOGGER.debug("拖放目标处理完成");
-            } else {
-                // 如果拖放目标未激活，重置拖放状态
+            if (!dragDropTargetBegin) {
                 isNodeDragDropActive = false;
-                NodeCraft.LOGGER.debug("拖放目标未激活");
+                isPresetDragDropActive = false;
+                return;
+            }
+
+            isNodeDragDropActive = nodePayload != null;
+            isPresetDragDropActive = presetPayload != null;
+
+            if (nodePayload != null) {
+                Object payload = ImGui.acceptDragDropPayload(CanvasConstants.DRAG_DROP_PAYLOAD_TYPE);
+                if (payload != null) {
+                    handleNodeDropPayload(payload, canvasScreenPos);
+                    isNodeDragDropActive = false;
+                }
+            }
+
+            if (presetPayload != null) {
+                Object payload = ImGui.acceptDragDropPayload(CanvasConstants.PRESET_DRAG_DROP_PAYLOAD_TYPE);
+                if (payload != null) {
+                    handlePresetDropPayload(payload, canvasScreenPos);
+                    isPresetDragDropActive = false;
+                }
             }
         } catch (Exception e) {
-            // 使用通用异常处理方法
             handleException(e, "处理拖放目标");
-            
-            // 确保在异常情况下也结束拖放目标并重置状态
+        } finally {
             if (dragDropTargetBegin) {
                 try {
                     ImGui.endDragDropTarget();
                 } catch (Exception ignored) {
-                    // 忽略
+                    // ignore
                 }
             }
-            // 重置拖放状态
-            isNodeDragDropActive = false;
+            if (nodePayload == null) {
+                isNodeDragDropActive = false;
+            }
+            if (presetPayload == null) {
+                isPresetDragDropActive = false;
+            }
         }
+    }
+
+    private void handleNodeDropPayload(Object payload, ImVec2 canvasScreenPos) {
+        String nodeId = parseDragDropText(payload);
+        if (nodeId == null) {
+            NodeCraft.LOGGER.error("拖放数据类型未知: {}", payload.getClass().getName());
+            return;
+        }
+
+        ImGuiIO io = ImGui.getIO();
+        float dropX = (io.getMousePosX() - canvasScreenPos.x - canvasOffsetX) / canvasZoom;
+        float dropY = (io.getMousePosY() - canvasScreenPos.y - canvasOffsetY) / canvasZoom;
+
+        NodeCraft.LOGGER.info("节点已拖放到画布: {} 在位置 ({}, {})", nodeId, dropX, dropY);
+        if (dropCallback != null) {
+            dropCallback.onNodeDropped(nodeId, dropX, dropY);
+        } else {
+            NodeCraft.LOGGER.warn("拖放回调未设置，无法处理节点拖放");
+        }
+    }
+
+    private void handlePresetDropPayload(Object payload, ImVec2 canvasScreenPos) {
+        String presetId = parseDragDropText(payload);
+        if (presetId == null) {
+            NodeCraft.LOGGER.error("预设拖放数据无效");
+            return;
+        }
+
+        GraphPresetRules.GraphPresetDefinition preset =
+                GraphPresetCatalog.getInstance().getPresetDefinition(presetId);
+        if (preset == null) {
+            NodeCraft.LOGGER.warn("未找到预设: {}", presetId);
+            return;
+        }
+
+        ImGuiIO io = ImGui.getIO();
+        float dropX = (io.getMousePosX() - canvasScreenPos.x - canvasOffsetX) / canvasZoom;
+        float dropY = (io.getMousePosY() - canvasScreenPos.y - canvasOffsetY) / canvasZoom;
+
+        GraphPresetApplier.ApplyResult result = GraphPresetApplier.apply(preset, dropX, dropY);
+        if (!result.success()) {
+            NodeCraft.LOGGER.warn("Failed to apply preset {} at drop position: {}", presetId, result.message());
+        } else {
+            NodeCraft.LOGGER.info("Applied preset {} at ({}, {})", presetId, dropX, dropY);
+        }
+    }
+
+    private static String parseDragDropText(Object payload) {
+        if (payload instanceof byte[] payloadBytes) {
+            return new String(payloadBytes, java.nio.charset.StandardCharsets.UTF_8);
+        }
+        if (payload instanceof String text) {
+            return text;
+        }
+        return null;
     }
     
     /**
@@ -1033,7 +1064,11 @@ public class CanvasComponent implements EditorComponent {
      * @return true 如果正在拖放节点
      */
     public static boolean isNodeDragDropActive() {
-        return isNodeDragDropActive;
+        return isNodeDragDropActive || isPresetDragDropActive;
+    }
+
+    public static boolean isPresetDragDropActive() {
+        return isPresetDragDropActive;
     }
     
     /**

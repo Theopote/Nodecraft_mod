@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.node.NodeInfo;
+import com.nodecraft.gui.preset.GraphPresetSaveDialog;
 import com.nodecraft.gui.recommendation.NodeRecommendation;
 import com.nodecraft.gui.recommendation.NodeRecommendationContext;
 import com.nodecraft.gui.recommendation.NodeRecommendations;
@@ -32,6 +33,8 @@ public class ImGuiNodeMenus {
     private UUID cachedMenuRecommendationNodeId = null;
     private NodeRecommendationContext cachedMenuRecommendationContext;
     private List<NodeRecommendation> cachedMenuRecommendations = List.of();
+    
+    private final GraphPresetSaveDialog presetSaveDialog = new GraphPresetSaveDialog();
     
     // 节点搜索弹窗状态
     private float nodeSearchPosX = 0;
@@ -106,6 +109,11 @@ public class ImGuiNodeMenus {
                             }
                             ImGui.separator();
                         }
+
+                        if (ImGui.menuItem(isBatchOperation ? "保存选区为预设" : "保存为预设")) {
+                            presetSaveDialog.requestSave(contextTargets);
+                        }
+                        ImGui.separator();
 
                         if (ImGui.menuItem(isBatchOperation ? "Copy Selected" : "Copy", "Ctrl+C")) {
                             copyNodes(contextTargets, rightClickedNodeId);
@@ -320,6 +328,10 @@ public class ImGuiNodeMenus {
                 showNodeSearchPopup = false;
             }
         }
+    }
+
+    public void renderSavePresetDialog() {
+        presetSaveDialog.render(editor);
     }
     
     /**

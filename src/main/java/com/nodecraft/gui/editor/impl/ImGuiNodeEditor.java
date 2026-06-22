@@ -494,6 +494,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor {
 
             // 15. 处理节点搜索弹窗
             menus.renderNodeSearchPopup(); // 渲染搜索弹窗（如果弹窗已打开）
+            menus.renderSavePresetDialog();
             recommendationPopup.render();
             maybeAutoExecutePreviewGraph();
             renderSubgraphRenamePopup();
