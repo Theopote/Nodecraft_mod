@@ -160,16 +160,16 @@ public class TransformationGizmoElement extends AbstractPreviewElement implement
         if (axis.lengthSquared() < 1.0e-9d) {
             return;
         }
-        brightenIfActive(handle, r, g, b);
+        float[] color = resolveColor(handle, r, g, b);
         Vec3d normalized = axis.normalize();
         Vec3d end = origin.add(normalized.multiply(length));
-        drawLine(vertexConsumer, matrix, origin, end, r, g, b, alpha);
+        drawLine(vertexConsumer, matrix, origin, end, color[0], color[1], color[2], alpha);
 
         Vec3d reference = Math.abs(normalized.y) < 0.95d ? new Vec3d(0.0d, 1.0d, 0.0d) : new Vec3d(1.0d, 0.0d, 0.0d);
         Vec3d side = normalized.crossProduct(reference).normalize().multiply(length * 0.12d);
         Vec3d back = normalized.multiply(-length * 0.18d);
-        drawLine(vertexConsumer, matrix, end, end.add(back).add(side), r, g, b, alpha);
-        drawLine(vertexConsumer, matrix, end, end.add(back).subtract(side), r, g, b, alpha);
+        drawLine(vertexConsumer, matrix, end, end.add(back).add(side), color[0], color[1], color[2], alpha);
+        drawLine(vertexConsumer, matrix, end, end.add(back).subtract(side), color[0], color[1], color[2], alpha);
     }
 
     private void drawRing(
@@ -187,7 +187,7 @@ public class TransformationGizmoElement extends AbstractPreviewElement implement
         if (axis.lengthSquared() < 1.0e-9d) {
             return;
         }
-        brightenIfActive(handle, r, g, b);
+        float[] color = resolveColor(handle, r, g, b);
         Vec3d normal = axis.normalize();
         Vec3d tangent = normal.crossProduct(Math.abs(normal.y) < 0.95d ? new Vec3d(0.0d, 1.0d, 0.0d) : new Vec3d(1.0d, 0.0d, 0.0d));
         if (tangent.lengthSquared() < 1.0e-9d) {
@@ -203,7 +203,7 @@ public class TransformationGizmoElement extends AbstractPreviewElement implement
                 .add(tangent.multiply(Math.cos(angle) * radius))
                 .add(bitangent.multiply(Math.sin(angle) * radius));
             if (previous != null) {
-                drawLine(vertexConsumer, matrix, previous, point, r, g, b, alpha);
+                drawLine(vertexConsumer, matrix, previous, point, color[0], color[1], color[2], alpha);
             }
             previous = point;
         }
@@ -225,10 +225,10 @@ public class TransformationGizmoElement extends AbstractPreviewElement implement
         if (axis.lengthSquared() < 1.0e-9d) {
             return;
         }
-        brightenIfActive(handle, r, g, b);
+        float[] color = resolveColor(handle, r, g, b);
         Vec3d end = origin.add(axis.normalize().multiply(length));
-        drawLine(vertexConsumer, matrix, origin, end, r, g, b, alpha * 0.85f);
-        drawCube(vertexConsumer, matrix, end, cubeSize, r, g, b, alpha);
+        drawLine(vertexConsumer, matrix, origin, end, color[0], color[1], color[2], alpha * 0.85f);
+        drawCube(vertexConsumer, matrix, end, cubeSize, color[0], color[1], color[2], alpha);
     }
 
     private void drawCenterScaleHandle(
@@ -242,8 +242,8 @@ public class TransformationGizmoElement extends AbstractPreviewElement implement
         float r = 0.95f;
         float g = 0.95f;
         float b = 0.95f;
-        brightenIfActive(handle, r, g, b);
-        drawCube(vertexConsumer, matrix, origin, cubeSize, r, g, b, alpha);
+        float[] color = resolveColor(handle, r, g, b);
+        drawCube(vertexConsumer, matrix, origin, cubeSize, color[0], color[1], color[2], alpha);
     }
 
     private void drawCube(
@@ -271,12 +271,15 @@ public class TransformationGizmoElement extends AbstractPreviewElement implement
         }
     }
 
-    private void brightenIfActive(GizmoHandle handle, float r, float g, float b) {
+    private float[] resolveColor(GizmoHandle handle, float r, float g, float b) {
         if (handle == hoveredHandle || handle == activeHandle) {
-            r = Math.min(1.0f, r + 0.35f);
-            g = Math.min(1.0f, g + 0.35f);
-            b = Math.min(1.0f, b + 0.35f);
+            return new float[] {
+                Math.min(1.0f, r + 0.35f),
+                Math.min(1.0f, g + 0.35f),
+                Math.min(1.0f, b + 0.35f)
+            };
         }
+        return new float[] { r, g, b };
     }
 
     private void drawLine(
@@ -333,89 +336,160 @@ public class TransformationGizmoElement extends AbstractPreviewElement implement
             return null;
         }
 
-        GizmoHandle bestHandle = null;
-        double bestDistance = Double.MAX_VALUE;
         double axisLength = resolveAxisLengthFromRay(rayStart);
         double pickRadius = Math.max(interactionRadius, axisLength * 0.08d);
         Vec3d origin = gizmoData.getOrigin();
 
+        GizmoHandle bestHandle = null;
+        double bestDistance = Double.MAX_VALUE;
+
         if (showsMove()) {
-            bestHandle = pickBest(bestHandle, bestDistance, pickAxis(rayStart, rayDirection, origin, gizmoData.getXAxis(), axisLength, pickRadius, GizmoHandle.AXIS_X));
-            if (bestHandle != null) {
-                bestDistance = distanceForHandle(rayStart, rayDirection, origin, bestHandle, axisLength, pickRadius);
-            }
-            GizmoHandle y = pickAxis(rayStart, rayDirection, origin, gizmoData.getYAxis(), axisLength, pickRadius, GizmoHandle.AXIS_Y);
-            bestHandle = pickBest(bestHandle, bestDistance, y);
-            if (bestHandle == y) {
-                bestDistance = distanceForHandle(rayStart, rayDirection, origin, bestHandle, axisLength, pickRadius);
-            }
-            GizmoHandle z = pickAxis(rayStart, rayDirection, origin, gizmoData.getZAxis(), axisLength, pickRadius, GizmoHandle.AXIS_Z);
-            bestHandle = pickBest(bestHandle, bestDistance, z);
+            bestHandle = considerAxisHit(bestHandle, bestDistance, rayStart, rayDirection, maxDistance, origin, gizmoData.getXAxis(), axisLength, pickRadius, GizmoHandle.AXIS_X);
+            bestDistance = bestHandle == GizmoHandle.AXIS_X
+                ? axisHitDistance(rayStart, rayDirection, origin, gizmoData.getXAxis(), axisLength, pickRadius)
+                : bestDistance;
+            bestHandle = considerAxisHit(bestHandle, bestDistance, rayStart, rayDirection, maxDistance, origin, gizmoData.getYAxis(), axisLength, pickRadius, GizmoHandle.AXIS_Y);
+            bestDistance = bestHandle == GizmoHandle.AXIS_Y
+                ? axisHitDistance(rayStart, rayDirection, origin, gizmoData.getYAxis(), axisLength, pickRadius)
+                : bestDistance;
+            bestHandle = considerAxisHit(bestHandle, bestDistance, rayStart, rayDirection, maxDistance, origin, gizmoData.getZAxis(), axisLength, pickRadius, GizmoHandle.AXIS_Z);
         }
 
         if (showsRotate()) {
             double ringRadius = axisLength * 0.85d;
             double ringThickness = Math.max(pickRadius * 0.75d, axisLength * 0.06d);
-            GizmoHandle ringX = pickRing(rayStart, rayDirection, origin, gizmoData.getXAxis(), ringRadius, ringThickness, GizmoHandle.RING_X);
-            bestHandle = pickBest(bestHandle, bestDistance, ringX);
-            GizmoHandle ringY = pickRing(rayStart, rayDirection, origin, gizmoData.getYAxis(), ringRadius, ringThickness, GizmoHandle.RING_Y);
-            bestHandle = pickBest(bestHandle, bestDistance, ringY);
-            GizmoHandle ringZ = pickRing(rayStart, rayDirection, origin, gizmoData.getZAxis(), ringRadius, ringThickness, GizmoHandle.RING_Z);
-            bestHandle = pickBest(bestHandle, bestDistance, ringZ);
+            bestHandle = considerRingHit(bestHandle, bestDistance, rayStart, rayDirection, maxDistance, origin, gizmoData.getXAxis(), ringRadius, ringThickness, GizmoHandle.RING_X);
+            bestDistance = updateBestDistance(bestHandle, bestDistance, rayStart, rayDirection, origin, GizmoHandle.RING_X, axisLength, pickRadius, ringRadius, ringThickness);
+            bestHandle = considerRingHit(bestHandle, bestDistance, rayStart, rayDirection, maxDistance, origin, gizmoData.getYAxis(), ringRadius, ringThickness, GizmoHandle.RING_Y);
+            bestDistance = updateBestDistance(bestHandle, bestDistance, rayStart, rayDirection, origin, GizmoHandle.RING_Y, axisLength, pickRadius, ringRadius, ringThickness);
+            bestHandle = considerRingHit(bestHandle, bestDistance, rayStart, rayDirection, maxDistance, origin, gizmoData.getZAxis(), ringRadius, ringThickness, GizmoHandle.RING_Z);
         }
 
         if (showsScale()) {
-            GizmoHandle scaleX = pickScale(rayStart, rayDirection, origin, gizmoData.getXAxis(), axisLength, pickRadius, GizmoHandle.SCALE_X);
-            bestHandle = pickBest(bestHandle, bestDistance, scaleX);
-            GizmoHandle scaleY = pickScale(rayStart, rayDirection, origin, gizmoData.getYAxis(), axisLength, pickRadius, GizmoHandle.SCALE_Y);
-            bestHandle = pickBest(bestHandle, bestDistance, scaleY);
-            GizmoHandle scaleZ = pickScale(rayStart, rayDirection, origin, gizmoData.getZAxis(), axisLength, pickRadius, GizmoHandle.SCALE_Z);
-            bestHandle = pickBest(bestHandle, bestDistance, scaleZ);
-            GizmoHandle uniform = pickCenterScale(rayStart, rayDirection, origin, pickRadius * 0.75d, GizmoHandle.SCALE_UNIFORM);
-            bestHandle = pickBest(bestHandle, bestDistance, uniform);
+            bestHandle = considerScaleHit(bestHandle, bestDistance, rayStart, rayDirection, maxDistance, origin, gizmoData.getXAxis(), axisLength, pickRadius, GizmoHandle.SCALE_X);
+            bestHandle = considerScaleHit(bestHandle, bestDistance, rayStart, rayDirection, maxDistance, origin, gizmoData.getYAxis(), axisLength, pickRadius, GizmoHandle.SCALE_Y);
+            bestHandle = considerScaleHit(bestHandle, bestDistance, rayStart, rayDirection, maxDistance, origin, gizmoData.getZAxis(), axisLength, pickRadius, GizmoHandle.SCALE_Z);
+            bestHandle = considerCenterScaleHit(bestHandle, bestDistance, rayStart, rayDirection, maxDistance, origin, pickRadius * 0.75d, GizmoHandle.SCALE_UNIFORM);
         }
 
-        if (bestHandle == null) {
-            return null;
+        return bestHandle;
+    }
+
+    private GizmoHandle considerAxisHit(
+        GizmoHandle currentBest,
+        double currentDistance,
+        Vec3d rayStart,
+        Vec3d rayDirection,
+        double maxDistance,
+        Vec3d origin,
+        Vec3d axis,
+        double length,
+        double radius,
+        GizmoHandle handle
+    ) {
+        GizmoMath.RayHit hit = GizmoMath.rayCylinderHit(rayStart, rayDirection, origin, axis, length, radius);
+        if (hit == null || hit.distance() > maxDistance) {
+            return currentBest;
         }
-        double hitDistance = distanceForHandle(rayStart, rayDirection, origin, bestHandle, axisLength, pickRadius);
-        return hitDistance <= maxDistance ? bestHandle : null;
+        if (currentBest == null || hit.distance() < currentDistance) {
+            return handle;
+        }
+        return currentBest;
+    }
+
+    private double axisHitDistance(Vec3d rayStart, Vec3d rayDirection, Vec3d origin, Vec3d axis, double length, double radius) {
+        GizmoMath.RayHit hit = GizmoMath.rayCylinderHit(rayStart, rayDirection, origin, axis, length, radius);
+        return hit == null ? Double.MAX_VALUE : hit.distance();
+    }
+
+    private GizmoHandle considerRingHit(
+        GizmoHandle currentBest,
+        double currentDistance,
+        Vec3d rayStart,
+        Vec3d rayDirection,
+        double maxDistance,
+        Vec3d origin,
+        Vec3d axis,
+        double radius,
+        double thickness,
+        GizmoHandle handle
+    ) {
+        GizmoMath.RayHit hit = GizmoMath.rayRingHit(rayStart, rayDirection, origin, axis, radius, thickness);
+        if (hit == null || hit.distance() > maxDistance) {
+            return currentBest;
+        }
+        if (currentBest == null || hit.distance() < currentDistance) {
+            return handle;
+        }
+        return currentBest;
+    }
+
+    private double updateBestDistance(
+        GizmoHandle bestHandle,
+        double bestDistance,
+        Vec3d rayStart,
+        Vec3d rayDirection,
+        Vec3d origin,
+        GizmoHandle handle,
+        double axisLength,
+        double pickRadius,
+        double ringRadius,
+        double ringThickness
+    ) {
+        if (bestHandle != handle) {
+            return bestDistance;
+        }
+        GizmoMath.RayHit hit = GizmoMath.rayRingHit(rayStart, rayDirection, origin, axisForHandle(handle), ringRadius, ringThickness);
+        return hit == null ? bestDistance : hit.distance();
+    }
+
+    private GizmoHandle considerScaleHit(
+        GizmoHandle currentBest,
+        double currentDistance,
+        Vec3d rayStart,
+        Vec3d rayDirection,
+        double maxDistance,
+        Vec3d origin,
+        Vec3d axis,
+        double length,
+        double radius,
+        GizmoHandle handle
+    ) {
+        Vec3d end = origin.add(axis.normalize().multiply(length));
+        double distance = GizmoMath.rayToSegmentDistance(rayStart, rayDirection, origin, end);
+        if (distance <= radius && rayStart.distanceTo(origin) <= maxDistance) {
+            if (currentBest == null || distance < currentDistance) {
+                return handle;
+            }
+        }
+        return pickCube(rayStart, rayDirection, end, radius, handle) != null ? handle : currentBest;
+    }
+
+    private GizmoHandle considerCenterScaleHit(
+        GizmoHandle currentBest,
+        double currentDistance,
+        Vec3d rayStart,
+        Vec3d rayDirection,
+        double maxDistance,
+        Vec3d origin,
+        double radius,
+        GizmoHandle handle
+    ) {
+        if (rayStart.distanceTo(origin) > maxDistance) {
+            return currentBest;
+        }
+        GizmoHandle picked = pickCube(rayStart, rayDirection, origin, radius, handle);
+        return picked != null ? picked : currentBest;
+    }
+
+    public void clearHoverState() {
+        hoveredHandle = null;
     }
 
     private double resolveAxisLengthFromRay(Vec3d rayStart) {
         double base = gizmoData.getBaseAxisLength() * gizmoSize;
         double distance = rayStart.distanceTo(gizmoData.getOrigin());
         return Math.max(0.75d, base * Math.max(0.5d, distance * 0.08d));
-    }
-
-    private GizmoHandle pickBest(GizmoHandle current, double currentDistance, GizmoHandle candidate) {
-        if (candidate == null) {
-            return current;
-        }
-        return current == null ? candidate : current;
-    }
-
-    private GizmoHandle pickAxis(Vec3d rayStart, Vec3d rayDirection, Vec3d origin, Vec3d axis, double length, double radius, GizmoHandle handle) {
-        GizmoMath.RayHit hit = GizmoMath.rayCylinderHit(rayStart, rayDirection, origin, axis, length, radius);
-        return hit == null ? null : handle;
-    }
-
-    private GizmoHandle pickRing(Vec3d rayStart, Vec3d rayDirection, Vec3d origin, Vec3d axis, double radius, double thickness, GizmoHandle handle) {
-        GizmoMath.RayHit hit = GizmoMath.rayRingHit(rayStart, rayDirection, origin, axis, radius, thickness);
-        return hit == null ? null : handle;
-    }
-
-    private GizmoHandle pickScale(Vec3d rayStart, Vec3d rayDirection, Vec3d origin, Vec3d axis, double length, double radius, GizmoHandle handle) {
-        Vec3d end = origin.add(axis.normalize().multiply(length));
-        double distance = GizmoMath.rayToSegmentDistance(rayStart, rayDirection, origin, end);
-        if (distance <= radius) {
-            return handle;
-        }
-        return pickCube(rayStart, rayDirection, end, radius, handle);
-    }
-
-    private GizmoHandle pickCenterScale(Vec3d rayStart, Vec3d rayDirection, Vec3d origin, double radius, GizmoHandle handle) {
-        return pickCube(rayStart, rayDirection, origin, radius, handle);
     }
 
     private GizmoHandle pickCube(Vec3d rayStart, Vec3d rayDirection, Vec3d center, double radius, GizmoHandle handle) {
@@ -426,29 +500,6 @@ public class TransformationGizmoElement extends AbstractPreviewElement implement
             return handle;
         }
         return distance <= radius * 2.0d ? handle : null;
-    }
-
-    private double distanceForHandle(
-        Vec3d rayStart,
-        Vec3d rayDirection,
-        Vec3d origin,
-        GizmoHandle handle,
-        double axisLength,
-        double pickRadius
-    ) {
-        return switch (handle) {
-            case AXIS_X -> hitDistance(GizmoMath.rayCylinderHit(rayStart, rayDirection, origin, gizmoData.getXAxis(), axisLength, pickRadius));
-            case AXIS_Y -> hitDistance(GizmoMath.rayCylinderHit(rayStart, rayDirection, origin, gizmoData.getYAxis(), axisLength, pickRadius));
-            case AXIS_Z -> hitDistance(GizmoMath.rayCylinderHit(rayStart, rayDirection, origin, gizmoData.getZAxis(), axisLength, pickRadius));
-            case RING_X -> hitDistance(GizmoMath.rayRingHit(rayStart, rayDirection, origin, gizmoData.getXAxis(), axisLength * 0.85d, pickRadius));
-            case RING_Y -> hitDistance(GizmoMath.rayRingHit(rayStart, rayDirection, origin, gizmoData.getYAxis(), axisLength * 0.85d, pickRadius));
-            case RING_Z -> hitDistance(GizmoMath.rayRingHit(rayStart, rayDirection, origin, gizmoData.getZAxis(), axisLength * 0.85d, pickRadius));
-            default -> rayStart.distanceTo(origin);
-        };
-    }
-
-    private double hitDistance(GizmoMath.RayHit hit) {
-        return hit == null ? Double.MAX_VALUE : hit.distance();
     }
 
     @Override

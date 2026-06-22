@@ -1,12 +1,16 @@
 package com.nodecraft.nodesystem.interaction;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.editor.integration.ImGuiRenderer;
+import com.nodecraft.nodesystem.preview.gizmo.GizmoInteractionService;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.BlockStateData;
 import com.nodecraft.client.input.NodecraftInputSystem;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
+import org.lwjgl.glfw.GLFW;
+
 import java.util.Map;
 import java.util.HashMap;
 
@@ -30,7 +34,8 @@ public class NodeEditorInteractionManager {
     private final AreaPreviewStyleSettings areaPreviewStyle = new AreaPreviewStyleSettings();
 
     private final HoveredBlockHighlightService hoveredBlockHighlight = new HoveredBlockHighlightService(OWNER_ID);
-    
+    private boolean previousGizmoLeftMouseDown = false;
+
     // ================= 统一的交互状态管理 =================
     private final InteractionSessionState interactionState;
     
@@ -297,6 +302,7 @@ public class NodeEditorInteractionManager {
                 
                 // 处理鼠标点击事件
                 handleMouseClickEvents(newHoveredBlock, hitResult, isLeftMouseClicked, isRightMouseClicked);
+                updateGizmoInteraction(mouseX, mouseY, true);
             } else {
                 boolean wasMiddleDragging = editorModeCamera.isMiddleMouseDragging();
                 editorModeCamera.updateMiddleMouseCamera(mouseX, mouseY, isMiddleMouseDown, false);
@@ -309,6 +315,7 @@ public class NodeEditorInteractionManager {
                 
                 // 清除射线缓存（鼠标在UI上时不需要缓存）
                 invalidateRayCache();
+                updateGizmoInteraction(mouseX, mouseY, false);
             }
             
         } catch (Exception e) {
@@ -319,6 +326,36 @@ public class NodeEditorInteractionManager {
     /**
      * 处理鼠标点击事件
      */
+    private void updateGizmoInteraction(float mouseX, float mouseY, boolean allowWorldInteraction) {
+        boolean draggingGizmo = GizmoInteractionService.getInstance().isDraggingGizmo();
+        if (interactionState.isInInteractionMode() && !draggingGizmo) {
+            previousGizmoLeftMouseDown = false;
+            return;
+        }
+        if (editorModeCamera.isMiddleMouseDragging() && !draggingGizmo) {
+            previousGizmoLeftMouseDown = false;
+            return;
+        }
+        if (!allowWorldInteraction && !draggingGizmo) {
+            previousGizmoLeftMouseDown = false;
+            return;
+        }
+
+        WorldPickingService.Ray ray = worldPicking.getCachedOrComputeRay(mouseX, mouseY);
+        long windowHandle = ImGuiRenderer.getInstance().getActiveInputWindowHandle();
+        if (windowHandle == 0L) {
+            previousGizmoLeftMouseDown = false;
+            return;
+        }
+
+        boolean leftDown = GLFW.glfwGetMouseButton(windowHandle, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
+        boolean leftClicked = leftDown && !previousGizmoLeftMouseDown;
+        boolean leftReleased = !leftDown && previousGizmoLeftMouseDown;
+        previousGizmoLeftMouseDown = leftDown;
+
+        GizmoInteractionService.getInstance().update(ray, leftClicked, leftDown, leftReleased);
+    }
+
     private void handleMouseClickEvents(Coordinate hoveredBlock, BlockHitResult hitResult, boolean isLeftMouseClicked, boolean isRightMouseClicked) {
         try {
             // 如果中键正在被按下（用于视角控制），跳过其他鼠标事件处理

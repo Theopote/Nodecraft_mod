@@ -7,7 +7,13 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.preview.PreviewManager;
+import com.nodecraft.nodesystem.preview.PreviewOptions;
+import com.nodecraft.nodesystem.preview.TransformGizmoPreviewData;
+import com.nodecraft.nodesystem.preview.gizmo.GizmoBindingRegistry;
+import com.nodecraft.nodesystem.preview.gizmo.GizmoTransformCallback;
 import com.nodecraft.nodesystem.util.GeometryTransform;
+import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -40,6 +46,12 @@ public class TransformGeometryNode extends BaseNode {
 
     @NodeProperty(displayName = "Scale", category = "Transform", order = 7)
     private double scale = 1.0d;
+
+    @NodeProperty(displayName = "Show Gizmo", category = "Gizmo", order = 8)
+    private boolean showGizmo = true;
+
+    @NodeProperty(displayName = "Gizmo Mode", category = "Gizmo", order = 9)
+    private String gizmoMode = "all";
 
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_TRANSLATION_ID = "input_translation";
@@ -81,6 +93,7 @@ public class TransformGeometryNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object geomObj = inputValues.get(INPUT_GEOMETRY_ID);
         if (!(geomObj instanceof GeometryData geometry)) {
+            hideGizmoPreview();
             writeResult(null, false, "Missing geometry input");
             return;
         }
@@ -94,20 +107,74 @@ public class TransformGeometryNode extends BaseNode {
         double s = getInputDouble(INPUT_SCALE_ID, scale);
 
         if (!isFinite(translation)) {
+            hideGizmoPreview();
             writeResult(null, false, "Translation contains NaN or Infinity");
             return;
         }
         if (!Double.isFinite(rx) || !Double.isFinite(ry) || !Double.isFinite(rz)) {
+            hideGizmoPreview();
             writeResult(null, false, "Rotation contains NaN or Infinity");
             return;
         }
         if (!Double.isFinite(s) || Math.abs(s) <= 1.0e-9d) {
+            hideGizmoPreview();
             writeResult(null, false, "Scale must be finite and non-zero");
             return;
         }
 
         GeometryData transformed = GeometryTransform.transform(geometry, translation, rx, ry, rz, s);
         writeResult(transformed, transformed != null, transformed == null ? "Unsupported geometry transform" : "");
+        updateGizmoPreview(translation);
+    }
+
+    private void updateGizmoPreview(Vector3d translation) {
+        String ownerId = getId().toString();
+        if (!showGizmo) {
+            hideGizmoPreview();
+            return;
+        }
+
+        GizmoBindingRegistry.register(ownerId, createGizmoCallback());
+        TransformGizmoPreviewData data = new TransformGizmoPreviewData(
+            new Vec3d(translation.x, translation.y, translation.z),
+            new Vec3d(1.0d, 0.0d, 0.0d),
+            new Vec3d(0.0d, 1.0d, 0.0d),
+            new Vec3d(0.0d, 0.0d, 1.0d),
+            2.0d,
+            gizmoMode
+        );
+        PreviewOptions options = PreviewOptions.createTransformGizmo();
+        options.gizmoType = gizmoMode;
+        PreviewManager.showTransformGizmo(ownerId, data, options);
+    }
+
+    private GizmoTransformCallback createGizmoCallback() {
+        return (translationDelta, rotationDeltaDeg, scaleDelta) -> {
+            if (translationDelta.lengthSquared() > 1.0e-12d) {
+                translationX += translationDelta.x;
+                translationY += translationDelta.y;
+                translationZ += translationDelta.z;
+            }
+            if (rotationDeltaDeg.lengthSquared() > 1.0e-12d) {
+                rotationX += rotationDeltaDeg.x;
+                rotationY += rotationDeltaDeg.y;
+                rotationZ += rotationDeltaDeg.z;
+            }
+            if (Math.abs(scaleDelta - 1.0d) > 1.0e-9d && Double.isFinite(scaleDelta) && scaleDelta > 1.0e-9d) {
+                scale *= scaleDelta;
+            }
+            markDirty();
+        };
+    }
+
+    private void hideGizmoPreview() {
+        GizmoBindingRegistry.unregister(getId().toString());
+        PreviewManager.hideNodePreviewType(getId().toString(), "transformation_gizmo");
+    }
+
+    @Override
+    public void onNodeRemoved() {
+        hideGizmoPreview();
     }
 
     @Override
@@ -120,6 +187,8 @@ public class TransformGeometryNode extends BaseNode {
         state.put("rotationY", rotationY);
         state.put("rotationZ", rotationZ);
         state.put("scale", scale);
+        state.put("showGizmo", showGizmo);
+        state.put("gizmoMode", gizmoMode);
         return state;
     }
 
@@ -135,6 +204,8 @@ public class TransformGeometryNode extends BaseNode {
         if (map.get("rotationY") instanceof Number value) rotationY = value.doubleValue();
         if (map.get("rotationZ") instanceof Number value) rotationZ = value.doubleValue();
         if (map.get("scale") instanceof Number value) scale = value.doubleValue();
+        if (map.get("showGizmo") instanceof Boolean value) showGizmo = value;
+        if (map.get("gizmoMode") instanceof String value) gizmoMode = value;
     }
 
     private double getInputDouble(String portId, double fallback) {

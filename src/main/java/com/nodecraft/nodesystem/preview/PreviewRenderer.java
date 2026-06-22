@@ -677,6 +677,13 @@ public class PreviewRenderer {
         return activeElements.size();
     }
 
+    /**
+     * Snapshot of currently active preview elements (for interaction routing).
+     */
+    public Collection<AbstractPreviewElement> getActiveElements() {
+        return List.copyOf(activeElements.values());
+    }
+
     public boolean hasActivePreview(String previewId) {
         if (previewId == null || previewId.isEmpty()) {
             return false;

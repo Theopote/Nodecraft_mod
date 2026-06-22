@@ -140,7 +140,7 @@ public final class GizmoInteractionService {
     private void clearHover(PreviewRenderer renderer) {
         for (AbstractPreviewElement element : renderer.getActiveElements()) {
             if (element instanceof TransformationGizmoElement gizmo && !gizmo.isBeingDragged()) {
-                gizmo.onMouseHover(Vec3d.ZERO, Vec3d.ZERO);
+                gizmo.clearHoverState();
             }
         }
     }

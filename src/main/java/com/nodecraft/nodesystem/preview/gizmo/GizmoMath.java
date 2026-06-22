@@ -35,19 +35,20 @@ public final class GizmoMath {
         double sc;
         double tc;
         if (denominator < 1.0e-12d) {
-            sc = 0.0d;
-            tc = c < 1.0e-12d ? 0.0d : e / c;
+            Vec3d segmentDir = segment.lengthSquared() < 1.0e-12d ? direction : segment.normalize();
+            Vec3d offset = rayOrigin.subtract(segStart);
+            Vec3d perpendicular = offset.subtract(segmentDir.multiply(offset.dotProduct(segmentDir)));
+            return perpendicular.length();
         } else {
             sc = (b * e - c * d) / denominator;
             tc = (a * e - b * d) / denominator;
+            sc = Math.max(0.0d, sc);
+            tc = Math.max(0.0d, Math.min(1.0d, tc));
+
+            Vec3d pointOnRay = rayOrigin.add(direction.multiply(sc));
+            Vec3d pointOnSegment = segStart.add(segment.multiply(tc));
+            return pointOnRay.distanceTo(pointOnSegment);
         }
-
-        sc = Math.max(0.0d, sc);
-        tc = Math.max(0.0d, Math.min(1.0d, tc));
-
-        Vec3d pointOnRay = rayOrigin.add(direction.multiply(sc));
-        Vec3d pointOnSegment = segStart.add(segment.multiply(tc));
-        return pointOnRay.distanceTo(pointOnSegment);
     }
 
     public static RayHit rayCylinderHit(
@@ -68,7 +69,16 @@ public final class GizmoMath {
 
         double a = directionPerp.dotProduct(directionPerp);
         if (a < 1.0e-12d) {
-            return null;
+            Vec3d axisEnd = axisOrigin.add(axis.multiply(length));
+            double distance = rayToSegmentDistance(rayOrigin, rayDirection, axisOrigin, axisEnd);
+            if (distance > radius) {
+                return null;
+            }
+            double t = axisOrigin.subtract(rayOrigin).dotProduct(direction);
+            if (t < 0.0d) {
+                return null;
+            }
+            return new RayHit(t, rayOrigin.add(direction.multiply(t)));
         }
 
         double b = 2.0d * ocPerp.dotProduct(directionPerp);

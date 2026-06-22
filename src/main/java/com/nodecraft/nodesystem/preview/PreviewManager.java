@@ -496,6 +496,24 @@ public final class PreviewManager {
         return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
     }
 
+    public static String showTransformGizmo(String nodeId, TransformGizmoPreviewData gizmoData, PreviewOptions options) {
+        if (nodeId == null || nodeId.isBlank()) {
+            return null;
+        }
+        if (gizmoData == null) {
+            hideNodePreviewType(nodeId, "transformation_gizmo");
+            return null;
+        }
+        PreviewOptions resolved = options != null ? options : PreviewOptions.createTransformGizmo();
+        java.util.List<String> existing = RENDERER.getPreviewIdsByNodeAndType(nodeId, "transformation_gizmo");
+        if (!existing.isEmpty()) {
+            String previewId = existing.getFirst();
+            RENDERER.updatePreview(previewId, gizmoData, resolved);
+            return previewId;
+        }
+        return RENDERER.showPreview(nodeId, "transformation_gizmo", gizmoData, resolved);
+    }
+
     public static String showTextLabels(String nodeId, Object labelData, PreviewOptions options) {
         if (labelData == null) {
             hideNodePreviews(nodeId);
