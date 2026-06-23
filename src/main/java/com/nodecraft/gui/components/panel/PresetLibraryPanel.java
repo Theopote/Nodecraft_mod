@@ -23,6 +23,7 @@ public final class PresetLibraryPanel {
     private final GraphPresetCatalog catalog = GraphPresetCatalog.getInstance();
     private final ImString searchQuery = new ImString("", 128);
     private final ImString renameBuffer = new ImString("", 128);
+    private final ImString descriptionBuffer = new ImString("", 256);
     private final ImString createCategoryBuffer = new ImString("", 64);
 
     private String statusMessage = "";
@@ -31,9 +32,13 @@ public final class PresetLibraryPanel {
 
     private String contextPresetId;
     private String contextCategoryId;
-    private boolean openRenamePresetPopup;
+    private boolean openEditPresetPopup;
     private boolean openRenameCategoryPopup;
     private boolean openCreateCategoryPopup;
+    private boolean openDeletePresetConfirm;
+    private boolean openDeleteCategoryConfirm;
+    private String pendingDeletePresetName;
+    private String pendingDeleteCategoryName;
 
     public void initialize() {
         if (loaded) {
@@ -52,7 +57,7 @@ public final class PresetLibraryPanel {
         initialize();
         renderModals();
 
-        ImGui.text("拖动预设到画布创建节点链；右键可重命名、删除或移动。");
+        ImGui.text("拖动预设到画布创建节点链；拖动手柄调整顺序；右键可编辑或删除。");
         if (ImGui.button("+ 新建分类")) {
             createCategoryBuffer.set("");
             openCreateCategoryPopup = true;
@@ -80,9 +85,6 @@ public final class PresetLibraryPanel {
         for (GraphPresetCatalog.CategoryView categoryView : categories) {
             renderCategory(categoryView, filter);
         }
-
-        renderPresetContextMenu();
-        renderCategoryContextMenu();
     }
 
     private void renderCategory(GraphPresetCatalog.CategoryView categoryView, String filter) {
@@ -103,22 +105,34 @@ public final class PresetLibraryPanel {
                     categoryView.source(),
                     i));
         }
-        if (visiblePresets.isEmpty()) {
+        if (visiblePresets.isEmpty() && !filter.isEmpty()) {
             return;
         }
 
         ImGui.pushID("preset_cat_" + category.id);
         String categoryLabel = category.displayName != null ? category.displayName : category.id;
         boolean categoryOpen = ImGui.collapsingHeader(categoryLabel, ImGuiTreeNodeFlags.DefaultOpen);
-        if (categoryView.isEditable() && ImGui.isItemHovered() && ImGui.isMouseClicked(1)) {
+
+        if (categoryView.isEditable() && ImGui.beginPopupContextItem("preset_category_ctx")) {
             contextCategoryId = category.id;
-            renameBuffer.set(categoryLabel);
-            ImGui.openPopup("PresetCategoryContextMenu");
+            if (ImGui.menuItem("重命名分类")) {
+                renameBuffer.set(categoryLabel);
+                openRenameCategoryPopup = true;
+            }
+            boolean isDefault = GraphPresetCatalog.DEFAULT_USER_CATEGORY_ID.equals(category.id);
+            if (!isDefault && ImGui.menuItem("删除分类")) {
+                pendingDeleteCategoryName = categoryLabel;
+                openDeleteCategoryConfirm = true;
+            }
+            ImGui.endPopup();
         }
 
         if (categoryOpen) {
+            if (visiblePresets.isEmpty()) {
+                ImGui.textDisabled("  （空）");
+            }
             for (GraphPresetCatalog.PresetView presetView : visiblePresets) {
-                renderPresetItem(presetView, categoryView);
+                renderPresetItem(presetView);
             }
 
             if (categoryView.isEditable()) {
@@ -128,26 +142,27 @@ public final class PresetLibraryPanel {
         ImGui.popID();
     }
 
-    private void renderPresetItem(
-            GraphPresetCatalog.PresetView presetView,
-            GraphPresetCatalog.CategoryView categoryView) {
+    private void renderPresetItem(GraphPresetCatalog.PresetView presetView) {
         GraphPresetRules.GraphPresetDefinition preset = presetView.preset();
         String label = preset.displayName != null ? preset.displayName : preset.id;
         boolean applicable = presetView.isApplicable();
+        boolean editable = presetView.isEditable();
 
         ImGui.pushID("preset_" + preset.id);
         if (!applicable) {
             ImGui.beginDisabled();
         }
 
-        if (presetView.isEditable()) {
+        ImGui.beginGroup();
+        if (editable) {
             ImGui.button("::");
             if (ImGui.isItemHovered()) {
                 ImGui.setTooltip("拖动以调整顺序或移动到其他分类");
             }
             if (ImGui.beginDragDropSource(ImGuiDragDropFlags.None)) {
-                byte[] payloadBytes = preset.id.getBytes(StandardCharsets.UTF_8);
-                ImGui.setDragDropPayload(GraphPresetCatalog.PRESET_REORDER_PAYLOAD, payloadBytes);
+                ImGui.setDragDropPayload(
+                        GraphPresetCatalog.PRESET_REORDER_PAYLOAD,
+                        preset.id.getBytes(StandardCharsets.UTF_8));
                 ImGui.text("移动: " + label);
                 ImGui.endDragDropSource();
             }
@@ -156,22 +171,22 @@ public final class PresetLibraryPanel {
 
         ImGui.selectable(label, false);
         if (applicable && ImGui.beginDragDropSource(ImGuiDragDropFlags.None)) {
-            byte[] payloadBytes = preset.id.getBytes(StandardCharsets.UTF_8);
-            ImGui.setDragDropPayload(GraphPresetCatalog.PRESET_DRAG_PAYLOAD, payloadBytes);
+            ImGui.setDragDropPayload(
+                    GraphPresetCatalog.PRESET_DRAG_PAYLOAD,
+                    preset.id.getBytes(StandardCharsets.UTF_8));
             ImGui.text("放置到画布: " + label);
             ImGui.endDragDropSource();
         }
+        ImGui.endGroup();
 
-        if (presetView.isEditable()) {
-            if (ImGui.beginDragDropTarget()) {
-                Object payload = ImGui.acceptDragDropPayload(GraphPresetCatalog.PRESET_REORDER_PAYLOAD);
-                String draggedPresetId = parsePayload(payload);
-                if (draggedPresetId != null && !draggedPresetId.equals(preset.id)) {
-                    catalog.moveUserPresetBefore(draggedPresetId, presetView.categoryId(), preset.id);
-                    showStatus("已移动预设", true);
-                }
-                ImGui.endDragDropTarget();
+        if (editable && ImGui.beginDragDropTarget()) {
+            Object payload = ImGui.acceptDragDropPayload(GraphPresetCatalog.PRESET_REORDER_PAYLOAD);
+            String draggedPresetId = parsePayload(payload);
+            if (draggedPresetId != null && !draggedPresetId.equals(preset.id)) {
+                catalog.moveUserPresetBefore(draggedPresetId, presetView.categoryId(), preset.id);
+                showStatus("已移动预设", true);
             }
+            ImGui.endDragDropTarget();
         }
 
         if (ImGui.isItemHovered()) {
@@ -184,22 +199,38 @@ public final class PresetLibraryPanel {
             } else {
                 ImGui.textDisabled("筹备中");
             }
-            if (presetView.isEditable()) {
-                ImGui.textDisabled("右键可编辑");
+            if (editable) {
+                ImGui.textDisabled("右键：编辑 / 删除；拖 :: 可移动位置");
             }
             ImGui.endTooltip();
         }
 
-        if (ImGui.isItemHovered() && ImGui.isMouseClicked(1) && presetView.isEditable()) {
-            contextPresetId = preset.id;
-            renameBuffer.set(label);
-            ImGui.openPopup("PresetItemContextMenu");
+        if (editable && ImGui.beginPopupContextItem("preset_item_ctx")) {
+            renderPresetContextMenu(presetView);
+            ImGui.endPopup();
         }
 
         if (!applicable) {
             ImGui.endDisabled();
         }
         ImGui.popID();
+    }
+
+    private void renderPresetContextMenu(GraphPresetCatalog.PresetView presetView) {
+        GraphPresetRules.GraphPresetDefinition preset = presetView.preset();
+        contextPresetId = preset.id;
+
+        if (ImGui.menuItem("编辑")) {
+            renameBuffer.set(preset.displayName != null ? preset.displayName : "");
+            descriptionBuffer.set(preset.description != null ? preset.description : "");
+            openEditPresetPopup = true;
+        }
+
+        ImGui.separator();
+        if (ImGui.menuItem("删除")) {
+            pendingDeletePresetName = preset.displayName != null ? preset.displayName : preset.id;
+            openDeletePresetConfirm = true;
+        }
     }
 
     private void renderCategoryDropTarget(String categoryId) {
@@ -210,81 +241,13 @@ public final class PresetLibraryPanel {
             Object payload = ImGui.acceptDragDropPayload(GraphPresetCatalog.PRESET_REORDER_PAYLOAD);
             String draggedPresetId = parsePayload(payload);
             if (draggedPresetId != null) {
-                int endIndex = categoryPresetCount(categoryId);
+                int endIndex = catalog.getUserCategoryPresetCount(categoryId);
                 catalog.moveUserPreset(draggedPresetId, categoryId, endIndex);
                 showStatus("已移动预设", true);
             }
             ImGui.endDragDropTarget();
         }
         ImGui.popID();
-    }
-
-    private int categoryPresetCount(String categoryId) {
-        for (GraphPresetCatalog.CategoryView categoryView : catalog.getCategories()) {
-            if (categoryView.category().id.equals(categoryId)) {
-                return categoryView.category().presets != null ? categoryView.category().presets.size() : 0;
-            }
-        }
-        return 0;
-    }
-
-    private void renderPresetContextMenu() {
-        if (ImGui.beginPopup("PresetItemContextMenu")) {
-            GraphPresetCatalog.PresetView presetView = contextPresetId != null
-                    ? catalog.findPreset(contextPresetId)
-                    : null;
-            if (presetView != null && presetView.isEditable()) {
-                if (ImGui.menuItem("重命名")) {
-                    renameBuffer.set(presetView.preset().displayName);
-                    openRenamePresetPopup = true;
-                }
-                if (ImGui.menuItem("删除")) {
-                    if (catalog.deleteUserPreset(presetView.preset().id)) {
-                        showStatus("已删除预设", true);
-                    }
-                }
-                if (ImGui.beginMenu("移动到分类")) {
-                    for (GraphPresetCatalog.CategoryView categoryView : catalog.getUserCategories()) {
-                        String label = categoryView.category().displayName != null
-                                ? categoryView.category().displayName
-                                : categoryView.category().id;
-                        if (ImGui.menuItem(label)) {
-                            int endIndex = categoryView.category().presets != null
-                                    ? categoryView.category().presets.size()
-                                    : 0;
-                            catalog.moveUserPreset(presetView.preset().id, categoryView.category().id, endIndex);
-                            showStatus("已移动预设", true);
-                        }
-                    }
-                    ImGui.endMenu();
-                }
-            }
-            ImGui.endPopup();
-        }
-    }
-
-    private void renderCategoryContextMenu() {
-        if (ImGui.beginPopup("PresetCategoryContextMenu")) {
-            GraphPresetCatalog.CategoryView categoryView = catalog.getCategories().stream()
-                    .filter(c -> contextCategoryId != null && contextCategoryId.equals(c.category().id))
-                    .findFirst()
-                    .orElse(null);
-            if (categoryView != null && categoryView.isEditable()) {
-                if (ImGui.menuItem("重命名分类")) {
-                    renameBuffer.set(categoryView.category().displayName);
-                    openRenameCategoryPopup = true;
-                }
-                boolean isDefault = GraphPresetCatalog.DEFAULT_USER_CATEGORY_ID.equals(categoryView.category().id);
-                if (!isDefault) {
-                    if (ImGui.menuItem("删除分类")) {
-                        if (catalog.deleteUserCategory(categoryView.category().id)) {
-                            showStatus("已删除分类", true);
-                        }
-                    }
-                }
-            }
-            ImGui.endPopup();
-        }
     }
 
     private void renderModals() {
@@ -311,20 +274,31 @@ public final class PresetLibraryPanel {
             ImGui.endPopup();
         }
 
-        if (openRenamePresetPopup) {
-            ImGui.openPopup("RenamePreset");
-            openRenamePresetPopup = false;
+        if (openEditPresetPopup) {
+            ImGui.openPopup("EditPreset");
+            openEditPresetPopup = false;
         }
-        if (ImGui.beginPopupModal("RenamePreset", ImGuiWindowFlags.AlwaysAutoResize)) {
-            ImGui.text("重命名预设");
-            ImGui.setNextItemWidth(280.0f);
-            boolean submit = ImGui.inputText("##rename_preset", renameBuffer);
-            submit |= ImGui.button("确定", 120.0f, 0.0f);
+        if (ImGui.beginPopupModal("EditPreset", ImGuiWindowFlags.AlwaysAutoResize)) {
+            ImGui.text("编辑预设");
+            ImGui.text("名称");
+            ImGui.setNextItemWidth(320.0f);
+            boolean submit = ImGui.inputText("##edit_preset_name", renameBuffer);
+            ImGui.text("描述");
+            ImGui.setNextItemWidth(320.0f);
+            ImGui.inputText("##edit_preset_desc", descriptionBuffer);
+            ImGui.spacing();
+            submit |= ImGui.button("保存", 120.0f, 0.0f);
             ImGui.sameLine();
             boolean cancel = ImGui.button("取消", 120.0f, 0.0f);
             if (submit && contextPresetId != null) {
-                if (catalog.renameUserPreset(contextPresetId, renameBuffer.get().trim(), null)) {
-                    showStatus("已重命名预设", true);
+                String name = renameBuffer.get().trim();
+                if (name.isEmpty()) {
+                    showStatus("名称不能为空", false);
+                } else if (catalog.renameUserPreset(
+                        contextPresetId,
+                        name,
+                        descriptionBuffer.get().trim())) {
+                    showStatus("已更新预设", true);
                     ImGui.closeCurrentPopup();
                 }
             } else if (cancel) {
@@ -350,6 +324,63 @@ public final class PresetLibraryPanel {
                     ImGui.closeCurrentPopup();
                 }
             } else if (cancel) {
+                ImGui.closeCurrentPopup();
+            }
+            ImGui.endPopup();
+        }
+
+        if (openDeletePresetConfirm) {
+            ImGui.openPopup("ConfirmDeletePreset");
+            openDeletePresetConfirm = false;
+        }
+        if (ImGui.beginPopupModal("ConfirmDeletePreset", ImGuiWindowFlags.AlwaysAutoResize)) {
+            String name = pendingDeletePresetName != null ? pendingDeletePresetName : "该预设";
+            ImGui.textColored(1.0f, 0.75f, 0.2f, 1.0f, "警告");
+            ImGui.textWrapped("确定要删除预设「" + name + "」吗？");
+            ImGui.textWrapped("此操作无法撤销。");
+            ImGui.spacing();
+            boolean confirm = ImGui.button("删除", 120.0f, 0.0f);
+            ImGui.sameLine();
+            boolean cancel = ImGui.button("取消", 120.0f, 0.0f);
+            if (confirm && contextPresetId != null) {
+                if (catalog.deleteUserPreset(contextPresetId)) {
+                    showStatus("已删除预设", true);
+                }
+                contextPresetId = null;
+                pendingDeletePresetName = null;
+                ImGui.closeCurrentPopup();
+            } else if (cancel) {
+                pendingDeletePresetName = null;
+                ImGui.closeCurrentPopup();
+            }
+            ImGui.endPopup();
+        }
+
+        if (openDeleteCategoryConfirm) {
+            ImGui.openPopup("ConfirmDeleteCategory");
+            openDeleteCategoryConfirm = false;
+        }
+        if (ImGui.beginPopupModal("ConfirmDeleteCategory", ImGuiWindowFlags.AlwaysAutoResize)) {
+            String name = pendingDeleteCategoryName != null ? pendingDeleteCategoryName : "该分类";
+            int presetCount = contextCategoryId != null ? catalog.getUserCategoryPresetCount(contextCategoryId) : 0;
+            ImGui.textColored(1.0f, 0.75f, 0.2f, 1.0f, "警告");
+            ImGui.textWrapped("确定要删除分类「" + name + "」吗？");
+            if (presetCount > 0) {
+                ImGui.textWrapped("分类内的 " + presetCount + " 个预设将移动到「我的预设」。");
+            }
+            ImGui.textWrapped("此操作无法撤销。");
+            ImGui.spacing();
+            boolean confirm = ImGui.button("删除", 120.0f, 0.0f);
+            ImGui.sameLine();
+            boolean cancel = ImGui.button("取消", 120.0f, 0.0f);
+            if (confirm && contextCategoryId != null) {
+                if (catalog.deleteUserCategory(contextCategoryId)) {
+                    showStatus("已删除分类", true);
+                }
+                pendingDeleteCategoryName = null;
+                ImGui.closeCurrentPopup();
+            } else if (cancel) {
+                pendingDeleteCategoryName = null;
                 ImGui.closeCurrentPopup();
             }
             ImGui.endPopup();

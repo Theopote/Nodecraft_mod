@@ -253,6 +253,35 @@ public final class GraphPresetCatalog {
         return moveUserPreset(presetId, targetCategoryId, index);
     }
 
+    public synchronized boolean moveUserPresetByOffset(String presetId, int offset) {
+        if (offset == 0 || presetId == null) {
+            return false;
+        }
+        PresetView view = findPresetInRules(userRules, EntrySource.USER, presetId);
+        if (view == null) {
+            return false;
+        }
+        GraphPresetRules.PresetCategory category = findUserCategory(view.categoryId());
+        if (category == null || category.presets == null || category.presets.isEmpty()) {
+            return false;
+        }
+        int targetIndex = view.indexInCategory() + offset;
+        if (targetIndex < 0 || targetIndex >= category.presets.size()) {
+            return false;
+        }
+        return moveUserPreset(presetId, view.categoryId(), targetIndex);
+    }
+
+    public synchronized int getUserPresetIndex(String presetId) {
+        PresetView view = findPresetInRules(userRules, EntrySource.USER, presetId);
+        return view != null ? view.indexInCategory() : -1;
+    }
+
+    public synchronized int getUserCategoryPresetCount(String categoryId) {
+        GraphPresetRules.PresetCategory category = findUserCategory(categoryId);
+        return category != null && category.presets != null ? category.presets.size() : 0;
+    }
+
     private GraphPresetRules.GraphPresetDefinition removeUserPresetFromCategory(String presetId) {
         for (GraphPresetRules.PresetCategory category : userRules.categories) {
             if (category == null || category.presets == null) {
