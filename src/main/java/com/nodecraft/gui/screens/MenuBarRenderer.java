@@ -2,6 +2,7 @@ package com.nodecraft.gui.screens;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
 import java.util.function.BooleanSupplier;
 
 import com.nodecraft.core.NodeCraft;
@@ -15,6 +16,7 @@ import com.nodecraft.gui.editor.impl.ImGuiNodeHistory;
 import com.nodecraft.gui.editor.impl.ImGuiNodeIO;
 import com.nodecraft.gui.style.MinecraftTheme;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.execution.ExecutionProfiler;
 import com.nodecraft.nodesystem.execution.NodeExecutor;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.interaction.AreaPreviewStyleSettings;
@@ -957,17 +959,19 @@ public class MenuBarRenderer {
             
             // 创建执行器并异步执行
             currentExecutor = new NodeExecutor(graph, context);
+            NodeExecutor executor = currentExecutor;
             
             NodeCraft.LOGGER.info("开始执行节点图: {} 个节点", graph.getNodes().size());
             executionStatus = null;
             
-            currentExecutor.executeAsync().thenAccept(result -> {
+            executor.executeAsync().thenAccept(result -> {
+                ExecutionProfiler.Profile profile = executor.getLastExecutionProfile();
                 if (result) {
-                    executionStatus = "成功完成";
-                    NodeCraft.LOGGER.info("节点图执行成功");
+                    executionStatus = formatExecutionStatus("成功完成", profile);
+                    NodeCraft.LOGGER.info("节点图执行成功: {}", formatExecutionProfile(profile, 3));
                 } else {
-                    executionStatus = "执行失败";
-                    NodeCraft.LOGGER.warn("节点图执行失败");
+                    executionStatus = formatExecutionStatus("执行失败", profile);
+                    NodeCraft.LOGGER.warn("节点图执行失败: {}", formatExecutionProfile(profile, 3));
                 }
                 executionStatusTime = System.currentTimeMillis();
                 currentExecutor = null;
@@ -985,6 +989,22 @@ public class MenuBarRenderer {
             NodeCraft.LOGGER.error("启动节点图执行失败", e);
             currentExecutor = null;
         }
+    }
+
+    private static String formatExecutionStatus(String prefix, ExecutionProfiler.Profile profile) {
+        if (profile == null || profile.executedNodeCount() <= 0) {
+            return prefix;
+        }
+        double totalMillis = profile.totalNanos() / 1_000_000.0d;
+        return prefix + "（执行 " + profile.executedNodeCount()
+                + " 个节点，用时 " + String.format(Locale.ROOT, "%.1f", totalMillis) + " ms）";
+    }
+
+    private static String formatExecutionProfile(ExecutionProfiler.Profile profile, int topN) {
+        if (profile == null) {
+            return "profile unavailable";
+        }
+        return profile.formatSummary(topN);
     }
     
     /**
