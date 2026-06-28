@@ -116,7 +116,7 @@
       },
       {
         "id": "building_volume",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 250},
         "parameters": {
           "corner": {"x": 0, "y": 0, "z": 0},
@@ -129,7 +129,7 @@
       },
       {
         "id": "interior_volume",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 370},
         "parameters": {
           "corner": {"x": 0.5, "y": 0, "z": 0.5},
@@ -148,7 +148,7 @@
       },
       {
         "id": "corner_frame_1",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 520},
         "parameters": {
           "corner": {"x": 0, "y": 0, "z": 0},
@@ -157,7 +157,7 @@
       },
       {
         "id": "corner_frame_2",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 620},
         "parameters": {
           "corner": {
@@ -170,7 +170,7 @@
       },
       {
         "id": "corner_frame_3",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 720},
         "parameters": {
           "corner": {
@@ -183,7 +183,7 @@
       },
       {
         "id": "corner_frame_4",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 820},
         "parameters": {
           "corner": {
@@ -226,13 +226,13 @@
       },
       {
         "id": "move_to_pos",
-        "type": "transform.basic.move",
+        "type": "transform.basic_transforms.translate",
         "position": {"x": 1450, "y": 450},
         "parameters": {}
       },
       {
         "id": "bake",
-        "type": "output.bake.geometry_to_blocks",
+        "type": "output.execute.bake_geometry_to_blocks",
         "position": {"x": 1650, "y": 450},
         "parameters": {
           "placement_mode": "shell"
@@ -240,7 +240,7 @@
       },
       {
         "id": "preview",
-        "type": "output.preview.preview_blocks",
+        "type": "output.preview.block_preview",
         "position": {"x": 1850, "y": 450},
         "parameters": {}
       }

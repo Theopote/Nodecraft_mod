@@ -142,7 +142,7 @@
       },
       {
         "id": "bake",
-        "type": "output.bake.geometry_to_blocks",
+        "type": "output.execute.bake_geometry_to_blocks",
         "position": {"x": 1050, "y": 250},
         "parameters": {
           "placement_mode": "solid"
@@ -150,7 +150,7 @@
       },
       {
         "id": "preview",
-        "type": "output.preview.preview_blocks",
+        "type": "output.preview.block_preview",
         "position": {"x": 1250, "y": 250},
         "parameters": {}
       }

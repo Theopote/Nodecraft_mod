@@ -111,7 +111,7 @@
       },
       {
         "id": "wall_box",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 200},
         "parameters": {
           "corner": {"x": 0, "y": 0, "z": 0},
@@ -124,7 +124,7 @@
       },
       {
         "id": "gate_box",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 350},
         "parameters": {
           "corner": {
@@ -161,7 +161,7 @@
       },
       {
         "id": "bake",
-        "type": "output.bake.geometry_to_blocks",
+        "type": "output.execute.bake_geometry_to_blocks",
         "position": {"x": 1050, "y": 275},
         "parameters": {
           "placement_mode": "solid"
@@ -169,7 +169,7 @@
       },
       {
         "id": "preview",
-        "type": "output.preview.preview_blocks",
+        "type": "output.preview.block_preview",
         "position": {"x": 1250, "y": 275},
         "parameters": {}
       }
