@@ -81,15 +81,13 @@
       },
       {
         "id": "node_box",
-        "type": "geometry.primitives.box_by_center_and_size",
+        "type": "geometry.primitives.box",
         "position": {"x": 300, "y": 200},
         "parameters": {
           "center": {"param": "player_position"},
-          "size": {
-            "x": {"param": "width"},
-            "y": {"param": "height"},
-            "z": {"param": "depth"}
-          }
+          "size_x": {"param": "width"},
+          "size_y": {"param": "height"},
+          "size_z": {"param": "depth"}
         }
       },
       {
@@ -102,7 +100,7 @@
       },
       {
         "id": "node_bake",
-        "type": "output.bake.geometry_to_blocks",
+        "type": "output.execute.bake_geometry_to_blocks",
         "position": {"x": 700, "y": 200},
         "parameters": {
           "placement_mode": "solid"
@@ -110,7 +108,7 @@
       },
       {
         "id": "node_preview",
-        "type": "output.preview.preview_blocks",
+        "type": "output.preview.block_preview",
         "position": {"x": 900, "y": 200},
         "parameters": {}
       }
