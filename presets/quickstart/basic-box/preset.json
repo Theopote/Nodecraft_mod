@@ -1,0 +1,150 @@
+{
+  "preset_id": "quickstart.basic_box",
+  "version": "1.0.0",
+  "schema_version": "1.0",
+
+  "metadata": {
+    "name": "Basic Box",
+    "name_i18n": {
+      "zh_CN": "基础方块",
+      "en_US": "Basic Box"
+    },
+    "description": "A simple box structure. Perfect for beginners to learn the basics of NodeCraft.",
+    "description_i18n": {
+      "zh_CN": "一个简单的方块结构。非常适合初学者学习 NodeCraft 的基础知识。",
+      "en_US": "A simple box structure. Perfect for beginners to learn the basics of NodeCraft."
+    },
+    "author": "NodeCraft Team",
+    "tags": ["beginner", "basic", "quickstart", "geometry"],
+    "category": "quickstart",
+    "difficulty": "beginner",
+    "estimated_build_time": "1 minute",
+    "estimated_node_count": 3
+  },
+
+  "thumbnails": {
+    "main": "thumbnail.png",
+    "previews": []
+  },
+
+  "parameters": [
+    {
+      "id": "width",
+      "name": "Width",
+      "type": "integer",
+      "default": 8,
+      "min": 1,
+      "max": 32,
+      "step": 1,
+      "description": "Width of the box in blocks",
+      "group": "Dimensions"
+    },
+    {
+      "id": "height",
+      "name": "Height",
+      "type": "integer",
+      "default": 8,
+      "min": 1,
+      "max": 32,
+      "step": 1,
+      "description": "Height of the box in blocks",
+      "group": "Dimensions"
+    },
+    {
+      "id": "depth",
+      "name": "Depth",
+      "type": "integer",
+      "default": 8,
+      "min": 1,
+      "max": 32,
+      "step": 1,
+      "description": "Depth of the box in blocks",
+      "group": "Dimensions"
+    },
+    {
+      "id": "material",
+      "name": "Material",
+      "type": "block_selector",
+      "default": "minecraft:stone",
+      "description": "Block type to use for the box",
+      "group": "Materials"
+    }
+  ],
+
+  "graph": {
+    "nodes": [
+      {
+        "id": "node_player_pos",
+        "type": "input.context.player_position",
+        "position": {"x": 100, "y": 200},
+        "parameters": {}
+      },
+      {
+        "id": "node_box",
+        "type": "geometry.primitives.box_by_center_and_size",
+        "position": {"x": 300, "y": 200},
+        "parameters": {
+          "center": {"param": "player_position"},
+          "size": {
+            "x": {"param": "width"},
+            "y": {"param": "height"},
+            "z": {"param": "depth"}
+          }
+        }
+      },
+      {
+        "id": "node_material",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {"x": 500, "y": 200},
+        "parameters": {
+          "block_type": {"param": "material"}
+        }
+      },
+      {
+        "id": "node_bake",
+        "type": "output.bake.geometry_to_blocks",
+        "position": {"x": 700, "y": 200},
+        "parameters": {
+          "placement_mode": "solid"
+        }
+      },
+      {
+        "id": "node_preview",
+        "type": "output.preview.preview_blocks",
+        "position": {"x": 900, "y": 200},
+        "parameters": {}
+      }
+    ],
+    "connections": [
+      {
+        "from": {"node": "node_player_pos", "port": "position"},
+        "to": {"node": "node_box", "port": "center"}
+      },
+      {
+        "from": {"node": "node_box", "port": "geometry"},
+        "to": {"node": "node_material", "port": "geometry"}
+      },
+      {
+        "from": {"node": "node_material", "port": "geometry"},
+        "to": {"node": "node_bake", "port": "geometry"}
+      },
+      {
+        "from": {"node": "node_bake", "port": "blocks"},
+        "to": {"node": "node_preview", "port": "blocks"}
+      }
+    ]
+  },
+
+  "documentation": {
+    "learning_notes": "This preset demonstrates the basic workflow in NodeCraft: get player position, create geometry, assign material, bake to blocks, and preview. Try adjusting the parameters to see how the box changes.",
+    "tips": [
+      "Start with small dimensions to quickly see results",
+      "Try different materials to see how they look",
+      "The player position determines where the box is placed"
+    ],
+    "related_presets": [
+      "quickstart.basic_sphere",
+      "quickstart.basic_cylinder"
+    ]
+  }
+}

@@ -1,0 +1,188 @@
+{
+  "preset_id": "quickstart.simple_tower",
+  "version": "1.0.0",
+  "schema_version": "1.0",
+
+  "metadata": {
+    "name": "Simple Tower",
+    "name_i18n": {
+      "zh_CN": "简单塔楼",
+      "en_US": "Simple Tower"
+    },
+    "description": "A cylindrical tower with windows. Great for castles and fortifications.",
+    "description_i18n": {
+      "zh_CN": "一个带窗户的圆柱形塔楼。非常适合城堡和防御工事。",
+      "en_US": "A cylindrical tower with windows. Great for castles and fortifications."
+    },
+    "author": "NodeCraft Team",
+    "tags": ["tower", "castle", "medieval", "quickstart"],
+    "category": "quickstart",
+    "difficulty": "beginner",
+    "estimated_build_time": "2 minutes",
+    "estimated_node_count": 6
+  },
+
+  "thumbnails": {
+    "main": "thumbnail.png",
+    "previews": []
+  },
+
+  "parameters": [
+    {
+      "id": "height",
+      "name": "Tower Height",
+      "type": "integer",
+      "default": 20,
+      "min": 5,
+      "max": 64,
+      "step": 1,
+      "description": "Height of the tower in blocks",
+      "group": "Dimensions"
+    },
+    {
+      "id": "radius",
+      "name": "Tower Radius",
+      "type": "integer",
+      "default": 4,
+      "min": 2,
+      "max": 16,
+      "step": 1,
+      "description": "Radius of the tower in blocks",
+      "group": "Dimensions"
+    },
+    {
+      "id": "wall_thickness",
+      "name": "Wall Thickness",
+      "type": "integer",
+      "default": 1,
+      "min": 1,
+      "max": 3,
+      "step": 1,
+      "description": "Thickness of the tower walls",
+      "group": "Dimensions"
+    },
+    {
+      "id": "material",
+      "name": "Wall Material",
+      "type": "block_selector",
+      "default": "minecraft:stone_bricks",
+      "description": "Block type for the tower walls",
+      "group": "Materials"
+    },
+    {
+      "id": "window_spacing",
+      "name": "Window Spacing",
+      "type": "integer",
+      "default": 4,
+      "min": 2,
+      "max": 8,
+      "step": 1,
+      "description": "Vertical spacing between windows",
+      "group": "Windows"
+    }
+  ],
+
+  "graph": {
+    "nodes": [
+      {
+        "id": "node_player_pos",
+        "type": "input.context.player_position",
+        "position": {"x": 100, "y": 200},
+        "parameters": {}
+      },
+      {
+        "id": "node_cylinder",
+        "type": "geometry.primitives.cylinder_by_axis_and_radius",
+        "position": {"x": 300, "y": 200},
+        "parameters": {
+          "base": {"param": "player_position"},
+          "axis": {"x": 0, "y": 1, "z": 0},
+          "radius": {"param": "radius"},
+          "height": {"param": "height"}
+        }
+      },
+      {
+        "id": "node_inner_cylinder",
+        "type": "geometry.primitives.cylinder_by_axis_and_radius",
+        "position": {"x": 300, "y": 350},
+        "parameters": {
+          "base": {"param": "player_position"},
+          "axis": {"x": 0, "y": 1, "z": 0},
+          "radius": {"param": "radius_inner"},
+          "height": {"param": "height"}
+        }
+      },
+      {
+        "id": "node_hollow",
+        "type": "geometry.boolean.difference",
+        "position": {"x": 500, "y": 250},
+        "parameters": {}
+      },
+      {
+        "id": "node_material",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {"x": 700, "y": 250},
+        "parameters": {
+          "block_type": {"param": "material"}
+        }
+      },
+      {
+        "id": "node_bake",
+        "type": "output.bake.geometry_to_blocks",
+        "position": {"x": 900, "y": 250},
+        "parameters": {
+          "placement_mode": "solid"
+        }
+      },
+      {
+        "id": "node_preview",
+        "type": "output.preview.preview_blocks",
+        "position": {"x": 1100, "y": 250},
+        "parameters": {}
+      }
+    ],
+    "connections": [
+      {
+        "from": {"node": "node_player_pos", "port": "position"},
+        "to": {"node": "node_cylinder", "port": "base"}
+      },
+      {
+        "from": {"node": "node_player_pos", "port": "position"},
+        "to": {"node": "node_inner_cylinder", "port": "base"}
+      },
+      {
+        "from": {"node": "node_cylinder", "port": "geometry"},
+        "to": {"node": "node_hollow", "port": "a"}
+      },
+      {
+        "from": {"node": "node_inner_cylinder", "port": "geometry"},
+        "to": {"node": "node_hollow", "port": "b"}
+      },
+      {
+        "from": {"node": "node_hollow", "port": "result"},
+        "to": {"node": "node_material", "port": "geometry"}
+      },
+      {
+        "from": {"node": "node_material", "port": "geometry"},
+        "to": {"node": "node_bake", "port": "geometry"}
+      },
+      {
+        "from": {"node": "node_bake", "port": "blocks"},
+        "to": {"node": "node_preview", "port": "blocks"}
+      }
+    ]
+  },
+
+  "documentation": {
+    "learning_notes": "This preset shows how to create hollow structures using boolean difference. The tower is made by subtracting a smaller cylinder from a larger one.",
+    "tips": [
+      "Adjust wall thickness carefully - too thin walls may have gaps",
+      "Taller towers look more impressive but take longer to build",
+      "Try different materials like cobblestone or bricks"
+    ],
+    "related_presets": [
+      "architectural.infrastructure.watchtower",
+      "quickstart.basic_box"
+    ]
+  }
+}

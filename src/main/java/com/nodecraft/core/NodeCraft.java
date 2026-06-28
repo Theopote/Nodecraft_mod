@@ -10,6 +10,7 @@ import com.nodecraft.gui.ai.AiNodeSchemaExporter;
 
 import com.nodecraft.core.item.ModItems; // 统一通过 ModItems 类管理物品注册
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.preset.PresetRegistry;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -32,16 +33,44 @@ public class NodeCraft implements ModInitializer {
 		initializeNodeSystem();
 		exportAiNodeSchema(NodeRegistry.getInstance());
 
-		// 3. 初始化世界交互模块
+		// 3. 初始化预设系统
+		initializePresetSystem();
+
+		// 4. 初始化世界交互模块
 		initializeWorldInteraction();
 
-		// 4. 初始化数据管理模块
+		// 5. 初始化数据管理模块
 		initializeDataManagement();
 
-		// 5. 注册游戏命令
+		// 6. 注册游戏命令
 		registerCommands();
 
 		LOGGER.info("NodeCraft模组初始化完成！");
+	}
+
+	private void initializePresetSystem() {
+		LOGGER.debug("初始化预设系统...");
+
+		try {
+			PresetRegistry presetRegistry = PresetRegistry.getInstance();
+			Path presetDirectory = Path.of("config", MOD_ID, "presets");
+
+			// Load presets from config directory
+			presetRegistry.loadPresets(presetDirectory);
+
+			int presetCount = presetRegistry.getPresetCount();
+			LOGGER.info("预设加载完成。总计: {} 个预设", presetCount);
+
+			if (presetCount > 0) {
+				LOGGER.debug("可用预设分类: {}", presetRegistry.getCategories());
+			} else {
+				LOGGER.warn("没有找到预设文件。预设目录: {}", presetDirectory);
+			}
+
+		} catch (Exception e) {
+			LOGGER.error("初始化预设系统失败", e);
+			// Don't throw - presets are optional, mod should still work without them
+		}
 	}
 
 	/**
