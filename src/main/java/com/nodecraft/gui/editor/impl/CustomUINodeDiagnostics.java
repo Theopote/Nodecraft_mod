@@ -18,17 +18,17 @@ import com.nodecraft.core.NodeCraft;
  * ```java
  * // 检查节点是否适合直接绘制
  * if (CustomUINodeDiagnostics.mayBenefitFromDirectDrawing(myNode)) {
- *     System.out.println("Consider enabling direct drawing for better performance");
+ *     NodeCraft.LOGGER.info("Consider enabling direct drawing for better performance");
  * }
  * 
  * // 检查是否需要自定义内容边界
  * if (CustomUINodeDiagnostics.mayNeedCustomContentBounds(myNode)) {
- *     System.out.println("Consider overriding getContentBounds() method");
+ *     NodeCraft.LOGGER.info("Consider overriding getContentBounds() method");
  * }
  * 
  * // 检查ImGui ID碰撞
  * if (CustomUINodeDiagnostics.mayHaveImGuiIdCollision(nodeA, nodeB)) {
- *     System.out.println("Potential ImGui ID collision detected");
+ *     NodeCraft.LOGGER.info("Potential ImGui ID collision detected");
  * }
  * ```
  */
