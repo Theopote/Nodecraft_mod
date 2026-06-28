@@ -552,6 +552,1160 @@
               "toPort": "input_blocks"
             }
           ]
+        },
+        {
+          "id": "building_elements.stairs.straight_staircase",
+          "displayName": "Straight Staircase",
+          "description": "A simple straight staircase connecting two levels.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 200.0
+            },
+            {
+              "ref": "steps_line",
+              "typeId": "geometry.curves.line",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "divide_steps",
+              "typeId": "geometry.curves.divide_curve",
+              "x": 450.0,
+              "y": 200.0
+            },
+            {
+              "ref": "step_box",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 450.0,
+              "y": 350.0
+            },
+            {
+              "ref": "array_steps",
+              "typeId": "pattern.instances.place_instances_at_points",
+              "x": 650.0,
+              "y": 275.0
+            },
+            {
+              "ref": "union_steps",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 850.0,
+              "y": 275.0
+            },
+            {
+              "ref": "assign_material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1050.0,
+              "y": 275.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 1250.0,
+              "y": 275.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.bake.geometry_to_blocks",
+              "x": 1450.0,
+              "y": 275.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1650.0,
+              "y": 275.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "steps_line",
+              "fromPort": "output_curve",
+              "toRef": "divide_steps",
+              "toPort": "input_curve"
+            },
+            {
+              "fromRef": "divide_steps",
+              "fromPort": "output_points",
+              "toRef": "array_steps",
+              "toPort": "input_points"
+            },
+            {
+              "fromRef": "step_box",
+              "fromPort": "output_geometry",
+              "toRef": "array_steps",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "array_steps",
+              "fromPort": "output_instances",
+              "toRef": "union_steps",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "union_steps",
+              "fromPort": "output_result",
+              "toRef": "assign_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_material",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "building_elements.windows.modern_window",
+          "displayName": "Modern Window",
+          "description": "A simple rectangular window with clean lines, perfect for contemporary buildings.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 200.0
+            },
+            {
+              "ref": "window_opening",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "assign_glass",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 450.0,
+              "y": 200.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 650.0,
+              "y": 200.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.bake.geometry_to_blocks",
+              "x": 850.0,
+              "y": 200.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1050.0,
+              "y": 200.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "window_opening",
+              "fromPort": "output_geometry",
+              "toRef": "assign_glass",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_glass",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "building_elements.columns.classical_column",
+          "displayName": "Classical Column",
+          "description": "A classical architectural column with base, shaft, and capital.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 250.0
+            },
+            {
+              "ref": "base",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 150.0
+            },
+            {
+              "ref": "shaft",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 250.0
+            },
+            {
+              "ref": "capital",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 350.0
+            },
+            {
+              "ref": "union_column",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 450.0,
+              "y": 250.0
+            },
+            {
+              "ref": "assign_material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 650.0,
+              "y": 250.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 850.0,
+              "y": 250.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.bake.geometry_to_blocks",
+              "x": 1050.0,
+              "y": 250.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1250.0,
+              "y": 250.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "base",
+              "fromPort": "output_geometry",
+              "toRef": "union_column",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "shaft",
+              "fromPort": "output_geometry",
+              "toRef": "union_column",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "capital",
+              "fromPort": "output_geometry",
+              "toRef": "union_column",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "union_column",
+              "fromPort": "output_result",
+              "toRef": "assign_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_material",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "building_elements.doors.simple_door",
+          "displayName": "Simple Door Frame",
+          "description": "A basic door frame with threshold and lintel.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 200.0
+            },
+            {
+              "ref": "door_opening",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "assign_material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 450.0,
+              "y": 200.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 650.0,
+              "y": 200.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.bake.geometry_to_blocks",
+              "x": 850.0,
+              "y": 200.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1050.0,
+              "y": 200.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "door_opening",
+              "fromPort": "output_geometry",
+              "toRef": "assign_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_material",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "building_elements.columns.classical_column",
+          "displayName": "Classical Column",
+          "description": "A classical architectural column with base, shaft, and capital.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 250.0
+            },
+            {
+              "ref": "base",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 150.0
+            },
+            {
+              "ref": "shaft",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 250.0
+            },
+            {
+              "ref": "capital",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 350.0
+            },
+            {
+              "ref": "union_column",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 450.0,
+              "y": 250.0
+            },
+            {
+              "ref": "assign_material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 650.0,
+              "y": 250.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 850.0,
+              "y": 250.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 1050.0,
+              "y": 250.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1250.0,
+              "y": 250.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "base",
+              "fromPort": "output_geometry",
+              "toRef": "union_column",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "shaft",
+              "fromPort": "output_geometry",
+              "toRef": "union_column",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "capital",
+              "fromPort": "output_geometry",
+              "toRef": "union_column",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "union_column",
+              "fromPort": "output_result",
+              "toRef": "assign_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_material",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "building_elements.doors.simple_door",
+          "displayName": "Simple Door Frame",
+          "description": "A basic door frame with threshold and lintel.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 200.0
+            },
+            {
+              "ref": "door_opening",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "assign_material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 450.0,
+              "y": 200.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 650.0,
+              "y": 200.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 850.0,
+              "y": 200.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1050.0,
+              "y": 200.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "door_opening",
+              "fromPort": "output_geometry",
+              "toRef": "assign_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_material",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "building_elements.roofs.gable_roof",
+          "displayName": "Gable Roof",
+          "description": "A classic gable (pitched) roof with adjustable pitch and overhang.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 200.0
+            },
+            {
+              "ref": "roof_profile",
+              "typeId": "geometry.profiles.polygon_profile",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "extrude_roof",
+              "typeId": "geometry.solids.extrude_profile",
+              "x": 450.0,
+              "y": 200.0
+            },
+            {
+              "ref": "orient_roof",
+              "typeId": "transform.basic_transforms.rotate",
+              "x": 650.0,
+              "y": 200.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic_transforms.translate",
+              "x": 850.0,
+              "y": 200.0
+            },
+            {
+              "ref": "assign_material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1050.0,
+              "y": 200.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 1250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1450.0,
+              "y": 200.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "roof_profile",
+              "fromPort": "output_profile",
+              "toRef": "extrude_roof",
+              "toPort": "input_profile"
+            },
+            {
+              "fromRef": "extrude_roof",
+              "fromPort": "output_geometry",
+              "toRef": "orient_roof",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "orient_roof",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "assign_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_material",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "building_elements.stairs.spiral_staircase",
+          "displayName": "Spiral Staircase",
+          "description": "A circular spiral staircase with adjustable radius, height, and rotation.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 200.0
+            },
+            {
+              "ref": "helix_curve",
+              "typeId": "geometry.curves.helix",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "sample_curve",
+              "typeId": "geometry.curves.divide_curve_to_points",
+              "x": 450.0,
+              "y": 200.0
+            },
+            {
+              "ref": "center_post",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 350.0
+            },
+            {
+              "ref": "step_box",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 650.0,
+              "y": 200.0
+            },
+            {
+              "ref": "orient_steps",
+              "typeId": "pattern.instances.orient_instances_to_frames",
+              "x": 850.0,
+              "y": 200.0
+            },
+            {
+              "ref": "union_steps",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 1050.0,
+              "y": 200.0
+            },
+            {
+              "ref": "union_with_post",
+              "typeId": "geometry.boolean.union",
+              "x": 1050.0,
+              "y": 300.0
+            },
+            {
+              "ref": "material_steps",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1250.0,
+              "y": 250.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 1450.0,
+              "y": 250.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1650.0,
+              "y": 250.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "helix_curve",
+              "toPort": "input_base"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "center_post",
+              "toPort": "input_base"
+            },
+            {
+              "fromRef": "helix_curve",
+              "fromPort": "output_curve",
+              "toRef": "sample_curve",
+              "toPort": "input_curve"
+            },
+            {
+              "fromRef": "sample_curve",
+              "fromPort": "output_points",
+              "toRef": "orient_steps",
+              "toPort": "input_origins"
+            },
+            {
+              "fromRef": "step_box",
+              "fromPort": "output_geometry",
+              "toRef": "orient_steps",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "orient_steps",
+              "fromPort": "output_instances",
+              "toRef": "union_steps",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "union_steps",
+              "fromPort": "output_result",
+              "toRef": "union_with_post",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "center_post",
+              "fromPort": "output_geometry",
+              "toRef": "union_with_post",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "union_with_post",
+              "fromPort": "output_result",
+              "toRef": "material_steps",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "material_steps",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "building_elements.stairs.straight_staircase",
+          "displayName": "Straight Staircase",
+          "description": "A simple straight staircase connecting two levels.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 200.0
+            },
+            {
+              "ref": "steps_line",
+              "typeId": "geometry.curves.line",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "divide_steps",
+              "typeId": "geometry.curves.divide_curve",
+              "x": 450.0,
+              "y": 200.0
+            },
+            {
+              "ref": "step_box",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 450.0,
+              "y": 350.0
+            },
+            {
+              "ref": "array_steps",
+              "typeId": "pattern.instances.place_instances_at_points",
+              "x": 650.0,
+              "y": 275.0
+            },
+            {
+              "ref": "union_steps",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 850.0,
+              "y": 275.0
+            },
+            {
+              "ref": "assign_material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1050.0,
+              "y": 275.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 1250.0,
+              "y": 275.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 1450.0,
+              "y": 275.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1650.0,
+              "y": 275.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "steps_line",
+              "fromPort": "output_curve",
+              "toRef": "divide_steps",
+              "toPort": "input_curve"
+            },
+            {
+              "fromRef": "divide_steps",
+              "fromPort": "output_points",
+              "toRef": "array_steps",
+              "toPort": "input_points"
+            },
+            {
+              "fromRef": "step_box",
+              "fromPort": "output_geometry",
+              "toRef": "array_steps",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "array_steps",
+              "fromPort": "output_instances",
+              "toRef": "union_steps",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "union_steps",
+              "fromPort": "output_result",
+              "toRef": "assign_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_material",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "building_elements.windows.arched_window",
+          "displayName": "Arched Window",
+          "description": "A medieval-style arched window with stone frame and glass panes.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 200.0
+            },
+            {
+              "ref": "rect_profile",
+              "typeId": "geometry.profiles.rectangle",
+              "x": 250.0,
+              "y": 180.0
+            },
+            {
+              "ref": "arc_profile",
+              "typeId": "geometry.profiles.arc",
+              "x": 250.0,
+              "y": 280.0
+            },
+            {
+              "ref": "union_profiles",
+              "typeId": "geometry.profiles.union_profiles",
+              "x": 450.0,
+              "y": 230.0
+            },
+            {
+              "ref": "extrude_opening",
+              "typeId": "geometry.solids.extrude",
+              "x": 650.0,
+              "y": 230.0
+            },
+            {
+              "ref": "frame_box",
+              "typeId": "geometry.primitives.box_by_center_and_size",
+              "x": 250.0,
+              "y": 400.0
+            },
+            {
+              "ref": "subtract_opening",
+              "typeId": "geometry.boolean.difference",
+              "x": 850.0,
+              "y": 300.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic_transforms.translate",
+              "x": 1050.0,
+              "y": 300.0
+            },
+            {
+              "ref": "assign_frame",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1250.0,
+              "y": 300.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 1450.0,
+              "y": 300.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1650.0,
+              "y": 300.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "rect_profile",
+              "fromPort": "output_profile",
+              "toRef": "union_profiles",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "arc_profile",
+              "fromPort": "output_profile",
+              "toRef": "union_profiles",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "union_profiles",
+              "fromPort": "output_result",
+              "toRef": "extrude_opening",
+              "toPort": "input_profile"
+            },
+            {
+              "fromRef": "frame_box",
+              "fromPort": "output_geometry",
+              "toRef": "subtract_opening",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "extrude_opening",
+              "fromPort": "output_geometry",
+              "toRef": "subtract_opening",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "subtract_opening",
+              "fromPort": "output_result",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "assign_frame",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_frame",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "building_elements.windows.modern_window",
+          "displayName": "Modern Window",
+          "description": "A simple rectangular window with clean lines, perfect for contemporary buildings.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 200.0
+            },
+            {
+              "ref": "window_opening",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "assign_glass",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 450.0,
+              "y": 200.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 650.0,
+              "y": 200.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 850.0,
+              "y": 200.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1050.0,
+              "y": 200.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "window_opening",
+              "fromPort": "output_geometry",
+              "toRef": "assign_glass",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_glass",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
         }
       ]
     },
@@ -716,6 +1870,1216 @@
               "toPort": "input_blocks"
             }
           ]
+        },
+        {
+          "id": "quickstart.garden_wall",
+          "displayName": "Garden Wall with Gate",
+          "description": "A simple wall segment with an arched gateway opening, perfect for gardens and courtyards.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 200.0
+            },
+            {
+              "ref": "wall_box",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "gate_box",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 350.0
+            },
+            {
+              "ref": "cut_gate",
+              "typeId": "geometry.boolean.difference",
+              "x": 450.0,
+              "y": 275.0
+            },
+            {
+              "ref": "assign_material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 650.0,
+              "y": 275.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 850.0,
+              "y": 275.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.bake.geometry_to_blocks",
+              "x": 1050.0,
+              "y": 275.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1250.0,
+              "y": 275.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "wall_box",
+              "fromPort": "output_geometry",
+              "toRef": "cut_gate",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "gate_box",
+              "fromPort": "output_geometry",
+              "toRef": "cut_gate",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "cut_gate",
+              "fromPort": "output_result",
+              "toRef": "assign_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_material",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "quickstart.basic_sphere",
+          "displayName": "Basic Sphere",
+          "description": "A simple sphere structure. Great for domes, planets, or decorative elements.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 200.0
+            },
+            {
+              "ref": "sphere",
+              "typeId": "geometry.primitives.sphere",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "assign_material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 450.0,
+              "y": 200.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 650.0,
+              "y": 200.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.bake.geometry_to_blocks",
+              "x": 850.0,
+              "y": 200.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1050.0,
+              "y": 200.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "sphere",
+              "fromPort": "output_geometry",
+              "toRef": "assign_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_material",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "quickstart.basic_box",
+          "displayName": "Basic Box",
+          "description": "A simple box structure. Perfect for beginners to learn the basics of NodeCraft.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "node_player_pos",
+              "typeId": "input.context.player_position",
+              "x": 100.0,
+              "y": 200.0
+            },
+            {
+              "ref": "node_box",
+              "typeId": "geometry.primitives.box",
+              "x": 300.0,
+              "y": 200.0
+            },
+            {
+              "ref": "node_material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 500.0,
+              "y": 200.0
+            },
+            {
+              "ref": "node_bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 700.0,
+              "y": 200.0
+            },
+            {
+              "ref": "node_preview",
+              "typeId": "output.preview.block_preview",
+              "x": 900.0,
+              "y": 200.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "node_player_pos",
+              "fromPort": "output_position",
+              "toRef": "node_box",
+              "toPort": "input_center"
+            },
+            {
+              "fromRef": "node_box",
+              "fromPort": "output_geometry",
+              "toRef": "node_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "node_material",
+              "fromPort": "output_geometry",
+              "toRef": "node_bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "node_bake",
+              "fromPort": "output_blocks",
+              "toRef": "node_preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "quickstart.basic_sphere",
+          "displayName": "Basic Sphere",
+          "description": "A simple sphere structure. Great for domes, planets, or decorative elements.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 200.0
+            },
+            {
+              "ref": "sphere",
+              "typeId": "geometry.primitives.sphere",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "assign_material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 450.0,
+              "y": 200.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 650.0,
+              "y": 200.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 850.0,
+              "y": 200.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1050.0,
+              "y": 200.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "sphere",
+              "fromPort": "output_geometry",
+              "toRef": "assign_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_material",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "quickstart.garden_wall",
+          "displayName": "Garden Wall with Gate",
+          "description": "A simple wall segment with an arched gateway opening, perfect for gardens and courtyards.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 200.0
+            },
+            {
+              "ref": "wall_box",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "gate_box",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 350.0
+            },
+            {
+              "ref": "cut_gate",
+              "typeId": "geometry.boolean.difference",
+              "x": 450.0,
+              "y": 275.0
+            },
+            {
+              "ref": "assign_material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 650.0,
+              "y": 275.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 850.0,
+              "y": 275.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 1050.0,
+              "y": 275.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1250.0,
+              "y": 275.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "wall_box",
+              "fromPort": "output_geometry",
+              "toRef": "cut_gate",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "gate_box",
+              "fromPort": "output_geometry",
+              "toRef": "cut_gate",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "cut_gate",
+              "fromPort": "output_result",
+              "toRef": "assign_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_material",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "quickstart.simple_tower",
+          "displayName": "Simple Tower",
+          "description": "A cylindrical tower with windows. Great for castles and fortifications.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "node_player_pos",
+              "typeId": "input.context.player_position",
+              "x": 100.0,
+              "y": 200.0
+            },
+            {
+              "ref": "node_cylinder",
+              "typeId": "geometry.primitives.cylinder",
+              "x": 300.0,
+              "y": 200.0
+            },
+            {
+              "ref": "node_inner_cylinder",
+              "typeId": "geometry.primitives.cylinder",
+              "x": 300.0,
+              "y": 350.0
+            },
+            {
+              "ref": "node_hollow",
+              "typeId": "geometry.boolean.difference",
+              "x": 500.0,
+              "y": 250.0
+            },
+            {
+              "ref": "node_material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 700.0,
+              "y": 250.0
+            },
+            {
+              "ref": "node_bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 900.0,
+              "y": 250.0
+            },
+            {
+              "ref": "node_preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1100.0,
+              "y": 250.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "node_player_pos",
+              "fromPort": "output_position",
+              "toRef": "node_cylinder",
+              "toPort": "input_base"
+            },
+            {
+              "fromRef": "node_player_pos",
+              "fromPort": "output_position",
+              "toRef": "node_inner_cylinder",
+              "toPort": "input_base"
+            },
+            {
+              "fromRef": "node_cylinder",
+              "fromPort": "output_geometry",
+              "toRef": "node_hollow",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "node_inner_cylinder",
+              "fromPort": "output_geometry",
+              "toRef": "node_hollow",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "node_hollow",
+              "fromPort": "output_result",
+              "toRef": "node_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "node_material",
+              "fromPort": "output_geometry",
+              "toRef": "node_bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "node_bake",
+              "fromPort": "output_blocks",
+              "toRef": "node_preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "design_tools",
+      "displayName": "Design Tools",
+      "presets": [
+        {
+          "id": "styles.modern.glass_box_building",
+          "displayName": "Modern Glass Box Building",
+          "description": "A sleek modern building with glass walls and concrete frame, perfect for contemporary city builds.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 300.0
+            },
+            {
+              "ref": "building_volume",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 250.0
+            },
+            {
+              "ref": "interior_volume",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 370.0
+            },
+            {
+              "ref": "hollow_building",
+              "typeId": "geometry.boolean.difference",
+              "x": 450.0,
+              "y": 310.0
+            },
+            {
+              "ref": "corner_frame_1",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 520.0
+            },
+            {
+              "ref": "corner_frame_2",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 620.0
+            },
+            {
+              "ref": "corner_frame_3",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 720.0
+            },
+            {
+              "ref": "corner_frame_4",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 820.0
+            },
+            {
+              "ref": "union_frames",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 650.0,
+              "y": 650.0
+            },
+            {
+              "ref": "union_all",
+              "typeId": "geometry.boolean.union",
+              "x": 850.0,
+              "y": 450.0
+            },
+            {
+              "ref": "assign_glass_walls",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1050.0,
+              "y": 450.0
+            },
+            {
+              "ref": "assign_frame",
+              "typeId": "material.gradient_mapping.height_gradient",
+              "x": 1250.0,
+              "y": 450.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 1450.0,
+              "y": 450.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.bake.geometry_to_blocks",
+              "x": 1650.0,
+              "y": 450.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1850.0,
+              "y": 450.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "building_volume",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_building",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "interior_volume",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_building",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "corner_frame_1",
+              "fromPort": "output_geometry",
+              "toRef": "union_frames",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "corner_frame_2",
+              "fromPort": "output_geometry",
+              "toRef": "union_frames",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "corner_frame_3",
+              "fromPort": "output_geometry",
+              "toRef": "union_frames",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "corner_frame_4",
+              "fromPort": "output_geometry",
+              "toRef": "union_frames",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "hollow_building",
+              "fromPort": "output_result",
+              "toRef": "union_all",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "union_frames",
+              "fromPort": "output_result",
+              "toRef": "union_all",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "union_all",
+              "fromPort": "output_result",
+              "toRef": "assign_glass_walls",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_glass_walls",
+              "fromPort": "output_geometry",
+              "toRef": "assign_frame",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_frame",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "styles",
+      "displayName": "建筑风格",
+      "presets": [
+        {
+          "id": "styles.fantasy.wizard_tower",
+          "displayName": "Wizard Tower",
+          "description": "A tall, mystical wizard tower with a conical roof and magical aesthetic.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 300.0
+            },
+            {
+              "ref": "tower_outer",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "tower_inner",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 320.0
+            },
+            {
+              "ref": "hollow_tower",
+              "typeId": "geometry.boolean.difference",
+              "x": 450.0,
+              "y": 260.0
+            },
+            {
+              "ref": "roof_cone",
+              "typeId": "geometry.primitives.cone",
+              "x": 250.0,
+              "y": 460.0
+            },
+            {
+              "ref": "position_roof",
+              "typeId": "transform.basic_transforms.translate",
+              "x": 450.0,
+              "y": 460.0
+            },
+            {
+              "ref": "balcony_ring",
+              "typeId": "geometry.primitives.torus",
+              "x": 250.0,
+              "y": 620.0
+            },
+            {
+              "ref": "position_balcony",
+              "typeId": "transform.basic_transforms.translate",
+              "x": 450.0,
+              "y": 620.0
+            },
+            {
+              "ref": "union_all",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 650.0,
+              "y": 400.0
+            },
+            {
+              "ref": "assign_tower",
+              "typeId": "material.gradient_mapping.height_gradient",
+              "x": 850.0,
+              "y": 400.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic_transforms.translate",
+              "x": 1050.0,
+              "y": 400.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 1250.0,
+              "y": 400.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1450.0,
+              "y": 400.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "tower_outer",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_tower",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "tower_inner",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_tower",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "roof_cone",
+              "fromPort": "output_geometry",
+              "toRef": "position_roof",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "balcony_ring",
+              "fromPort": "output_geometry",
+              "toRef": "position_balcony",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "hollow_tower",
+              "fromPort": "output_result",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "position_roof",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "position_balcony",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "union_all",
+              "fromPort": "output_result",
+              "toRef": "assign_tower",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_tower",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "styles.medieval.castle_keep",
+          "displayName": "Castle Keep",
+          "description": "A fortified castle keep with thick walls and corner towers.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 300.0
+            },
+            {
+              "ref": "outer_walls",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "inner_space",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 320.0
+            },
+            {
+              "ref": "hollow_keep",
+              "typeId": "geometry.boolean.difference",
+              "x": 450.0,
+              "y": 260.0
+            },
+            {
+              "ref": "tower_1",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 460.0
+            },
+            {
+              "ref": "tower_2",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 560.0
+            },
+            {
+              "ref": "tower_3",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 660.0
+            },
+            {
+              "ref": "tower_4",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 760.0
+            },
+            {
+              "ref": "union_all",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 650.0,
+              "y": 500.0
+            },
+            {
+              "ref": "assign_material",
+              "typeId": "material.gradient_mapping.height_gradient",
+              "x": 850.0,
+              "y": 500.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic_transforms.translate",
+              "x": 1050.0,
+              "y": 500.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 1250.0,
+              "y": 500.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1450.0,
+              "y": 500.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "outer_walls",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_keep",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "inner_space",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_keep",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "hollow_keep",
+              "fromPort": "output_result",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "tower_1",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "tower_2",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "tower_3",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "tower_4",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "union_all",
+              "fromPort": "output_result",
+              "toRef": "assign_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_material",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "styles.modern.glass_box_building",
+          "displayName": "Modern Glass Box Building",
+          "description": "A sleek modern building with glass walls and concrete frame, perfect for contemporary city builds.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 300.0
+            },
+            {
+              "ref": "building_volume",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 250.0
+            },
+            {
+              "ref": "interior_volume",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 370.0
+            },
+            {
+              "ref": "hollow_building",
+              "typeId": "geometry.boolean.difference",
+              "x": 450.0,
+              "y": 310.0
+            },
+            {
+              "ref": "corner_frame_1",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 520.0
+            },
+            {
+              "ref": "corner_frame_2",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 620.0
+            },
+            {
+              "ref": "corner_frame_3",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 720.0
+            },
+            {
+              "ref": "corner_frame_4",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 820.0
+            },
+            {
+              "ref": "union_frames",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 650.0,
+              "y": 650.0
+            },
+            {
+              "ref": "union_all",
+              "typeId": "geometry.boolean.union",
+              "x": 850.0,
+              "y": 450.0
+            },
+            {
+              "ref": "assign_glass_walls",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1050.0,
+              "y": 450.0
+            },
+            {
+              "ref": "assign_frame",
+              "typeId": "material.gradient_mapping.height_gradient",
+              "x": 1250.0,
+              "y": 450.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic_transforms.translate",
+              "x": 1450.0,
+              "y": 450.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 1650.0,
+              "y": 450.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1850.0,
+              "y": 450.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "building_volume",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_building",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "interior_volume",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_building",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "corner_frame_1",
+              "fromPort": "output_geometry",
+              "toRef": "union_frames",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "corner_frame_2",
+              "fromPort": "output_geometry",
+              "toRef": "union_frames",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "corner_frame_3",
+              "fromPort": "output_geometry",
+              "toRef": "union_frames",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "corner_frame_4",
+              "fromPort": "output_geometry",
+              "toRef": "union_frames",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "hollow_building",
+              "fromPort": "output_result",
+              "toRef": "union_all",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "union_frames",
+              "fromPort": "output_result",
+              "toRef": "union_all",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "union_all",
+              "fromPort": "output_result",
+              "toRef": "assign_glass_walls",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_glass_walls",
+              "fromPort": "output_geometry",
+              "toRef": "assign_frame",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_frame",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
         }
       ]
     },
@@ -784,6 +3148,326 @@
           "kind": "placeholder",
           "nodes": [],
           "connections": []
+        },
+        {
+          "id": "styles.fantasy.wizard_tower",
+          "displayName": "Wizard Tower",
+          "description": "A tall, mystical wizard tower with a conical roof and magical aesthetic.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 300.0
+            },
+            {
+              "ref": "tower_outer",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "tower_inner",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 320.0
+            },
+            {
+              "ref": "hollow_tower",
+              "typeId": "geometry.boolean.difference",
+              "x": 450.0,
+              "y": 260.0
+            },
+            {
+              "ref": "roof_cone",
+              "typeId": "geometry.primitives.cone",
+              "x": 250.0,
+              "y": 460.0
+            },
+            {
+              "ref": "position_roof",
+              "typeId": "transform.basic.move",
+              "x": 450.0,
+              "y": 460.0
+            },
+            {
+              "ref": "balcony_ring",
+              "typeId": "geometry.primitives.torus",
+              "x": 250.0,
+              "y": 620.0
+            },
+            {
+              "ref": "position_balcony",
+              "typeId": "transform.basic.move",
+              "x": 450.0,
+              "y": 620.0
+            },
+            {
+              "ref": "union_all",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 650.0,
+              "y": 400.0
+            },
+            {
+              "ref": "assign_tower",
+              "typeId": "material.gradient_mapping.height_gradient",
+              "x": 850.0,
+              "y": 400.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 1050.0,
+              "y": 400.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.bake.geometry_to_blocks",
+              "x": 1250.0,
+              "y": 400.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1450.0,
+              "y": 400.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "tower_outer",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_tower",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "tower_inner",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_tower",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "roof_cone",
+              "fromPort": "output_geometry",
+              "toRef": "position_roof",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "balcony_ring",
+              "fromPort": "output_geometry",
+              "toRef": "position_balcony",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "hollow_tower",
+              "fromPort": "output_result",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "position_roof",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "position_balcony",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "union_all",
+              "fromPort": "output_result",
+              "toRef": "assign_tower",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_tower",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "styles.medieval.castle_keep",
+          "displayName": "Castle Keep",
+          "description": "A fortified castle keep with thick walls and corner towers.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 300.0
+            },
+            {
+              "ref": "outer_walls",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "inner_space",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 320.0
+            },
+            {
+              "ref": "hollow_keep",
+              "typeId": "geometry.boolean.difference",
+              "x": 450.0,
+              "y": 260.0
+            },
+            {
+              "ref": "tower_1",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 460.0
+            },
+            {
+              "ref": "tower_2",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 560.0
+            },
+            {
+              "ref": "tower_3",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 660.0
+            },
+            {
+              "ref": "tower_4",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 760.0
+            },
+            {
+              "ref": "union_all",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 650.0,
+              "y": 500.0
+            },
+            {
+              "ref": "assign_material",
+              "typeId": "material.gradient_mapping.height_gradient",
+              "x": 850.0,
+              "y": 500.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 1050.0,
+              "y": 500.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.bake.geometry_to_blocks",
+              "x": 1250.0,
+              "y": 500.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1450.0,
+              "y": 500.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "outer_walls",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_keep",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "inner_space",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_keep",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "hollow_keep",
+              "fromPort": "output_result",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "tower_1",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "tower_2",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "tower_3",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "tower_4",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "union_all",
+              "fromPort": "output_result",
+              "toRef": "assign_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_material",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
         }
       ]
     },
@@ -987,6 +3671,1724 @@
             },
             {
               "fromRef": "move_to_position",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "architectural.residential.simple_house",
+          "displayName": "Simple Modern House",
+          "description": "A clean, modern single-story house with flat roof and large windows.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 250.0
+            },
+            {
+              "ref": "outer_box",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "inner_box",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 320.0
+            },
+            {
+              "ref": "hollow_house",
+              "typeId": "geometry.boolean.difference",
+              "x": 450.0,
+              "y": 260.0
+            },
+            {
+              "ref": "roof",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 460.0
+            },
+            {
+              "ref": "union_all",
+              "typeId": "geometry.boolean.union",
+              "x": 650.0,
+              "y": 350.0
+            },
+            {
+              "ref": "assign_material",
+              "typeId": "material.gradient_mapping.height_gradient",
+              "x": 850.0,
+              "y": 350.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 1050.0,
+              "y": 350.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.bake.geometry_to_blocks",
+              "x": 1250.0,
+              "y": 350.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1450.0,
+              "y": 350.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "outer_box",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_house",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "inner_box",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_house",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "hollow_house",
+              "fromPort": "output_result",
+              "toRef": "union_all",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "roof",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "union_all",
+              "fromPort": "output_result",
+              "toRef": "assign_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_material",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "architectural.infrastructure.stone_bridge",
+          "displayName": "Stone Arch Bridge",
+          "description": "A classic stone bridge with arch supports spanning a gap.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 300.0
+            },
+            {
+              "ref": "arch_curve",
+              "typeId": "geometry.curves.arc",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "arch_profile",
+              "typeId": "geometry.profiles.rectangle",
+              "x": 250.0,
+              "y": 350.0
+            },
+            {
+              "ref": "sweep_arch",
+              "typeId": "geometry.solids.sweep",
+              "x": 450.0,
+              "y": 275.0
+            },
+            {
+              "ref": "deck_box",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 500.0
+            },
+            {
+              "ref": "union_structure",
+              "typeId": "geometry.boolean.union",
+              "x": 650.0,
+              "y": 350.0
+            },
+            {
+              "ref": "railing_left",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 450.0,
+              "y": 600.0
+            },
+            {
+              "ref": "railing_right",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 450.0,
+              "y": 700.0
+            },
+            {
+              "ref": "union_with_railings",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 850.0,
+              "y": 500.0
+            },
+            {
+              "ref": "assign_stone",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1050.0,
+              "y": 400.0
+            },
+            {
+              "ref": "assign_deck",
+              "typeId": "material.gradient_mapping.height_gradient",
+              "x": 1250.0,
+              "y": 400.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 1450.0,
+              "y": 400.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.bake.geometry_to_blocks",
+              "x": 1650.0,
+              "y": 400.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1850.0,
+              "y": 400.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "arch_curve",
+              "fromPort": "output_curve",
+              "toRef": "sweep_arch",
+              "toPort": "input_path"
+            },
+            {
+              "fromRef": "arch_profile",
+              "fromPort": "output_profile",
+              "toRef": "sweep_arch",
+              "toPort": "input_profile"
+            },
+            {
+              "fromRef": "sweep_arch",
+              "fromPort": "output_geometry",
+              "toRef": "union_structure",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "deck_box",
+              "fromPort": "output_geometry",
+              "toRef": "union_structure",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "union_structure",
+              "fromPort": "output_result",
+              "toRef": "union_with_railings",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "railing_left",
+              "fromPort": "output_geometry",
+              "toRef": "union_with_railings",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "railing_right",
+              "fromPort": "output_geometry",
+              "toRef": "union_with_railings",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "union_with_railings",
+              "fromPort": "output_result",
+              "toRef": "assign_stone",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_stone",
+              "fromPort": "output_geometry",
+              "toRef": "assign_deck",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_deck",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "architectural.infrastructure.watchtower",
+          "displayName": "Medieval Watchtower",
+          "description": "A defensive watchtower with crenellations and observation deck.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 250.0
+            },
+            {
+              "ref": "outer_tower",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "inner_tower",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 320.0
+            },
+            {
+              "ref": "hollow_tower",
+              "typeId": "geometry.boolean.difference",
+              "x": 450.0,
+              "y": 260.0
+            },
+            {
+              "ref": "battlement_1",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 460.0
+            },
+            {
+              "ref": "battlement_2",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 560.0
+            },
+            {
+              "ref": "battlement_3",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 660.0
+            },
+            {
+              "ref": "battlement_4",
+              "typeId": "geometry.primitives.box_by_corner_and_size",
+              "x": 250.0,
+              "y": 760.0
+            },
+            {
+              "ref": "union_all",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 650.0,
+              "y": 500.0
+            },
+            {
+              "ref": "assign_material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 850.0,
+              "y": 500.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 1050.0,
+              "y": 500.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.bake.geometry_to_blocks",
+              "x": 1250.0,
+              "y": 500.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1450.0,
+              "y": 500.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "outer_tower",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_tower",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "inner_tower",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_tower",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "hollow_tower",
+              "fromPort": "output_result",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "battlement_1",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "battlement_2",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "battlement_3",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "battlement_4",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "union_all",
+              "fromPort": "output_result",
+              "toRef": "assign_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_material",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "architectural.infrastructure.stone_bridge",
+          "displayName": "Stone Arch Bridge",
+          "description": "A classic stone bridge with arch supports spanning a gap.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 300.0
+            },
+            {
+              "ref": "arch_curve",
+              "typeId": "geometry.curves.arc",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "arch_profile",
+              "typeId": "geometry.profiles.rectangle",
+              "x": 250.0,
+              "y": 350.0
+            },
+            {
+              "ref": "sweep_arch",
+              "typeId": "geometry.solids.sweep",
+              "x": 450.0,
+              "y": 275.0
+            },
+            {
+              "ref": "deck_box",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 500.0
+            },
+            {
+              "ref": "union_structure",
+              "typeId": "geometry.boolean.union",
+              "x": 650.0,
+              "y": 350.0
+            },
+            {
+              "ref": "railing_left",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 450.0,
+              "y": 600.0
+            },
+            {
+              "ref": "railing_right",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 450.0,
+              "y": 700.0
+            },
+            {
+              "ref": "union_with_railings",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 850.0,
+              "y": 500.0
+            },
+            {
+              "ref": "assign_stone",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1050.0,
+              "y": 400.0
+            },
+            {
+              "ref": "assign_deck",
+              "typeId": "material.gradient_mapping.height_gradient",
+              "x": 1250.0,
+              "y": 400.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic_transforms.translate",
+              "x": 1450.0,
+              "y": 400.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 1650.0,
+              "y": 400.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1850.0,
+              "y": 400.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "arch_curve",
+              "fromPort": "output_curve",
+              "toRef": "sweep_arch",
+              "toPort": "input_path"
+            },
+            {
+              "fromRef": "arch_profile",
+              "fromPort": "output_profile",
+              "toRef": "sweep_arch",
+              "toPort": "input_profile"
+            },
+            {
+              "fromRef": "sweep_arch",
+              "fromPort": "output_geometry",
+              "toRef": "union_structure",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "deck_box",
+              "fromPort": "output_geometry",
+              "toRef": "union_structure",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "union_structure",
+              "fromPort": "output_result",
+              "toRef": "union_with_railings",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "railing_left",
+              "fromPort": "output_geometry",
+              "toRef": "union_with_railings",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "railing_right",
+              "fromPort": "output_geometry",
+              "toRef": "union_with_railings",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "union_with_railings",
+              "fromPort": "output_result",
+              "toRef": "assign_stone",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_stone",
+              "fromPort": "output_geometry",
+              "toRef": "assign_deck",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_deck",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "architectural.infrastructure.watchtower",
+          "displayName": "Medieval Watchtower",
+          "description": "A defensive watchtower with crenellations and observation deck.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 250.0
+            },
+            {
+              "ref": "outer_tower",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "inner_tower",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 320.0
+            },
+            {
+              "ref": "hollow_tower",
+              "typeId": "geometry.boolean.difference",
+              "x": 450.0,
+              "y": 260.0
+            },
+            {
+              "ref": "battlement_1",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 460.0
+            },
+            {
+              "ref": "battlement_2",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 560.0
+            },
+            {
+              "ref": "battlement_3",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 660.0
+            },
+            {
+              "ref": "battlement_4",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 760.0
+            },
+            {
+              "ref": "union_all",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 650.0,
+              "y": 500.0
+            },
+            {
+              "ref": "assign_material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 850.0,
+              "y": 500.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic_transforms.translate",
+              "x": 1050.0,
+              "y": 500.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 1250.0,
+              "y": 500.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1450.0,
+              "y": 500.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "outer_tower",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_tower",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "inner_tower",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_tower",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "hollow_tower",
+              "fromPort": "output_result",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "battlement_1",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "battlement_2",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "battlement_3",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "battlement_4",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "union_all",
+              "fromPort": "output_result",
+              "toRef": "assign_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_material",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "architectural.residential.medieval_cottage",
+          "displayName": "Medieval Cottage",
+          "description": "A cozy medieval cottage with timber frame, stone foundation, and pitched roof.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 300.0
+            },
+            {
+              "ref": "foundation",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 150.0
+            },
+            {
+              "ref": "walls_outer",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 250.0
+            },
+            {
+              "ref": "walls_inner",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 350.0
+            },
+            {
+              "ref": "hollow_walls",
+              "typeId": "geometry.boolean.difference",
+              "x": 450.0,
+              "y": 300.0
+            },
+            {
+              "ref": "door_opening",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 500.0
+            },
+            {
+              "ref": "cut_door",
+              "typeId": "geometry.boolean.difference",
+              "x": 650.0,
+              "y": 350.0
+            },
+            {
+              "ref": "window1",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 600.0
+            },
+            {
+              "ref": "cut_windows",
+              "typeId": "geometry.boolean.difference",
+              "x": 850.0,
+              "y": 400.0
+            },
+            {
+              "ref": "roof_profile",
+              "typeId": "geometry.profiles.polygon_profile",
+              "x": 250.0,
+              "y": 750.0
+            },
+            {
+              "ref": "extrude_roof",
+              "typeId": "geometry.solids.extrude_profile",
+              "x": 450.0,
+              "y": 750.0
+            },
+            {
+              "ref": "position_roof",
+              "typeId": "transform.basic_transforms.translate",
+              "x": 650.0,
+              "y": 750.0
+            },
+            {
+              "ref": "union_building",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 1050.0,
+              "y": 450.0
+            },
+            {
+              "ref": "assign_foundation",
+              "typeId": "material.gradient_mapping.height_gradient",
+              "x": 1250.0,
+              "y": 450.0
+            },
+            {
+              "ref": "move_to_position",
+              "typeId": "transform.basic_transforms.translate",
+              "x": 1450.0,
+              "y": 450.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 1650.0,
+              "y": 450.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1850.0,
+              "y": 450.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "walls_outer",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_walls",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "walls_inner",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_walls",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "hollow_walls",
+              "fromPort": "output_result",
+              "toRef": "cut_door",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "door_opening",
+              "fromPort": "output_geometry",
+              "toRef": "cut_door",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "cut_door",
+              "fromPort": "output_result",
+              "toRef": "cut_windows",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "window1",
+              "fromPort": "output_geometry",
+              "toRef": "cut_windows",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "roof_profile",
+              "fromPort": "output_profile",
+              "toRef": "extrude_roof",
+              "toPort": "input_profile"
+            },
+            {
+              "fromRef": "extrude_roof",
+              "fromPort": "output_geometry",
+              "toRef": "position_roof",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "foundation",
+              "fromPort": "output_geometry",
+              "toRef": "union_building",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "cut_windows",
+              "fromPort": "output_result",
+              "toRef": "union_building",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "position_roof",
+              "fromPort": "output_geometry",
+              "toRef": "union_building",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "union_building",
+              "fromPort": "output_result",
+              "toRef": "assign_foundation",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_foundation",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_position",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_position",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_position",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "architectural.residential.simple_house",
+          "displayName": "Simple Modern House",
+          "description": "A clean, modern single-story house with flat roof and large windows.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 250.0
+            },
+            {
+              "ref": "outer_box",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "inner_box",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 320.0
+            },
+            {
+              "ref": "hollow_house",
+              "typeId": "geometry.boolean.difference",
+              "x": 450.0,
+              "y": 260.0
+            },
+            {
+              "ref": "roof",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 250.0,
+              "y": 460.0
+            },
+            {
+              "ref": "union_all",
+              "typeId": "geometry.boolean.union",
+              "x": 650.0,
+              "y": 350.0
+            },
+            {
+              "ref": "assign_material",
+              "typeId": "material.gradient_mapping.height_gradient",
+              "x": 850.0,
+              "y": 350.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 1050.0,
+              "y": 350.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 1250.0,
+              "y": 350.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1450.0,
+              "y": 350.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "outer_box",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_house",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "inner_box",
+              "fromPort": "output_geometry",
+              "toRef": "hollow_house",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "hollow_house",
+              "fromPort": "output_result",
+              "toRef": "union_all",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "roof",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "union_all",
+              "fromPort": "output_result",
+              "toRef": "assign_material",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_material",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "decorative",
+      "displayName": "Decorative",
+      "presets": [
+        {
+          "id": "decorative.fountain_circular",
+          "displayName": "Circular Fountain",
+          "description": "An elegant circular fountain with tiered basin and central spout.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 300.0
+            },
+            {
+              "ref": "outer_basin",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "outer_hollow",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 320.0
+            },
+            {
+              "ref": "subtract_outer",
+              "typeId": "geometry.boolean.difference",
+              "x": 450.0,
+              "y": 260.0
+            },
+            {
+              "ref": "inner_tier",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 450.0
+            },
+            {
+              "ref": "center_spout",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 570.0
+            },
+            {
+              "ref": "union_structure",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 650.0,
+              "y": 400.0
+            },
+            {
+              "ref": "assign_materials",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 850.0,
+              "y": 400.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 1050.0,
+              "y": 400.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.bake.geometry_to_blocks",
+              "x": 1250.0,
+              "y": 400.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1450.0,
+              "y": 400.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "outer_basin",
+              "fromPort": "output_geometry",
+              "toRef": "subtract_outer",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "outer_hollow",
+              "fromPort": "output_geometry",
+              "toRef": "subtract_outer",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "subtract_outer",
+              "fromPort": "output_result",
+              "toRef": "union_structure",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "inner_tier",
+              "fromPort": "output_geometry",
+              "toRef": "union_structure",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "center_spout",
+              "fromPort": "output_geometry",
+              "toRef": "union_structure",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "union_structure",
+              "fromPort": "output_result",
+              "toRef": "assign_materials",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_materials",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "decorative.gazebo",
+          "displayName": "Garden Gazebo",
+          "description": "An open-air pavilion perfect for gardens and parks.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 300.0
+            },
+            {
+              "ref": "floor_circle",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "column_circle",
+              "typeId": "geometry.curves.circle",
+              "x": 250.0,
+              "y": 350.0
+            },
+            {
+              "ref": "column_points",
+              "typeId": "geometry.curves.divide_curve",
+              "x": 450.0,
+              "y": 350.0
+            },
+            {
+              "ref": "single_column",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 450.0,
+              "y": 500.0
+            },
+            {
+              "ref": "array_columns",
+              "typeId": "pattern.instances.place_instances_at_points",
+              "x": 650.0,
+              "y": 425.0
+            },
+            {
+              "ref": "roof_cone",
+              "typeId": "geometry.primitives.cone",
+              "x": 250.0,
+              "y": 650.0
+            },
+            {
+              "ref": "position_roof",
+              "typeId": "transform.basic.move",
+              "x": 450.0,
+              "y": 650.0
+            },
+            {
+              "ref": "union_all",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 850.0,
+              "y": 450.0
+            },
+            {
+              "ref": "assign_materials",
+              "typeId": "material.gradient_mapping.height_gradient",
+              "x": 1050.0,
+              "y": 450.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 1250.0,
+              "y": 450.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.bake.geometry_to_blocks",
+              "x": 1450.0,
+              "y": 450.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1650.0,
+              "y": 450.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "column_circle",
+              "fromPort": "output_curve",
+              "toRef": "column_points",
+              "toPort": "input_curve"
+            },
+            {
+              "fromRef": "column_points",
+              "fromPort": "output_points",
+              "toRef": "array_columns",
+              "toPort": "input_points"
+            },
+            {
+              "fromRef": "single_column",
+              "fromPort": "output_geometry",
+              "toRef": "array_columns",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "roof_cone",
+              "fromPort": "output_geometry",
+              "toRef": "position_roof",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "floor_circle",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "array_columns",
+              "fromPort": "output_instances",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "position_roof",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "union_all",
+              "fromPort": "output_result",
+              "toRef": "assign_materials",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_materials",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "decorative.fountain_circular",
+          "displayName": "Circular Fountain",
+          "description": "An elegant circular fountain with tiered basin and central spout.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 300.0
+            },
+            {
+              "ref": "outer_basin",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "outer_hollow",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 320.0
+            },
+            {
+              "ref": "subtract_outer",
+              "typeId": "geometry.boolean.difference",
+              "x": 450.0,
+              "y": 260.0
+            },
+            {
+              "ref": "inner_tier",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 450.0
+            },
+            {
+              "ref": "center_spout",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 570.0
+            },
+            {
+              "ref": "union_structure",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 650.0,
+              "y": 400.0
+            },
+            {
+              "ref": "assign_materials",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 850.0,
+              "y": 400.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 1050.0,
+              "y": 400.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 1250.0,
+              "y": 400.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1450.0,
+              "y": 400.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "outer_basin",
+              "fromPort": "output_geometry",
+              "toRef": "subtract_outer",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "outer_hollow",
+              "fromPort": "output_geometry",
+              "toRef": "subtract_outer",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "subtract_outer",
+              "fromPort": "output_result",
+              "toRef": "union_structure",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "inner_tier",
+              "fromPort": "output_geometry",
+              "toRef": "union_structure",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "center_spout",
+              "fromPort": "output_geometry",
+              "toRef": "union_structure",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "union_structure",
+              "fromPort": "output_result",
+              "toRef": "assign_materials",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_materials",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "bake",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "bake",
+              "fromPort": "output_blocks",
+              "toRef": "preview",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "decorative.gazebo",
+          "displayName": "Garden Gazebo",
+          "description": "An open-air pavilion perfect for gardens and parks.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "input_pos",
+              "typeId": "input.context.player_position",
+              "x": 50.0,
+              "y": 300.0
+            },
+            {
+              "ref": "floor_circle",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 250.0,
+              "y": 200.0
+            },
+            {
+              "ref": "column_circle",
+              "typeId": "geometry.curves.circle",
+              "x": 250.0,
+              "y": 350.0
+            },
+            {
+              "ref": "column_points",
+              "typeId": "geometry.curves.divide_curve",
+              "x": 450.0,
+              "y": 350.0
+            },
+            {
+              "ref": "single_column",
+              "typeId": "geometry.primitives.cylinder_by_axis_and_radius",
+              "x": 450.0,
+              "y": 500.0
+            },
+            {
+              "ref": "array_columns",
+              "typeId": "pattern.instances.place_instances_at_points",
+              "x": 650.0,
+              "y": 425.0
+            },
+            {
+              "ref": "roof_cone",
+              "typeId": "geometry.primitives.cone",
+              "x": 250.0,
+              "y": 650.0
+            },
+            {
+              "ref": "position_roof",
+              "typeId": "transform.basic.move",
+              "x": 450.0,
+              "y": 650.0
+            },
+            {
+              "ref": "union_all",
+              "typeId": "geometry.boolean.union_multiple",
+              "x": 850.0,
+              "y": 450.0
+            },
+            {
+              "ref": "assign_materials",
+              "typeId": "material.gradient_mapping.height_gradient",
+              "x": 1050.0,
+              "y": 450.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic.move",
+              "x": 1250.0,
+              "y": 450.0
+            },
+            {
+              "ref": "bake",
+              "typeId": "output.execute.bake_geometry_to_blocks",
+              "x": 1450.0,
+              "y": 450.0
+            },
+            {
+              "ref": "preview",
+              "typeId": "output.preview.block_preview",
+              "x": 1650.0,
+              "y": 450.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "column_circle",
+              "fromPort": "output_curve",
+              "toRef": "column_points",
+              "toPort": "input_curve"
+            },
+            {
+              "fromRef": "column_points",
+              "fromPort": "output_points",
+              "toRef": "array_columns",
+              "toPort": "input_points"
+            },
+            {
+              "fromRef": "single_column",
+              "fromPort": "output_geometry",
+              "toRef": "array_columns",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "roof_cone",
+              "fromPort": "output_geometry",
+              "toRef": "position_roof",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "floor_circle",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "array_columns",
+              "fromPort": "output_instances",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "position_roof",
+              "fromPort": "output_geometry",
+              "toRef": "union_all",
+              "toPort": "input_geometries"
+            },
+            {
+              "fromRef": "union_all",
+              "fromPort": "output_result",
+              "toRef": "assign_materials",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "assign_materials",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "input_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "bake",
               "toPort": "input_geometry"
