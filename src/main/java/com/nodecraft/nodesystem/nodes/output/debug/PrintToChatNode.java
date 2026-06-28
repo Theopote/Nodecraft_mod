@@ -88,7 +88,7 @@ public class PrintToChatNode extends BaseCustomUINode {
                     success = true;
                 }
             } catch (Exception e) {
-                System.err.println("Error printing to chat: " + e.getMessage());
+                com.nodecraft.core.NodeCraft.LOGGER.warn("Error printing to chat", e);
             }
         }
         outputValues.put(OUTPUT_SUCCESS_ID, success);

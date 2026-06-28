@@ -178,7 +178,7 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
 
                 layout.addVerticalSpacing(getMediumPadding());
             } catch (Exception e) {
-                System.err.println("BlockTypeSelectorNode UI render failed: " + e.getMessage());
+                com.nodecraft.core.NodeCraft.LOGGER.warn("BlockTypeSelectorNode UI render failed", e);
             }
 
             return changed;

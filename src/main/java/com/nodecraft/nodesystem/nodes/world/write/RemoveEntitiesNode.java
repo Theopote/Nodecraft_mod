@@ -128,7 +128,7 @@ public class RemoveEntitiesNode extends BaseNode {
                     //     entitiesToRemove.add(entity);
                     // }
                 } catch (IllegalArgumentException e) {
-                    System.err.println("Invalid UUID format: " + uuid);
+                    com.nodecraft.core.NodeCraft.LOGGER.warn("Invalid UUID format: {}", uuid);
                 }
             }
             
@@ -170,7 +170,7 @@ public class RemoveEntitiesNode extends BaseNode {
                 } catch (Exception e) {
                     // 记录失败的实体
                     failedEntities.add(entity);
-                    System.err.println("Error removing entity: " + e.getMessage());
+                    com.nodecraft.core.NodeCraft.LOGGER.warn("Error removing entity", e);
                 }
             }
             

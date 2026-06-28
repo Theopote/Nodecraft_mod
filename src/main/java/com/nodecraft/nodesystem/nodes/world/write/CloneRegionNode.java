@@ -191,7 +191,8 @@ public class CloneRegionNode extends BaseNode {
                 
                 // 检查体积是否超过最大方块数
                 if (volume > maxBlocks) {
-                    System.err.println("Region volume (" + volume + ") exceeds max blocks limit (" + maxBlocks + ").");
+                    com.nodecraft.core.NodeCraft.LOGGER.warn(
+                        "Region volume ({}) exceeds max blocks limit ({}).", volume, maxBlocks);
                     
                     // 设置输出值并返回
                     outputValues.put(OUTPUT_CLONED_BLOCKS_ID, clonedBlocks);
@@ -216,7 +217,8 @@ public class CloneRegionNode extends BaseNode {
                 boolean regionsOverlap = checkRegionsOverlap(sourceRegion, destinationRegion);
                 
                 if (regionsOverlap && cloneModeValue != CloneMode.MOVE) {
-                    System.err.println("Source and destination regions overlap. Use MOVE mode to allow this.");
+                    com.nodecraft.core.NodeCraft.LOGGER.warn(
+                        "Source and destination regions overlap. Use MOVE mode to allow this.");
                     
                     // 设置输出值并返回
                     outputValues.put(OUTPUT_CLONED_BLOCKS_ID, clonedBlocks);
@@ -275,7 +277,7 @@ public class CloneRegionNode extends BaseNode {
                                     blocksToCopy.put(destPos, blockState);
                                 } catch (Exception e) {
                                     // 记录单个方块读取错误但继续执行
-                                    System.err.println("Error reading block at " + immutablePos + ": " + e.getMessage());
+                                    com.nodecraft.core.NodeCraft.LOGGER.warn("Error reading block at {}", immutablePos, e);
                                 }
                             }
                         }
@@ -300,7 +302,7 @@ public class CloneRegionNode extends BaseNode {
                             }
                         } catch (Exception e) {
                             // 记录单个方块放置错误但继续执行
-                            System.err.println("Error placing block at " + pos + ": " + e.getMessage());
+                            com.nodecraft.core.NodeCraft.LOGGER.warn("Error placing block at {}", pos, e);
                         }
                     }
                     
@@ -324,7 +326,7 @@ public class CloneRegionNode extends BaseNode {
                                             undoRecord.add(immutablePos, previousState);
                                         }
                                     } catch (Exception e) {
-                                        System.err.println("Error clearing block at " + pos + ": " + e.getMessage());
+                                        com.nodecraft.core.NodeCraft.LOGGER.warn("Error clearing block at {}", pos, e);
                                     }
                                 }
                             }

@@ -1,62 +1,47 @@
 package com.nodecraft.nodesystem.preset;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import java.io.FileWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /**
- * Simple preset converter without SLF4J dependency
+ * Simple preset converter entry point.
  */
 public class SimplePresetConverter {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SimplePresetConverter.class);
 
     public static void main(String[] args) {
-        System.out.println("=".repeat(60));
-        System.out.println("NodeCraft Preset Converter (Simple Version)");
-        System.out.println("=".repeat(60));
-        System.out.println();
+        LOGGER.info("NodeCraft Preset Converter (Simple Version)");
 
         try {
             Path presetDir = Paths.get("presets");
             Path existingJson = Paths.get("src/main/resources/nodecraft/graph_presets.json");
             Path outputJson = Paths.get("src/main/resources/nodecraft/graph_presets_updated.json");
 
-            System.out.println("Preset directory: " + presetDir.toAbsolutePath());
-            System.out.println("Existing JSON: " + existingJson.toAbsolutePath());
-            System.out.println("Output JSON: " + outputJson.toAbsolutePath());
-            System.out.println();
+            LOGGER.info("Preset directory: {}", presetDir.toAbsolutePath());
+            LOGGER.info("Existing JSON: {}", existingJson.toAbsolutePath());
+            LOGGER.info("Output JSON: {}", outputJson.toAbsolutePath());
 
             if (!Files.exists(presetDir)) {
-                System.err.println("ERROR: Preset directory does not exist!");
+                LOGGER.error("Preset directory does not exist: {}", presetDir.toAbsolutePath());
                 System.exit(1);
             }
 
-            // Use PresetFormatAdapter
             PresetFormatAdapter.generateGraphPresetsJson(
                 presetDir,
                 outputJson,
                 existingJson
             );
 
-            System.out.println();
-            System.out.println("=".repeat(60));
-            System.out.println("✓ Conversion complete!");
-            System.out.println("=".repeat(60));
-            System.out.println();
-            System.out.println("Output file: " + outputJson.toAbsolutePath());
-            System.out.println("File size: " + Files.size(outputJson) + " bytes");
-            System.out.println();
-            System.out.println("Next steps:");
-            System.out.println("1. Review the output file");
-            System.out.println("2. Copy to graph_presets.json:");
-            System.out.println("   copy " + outputJson + " " + existingJson);
-            System.out.println("3. Restart NodeCraft");
-
+            LOGGER.info("Conversion complete.");
+            LOGGER.info("Output file: {}", outputJson.toAbsolutePath());
+            LOGGER.info("File size: {} bytes", Files.size(outputJson));
+            LOGGER.info("Next steps: review the output file, then replace {} if it looks correct.", existingJson);
         } catch (Exception e) {
-            System.err.println("ERROR: Conversion failed!");
-            e.printStackTrace();
+            LOGGER.error("Conversion failed", e);
             System.exit(1);
         }
     }

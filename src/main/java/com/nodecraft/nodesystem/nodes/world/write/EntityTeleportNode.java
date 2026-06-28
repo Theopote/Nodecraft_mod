@@ -224,7 +224,7 @@ public class EntityTeleportNode extends BaseNode {
                 } catch (Exception e) {
                     // 记录错误
                     allSuccess = false;
-                    System.err.println("Error teleporting entity: " + e.getMessage());
+                    com.nodecraft.core.NodeCraft.LOGGER.warn("Error teleporting entity", e);
                 }
             }
         }

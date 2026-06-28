@@ -41,7 +41,7 @@ public class ClearAllPreviewsNode extends BaseCustomUINode {
                 PreviewManager.clearAllPreviews();
                 success = true;
             } catch (Exception e) {
-                System.err.println("Error clearing previews: " + e.getMessage());
+                com.nodecraft.core.NodeCraft.LOGGER.warn("Error clearing previews", e);
             }
         }
 

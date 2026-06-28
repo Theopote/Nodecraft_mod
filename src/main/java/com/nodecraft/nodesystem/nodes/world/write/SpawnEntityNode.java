@@ -149,7 +149,7 @@ public class SpawnEntityNode extends BaseNode {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("Error spawning entity: " + e.getMessage());
+                com.nodecraft.core.NodeCraft.LOGGER.warn("Error spawning entity", e);
             }
         }
 
