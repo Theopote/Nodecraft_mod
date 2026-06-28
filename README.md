@@ -33,6 +33,23 @@ For a faster compile-only check:
 .\gradlew --no-daemon --console plain compileJava
 ```
 
+## Development Checks
+
+Before submitting changes, run the narrowest useful check for the area you changed:
+
+```powershell
+.\gradlew --no-daemon --console plain compileJava
+.\gradlew --no-daemon --console plain test --tests com.nodecraft.gui.preset.GraphPresetResourceTest
+```
+
+Use the full test suite when changing shared graph, execution, preview, or serialization behavior:
+
+```powershell
+.\gradlew --no-daemon --console plain test
+```
+
+Preset resources are expected to reference current node IDs and current port IDs. Runtime preset application should stay strict; migrations from old preset formats belong in converter tooling, not in the editor path.
+
 ## Using NodeCraft
 
 1. Install the mod with Fabric and Fabric API.

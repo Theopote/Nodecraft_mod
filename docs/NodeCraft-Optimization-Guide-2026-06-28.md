@@ -1,5 +1,24 @@
 # NodeCraft 项目优化指导文档
 
+## 2026-06-28 落地状态更新
+
+### 已完成
+
+- [x] P0 调试代码清理：运行时代码中的 `System.out.println`、`System.err.println`、`printStackTrace()` 已替换为日志系统；剩余扫描无匹配项。
+- [x] P0 TODO 清理：文档中列出的 3 个 TODO 已处理。
+  - `NodeCraft.initializeDataManagement()` 明确为无额外启动数据服务。
+  - `StandardLayoutManager` 已支持同一区域多个组件垂直分配。
+  - `ImGuiNodeClipboard` 已复制/粘贴节点状态。
+- [x] P0 基础测试覆盖补充：新增 `GraphPresetResourceTest` 校验预设资源节点/端口有效性；新增 `StandardLayoutManagerTest` 覆盖多组件区域布局。
+- [x] 预设库维护性清理：运行时端口兼容猜测已移除，预设 JSON 改为使用当前规范端口。
+- [x] P0 文档扩展：README 已补开发验证入口；新增 CONTRIBUTING.md 贡献指南。
+
+### 仍未完成
+
+- [ ] P1 性能优化：几何计算缓存、SDF 采样优化、性能监控面板仍待分批落地。
+- [ ] P1 错误处理改进：统一异常类型、用户友好错误消息、恢复机制仍待分批落地。
+- [ ] P1 配置管理：集中配置系统与热重载仍待设计和实现。
+
 **生成日期**: 2026-06-28  
 **项目版本**: v1.0.0  
 **审查范围**: 代码质量、架构优化、性能改进、最佳实践
