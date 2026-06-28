@@ -96,7 +96,7 @@
       "description": "Block type for water",
       "group": "Materials"
     }
-  },
+  ],
 
   "graph": {
     "nodes": [

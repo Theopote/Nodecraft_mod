@@ -77,7 +77,7 @@
       "description": "Block type for window glass",
       "group": "Materials"
     }
-  },
+  ],
 
   "graph": {
     "nodes": [

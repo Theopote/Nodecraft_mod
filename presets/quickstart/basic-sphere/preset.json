@@ -55,7 +55,7 @@
       "description": "Create a hollow sphere (shell only)",
       "group": "Options"
     }
-  },
+  ],
 
   "graph": {
     "nodes": [
