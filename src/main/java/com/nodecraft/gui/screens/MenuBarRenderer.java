@@ -884,10 +884,6 @@ public class MenuBarRenderer {
                     String testResult = history.testHistoryFunction();
                     NodeCraft.LOGGER.info("历史记录调试信息:\n{}", testResult);
                     
-                    // 也在控制台输出
-                    System.out.println("=== 历史记录调试信息 ===");
-                    System.out.println(testResult);
-                    System.out.println("========================");
                 } else {
                     NodeCraft.LOGGER.error("历史记录组件为空");
                 }

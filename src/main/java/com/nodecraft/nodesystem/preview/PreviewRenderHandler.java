@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.preview;
 
+import com.nodecraft.core.NodeCraft;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
@@ -42,8 +43,7 @@ public class PreviewRenderHandler {
                 PreviewRenderer.getInstance().setActiveVertexConsumers(null);
                 
             } catch (Exception e) {
-                System.err.println("Error rendering previews: " + e.getMessage());
-                e.printStackTrace();
+                NodeCraft.LOGGER.error("Error rendering previews", e);
             }
         });
         

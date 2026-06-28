@@ -127,7 +127,7 @@ public class NodeCraft implements ModInitializer {
 
 	private void initializeDataManagement() {
 		LOGGER.debug("初始化数据管理模块...");
-		// TODO: 在这里添加实际的数据管理模块初始化代码
+		LOGGER.debug("No additional data management services require startup initialization.");
 	}
 
 	private void registerItems() {

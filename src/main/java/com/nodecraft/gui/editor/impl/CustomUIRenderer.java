@@ -284,12 +284,12 @@ public class CustomUIRenderer {
             ImGui.getWindowDrawList().popClipRect();
 
         } catch (Exception e) {
-            System.err.println("防裁剪渲染失败: " + e.getMessage());
+            NodeCraft.LOGGER.warn("防裁剪渲染失败", e);
             try {
                 uiInteracted = info.customUINode.renderCustomUI(
                         info.width, info.height, info.zoom);
             } catch (Exception fallbackError) {
-                System.err.println("回退渲染也失败: " + fallbackError.getMessage());
+                NodeCraft.LOGGER.warn("回退渲染也失败", fallbackError);
             }
         }
         return uiInteracted;
@@ -311,13 +311,13 @@ public class CustomUIRenderer {
                     java.lang.reflect.Method renderCustomUIMethod = info.node.getClass().getMethod("renderCustomUI", float.class);
                     return (Boolean) renderCustomUIMethod.invoke(info.node, info.width);
                 } catch (Exception e3) {
-                    System.err.println("Failed to invoke renderCustomUI method for node " + info.nodeId + " (single-arg): " + e3.getMessage());
+                    NodeCraft.LOGGER.warn("Failed to invoke renderCustomUI method for node {} (single-arg)", info.nodeId, e3);
                 }
             } catch (Exception e2) {
-                System.err.println("Failed to invoke renderCustomUI method for node " + info.nodeId + " (two-arg): " + e2.getMessage());
+                NodeCraft.LOGGER.warn("Failed to invoke renderCustomUI method for node {} (two-arg)", info.nodeId, e2);
             }
         } catch (Exception e1) {
-            System.err.println("Failed to invoke renderCustomUI method for node " + info.nodeId + " (three-arg): " + e1.getMessage());
+            NodeCraft.LOGGER.warn("Failed to invoke renderCustomUI method for node {} (three-arg)", info.nodeId, e1);
         }
         return false;
     }

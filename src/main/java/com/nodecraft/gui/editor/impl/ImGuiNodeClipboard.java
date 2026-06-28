@@ -88,6 +88,7 @@ public class ImGuiNodeClipboard implements ClipboardOwner {
                 nodeData.typeId = registry.resolveCanonicalNodeId(node.getTypeId());
                 nodeData.x = pos.x;
                 nodeData.y = pos.y;
+                nodeData.state = node.getNodeState();
                 
                 // 添加到列表并记录索引
                 nodes.add(nodeData);
@@ -160,7 +161,6 @@ public class ImGuiNodeClipboard implements ClipboardOwner {
             return true;
         } catch (Exception e) {
             NodeCraft.LOGGER.error("复制节点时出错: {}", e.getMessage(), e);
-            e.printStackTrace(); // 打印完整堆栈跟踪以便调试
             return false;
         }
     }
@@ -190,7 +190,6 @@ public class ImGuiNodeClipboard implements ClipboardOwner {
             }
         } catch (Exception e) {
             NodeCraft.LOGGER.error("剪切节点时出错: {}", e.getMessage(), e);
-            e.printStackTrace();
             return false;
         }
     }
@@ -346,7 +345,7 @@ public class ImGuiNodeClipboard implements ClipboardOwner {
                 try {
                     // 使用addNodeWithState方法，不指定旧UUID，让它生成新的UUID
                     // 这里暂时不传递节点状态，因为剪贴板数据中没有存储状态信息
-                    INode newNode = editor.addNodeWithState(effectiveTypeId, null, newX, newY, null);
+                    INode newNode = editor.addNodeWithState(effectiveTypeId, null, newX, newY, nodeData.state);
                     if (newNode != null) {
                         newNodes.add(newNode);
                         indexToNodeIdMap.put(i, newNode.getId());
@@ -369,6 +368,7 @@ public class ImGuiNodeClipboard implements ClipboardOwner {
                                             INode clonedNode = (INode) nodeClass.getDeclaredConstructor().newInstance();
 
                                             currentGraph.addNode(clonedNode);
+                                            clonedNode.setNodeState(nodeData.state);
                                             editor.getNodePositions().put(clonedNode.getId(),
                                                 new NodePosition(newX, newY));
 
@@ -406,6 +406,7 @@ public class ImGuiNodeClipboard implements ClipboardOwner {
                                     INode clonedNode = (INode) nodeClass.getDeclaredConstructor().newInstance();
 
                                     editorGraph.addNode(clonedNode);
+                                    clonedNode.setNodeState(nodeData.state);
                                     editor.getNodePositions().put(clonedNode.getId(),
                                         new NodePosition(newX, newY));
 
@@ -477,7 +478,6 @@ public class ImGuiNodeClipboard implements ClipboardOwner {
             return !newNodes.isEmpty();
         } catch (Exception e) {
             NodeCraft.LOGGER.error("粘贴节点时出错: {}", e.getMessage(), e);
-            e.printStackTrace(); // 打印完整堆栈跟踪以便调试
             return false;
         }
     }
@@ -646,7 +646,7 @@ public class ImGuiNodeClipboard implements ClipboardOwner {
                 return null;
             }
             
-            // TODO: 复制节点属性
+            newNode.setNodeState(sourceNode.getNodeState());
             
             NodeCraft.LOGGER.info("已复制节点: {} -> {}", sourceNode.getDisplayName(), newNode.getDisplayName());
             return newNode;
@@ -669,6 +669,7 @@ public class ImGuiNodeClipboard implements ClipboardOwner {
         public String typeId;
         public float x;
         public float y;
+        public Object state;
     }
     
     /**

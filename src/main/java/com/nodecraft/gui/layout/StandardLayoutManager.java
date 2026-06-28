@@ -249,26 +249,24 @@ public class StandardLayoutManager implements LayoutManager {
             return;
         }
         
-        // TODO: 实现更复杂的区域内布局 (例如，垂直或水平堆叠)
-        // 目前简化为第一个组件占据整个区域
         if (regionHeight <= 0 || regionWidth <= 0) {
             NodeCraft.LOGGER.trace("跳过零尺寸区域: {} (w={}, h={})", regionType, regionWidth, regionHeight);
             return; // Skip zero-size regions
         }
 
-        String componentId = componentsInRegion.get(0); 
-        LayoutDimensions dims = new LayoutDimensions(regionX, regionY, regionWidth, regionHeight);
-        computedLayouts.put(componentId, dims);
-        NodeCraft.LOGGER.trace("计算组件布局: id={}, x={}, y={}, w={}, h={}", 
-            componentId, dims.x(), dims.y(), dims.width(), dims.height());
-        
-        // 如果未来支持多个组件，可以在这里添加循环和细分逻辑
-        /*
-        if (componentsInRegion.size() > 1) {
-             NodeCraft.LOGGER.warn("区域 {} 包含多个组件，但当前布局只支持单个组件", regionType);
-             // Add logic here to divide regionX/Y/Width/Height among multiple components
+        int componentCount = componentsInRegion.size();
+        float componentHeight = regionHeight / componentCount;
+        for (int i = 0; i < componentCount; i++) {
+            String componentId = componentsInRegion.get(i);
+            float componentY = regionY + componentHeight * i;
+            float height = i == componentCount - 1
+                ? regionY + regionHeight - componentY
+                : componentHeight;
+            LayoutDimensions dims = new LayoutDimensions(regionX, componentY, regionWidth, height);
+            computedLayouts.put(componentId, dims);
+            NodeCraft.LOGGER.trace("计算组件布局: id={}, x={}, y={}, w={}, h={}",
+                componentId, dims.x(), dims.y(), dims.width(), dims.height());
         }
-        */
     }
     
     /**

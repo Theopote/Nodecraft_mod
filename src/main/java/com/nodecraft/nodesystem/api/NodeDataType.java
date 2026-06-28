@@ -7,6 +7,8 @@ import com.nodecraft.nodesystem.util.Vector3;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Declares the data types supported by the node system.
@@ -101,6 +103,8 @@ public enum NodeDataType {
     VECTOR_LIST("vector_list", "Vector List", java.util.List.class),
     REGION_LIST("region_list", "Region List", java.util.List.class),
     PLANT_STRUCTURE_LIST("plant_structure_list", "Plant Structure List", java.util.List.class);
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(NodeDataType.class);
 
     private final String id;
     private final String displayName;
@@ -200,7 +204,7 @@ public enum NodeDataType {
                 return type;
             }
         }
-        System.err.println("Warning: NodeDataType not found for id: " + id + ". Returning ANY.");
+        LOGGER.warn("NodeDataType not found for id: {}. Returning ANY.", id);
         return ANY;
     }
 

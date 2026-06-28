@@ -613,7 +613,7 @@ public class ImGuiNodeRenderer {
                             canvasZoom
                     );
                 } catch (Exception e) {
-                    System.err.println("Failed to render direct custom UI for node " + nodeId + ": " + e.getMessage());
+                    NodeCraft.LOGGER.warn("Failed to render direct custom UI for node {}", nodeId, e);
                 }
             } else {
                 CustomUIRenderer.CustomUIRenderInfo info = new CustomUIRenderer.CustomUIRenderInfo(
