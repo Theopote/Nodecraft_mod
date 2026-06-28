@@ -97,7 +97,7 @@
       },
       {
         "id": "outer_box",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 200},
         "parameters": {
           "corner": {"x": 0, "y": 0, "z": 0},
@@ -110,7 +110,7 @@
       },
       {
         "id": "inner_box",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 320},
         "parameters": {
           "corner": {"x": 0.5, "y": 0, "z": 0.5},
@@ -129,7 +129,7 @@
       },
       {
         "id": "roof",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 460},
         "parameters": {
           "corner": {
@@ -169,7 +169,7 @@
       },
       {
         "id": "bake",
-        "type": "output.bake.geometry_to_blocks",
+        "type": "output.execute.bake_geometry_to_blocks",
         "position": {"x": 1250, "y": 350},
         "parameters": {
           "placement_mode": "shell"
@@ -177,7 +177,7 @@
       },
       {
         "id": "preview",
-        "type": "output.preview.preview_blocks",
+        "type": "output.preview.block_preview",
         "position": {"x": 1450, "y": 350},
         "parameters": {}
       }

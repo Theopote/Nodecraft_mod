@@ -92,7 +92,7 @@
       },
       {
         "id": "roof_profile",
-        "type": "geometry.profiles.triangle",
+        "type": "geometry.profiles.polygon_profile",
         "position": {"x": 250, "y": 200},
         "parameters": {
           "width": {"param": "width_with_overhang"},
@@ -101,7 +101,7 @@
       },
       {
         "id": "extrude_roof",
-        "type": "geometry.solids.extrude",
+        "type": "geometry.solids.extrude_profile",
         "position": {"x": 450, "y": 200},
         "parameters": {
           "distance": {"param": "length_with_overhang"}
@@ -109,7 +109,7 @@
       },
       {
         "id": "orient_roof",
-        "type": "transform.basic.rotate",
+        "type": "transform.basic_transforms.rotate",
         "position": {"x": 650, "y": 200},
         "parameters": {
           "axis": {"x": 1, "y": 0, "z": 0},
@@ -118,7 +118,7 @@
       },
       {
         "id": "move_to_pos",
-        "type": "transform.basic.move",
+        "type": "transform.basic_transforms.translate",
         "position": {"x": 850, "y": 200},
         "parameters": {}
       },
@@ -132,7 +132,7 @@
       },
       {
         "id": "bake",
-        "type": "output.bake.geometry_to_blocks",
+        "type": "output.execute.bake_geometry_to_blocks",
         "position": {"x": 1250, "y": 200},
         "parameters": {
           "placement_mode": "shell"
@@ -140,7 +140,7 @@
       },
       {
         "id": "preview",
-        "type": "output.preview.preview_blocks",
+        "type": "output.preview.block_preview",
         "position": {"x": 1450, "y": 200},
         "parameters": {}
       }

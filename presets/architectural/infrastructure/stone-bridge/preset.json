@@ -146,7 +146,7 @@
       },
       {
         "id": "deck_box",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 500},
         "parameters": {
           "corner": {"x": 0, "y": {"param": "arch_height"}, "z": 0},
@@ -165,7 +165,7 @@
       },
       {
         "id": "railing_left",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 450, "y": 600},
         "parameters": {
           "corner": {
@@ -182,7 +182,7 @@
       },
       {
         "id": "railing_right",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 450, "y": 700},
         "parameters": {
           "corner": {
@@ -224,13 +224,13 @@
       },
       {
         "id": "move_to_pos",
-        "type": "transform.basic.move",
+        "type": "transform.basic_transforms.translate",
         "position": {"x": 1450, "y": 400},
         "parameters": {}
       },
       {
         "id": "bake",
-        "type": "output.bake.geometry_to_blocks",
+        "type": "output.execute.bake_geometry_to_blocks",
         "position": {"x": 1650, "y": 400},
         "parameters": {
           "placement_mode": "solid"
@@ -238,7 +238,7 @@
       },
       {
         "id": "preview",
-        "type": "output.preview.preview_blocks",
+        "type": "output.preview.block_preview",
         "position": {"x": 1850, "y": 400},
         "parameters": {}
       }

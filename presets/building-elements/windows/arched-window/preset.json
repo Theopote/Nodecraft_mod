@@ -152,7 +152,7 @@
       },
       {
         "id": "move_to_pos",
-        "type": "transform.basic.move",
+        "type": "transform.basic_transforms.translate",
         "position": {"x": 1050, "y": 300},
         "parameters": {}
       },
@@ -166,7 +166,7 @@
       },
       {
         "id": "bake",
-        "type": "output.bake.geometry_to_blocks",
+        "type": "output.execute.bake_geometry_to_blocks",
         "position": {"x": 1450, "y": 300},
         "parameters": {
           "placement_mode": "solid"
@@ -174,7 +174,7 @@
       },
       {
         "id": "preview",
-        "type": "output.preview.preview_blocks",
+        "type": "output.preview.block_preview",
         "position": {"x": 1650, "y": 300},
         "parameters": {}
       }

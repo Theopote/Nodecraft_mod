@@ -89,7 +89,7 @@
       },
       {
         "id": "outer_tower",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 200},
         "parameters": {
           "corner": {"x": 0, "y": 0, "z": 0},
@@ -102,7 +102,7 @@
       },
       {
         "id": "inner_tower",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 320},
         "parameters": {
           "corner": {
@@ -125,7 +125,7 @@
       },
       {
         "id": "battlement_1",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 460},
         "parameters": {
           "corner": {
@@ -138,7 +138,7 @@
       },
       {
         "id": "battlement_2",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 560},
         "parameters": {
           "corner": {
@@ -151,7 +151,7 @@
       },
       {
         "id": "battlement_3",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 660},
         "parameters": {
           "corner": {
@@ -164,7 +164,7 @@
       },
       {
         "id": "battlement_4",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 760},
         "parameters": {
           "corner": {
@@ -191,7 +191,7 @@
       },
       {
         "id": "move_to_pos",
-        "type": "transform.basic.move",
+        "type": "transform.basic_transforms.translate",
         "position": {"x": 1050, "y": 500},
         "parameters": {}
       },

@@ -102,7 +102,7 @@
       },
       {
         "id": "sample_curve",
-        "type": "geometry.curves.divide_curve",
+        "type": "geometry.curves.divide_curve_to_points",
         "position": {"x": 450, "y": 200},
         "parameters": {
           "count": {"param": "height"}
@@ -156,7 +156,7 @@
       },
       {
         "id": "bake",
-        "type": "output.bake.geometry_to_blocks",
+        "type": "output.execute.bake_geometry_to_blocks",
         "position": {"x": 1450, "y": 250},
         "parameters": {
           "placement_mode": "solid"
@@ -164,7 +164,7 @@
       },
       {
         "id": "preview",
-        "type": "output.preview.preview_blocks",
+        "type": "output.preview.block_preview",
         "position": {"x": 1650, "y": 250},
         "parameters": {}
       }

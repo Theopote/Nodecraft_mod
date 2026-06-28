@@ -113,7 +113,7 @@
       },
       {
         "id": "foundation",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 150},
         "parameters": {
           "size": {
@@ -125,7 +125,7 @@
       },
       {
         "id": "walls_outer",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 250},
         "parameters": {
           "size": {
@@ -137,7 +137,7 @@
       },
       {
         "id": "walls_inner",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 350},
         "parameters": {
           "size": {
@@ -155,7 +155,7 @@
       },
       {
         "id": "door_opening",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 500},
         "parameters": {
           "corner": {
@@ -174,7 +174,7 @@
       },
       {
         "id": "window1",
-        "type": "geometry.primitives.box_by_corner_and_size",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {"x": 250, "y": 600},
         "parameters": {
           "corner": {
@@ -193,7 +193,7 @@
       },
       {
         "id": "roof_profile",
-        "type": "geometry.profiles.triangle",
+        "type": "geometry.profiles.polygon_profile",
         "position": {"x": 250, "y": 750},
         "parameters": {
           "width": {"param": "width_plus_overhang"},
@@ -202,7 +202,7 @@
       },
       {
         "id": "extrude_roof",
-        "type": "geometry.solids.extrude",
+        "type": "geometry.solids.extrude_profile",
         "position": {"x": 450, "y": 750},
         "parameters": {
           "distance": {"param": "length_plus_overhang"}
@@ -210,7 +210,7 @@
       },
       {
         "id": "position_roof",
-        "type": "transform.basic.move",
+        "type": "transform.basic_transforms.translate",
         "position": {"x": 650, "y": 750},
         "parameters": {
           "translation": {
@@ -240,13 +240,13 @@
       },
       {
         "id": "move_to_position",
-        "type": "transform.basic.move",
+        "type": "transform.basic_transforms.translate",
         "position": {"x": 1450, "y": 450},
         "parameters": {}
       },
       {
         "id": "bake",
-        "type": "output.bake.geometry_to_blocks",
+        "type": "output.execute.bake_geometry_to_blocks",
         "position": {"x": 1650, "y": 450},
         "parameters": {
           "placement_mode": "solid"
@@ -254,7 +254,7 @@
       },
       {
         "id": "preview",
-        "type": "output.preview.preview_blocks",
+        "type": "output.preview.block_preview",
         "position": {"x": 1850, "y": 450},
         "parameters": {}
       }

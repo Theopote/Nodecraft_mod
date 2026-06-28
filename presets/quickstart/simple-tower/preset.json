@@ -92,7 +92,7 @@
       },
       {
         "id": "node_cylinder",
-        "type": "geometry.primitives.cylinder_by_axis_and_radius",
+        "type": "geometry.primitives.cylinder",
         "position": {"x": 300, "y": 200},
         "parameters": {
           "base": {"param": "player_position"},
@@ -103,7 +103,7 @@
       },
       {
         "id": "node_inner_cylinder",
-        "type": "geometry.primitives.cylinder_by_axis_and_radius",
+        "type": "geometry.primitives.cylinder",
         "position": {"x": 300, "y": 350},
         "parameters": {
           "base": {"param": "player_position"},
@@ -128,7 +128,7 @@
       },
       {
         "id": "node_bake",
-        "type": "output.bake.geometry_to_blocks",
+        "type": "output.execute.bake_geometry_to_blocks",
         "position": {"x": 900, "y": 250},
         "parameters": {
           "placement_mode": "solid"
@@ -136,7 +136,7 @@
       },
       {
         "id": "node_preview",
-        "type": "output.preview.preview_blocks",
+        "type": "output.preview.block_preview",
         "position": {"x": 1100, "y": 250},
         "parameters": {}
       }
