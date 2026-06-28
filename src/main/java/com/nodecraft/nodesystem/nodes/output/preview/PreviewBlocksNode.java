@@ -77,7 +77,7 @@ public class PreviewBlocksNode extends BaseCustomUINode {
     public PreviewBlocksNode() {
         super(UUID.randomUUID(), "output.preview.preview_blocks");
 
-        addInputPort(new BasePort(INPUT_BLOCKS_ID, "Blocks", "Block list or block position list", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_BLOCKS_ID, "Blocks", "Block list or block position list", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_BLOCK_PLACEMENTS_ID, "Block Placements", "Position and block assignments to preview", NodeDataType.BLOCK_PLACEMENT_LIST, this));
         addInputPort(new BasePort(INPUT_BLOCK_PLACEMENTS_TREE_ID, "Block Placements Tree", "Tree-grouped position and block assignments to preview", NodeDataType.DATA_TREE, this));
         addInputPort(new BasePort(INPUT_COORDS_ID, "Coordinates", "Fallback coordinate list", NodeDataType.LIST, this));

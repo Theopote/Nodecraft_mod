@@ -1,4 +1,4 @@
-{
+﻿{
     "version":  1,
     "categories":  [
                        {
@@ -239,7 +239,7 @@
                                                                        "fromRef":  "arch_curve",
                                                                        "fromPort":  "output_curve",
                                                                        "toRef":  "sweep_arch",
-                                                                       "toPort":  "input_path"
+                                                                       "toPort":  "input_curve"
                                                                    },
                                                                    {
                                                                        "fromRef":  "arch_profile",
@@ -248,49 +248,43 @@
                                                                        "toPort":  "input_profile"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "sweep_arch",
-                                                                       "fromPort":  "output_geometry",
-                                                                       "toRef":  "union_structure",
-                                                                       "toPort":  "input_a"
-                                                                   },
-                                                                   {
                                                                        "fromRef":  "deck_box",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_structure",
-                                                                       "toPort":  "input_b"
+                                                                       "toPort":  "input_geometry_1"
                                                                    },
                                                                    {
                                                                        "fromRef":  "union_structure",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "union_with_railings",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_0"
                                                                    },
                                                                    {
                                                                        "fromRef":  "railing_left",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_with_railings",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_1"
                                                                    },
                                                                    {
                                                                        "fromRef":  "railing_right",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_with_railings",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_2"
                                                                    },
                                                                    {
                                                                        "fromRef":  "union_with_railings",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "assign_stone",
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_stone",
+                                                                       "fromRef":  "union_with_railings",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "assign_deck",
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_deck",
+                                                                       "fromRef":  "union_with_railings",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "move_to_pos",
                                                                        "toPort":  "input_geometry"
@@ -405,52 +399,46 @@
                                                                        "fromRef":  "outer_tower",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "hollow_tower",
-                                                                       "toPort":  "input_a"
+                                                                       "toPort":  "input_base"
                                                                    },
                                                                    {
                                                                        "fromRef":  "inner_tower",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "hollow_tower",
-                                                                       "toPort":  "input_b"
+                                                                       "toPort":  "input_cutter"
                                                                    },
                                                                    {
                                                                        "fromRef":  "hollow_tower",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "union_all",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_0"
                                                                    },
                                                                    {
                                                                        "fromRef":  "battlement_1",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_all",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_1"
                                                                    },
                                                                    {
                                                                        "fromRef":  "battlement_2",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_all",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_2"
                                                                    },
                                                                    {
                                                                        "fromRef":  "battlement_3",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_all",
-                                                                       "toPort":  "input_geometries"
-                                                                   },
-                                                                   {
-                                                                       "fromRef":  "battlement_4",
-                                                                       "fromPort":  "output_geometry",
-                                                                       "toRef":  "union_all",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_3"
                                                                    },
                                                                    {
                                                                        "fromRef":  "union_all",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "assign_material",
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_material",
+                                                                       "fromRef":  "union_all",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "move_to_pos",
                                                                        "toPort":  "input_geometry"
@@ -589,37 +577,37 @@
                                                                        "fromRef":  "walls_outer",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "hollow_walls",
-                                                                       "toPort":  "input_a"
+                                                                       "toPort":  "input_base"
                                                                    },
                                                                    {
                                                                        "fromRef":  "walls_inner",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "hollow_walls",
-                                                                       "toPort":  "input_b"
+                                                                       "toPort":  "input_cutter"
                                                                    },
                                                                    {
                                                                        "fromRef":  "hollow_walls",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "cut_door",
-                                                                       "toPort":  "input_a"
+                                                                       "toPort":  "input_base"
                                                                    },
                                                                    {
                                                                        "fromRef":  "door_opening",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "cut_door",
-                                                                       "toPort":  "input_b"
+                                                                       "toPort":  "input_cutter"
                                                                    },
                                                                    {
                                                                        "fromRef":  "cut_door",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "cut_windows",
-                                                                       "toPort":  "input_a"
+                                                                       "toPort":  "input_base"
                                                                    },
                                                                    {
                                                                        "fromRef":  "window1",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "cut_windows",
-                                                                       "toPort":  "input_b"
+                                                                       "toPort":  "input_cutter"
                                                                    },
                                                                    {
                                                                        "fromRef":  "roof_profile",
@@ -637,28 +625,28 @@
                                                                        "fromRef":  "foundation",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_building",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_0"
                                                                    },
                                                                    {
                                                                        "fromRef":  "cut_windows",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "union_building",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_1"
                                                                    },
                                                                    {
                                                                        "fromRef":  "position_roof",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_building",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_2"
                                                                    },
                                                                    {
                                                                        "fromRef":  "union_building",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "assign_foundation",
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_foundation",
+                                                                       "fromRef":  "union_building",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "move_to_position",
                                                                        "toPort":  "input_geometry"
@@ -755,34 +743,34 @@
                                                                        "fromRef":  "outer_box",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "hollow_house",
-                                                                       "toPort":  "input_a"
+                                                                       "toPort":  "input_base"
                                                                    },
                                                                    {
                                                                        "fromRef":  "inner_box",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "hollow_house",
-                                                                       "toPort":  "input_b"
+                                                                       "toPort":  "input_cutter"
                                                                    },
                                                                    {
                                                                        "fromRef":  "hollow_house",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "union_all",
-                                                                       "toPort":  "input_a"
+                                                                       "toPort":  "input_geometry_0"
                                                                    },
                                                                    {
                                                                        "fromRef":  "roof",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_all",
-                                                                       "toPort":  "input_b"
+                                                                       "toPort":  "input_geometry_1"
                                                                    },
                                                                    {
                                                                        "fromRef":  "union_all",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "assign_material",
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_material",
+                                                                       "fromRef":  "union_all",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "move_to_pos",
                                                                        "toPort":  "input_geometry"
@@ -879,28 +867,28 @@
                                                                        "fromRef":  "base",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_column",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_0"
                                                                    },
                                                                    {
                                                                        "fromRef":  "shaft",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_column",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_1"
                                                                    },
                                                                    {
                                                                        "fromRef":  "capital",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_column",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_2"
                                                                    },
                                                                    {
                                                                        "fromRef":  "union_column",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "assign_material",
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_material",
+                                                                       "fromRef":  "union_column",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "move_to_pos",
                                                                        "toPort":  "input_geometry"
@@ -976,7 +964,7 @@
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_material",
+                                                                       "fromRef":  "door_opening",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "move_to_pos",
                                                                        "toPort":  "input_geometry"
@@ -1088,7 +1076,7 @@
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_material",
+                                                                       "fromRef":  "move_to_pos",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "bake",
                                                                        "toPort":  "input_geometry"
@@ -1179,13 +1167,13 @@
                                                                        "fromRef":  "input_pos",
                                                                        "fromPort":  "output_position",
                                                                        "toRef":  "helix_curve",
-                                                                       "toPort":  "input_base"
+                                                                       "toPort":  "input_center"
                                                                    },
                                                                    {
                                                                        "fromRef":  "input_pos",
                                                                        "fromPort":  "output_position",
                                                                        "toRef":  "center_post",
-                                                                       "toPort":  "input_base"
+                                                                       "toPort":  "input_start"
                                                                    },
                                                                    {
                                                                        "fromRef":  "helix_curve",
@@ -1197,40 +1185,34 @@
                                                                        "fromRef":  "sample_curve",
                                                                        "fromPort":  "output_points",
                                                                        "toRef":  "orient_steps",
-                                                                       "toPort":  "input_origins"
+                                                                       "toPort":  "input_points"
                                                                    },
                                                                    {
                                                                        "fromRef":  "step_box",
                                                                        "fromPort":  "output_geometry",
-                                                                       "toRef":  "orient_steps",
-                                                                       "toPort":  "input_geometry"
-                                                                   },
-                                                                   {
-                                                                       "fromRef":  "orient_steps",
-                                                                       "fromPort":  "output_instances",
                                                                        "toRef":  "union_steps",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_0"
                                                                    },
                                                                    {
                                                                        "fromRef":  "union_steps",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "union_with_post",
-                                                                       "toPort":  "input_a"
+                                                                       "toPort":  "input_geometry_0"
                                                                    },
                                                                    {
                                                                        "fromRef":  "center_post",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_with_post",
-                                                                       "toPort":  "input_b"
+                                                                       "toPort":  "input_geometry_1"
                                                                    },
                                                                    {
                                                                        "fromRef":  "union_with_post",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "material_steps",
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "material_steps",
+                                                                       "fromRef":  "union_with_post",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "bake",
                                                                        "toPort":  "input_geometry"
@@ -1313,9 +1295,9 @@
                                                "connections":  [
                                                                    {
                                                                        "fromRef":  "steps_line",
-                                                                       "fromPort":  "output_curve",
+                                                                       "fromPort":  "output_polyline",
                                                                        "toRef":  "divide_steps",
-                                                                       "toPort":  "input_curve"
+                                                                       "toPort":  "input_polyline"
                                                                    },
                                                                    {
                                                                        "fromRef":  "divide_steps",
@@ -1326,23 +1308,17 @@
                                                                    {
                                                                        "fromRef":  "step_box",
                                                                        "fromPort":  "output_geometry",
-                                                                       "toRef":  "array_steps",
-                                                                       "toPort":  "input_geometry"
-                                                                   },
-                                                                   {
-                                                                       "fromRef":  "array_steps",
-                                                                       "fromPort":  "output_instances",
                                                                        "toRef":  "union_steps",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_0"
                                                                    },
                                                                    {
                                                                        "fromRef":  "union_steps",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "assign_material",
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_material",
+                                                                       "fromRef":  "union_steps",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "move_to_pos",
                                                                        "toPort":  "input_geometry"
@@ -1444,18 +1420,6 @@
                                                                    {
                                                                        "fromRef":  "rect_profile",
                                                                        "fromPort":  "output_profile",
-                                                                       "toRef":  "union_profiles",
-                                                                       "toPort":  "input_a"
-                                                                   },
-                                                                   {
-                                                                       "fromRef":  "arc_profile",
-                                                                       "fromPort":  "output_profile",
-                                                                       "toRef":  "union_profiles",
-                                                                       "toPort":  "input_b"
-                                                                   },
-                                                                   {
-                                                                       "fromRef":  "union_profiles",
-                                                                       "fromPort":  "output_result",
                                                                        "toRef":  "extrude_opening",
                                                                        "toPort":  "input_profile"
                                                                    },
@@ -1463,17 +1427,17 @@
                                                                        "fromRef":  "frame_box",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "subtract_opening",
-                                                                       "toPort":  "input_a"
+                                                                       "toPort":  "input_base"
                                                                    },
                                                                    {
                                                                        "fromRef":  "extrude_opening",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "subtract_opening",
-                                                                       "toPort":  "input_b"
+                                                                       "toPort":  "input_cutter"
                                                                    },
                                                                    {
                                                                        "fromRef":  "subtract_opening",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "move_to_pos",
                                                                        "toPort":  "input_geometry"
                                                                    },
@@ -1490,7 +1454,7 @@
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_frame",
+                                                                       "fromRef":  "move_to_pos",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "bake",
                                                                        "toPort":  "input_geometry"
@@ -1554,7 +1518,7 @@
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_glass",
+                                                                       "fromRef":  "window_opening",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "move_to_pos",
                                                                        "toPort":  "input_geometry"
@@ -1663,40 +1627,40 @@
                                                                        "fromRef":  "outer_basin",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "subtract_outer",
-                                                                       "toPort":  "input_a"
+                                                                       "toPort":  "input_base"
                                                                    },
                                                                    {
                                                                        "fromRef":  "outer_hollow",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "subtract_outer",
-                                                                       "toPort":  "input_b"
+                                                                       "toPort":  "input_cutter"
                                                                    },
                                                                    {
                                                                        "fromRef":  "subtract_outer",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "union_structure",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_0"
                                                                    },
                                                                    {
                                                                        "fromRef":  "inner_tier",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_structure",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_1"
                                                                    },
                                                                    {
                                                                        "fromRef":  "center_spout",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_structure",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_2"
                                                                    },
                                                                    {
                                                                        "fromRef":  "union_structure",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "assign_materials",
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_materials",
+                                                                       "fromRef":  "union_structure",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "move_to_pos",
                                                                        "toPort":  "input_geometry"
@@ -1809,21 +1773,15 @@
                                                "connections":  [
                                                                    {
                                                                        "fromRef":  "column_circle",
-                                                                       "fromPort":  "output_curve",
+                                                                       "fromPort":  "output_boundary",
                                                                        "toRef":  "column_points",
-                                                                       "toPort":  "input_curve"
+                                                                       "toPort":  "input_polyline"
                                                                    },
                                                                    {
                                                                        "fromRef":  "column_points",
                                                                        "fromPort":  "output_points",
                                                                        "toRef":  "array_columns",
                                                                        "toPort":  "input_points"
-                                                                   },
-                                                                   {
-                                                                       "fromRef":  "single_column",
-                                                                       "fromPort":  "output_geometry",
-                                                                       "toRef":  "array_columns",
-                                                                       "toPort":  "input_geometry"
                                                                    },
                                                                    {
                                                                        "fromRef":  "roof_cone",
@@ -1835,28 +1793,28 @@
                                                                        "fromRef":  "floor_circle",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_all",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_0"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "array_columns",
-                                                                       "fromPort":  "output_instances",
+                                                                       "fromRef":  "single_column",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "union_all",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_1"
                                                                    },
                                                                    {
                                                                        "fromRef":  "position_roof",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_all",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_2"
                                                                    },
                                                                    {
                                                                        "fromRef":  "union_all",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "assign_materials",
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_materials",
+                                                                       "fromRef":  "union_all",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "move_to_pos",
                                                                        "toPort":  "input_geometry"
@@ -1938,7 +1896,7 @@
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "node_material",
+                                                                       "fromRef":  "node_box",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "node_bake",
                                                                        "toPort":  "input_geometry"
@@ -2002,7 +1960,7 @@
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_material",
+                                                                       "fromRef":  "sphere",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "move_to_pos",
                                                                        "toPort":  "input_geometry"
@@ -2087,22 +2045,22 @@
                                                                        "fromRef":  "wall_box",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "cut_gate",
-                                                                       "toPort":  "input_a"
+                                                                       "toPort":  "input_base"
                                                                    },
                                                                    {
                                                                        "fromRef":  "gate_box",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "cut_gate",
-                                                                       "toPort":  "input_b"
+                                                                       "toPort":  "input_cutter"
                                                                    },
                                                                    {
                                                                        "fromRef":  "cut_gate",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "assign_material",
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_material",
+                                                                       "fromRef":  "cut_gate",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "move_to_pos",
                                                                        "toPort":  "input_geometry"
@@ -2181,34 +2139,34 @@
                                                                        "fromRef":  "node_player_pos",
                                                                        "fromPort":  "output_position",
                                                                        "toRef":  "node_cylinder",
-                                                                       "toPort":  "input_base"
+                                                                       "toPort":  "input_start"
                                                                    },
                                                                    {
                                                                        "fromRef":  "node_player_pos",
                                                                        "fromPort":  "output_position",
                                                                        "toRef":  "node_inner_cylinder",
-                                                                       "toPort":  "input_base"
+                                                                       "toPort":  "input_start"
                                                                    },
                                                                    {
                                                                        "fromRef":  "node_cylinder",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "node_hollow",
-                                                                       "toPort":  "input_a"
+                                                                       "toPort":  "input_base"
                                                                    },
                                                                    {
                                                                        "fromRef":  "node_inner_cylinder",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "node_hollow",
-                                                                       "toPort":  "input_b"
+                                                                       "toPort":  "input_cutter"
                                                                    },
                                                                    {
                                                                        "fromRef":  "node_hollow",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "node_material",
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "node_material",
+                                                                       "fromRef":  "node_hollow",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "node_bake",
                                                                        "toPort":  "input_geometry"
@@ -2317,13 +2275,13 @@
                                                                        "fromRef":  "tower_outer",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "hollow_tower",
-                                                                       "toPort":  "input_a"
+                                                                       "toPort":  "input_base"
                                                                    },
                                                                    {
                                                                        "fromRef":  "tower_inner",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "hollow_tower",
-                                                                       "toPort":  "input_b"
+                                                                       "toPort":  "input_cutter"
                                                                    },
                                                                    {
                                                                        "fromRef":  "roof_cone",
@@ -2339,30 +2297,30 @@
                                                                    },
                                                                    {
                                                                        "fromRef":  "hollow_tower",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "union_all",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_0"
                                                                    },
                                                                    {
                                                                        "fromRef":  "position_roof",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_all",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_1"
                                                                    },
                                                                    {
                                                                        "fromRef":  "position_balcony",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_all",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_2"
                                                                    },
                                                                    {
                                                                        "fromRef":  "union_all",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "assign_tower",
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_tower",
+                                                                       "fromRef":  "union_all",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "move_to_pos",
                                                                        "toPort":  "input_geometry"
@@ -2477,52 +2435,46 @@
                                                                        "fromRef":  "outer_walls",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "hollow_keep",
-                                                                       "toPort":  "input_a"
+                                                                       "toPort":  "input_base"
                                                                    },
                                                                    {
                                                                        "fromRef":  "inner_space",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "hollow_keep",
-                                                                       "toPort":  "input_b"
+                                                                       "toPort":  "input_cutter"
                                                                    },
                                                                    {
                                                                        "fromRef":  "hollow_keep",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "union_all",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_0"
                                                                    },
                                                                    {
                                                                        "fromRef":  "tower_1",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_all",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_1"
                                                                    },
                                                                    {
                                                                        "fromRef":  "tower_2",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_all",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_2"
                                                                    },
                                                                    {
                                                                        "fromRef":  "tower_3",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_all",
-                                                                       "toPort":  "input_geometries"
-                                                                   },
-                                                                   {
-                                                                       "fromRef":  "tower_4",
-                                                                       "fromPort":  "output_geometry",
-                                                                       "toRef":  "union_all",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_3"
                                                                    },
                                                                    {
                                                                        "fromRef":  "union_all",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "assign_material",
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_material",
+                                                                       "fromRef":  "union_all",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "move_to_pos",
                                                                        "toPort":  "input_geometry"
@@ -2649,64 +2601,64 @@
                                                                        "fromRef":  "building_volume",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "hollow_building",
-                                                                       "toPort":  "input_a"
+                                                                       "toPort":  "input_base"
                                                                    },
                                                                    {
                                                                        "fromRef":  "interior_volume",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "hollow_building",
-                                                                       "toPort":  "input_b"
+                                                                       "toPort":  "input_cutter"
                                                                    },
                                                                    {
                                                                        "fromRef":  "corner_frame_1",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_frames",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_0"
                                                                    },
                                                                    {
                                                                        "fromRef":  "corner_frame_2",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_frames",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_1"
                                                                    },
                                                                    {
                                                                        "fromRef":  "corner_frame_3",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_frames",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_2"
                                                                    },
                                                                    {
                                                                        "fromRef":  "corner_frame_4",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "union_frames",
-                                                                       "toPort":  "input_geometries"
+                                                                       "toPort":  "input_geometry_3"
                                                                    },
                                                                    {
                                                                        "fromRef":  "hollow_building",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "union_all",
-                                                                       "toPort":  "input_a"
+                                                                       "toPort":  "input_geometry_0"
                                                                    },
                                                                    {
                                                                        "fromRef":  "union_frames",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "union_all",
-                                                                       "toPort":  "input_b"
+                                                                       "toPort":  "input_geometry_1"
                                                                    },
                                                                    {
                                                                        "fromRef":  "union_all",
-                                                                       "fromPort":  "output_result",
+                                                                       "fromPort":  "output_geometry",
                                                                        "toRef":  "assign_glass_walls",
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_glass_walls",
+                                                                       "fromRef":  "union_all",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "assign_frame",
                                                                        "toPort":  "input_geometry"
                                                                    },
                                                                    {
-                                                                       "fromRef":  "assign_frame",
+                                                                       "fromRef":  "union_all",
                                                                        "fromPort":  "output_geometry",
                                                                        "toRef":  "move_to_pos",
                                                                        "toPort":  "input_geometry"
@@ -2735,4 +2687,3 @@
                        }
                    ]
 }
-
