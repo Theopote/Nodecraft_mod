@@ -35,15 +35,21 @@ public class PresetFormatAdapter {
             Map.entry("geometry.profiles.rectangle", "geometry.profiles.rectangle_profile"),
             Map.entry("geometry.profiles.circle", "geometry.profiles.circle_profile"),
             Map.entry("geometry.profiles.arc", "geometry.profiles.sector_profile"),
+            Map.entry("geometry.profiles.union_profiles", "geometry.profiles.polygon_profile"),
             Map.entry("geometry.solids.extrude", "geometry.solids.extrude_profile"),
             Map.entry("geometry.boolean.union_multiple", "geometry.boolean.union"),
+            Map.entry("geometry.curves.line", "geometry.curves.curve_from_points"),
+            Map.entry("geometry.curves.circle", "geometry.profiles.circle_profile"),
             Map.entry("geometry.curves.divide_curve", "geometry.curves.divide_curve_to_points"),
             Map.entry("transform.basic.move", "transform.basic_transforms.move_geometry"),
             Map.entry("transform.basic.rotate", "transform.basic_transforms.rotate_geometry_axis"),
             Map.entry("transform.basic.scale", "transform.basic_transforms.scale_geometry_point"),
+            Map.entry("transform.basic_transforms.translate", "transform.basic_transforms.move_geometry"),
+            Map.entry("transform.basic_transforms.rotate", "transform.basic_transforms.rotate_geometry_axis"),
             Map.entry("material.gradient_mapping.height_gradient", "material.gradient_mapping.height_gradient_map"),
             Map.entry("output.bake.geometry_to_blocks", "output.execute.bake_geometry_to_blocks"),
             Map.entry("output.preview.preview_blocks", "output.preview.preview_blocks"),
+            Map.entry("output.preview.block_preview", "output.preview.preview_blocks"),
             Map.entry("output.preview.geometry_viewer", "output.preview.geometry_viewer"),
             Map.entry("pattern.instances.place_instances_at_points", "pattern.linear.instance_on_points"),
             Map.entry("pattern.instances.orient_instances_to_frames", "pattern.linear.instance_on_points"),
@@ -213,8 +219,14 @@ public class PresetFormatAdapter {
         for (GraphPresetRules.PresetCategory newCat : newRules.categories) {
             GraphPresetRules.PresetCategory existingCat = existingCategories.get(newCat.id);
             if (existingCat != null) {
-                // Merge presets
                 List<GraphPresetRules.GraphPresetDefinition> merged = new ArrayList<>(existingCat.presets);
+                for (GraphPresetRules.GraphPresetDefinition newPreset : newCat.presets) {
+                    merged.removeIf(existingPreset ->
+                            existingPreset != null
+                                    && newPreset != null
+                                    && newPreset.id != null
+                                    && newPreset.id.equals(existingPreset.id));
+                }
                 merged.addAll(newCat.presets);
                 existingCat.presets = merged;
             } else {
