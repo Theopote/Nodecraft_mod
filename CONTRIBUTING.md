@@ -31,6 +31,15 @@ Run the full test suite for shared behavior:
 - Prefer existing node, graph, execution, and UI patterns over new abstractions.
 - Add tests when changing shared behavior, preset resources, layout, execution, serialization, or type compatibility.
 
+## Minecraft Version Upgrades
+
+When bumping Minecraft, Yarn mappings, Fabric Loader/API, or Loom:
+
+1. Run the compile and test gates above.
+2. Follow the mixin regression checklist in [`docs/minecraft-upgrade-mixin-checklist.md`](docs/minecraft-upgrade-mixin-checklist.md).
+
+Pay special attention to input API mixins (`Mouse`, `Keyboard`, `KeyboardInput`) and render hooks (`RenderSystem`, `WorldRenderer`).
+
 ## Preset Changes
 
 Built-in graph presets must pass `GraphPresetResourceTest`. That test verifies:
