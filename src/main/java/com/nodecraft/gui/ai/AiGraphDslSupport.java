@@ -6,11 +6,13 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.reflect.TypeToken;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,6 +27,7 @@ import java.util.Set;
 public final class AiGraphDslSupport {
 
     private static final Gson GSON = new GsonBuilder().create();
+    private static final Type STRING_OBJECT_MAP_TYPE = new TypeToken<Map<String, Object>>() {}.getType();
 
     private AiGraphDslSupport() {
     }
@@ -241,7 +244,10 @@ public final class AiGraphDslSupport {
 
             Map<String, Object> params = new HashMap<>();
             if (nodeObj.has("params") && nodeObj.get("params").isJsonObject()) {
-                params = GSON.fromJson(nodeObj.getAsJsonObject("params"), Map.class);
+                Map<String, Object> parsed = GSON.fromJson(nodeObj.getAsJsonObject("params"), STRING_OBJECT_MAP_TYPE);
+                if (parsed != null) {
+                    params = parsed;
+                }
             }
 
             DslPosition position = new DslPosition(i * 220.0f, 0.0f);
