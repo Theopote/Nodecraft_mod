@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.BrickPatternMapping;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -71,17 +72,14 @@ public class BrickPatternMapNode extends BaseNode {
         );
         String primary = getInputString(INPUT_PRIMARY_ID, "minecraft:bricks");
         String secondary = getInputString(INPUT_SECONDARY_ID, "minecraft:stone_bricks");
-        int length = Math.max(1, brickLength);
-        int height = Math.max(1, courseHeight);
+        BrickPatternMapping.Axis axis = BrickPatternMapping.resolveAxis(positions);
 
         BlockPosList outPos = new BlockPosList();
         List<String> ids = new ArrayList<>();
         List<BlockPlacementData> placements = new ArrayList<>();
         for (BlockPos pos : positions) {
-            int course = Math.floorDiv(pos.getY(), height);
-            int stagger = (course & 1) == 0 ? 0 : length / 2;
-            int brick = Math.floorDiv(pos.getX() + stagger, length);
-            String id = (brick & 1) == 0 ? primary : secondary;
+            int brick = BrickPatternMapping.brickIndex(pos, brickLength, courseHeight, axis);
+            String id = BrickPatternMapping.isPrimaryBrick(brick) ? primary : secondary;
             outPos.add(pos);
             ids.add(id);
             placements.add(new BlockPlacementData(pos, id));
