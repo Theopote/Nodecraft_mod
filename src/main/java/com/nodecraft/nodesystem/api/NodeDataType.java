@@ -167,7 +167,7 @@ public enum NodeDataType {
         }
 
         if (this == EXEC) {
-            return value == null || value instanceof Boolean;
+            return value instanceof Boolean;
         }
 
         if ((this == VECTOR || this == POSITION) && value instanceof Vector3) {
