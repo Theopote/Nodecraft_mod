@@ -25,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FrameLocalVariableNode extends BaseNode {
 
     private static final String LOCAL_SCOPE_ROOT_KEY = "__nodecraft.frame_local_scope";
-    private static final Map<String, Map<String, Object>> FALLBACK_SCOPE = new ConcurrentHashMap<>();
 
     @NodeProperty(displayName = "Default Frame", category = "Frame Local", order = 1)
     private String defaultFrame = "default";
@@ -168,7 +167,7 @@ public class FrameLocalVariableNode extends BaseNode {
             }
             return getOrCreateNullFriendlyFrameMap(root, frame);
         }
-        return getOrCreateNullFriendlyFrameMap(FALLBACK_SCOPE, frame);
+        return VariableScopeBridge.getOrCreateFallbackFrameMap(frame);
     }
 
     private Map<String, Object> getOrCreateNullFriendlyFrameMap(Map<String, Map<String, Object>> root, String frame) {

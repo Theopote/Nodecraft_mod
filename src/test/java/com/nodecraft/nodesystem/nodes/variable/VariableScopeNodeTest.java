@@ -27,12 +27,72 @@ class VariableScopeNodeTest {
         registry.clear();
         registry.registerNode(new NodeInfo("test.pass", "Pass", "pass-through test node", "test", 0, PassNode.class));
         registry.registerNode(new NodeInfo("variable.set", "Set Variable", "set variable", "variable", 0, SetVariableNode.class));
+        registry.registerNode(new NodeInfo("variable.get", "Get Variable", "get variable", "variable", 0, GetVariableNode.class));
         registry.registerNode(new NodeInfo("variable.list", "Variable List", "variable list", "variable", 0, VariableListNode.class));
     }
 
     @AfterEach
     void clearRegistry() {
         registry.clear();
+        VariableScopeBridge.clearFallbackScope("graph-a");
+        VariableScopeBridge.clearFallbackScope("graph-b");
+    }
+
+    @Test
+    void fallbackScopesAreIsolatedPerGraphId() {
+        SetVariableNode set = new SetVariableNode();
+        set.setNodeState(Map.of("defaultName", "count"));
+        GetVariableNode get = new GetVariableNode();
+        get.setNodeState(Map.of("defaultName", "count"));
+
+        try (VariableScopeBridge.ScopeBinding ignored = VariableScopeBridge.bindFallbackScope("graph-a")) {
+            set.compute(Map.of("input_value", 1));
+        }
+        try (VariableScopeBridge.ScopeBinding ignored = VariableScopeBridge.bindFallbackScope("graph-b")) {
+            set.compute(Map.of("input_value", 2));
+        }
+
+        try (VariableScopeBridge.ScopeBinding ignored = VariableScopeBridge.bindFallbackScope("graph-a")) {
+            Map<String, Object> outputs = get.compute(Map.of());
+            assertEquals(1, outputs.get("output_value"));
+        }
+        try (VariableScopeBridge.ScopeBinding ignored = VariableScopeBridge.bindFallbackScope("graph-b")) {
+            Map<String, Object> outputs = get.compute(Map.of());
+            assertEquals(2, outputs.get("output_value"));
+        }
+    }
+
+    @Test
+    void frameLocalFallbackScopesAreIsolatedPerGraphId() {
+        FrameLocalVariableNode writer = new FrameLocalVariableNode();
+        FrameLocalVariableNode reader = new FrameLocalVariableNode();
+
+        try (VariableScopeBridge.ScopeBinding ignored = VariableScopeBridge.bindFallbackScope("graph-a")) {
+            writer.compute(Map.of(
+                "input_frame", "session",
+                "input_name", "counter",
+                "input_value", 7,
+                "input_write", true
+            ));
+        }
+        try (VariableScopeBridge.ScopeBinding ignored = VariableScopeBridge.bindFallbackScope("graph-b")) {
+            writer.compute(Map.of(
+                "input_frame", "session",
+                "input_name", "counter",
+                "input_value", 9,
+                "input_write", true
+            ));
+        }
+
+        try (VariableScopeBridge.ScopeBinding ignored = VariableScopeBridge.bindFallbackScope("graph-a")) {
+            Map<String, Object> outputs = reader.compute(Map.of(
+                "input_frame", "session",
+                "input_name", "counter",
+                "input_write", false,
+                "input_default", 0
+            ));
+            assertEquals(7, outputs.get("output_value"));
+        }
     }
 
     @Test

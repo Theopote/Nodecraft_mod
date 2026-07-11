@@ -34,6 +34,7 @@ import com.nodecraft.gui.dialogs.MessageDialog;
 import com.nodecraft.nodesystem.graph.GraphLoadResult;
 import com.nodecraft.nodesystem.graph.GraphSerializer;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.nodes.variable.VariableScopeBridge;
 import com.nodecraft.nodesystem.graph.SubgraphExtractionService;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
@@ -1173,6 +1174,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     }
 
     public void setCurrentGraph(NodeGraph graph) {
+        if (this.currentGraph != null) {
+            VariableScopeBridge.clearFallbackScope(this.currentGraph.getId().toString());
+        }
         this.currentGraph = graph;
         subgraphEditStack.clear();
         clearSelectedNodes();

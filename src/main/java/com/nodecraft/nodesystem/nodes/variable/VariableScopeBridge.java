@@ -3,18 +3,41 @@ package com.nodecraft.nodesystem.nodes.variable;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-final class VariableScopeBridge {
+public final class VariableScopeBridge {
 
     static final String INTERNAL_PREFIX = "__nodecraft.";
 
     private static final Object NULL_VALUE = new Object();
-    private static final Map<String, Object> FALLBACK_SCOPE = new ConcurrentHashMap<>();
+    private static final ThreadLocal<String> ACTIVE_FALLBACK_SCOPE_ID = new ThreadLocal<>();
+    private static final Map<String, Map<String, Object>> FALLBACK_SCOPES = new ConcurrentHashMap<>();
+    private static final Map<String, Map<String, Map<String, Object>>> FALLBACK_FRAME_SCOPES = new ConcurrentHashMap<>();
 
     private VariableScopeBridge() {
+    }
+
+    public static ScopeBinding bindFallbackScope(@Nullable String scopeId) {
+        return new ScopeBinding(scopeId);
+    }
+
+    public static void clearFallbackScope(@Nullable String scopeId) {
+        if (scopeId == null || scopeId.isBlank()) {
+            return;
+        }
+        FALLBACK_SCOPES.remove(scopeId);
+        FALLBACK_FRAME_SCOPES.remove(scopeId);
+    }
+
+    static Map<String, Object> getOrCreateFallbackFrameMap(String frame) {
+        Map<String, Map<String, Object>> root = FALLBACK_FRAME_SCOPES.computeIfAbsent(
+            resolveFallbackScopeId(),
+            ignored -> new ConcurrentHashMap<>()
+        );
+        return getOrCreateNullFriendlyFrameMap(root, frame);
     }
 
     static Object get(@Nullable ExecutionContext context, String key) {
@@ -24,7 +47,7 @@ final class VariableScopeBridge {
         if (context != null) {
             return context.getVariable(key);
         }
-        return decodeFallbackValue(FALLBACK_SCOPE.get(key));
+        return decodeFallbackValue(fallbackScope().get(key));
     }
 
     static Object put(@Nullable ExecutionContext context, String key, Object value) {
@@ -36,7 +59,7 @@ final class VariableScopeBridge {
             context.setVariable(key, value);
             return previous;
         }
-        return decodeFallbackValue(FALLBACK_SCOPE.put(key, encodeFallbackValue(value)));
+        return decodeFallbackValue(fallbackScope().put(key, encodeFallbackValue(value)));
     }
 
     static Object remove(@Nullable ExecutionContext context, String key) {
@@ -46,7 +69,7 @@ final class VariableScopeBridge {
         if (context != null) {
             return context.removeVariable(key);
         }
-        return decodeFallbackValue(FALLBACK_SCOPE.remove(key));
+        return decodeFallbackValue(fallbackScope().remove(key));
     }
 
     static int clear(@Nullable ExecutionContext context, boolean includeInternalVariables) {
@@ -71,7 +94,7 @@ final class VariableScopeBridge {
         if (context != null) {
             return context.getAllVariables().containsKey(key);
         }
-        return FALLBACK_SCOPE.containsKey(key);
+        return fallbackScope().containsKey(key);
     }
 
     static Map<String, Object> snapshot(@Nullable ExecutionContext context) {
@@ -80,7 +103,7 @@ final class VariableScopeBridge {
             copy.putAll(context.getAllVariables());
             return copy;
         }
-        for (Map.Entry<String, Object> entry : FALLBACK_SCOPE.entrySet()) {
+        for (Map.Entry<String, Object> entry : fallbackScope().entrySet()) {
             copy.put(entry.getKey(), decodeFallbackValue(entry.getValue()));
         }
         return copy;
@@ -114,11 +137,66 @@ final class VariableScopeBridge {
         return name != null && name.startsWith(INTERNAL_PREFIX);
     }
 
+    private static Map<String, Object> fallbackScope() {
+        return FALLBACK_SCOPES.computeIfAbsent(resolveFallbackScopeId(), ignored -> new ConcurrentHashMap<>());
+    }
+
+    private static String resolveFallbackScopeId() {
+        String scopeId = ACTIVE_FALLBACK_SCOPE_ID.get();
+        if (scopeId == null || scopeId.isBlank()) {
+            return "thread:" + Thread.currentThread().threadId();
+        }
+        return scopeId;
+    }
+
+    private static Map<String, Object> getOrCreateNullFriendlyFrameMap(Map<String, Map<String, Object>> root, String frame) {
+        Map<String, Object> frameScope = root.get(frame);
+        if (frameScope == null) {
+            frameScope = newFrameMap();
+            root.put(frame, frameScope);
+            return frameScope;
+        }
+        if (frameScope instanceof ConcurrentHashMap<?, ?>) {
+            Map<String, Object> migrated = newFrameMap();
+            migrated.putAll(frameScope);
+            root.put(frame, migrated);
+            return migrated;
+        }
+        return frameScope;
+    }
+
+    private static Map<String, Object> newFrameMap() {
+        return Collections.synchronizedMap(new LinkedHashMap<>());
+    }
+
     private static Object encodeFallbackValue(Object value) {
         return value == null ? NULL_VALUE : value;
     }
 
     private static Object decodeFallbackValue(Object value) {
         return value == NULL_VALUE ? null : value;
+    }
+
+    public static final class ScopeBinding implements AutoCloseable {
+
+        private final String previous;
+
+        private ScopeBinding(@Nullable String scopeId) {
+            previous = ACTIVE_FALLBACK_SCOPE_ID.get();
+            if (scopeId == null || scopeId.isBlank()) {
+                ACTIVE_FALLBACK_SCOPE_ID.remove();
+            } else {
+                ACTIVE_FALLBACK_SCOPE_ID.set(scopeId);
+            }
+        }
+
+        @Override
+        public void close() {
+            if (previous == null || previous.isBlank()) {
+                ACTIVE_FALLBACK_SCOPE_ID.remove();
+            } else {
+                ACTIVE_FALLBACK_SCOPE_ID.set(previous);
+            }
+        }
     }
 }

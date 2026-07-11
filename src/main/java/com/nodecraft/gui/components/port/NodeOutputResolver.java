@@ -4,6 +4,7 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.nodes.variable.VariableScopeBridge;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -110,20 +111,23 @@ final class NodeOutputResolver {
                 for (IPort port : node.getInputPorts()) {
                     inputs.putIfAbsent(port.getId(), port.getValue());
                 }
-                try {
-                    node.compute(inputs);
-                } catch (Exception e) {
-                    // Property panel resolves outputs in UI render path; swallow node compute failures here
-                    // so one bad node does not corrupt ImGui stack state.
-                    NodeCraft.LOGGER.error(
-                        "NodeOutputResolver safe-compute failed: nodeType={}, nodeId={}, outputPort={}",
-                        node.getClass().getSimpleName(),
-                        node.getId(),
-                        outputPortId,
-                        e
-                    );
-                    Object cached = node.getOutput(outputPortId);
-                    return cached != null ? cached : getPortValue(node, outputPortId, false);
+                try (VariableScopeBridge.ScopeBinding ignored =
+                         VariableScopeBridge.bindFallbackScope(graph.getId().toString())) {
+                    try {
+                        node.compute(inputs);
+                    } catch (Exception e) {
+                        // Property panel resolves outputs in UI render path; swallow node compute failures here
+                        // so one bad node does not corrupt ImGui stack state.
+                        NodeCraft.LOGGER.error(
+                            "NodeOutputResolver safe-compute failed: nodeType={}, nodeId={}, outputPort={}",
+                            node.getClass().getSimpleName(),
+                            node.getId(),
+                            outputPortId,
+                            e
+                        );
+                        Object cached = node.getOutput(outputPortId);
+                        return cached != null ? cached : getPortValue(node, outputPortId, false);
+                    }
                 }
             } finally {
                 visiting.remove(node.getId());

@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.TrackedPreviewPlacementService;
+import com.nodecraft.nodesystem.nodes.variable.VariableScopeBridge;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -525,7 +526,10 @@ public class NodeExecutor {
                     baseNode.compute(inputs, context);
                 }
             } else {
-                node.compute(inputs);
+                try (VariableScopeBridge.ScopeBinding ignored =
+                         VariableScopeBridge.bindFallbackScope(graph.getId().toString())) {
+                    node.compute(inputs);
+                }
             }
             executionCache.record(node);
             recomputedThisRun.add(node.getId());
