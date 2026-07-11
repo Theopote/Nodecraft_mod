@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.core;
 
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.NodeProperty;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,8 +21,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Discovers node properties (matching {@code PropertyInspector} rules) and
- * serializes them for graph save/load.
+ * Discovers node properties and serializes them for graph save/load.
+ * Property discovery rules are shared with {@code PropertyInspector}.
  */
 public final class NodePropertyBindings {
 
@@ -30,19 +31,21 @@ public final class NodePropertyBindings {
     private static final String GET_PREFIX = "get";
     private static final String IS_PREFIX = "is";
     private static final String SET_PREFIX = "set";
+    private static final String DEFAULT_CATEGORY = "常规";
+    private static final int DEFAULT_ORDER = 100;
     private static final Set<Class<?>> SYSTEM_DECLARING_CLASSES = Set.of(
             INode.class,
             BaseNode.class
     );
 
-    private static final Map<Class<?>, List<Binding>> BINDING_CACHE = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, List<NodePropertyBinding>> BINDING_CACHE = new ConcurrentHashMap<>();
 
     private NodePropertyBindings() {
     }
 
     public static Map<String, Object> serialize(BaseNode node) {
         Map<String, Object> state = new HashMap<>();
-        for (Binding binding : bindingsFor(node.getClass())) {
+        for (NodePropertyBinding binding : bindingsFor(node.getClass())) {
             try {
                 Object value = binding.read(node);
                 if (value != null) {
@@ -60,13 +63,13 @@ public final class NodePropertyBindings {
             return;
         }
 
-        Map<String, Binding> bindingByName = new HashMap<>();
-        for (Binding binding : bindingsFor(node.getClass())) {
+        Map<String, NodePropertyBinding> bindingByName = new HashMap<>();
+        for (NodePropertyBinding binding : bindingsFor(node.getClass())) {
             bindingByName.put(binding.name(), binding);
         }
 
         for (Map.Entry<String, Object> entry : state.entrySet()) {
-            Binding binding = bindingByName.get(entry.getKey());
+            NodePropertyBinding binding = bindingByName.get(entry.getKey());
             if (binding == null || !binding.writable()) {
                 continue;
             }
@@ -81,16 +84,16 @@ public final class NodePropertyBindings {
         }
     }
 
-    static List<Binding> bindingsFor(Class<?> nodeClass) {
+    public static List<NodePropertyBinding> bindingsFor(Class<?> nodeClass) {
         return BINDING_CACHE.computeIfAbsent(nodeClass, NodePropertyBindings::discoverBindings);
     }
 
-    static void clearCache() {
+    public static void clearCache() {
         BINDING_CACHE.clear();
     }
 
-    private static List<Binding> discoverBindings(Class<?> nodeClass) {
-        List<Binding> bindings = new ArrayList<>();
+    private static List<NodePropertyBinding> discoverBindings(Class<?> nodeClass) {
+        List<NodePropertyBinding> bindings = new ArrayList<>();
         Map<String, Method> getters = new HashMap<>();
         Map<String, Method> setters = new HashMap<>();
 
@@ -152,16 +155,17 @@ public final class NodePropertyBindings {
                     && (Modifier.isStatic(setterMethod.getModifiers())
                     || !Modifier.isPublic(setterMethod.getModifiers())
                     || !setterMethod.getParameterTypes()[0].isAssignableFrom(getterMethod.getReturnType()))) {
+                LOGGER.trace("Property {} setter type or modifiers mismatch, treating as read-only", propertyName);
                 setterMethod = null;
             }
 
-            bindings.add(new MethodBinding(propertyName, getterMethod, setterMethod));
+            bindings.add(new MethodBinding(propertyName, getterMethod, setterMethod, null));
         }
 
         return bindings;
     }
 
-    private static void collectAnnotatedFields(Class<?> nodeClass, List<Binding> bindings) {
+    private static void collectAnnotatedFields(Class<?> nodeClass, List<NodePropertyBinding> bindings) {
         Class<?> currentClass = nodeClass;
         while (currentClass != null && !currentClass.equals(Object.class)) {
             for (Field field : currentClass.getDeclaredFields()) {
@@ -178,14 +182,19 @@ public final class NodePropertyBindings {
                     continue;
                 }
 
+                if (Modifier.isFinal(modifiers) && !annotation.readOnly()) {
+                    LOGGER.warn("@NodeProperty on final field '{}' not marked readOnly, treating as read-only",
+                            propertyName);
+                }
+
                 boolean readOnly = annotation.readOnly() || Modifier.isFinal(modifiers);
-                bindings.add(new FieldBinding(propertyName, field, readOnly));
+                bindings.add(new FieldBinding(propertyName, field, annotation, readOnly));
             }
             currentClass = currentClass.getSuperclass();
         }
     }
 
-    private static void collectAnnotatedMethods(Class<?> nodeClass, List<Binding> bindings) {
+    private static void collectAnnotatedMethods(Class<?> nodeClass, List<NodePropertyBinding> bindings) {
         Class<?> currentClass = nodeClass;
         while (currentClass != null && !currentClass.equals(Object.class)) {
             for (Method method : currentClass.getDeclaredMethods()) {
@@ -201,7 +210,14 @@ public final class NodePropertyBindings {
                             methodName, currentClass.getName());
                     continue;
                 }
-                if (method.getParameterCount() != 0 || method.getReturnType().equals(void.class)) {
+                if (method.getParameterCount() != 0) {
+                    LOGGER.error("Invalid @NodeProperty: method '{}' has parameters, only no-arg getters allowed",
+                            methodName);
+                    continue;
+                }
+                if (method.getReturnType().equals(void.class)) {
+                    LOGGER.error("Invalid @NodeProperty: method '{}' returns void, only value getters allowed",
+                            methodName);
                     continue;
                 }
 
@@ -217,6 +233,8 @@ public final class NodePropertyBindings {
                 } else {
                     standardGetterNaming = false;
                     propertyName = methodName;
+                    LOGGER.warn("Method '{}' uses @NodeProperty with non-standard getter naming, using method name as property name",
+                            methodName);
                 }
 
                 Method setterMethod = null;
@@ -230,14 +248,20 @@ public final class NodePropertyBindings {
                                 || !Modifier.isPublic(setterMethod.getModifiers())
                                 || setterMethod.getParameterTypes().length != 1
                                 || !setterMethod.getParameterTypes()[0].equals(method.getReturnType())) {
+                            LOGGER.warn("Property '{}' setter '{}' type or modifiers mismatch, treating as read-only",
+                                    propertyName, setterName);
                             setterMethod = null;
                         }
-                    } catch (NoSuchMethodException ignored) {
-                        setterMethod = null;
+                    } catch (NoSuchMethodException e) {
+                        LOGGER.debug("Property '{}' has no matching setter '{}', treating as read-only",
+                                propertyName, setterName);
                     }
+                } else if (!annotation.readOnly() && !standardGetterNaming) {
+                    LOGGER.debug("Property '{}' uses non-standard getter naming, skipping setter inference and treating as read-only",
+                            propertyName);
                 }
 
-                bindings.add(new MethodBinding(propertyName, method, setterMethod));
+                bindings.add(new MethodBinding(propertyName, method, setterMethod, annotation));
             }
             currentClass = currentClass.getSuperclass();
         }
@@ -289,6 +313,52 @@ public final class NodePropertyBindings {
         return value;
     }
 
+    static String formatPropertyName(String propertyName) {
+        if (propertyName == null || propertyName.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder result = new StringBuilder();
+        if (propertyName.length() >= 2
+                && Character.isUpperCase(propertyName.charAt(0))
+                && Character.isUpperCase(propertyName.charAt(1))) {
+            int upperCaseEnd = 2;
+            while (upperCaseEnd < propertyName.length()
+                    && Character.isUpperCase(propertyName.charAt(upperCaseEnd))) {
+                upperCaseEnd++;
+            }
+
+            if (upperCaseEnd == propertyName.length()) {
+                return propertyName;
+            }
+
+            result.append(propertyName, 0, upperCaseEnd);
+            char nextChar = propertyName.charAt(upperCaseEnd);
+            if (Character.isLetterOrDigit(nextChar)) {
+                result.append(' ');
+            }
+
+            propertyName = propertyName.substring(upperCaseEnd);
+            if (Character.isLowerCase(propertyName.charAt(0))) {
+                propertyName = Character.toUpperCase(propertyName.charAt(0)) + propertyName.substring(1);
+            }
+        } else {
+            result.append(Character.toUpperCase(propertyName.charAt(0)));
+            propertyName = propertyName.substring(1);
+        }
+
+        for (int i = 0; i < propertyName.length(); i++) {
+            char c = propertyName.charAt(i);
+            if (Character.isUpperCase(c)
+                    && (i > 0 && !Character.isUpperCase(propertyName.charAt(i - 1)))
+                    && (i + 1 < propertyName.length() && Character.isLowerCase(propertyName.charAt(i + 1)))) {
+                result.append(' ');
+            }
+            result.append(c);
+        }
+        return result.toString();
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static Object enumValueOfUnchecked(Class<?> targetType, String text) {
         return Enum.valueOf((Class<? extends Enum>) targetType, text);
@@ -314,29 +384,47 @@ public final class NodePropertyBindings {
         return name;
     }
 
-    interface Binding {
+    public interface NodePropertyBinding {
         String name();
+
+        String displayName();
 
         Class<?> type();
 
         boolean writable();
+
+        String description();
+
+        String category();
+
+        int order();
 
         Object read(Object target) throws Throwable;
 
         void write(Object target, Object value) throws Throwable;
     }
 
-    private static final class FieldBinding implements Binding {
+    private static final class FieldBinding implements NodePropertyBinding {
         private final String name;
+        private final String displayName;
+        private final String description;
+        private final String category;
+        private final int order;
         private final MethodHandle getter;
         private final MethodHandle setter;
         private final Class<?> type;
         private final boolean writable;
 
-        private FieldBinding(String name, Field field, boolean readOnly) {
+        private FieldBinding(String name, Field field, NodeProperty annotation, boolean readOnly) {
             this.name = name;
             this.type = field.getType();
             this.writable = !readOnly;
+            this.displayName = annotation.displayName().isEmpty()
+                    ? formatPropertyName(name)
+                    : annotation.displayName();
+            this.description = annotation.description();
+            this.category = annotation.category();
+            this.order = annotation.order();
             try {
                 MethodHandles.Lookup lookup = MethodHandles.lookup();
                 field.setAccessible(true);
@@ -353,6 +441,11 @@ public final class NodePropertyBindings {
         }
 
         @Override
+        public String displayName() {
+            return displayName;
+        }
+
+        @Override
         public Class<?> type() {
             return type;
         }
@@ -360,6 +453,21 @@ public final class NodePropertyBindings {
         @Override
         public boolean writable() {
             return writable;
+        }
+
+        @Override
+        public String description() {
+            return description;
+        }
+
+        @Override
+        public String category() {
+            return category;
+        }
+
+        @Override
+        public int order() {
+            return order;
         }
 
         @Override
@@ -375,17 +483,34 @@ public final class NodePropertyBindings {
         }
     }
 
-    private static final class MethodBinding implements Binding {
+    private static final class MethodBinding implements NodePropertyBinding {
         private final String name;
+        private final String displayName;
+        private final String description;
+        private final String category;
+        private final int order;
         private final MethodHandle getter;
         private final MethodHandle setter;
         private final Class<?> type;
         private final boolean writable;
 
-        private MethodBinding(String name, Method getterMethod, Method setterMethod) {
+        private MethodBinding(String name, Method getterMethod, @Nullable Method setterMethod, @Nullable NodeProperty annotation) {
             this.name = name;
             this.type = getterMethod.getReturnType();
             this.writable = setterMethod != null;
+            if (annotation != null) {
+                this.displayName = annotation.displayName().isEmpty()
+                        ? formatPropertyName(name)
+                        : annotation.displayName();
+                this.description = annotation.description();
+                this.category = annotation.category();
+                this.order = annotation.order();
+            } else {
+                this.displayName = formatPropertyName(name);
+                this.description = "";
+                this.category = DEFAULT_CATEGORY;
+                this.order = DEFAULT_ORDER;
+            }
             try {
                 MethodHandles.Lookup lookup = MethodHandles.lookup();
                 getterMethod.setAccessible(true);
@@ -407,6 +532,11 @@ public final class NodePropertyBindings {
         }
 
         @Override
+        public String displayName() {
+            return displayName;
+        }
+
+        @Override
         public Class<?> type() {
             return type;
         }
@@ -414,6 +544,21 @@ public final class NodePropertyBindings {
         @Override
         public boolean writable() {
             return writable;
+        }
+
+        @Override
+        public String description() {
+            return description;
+        }
+
+        @Override
+        public String category() {
+            return category;
+        }
+
+        @Override
+        public int order() {
+            return order;
         }
 
         @Override

@@ -10,8 +10,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -64,9 +62,7 @@ public final class GraphMigrationRegistry {
     }
 
     static int normalizeVersion(int formatVersion) {
-        return formatVersion <= GraphFormat.LEGACY_UNSPECIFIED
-            ? GraphFormat.LEGACY_UNSPECIFIED
-            : formatVersion;
+        return Math.max(formatVersion, GraphFormat.LEGACY_UNSPECIFIED);
     }
 
     private static SavedGraph migrateStep(SavedGraph graph, int fromVersion) {

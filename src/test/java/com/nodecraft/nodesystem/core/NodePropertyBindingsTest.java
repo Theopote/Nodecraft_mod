@@ -1,9 +1,12 @@
 package com.nodecraft.nodesystem.core;
 
+import com.nodecraft.gui.components.property.core.PropertyDescriptor;
+import com.nodecraft.gui.components.property.core.PropertyInspector;
 import com.nodecraft.nodesystem.nodes.geometry.boolops.SdfBoxNode;
 import com.nodecraft.nodesystem.nodes.world.write.CloneRegionNode;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -67,6 +70,27 @@ class NodePropertyBindingsTest {
         assertEquals(CloneRegionNode.CloneMode.MASKED, loaded.getCloneMode());
         assertTrue(loaded.isIncludeEntities());
         assertFalse(loaded.isRecordUndo());
+    }
+
+    @Test
+    void propertyInspectorDiscoversSameBindingsAsSerializer() {
+        PropertyInspector inspector = new PropertyInspector();
+        List<PropertyDescriptor> descriptors = inspector.getPropertiesForNode(SdfBoxNode.class);
+        List<NodePropertyBindings.NodePropertyBinding> bindings = NodePropertyBindings.bindingsFor(SdfBoxNode.class);
+
+        assertEquals(bindings.size(), descriptors.size());
+        for (int i = 0; i < bindings.size(); i++) {
+            NodePropertyBindings.NodePropertyBinding binding = bindings.get(i);
+            PropertyDescriptor descriptor = descriptors.stream()
+                    .filter(candidate -> candidate.name.equals(binding.name()))
+                    .findFirst()
+                    .orElseThrow();
+            assertEquals(binding.displayName(), descriptor.displayName);
+            assertEquals(binding.type(), descriptor.type);
+            assertEquals(binding.writable(), descriptor.setter != null);
+            assertEquals(binding.category(), descriptor.category);
+            assertEquals(binding.order(), descriptor.order);
+        }
     }
 
     @Test
