@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.execution.NodeExecutor;
 import com.nodecraft.nodesystem.io.GraphFormat;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
+import com.nodecraft.nodesystem.nodes.geometry.boolops.SdfBoxNode;
 import com.nodecraft.nodesystem.nodes.math.logic.IfNode;
 import com.nodecraft.nodesystem.nodes.variable.SetVariableNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -22,6 +23,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -35,6 +37,7 @@ class GraphSerializerTest {
         registry.registerNode(new NodeInfo("test.pass", "Pass", "pass-through test node", "test", 0, PassNode.class));
         registry.registerNode(new NodeInfo("math.logic.if", "If", "if node", "math.logic", 0, IfNode.class));
         registry.registerNode(new NodeInfo("variable.set", "Set Variable", "set variable", "variable", 0, SetVariableNode.class));
+        registry.registerNode(new NodeInfo("geometry.boolean.sdf_box", "SDF Box", "sdf box", "geometry", 0, SdfBoxNode.class));
     }
 
     @AfterEach
@@ -155,6 +158,29 @@ class GraphSerializerTest {
         assertEquals(34.0, loadedLeft.getPositionY(), 0.001);
         assertEquals(88.0, loadedRight.getPositionX(), 0.001);
         assertEquals(16.25, loadedRight.getPositionY(), 0.001);
+    }
+
+    @Test
+    void jsonRoundTripPreservesAnnotatedNodeProperties() {
+        NodeGraph original = new NodeGraph("sdf-box");
+        SdfBoxNode sdfBox = new SdfBoxNode();
+        sdfBox.setNodeState(Map.of("halfX", 9.0, "halfY", 8.0, "halfZ", 7.0));
+        original.addNode(sdfBox);
+
+        NodeGraph loaded = GraphSerializer.fromJsonToGraph(GraphSerializer.toJson(original));
+        SdfBoxNode loadedSdfBox = loaded.getNodes().stream()
+            .filter(SdfBoxNode.class::isInstance)
+            .map(SdfBoxNode.class::cast)
+            .findFirst()
+            .orElseThrow();
+
+        Object state = loadedSdfBox.getNodeState();
+        assertInstanceOf(Map.class, state);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> map = (Map<String, Object>) state;
+        assertEquals(9.0, map.get("halfX"));
+        assertEquals(8.0, map.get("halfY"));
+        assertEquals(7.0, map.get("halfZ"));
     }
 
     @Test

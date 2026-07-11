@@ -216,11 +216,21 @@ public abstract class BaseNode implements INode {
     }
 
     public Object getNodeState() {
-        return nodeState;
+        Map<String, Object> state = NodePropertyBindings.serialize(this);
+        return state.isEmpty() ? null : state;
     }
 
     public void setNodeState(Object state) {
         this.nodeState = state;
+        if (state instanceof Map<?, ?> map) {
+            Map<String, Object> typed = new HashMap<>();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (entry.getKey() instanceof String key) {
+                    typed.put(key, entry.getValue());
+                }
+            }
+            NodePropertyBindings.deserialize(this, typed);
+        }
     }
 
     public boolean isDirty() {
