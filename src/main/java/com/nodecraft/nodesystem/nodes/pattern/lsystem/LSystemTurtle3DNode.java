@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.LSystemStringExpander;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaterniond;
@@ -30,6 +31,9 @@ import java.util.UUID;
 )
 public class LSystemTurtle3DNode extends BaseNode {
 
+    public static final int MAX_COMMAND_LENGTH = LSystemStringExpander.DEFAULT_MAX_EXPANDED_LENGTH;
+    public static final int MAX_POLYLINE_POINTS = LSystemStringExpander.DEFAULT_MAX_EXPANDED_LENGTH;
+
     private static final Vector3d LOCAL_FORWARD = new Vector3d(0.0d, 0.0d, 1.0d);
 
     @NodeProperty(displayName = "Step", category = "Turtle", order = 1)
@@ -46,6 +50,7 @@ public class LSystemTurtle3DNode extends BaseNode {
 
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_HIT_LIMIT_ID = "output_hit_limit";
 
     public LSystemTurtle3DNode() {
         super(UUID.randomUUID(), "pattern.lsystem.turtle_3d");
@@ -57,6 +62,7 @@ public class LSystemTurtle3DNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Polyline vertices in world space", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when at least one segment was emitted", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "True when command length or polyline point cap was reached", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -73,6 +79,13 @@ public class LSystemTurtle3DNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object cmdObj = inputValues.get(INPUT_COMMANDS_ID);
         String commands = cmdObj instanceof String s ? s : "";
+        if (commands.length() > MAX_COMMAND_LENGTH) {
+            outputValues.put(OUTPUT_POINTS_ID, List.of());
+            outputValues.put(OUTPUT_VALID_ID, false);
+            outputValues.put(OUTPUT_HIT_LIMIT_ID, true);
+            return;
+        }
+
         double st = getInputDouble(INPUT_STEP_ID, step);
         st = Math.max(1.0e-6d, st);
         double angDeg = getInputDouble(INPUT_ANGLE_ID, angleDegrees);
@@ -86,11 +99,17 @@ public class LSystemTurtle3DNode extends BaseNode {
 
         Deque<TurtleState> stack = new ArrayDeque<>();
         boolean drew = false;
+        boolean hitLimit = false;
 
         for (int i = 0; i < commands.length(); i++) {
             char c = commands.charAt(i);
             switch (c) {
                 case 'F' -> {
+                    if (points.size() >= MAX_POLYLINE_POINTS) {
+                        hitLimit = true;
+                        i = commands.length();
+                        break;
+                    }
                     moveForward(pos, q, st);
                     points.add(new Vector3d(pos));
                     drew = true;
@@ -119,6 +138,7 @@ public class LSystemTurtle3DNode extends BaseNode {
         boolean valid = drew && points.size() >= 2;
         outputValues.put(OUTPUT_POINTS_ID, valid ? List.copyOf(points) : List.of());
         outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
     }
 
     private static void moveForward(Vector3d pos, Quaterniond q, double stepLen) {

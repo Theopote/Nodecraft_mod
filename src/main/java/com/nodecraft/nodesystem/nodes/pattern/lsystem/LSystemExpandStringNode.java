@@ -35,6 +35,7 @@ public class LSystemExpandStringNode extends BaseNode {
 
     private static final String OUTPUT_STRING_ID = "output_string";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_HIT_LIMIT_ID = "output_hit_limit";
 
     public LSystemExpandStringNode() {
         super(UUID.randomUUID(), "pattern.lsystem.expand_string");
@@ -46,6 +47,7 @@ public class LSystemExpandStringNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_STRING_ID, "String", "Expanded command string", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when axiom and rules are usable", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "True when expansion stopped early due to string length cap", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -71,12 +73,14 @@ public class LSystemExpandStringNode extends BaseNode {
         if (axiom.isEmpty() || rules.isEmpty()) {
             outputValues.put(OUTPUT_STRING_ID, "");
             outputValues.put(OUTPUT_VALID_ID, false);
+            outputValues.put(OUTPUT_HIT_LIMIT_ID, false);
             return;
         }
 
-        String expanded = LSystemStringExpander.expand(axiom, rules, it, seed);
-        outputValues.put(OUTPUT_STRING_ID, expanded);
+        LSystemStringExpander.ExpandResult expanded = LSystemStringExpander.expand(axiom, rules, it, seed);
+        outputValues.put(OUTPUT_STRING_ID, expanded.text());
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_HIT_LIMIT_ID, expanded.hitLimit());
     }
 
     private static List<LSystemRule> resolveRules(Object rulesObj) {
