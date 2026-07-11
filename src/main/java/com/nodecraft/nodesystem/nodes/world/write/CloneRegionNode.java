@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.util.math.BlockPos;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -192,15 +193,7 @@ public class CloneRegionNode extends BaseNode {
             if (volume > maxBlocks) {
                 error = "Region volume " + volume + " exceeds max blocks " + maxBlocks;
             } else {
-                int width = sourceMaxCorner.getX() - sourceMinCorner.getX() + 1;
-                int height = sourceMaxCorner.getY() - sourceMinCorner.getY() + 1;
-                int depth = sourceMaxCorner.getZ() - sourceMinCorner.getZ() + 1;
-
-                BlockPos destMaxCorner = new BlockPos(
-                        destinationPos.getX() + width - 1,
-                        destinationPos.getY() + height - 1,
-                        destinationPos.getZ() + depth - 1
-                );
+                BlockPos destMaxCorner = getBlockPos(destinationPos, sourceMaxCorner, sourceMinCorner);
 
                 destinationRegion = new RegionData(destinationPos, destMaxCorner);
 
@@ -214,34 +207,31 @@ public class CloneRegionNode extends BaseNode {
                                 ? new WorldWriteHistoryService.UndoRecord()
                                 : null;
 
-                        for (BlockPos pos : BlockPos.iterate(sourceMinCorner, sourceMaxCorner)) {
-                            totalCount++;
-                            BlockPos immutablePos = pos.toImmutable();
+                        if (sourceMinCorner != null) {
+                            if (sourceMaxCorner != null) {
+                                for (BlockPos pos : BlockPos.iterate(sourceMinCorner, sourceMaxCorner)) {
+                                    totalCount++;
+                                    BlockPos immutablePos = pos.toImmutable();
 
-                            try {
-                                BlockState blockState = context.getWorld().getBlockState(immutablePos);
-                                boolean isAir = context.getWorld().isAir(immutablePos);
-                                if (isAir && !includeAirValue) {
-                                    continue;
-                                }
-                                if (cloneModeValue == CloneMode.MASKED && isAir) {
-                                    continue;
-                                }
+                                    try {
+                                        BlockState blockState = context.getWorld().getBlockState(immutablePos);
+                                        boolean isAir = context.getWorld().isAir(immutablePos);
+                                        if (isAir && !includeAirValue) {
+                                            continue;
+                                        }
+                                        if (cloneModeValue == CloneMode.MASKED && isAir) {
+                                            continue;
+                                        }
 
-                                int offsetX = immutablePos.getX() - sourceMinCorner.getX();
-                                int offsetY = immutablePos.getY() - sourceMinCorner.getY();
-                                int offsetZ = immutablePos.getZ() - sourceMinCorner.getZ();
-                                BlockPos destPos = new BlockPos(
-                                        destinationPos.getX() + offsetX,
-                                        destinationPos.getY() + offsetY,
-                                        destinationPos.getZ() + offsetZ
-                                );
-                                blocksToCopy.put(destPos, blockState);
-                            } catch (Exception e) {
-                                if (error.isEmpty()) {
-                                    error = "Error reading block at " + immutablePos + ": " + e.getMessage();
+                                        BlockPos destPos = getPos(destinationPos, immutablePos, sourceMinCorner);
+                                        blocksToCopy.put(destPos, blockState);
+                                    } catch (Exception e) {
+                                        if (error.isEmpty()) {
+                                            error = "Error reading block at " + immutablePos + ": " + e.getMessage();
+                                        }
+                                        com.nodecraft.core.NodeCraft.LOGGER.warn("Error reading block at {}", immutablePos, e);
+                                    }
                                 }
-                                com.nodecraft.core.NodeCraft.LOGGER.warn("Error reading block at {}", immutablePos, e);
                             }
                         }
 
@@ -271,27 +261,31 @@ public class CloneRegionNode extends BaseNode {
 
                         if (cloneModeValue == CloneMode.MOVE) {
                             BlockState airState = Blocks.AIR.getDefaultState();
-                            for (BlockPos pos : BlockPos.iterate(sourceMinCorner, sourceMaxCorner)) {
-                                BlockPos immutablePos = pos.toImmutable();
-                                if (destinationRegion.contains(immutablePos)) {
-                                    continue;
-                                }
+                            if (sourceMinCorner != null) {
+                                if (sourceMaxCorner != null) {
+                                    for (BlockPos pos : BlockPos.iterate(sourceMinCorner, sourceMaxCorner)) {
+                                        BlockPos immutablePos = pos.toImmutable();
+                                        if (destinationRegion.contains(immutablePos)) {
+                                            continue;
+                                        }
 
-                                try {
-                                    BlockState previousState = context.getWorld().getBlockState(immutablePos);
-                                    boolean clearSuccess = context.getWorld().setBlockState(
-                                            immutablePos,
-                                            airState,
-                                            flags
-                                    );
-                                    if (clearSuccess && undoRecord != null) {
-                                        undoRecord.add(immutablePos, previousState);
+                                        try {
+                                            BlockState previousState = context.getWorld().getBlockState(immutablePos);
+                                            boolean clearSuccess = context.getWorld().setBlockState(
+                                                    immutablePos,
+                                                    airState,
+                                                    flags
+                                            );
+                                            if (clearSuccess && undoRecord != null) {
+                                                undoRecord.add(immutablePos, previousState);
+                                            }
+                                        } catch (Exception e) {
+                                            if (error.isEmpty()) {
+                                                error = "Error clearing block at " + immutablePos + ": " + e.getMessage();
+                                            }
+                                            com.nodecraft.core.NodeCraft.LOGGER.warn("Error clearing block at {}", immutablePos, e);
+                                        }
                                     }
-                                } catch (Exception e) {
-                                    if (error.isEmpty()) {
-                                        error = "Error clearing block at " + immutablePos + ": " + e.getMessage();
-                                    }
-                                    com.nodecraft.core.NodeCraft.LOGGER.warn("Error clearing block at {}", immutablePos, e);
                                 }
                             }
                         }
@@ -318,6 +312,44 @@ public class CloneRegionNode extends BaseNode {
         outputValues.put(OUTPUT_DESTINATION_REGION_ID, destinationRegion);
         outputValues.put(OUTPUT_SUCCESS_ID, success);
         outputValues.put(OUTPUT_ERROR_ID, error);
+    }
+
+    private static @NotNull BlockPos getPos(BlockPos destinationPos, BlockPos immutablePos, BlockPos sourceMinCorner) {
+        int offsetX = immutablePos.getX() - sourceMinCorner.getX();
+        int offsetY = immutablePos.getY() - sourceMinCorner.getY();
+        int offsetZ = immutablePos.getZ() - sourceMinCorner.getZ();
+        return new BlockPos(
+                destinationPos.getX() + offsetX,
+                destinationPos.getY() + offsetY,
+                destinationPos.getZ() + offsetZ
+        );
+    }
+
+    private static @NotNull BlockPos getBlockPos(BlockPos destinationPos, BlockPos sourceMaxCorner, BlockPos sourceMinCorner) {
+        int width = 0;
+        if (sourceMaxCorner != null) {
+            if (sourceMinCorner != null) {
+                width = sourceMaxCorner.getX() - sourceMinCorner.getX() + 1;
+            }
+        }
+        int height = 0;
+        if (sourceMaxCorner != null) {
+            if (sourceMinCorner != null) {
+                height = sourceMaxCorner.getY() - sourceMinCorner.getY() + 1;
+            }
+        }
+        int depth = 0;
+        if (sourceMinCorner != null) {
+            if (sourceMaxCorner != null) {
+                depth = sourceMaxCorner.getZ() - sourceMinCorner.getZ() + 1;
+            }
+        }
+
+        return new BlockPos(
+                destinationPos.getX() + width - 1,
+                destinationPos.getY() + height - 1,
+                destinationPos.getZ() + depth - 1
+        );
     }
 
     /**

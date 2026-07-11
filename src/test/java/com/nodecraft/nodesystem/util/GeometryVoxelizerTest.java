@@ -37,17 +37,20 @@ class GeometryVoxelizerTest {
     }
 
     @Test
-    void voxelizeSdfGeometrySkipsWhenBoundsVolumeExceedsLimit() {
-        SdfGeometryData oversized = new SdfGeometryData(
+    void voxelizeSkipsWhenBoundsVolumeExceedsLimit() {
+        SdfGeometryData oversizedSdf = new SdfGeometryData(
                 point -> 1.0d,
                 new Vector3d(0.0d, 0.0d, 0.0d),
                 new Vector3d(65.0d, 65.0d, 65.0d),
                 0.0d
         );
+        BoxGeometryData oversizedBox = new BoxGeometryData(
+                new Vector3d(0.0d, 0.0d, 0.0d),
+                new Vector3d(32.0d, 32.0d, 32.0d)
+        );
 
-        BlockPosList blocks = GeometryVoxelizer.voxelizeSdfGeometry(oversized, true);
-
-        assertTrue(blocks.isEmpty());
+        assertTrue(GeometryVoxelizer.voxelize(oversizedSdf, true).isEmpty());
+        assertTrue(GeometryVoxelizer.voxelize(oversizedBox, true).isEmpty());
     }
 
     @Test
@@ -59,7 +62,7 @@ class GeometryVoxelizerTest {
                 0.0d
         );
 
-        BlockPosList blocks = GeometryVoxelizer.voxelizeSdfGeometry(solidBlock, true);
+        BlockPosList blocks = GeometryVoxelizer.voxelize(solidBlock, true);
 
         assertEquals(27, blocks.size());
     }

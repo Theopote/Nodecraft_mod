@@ -37,7 +37,7 @@ import java.util.Set;
  */
 public final class GeometryVoxelizer {
 
-    /** Hard cap for SDF brute-force voxelization volume (blocks). */
+    /** Hard cap for geometry voxelization bounding volume (blocks). */
     public static final long MAX_SDF_VOXEL_VOLUME = 262_144L;
 
     private GeometryVoxelizer() {
@@ -99,6 +99,9 @@ public final class GeometryVoxelizer {
         }
         if (geometry instanceof IntersectionGeometryData intersectionGeometry) {
             return voxelizeIntersection(intersectionGeometry, fillSolid);
+        }
+        if (boundingVolumeExceedsLimit(geometry)) {
+            return new BlockPosList();
         }
         if (geometry instanceof BoxGeometryData boxGeometry) {
             return voxelizeBox(boxGeometry, fillSolid);
@@ -723,16 +726,6 @@ public final class GeometryVoxelizer {
             return new BlockPosList();
         }
 
-        long volume = regionVolume(minCorner, maxCorner);
-        if (volume > MAX_SDF_VOXEL_VOLUME) {
-            NodeCraft.LOGGER.warn(
-                "SDF voxelization skipped: bounds volume {} exceeds limit {}. Tighten SDF To Geometry bounds or reduce padding.",
-                volume,
-                MAX_SDF_VOXEL_VOLUME
-            );
-            return new BlockPosList();
-        }
-
         Set<BlockPos> solid = new LinkedHashSet<>();
         for (int x = minCorner.getX(); x <= maxCorner.getX(); x++) {
             for (int y = minCorner.getY(); y <= maxCorner.getY(); y++) {
@@ -756,6 +749,31 @@ public final class GeometryVoxelizer {
             }
         }
         return new BlockPosList(shell);
+    }
+
+    private static boolean boundingVolumeExceedsLimit(GeometryData geometry) {
+        RegionData region = createBoundingRegion(geometry);
+        if (region == null || !region.isComplete()) {
+            return false;
+        }
+
+        BlockPos minCorner = region.getMinCorner();
+        BlockPos maxCorner = region.getMaxCorner();
+        if (minCorner == null || maxCorner == null) {
+            return false;
+        }
+
+        long volume = regionVolume(minCorner, maxCorner);
+        if (volume > MAX_SDF_VOXEL_VOLUME) {
+            NodeCraft.LOGGER.warn(
+                "Geometry voxelization skipped: bounds volume {} exceeds limit {} for {}.",
+                volume,
+                MAX_SDF_VOXEL_VOLUME,
+                geometry.getClass().getSimpleName()
+            );
+            return true;
+        }
+        return false;
     }
 
     private static long regionVolume(BlockPos minCorner, BlockPos maxCorner) {
