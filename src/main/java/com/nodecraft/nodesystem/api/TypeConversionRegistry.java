@@ -47,7 +47,7 @@ public final class TypeConversionRegistry {
             return ConversionPolicy.IMPLICIT_SAFE;
         }
 
-        if (output.getJavaClass() == java.util.List.class && input.getJavaClass() == java.util.List.class) {
+        if (isListConnectable(output, input)) {
             return ConversionPolicy.IMPLICIT_SAFE;
         }
 
@@ -182,5 +182,21 @@ public final class TypeConversionRegistry {
 
     private static boolean isCoordinateListAlias(NodeDataType type) {
         return type == NodeDataType.COORDINATE_LIST || type == NodeDataType.BLOCK_LIST;
+    }
+
+    private static boolean isListConnectable(NodeDataType outputType, NodeDataType inputType) {
+        if (!outputType.isListType() || !inputType.isListType()) {
+            return false;
+        }
+
+        ListElementKind outputKind = outputType.getListElementKind();
+        ListElementKind inputKind = inputType.getListElementKind();
+
+        if (outputKind == ListElementKind.UNCONSTRAINED
+                || inputKind == ListElementKind.UNCONSTRAINED) {
+            return true;
+        }
+
+        return outputKind == inputKind;
     }
 }

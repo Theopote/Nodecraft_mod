@@ -87,4 +87,31 @@ class TypeConversionRegistryTest {
         assertEquals("unsupported type relationship",
             TypeConversionRegistry.describeRelation(NodeDataType.STRING, NodeDataType.INTEGER));
     }
+
+    @Test
+    void typedListsWithDifferentElementKindsAreUnsupported() {
+        assertEquals(TypeConversionRegistry.ConversionPolicy.UNSUPPORTED,
+            TypeConversionRegistry.classify(NodeDataType.VECTOR_LIST, NodeDataType.REGION_LIST));
+        assertFalse(NodeDataType.isConnectableTo(NodeDataType.VECTOR_LIST, NodeDataType.BLOCK_PLACEMENT_LIST));
+        assertFalse(NodeDataType.isConnectableTo(NodeDataType.BLOCK_INFO_LIST, NodeDataType.PLANT_STRUCTURE_LIST));
+    }
+
+    @Test
+    void typedListsWithSameElementKindAreConnectable() {
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.VECTOR_LIST, NodeDataType.VECTOR_LIST));
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.REGION_LIST, NodeDataType.REGION_LIST));
+    }
+
+    @Test
+    void coordinateListAliasesRemainConnectable() {
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.COORDINATE_LIST, NodeDataType.BLOCK_LIST));
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.BLOCK_LIST, NodeDataType.COORDINATE_LIST));
+    }
+
+    @Test
+    void genericListConnectsToTypedLists() {
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.VECTOR_LIST, NodeDataType.LIST));
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.LIST, NodeDataType.VECTOR_LIST));
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.LIST, NodeDataType.LIST));
+    }
 }

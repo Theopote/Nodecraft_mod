@@ -62,7 +62,7 @@ public enum NodeDataType {
     COLOR("color", "Color", ColorData.class),
 
     BLOCK_POS("block_pos", "Block Position", BlockPos.class),
-    BLOCK_LIST("block_list", "Block List", BlockPosList.class),
+    BLOCK_LIST("block_list", "Block List", BlockPosList.class, ListElementKind.BLOCK_POS),
     BLOCK_INFO("block_info", "Block Info", Object.class),
     BLOCK_STATE_DATA("block_state_data", "Block State Data", com.nodecraft.nodesystem.util.BlockStateData.class),
     BLOCK_TYPE("block_type", "Block Type", String.class),
@@ -84,10 +84,10 @@ public enum NodeDataType {
     NBT("nbt", "NBT", Object.class),
 
     L_SYSTEM_RULE("l_system_rule", "L-System Rule", LSystemRule.class),
-    L_SYSTEM_RULE_LIST("l_system_rule_list", "L-System Rule List", java.util.List.class),
+    L_SYSTEM_RULE_LIST("l_system_rule_list", "L-System Rule List", java.util.List.class, ListElementKind.L_SYSTEM_RULE),
     PLANT_STRUCTURE("plant_structure", "Plant Structure", PlantStructure.class),
     PLANT_BLOCK("plant_block", "Plant Block", PlantStructure.PlantBlock.class),
-    PLANT_BLOCK_LIST("plant_block_list", "Plant Block List", java.util.List.class),
+    PLANT_BLOCK_LIST("plant_block_list", "Plant Block List", java.util.List.class, ListElementKind.PLANT_BLOCK),
     TREE_TYPE("tree_type", "Tree Type", String.class),
     BUSH_TYPE("bush_type", "Bush Type", String.class),
     FLOWER_TYPE("flower_type", "Flower Type", String.class),
@@ -95,25 +95,31 @@ public enum NodeDataType {
 
     FILE_PATH("file_path", "File Path", String.class),
 
-    LIST("list", "List", java.util.List.class),
+    LIST("list", "List", java.util.List.class, ListElementKind.UNCONSTRAINED),
     DATA_TREE("data_tree", "Data Tree", DataTreeData.class),
-    COORDINATE_LIST("coordinate_list", "Coordinate List", java.util.List.class),
-    BLOCK_INFO_LIST("block_info_list", "Block Info List", java.util.List.class),
-    BLOCK_PLACEMENT_LIST("block_placement_list", "Block Placement List", java.util.List.class),
-    VECTOR_LIST("vector_list", "Vector List", java.util.List.class),
-    REGION_LIST("region_list", "Region List", java.util.List.class),
-    PLANT_STRUCTURE_LIST("plant_structure_list", "Plant Structure List", java.util.List.class);
+    COORDINATE_LIST("coordinate_list", "Coordinate List", java.util.List.class, ListElementKind.BLOCK_POS),
+    BLOCK_INFO_LIST("block_info_list", "Block Info List", java.util.List.class, ListElementKind.BLOCK_INFO),
+    BLOCK_PLACEMENT_LIST("block_placement_list", "Block Placement List", java.util.List.class, ListElementKind.BLOCK_PLACEMENT),
+    VECTOR_LIST("vector_list", "Vector List", java.util.List.class, ListElementKind.VECTOR),
+    REGION_LIST("region_list", "Region List", java.util.List.class, ListElementKind.REGION),
+    PLANT_STRUCTURE_LIST("plant_structure_list", "Plant Structure List", java.util.List.class, ListElementKind.PLANT_STRUCTURE);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NodeDataType.class);
 
     private final String id;
     private final String displayName;
     private final Class<?> javaClass;
+    private final ListElementKind listElementKind;
 
     NodeDataType(String id, String displayName, Class<?> javaClass) {
+        this(id, displayName, javaClass, ListElementKind.NONE);
+    }
+
+    NodeDataType(String id, String displayName, Class<?> javaClass, ListElementKind listElementKind) {
         this.id = id;
         this.displayName = displayName;
         this.javaClass = javaClass;
+        this.listElementKind = listElementKind;
     }
 
     public String getId() {
@@ -128,13 +134,24 @@ public enum NodeDataType {
         return javaClass;
     }
 
+    public ListElementKind getListElementKind() {
+        return listElementKind;
+    }
+
+    public boolean isListType() {
+        return listElementKind != ListElementKind.NONE;
+    }
+
     public boolean isCompatible(Object value) {
         if (value == null || this == ANY) {
             return true;
         }
 
-        if (isListType(this) && value instanceof java.util.List) {
-            return true;
+        if (isListType()) {
+            if (this == BLOCK_LIST) {
+                return value instanceof BlockPosList || value instanceof java.util.List;
+            }
+            return value instanceof java.util.List;
         }
 
         if (this == DOUBLE && value instanceof Number) {
@@ -208,15 +225,4 @@ public enum NodeDataType {
         return ANY;
     }
 
-    private static boolean isListType(NodeDataType type) {
-        return type == LIST
-                || type == COORDINATE_LIST
-                || type == BLOCK_INFO_LIST
-                || type == BLOCK_PLACEMENT_LIST
-                || type == VECTOR_LIST
-                || type == REGION_LIST
-                || type == PLANT_STRUCTURE_LIST
-                || type == L_SYSTEM_RULE_LIST
-                || type == PLANT_BLOCK_LIST;
-    }
 }
