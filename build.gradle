@@ -19,15 +19,6 @@ repositories {
 		url = 'https://maven.isxander.dev/releases'
 		name = 'Xander Maven'
 	}
-	maven {
-		url "https://oss.sonatype.org/content/repositories/snapshots/"
-	}
-	maven {
-		url 'https://oss.sonatype.org/content/repositories/snapshots'
-		content {
-			includeGroup "io.github.spair"
-		}
-	}
 	maven { url 'https://jitpack.io' }
 }
 
