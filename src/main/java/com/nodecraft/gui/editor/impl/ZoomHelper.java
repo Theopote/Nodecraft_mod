@@ -1,5 +1,7 @@
 package com.nodecraft.gui.editor.impl;
 
+import com.nodecraft.core.NodeCraft;
+
 /**
  * 提供缩放和布局计算的助手方法
  * <p>
@@ -369,8 +371,8 @@ public class ZoomHelper {
         
         // 如果比例过大（超过10倍），可能存在单位不匹配
         if (ratio > 10.0f) {
-            System.err.printf(
-                    "[Unit Warning] %s: Possible unit mismatch - value1=%.2f, value2=%.2f, ratio=%.2f%n",
+            NodeCraft.LOGGER.warn(
+                "[Unit Warning] {}: Possible unit mismatch - value1={}, value2={}, ratio={}",
                 context, value1, value2, ratio);
             return false;
         }
@@ -388,23 +390,20 @@ public class ZoomHelper {
      */
     public static boolean validateSizeRange(float size, boolean isPixelUnit, String context) {
         if (size < 0) {
-            System.err.printf(
-                    "[Size Warning] %s: Negative size value: %.2f%n", context, size);
+            NodeCraft.LOGGER.warn("[Size Warning] {}: Negative size value: {}", context, size);
             return false;
         }
-        
+
         if (isPixelUnit) {
             // 像素单位的合理范围：0-10000像素
             if (size > 10000) {
-                System.err.printf(
-                        "[Size Warning] %s: Unusually large pixel size: %.2f%n", context, size);
+                NodeCraft.LOGGER.warn("[Size Warning] {}: Unusually large pixel size: {}", context, size);
                 return false;
             }
         } else {
             // 逻辑单位的合理范围：0-2000逻辑单位
             if (size > 2000) {
-                System.err.printf(
-                        "[Size Warning] %s: Unusually large logical size: %.2f%n", context, size);
+                NodeCraft.LOGGER.warn("[Size Warning] {}: Unusually large logical size: {}", context, size);
                 return false;
             }
         }
