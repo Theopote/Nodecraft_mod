@@ -64,4 +64,18 @@ public record RegionData(@Nullable BlockPos corner1, @Nullable BlockPos corner2)
         }
         return BlockPos.iterate(getMinCorner(), getMaxCorner());
     }
+
+    /**
+     * Returns whether {@code pos} lies inside this region's inclusive bounds.
+     */
+    public boolean contains(BlockPos pos) {
+        if (!isComplete() || pos == null) {
+            return false;
+        }
+        BlockPos min = getMinCorner();
+        BlockPos max = getMaxCorner();
+        return pos.getX() >= min.getX() && pos.getX() <= max.getX()
+                && pos.getY() >= min.getY() && pos.getY() <= max.getY()
+                && pos.getZ() >= min.getZ() && pos.getZ() <= max.getZ();
+    }
 } 

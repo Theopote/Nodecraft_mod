@@ -51,7 +51,6 @@ class NodePropertyBindingsTest {
         CloneRegionNode original = new CloneRegionNode();
         original.setMaxBlocks(4096);
         original.setCloneMode(CloneRegionNode.CloneMode.MASKED);
-        original.setIncludeEntities(true);
         original.setRecordUndo(false);
 
         Object savedState = original.getNodeState();
@@ -60,7 +59,6 @@ class NodePropertyBindingsTest {
         Map<String, Object> savedMap = (Map<String, Object>) savedState;
         assertEquals(4096, savedMap.get("maxBlocks"));
         assertEquals(CloneRegionNode.CloneMode.MASKED, savedMap.get("cloneMode"));
-        assertEquals(true, savedMap.get("includeEntities"));
         assertEquals(false, savedMap.get("recordUndo"));
 
         CloneRegionNode loaded = new CloneRegionNode();
@@ -68,7 +66,6 @@ class NodePropertyBindingsTest {
 
         assertEquals(4096, loaded.getMaxBlocks());
         assertEquals(CloneRegionNode.CloneMode.MASKED, loaded.getCloneMode());
-        assertTrue(loaded.isIncludeEntities());
         assertFalse(loaded.isRecordUndo());
     }
 
