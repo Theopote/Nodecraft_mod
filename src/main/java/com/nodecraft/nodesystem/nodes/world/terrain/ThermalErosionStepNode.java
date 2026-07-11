@@ -5,10 +5,11 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.GridScalarFieldData;
+import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
 import java.util.UUID;
 
@@ -21,6 +22,7 @@ import java.util.UUID;
 )
 public class ThermalErosionStepNode extends BaseNode {
 
+    private static final String INPUT_REGION_ID = "input_region";
     private static final String INPUT_HEIGHT_FIELD_ID = "input_height_field";
     private static final String INPUT_TALUS_ID = "input_talus";
     private static final String INPUT_RATE_ID = "input_rate";
@@ -37,6 +39,7 @@ public class ThermalErosionStepNode extends BaseNode {
     public ThermalErosionStepNode() {
         super(UUID.randomUUID(), "world.terrain.thermal_erosion_step");
 
+        addInputPort(new BasePort(INPUT_REGION_ID, "Region", "Optional raster bounds; defaults to a safe 64x64 area when omitted", NodeDataType.REGION, this));
         addInputPort(new BasePort(INPUT_HEIGHT_FIELD_ID, "Height Field", "Input elevation field", NodeDataType.SCALAR_FIELD, this));
         addInputPort(new BasePort(INPUT_TALUS_ID, "Talus", "Slope threshold before material starts to creep", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_RATE_ID, "Rate", "Single-step thermal smoothing strength", NodeDataType.DOUBLE, this));
@@ -54,38 +57,48 @@ public class ThermalErosionStepNode extends BaseNode {
             return;
         }
 
+        RegionData region = inputValues.get(INPUT_REGION_ID) instanceof RegionData value ? value : null;
+        ScalarFieldGrids.FieldGridBounds bounds = ScalarFieldGrids.resolveBounds(region, heightField);
+        GridScalarFieldData inputGrid = ScalarFieldGrids.materialize(heightField, bounds);
+        if (inputGrid == null) {
+            outputValues.put(OUTPUT_HEIGHT_FIELD_ID, null);
+            outputValues.put(OUTPUT_DELTA_FIELD_ID, null);
+            return;
+        }
+
         double resolvedTalus = Math.max(0.0d, getInputDouble(INPUT_TALUS_ID, talus));
         double resolvedRate = clamp01(getInputDouble(INPUT_RATE_ID, rate));
-        double step = 1.0d;
+        int step = 1;
 
-        ScalarFieldData erodedField = point -> {
-            double center = sanitizeFinite(heightField.sampleScalar(point), 0.0d);
+        int cellCount = inputGrid.cellCount();
+        double[] erodedValues = new double[cellCount];
+        double[] deltaValues = new double[cellCount];
+        int index = 0;
+        for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
+            for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
+                double center = inputGrid.getAt(x, z);
+                double hxNeg = inputGrid.getAtClamped(x - step, z);
+                double hxPos = inputGrid.getAtClamped(x + step, z);
+                double hzNeg = inputGrid.getAtClamped(x, z - step);
+                double hzPos = inputGrid.getAtClamped(x, z + step);
 
-            double hxNeg = sanitizeFinite(heightField.sampleScalar(new Vector3d(point.x - step, point.y, point.z)), center);
-            double hxPos = sanitizeFinite(heightField.sampleScalar(new Vector3d(point.x + step, point.y, point.z)), center);
-            double hzNeg = sanitizeFinite(heightField.sampleScalar(new Vector3d(point.x, point.y, point.z - step)), center);
-            double hzPos = sanitizeFinite(heightField.sampleScalar(new Vector3d(point.x, point.y, point.z + step)), center);
+                double neighborhoodMean = (hxNeg + hxPos + hzNeg + hzPos) * 0.25d;
+                double deviation = center - neighborhoodMean;
+                double excess = Math.max(0.0d, Math.abs(deviation) - resolvedTalus);
+                double eroded = center;
+                if (excess > 0.0d) {
+                    double direction = Math.signum(deviation);
+                    eroded = center - direction * excess * resolvedRate;
+                }
 
-            double neighborhoodMean = (hxNeg + hxPos + hzNeg + hzPos) * 0.25d;
-            double deviation = center - neighborhoodMean;
-
-            double excess = Math.max(0.0d, Math.abs(deviation) - resolvedTalus);
-            if (excess <= 0.0d) {
-                return center;
+                erodedValues[index] = sanitizeFinite(eroded, center);
+                deltaValues[index] = erodedValues[index] - center;
+                index++;
             }
+        }
 
-            double direction = Math.signum(deviation);
-            return center - direction * excess * resolvedRate;
-        };
-
-        ScalarFieldData deltaField = point -> {
-            double before = sanitizeFinite(heightField.sampleScalar(point), 0.0d);
-            double after = sanitizeFinite(erodedField.sampleScalar(point), before);
-            return after - before;
-        };
-
-        outputValues.put(OUTPUT_HEIGHT_FIELD_ID, erodedField);
-        outputValues.put(OUTPUT_DELTA_FIELD_ID, deltaField);
+        outputValues.put(OUTPUT_HEIGHT_FIELD_ID, ScalarFieldGrids.buildGrid(bounds, erodedValues));
+        outputValues.put(OUTPUT_DELTA_FIELD_ID, ScalarFieldGrids.buildGrid(bounds, deltaValues));
     }
 
     private double getInputDouble(String portId, double fallback) {

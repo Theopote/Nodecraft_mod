@@ -5,6 +5,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.GridScalarFieldData;
+import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -22,6 +24,7 @@ import java.util.UUID;
 )
 public class HydraulicErosionStepNode extends BaseNode {
 
+    private static final String INPUT_REGION_ID = "input_region";
     private static final String INPUT_HEIGHT_FIELD_ID = "input_height_field";
     private static final String INPUT_ACCUMULATION_FIELD_ID = "input_accumulation_field";
     private static final String INPUT_SLOPE_FIELD_ID = "input_slope_field";
@@ -35,6 +38,8 @@ public class HydraulicErosionStepNode extends BaseNode {
     private static final String OUTPUT_ERODED_FIELD_ID = "output_eroded_field";
     private static final String OUTPUT_SEDIMENT_FIELD_ID = "output_sediment_field";
     private static final String OUTPUT_DELTA_FIELD_ID = "output_delta_field";
+
+    private static final Vector3d FLOW_VECTOR = new Vector3d();
 
     @NodeProperty(displayName = "Erosion Rate", category = "Hydraulic", order = 1)
     private double erosionRate = 0.08d;
@@ -51,6 +56,7 @@ public class HydraulicErosionStepNode extends BaseNode {
     public HydraulicErosionStepNode() {
         super(UUID.randomUUID(), "world.terrain.hydraulic_erosion_step");
 
+        addInputPort(new BasePort(INPUT_REGION_ID, "Region", "Optional raster bounds; defaults to a safe 64x64 area when omitted", NodeDataType.REGION, this));
         addInputPort(new BasePort(INPUT_HEIGHT_FIELD_ID, "Height Field", "Input elevation field", NodeDataType.SCALAR_FIELD, this));
         addInputPort(new BasePort(INPUT_ACCUMULATION_FIELD_ID, "Accumulation Field", "Flow accumulation or runoff energy", NodeDataType.SCALAR_FIELD, this));
         addInputPort(new BasePort(INPUT_SLOPE_FIELD_ID, "Slope Field", "Optional local slope field; when absent slope is derived from height field", NodeDataType.SCALAR_FIELD, this));
@@ -77,57 +83,74 @@ public class HydraulicErosionStepNode extends BaseNode {
             return;
         }
 
+        RegionData region = inputValues.get(INPUT_REGION_ID) instanceof RegionData value ? value : null;
+        ScalarFieldGrids.FieldGridBounds bounds = ScalarFieldGrids.resolveBounds(region, heightField);
+        GridScalarFieldData heightGrid = ScalarFieldGrids.materialize(heightField, bounds);
+        GridScalarFieldData accumulationGrid = ScalarFieldGrids.materialize(accumulationField, bounds);
+        if (heightGrid == null || accumulationGrid == null) {
+            outputValues.put(OUTPUT_ERODED_FIELD_ID, null);
+            outputValues.put(OUTPUT_SEDIMENT_FIELD_ID, null);
+            outputValues.put(OUTPUT_DELTA_FIELD_ID, null);
+            return;
+        }
+
         ScalarFieldData slopeSourceField = inputValues.get(INPUT_SLOPE_FIELD_ID) instanceof ScalarFieldData value ? value : null;
         VectorFieldData flowField = inputValues.get(INPUT_FLOW_FIELD_ID) instanceof VectorFieldData value ? value : null;
         ScalarFieldData incomingSedimentField = inputValues.get(INPUT_SEDIMENT_FIELD_ID) instanceof ScalarFieldData value ? value : null;
+
+        GridScalarFieldData slopeGrid = slopeSourceField != null
+            ? ScalarFieldGrids.materialize(slopeSourceField, bounds)
+            : null;
+        GridScalarFieldData incomingSedimentGrid = incomingSedimentField != null
+            ? ScalarFieldGrids.materialize(incomingSedimentField, bounds)
+            : null;
 
         double resolvedErosionRate = clamp01(getInputDouble(INPUT_EROSION_RATE_ID, erosionRate));
         double resolvedDepositionRate = clamp01(getInputDouble(INPUT_DEPOSITION_RATE_ID, depositionRate));
         double resolvedCapacity = Math.max(0.0d, getInputDouble(INPUT_CAPACITY_ID, capacity));
         double resolvedTransportEfficiency = clamp01(getInputDouble(INPUT_TRANSPORT_EFFICIENCY_ID, transportEfficiency));
 
-        ScalarFieldData derivedSlopeField = slopeSourceField != null ? slopeSourceField : point -> sampleSlopeFromHeight(heightField, point, 1.0d);
+        int cellCount = heightGrid.cellCount();
+        double[] erodedValues = new double[cellCount];
+        double[] sedimentValues = new double[cellCount];
+        double[] deltaValues = new double[cellCount];
+        int index = 0;
+        for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
+            for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
+                double baseHeight = heightGrid.getAt(x, z);
+                double flow = Math.max(0.0d, accumulationGrid.getAt(x, z));
+                double slope = slopeGrid != null
+                    ? Math.max(0.0d, slopeGrid.getAt(x, z))
+                    : Math.max(0.0d, ScalarFieldGrids.sampleSlopeFromGrid(heightGrid, x, z, 1.0d));
+                double incomingSediment = resolveIncomingSediment(
+                    x,
+                    z,
+                    bounds.sampleY(),
+                    incomingSedimentGrid,
+                    flowField,
+                    resolvedTransportEfficiency
+                );
 
-        ScalarFieldData sedimentField = point -> {
-            HydraulicTerms terms = evaluateTerms(
-                point,
-                accumulationField,
-                derivedSlopeField,
-                flowField,
-                incomingSedimentField,
-                resolvedCapacity,
-                resolvedErosionRate,
-                resolvedDepositionRate,
-                resolvedTransportEfficiency
-            );
-            return terms.updatedSediment;
-        };
+                HydraulicTerms terms = evaluateTerms(
+                    flow,
+                    slope,
+                    incomingSediment,
+                    resolvedCapacity,
+                    resolvedErosionRate,
+                    resolvedDepositionRate
+                );
 
-        ScalarFieldData erodedField = point -> {
-            double baseHeight = sanitizeFinite(heightField.sampleScalar(point), 0.0d);
-            HydraulicTerms terms = evaluateTerms(
-                point,
-                accumulationField,
-                derivedSlopeField,
-                flowField,
-                incomingSedimentField,
-                resolvedCapacity,
-                resolvedErosionRate,
-                resolvedDepositionRate,
-                resolvedTransportEfficiency
-            );
-            return sanitizeFinite(baseHeight - terms.erodedAmount + terms.depositedAmount, baseHeight);
-        };
+                double erodedHeight = sanitizeFinite(baseHeight - terms.erodedAmount + terms.depositedAmount, baseHeight);
+                erodedValues[index] = erodedHeight;
+                sedimentValues[index] = terms.updatedSediment;
+                deltaValues[index] = erodedHeight - baseHeight;
+                index++;
+            }
+        }
 
-        ScalarFieldData deltaField = point -> {
-            double before = sanitizeFinite(heightField.sampleScalar(point), 0.0d);
-            double after = sanitizeFinite(erodedField.sampleScalar(point), before);
-            return after - before;
-        };
-
-        outputValues.put(OUTPUT_ERODED_FIELD_ID, erodedField);
-        outputValues.put(OUTPUT_SEDIMENT_FIELD_ID, sedimentField);
-        outputValues.put(OUTPUT_DELTA_FIELD_ID, deltaField);
+        outputValues.put(OUTPUT_ERODED_FIELD_ID, ScalarFieldGrids.buildGrid(bounds, erodedValues));
+        outputValues.put(OUTPUT_SEDIMENT_FIELD_ID, ScalarFieldGrids.buildGrid(bounds, sedimentValues));
+        outputValues.put(OUTPUT_DELTA_FIELD_ID, ScalarFieldGrids.buildGrid(bounds, deltaValues));
     }
 
     private double getInputDouble(String portId, double fallback) {
@@ -135,70 +158,47 @@ public class HydraulicErosionStepNode extends BaseNode {
         return value instanceof Number number ? number.doubleValue() : fallback;
     }
 
-    private HydraulicTerms evaluateTerms(Vector3d point,
-                                         ScalarFieldData accumulationField,
-                                         ScalarFieldData slopeField,
-                                         @Nullable VectorFieldData flowField,
-                                         @Nullable ScalarFieldData incomingSedimentField,
+    private HydraulicTerms evaluateTerms(double flow,
+                                         double slope,
+                                         double incomingSediment,
                                          double capacityFactor,
                                          double erosion,
-                                         double deposition,
-                                         double transportEfficiency) {
-        double flow = Math.max(0.0d, sanitizeFinite(accumulationField.sampleScalar(point), 0.0d));
-        double slope = Math.max(0.0d, sanitizeFinite(slopeField.sampleScalar(point), 0.0d));
-        double incomingSediment = resolveIncomingSediment(point, incomingSedimentField, flowField, transportEfficiency);
-
-        // Carrying capacity grows with both flow and slope.
+                                         double deposition) {
         double carryingCapacity = flow * slope * capacityFactor;
-
         double eroded = Math.max(0.0d, carryingCapacity - incomingSediment) * erosion;
         double deposited = Math.max(0.0d, incomingSediment - carryingCapacity) * deposition;
         double updatedSediment = Math.max(0.0d, incomingSediment + eroded - deposited);
         return new HydraulicTerms(eroded, deposited, updatedSediment);
     }
 
-    private double resolveIncomingSediment(Vector3d point,
-                                           @Nullable ScalarFieldData incomingSedimentField,
+    private double resolveIncomingSediment(int x,
+                                           int z,
+                                           int sampleY,
+                                           @Nullable GridScalarFieldData incomingSedimentGrid,
                                            @Nullable VectorFieldData flowField,
                                            double transportEfficiency) {
-        if (incomingSedimentField == null) {
+        if (incomingSedimentGrid == null) {
             return 0.0d;
         }
 
-        double local = Math.max(0.0d, sanitizeFinite(incomingSedimentField.sampleScalar(point), 0.0d));
+        double local = Math.max(0.0d, incomingSedimentGrid.getAt(x, z));
         if (flowField == null || transportEfficiency <= 1.0e-9d) {
             return local;
         }
 
-        Vector3d flowVec = new Vector3d();
-        flowField.sampleVector(point, flowVec);
-        double len = Math.sqrt(flowVec.x * flowVec.x + flowVec.z * flowVec.z);
+        FLOW_VECTOR.set(0.0d, 0.0d, 0.0d);
+        flowField.sampleVector(new Vector3d(x, sampleY, z), FLOW_VECTOR);
+        double len = Math.sqrt(FLOW_VECTOR.x * FLOW_VECTOR.x + FLOW_VECTOR.z * FLOW_VECTOR.z);
         if (len <= 1.0e-9d) {
             return local;
         }
 
-        double ux = flowVec.x / len;
-        double uz = flowVec.z / len;
-        double transportDistance = 1.0d;
-        Vector3d upstream = new Vector3d(point.x - ux * transportDistance, point.y, point.z - uz * transportDistance);
-        double upstreamSediment = Math.max(0.0d, sanitizeFinite(incomingSedimentField.sampleScalar(upstream), local));
+        double ux = FLOW_VECTOR.x / len;
+        double uz = FLOW_VECTOR.z / len;
+        int upstreamX = (int) Math.round(x - ux);
+        int upstreamZ = (int) Math.round(z - uz);
+        double upstreamSediment = Math.max(0.0d, incomingSedimentGrid.getAtClamped(upstreamX, upstreamZ));
         return local * (1.0d - transportEfficiency) + upstreamSediment * transportEfficiency;
-    }
-
-    private double sampleSlopeFromHeight(ScalarFieldData heightField, Vector3d point, double step) {
-        double x = point.x;
-        double y = point.y;
-        double z = point.z;
-
-        double center = sanitizeFinite(heightField.sampleScalar(point), 0.0d);
-        double left = sanitizeFinite(heightField.sampleScalar(new Vector3d(x - step, y, z)), center);
-        double right = sanitizeFinite(heightField.sampleScalar(new Vector3d(x + step, y, z)), center);
-        double down = sanitizeFinite(heightField.sampleScalar(new Vector3d(x, y, z - step)), center);
-        double up = sanitizeFinite(heightField.sampleScalar(new Vector3d(x, y, z + step)), center);
-
-        double gradX = (right - left) / (2.0d * step);
-        double gradZ = (up - down) / (2.0d * step);
-        return Math.sqrt(gradX * gradX + gradZ * gradZ);
     }
 
     private double clamp01(double value) {

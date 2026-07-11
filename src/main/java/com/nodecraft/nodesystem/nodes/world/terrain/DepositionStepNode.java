@@ -5,6 +5,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.GridScalarFieldData;
+import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
@@ -20,6 +22,7 @@ import java.util.UUID;
 )
 public class DepositionStepNode extends BaseNode {
 
+    private static final String INPUT_REGION_ID = "input_region";
     private static final String INPUT_HEIGHT_FIELD_ID = "input_height_field";
     private static final String INPUT_SEDIMENT_FIELD_ID = "input_sediment_field";
     private static final String INPUT_SLOPE_FIELD_ID = "input_slope_field";
@@ -40,6 +43,7 @@ public class DepositionStepNode extends BaseNode {
     public DepositionStepNode() {
         super(UUID.randomUUID(), "world.terrain.deposition_step");
 
+        addInputPort(new BasePort(INPUT_REGION_ID, "Region", "Optional raster bounds; defaults to a safe 64x64 area when omitted", NodeDataType.REGION, this));
         addInputPort(new BasePort(INPUT_HEIGHT_FIELD_ID, "Height Field", "Current terrain height field", NodeDataType.SCALAR_FIELD, this));
         addInputPort(new BasePort(INPUT_SEDIMENT_FIELD_ID, "Sediment Field", "Transported sediment load", NodeDataType.SCALAR_FIELD, this));
         addInputPort(new BasePort(INPUT_SLOPE_FIELD_ID, "Slope Field", "Slope magnitude field", NodeDataType.SCALAR_FIELD, this));
@@ -70,42 +74,49 @@ public class DepositionStepNode extends BaseNode {
             return;
         }
 
+        RegionData region = inputValues.get(INPUT_REGION_ID) instanceof RegionData value ? value : null;
+        ScalarFieldGrids.FieldGridBounds bounds = ScalarFieldGrids.resolveBounds(region, heightField);
+        GridScalarFieldData heightGrid = ScalarFieldGrids.materialize(heightField, bounds);
+        GridScalarFieldData sedimentGrid = ScalarFieldGrids.materialize(sedimentField, bounds);
+        GridScalarFieldData slopeGrid = ScalarFieldGrids.materialize(slopeField, bounds);
+        GridScalarFieldData accumulationGrid = ScalarFieldGrids.materialize(accumulationField, bounds);
+        if (heightGrid == null || sedimentGrid == null || slopeGrid == null || accumulationGrid == null) {
+            outputValues.put(OUTPUT_HEIGHT_FIELD_ID, null);
+            outputValues.put(OUTPUT_SEDIMENT_FIELD_ID, null);
+            outputValues.put(OUTPUT_DELTA_FIELD_ID, null);
+            return;
+        }
+
         double resolvedRate = clamp01(getInputDouble(INPUT_RATE_ID, rate));
         double resolvedCapacity = Math.max(0.0d, getInputDouble(INPUT_CAPACITY_ID, capacity));
 
-        ScalarFieldData updatedSedimentField = point -> {
-            double sediment = Math.max(0.0d, sanitizeFinite(sedimentField.sampleScalar(point), 0.0d));
-            double slope = Math.max(0.0d, sanitizeFinite(slopeField.sampleScalar(point), 0.0d));
-            double flow = Math.max(0.0d, sanitizeFinite(accumulationField.sampleScalar(point), 0.0d));
-            double carryingCapacity = flow * slope * resolvedCapacity;
+        int cellCount = heightGrid.cellCount();
+        double[] heightValues = new double[cellCount];
+        double[] sedimentValues = new double[cellCount];
+        double[] deltaValues = new double[cellCount];
+        int index = 0;
+        for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
+            for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
+                double baseHeight = heightGrid.getAt(x, z);
+                double sediment = Math.max(0.0d, sedimentGrid.getAt(x, z));
+                double slope = Math.max(0.0d, slopeGrid.getAt(x, z));
+                double flow = Math.max(0.0d, accumulationGrid.getAt(x, z));
+                double carryingCapacity = flow * slope * resolvedCapacity;
 
-            // Deposit only the overload above local carrying capacity.
-            double deposition = Math.max(0.0d, sediment - carryingCapacity) * resolvedRate;
-            return Math.max(0.0d, sediment - deposition);
-        };
+                double deposition = Math.max(0.0d, sediment - carryingCapacity) * resolvedRate;
+                double updatedSediment = Math.max(0.0d, sediment - deposition);
+                double depositedHeight = sanitizeFinite(baseHeight + deposition, baseHeight);
 
-        ScalarFieldData depositedField = point -> {
-            double baseHeight = sanitizeFinite(heightField.sampleScalar(point), 0.0d);
-            double sediment = Math.max(0.0d, sanitizeFinite(sedimentField.sampleScalar(point), 0.0d));
-            double slope = Math.max(0.0d, sanitizeFinite(slopeField.sampleScalar(point), 0.0d));
-            double flow = Math.max(0.0d, sanitizeFinite(accumulationField.sampleScalar(point), 0.0d));
+                heightValues[index] = depositedHeight;
+                sedimentValues[index] = updatedSediment;
+                deltaValues[index] = depositedHeight - baseHeight;
+                index++;
+            }
+        }
 
-            double carryingCapacity = flow * slope * resolvedCapacity;
-            double overload = Math.max(0.0d, sediment - carryingCapacity);
-            double deposition = overload * resolvedRate;
-
-            return sanitizeFinite(baseHeight + deposition, baseHeight);
-        };
-
-        ScalarFieldData deltaField = point -> {
-            double before = sanitizeFinite(heightField.sampleScalar(point), 0.0d);
-            double after = sanitizeFinite(depositedField.sampleScalar(point), before);
-            return after - before;
-        };
-
-        outputValues.put(OUTPUT_HEIGHT_FIELD_ID, depositedField);
-        outputValues.put(OUTPUT_SEDIMENT_FIELD_ID, updatedSedimentField);
-        outputValues.put(OUTPUT_DELTA_FIELD_ID, deltaField);
+        outputValues.put(OUTPUT_HEIGHT_FIELD_ID, ScalarFieldGrids.buildGrid(bounds, heightValues));
+        outputValues.put(OUTPUT_SEDIMENT_FIELD_ID, ScalarFieldGrids.buildGrid(bounds, sedimentValues));
+        outputValues.put(OUTPUT_DELTA_FIELD_ID, ScalarFieldGrids.buildGrid(bounds, deltaValues));
     }
 
     private double getInputDouble(String portId, double fallback) {
