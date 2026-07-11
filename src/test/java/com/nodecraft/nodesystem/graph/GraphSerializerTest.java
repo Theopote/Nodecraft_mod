@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.NodeExecutor;
+import com.nodecraft.nodesystem.io.GraphFormat;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.nodes.math.logic.IfNode;
@@ -51,6 +52,7 @@ class GraphSerializerTest {
         original.connect(source.getId(), "out", sink.getId(), "in");
 
         String json = GraphSerializer.toJson(original);
+        assertTrue(json.contains("\"formatVersion\":"));
         NodeGraph loaded = GraphSerializer.fromJsonToGraph(json);
 
         assertNotNull(loaded);
@@ -131,6 +133,7 @@ class GraphSerializerTest {
         original.addNode(right);
 
         SavedGraph saved = GraphSerializer.toSavedGraph(original);
+        assertEquals(GraphFormat.CURRENT, saved.formatVersion);
         assertEquals(12.5f, saved.nodePositions.get(left.getId().toString()).x);
         assertEquals(34.0f, saved.nodePositions.get(left.getId().toString()).y);
         assertEquals(88.0f, saved.nodePositions.get(right.getId().toString()).x);

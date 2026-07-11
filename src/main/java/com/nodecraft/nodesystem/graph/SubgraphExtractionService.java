@@ -62,6 +62,7 @@ public final class SubgraphExtractionService {
         Map<String, SavedNode> savedNodesById = indexSavedNodes(fullSavedGraph);
 
         SavedGraph subgraph = new SavedGraph();
+        subgraph.formatVersion = fullSavedGraph.formatVersion;
         subgraph.graphName = normalizeName(subgraphName, sourceGraph.getName());
         subgraph.nodes = new ArrayList<>();
         subgraph.connections = new ArrayList<>();
