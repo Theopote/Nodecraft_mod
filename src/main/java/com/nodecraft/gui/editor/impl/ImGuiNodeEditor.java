@@ -30,6 +30,8 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.IncrementalExecutionOptions;
 import com.nodecraft.nodesystem.execution.IncrementalExecutionPlanner;
 import com.nodecraft.nodesystem.execution.NodeExecutor;
+import com.nodecraft.gui.dialogs.MessageDialog;
+import com.nodecraft.nodesystem.graph.GraphLoadResult;
 import com.nodecraft.nodesystem.graph.GraphSerializer;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.graph.SubgraphExtractionService;
@@ -1543,7 +1545,11 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             return false;
         }
         try {
-            LoadedGraph loadedGraph = loadSavedGraphForEditing(snapshot);
+            GraphLoadResult loadResult = GraphSerializer.loadFromSavedGraph(snapshot);
+            if (!loadResult.hasLoadedNodes()) {
+                return false;
+            }
+            LoadedGraph loadedGraph = toLoadedGraph(snapshot, loadResult);
             currentGraph = loadedGraph.graph();
             nodePositions = loadedGraph.positions();
             clearSelectedNodes();
@@ -1571,10 +1577,11 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
         try {
             SavedGraph savedGraph = GraphSerializer.fromJson(embeddedGraphJson);
-            LoadedGraph loadedGraph = loadSavedGraphForEditing(savedGraph);
-            if (loadedGraph.graph().getNodes().isEmpty()) {
+            GraphLoadResult loadResult = GraphSerializer.loadFromSavedGraph(savedGraph);
+            if (!loadResult.hasLoadedNodes()) {
                 return false;
             }
+            LoadedGraph loadedGraph = toLoadedGraph(savedGraph, loadResult);
 
             syncGraphNodePositions(currentGraph, nodePositions);
             SavedGraph parentSnapshotBefore = toSavedGraphWithPositions(currentGraph, nodePositions);
@@ -1590,6 +1597,11 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             clearSelectedNodes();
             markGraphStructureDirty();
             NodeCraft.LOGGER.info("Opened embedded subgraph from wrapper {}", wrapperNodeId);
+
+            String notice = loadResult.userMessage();
+            if (notice != null && !notice.isBlank()) {
+                new MessageDialog("打开子图", notice).show();
+            }
             return true;
         } catch (Exception e) {
             NodeCraft.LOGGER.error("Failed to open embedded subgraph: {}", e.getMessage(), e);
@@ -1670,7 +1682,6 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             float offsetY = wrapperPosition.y - savedCenter.y;
 
             Map<String, UUID> restoredNodeIds = new HashMap<>();
-            NodeRegistry registry = NodeRegistry.getInstance();
             int fallbackIndex = 0;
             for (SavedNode savedNode : savedGraph.nodes) {
                 if (savedNode == null
@@ -1680,13 +1691,13 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                     continue;
                 }
 
-                INode restored = registry.createNodeInstance(savedNode.typeId);
-                if (!(restored instanceof BaseNode restoredBase)) {
-                    NodeCraft.LOGGER.warn("Skipping subgraph node during dissolve because it cannot be recreated: {}", savedNode.typeId);
+                BaseNode restoredBase = GraphSerializer.tryRestoreNode(savedNode).orElse(null);
+                if (restoredBase == null) {
+                    NodeCraft.LOGGER.warn("Skipping subgraph node during dissolve because it cannot be recreated: {}",
+                        savedNode.typeId);
                     continue;
                 }
 
-                restoredBase.setNodeState(savedNode.state);
                 currentGraph.addNode(restoredBase);
                 restoredNodeIds.put(savedNode.nodeId, restoredBase.getId());
 
@@ -1864,45 +1875,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         return savedGraph;
     }
 
-    private static LoadedGraph loadSavedGraphForEditing(SavedGraph savedGraph) {
-        NodeGraph graph = new NodeGraph(savedGraph != null && savedGraph.graphName != null ? savedGraph.graphName : "Subgraph");
-        Map<UUID, NodePosition> positions = new HashMap<>();
-        if (savedGraph == null || savedGraph.nodes == null) {
-            return new LoadedGraph(graph, positions);
-        }
-
-        NodeRegistry registry = NodeRegistry.getInstance();
-        Map<String, BaseNode> loadedNodes = new HashMap<>();
-        for (SavedNode savedNode : savedGraph.nodes) {
-            if (savedNode == null || savedNode.typeId == null || savedNode.nodeId == null) {
-                continue;
-            }
-            INode node = registry.createNodeInstance(savedNode.typeId);
-            if (!(node instanceof BaseNode baseNode)) {
-                continue;
-            }
-            baseNode.setNodeState(savedNode.state);
-            graph.addNode(baseNode);
-            loadedNodes.put(savedNode.nodeId, baseNode);
-
-            SavedPosition savedPosition = savedGraph.nodePositions != null ? savedGraph.nodePositions.get(savedNode.nodeId) : null;
-            float x = savedPosition != null ? savedPosition.x : 0.0f;
-            float y = savedPosition != null ? savedPosition.y : 0.0f;
-            positions.put(baseNode.getId(), new NodePosition(x, y));
-            baseNode.setPosition(x, y);
-        }
-
-        if (savedGraph.connections != null) {
-            for (SavedConnection connection : savedGraph.connections) {
-                BaseNode source = loadedNodes.get(connection.sourceNodeId);
-                BaseNode target = loadedNodes.get(connection.targetNodeId);
-                if (source != null && target != null) {
-                    graph.connect(source.getId(), connection.sourcePortId, target.getId(), connection.targetPortId);
-                }
-            }
-        }
-
-        return new LoadedGraph(graph, positions);
+    private static LoadedGraph toLoadedGraph(SavedGraph savedGraph, GraphLoadResult loadResult) {
+        Map<UUID, NodePosition> positions = ImGuiNodeIO.buildEditorPositions(savedGraph, loadResult.nodesBySavedId());
+        return new LoadedGraph(loadResult.graph(), positions);
     }
 
     private static Map<UUID, NodePosition> copyNodePositions(Map<UUID, NodePosition> source) {

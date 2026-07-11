@@ -11,10 +11,10 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.nodecraft.core.NodeCraft;
-import com.nodecraft.core.exception.NodeValidationException;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.graph.GraphLoadResult;
 import com.nodecraft.nodesystem.graph.GraphSerializer;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
@@ -190,106 +190,30 @@ public class ImGuiNodeIO {
                 savedGraph.connections = new ArrayList<>();
             }
 
-            // 创建新图
-            String graphName = savedGraph.graphName != null ? savedGraph.graphName : "Loaded Graph";
-            NodeGraph newGraph = new NodeGraph(graphName);
-            Map<UUID, NodePosition> newPositions = new HashMap<>();
-
-            // Map to track old node IDs to new node instances
-            Map<String, BaseNode> loadedNodesMap = new HashMap<>();
-
-            // 1. Recreate nodes
-            NodeRegistry registry = NodeRegistry.getInstance();
-            int skippedUnknownNodeTypes = 0;
-            for (SavedNode savedNode : savedGraph.nodes) {
-                try {
-                    INode iNode = registry.createNodeInstance(savedNode.typeId);
-                    if (iNode instanceof BaseNode newNode) {
-                        boolean stateRestored = true;
-                        try {
-                            newNode.setNodeState(savedNode.state);
-                        } catch (Exception e) {
-                            stateRestored = false;
-                            NodeCraft.LOGGER.warn("恢复节点状态失败，已回退为默认状态继续加载: Node Type={}, Saved ID={}, Error={}",
-                                savedNode.typeId, savedNode.nodeId, e.getMessage(), e);
-                        }
-
-                        try {
-                            loadedNodesMap.put(savedNode.nodeId, newNode);
-                            newGraph.addNode(newNode);
-                        } catch (Exception e) {
-                            loadedNodesMap.remove(savedNode.nodeId);
-                            NodeCraft.LOGGER.error("添加节点到图时出错: Node Type={}, Saved ID={}, Error={}",
-                                savedNode.typeId, savedNode.nodeId, e.getMessage(), e);
-                        }
-
-                        if (!stateRestored) {
-                            lastOperationError = "部分节点状态不兼容，已使用默认值回退加载。";
-                        }
-                    } else if (iNode == null) {
-                        NodeCraft.LOGGER.warn("无法创建节点实例 (返回为null): Type ID={}, Saved ID={}",
-                            savedNode.typeId, savedNode.nodeId);
-                    } else {
-                        NodeCraft.LOGGER.warn("无法加载节点：实例不是 BaseNode 类型。Type ID={}, Saved ID={}, Actual Type={}",
-                            savedNode.typeId, savedNode.nodeId, iNode.getClass().getName());
-                    }
-                } catch (NodeValidationException e) {
-                    skippedUnknownNodeTypes++;
-                    NodeCraft.LOGGER.warn("跳过未注册节点类型: {} (Saved ID: {})", savedNode.typeId, savedNode.nodeId);
-                }
+            if (savedGraph.connections == null) {
+                savedGraph.connections = new ArrayList<>();
+            }
+            if (savedGraph.nodePositions == null) {
+                savedGraph.nodePositions = new HashMap<>();
             }
 
-            // 2. Recreate positions
-             if (savedGraph.nodePositions != null) {
-                for (Map.Entry<String, SavedPosition> entry : savedGraph.nodePositions.entrySet()) {
-                    String oldNodeId = entry.getKey();
-                    SavedPosition savedPos = entry.getValue();
-                    BaseNode nodeInstance = loadedNodesMap.get(oldNodeId); 
-                    if (nodeInstance != null && savedPos != null) {
-                        newPositions.put(nodeInstance.getId(), new NodePosition(savedPos.x, savedPos.y));
-                    } else {
-                         NodeCraft.LOGGER.warn("无法恢复节点位置：找不到节点实例或位置数据为空 for old ID {}", oldNodeId);
-                    }
-                }
-            }
-
-            // 3. Recreate connections
-            for (SavedConnection savedConnection : savedGraph.connections) {
-                BaseNode sourceNode = loadedNodesMap.get(savedConnection.sourceNodeId);
-                BaseNode targetNode = loadedNodesMap.get(savedConnection.targetNodeId);
-
-                if (sourceNode != null && targetNode != null) {
-                    boolean success = newGraph.connect(
-                        sourceNode.getId(),
-                        savedConnection.sourcePortId,
-                        targetNode.getId(),
-                        savedConnection.targetPortId
-                    );
-                    if (!success) {
-                        NodeCraft.LOGGER.warn("无法重新连接端口: {} ({}) -> {} ({})",
-                            savedConnection.sourceNodeId, savedConnection.sourcePortId,
-                            savedConnection.targetNodeId, savedConnection.targetPortId);
-                    }
-                } else {
-                    NodeCraft.LOGGER.warn("无法重新连接端口：找不到源节点或目标节点实例 for connection {} -> {}",
-                        savedConnection.sourceNodeId, savedConnection.targetNodeId);
-                }
-            }
-
-            if (!savedGraph.nodes.isEmpty() && loadedNodesMap.isEmpty()) {
+            GraphLoadResult loadResult = GraphSerializer.loadFromSavedGraph(savedGraph);
+            if (!savedGraph.nodes.isEmpty() && !loadResult.hasLoadedNodes()) {
                 lastOperationError = "加载失败：文件中的节点类型在当前版本中均不可用。";
                 NodeCraft.LOGGER.error("{}", lastOperationError);
                 return false;
             }
 
-            // 最后将加载的图和位置设置到编辑器
-            editor.setCurrentGraph(newGraph);
+            Map<UUID, NodePosition> newPositions = buildEditorPositions(savedGraph, loadResult.nodesBySavedId());
+
+            editor.setCurrentGraph(loadResult.graph());
             editor.setNodePositions(newPositions);
             lastSavedPath = filePath;
             dirty = false;
 
-            if (skippedUnknownNodeTypes > 0) {
-                lastOperationError = "已部分加载：" + skippedUnknownNodeTypes + " 个节点类型未注册，已跳过。";
+            String userMessage = loadResult.userMessage();
+            if (userMessage != null) {
+                lastOperationError = userMessage;
                 NodeCraft.LOGGER.warn("{}", lastOperationError);
             }
 
@@ -305,6 +229,26 @@ public class ImGuiNodeIO {
             NodeCraft.LOGGER.error("解析或重建节点图时发生错误: {}", e.getMessage(), e);
             return false;
         }
+    }
+
+    static Map<UUID, NodePosition> buildEditorPositions(
+            SavedGraph savedGraph,
+            Map<String, BaseNode> nodesBySavedId) {
+        Map<UUID, NodePosition> positions = new HashMap<>();
+        if (savedGraph.nodePositions == null) {
+            return positions;
+        }
+
+        for (Map.Entry<String, SavedPosition> entry : savedGraph.nodePositions.entrySet()) {
+            BaseNode nodeInstance = nodesBySavedId.get(entry.getKey());
+            SavedPosition savedPos = entry.getValue();
+            if (nodeInstance != null && savedPos != null) {
+                positions.put(nodeInstance.getId(), new NodePosition(savedPos.x, savedPos.y));
+            } else {
+                NodeCraft.LOGGER.warn("无法恢复节点位置：找不到节点实例或位置数据为空 for old ID {}", entry.getKey());
+            }
+        }
+        return positions;
     }
 
     /**

@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.NodeExecutor;
 import com.nodecraft.nodesystem.io.SavedGraph;
+import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.nodes.math.logic.IfNode;
 import com.nodecraft.nodesystem.nodes.variable.SetVariableNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -151,6 +152,24 @@ class GraphSerializerTest {
         assertEquals(34.0, loadedLeft.getPositionY(), 0.001);
         assertEquals(88.0, loadedRight.getPositionX(), 0.001);
         assertEquals(16.25, loadedRight.getPositionY(), 0.001);
+    }
+
+    @Test
+    void loadFromSavedGraphSkipsUnknownNodeTypes() {
+        NodeGraph original = new NodeGraph("partial");
+        PassNode passNode = new PassNode();
+        original.addNode(passNode);
+
+        SavedGraph saved = GraphSerializer.toSavedGraph(original);
+        SavedNode unknown = new SavedNode();
+        unknown.nodeId = UUID.randomUUID().toString();
+        unknown.typeId = "missing.node.type";
+        saved.nodes.add(unknown);
+
+        GraphLoadResult result = GraphSerializer.loadFromSavedGraph(saved);
+        assertEquals(1, result.graph().getNodes().size());
+        assertEquals(1, result.skippedUnknownNodeTypes());
+        assertNotNull(result.userMessage());
     }
 
     public static final class PassNode extends BaseNode {

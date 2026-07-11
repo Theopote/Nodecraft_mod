@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.graph;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.nodecraft.core.exception.NodeValidationException;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.io.SavedConnection;
@@ -9,6 +10,7 @@ import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.io.SavedPosition;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +20,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+
+/**
+ * Outcome of restoring a single node from saved metadata.
+ */
+record NodeRestoreResult(@Nullable BaseNode node, boolean unknownTypeSkipped) {
+}
 
 /**
  * Serialization utilities for NodeGraph and SavedGraph.
@@ -89,60 +99,128 @@ public class GraphSerializer {
     }
 
     public static NodeGraph fromSavedGraph(SavedGraph savedGraph) {
-        if (savedGraph == null) return null;
+        return loadFromSavedGraph(savedGraph).graph();
+    }
+
+    /**
+     * Rebuilds a graph from saved data, skipping unknown node types instead of aborting the whole load.
+     */
+    public static GraphLoadResult loadFromSavedGraph(@Nullable SavedGraph savedGraph) {
+        if (savedGraph == null) {
+            return GraphLoadResult.empty("Loaded Graph");
+        }
 
         String graphName = savedGraph.graphName != null ? savedGraph.graphName : "Loaded Graph";
         NodeGraph graph = new NodeGraph(graphName);
+        List<String> warnings = new ArrayList<>();
+        Map<String, BaseNode> nodesBySavedId = new HashMap<>();
+        int skippedUnknownNodeTypes = 0;
+
+        List<SavedNode> nodes = savedGraph.nodes != null ? savedGraph.nodes : List.of();
+        List<SavedConnection> connections = savedGraph.connections != null ? savedGraph.connections : List.of();
+
+        for (SavedNode savedNode : nodes) {
+            NodeRestoreResult restored = tryRestoreNode(savedNode, warnings);
+            if (restored.unknownTypeSkipped()) {
+                skippedUnknownNodeTypes++;
+            }
+            if (restored.node() == null) {
+                continue;
+            }
+
+            BaseNode newNode = restored.node();
+            applySavedPosition(savedGraph, savedNode, newNode);
+
+            try {
+                nodesBySavedId.put(savedNode.nodeId, newNode);
+                graph.addNode(newNode);
+            } catch (Exception e) {
+                nodesBySavedId.remove(savedNode.nodeId);
+                LOGGER.error("Failed adding node to graph: type={}, id={}", savedNode.typeId, savedNode.nodeId, e);
+            }
+        }
+
+        for (SavedConnection connection : connections) {
+            if (connection == null) {
+                continue;
+            }
+            BaseNode sourceNode = nodesBySavedId.get(connection.sourceNodeId);
+            BaseNode targetNode = nodesBySavedId.get(connection.targetNodeId);
+
+            if (sourceNode != null && targetNode != null) {
+                boolean success = graph.connect(
+                    sourceNode.getId(), connection.sourcePortId,
+                    targetNode.getId(), connection.targetPortId
+                );
+                if (!success) {
+                    LOGGER.warn("Failed rebuilding connection: {} ({}) -> {} ({})",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                }
+            } else {
+                LOGGER.warn("Failed rebuilding connection: missing node instance for {} -> {}",
+                    connection.sourceNodeId, connection.targetNodeId);
+            }
+        }
+
+        return new GraphLoadResult(graph, Map.copyOf(nodesBySavedId), skippedUnknownNodeTypes, List.copyOf(warnings));
+    }
+
+    public static Optional<BaseNode> tryRestoreNode(@Nullable SavedNode savedNode) {
+        return Optional.ofNullable(tryRestoreNode(savedNode, null).node());
+    }
+
+    static NodeRestoreResult tryRestoreNode(@Nullable SavedNode savedNode, @Nullable List<String> warnings) {
+        if (savedNode == null || savedNode.typeId == null || savedNode.nodeId == null) {
+            return new NodeRestoreResult(null, false);
+        }
+
         NodeRegistry registry = NodeRegistry.getInstance();
-
-        Map<String, BaseNode> loadedNodesMap = new HashMap<>();
-
-        if (savedGraph.nodes != null) {
-            for (SavedNode savedNode : savedGraph.nodes) {
-                INode iNode = registry.createNodeInstance(savedNode.typeId);
-                if (iNode instanceof BaseNode newNode) {
-                    try {
-                        newNode.setNodeState(savedNode.state);
-                        if (savedGraph.nodePositions != null) {
-                            SavedPosition savedPosition = savedGraph.nodePositions.get(savedNode.nodeId);
-                            if (savedPosition != null) {
-                                newNode.setPosition(savedPosition.x, savedPosition.y);
-                            }
-                        }
-                        loadedNodesMap.put(savedNode.nodeId, newNode);
-                        graph.addNode(newNode);
-                    } catch (Exception e) {
-                        LOGGER.error("Failed restoring node state: type={}, id={}", savedNode.typeId, savedNode.nodeId, e);
-                    }
+        try {
+            INode node = registry.createNodeInstance(savedNode.typeId);
+            if (!(node instanceof BaseNode baseNode)) {
+                if (node == null) {
+                    LOGGER.warn("Cannot create node instance (null): type={}, id={}", savedNode.typeId, savedNode.nodeId);
                 } else {
-                    LOGGER.warn("Cannot create node: type={}, id={}", savedNode.typeId, savedNode.nodeId);
+                    LOGGER.warn("Cannot load node: not BaseNode. type={}, id={}, actual={}",
+                        savedNode.typeId, savedNode.nodeId, node.getClass().getName());
                 }
+                return new NodeRestoreResult(null, false);
             }
-        }
 
-        if (savedGraph.connections != null) {
-            for (SavedConnection conn : savedGraph.connections) {
-                BaseNode sourceNode = loadedNodesMap.get(conn.sourceNodeId);
-                BaseNode targetNode = loadedNodesMap.get(conn.targetNodeId);
-
-                if (sourceNode != null && targetNode != null) {
-                    boolean success = graph.connect(
-                        sourceNode.getId(), conn.sourcePortId,
-                        targetNode.getId(), conn.targetPortId
-                    );
-                    if (!success) {
-                        LOGGER.warn("Failed rebuilding connection: {} -> {}", conn.sourcePortId, conn.targetPortId);
-                    }
+            try {
+                baseNode.setNodeState(savedNode.state);
+            } catch (Exception e) {
+                if (warnings != null) {
+                    GraphLoadResult.addStateRestoreWarning(warnings);
                 }
+                LOGGER.warn("Failed restoring node state: type={}, id={}", savedNode.typeId, savedNode.nodeId, e);
             }
-        }
 
-        return graph;
+            return new NodeRestoreResult(baseNode, false);
+        } catch (NodeValidationException e) {
+            LOGGER.warn("Skipping unregistered node type: {} (saved id: {})", savedNode.typeId, savedNode.nodeId);
+            return new NodeRestoreResult(null, true);
+        }
+    }
+
+    private static void applySavedPosition(SavedGraph savedGraph, SavedNode savedNode, BaseNode node) {
+        if (savedGraph.nodePositions == null || savedNode == null || savedNode.nodeId == null) {
+            return;
+        }
+        SavedPosition savedPosition = savedGraph.nodePositions.get(savedNode.nodeId);
+        if (savedPosition != null) {
+            node.setPosition(savedPosition.x, savedPosition.y);
+        }
     }
 
     public static NodeGraph fromJsonToGraph(String json) {
         SavedGraph savedGraph = fromJson(json);
         return fromSavedGraph(savedGraph);
+    }
+
+    public static GraphLoadResult loadFromJson(String json) {
+        return loadFromSavedGraph(fromJson(json));
     }
 
     public static NodeGraph loadFromFile(Path filePath) throws IOException {
