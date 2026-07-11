@@ -48,6 +48,7 @@ public class WhileLoopNode extends BaseNode implements ExecRoutingNode {
     private static final String OUTPUT_HIT_LIMIT_ID = "output_hit_limit";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
+    private transient int execBodyCount = 0;
     private transient Set<String> activeExecOutputs = Set.of();
 
     public WhileLoopNode() {
@@ -82,43 +83,60 @@ public class WhileLoopNode extends BaseNode implements ExecRoutingNode {
         outputValues.put(OUTPUT_EXEC_BODY_ID, null);
         outputValues.put(OUTPUT_EXEC_COMPLETE_ID, null);
 
+        processValuesBatch(valuesObj, conditionObj, limit);
+        routeExecFlow(conditionObj, limit);
+    }
+
+    private void processValuesBatch(Object valuesObj, Object conditionObj, int limit) {
         if (!(valuesObj instanceof List<?> values)) {
             outputValues.put(OUTPUT_VALUES_ID, List.of());
-            outputValues.put(OUTPUT_ITERATIONS_ID, 0);
-            outputValues.put(OUTPUT_TERMINATED_BY_CONDITION_ID, false);
-            outputValues.put(OUTPUT_HIT_LIMIT_ID, false);
             outputValues.put(OUTPUT_VALID_ID, false);
-        } else {
-            List<Object> output = new ArrayList<>();
-            int iterations = 0;
-            boolean terminatedByCondition = false;
-
-            for (int i = 0; i < values.size() && i < limit; i++) {
-                boolean condition = resolveConditionAt(conditionObj, i);
-                if (!condition) {
-                    terminatedByCondition = true;
-                    break;
-                }
-                output.add(values.get(i));
-                iterations++;
-            }
-
-            boolean hitLimit = values.size() > iterations && iterations >= limit && !terminatedByCondition;
-
-            outputValues.put(OUTPUT_VALUES_ID, output);
-            outputValues.put(OUTPUT_ITERATIONS_ID, iterations);
-            outputValues.put(OUTPUT_TERMINATED_BY_CONDITION_ID, terminatedByCondition);
-            outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
-            outputValues.put(OUTPUT_VALID_ID, true);
-        }
-
-        boolean continueLoop = resolveConditionAt(conditionObj, 0);
-        if (continueLoop) {
-            activeExecOutputs = Set.of(OUTPUT_EXEC_BODY_ID);
-            outputValues.put(OUTPUT_EXEC_BODY_ID, Boolean.TRUE);
             return;
         }
 
+        List<Object> output = new ArrayList<>();
+        int iterations = 0;
+        boolean terminatedByCondition = false;
+
+        for (int i = 0; i < values.size() && i < limit; i++) {
+            boolean condition = resolveConditionAt(conditionObj, i);
+            if (!condition) {
+                terminatedByCondition = true;
+                break;
+            }
+            output.add(values.get(i));
+            iterations++;
+        }
+
+        boolean hitLimit = values.size() > iterations && iterations >= limit && !terminatedByCondition;
+
+        outputValues.put(OUTPUT_VALUES_ID, output);
+        outputValues.put(OUTPUT_ITERATIONS_ID, iterations);
+        outputValues.put(OUTPUT_TERMINATED_BY_CONDITION_ID, terminatedByCondition);
+        outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
+        outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    private void routeExecFlow(Object conditionObj, int limit) {
+        boolean condition = resolveConditionAt(conditionObj, 0);
+        if (condition && execBodyCount < limit) {
+            execBodyCount++;
+            activeExecOutputs = Set.of(OUTPUT_EXEC_BODY_ID);
+            outputValues.put(OUTPUT_EXEC_BODY_ID, Boolean.TRUE);
+            outputValues.put(OUTPUT_ITERATIONS_ID, execBodyCount);
+            outputValues.put(OUTPUT_TERMINATED_BY_CONDITION_ID, false);
+            outputValues.put(OUTPUT_HIT_LIMIT_ID, false);
+            return;
+        }
+
+        boolean hitLimit = condition && execBodyCount >= limit;
+        boolean terminatedByCondition = !condition;
+
+        outputValues.put(OUTPUT_ITERATIONS_ID, execBodyCount);
+        outputValues.put(OUTPUT_TERMINATED_BY_CONDITION_ID, terminatedByCondition);
+        outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
+
+        execBodyCount = 0;
         activeExecOutputs = Set.of(OUTPUT_EXEC_COMPLETE_ID);
         outputValues.put(OUTPUT_EXEC_COMPLETE_ID, Boolean.TRUE);
     }

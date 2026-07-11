@@ -160,6 +160,29 @@ class FlowControlNodeTest {
     }
 
     @Test
+    void whileStopsExecBodyAfterMaxIterations() {
+        WhileLoopNode whileLoop = new WhileLoopNode();
+        whileLoop.setNodeState(Map.of("maxIterations", 2));
+
+        whileLoop.compute(Map.of("input_condition", true));
+        assertEquals(Set.of("exec_body"), whileLoop.getActiveExecOutputPortIds());
+        assertEquals(1, whileLoop.getOutput("output_iterations"));
+
+        whileLoop.compute(Map.of("input_condition", true));
+        assertEquals(Set.of("exec_body"), whileLoop.getActiveExecOutputPortIds());
+        assertEquals(2, whileLoop.getOutput("output_iterations"));
+
+        whileLoop.compute(Map.of("input_condition", true));
+        assertEquals(Set.of("exec_complete"), whileLoop.getActiveExecOutputPortIds());
+        assertEquals(true, whileLoop.getOutput("output_hit_limit"));
+        assertEquals(2, whileLoop.getOutput("output_iterations"));
+
+        whileLoop.compute(Map.of("input_condition", true));
+        assertEquals(Set.of("exec_body"), whileLoop.getActiveExecOutputPortIds());
+        assertEquals(1, whileLoop.getOutput("output_iterations"));
+    }
+
+    @Test
     void forEachExposesPerItemOutputsDuringExecLoop() {
         ForEachLoopNode forEach = new ForEachLoopNode();
         forEach.compute(Map.of("input_list", List.of("a", "b")));

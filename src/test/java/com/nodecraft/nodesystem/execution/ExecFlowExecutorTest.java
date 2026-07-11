@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -250,6 +251,34 @@ class ExecFlowExecutorTest {
         assertTrue(new NodeExecutor(graph).executeSync());
         assertEquals(0, bodySink.executions());
         assertEquals(1, completeSink.executions());
+    }
+
+    @Test
+    void whileExecFlowRespectsMaxIterationsBeforeGlobalGuard() {
+        NodeGraph graph = new NodeGraph("while-exec-max");
+        ExecStepNode entry = new ExecStepNode("entry", null);
+        PassThroughNode condition = new PassThroughNode("condition", Boolean.TRUE);
+        WhileLoopNode whileLoop = new WhileLoopNode();
+        whileLoop.setNodeState(Map.of("maxIterations", 3));
+        ExecStepNode bodyStep = new ExecStepNode("body_step", null);
+        ExecStepNode completeSink = new ExecStepNode("complete_sink", null);
+
+        graph.addNode(entry);
+        graph.addNode(condition);
+        graph.addNode(whileLoop);
+        graph.addNode(bodyStep);
+        graph.addNode(completeSink);
+
+        assertTrue(graph.connect(entry.getId(), "exec_out", whileLoop.getId(), "exec_in"));
+        assertTrue(graph.connect(condition.getId(), "out", whileLoop.getId(), "input_condition"));
+        assertTrue(graph.connect(whileLoop.getId(), "exec_body", bodyStep.getId(), "exec_in"));
+        assertTrue(graph.connect(bodyStep.getId(), "exec_out", whileLoop.getId(), "exec_in"));
+        assertTrue(graph.connect(whileLoop.getId(), "exec_complete", completeSink.getId(), "exec_in"));
+
+        assertTrue(new NodeExecutor(graph).executeSync());
+        assertEquals(3, bodyStep.executions());
+        assertEquals(1, completeSink.executions());
+        assertEquals(true, whileLoop.getOutput("output_hit_limit"));
     }
 
     @Test
