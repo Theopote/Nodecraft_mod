@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -91,9 +92,8 @@ public class DataSeriesNode extends BaseNode {
         int count = defaultCount;
         if (countObj instanceof Number) {
             count = ((Number) countObj).intValue();
-            //           ?
-            count = Math.max(0, count);
         }
+        count = GenerationLimits.clampNonNegativeCount(count);
 
         if (!Double.isFinite(start) || !Double.isFinite(step)) {
             outputValues.put(OUTPUT_SERIES_ID, new ArrayList<>());
@@ -144,7 +144,7 @@ public class DataSeriesNode extends BaseNode {
     }
     
     public void setDefaultCount(int count) {
-        int resolved = Math.max(0, count);
+        int resolved = GenerationLimits.clampNonNegativeCount(count);
         if (this.defaultCount != resolved) {
             this.defaultCount = resolved;
             markDirty();

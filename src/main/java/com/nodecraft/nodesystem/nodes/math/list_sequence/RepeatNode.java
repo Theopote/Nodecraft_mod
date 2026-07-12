@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -68,17 +69,15 @@ public class RepeatNode extends BaseNode {
         Object dataObj = inputValues.get(INPUT_DATA_ID);
         Object countObj = inputValues.get(INPUT_COUNT_ID);
         
-        //                                  ?
         int count = defaultCount;
         if (countObj instanceof Number) {
             count = ((Number) countObj).intValue();
-            //                       ?
-            count = Math.max(0, count);
         }
-        
+
         //                                         ?
         if (dataObj instanceof List) {
             List<?> inputList = (List<?>) dataObj;
+            count = GenerationLimits.clampRepeatCount(count, inputList.size());
             List<Object> result = new ArrayList<>();
             
             //                           ?
@@ -92,6 +91,7 @@ public class RepeatNode extends BaseNode {
         } 
         //                                              
         else {
+            count = GenerationLimits.clampNonNegativeCount(count);
             List<Object> result = new ArrayList<>();
             
             //                               ?
@@ -112,7 +112,7 @@ public class RepeatNode extends BaseNode {
     }
     
     public void setDefaultCount(int count) {
-        int resolved = Math.max(0, count);
+        int resolved = GenerationLimits.clampNonNegativeCount(count);
         if (this.defaultCount != resolved) {
             this.defaultCount = resolved;
             markDirty();
