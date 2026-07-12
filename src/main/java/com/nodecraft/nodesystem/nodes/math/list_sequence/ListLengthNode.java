@@ -11,9 +11,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.UUID;
 
-/**
- *                                                                     ?
- */
 @NodeInfo(
     id = "math.list.list_length",
     displayName = "List Length",
@@ -22,15 +19,10 @@ import java.util.UUID;
 )
 public class ListLengthNode extends BaseNode {
     
-    // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
     private static final String OUTPUT_LENGTH_ID = "output_length";
     
-    /**
-     *                                         ?
-     */
     public ListLengthNode() {
-        //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.list_length");
         
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
@@ -42,10 +34,6 @@ public class ListLengthNode extends BaseNode {
         addOutputPort(lengthOutput);
     }
     
-    /**
-     *                         ?
-     * @param context                ?
-     */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object inputObj = inputValues.get(INPUT_LIST_ID);

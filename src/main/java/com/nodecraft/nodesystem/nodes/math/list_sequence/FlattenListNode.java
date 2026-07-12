@@ -21,7 +21,7 @@ import java.util.UUID;
 public class FlattenListNode extends BaseNode {
     
     private int maxDepth = -1;
-    private boolean preserveTypes = false; //                                         
+    private boolean preserveTypes = false;
     
     private static final String INPUT_LIST_ID = "input_list";
     private static final String INPUT_DEPTH_ID = "input_depth";
@@ -64,13 +64,6 @@ public class FlattenListNode extends BaseNode {
         outputValues.put(OUTPUT_LIST_ID, resultList);
     }
     
-    /**
-     *                    ?
-     * @param input              ?
-     * @param output              ?
-     * @param currentDepth              
-     * @param maxDepth             ?
-     */
     private void flatten(List<?> input, List<Object> output, int currentDepth, int maxDepth) {
         if (maxDepth >= 0 && currentDepth >= maxDepth) {
             output.addAll(input);

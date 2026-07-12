@@ -26,9 +26,9 @@ public class SortListNode extends BaseNode {
     private SortType sortType = SortType.AUTO;
     
     public enum SortType {
-        AUTO("Auto"), //                                
-        NUMERIC("Numeric"), //               ?
-        TEXT("Text"), //              ?
+        AUTO("Auto"),
+        NUMERIC("Numeric"),
+        TEXT("Text"),
         LENGTH("Length");
         
         private final String label;

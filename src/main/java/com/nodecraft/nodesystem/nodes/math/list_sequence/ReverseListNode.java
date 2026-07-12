@@ -13,9 +13,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
-/**
- *                                                        ?
- */
 @NodeInfo(
     id = "math.list.reverse_list",
     displayName = "Reverse List",
@@ -24,15 +21,10 @@ import java.util.UUID;
 )
 public class ReverseListNode extends BaseNode {
     
-    // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
     private static final String OUTPUT_LIST_ID = "output_list";
     
-    /**
-     *                                         ?
-     */
     public ReverseListNode() {
-        //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.reverse_list");
         
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
@@ -44,10 +36,6 @@ public class ReverseListNode extends BaseNode {
         addOutputPort(listOutput);
     }
     
-    /**
-     *                         ?
-     * @param context                ?
-     */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object inputObj = inputValues.get(INPUT_LIST_ID);

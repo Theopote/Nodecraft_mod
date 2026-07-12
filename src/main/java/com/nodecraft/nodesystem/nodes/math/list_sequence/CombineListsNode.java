@@ -22,9 +22,8 @@ public class CombineListsNode extends BaseNode {
     
     private int inputCount = 2;
     private boolean skipIncomplete = false;
-    private boolean outputAsTuples = true; //                                                               
-    
-    // ---               D ---
+    private boolean outputAsTuples = true;
+
     private static final String OUTPUT_LIST_ID = "output_list";
     
     public CombineListsNode() {
@@ -93,7 +92,7 @@ public class CombineListsNode extends BaseNode {
     }
     
     public void increaseInputCount() {
-        if (inputCount < 10) { //                                 ?
+        if (inputCount < 10) {
             inputCount++;
             rebuildInputPorts();
             markDirty();
@@ -101,7 +100,7 @@ public class CombineListsNode extends BaseNode {
     }
     
     public void decreaseInputCount() {
-        if (inputCount > 2) { //              ?         ?
+        if (inputCount > 2) {
             inputCount--;
             rebuildInputPorts();
             markDirty();
