@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -102,6 +103,7 @@ public class SampleGeometrySurfaceNode extends BaseNode {
             resolvedCount = Math.min(defaultCount, Math.max(1, surfaceBlocks.size()));
         }
         resolvedCount = Math.min(resolvedCount, surfaceBlocks.size());
+        resolvedCount = GenerationLimits.clampPositiveCount(resolvedCount);
         int resolvedSeed = inputValues.get(INPUT_SEED_ID) instanceof Number n ? n.intValue() : seed;
 
         List<BlockPos> pool = new ArrayList<>(surfaceBlocks.getPositions());

@@ -21,12 +21,14 @@ public class PowerNode extends BaseNode {
     private static final String INPUT_BASE_ID = "input_base";
     private static final String INPUT_EXPONENT_ID = "input_exponent";
     private static final String OUTPUT_POWER_ID = "output_power";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public PowerNode() {
         super(UUID.randomUUID(), "math.scalar_math.power");
         addInputPort(new BasePort(INPUT_BASE_ID, "Base", "The base value", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_EXPONENT_ID, "Exponent", "The exponent value", NodeDataType.ANY, this));
         addOutputPort(new BasePort(OUTPUT_POWER_ID, "Power", "Result of Base ^ Exponent", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the power result is finite", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -44,12 +46,22 @@ public class PowerNode extends BaseNode {
         Object valBase = inputValues.get(INPUT_BASE_ID);
         Object valExponent = inputValues.get(INPUT_EXPONENT_ID);
 
-        if (valBase instanceof Number && valExponent instanceof Number) {
-            double base = ((Number) valBase).doubleValue();
-            double exponent = ((Number) valExponent).doubleValue();
-            outputValues.put(OUTPUT_POWER_ID, Math.pow(base, exponent));
-        } else {
+        if (!(valBase instanceof Number baseNumber) || !(valExponent instanceof Number exponentNumber)) {
             outputValues.put(OUTPUT_POWER_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
         }
+
+        double base = baseNumber.doubleValue();
+        double exponent = exponentNumber.doubleValue();
+        if (!Double.isFinite(base) || !Double.isFinite(exponent)) {
+            outputValues.put(OUTPUT_POWER_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
+        }
+
+        double result = Math.pow(base, exponent);
+        outputValues.put(OUTPUT_POWER_ID, result);
+        outputValues.put(OUTPUT_VALID_ID, Double.isFinite(result));
     }
 }

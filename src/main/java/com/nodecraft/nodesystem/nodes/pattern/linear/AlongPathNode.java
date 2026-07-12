@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.Curve;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -90,11 +91,11 @@ public class AlongPathNode extends BaseNode {
         }
 
         List<BlockPos> sourcePositions = source.getPositions();
-        BlockPos sourceOrigin = sourcePositions.get(0);
+        int anchorLimit = GenerationLimits.clampRepeatCount(pathPoints.size(), sourcePositions.size());
         BlockPosList result = new BlockPosList();
         BlockPosList anchors = new BlockPosList();
 
-        for (int anchorIndex = 0; anchorIndex < pathPoints.size(); anchorIndex++) {
+        for (int anchorIndex = 0; anchorIndex < anchorLimit; anchorIndex++) {
             Vector3d anchorPoint = pathPoints.get(anchorIndex);
             BlockPos anchorPos = BlockPos.ofFloored(anchorPoint.x, anchorPoint.y, anchorPoint.z);
             anchors.add(anchorPos);
@@ -102,6 +103,7 @@ public class AlongPathNode extends BaseNode {
             double yawRadians = orientToPath ? computeYaw(pathPoints, anchorIndex) : 0.0d;
             double sin = Math.sin(yawRadians);
             double cos = Math.cos(yawRadians);
+            BlockPos sourceOrigin = sourcePositions.get(0);
 
             for (BlockPos sourcePos : sourcePositions) {
                 int localX = sourcePos.getX() - sourceOrigin.getX();

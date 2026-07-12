@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -79,7 +80,9 @@ public class SampleSphereSurfaceNode extends BaseNode {
             return;
         }
 
-        int resolvedCount = resolvePositiveInt(inputValues.get(INPUT_COUNT_ID), sampleCount, 1, 100000);
+        int resolvedCount = GenerationLimits.clampPositiveCount(
+            resolvePositiveInt(inputValues.get(INPUT_COUNT_ID), sampleCount, 1, GenerationLimits.MAX_LIST_ELEMENTS)
+        );
         int resolvedSeed = resolveInt(inputValues.get(INPUT_SEED_ID), seed);
 
         List<Vector3d> normals = switch (sampleMode) {
@@ -131,7 +134,7 @@ public class SampleSphereSurfaceNode extends BaseNode {
     }
 
     public void setSampleCount(int sampleCount) {
-        this.sampleCount = Math.max(1, sampleCount);
+        this.sampleCount = GenerationLimits.clampPositiveCount(sampleCount);
         markDirty();
     }
 
