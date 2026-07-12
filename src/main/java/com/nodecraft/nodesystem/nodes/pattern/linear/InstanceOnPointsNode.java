@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -76,9 +77,8 @@ public class InstanceOnPointsNode extends BaseNode {
         }
 
         List<BlockPos> anchors = resolveAnchors(inputValues.get(INPUT_POINTS_ID));
-        int limit = resolveLimit(inputValues.get(INPUT_MAX_INSTANCES_ID), maxInstances);
-        if (anchors.isEmpty() || anchors.size() > limit) {
-            writeOutputs(List.of(), new BlockPosList(), List.of(), new BlockPosList(anchors), 0, false);
+        if (anchors.isEmpty()) {
+            writeOutputs(List.of(), new BlockPosList(), List.of(), new BlockPosList(), 0, false);
             return;
         }
 
@@ -89,11 +89,23 @@ public class InstanceOnPointsNode extends BaseNode {
             template = List.of(new BlockPlacementData(BlockPos.ORIGIN, fallbackBlockId));
         }
 
-        List<BlockPlacementData> placements = new ArrayList<>(anchors.size() * template.size());
-        BlockPosList positions = new BlockPosList();
-        List<String> blockIds = new ArrayList<>(anchors.size() * template.size());
+        int anchorLimit = Math.min(
+            GenerationLimits.clampPositiveCount(resolveLimit(inputValues.get(INPUT_MAX_INSTANCES_ID), maxInstances)),
+            GenerationLimits.clampRepeatCount(anchors.size(), Math.max(1, template.size()))
+        );
+        if (anchorLimit <= 0) {
+            writeOutputs(List.of(), new BlockPosList(), List.of(), new BlockPosList(), 0, false);
+            return;
+        }
 
-        for (BlockPos anchor : anchors) {
+        List<BlockPlacementData> placements = new ArrayList<>(anchorLimit * template.size());
+        BlockPosList positions = new BlockPosList();
+        List<String> blockIds = new ArrayList<>(anchorLimit * template.size());
+        BlockPosList usedAnchors = new BlockPosList();
+
+        for (int anchorIndex = 0; anchorIndex < anchorLimit; anchorIndex++) {
+            BlockPos anchor = anchors.get(anchorIndex);
+            usedAnchors.add(anchor);
             for (BlockPlacementData templatePlacement : template) {
                 BlockPos local = templatePlacement.pos();
                 if (local == null) {
@@ -107,7 +119,7 @@ public class InstanceOnPointsNode extends BaseNode {
             }
         }
 
-        writeOutputs(placements, positions, blockIds, new BlockPosList(anchors), anchors.size(), true);
+        writeOutputs(placements, positions, blockIds, usedAnchors, usedAnchors.size(), true);
     }
 
     private List<BlockPlacementData> resolveTemplate(BlockPos origin, String fallbackBlockId) {
@@ -211,7 +223,7 @@ public class InstanceOnPointsNode extends BaseNode {
     }
 
     public void setMaxInstances(int maxInstances) {
-        this.maxInstances = Math.max(1, maxInstances);
+        this.maxInstances = GenerationLimits.clampPositiveCount(maxInstances);
         markDirty();
     }
 }

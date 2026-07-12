@@ -27,6 +27,7 @@ public class RemapNode extends BaseNode {
     private static final String INPUT_OUT_MAX_ID = "input_out_max";
     private static final String INPUT_CLAMP_ID = "input_clamp";
     private static final String OUTPUT_RESULT_ID = "output_result";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
     private double defaultInMin = 0.0;
     private double defaultInMax = 1.0;
@@ -43,6 +44,7 @@ public class RemapNode extends BaseNode {
         addInputPort(new BasePort(INPUT_OUT_MAX_ID, "Out Max", "Output range maximum", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_CLAMP_ID, "Clamp", "Clamp result to output range", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_RESULT_ID, "Result", "The remapped value", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the value input is a valid finite number", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -64,8 +66,20 @@ public class RemapNode extends BaseNode {
         Object outMaxObj = inputValues.get(INPUT_OUT_MAX_ID);
         Object clampObj = inputValues.get(INPUT_CLAMP_ID);
 
-        double value = valueObj instanceof Number ? ((Number) valueObj).doubleValue() : 0.0;
-        double inMin = inMinObj instanceof Number ? ((Number) inMinObj).doubleValue() : defaultInMin;
+        if (!(valueObj instanceof Number valueNumber)) {
+            outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
+        }
+
+        double value = valueNumber.doubleValue();
+        if (!Double.isFinite(value)) {
+            outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
+        }
+
+        double inMin = inMinObj instanceof Number number ? number.doubleValue() : defaultInMin;
         double inMax = inMaxObj instanceof Number ? ((Number) inMaxObj).doubleValue() : defaultInMax;
         double outMin = outMinObj instanceof Number ? ((Number) outMinObj).doubleValue() : defaultOutMin;
         double outMax = outMaxObj instanceof Number ? ((Number) outMaxObj).doubleValue() : defaultOutMax;
@@ -86,6 +100,7 @@ public class RemapNode extends BaseNode {
         }
 
         outputValues.put(OUTPUT_RESULT_ID, result);
+        outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     public double getDefaultInMin() {

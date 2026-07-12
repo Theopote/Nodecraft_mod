@@ -20,11 +20,13 @@ public class CeilingNode extends BaseNode {
 
     private static final String INPUT_VALUE_ID = "input_value";
     private static final String OUTPUT_CEILING_ID = "output_ceiling";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public CeilingNode() {
         super(UUID.randomUUID(), "math.scalar_math.ceiling");
         addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Value to ceiling", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_CEILING_ID, "Ceiling", "The ceiling value", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether input is a valid finite number", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -40,7 +42,20 @@ public class CeilingNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object valueObj = inputValues.get(INPUT_VALUE_ID);
-        double value = valueObj instanceof Number ? ((Number) valueObj).doubleValue() : 0.0;
+        if (!(valueObj instanceof Number number)) {
+            outputValues.put(OUTPUT_CEILING_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
+        }
+
+        double value = number.doubleValue();
+        if (!Double.isFinite(value)) {
+            outputValues.put(OUTPUT_CEILING_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
+        }
+
         outputValues.put(OUTPUT_CEILING_ID, Math.ceil(value));
+        outputValues.put(OUTPUT_VALID_ID, true);
     }
 }

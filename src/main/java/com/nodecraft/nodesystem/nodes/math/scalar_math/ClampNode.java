@@ -27,6 +27,7 @@ public class ClampNode extends BaseNode {
     private static final String INPUT_MIN_ID = "input_min";
     private static final String INPUT_MAX_ID = "input_max";
     private static final String OUTPUT_RESULT_ID = "output_result";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ClampNode() {
         super(UUID.randomUUID(), "math.scalar_math.clamp");
@@ -34,6 +35,7 @@ public class ClampNode extends BaseNode {
         addInputPort(new BasePort(INPUT_MIN_ID, "Min", "Minimum allowed value", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_MAX_ID, "Max", "Maximum allowed value", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_RESULT_ID, "Result", "The clamped value", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the value input is a valid finite number", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -52,10 +54,21 @@ public class ClampNode extends BaseNode {
         Object minObj = inputValues.get(INPUT_MIN_ID);
         Object maxObj = inputValues.get(INPUT_MAX_ID);
 
-        double value = valueObj instanceof Number ? ((Number) valueObj).doubleValue() : 0.0;
-        double min = minObj instanceof Number ? ((Number) minObj).doubleValue() : defaultMin;
-        double max = maxObj instanceof Number ? ((Number) maxObj).doubleValue() : defaultMax;
+        if (!(valueObj instanceof Number valueNumber)) {
+            outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
+        }
 
+        double value = valueNumber.doubleValue();
+        if (!Double.isFinite(value)) {
+            outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
+        }
+
+        double min = minObj instanceof Number number ? number.doubleValue() : defaultMin;
+        double max = maxObj instanceof Number number ? number.doubleValue() : defaultMax;
         if (min > max) {
             double temp = min;
             min = max;
@@ -63,6 +76,7 @@ public class ClampNode extends BaseNode {
         }
 
         outputValues.put(OUTPUT_RESULT_ID, Math.max(min, Math.min(max, value)));
+        outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     public double getDefaultMin() {
@@ -94,14 +108,13 @@ public class ClampNode extends BaseNode {
     @Override
     public void setNodeState(Object state) {
         if (state instanceof Map<?, ?> stateMap) {
-            Object minObj = stateMap.get("defaultMin");
-            if (minObj instanceof Number) {
-                setDefaultMin(((Number) minObj).doubleValue());
+            Object obj = stateMap.get("defaultMin");
+            if (obj instanceof Number number) {
+                setDefaultMin(number.doubleValue());
             }
-
-            Object maxObj = stateMap.get("defaultMax");
-            if (maxObj instanceof Number) {
-                setDefaultMax(((Number) maxObj).doubleValue());
+            obj = stateMap.get("defaultMax");
+            if (obj instanceof Number number) {
+                setDefaultMax(number.doubleValue());
             }
         }
     }

@@ -36,15 +36,31 @@ class ScalarMathNodeTest {
     }
 
     @Test
-    void multiplicationAcceptsFiniteInputs() {
-        MultiplicationNode node = new MultiplicationNode();
+    void clampRejectsNonFiniteInput() {
+        ClampNode node = new ClampNode();
 
         Map<String, Object> outputs = node.compute(Map.of(
-            "input_a", 3.0d,
-            "input_b", 4.0d
+            "input_value", Double.POSITIVE_INFINITY,
+            "input_min", 0.0d,
+            "input_max", 1.0d
+        ));
+
+        assertFalse((Boolean) outputs.get("output_valid"));
+    }
+
+    @Test
+    void remapAcceptsFiniteInput() {
+        RemapNode node = new RemapNode();
+
+        Map<String, Object> outputs = node.compute(Map.of(
+            "input_value", 0.5d,
+            "input_in_min", 0.0d,
+            "input_in_max", 1.0d,
+            "input_out_min", 0.0d,
+            "input_out_max", 10.0d
         ));
 
         assertTrue((Boolean) outputs.get("output_valid"));
-        assertEquals(12.0d, (Double) outputs.get("output_product"), 1.0e-12);
+        assertEquals(5.0d, (Double) outputs.get("output_result"), 1.0e-12);
     }
 }

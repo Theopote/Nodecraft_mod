@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -78,12 +79,13 @@ public class PathInstancesNode extends BaseNode {
         }
 
         Vector3d up = resolveUp(inputValues.get(INPUT_UP_VECTOR_ID));
-        List<Vector3d> origins = new ArrayList<>(points.size());
-        List<Vector3d> xAxes = new ArrayList<>(points.size());
-        List<Vector3d> yAxes = new ArrayList<>(points.size());
-        List<Vector3d> zAxes = new ArrayList<>(points.size());
+        int pointLimit = GenerationLimits.clampPositiveCount(points.size());
+        List<Vector3d> origins = new ArrayList<>(pointLimit);
+        List<Vector3d> xAxes = new ArrayList<>(pointLimit);
+        List<Vector3d> yAxes = new ArrayList<>(pointLimit);
+        List<Vector3d> zAxes = new ArrayList<>(pointLimit);
 
-        for (int i = 0; i < points.size(); i++) {
+        for (int i = 0; i < pointLimit; i++) {
             Vector3d origin = points.get(i);
             Vector3d tangent = computeTangent(points, i);
             if (tangent.lengthSquared() <= EPSILON) {

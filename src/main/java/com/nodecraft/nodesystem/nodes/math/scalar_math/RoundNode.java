@@ -20,11 +20,13 @@ public class RoundNode extends BaseNode {
 
     private static final String INPUT_VALUE_ID = "input_value";
     private static final String OUTPUT_ROUNDED_ID = "output_rounded";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public RoundNode() {
         super(UUID.randomUUID(), "math.scalar_math.round");
         addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Value to round", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_ROUNDED_ID, "Rounded", "The rounded value", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether input is a valid finite number", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -40,7 +42,20 @@ public class RoundNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object valueObj = inputValues.get(INPUT_VALUE_ID);
-        double value = valueObj instanceof Number ? ((Number) valueObj).doubleValue() : 0.0;
+        if (!(valueObj instanceof Number number)) {
+            outputValues.put(OUTPUT_ROUNDED_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
+        }
+
+        double value = number.doubleValue();
+        if (!Double.isFinite(value)) {
+            outputValues.put(OUTPUT_ROUNDED_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
+        }
+
         outputValues.put(OUTPUT_ROUNDED_ID, (double) Math.round(value));
+        outputValues.put(OUTPUT_VALID_ID, true);
     }
 }

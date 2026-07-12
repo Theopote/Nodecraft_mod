@@ -20,11 +20,13 @@ public class FloorNode extends BaseNode {
 
     private static final String INPUT_VALUE_ID = "input_value";
     private static final String OUTPUT_FLOORED_ID = "output_floored";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public FloorNode() {
         super(UUID.randomUUID(), "math.scalar_math.floor");
         addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Value to floor", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_FLOORED_ID, "Floored", "The floored value", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether input is a valid finite number", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -40,7 +42,20 @@ public class FloorNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object valueObj = inputValues.get(INPUT_VALUE_ID);
-        double value = valueObj instanceof Number ? ((Number) valueObj).doubleValue() : 0.0;
+        if (!(valueObj instanceof Number number)) {
+            outputValues.put(OUTPUT_FLOORED_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
+        }
+
+        double value = number.doubleValue();
+        if (!Double.isFinite(value)) {
+            outputValues.put(OUTPUT_FLOORED_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
+        }
+
         outputValues.put(OUTPUT_FLOORED_ID, Math.floor(value));
+        outputValues.put(OUTPUT_VALID_ID, true);
     }
 }
