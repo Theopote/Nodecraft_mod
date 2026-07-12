@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.ExportPathUtil;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -84,9 +85,11 @@ public class ExportDataNode extends BaseNode {
         String rawPath = inputValues.get(INPUT_PATH_ID) instanceof String text && !text.isBlank()
             ? text.trim()
             : "nodecraft_export." + fmt.name().toLowerCase();
-        Path outputPath = normalizePath(rawPath, fmt);
-
+        Path outputPath = null;
         try {
+            String extension = fmt == ExportFormat.JSON ? ".json" : ".csv";
+            String defaultFileName = "nodecraft_export" + extension;
+            outputPath = ExportPathUtil.resolve(rawPath, defaultFileName, extension);
             if (outputPath.getParent() != null) {
                 Files.createDirectories(outputPath.getParent());
             }
@@ -95,7 +98,8 @@ public class ExportDataNode extends BaseNode {
             Files.writeString(outputPath, content, StandardCharsets.UTF_8);
             publish(true, outputPath.toString(), data.size(), fmt.name().toLowerCase(), "");
         } catch (Exception e) {
-            publish(false, outputPath.toString(), 0, fmt.name().toLowerCase(), e.getMessage() != null ? e.getMessage() : "export failed");
+            String resolvedPath = outputPath != null ? outputPath.toString() : rawPath;
+            publish(false, resolvedPath, 0, fmt.name().toLowerCase(), e.getMessage() != null ? e.getMessage() : "export failed");
         }
     }
 
@@ -124,19 +128,6 @@ public class ExportDataNode extends BaseNode {
             if ("csv".equals(normalized)) return ExportFormat.CSV;
         }
         return format;
-    }
-
-    private Path normalizePath(String rawPath, ExportFormat fmt) {
-        String ext = fmt == ExportFormat.JSON ? ".json" : ".csv";
-        String normalized = rawPath;
-        if (!normalized.toLowerCase().endsWith(ext)) {
-            normalized += ext;
-        }
-        Path path = Path.of(normalized);
-        if (!path.isAbsolute()) {
-            path = path.toAbsolutePath();
-        }
-        return path.normalize();
     }
 
     private String toCsv(List<?> data) {

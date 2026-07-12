@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.ExportPathUtil;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtInt;
 import net.minecraft.nbt.NbtList;
@@ -97,8 +98,9 @@ public class ExportLitematicNode extends BaseCustomUINode {
             return;
         }
 
-        Path outputPath = normalizeOutputPath(rawPath);
+        Path outputPath = null;
         try {
+            outputPath = ExportPathUtil.resolve(rawPath, "nodecraft_export.litematic", ".litematic");
             Files.createDirectories(outputPath.getParent());
 
             NbtCompound root = buildLitematicNbt(placements, name, author, description);
@@ -106,7 +108,8 @@ public class ExportLitematicNode extends BaseCustomUINode {
 
             publishOutputs(true, outputPath.toString(), placements.size(), "");
         } catch (Exception e) {
-            publishOutputs(false, outputPath.toString(), 0, e.getMessage() != null ? e.getMessage() : "export failed");
+            String resolvedPath = outputPath != null ? outputPath.toString() : rawPath;
+            publishOutputs(false, resolvedPath, 0, e.getMessage() != null ? e.getMessage() : "export failed");
         }
     }
 
@@ -226,25 +229,6 @@ public class ExportLitematicNode extends BaseCustomUINode {
             packed[longIndex] |= ((long) indices[i] & mask) << bitOffset;
         }
         return packed;
-    }
-
-    private Path normalizeOutputPath(String rawPath) {
-        String resolved = (rawPath == null || rawPath.isBlank()) ? "nodecraft_export.litematic" : rawPath.trim();
-        if (!resolved.toLowerCase().endsWith(".litematic")) {
-            resolved = resolved + ".litematic";
-        }
-
-        Path path = Path.of(resolved);
-        if (!path.isAbsolute()) {
-            path = path.toAbsolutePath();
-        }
-
-        Path parent = path.getParent();
-        if (parent == null) {
-            parent = Path.of("").toAbsolutePath();
-            path = parent.resolve(path.getFileName());
-        }
-        return path.normalize();
     }
 
     private String deriveNameFromPath(String rawPath) {

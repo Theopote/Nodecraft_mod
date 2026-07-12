@@ -13,7 +13,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NodePropertyBindingsTest {
 
@@ -76,8 +75,7 @@ class NodePropertyBindingsTest {
         List<NodePropertyBindings.NodePropertyBinding> bindings = NodePropertyBindings.bindingsFor(SdfBoxNode.class);
 
         assertEquals(bindings.size(), descriptors.size());
-        for (int i = 0; i < bindings.size(); i++) {
-            NodePropertyBindings.NodePropertyBinding binding = bindings.get(i);
+        for (NodePropertyBindings.NodePropertyBinding binding : bindings) {
             PropertyDescriptor descriptor = descriptors.stream()
                     .filter(candidate -> candidate.name.equals(binding.name()))
                     .findFirst()

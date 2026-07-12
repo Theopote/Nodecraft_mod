@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.ExportPathUtil;
 import net.minecraft.nbt.NbtByteArray;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtInt;
@@ -90,8 +91,9 @@ public class ExportWorldEditNode extends BaseCustomUINode {
             return;
         }
 
-        Path outputPath = normalizeOutputPath(rawPath);
+        Path outputPath = null;
         try {
+            outputPath = ExportPathUtil.resolve(rawPath, "nodecraft_export.schem", ".schem");
             Files.createDirectories(outputPath.getParent());
 
             NbtCompound root = buildSpongeSchematicNbt(placements, name, author);
@@ -99,7 +101,8 @@ public class ExportWorldEditNode extends BaseCustomUINode {
 
             publishOutputs(true, outputPath.toString(), placements.size(), "");
         } catch (Exception e) {
-            publishOutputs(false, outputPath.toString(), 0, e.getMessage() != null ? e.getMessage() : "export failed");
+            String resolvedPath = outputPath != null ? outputPath.toString() : rawPath;
+            publishOutputs(false, resolvedPath, 0, e.getMessage() != null ? e.getMessage() : "export failed");
         }
     }
 
@@ -189,25 +192,6 @@ public class ExportWorldEditNode extends BaseCustomUINode {
             output.write(remaining & 127);
         }
         return output.toByteArray();
-    }
-
-    private Path normalizeOutputPath(String rawPath) {
-        String resolved = (rawPath == null || rawPath.isBlank()) ? "nodecraft_export.schem" : rawPath.trim();
-        if (!resolved.toLowerCase().endsWith(".schem")) {
-            resolved = resolved + ".schem";
-        }
-
-        Path path = Path.of(resolved);
-        if (!path.isAbsolute()) {
-            path = path.toAbsolutePath();
-        }
-
-        Path parent = path.getParent();
-        if (parent == null) {
-            parent = Path.of("").toAbsolutePath();
-            path = parent.resolve(path.getFileName());
-        }
-        return path.normalize();
     }
 
     private String deriveNameFromPath(String rawPath) {
