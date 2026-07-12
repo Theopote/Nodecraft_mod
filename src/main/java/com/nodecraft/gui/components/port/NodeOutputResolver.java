@@ -4,6 +4,7 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphCallStackBridge;
 import com.nodecraft.nodesystem.nodes.variable.VariableScopeBridge;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -112,7 +113,9 @@ final class NodeOutputResolver {
                     inputs.putIfAbsent(port.getId(), port.getValue());
                 }
                 try (VariableScopeBridge.ScopeBinding ignored =
-                         VariableScopeBridge.bindFallbackScope(graph.getId().toString())) {
+                         VariableScopeBridge.bindFallbackScope(graph.getId().toString());
+                     SubgraphCallStackBridge.ScopeBinding ignoredStack =
+                         SubgraphCallStackBridge.bindFallbackScope(graph.getId().toString())) {
                     try {
                         node.compute(inputs);
                     } catch (Exception e) {

@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.TrackedPreviewPlacementService;
 import com.nodecraft.nodesystem.nodes.variable.VariableScopeBridge;
+import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphCallStackBridge;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -527,7 +528,9 @@ public class NodeExecutor {
                 }
             } else {
                 try (VariableScopeBridge.ScopeBinding ignored =
-                         VariableScopeBridge.bindFallbackScope(graph.getId().toString())) {
+                         VariableScopeBridge.bindFallbackScope(graph.getId().toString());
+                     SubgraphCallStackBridge.ScopeBinding ignoredStack =
+                         SubgraphCallStackBridge.bindFallbackScope(graph.getId().toString())) {
                     node.compute(inputs);
                 }
             }

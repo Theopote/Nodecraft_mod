@@ -214,7 +214,7 @@ public class SubgraphNode extends BaseNode {
         }
         debugTrace.add("subgraphResolved=true");
 
-        int depth = currentCallDepth(context);
+        int depth = SubgraphCallStackBridge.depth(context);
         if (depth >= Math.max(1, maxCallDepth)) {
             Map<String, Object> metadata = buildMetadata(
                 resolvedSubgraphRef,
@@ -232,7 +232,7 @@ public class SubgraphNode extends BaseNode {
             return;
         }
 
-        if (isRecursiveCall(context, resolvedSubgraphRef)) {
+        if (SubgraphCallStackBridge.contains(context, resolvedSubgraphRef)) {
             Map<String, Object> metadata = buildMetadata(
                 resolvedSubgraphRef,
                 false,
@@ -533,72 +533,41 @@ public class SubgraphNode extends BaseNode {
     }
 
     private NestedExecutionResult executeSubgraph(@Nullable ExecutionContext context, NodeGraph subgraph, String ref, Map<String, Object> inputs) {
-        if (context == null) {
-            return new NestedExecutionResult(false, false, Map.of(), "Execution context is required for subgraph execution.");
-        }
-
-        Object previousInputs = context.getVariable(GraphIOKeys.GRAPH_INPUTS_KEY);
-        Object previousOutputs = context.getVariable(GraphIOKeys.GRAPH_OUTPUTS_KEY);
-        Object previousStack = context.getVariable(GraphIOKeys.SUBGRAPH_CALL_STACK_KEY);
-
-        Map<String, Object> newInputs = new LinkedHashMap<>(inputs);
-        Map<String, Object> newOutputs = new LinkedHashMap<>();
-        List<String> newStack = normalizeCallStack(previousStack);
-        newStack.add(ref);
-
-        context.setVariable(GraphIOKeys.GRAPH_INPUTS_KEY, newInputs);
-        context.setVariable(GraphIOKeys.GRAPH_OUTPUTS_KEY, newOutputs);
-        context.setVariable(GraphIOKeys.SUBGRAPH_CALL_STACK_KEY, newStack);
-
-        boolean success;
+        SubgraphCallStackBridge.StackFrame stackFrame = SubgraphCallStackBridge.push(context, ref);
         try {
-            NodeExecutor executor = new NodeExecutor(subgraph, context);
-            success = executor.executeSync();
-        } catch (Exception e) {
-            restoreContextVariables(context, previousInputs, previousOutputs, previousStack);
-            return new NestedExecutionResult(true, false, Map.of(), e.getMessage());
-        }
+            if (context == null) {
+                return new NestedExecutionResult(false, false, Map.of(), "Execution context is required for subgraph execution.");
+            }
 
-        Map<String, Object> capturedOutputs = toStringObjectMap(context.getVariable(GraphIOKeys.GRAPH_OUTPUTS_KEY));
-        restoreContextVariables(context, previousInputs, previousOutputs, previousStack);
-        return new NestedExecutionResult(true, success, capturedOutputs, success ? null : "Nested node execution reported failure.");
+            Object previousInputs = context.getVariable(GraphIOKeys.GRAPH_INPUTS_KEY);
+            Object previousOutputs = context.getVariable(GraphIOKeys.GRAPH_OUTPUTS_KEY);
+
+            Map<String, Object> newInputs = new LinkedHashMap<>(inputs);
+            Map<String, Object> newOutputs = new LinkedHashMap<>();
+
+            context.setVariable(GraphIOKeys.GRAPH_INPUTS_KEY, newInputs);
+            context.setVariable(GraphIOKeys.GRAPH_OUTPUTS_KEY, newOutputs);
+
+            boolean success;
+            try {
+                NodeExecutor executor = new NodeExecutor(subgraph, context);
+                success = executor.executeSync();
+            } catch (Exception e) {
+                restoreGraphVariables(context, previousInputs, previousOutputs);
+                return new NestedExecutionResult(true, false, Map.of(), e.getMessage());
+            }
+
+            Map<String, Object> capturedOutputs = toStringObjectMap(context.getVariable(GraphIOKeys.GRAPH_OUTPUTS_KEY));
+            restoreGraphVariables(context, previousInputs, previousOutputs);
+            return new NestedExecutionResult(true, success, capturedOutputs, success ? null : "Nested node execution reported failure.");
+        } finally {
+            SubgraphCallStackBridge.restore(stackFrame);
+        }
     }
 
-    private void restoreContextVariables(ExecutionContext context, Object prevInputs, Object prevOutputs, Object prevStack) {
+    private void restoreGraphVariables(ExecutionContext context, Object prevInputs, Object prevOutputs) {
         context.setVariable(GraphIOKeys.GRAPH_INPUTS_KEY, prevInputs);
         context.setVariable(GraphIOKeys.GRAPH_OUTPUTS_KEY, prevOutputs);
-        context.setVariable(GraphIOKeys.SUBGRAPH_CALL_STACK_KEY, prevStack);
-    }
-
-    private int currentCallDepth(@Nullable ExecutionContext context) {
-        if (context == null) {
-            return 0;
-        }
-        Object stackRaw = context.getVariable(GraphIOKeys.SUBGRAPH_CALL_STACK_KEY);
-        return normalizeCallStack(stackRaw).size();
-    }
-
-    private boolean isRecursiveCall(@Nullable ExecutionContext context, String ref) {
-        if (context == null) {
-            return false;
-        }
-        Object stackRaw = context.getVariable(GraphIOKeys.SUBGRAPH_CALL_STACK_KEY);
-        List<String> stack = normalizeCallStack(stackRaw);
-        return stack.contains(ref);
-    }
-
-    private List<String> normalizeCallStack(Object raw) {
-        if (raw instanceof List<?> list) {
-            List<String> normalized = new ArrayList<>();
-            for (Object entry : list) {
-                if (entry == null) {
-                    continue;
-                }
-                normalized.add(String.valueOf(entry));
-            }
-            return normalized;
-        }
-        return new ArrayList<>();
     }
 
     private Map<String, Object> toStringObjectMap(Object value) {

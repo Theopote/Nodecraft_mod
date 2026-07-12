@@ -92,6 +92,28 @@ public final class GenerationLimits {
     }
 
     /**
+     * Caps the number of instances produced by fixed-spacing sampling along a span.
+     */
+    public static int clampSpacingInstanceCount(double span, double spacing) {
+        if (!Double.isFinite(span) || !Double.isFinite(spacing) || spacing <= 0.0d) {
+            return 1;
+        }
+        long raw = (long) Math.ceil(span / spacing) + 1L;
+        return (int) Math.min(Math.max(1L, raw), MAX_LIST_ELEMENTS);
+    }
+
+    /**
+     * Caps attempt budgets for rejection-style samplers.
+     */
+    public static int clampAttemptBudget(int attempts, int targetCount) {
+        int perTarget = Math.max(1, targetCount);
+        long scaled = (long) perTarget * 100L;
+        long capped = Math.min(Math.max(100L, attempts), Math.max(scaled, 100L));
+        capped = Math.min(capped, (long) MAX_LIST_ELEMENTS * 100L);
+        return (int) capped;
+    }
+
+    /**
      * Caps repeat iterations so {@code count * itemsPerRepeat} does not exceed {@link #MAX_LIST_ELEMENTS}.
      */
     public static int clampRepeatCount(int count, int itemsPerRepeat) {

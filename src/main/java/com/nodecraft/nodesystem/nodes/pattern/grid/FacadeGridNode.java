@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -75,6 +76,9 @@ public class FacadeGridNode extends BaseNode {
 
         int columns = resolvePositiveInt(inputValues.get(INPUT_COLUMNS_ID), 3);
         int rows = resolvePositiveInt(inputValues.get(INPUT_ROWS_ID), 3);
+        GenerationLimits.GridAxisCounts gridCounts = GenerationLimits.clampExclusiveGridCounts(columns, rows, 1, 1);
+        columns = gridCounts.xCount();
+        rows = gridCounts.yCount();
         double marginX = resolveNonNegativeDouble(inputValues.get(INPUT_MARGIN_X_ID), 0.0d);
         double marginY = resolveNonNegativeDouble(inputValues.get(INPUT_MARGIN_Y_ID), 0.0d);
 

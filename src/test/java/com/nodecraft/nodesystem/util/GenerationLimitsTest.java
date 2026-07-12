@@ -41,4 +41,16 @@ class GenerationLimitsTest {
         assertTrue(counts.yCount() <= GenerationLimits.MAX_GRID_AXIS);
         assertTrue(counts.zCount() <= GenerationLimits.MAX_GRID_AXIS);
     }
+
+    @Test
+    void clampSpacingInstanceCountCapsTinySpacing() {
+        assertEquals(GenerationLimits.MAX_LIST_ELEMENTS,
+            GenerationLimits.clampSpacingInstanceCount(1.0e12d, 1.0e-6d));
+    }
+
+    @Test
+    void clampAttemptBudgetCapsHugeValues() {
+        assertTrue(GenerationLimits.clampAttemptBudget(Integer.MAX_VALUE, Integer.MAX_VALUE)
+            <= GenerationLimits.MAX_LIST_ELEMENTS * 100L);
+    }
 }

@@ -14,6 +14,7 @@ import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryTransform;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -160,6 +161,7 @@ public class CurveArrayGeometryNode extends BaseNode {
         double spacing = inputValues.get(INPUT_SPACING_ID) instanceof Number n ? n.doubleValue() : 0.0d;
         List<Double> distances = new ArrayList<>();
         if (count >= 2) {
+            count = GenerationLimits.clampPositiveCount(count);
             int denominator = includeEnds ? count - 1 : count + 1;
             int start = includeEnds ? 0 : 1;
             int end = includeEnds ? count - 1 : count;
@@ -169,10 +171,14 @@ public class CurveArrayGeometryNode extends BaseNode {
             return distances;
         }
         if (spacing > EPS) {
-            for (double d = includeEnds ? 0.0d : spacing; d <= total + EPS; d += spacing) {
+            int maxInstances = GenerationLimits.clampSpacingInstanceCount(total, spacing);
+            int emitted = 0;
+            for (double d = includeEnds ? 0.0d : spacing; d <= total + EPS && emitted < maxInstances; d += spacing) {
                 distances.add(Math.min(d, total));
+                emitted++;
             }
-            if (includeEnds && (distances.isEmpty() || distances.getLast() < total - EPS)) {
+            if (includeEnds && emitted < maxInstances
+                && (distances.isEmpty() || distances.getLast() < total - EPS)) {
                 distances.add(total);
             }
         }

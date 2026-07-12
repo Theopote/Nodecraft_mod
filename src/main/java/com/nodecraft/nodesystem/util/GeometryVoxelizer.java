@@ -405,8 +405,15 @@ public final class GeometryVoxelizer {
         return blocks;
     }
 
+    private static boolean exceedsVoxelVolumeLimit(GeometryData geometry) {
+        return boundingVolumeExceedsLimit(geometry);
+    }
+
     public static BlockPosList voxelizeTorus(TorusGeometryData geometry, boolean fillSolid) {
         BlockPosList blocks = new BlockPosList();
+        if (exceedsVoxelVolumeLimit(geometry)) {
+            return blocks;
+        }
         RegionData region = TorusBlockGenerator.createBoundingRegion(geometry);
         TorusBlockGenerator.populateTorus(blocks, region, geometry, fillSolid);
         return blocks;
@@ -424,6 +431,9 @@ public final class GeometryVoxelizer {
     }
 
     public static BlockPosList voxelizeEllipsoid(EllipsoidGeometryData geometry, boolean fillSolid) {
+        if (exceedsVoxelVolumeLimit(geometry)) {
+            return new BlockPosList();
+        }
         return voxelizeEllipsoid(
             geometry,
             fillSolid ? EllipsoidBlockGenerator.VoxelMode.SOLID : EllipsoidBlockGenerator.VoxelMode.SHELL,
@@ -433,6 +443,9 @@ public final class GeometryVoxelizer {
 
     public static BlockPosList voxelizeHemisphere(HemisphereGeometryData geometry, boolean fillSolid) {
         BlockPosList blocks = new BlockPosList();
+        if (exceedsVoxelVolumeLimit(geometry)) {
+            return blocks;
+        }
         RegionData region = HemisphereBlockGenerator.createBoundingRegion(geometry);
         HemisphereBlockGenerator.populateHemisphere(blocks, region, geometry, fillSolid);
         return blocks;
@@ -442,6 +455,9 @@ public final class GeometryVoxelizer {
                                                  EllipsoidBlockGenerator.VoxelMode voxelMode,
                                                  double shellThickness) {
         BlockPosList blocks = new BlockPosList();
+        if (exceedsVoxelVolumeLimit(geometry)) {
+            return blocks;
+        }
         RegionData region = EllipsoidBlockGenerator.createBoundingRegion(geometry);
         EllipsoidBlockGenerator.populateEllipsoid(blocks, region, geometry, voxelMode, shellThickness);
         return blocks;
@@ -449,6 +465,9 @@ public final class GeometryVoxelizer {
 
     public static BlockPosList voxelizeCone(ConeGeometryData geometry, boolean fillSolid) {
         BlockPosList blocks = new BlockPosList();
+        if (exceedsVoxelVolumeLimit(geometry)) {
+            return blocks;
+        }
         RegionData region = ConeBlockGenerator.createBoundingRegion(geometry);
         ConeBlockGenerator.populateCone(blocks, region, geometry, fillSolid);
         return blocks;
@@ -456,12 +475,18 @@ public final class GeometryVoxelizer {
 
     public static BlockPosList voxelizeFrustumCone(FrustumConeGeometryData geometry, boolean fillSolid) {
         BlockPosList blocks = new BlockPosList();
+        if (exceedsVoxelVolumeLimit(geometry)) {
+            return blocks;
+        }
         RegionData region = FrustumConeBlockGenerator.createBoundingRegion(geometry);
         FrustumConeBlockGenerator.populateFrustum(blocks, region, geometry, fillSolid);
         return blocks;
     }
 
     public static BlockPosList voxelizePrism(PrismGeometryData geometry, boolean fillSolid) {
+        if (exceedsVoxelVolumeLimit(geometry)) {
+            return new BlockPosList();
+        }
         final double eps = 1.0e-9;
         Vector3d extrusion = geometry.getExtrusionVector();
         double extrusionLengthSquared = extrusion.lengthSquared();
@@ -534,6 +559,9 @@ public final class GeometryVoxelizer {
     }
 
     public static BlockPosList voxelizeSquarePyramid(SquarePyramidGeometryData geometry, boolean fillSolid) {
+        if (exceedsVoxelVolumeLimit(geometry)) {
+            return new BlockPosList();
+        }
         RegionData region = createSquarePyramidBoundingRegion(geometry);
         if (region == null || !region.isComplete()) {
             return new BlockPosList();
@@ -677,6 +705,9 @@ public final class GeometryVoxelizer {
 
     public static BlockPosList voxelizeOctahedron(OctahedronGeometryData geometry, boolean fillSolid) {
         BlockPosList blocks = new BlockPosList();
+        if (exceedsVoxelVolumeLimit(geometry)) {
+            return blocks;
+        }
         RegionData region = OctahedronBlockGenerator.createBoundingRegion(geometry);
         OctahedronBlockGenerator.populateOctahedron(blocks, region, geometry, fillSolid);
         return blocks;
@@ -684,6 +715,9 @@ public final class GeometryVoxelizer {
 
     public static BlockPosList voxelizeIcosahedron(IcosahedronGeometryData geometry, boolean fillSolid) {
         BlockPosList blocks = new BlockPosList();
+        if (exceedsVoxelVolumeLimit(geometry)) {
+            return blocks;
+        }
         RegionData region = IcosahedronBlockGenerator.createBoundingRegion(geometry);
         IcosahedronBlockGenerator.populateIcosahedron(blocks, region, geometry);
         return blocks;
@@ -691,12 +725,18 @@ public final class GeometryVoxelizer {
 
     public static BlockPosList voxelizeDodecahedron(DodecahedronGeometryData geometry, boolean fillSolid) {
         BlockPosList blocks = new BlockPosList();
+        if (exceedsVoxelVolumeLimit(geometry)) {
+            return blocks;
+        }
         RegionData region = DodecahedronBlockGenerator.createBoundingRegion(geometry);
         DodecahedronBlockGenerator.populateDodecahedron(blocks, region, geometry);
         return blocks;
     }
 
     public static BlockPosList voxelizeSphere(SphereData geometry, boolean fillSolid) {
+        if (exceedsVoxelVolumeLimit(geometry)) {
+            return new BlockPosList();
+        }
         return voxelizeSphere(
             geometry,
             fillSolid ? SphereBlockGenerator.VoxelMode.SOLID : SphereBlockGenerator.VoxelMode.SHELL,
@@ -708,6 +748,9 @@ public final class GeometryVoxelizer {
                                               SphereBlockGenerator.VoxelMode voxelMode,
                                               double shellThickness) {
         BlockPosList blocks = new BlockPosList();
+        if (exceedsVoxelVolumeLimit(geometry)) {
+            return blocks;
+        }
         RegionData region = SphereBlockGenerator.createBoundingRegion(geometry);
         SphereBlockGenerator.populateSphere(blocks, region, geometry, voxelMode, shellThickness);
         return blocks;
@@ -715,6 +758,9 @@ public final class GeometryVoxelizer {
 
     public static BlockPosList voxelizeTetrahedron(TetrahedronGeometryData geometry, boolean fillSolid) {
         BlockPosList blocks = new BlockPosList();
+        if (exceedsVoxelVolumeLimit(geometry)) {
+            return blocks;
+        }
         RegionData region = TetrahedronBlockGenerator.createBoundingRegion(geometry);
         // First pass matches the legacy generator, which only exposed a solid tetrahedron.
         TetrahedronBlockGenerator.populateTetrahedron(blocks, region, geometry);
@@ -722,6 +768,9 @@ public final class GeometryVoxelizer {
     }
 
     public static BlockPosList voxelizeSdfGeometry(SdfGeometryData geometry, boolean fillSolid) {
+        if (exceedsVoxelVolumeLimit(geometry)) {
+            return new BlockPosList();
+        }
         RegionData region = createBoundingRegion(geometry);
         if (region == null || !region.isComplete()) {
             return new BlockPosList();

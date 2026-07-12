@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
@@ -118,7 +119,7 @@ public class PoissonDiskOnPlaneNode extends BaseNode {
 
         double halfU = huNum.doubleValue();
         double halfV = hvNum.doubleValue();
-        int targetCount = cNum.intValue();
+        int targetCount = GenerationLimits.clampPositiveCount(cNum.intValue());
         double minDist = mdNum.doubleValue();
 
         if (targetCount < 1 || halfU <= EPS || halfV <= EPS || minDist < EPS) {
@@ -139,7 +140,7 @@ public class PoissonDiskOnPlaneNode extends BaseNode {
         double minDistSq = minDist * minDist;
         List<Vector3d> accepted = new ArrayList<>(targetCount);
         int attempts = 0;
-        int cap = Math.max(maxAttempts, targetCount * 100);
+        int cap = GenerationLimits.clampAttemptBudget(maxAttempts, targetCount);
 
         while (accepted.size() < targetCount && attempts < cap) {
             attempts++;
@@ -190,7 +191,7 @@ public class PoissonDiskOnPlaneNode extends BaseNode {
     }
 
     public void setMaxAttempts(int maxAttempts) {
-        this.maxAttempts = Math.max(100, maxAttempts);
+        this.maxAttempts = GenerationLimits.clampAttemptBudget(Math.max(100, maxAttempts), 1);
         markDirty();
     }
 
