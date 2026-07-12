@@ -122,6 +122,9 @@ public class NodeExecutor {
             } catch (Exception e) {
                 LOGGER.error("Node graph execution failed.", e);
                 executionFuture.completeExceptionally(e);
+            } catch (Error e) {
+                LOGGER.error("Node graph execution failed with fatal error.", e);
+                executionFuture.completeExceptionally(e);
             } finally {
                 isExecuting.set(false);
                 executorService.shutdown();
@@ -139,6 +142,9 @@ public class NodeExecutor {
             return executeGraph();
         } catch (Exception e) {
             LOGGER.error("Node graph execution failed.", e);
+            return false;
+        } catch (Error e) {
+            LOGGER.error("Node graph execution failed with fatal error.", e);
             return false;
         } finally {
             isExecuting.set(false);
@@ -542,6 +548,12 @@ public class NodeExecutor {
             return true;
         } catch (Exception e) {
             LOGGER.error("Node {} failed during execution: {}", node.getDisplayName(), e.getMessage(), e);
+            nodeStates.put(node.getId(), NodeState.ERROR);
+            lastExecutionProfile = profiler.finish();
+            clearGraphPreviews();
+            return false;
+        } catch (Error e) {
+            LOGGER.error("Node {} failed with fatal error during execution: {}", node.getDisplayName(), e.getMessage(), e);
             nodeStates.put(node.getId(), NodeState.ERROR);
             lastExecutionProfile = profiler.finish();
             clearGraphPreviews();

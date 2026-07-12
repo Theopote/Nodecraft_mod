@@ -130,10 +130,14 @@ public class CurveFrameAlongPathNode extends AbstractCurveNode {
                 sampleDistances.add(total * i / (double) (count - 1));
             }
         } else if (spacing > EPS) {
-            for (double d = 0.0d; d <= total + EPS; d += spacing) {
+            int maxInstances = GenerationLimits.clampSpacingInstanceCount(total, spacing);
+            int emitted = 0;
+            for (double d = 0.0d; d <= total + EPS && emitted < maxInstances; d += spacing) {
                 sampleDistances.add(Math.min(d, total));
+                emitted++;
             }
-            if (sampleDistances.get(sampleDistances.size() - 1) < total - EPS) {
+            if (emitted < maxInstances
+                && (sampleDistances.isEmpty() || sampleDistances.get(sampleDistances.size() - 1) < total - EPS)) {
                 sampleDistances.add(total);
             }
         } else {

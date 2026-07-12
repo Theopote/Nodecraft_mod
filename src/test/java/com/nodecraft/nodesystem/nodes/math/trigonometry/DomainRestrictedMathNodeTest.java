@@ -45,15 +45,22 @@ class DomainRestrictedMathNodeTest {
     }
 
     @Test
-    void logarithmAcceptsValidInputs() {
-        LogarithmNode node = new LogarithmNode();
+    void tangentMarksSingularityAsInvalid() {
+        TangentNode node = new TangentNode();
 
-        Map<String, Object> outputs = node.compute(Map.of(
-            "input_number", 100.0d,
-            "input_base", 10.0d
-        ));
+        Map<String, Object> outputs = node.compute(Map.of("input_angle_rad", Math.PI / 2.0d));
 
-        assertTrue((Boolean) outputs.get("output_valid"));
-        assertEquals(2.0d, (Double) outputs.get("output_logarithm"), 1.0e-12);
+        assertEquals(false, outputs.get("output_valid"));
+        assertTrue(Double.isNaN((Double) outputs.get("output_tangent")));
+    }
+
+    @Test
+    void sineAcceptsFiniteInput() {
+        SineNode node = new SineNode();
+
+        Map<String, Object> outputs = node.compute(Map.of("input_angle_rad", Math.PI / 2.0d));
+
+        assertEquals(true, outputs.get("output_valid"));
+        assertEquals(1.0d, (Double) outputs.get("output_sine"), 1.0e-12);
     }
 }

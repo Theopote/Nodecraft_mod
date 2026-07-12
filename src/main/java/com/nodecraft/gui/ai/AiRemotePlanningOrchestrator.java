@@ -403,7 +403,7 @@ public final class AiRemotePlanningOrchestrator {
 
     private boolean isPlacementOnlyCanvasPrompt(String prompt, boolean complexGenerationPrompt) {
         String text = prompt == null ? "" : prompt.toLowerCase();
-        return containsAny(text, "鐢诲竷", "鑺傜偣鏀惧埌", "鏀剧疆鑺傜偣", "娣诲姞鑺傜偣", "canvas", "place node", "add node")
+        return containsAny(text, "画布", "节点放到", "放置节点", "添加节点", "canvas", "place node", "add node")
                 && !complexGenerationPrompt;
     }
 

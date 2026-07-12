@@ -1,16 +1,14 @@
 package com.nodecraft.nodesystem.nodes.math.trigonometry;
 
-import com.nodecraft.nodesystem.core.BaseNode;
-import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
+
 import java.util.UUID;
 
-/**
- * Sine Node: Computes the sine of an angle (in radians).
- */
 @NodeInfo(
     id = "math.trigonometry.sin",
     displayName = "Sine (Sin)",
@@ -20,44 +18,38 @@ import java.util.UUID;
 )
 public class SineNode extends BaseNode {
 
-    // --- 输入端口 IDs ---
     private static final String INPUT_ANGLE_ID = "input_angle_rad";
-
-    // --- 输出端口 IDs ---
     private static final String OUTPUT_SINE_ID = "output_sine";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
-    // --- 构造函数 ---
     public SineNode() {
         super(UUID.randomUUID(), "math.trigonometry.sin");
-        
-        // 创建并添加输入端口
-        addInputPort(new BasePort(INPUT_ANGLE_ID, "Angle (rad)", "Input angle in radians", NodeDataType.ANY, this));
 
-        // 创建并添加输出端口
+        addInputPort(new BasePort(INPUT_ANGLE_ID, "Angle (rad)", "Input angle in radians", NodeDataType.ANY, this));
         addOutputPort(new BasePort(OUTPUT_SINE_ID, "Sine", "Result sin(Angle)", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether input is a valid finite number", NodeDataType.BOOLEAN, this));
     }
 
-    // --- 核心逻辑 ---
-    
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        // 获取输入值
         Object val = inputValues.get(INPUT_ANGLE_ID);
-
-        // 检查输入是否为数字
-        if (val instanceof Number) {
-            double angleRad = ((Number) val).doubleValue();
-            double result = Math.sin(angleRad);
-            outputValues.put(OUTPUT_SINE_ID, result);
-        } else {
-            // 如果输入无效
+        if (!(val instanceof Number number)) {
             outputValues.put(OUTPUT_SINE_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
         }
+
+        double angleRad = number.doubleValue();
+        if (!Double.isFinite(angleRad)) {
+            outputValues.put(OUTPUT_SINE_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
+        }
+
+        double result = Math.sin(angleRad);
+        outputValues.put(OUTPUT_SINE_ID, result);
+        outputValues.put(OUTPUT_VALID_ID, Double.isFinite(result));
     }
-
-    // --- Getters/Setters (不需要) ---
-
-    // --- (反)序列化 (不需要) ---
 
     @Override
     public String getDescription() {
@@ -68,4 +60,4 @@ public class SineNode extends BaseNode {
     public String getDisplayName() {
         return "Sine (Sin)";
     }
-} 
+}
