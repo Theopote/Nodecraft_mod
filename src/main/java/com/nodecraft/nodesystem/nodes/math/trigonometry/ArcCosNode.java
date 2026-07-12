@@ -25,6 +25,7 @@ public class ArcCosNode extends BaseNode {
 
     // --- 输出端口 IDs ---
     private static final String OUTPUT_ANGLE_ID = "output_angle_rad";
+    private static final String OUTPUT_VALID_ID = "output_valid";
     
     private String description = "计算输入值的反余弦值（结果以弧度为单位）";
 
@@ -37,6 +38,7 @@ public class ArcCosNode extends BaseNode {
 
         // 创建并添加输出端口
         addOutputPort(new BasePort(OUTPUT_ANGLE_ID, "Angle (rad)", "Result acos(Value)", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether input is in [-1, 1]", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -48,20 +50,22 @@ public class ArcCosNode extends BaseNode {
     
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        // 获取输入值
         Object val = inputValues.get(INPUT_VALUE_ID);
-
-        // 检查输入是否为数字
-        if (val instanceof Number) {
-            double value = ((Number) val).doubleValue();
-            
-            // Math.acos 输入范围是 [-1, 1], 超出范围返回 NaN
-            double result = Math.acos(value);
-            outputValues.put(OUTPUT_ANGLE_ID, result); // result is NaN if value is outside [-1, 1]
-        } else {
-            // 如果输入无效
+        if (!(val instanceof Number number)) {
             outputValues.put(OUTPUT_ANGLE_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
         }
+
+        double value = number.doubleValue();
+        if (!Double.isFinite(value) || value < -1.0d || value > 1.0d) {
+            outputValues.put(OUTPUT_ANGLE_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
+        }
+
+        outputValues.put(OUTPUT_ANGLE_ID, Math.acos(value));
+        outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     // --- Getters/Setters (不需要) ---
