@@ -29,6 +29,9 @@ import java.util.UUID;
 )
 public class ExpressionNode extends BaseCustomUINode {
 
+    private static final int MAX_EXPRESSION_LENGTH = 2048;
+    private static final int MAX_PARSE_DEPTH = 100;
+
     private static final String INPUT_A_ID = "input_a";
     private static final String INPUT_B_ID = "input_b";
     private static final String INPUT_C_ID = "input_c";
@@ -153,7 +156,7 @@ public class ExpressionNode extends BaseCustomUINode {
     }
 
     private boolean applyExpression(String rawExpression) {
-        String next = rawExpression == null ? "" : rawExpression.trim();
+        String next = normalizeExpression(rawExpression);
         if (!next.equals(expression)) {
             expression = next;
             bufferNeedsSync = true;
@@ -161,6 +164,14 @@ public class ExpressionNode extends BaseCustomUINode {
             return true;
         }
         return false;
+    }
+
+    private static String normalizeExpression(String rawExpression) {
+        String next = rawExpression == null ? "" : rawExpression.trim();
+        if (next.length() > MAX_EXPRESSION_LENGTH) {
+            next = next.substring(0, MAX_EXPRESSION_LENGTH);
+        }
+        return next;
     }
 
     private String clipError(String error) {
@@ -200,7 +211,7 @@ public class ExpressionNode extends BaseCustomUINode {
     }
 
     public void setExpression(String expression) {
-        String next = expression == null ? "" : expression.trim();
+        String next = normalizeExpression(expression);
         if (!next.equals(this.expression)) {
             this.expression = next;
             bufferNeedsSync = true;
@@ -232,13 +243,13 @@ public class ExpressionNode extends BaseCustomUINode {
     public void setNodeState(Object state) {
         if (state instanceof Map<?, ?> map) {
             if (map.get("expression") instanceof String value) {
-                expression = value;
+                expression = normalizeExpression(value);
             }
             if (map.get("showError") instanceof Boolean value) {
                 showError = value;
             }
         } else if (state instanceof String value) {
-            expression = value;
+            expression = normalizeExpression(value);
         }
         bufferNeedsSync = true;
         invalidateCache();
@@ -249,6 +260,7 @@ public class ExpressionNode extends BaseCustomUINode {
         private final String text;
         private final Map<String, Double> variables;
         private int index;
+        private int recursionDepth;
 
         private Parser(String text, Map<String, Double> variables) {
             this.text = text == null ? "" : text;
@@ -258,6 +270,11 @@ public class ExpressionNode extends BaseCustomUINode {
         private double parse() {
             if (text.isBlank()) {
                 throw new ExpressionEvaluationException("Expression is empty");
+            }
+            if (text.length() > MAX_EXPRESSION_LENGTH) {
+                throw new ExpressionEvaluationException(
+                    "Expression is too long (max " + MAX_EXPRESSION_LENGTH + " characters)"
+                );
             }
             double value = parseExpression();
             skipWhitespace();
@@ -309,8 +326,13 @@ public class ExpressionNode extends BaseCustomUINode {
             double base = parseUnary();
             skipWhitespace();
             if (match('^')) {
-                double exponent = parsePower();
-                return Math.pow(base, exponent);
+                enterRecursion();
+                try {
+                    double exponent = parsePower();
+                    return Math.pow(base, exponent);
+                } finally {
+                    exitRecursion();
+                }
             }
             return base;
         }
@@ -318,10 +340,20 @@ public class ExpressionNode extends BaseCustomUINode {
         private double parseUnary() {
             skipWhitespace();
             if (match('+')) {
-                return parseUnary();
+                enterRecursion();
+                try {
+                    return parseUnary();
+                } finally {
+                    exitRecursion();
+                }
             }
             if (match('-')) {
-                return -parseUnary();
+                enterRecursion();
+                try {
+                    return -parseUnary();
+                } finally {
+                    exitRecursion();
+                }
             }
             return parsePrimary();
         }
@@ -329,9 +361,14 @@ public class ExpressionNode extends BaseCustomUINode {
         private double parsePrimary() {
             skipWhitespace();
             if (match('(')) {
-                double value = parseExpression();
-                expect(')');
-                return value;
+                enterRecursion();
+                try {
+                    double value = parseExpression();
+                    expect(')');
+                    return value;
+                } finally {
+                    exitRecursion();
+                }
             }
             if (isIdentifierStart(currentCharOrZero())) {
                 return parseIdentifier();
@@ -557,6 +594,18 @@ public class ExpressionNode extends BaseCustomUINode {
 
         private ExpressionEvaluationException error(String message) {
             return new ExpressionEvaluationException(message + " at " + Math.min(index + 1, text.length()));
+        }
+
+        private void enterRecursion() {
+            if (++recursionDepth > MAX_PARSE_DEPTH) {
+                throw new ExpressionEvaluationException(
+                    "Expression nesting is too deep (max " + MAX_PARSE_DEPTH + ")"
+                );
+            }
+        }
+
+        private void exitRecursion() {
+            recursionDepth--;
         }
 
         @FunctionalInterface
