@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.ColorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.ImportPathUtil;
 import org.jetbrains.annotations.Nullable;
 
 import javax.imageio.ImageIO;
@@ -108,7 +109,7 @@ public class ReadImageNode extends BaseNode {
         }
 
         boolean allowExternal = inputValues.get(INPUT_ALLOW_EXTERNAL_PATHS_ID) instanceof Boolean value ? value : allowExternalPaths;
-        if (!allowExternal && !isAllowedDefaultPath(resolvedPath)) {
+        if (!allowExternal && !ImportPathUtil.isAllowedDefaultPath(resolvedPath, ImportPathUtil.ImportKind.IMAGE)) {
             publishEmptyOutputs(resolvedPath.toString(), "External image paths are disabled");
             return;
         }
@@ -168,16 +169,6 @@ public class ReadImageNode extends BaseNode {
             return text.trim();
         }
         return null;
-    }
-
-    private boolean isAllowedDefaultPath(Path path) {
-        Path normalized = path.toAbsolutePath().normalize();
-        Path userHome = Path.of(System.getProperty("user.home", "")).toAbsolutePath().normalize();
-        Path cwd = Path.of("").toAbsolutePath().normalize();
-        return normalized.startsWith(cwd)
-            || normalized.startsWith(userHome.resolve(".minecraft").resolve("config").resolve("nodecraft").resolve("images").normalize())
-            || normalized.startsWith(userHome.resolve(".minecraft").resolve("screenshots").normalize())
-            || normalized.toString().contains(".minecraft" + java.io.File.separator + "saves" + java.io.File.separator);
     }
 
     private int resolvePositiveInt(String inputId, int fallback) {

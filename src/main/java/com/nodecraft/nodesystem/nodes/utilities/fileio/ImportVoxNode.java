@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.ColorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.ImportPathUtil;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -100,7 +101,7 @@ public class ImportVoxNode extends BaseNode {
         }
 
         boolean allowExternal = getInputBoolean(INPUT_ALLOW_EXTERNAL_PATHS_ID, allowExternalPaths);
-        if (!allowExternal && !isAllowedDefaultPath(resolvedPath)) {
+        if (!allowExternal && !ImportPathUtil.isAllowedDefaultPath(resolvedPath, ImportPathUtil.ImportKind.VOX)) {
             publishEmpty(resolvedPath.toString(), "External VOX paths are disabled");
             return;
         }
@@ -187,17 +188,6 @@ public class ImportVoxNode extends BaseNode {
     private boolean getInputBoolean(String portId, boolean fallback) {
         Object value = inputValues.get(portId);
         return value instanceof Boolean bool ? bool : fallback;
-    }
-
-    private boolean isAllowedDefaultPath(Path path) {
-        Path normalized = path.toAbsolutePath().normalize();
-        Path userHome = Path.of(System.getProperty("user.home", "")).toAbsolutePath().normalize();
-        Path cwd = Path.of("").toAbsolutePath().normalize();
-        Path minecraftDir = userHome.resolve(".minecraft").normalize();
-        return normalized.startsWith(cwd)
-            || normalized.startsWith(minecraftDir.resolve("config").resolve("nodecraft").resolve("assets").normalize())
-            || normalized.startsWith(minecraftDir.resolve("config").resolve("nodecraft").resolve("vox").normalize())
-            || normalized.toString().contains(".minecraft" + java.io.File.separator + "saves" + java.io.File.separator);
     }
 
     private void publishEmpty(String path, String error) {
