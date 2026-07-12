@@ -296,7 +296,10 @@ public class CloneRegionNode extends BaseNode {
 
                         success = error.isEmpty();
                         if (success && undoRecord != null) {
-                            WorldWriteHistoryService.getInstance().push(undoRecord);
+                            WorldWriteHistoryService.getInstance().push(
+                                WorldWriteHistoryService.resolveActorId(context.getPlayer()),
+                                undoRecord
+                            );
                         }
                     } catch (RuntimeException e) {
                         error = e.getMessage() == null ? "Clone failed" : e.getMessage();

@@ -44,14 +44,17 @@ public class PeekLastWorldWriteUndoNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        WorldWriteHistoryService history = WorldWriteHistoryService.getInstance();
-        WorldWriteHistoryService.UndoRecord record = history.peek();
+        WorldWriteHistoryService service = WorldWriteHistoryService.getInstance();
+        UUID actorId = context != null
+            ? WorldWriteHistoryService.resolveActorId(context.getPlayer())
+            : WorldWriteHistoryService.SERVER_ACTOR_ID;
+        WorldWriteHistoryService.UndoRecord record = service.peek(actorId);
         boolean hasRecord = record != null && record.size() > 0;
         int count = 0;
         if (record != null) {
             count = record.size();
         }
-        int remaining = history.size();
+        int remaining = service.size(actorId);
         BlockPos minPos = null;
         BlockPos maxPos = null;
         RegionData region = null;

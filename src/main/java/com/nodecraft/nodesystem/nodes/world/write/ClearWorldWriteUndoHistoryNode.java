@@ -37,15 +37,18 @@ public class ClearWorldWriteUndoHistoryNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        WorldWriteHistoryService history = WorldWriteHistoryService.getInstance();
+        WorldWriteHistoryService service = WorldWriteHistoryService.getInstance();
+        UUID actorId = context != null
+            ? WorldWriteHistoryService.resolveActorId(context.getPlayer())
+            : WorldWriteHistoryService.SERVER_ACTOR_ID;
         int clearedCount = 0;
-        int remainingHistory = history.size();
+        int remainingHistory = service.size(actorId);
         String status = "No clear executed";
 
         if (inputValues.get(INPUT_TRIGGER_ID) != null) {
-            clearedCount = history.size();
-            history.clear();
-            remainingHistory = history.size();
+            clearedCount = service.size(actorId);
+            service.clear(actorId);
+            remainingHistory = service.size(actorId);
             status = "Cleared " + clearedCount + " world.write undo records";
         }
 

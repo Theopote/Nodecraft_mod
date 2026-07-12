@@ -39,23 +39,26 @@ public class UndoLastWorldWriteNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        WorldWriteHistoryService history = WorldWriteHistoryService.getInstance();
+        WorldWriteHistoryService service = WorldWriteHistoryService.getInstance();
+        UUID actorId = context != null
+            ? WorldWriteHistoryService.resolveActorId(context.getPlayer())
+            : WorldWriteHistoryService.SERVER_ACTOR_ID;
         boolean success = false;
         int restoredCount = 0;
-        int remaining = history.size();
+        int remaining = service.size(actorId);
         String status = "No undo executed";
 
         if (inputValues.get(INPUT_TRIGGER_ID) != null) {
             if (context == null || context.getWorld() == null) {
                 status = "Missing execution context";
             } else {
-                WorldWriteHistoryService.UndoRecord record = history.pop();
+                WorldWriteHistoryService.UndoRecord record = service.peek(actorId);
                 if (record == null) {
                     status = "No recorded world.write history";
                 } else {
                     restoredCount = record.size();
-                    success = history.undoLast(context.getWorld());
-                    remaining = history.size();
+                    success = service.undoLast(actorId, context.getWorld());
+                    remaining = service.size(actorId);
                     status = success ? "Restored " + restoredCount + " blocks" : "Undo failed";
                     if (!success) {
                         restoredCount = 0;

@@ -102,7 +102,10 @@ public class SetBlockNode extends BaseNode {
                 if (success && recordUndo && previousBlock instanceof BlockState previousState) {
                     WorldWriteHistoryService.UndoRecord record = new WorldWriteHistoryService.UndoRecord();
                     record.add(pos, previousState);
-                    WorldWriteHistoryService.getInstance().push(record);
+                    WorldWriteHistoryService.getInstance().push(
+                        WorldWriteHistoryService.resolveActorId(context.getPlayer()),
+                        record
+                    );
                 }
                 if (success) {
                     NbtCompound incomingNbt = WorldWriteNbtUtils.resolveIncomingNbt(inputValues);

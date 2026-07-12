@@ -180,7 +180,10 @@ public class SetBlocksNode extends BaseNode {
                     }
                 }
                 if (undoRecord != null) {
-                    WorldWriteHistoryService.getInstance().push(undoRecord);
+                    WorldWriteHistoryService.getInstance().push(
+                        WorldWriteHistoryService.resolveActorId(context.getPlayer()),
+                        undoRecord
+                    );
                 }
             }
         }

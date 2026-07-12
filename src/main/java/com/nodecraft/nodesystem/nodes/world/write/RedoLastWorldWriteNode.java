@@ -34,24 +34,27 @@ public class RedoLastWorldWriteNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        WorldWriteHistoryService history = WorldWriteHistoryService.getInstance();
+        WorldWriteHistoryService service = WorldWriteHistoryService.getInstance();
+        UUID actorId = context != null
+            ? WorldWriteHistoryService.resolveActorId(context.getPlayer())
+            : WorldWriteHistoryService.SERVER_ACTOR_ID;
         boolean success = false;
         String status = "No redo executed";
 
         if (inputValues.get(INPUT_TRIGGER_ID) != null) {
             if (context == null || context.getWorld() == null) {
                 status = "Missing execution context";
-            } else if (history.redoSize() == 0) {
+            } else if (service.redoSize(actorId) == 0) {
                 status = "No recorded world.write redo history";
             } else {
-                success = history.redoLast(context.getWorld());
+                success = service.redoLast(actorId, context.getWorld());
                 status = success ? "Redid last world.write operation" : "Redo failed";
             }
         }
 
         outputValues.put(OUTPUT_SUCCESS_ID, success);
-        outputValues.put(OUTPUT_REMAINING_REDO_ID, history.redoSize());
-        outputValues.put(OUTPUT_REMAINING_HISTORY_ID, history.size());
+        outputValues.put(OUTPUT_REMAINING_REDO_ID, service.redoSize(actorId));
+        outputValues.put(OUTPUT_REMAINING_HISTORY_ID, service.size(actorId));
         outputValues.put(OUTPUT_STATUS_ID, status);
     }
 }
