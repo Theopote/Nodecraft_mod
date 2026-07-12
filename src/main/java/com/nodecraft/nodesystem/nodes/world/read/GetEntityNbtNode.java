@@ -48,7 +48,7 @@ public class GetEntityNbtNode extends BaseNode {
         addInputPort(new BasePort(INPUT_ENTITY_TYPE_ID, "Entity Type", "Entity type id for query", NodeDataType.ENTITY_TYPE, this));
         addInputPort(new BasePort(INPUT_FIND_NEAREST_ID, "Find Nearest", "Choose nearest matching entity", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_MAX_DISTANCE_ID, "Max Distance", "Query radius for type lookup", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_MAX_STRING_LENGTH_ID, "Max String Length", "Maximum SNBT string length; 0 means unlimited", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_MAX_STRING_LENGTH_ID, "Max String Length", "Maximum SNBT string length; 0 uses the default cap", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_FOUND_ID, "Found", "Whether entity was found", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ENTITY_ID, "Entity", "Resolved entity", NodeDataType.MINECRAFT_ENTITY, this));
@@ -73,9 +73,7 @@ public class GetEntityNbtNode extends BaseNode {
 
         boolean findNearest = !(inputValues.get(INPUT_FIND_NEAREST_ID) instanceof Boolean b) || b;
         double maxDistance = inputValues.get(INPUT_MAX_DISTANCE_ID) instanceof Number n ? Math.max(1.0d, n.doubleValue()) : 64.0d;
-        int maxStringLength = inputValues.get(INPUT_MAX_STRING_LENGTH_ID) instanceof Number n
-            ? Math.max(0, n.intValue())
-            : WorldReadUtils.DEFAULT_MAX_NBT_STRING_LENGTH;
+        int maxStringLength = WorldReadUtils.resolveMaxStringLength(inputValues.get(INPUT_MAX_STRING_LENGTH_ID));
 
         Entity entity = null;
         if (inputValues.get(INPUT_ENTITY_ID) instanceof Entity inputEntity) {

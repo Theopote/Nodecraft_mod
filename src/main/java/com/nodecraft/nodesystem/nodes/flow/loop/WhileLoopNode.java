@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -27,9 +28,6 @@ import java.util.UUID;
 public class WhileLoopNode extends BaseNode implements ExecRoutingNode {
 
     private static final String INPUT_EXEC_ID = "exec_in";
-    private static final int MIN_ITERATIONS = 1;
-    private static final int MAX_ITERATIONS_CAP = 100000;
-
     @NodeProperty(displayName = "Max Iterations", category = "Loop", order = 1)
     private int maxIterations = 256;
 
@@ -184,10 +182,7 @@ public class WhileLoopNode extends BaseNode implements ExecRoutingNode {
     }
 
     private static int clampMaxIterations(int value) {
-        if (value < MIN_ITERATIONS) {
-            return MIN_ITERATIONS;
-        }
-        return Math.min(value, MAX_ITERATIONS_CAP);
+        return GenerationLimits.clampLoopIterations(value);
     }
 
     @Override

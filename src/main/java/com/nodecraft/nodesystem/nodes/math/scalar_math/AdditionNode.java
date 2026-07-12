@@ -50,7 +50,18 @@ public class AdditionNode extends BaseNode implements INode {
         if (valA instanceof Number && valB instanceof Number) {
             double a = ((Number) valA).doubleValue();
             double b = ((Number) valB).doubleValue();
-            outputValues.put(OUTPUT_SUM_ID, a + b);
+            if (!Double.isFinite(a) || !Double.isFinite(b)) {
+                outputValues.put(OUTPUT_SUM_ID, Double.NaN);
+                outputValues.put(OUTPUT_VALID_ID, false);
+                return;
+            }
+            double sum = a + b;
+            if (!Double.isFinite(sum)) {
+                outputValues.put(OUTPUT_SUM_ID, Double.NaN);
+                outputValues.put(OUTPUT_VALID_ID, false);
+                return;
+            }
+            outputValues.put(OUTPUT_SUM_ID, sum);
             outputValues.put(OUTPUT_VALID_ID, true);
         } else {
             outputValues.put(OUTPUT_SUM_ID, Double.NaN);

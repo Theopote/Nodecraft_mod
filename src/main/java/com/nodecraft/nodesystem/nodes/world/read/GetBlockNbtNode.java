@@ -36,7 +36,7 @@ public class GetBlockNbtNode extends BaseNode {
         super(UUID.randomUUID(), "world.read.get_block_nbt");
 
         addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate", "Block position to inspect", NodeDataType.BLOCK_POS, this));
-        addInputPort(new BasePort(INPUT_MAX_STRING_LENGTH_ID, "Max String Length", "Maximum SNBT string length; 0 means unlimited", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_MAX_STRING_LENGTH_ID, "Max String Length", "Maximum SNBT string length; 0 uses the default cap", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_HAS_BLOCK_ENTITY_ID, "Has Block Entity", "Whether this block has block-entity data", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_NBT_ID, "NBT", "Block-entity NBT compound", NodeDataType.NBT_COMPOUND, this));
@@ -54,9 +54,7 @@ public class GetBlockNbtNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         BlockPos pos = WorldReadUtils.resolveBlockPos(inputValues.get(INPUT_COORDINATE_ID));
-        int maxStringLength = inputValues.get(INPUT_MAX_STRING_LENGTH_ID) instanceof Number n
-            ? Math.max(0, n.intValue())
-            : WorldReadUtils.DEFAULT_MAX_NBT_STRING_LENGTH;
+        int maxStringLength = WorldReadUtils.resolveMaxStringLength(inputValues.get(INPUT_MAX_STRING_LENGTH_ID));
 
         if (context == null || context.getWorld() == null) {
             writeInvalid("Execution context or world is missing.");

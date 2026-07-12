@@ -15,6 +15,7 @@ final class WorldReadUtils {
     static final int DEFAULT_MAX_BLOCKS = 100_000;
     static final int DEFAULT_MAX_COLUMNS = 65_536;
     static final int DEFAULT_MAX_NBT_STRING_LENGTH = 4096;
+    static final int MAX_NBT_STRING_LENGTH = 65_536;
 
     private WorldReadUtils() {
     }
@@ -95,13 +96,22 @@ final class WorldReadUtils {
         return GenerationLimits.clampPositiveCount(requested);
     }
 
+    static int resolveMaxStringLength(@Nullable Object value) {
+        int requested = value instanceof Number number ? Math.max(0, number.intValue()) : 0;
+        if (requested <= 0) {
+            return DEFAULT_MAX_NBT_STRING_LENGTH;
+        }
+        return Math.min(requested, MAX_NBT_STRING_LENGTH);
+    }
+
     static String truncate(String value, int maxLength) {
         if (value == null) {
             return "";
         }
-        if (maxLength <= 0 || value.length() <= maxLength) {
+        int limit = maxLength <= 0 ? DEFAULT_MAX_NBT_STRING_LENGTH : Math.min(maxLength, MAX_NBT_STRING_LENGTH);
+        if (value.length() <= limit) {
             return value;
         }
-        return value.substring(0, maxLength) + "...";
+        return value.substring(0, limit) + "...";
     }
 }

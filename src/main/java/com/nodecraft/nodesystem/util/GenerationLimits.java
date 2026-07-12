@@ -15,6 +15,11 @@ public final class GenerationLimits {
      */
     public static final int MAX_GRID_AXIS = 1024;
 
+    /**
+     * Maximum iterations for flow-control loop nodes.
+     */
+    public static final int MAX_LOOP_ITERATIONS = 100_000;
+
     private GenerationLimits() {
     }
 
@@ -126,5 +131,12 @@ public final class GenerationLimits {
             return 0;
         }
         return (int) Math.min(count, maxCount);
+    }
+
+    /**
+     * Caps loop iteration budgets to at least one and at most {@link #MAX_LOOP_ITERATIONS}.
+     */
+    public static int clampLoopIterations(int count) {
+        return Math.max(1, Math.min(MAX_LOOP_ITERATIONS, count));
     }
 }

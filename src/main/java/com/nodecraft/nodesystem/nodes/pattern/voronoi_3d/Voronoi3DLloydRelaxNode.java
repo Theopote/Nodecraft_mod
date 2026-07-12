@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.Voronoi3DGridLloyd;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -103,10 +104,8 @@ public class Voronoi3DLloydRelaxNode extends BaseNode {
             max.z = t;
         }
 
-        int cells = getInputInt(INPUT_CELLS_ID, cellsPerAxis);
-        int iters = getInputInt(INPUT_ITERATIONS_ID, iterations);
-        cells = Math.max(4, Math.min(96, cells));
-        iters = Math.max(1, Math.min(32, iters));
+        int cells = Math.max(4, Math.min(96, GenerationLimits.clampGridAxis(getInputInt(INPUT_CELLS_ID, cellsPerAxis))));
+        int iters = Math.max(1, Math.min(32, GenerationLimits.clampLoopIterations(getInputInt(INPUT_ITERATIONS_ID, iterations))));
 
         List<Vector3d> relaxed = Voronoi3DGridLloyd.relax(min, max, sites, cells, iters);
         outputValues.put(OUTPUT_SITES_ID, relaxed);

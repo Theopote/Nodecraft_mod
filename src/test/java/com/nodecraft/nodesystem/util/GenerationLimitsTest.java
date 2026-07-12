@@ -49,6 +49,13 @@ class GenerationLimitsTest {
     }
 
     @Test
+    void clampLoopIterationsCapsHugeValues() {
+        assertEquals(GenerationLimits.MAX_LOOP_ITERATIONS, GenerationLimits.clampLoopIterations(Integer.MAX_VALUE));
+        assertEquals(1, GenerationLimits.clampLoopIterations(0));
+        assertEquals(1, GenerationLimits.clampLoopIterations(-5));
+    }
+
+    @Test
     void clampAttemptBudgetCapsHugeValues() {
         assertTrue(GenerationLimits.clampAttemptBudget(Integer.MAX_VALUE, Integer.MAX_VALUE)
             <= GenerationLimits.MAX_LIST_ELEMENTS * 100L);

@@ -49,6 +49,19 @@ class ScalarMathNodeTest {
     }
 
     @Test
+    void additionRejectsNonFiniteInputs() {
+        AdditionNode node = new AdditionNode();
+
+        Map<String, Object> outputs = node.compute(Map.of(
+            "input_a", Double.POSITIVE_INFINITY,
+            "input_b", 1.0d
+        ));
+
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertTrue(Double.isNaN((Double) outputs.get("output_sum")));
+    }
+
+    @Test
     void remapAcceptsFiniteInput() {
         RemapNode node = new RemapNode();
 
