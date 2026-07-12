@@ -324,6 +324,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
                     recordUndo,
                     blocksPerTick,
                     tickBudgetNanos(),
+                    BakePlacementService.resolveActorId(context.getPlayer()),
                     null
                 );
                 count += queuedPlacements.size();
@@ -380,6 +381,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 placementMode,
                 recordUndo,
                 blocksPerTick,
+                BakePlacementService.resolveActorId(context.getPlayer()),
                 null
             );
             return new ApplyResult(blocks.size(), false);

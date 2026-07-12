@@ -39,22 +39,23 @@ public class UndoLastBakeNode extends BaseCustomUINode {
     public void processNode(@Nullable ExecutionContext context) {
         boolean success = false;
         int restoredCount = 0;
-        int remainingHistory = BakePlacementService.getInstance().getHistory().size();
+        UUID actorId = context != null ? BakePlacementService.resolveActorId(context.getPlayer()) : BakePlacementService.SERVER_ACTOR_ID;
+        BakePlacementService service = BakePlacementService.getInstance();
+        int remainingHistory = service.getHistory(actorId).size();
         String status = "No undo executed";
 
         if (inputValues.get(INPUT_TRIGGER_ID) != null) {
             if (context == null || context.getWorld() == null) {
                 status = "Missing execution context";
             } else {
-                BakePlacementService service = BakePlacementService.getInstance();
-                BakeHistory history = service.getHistory();
+                BakeHistory history = service.getHistory(actorId);
                 BakeHistory.UndoRecord record = history.peek();
 
                 if (record == null) {
                     status = "No recorded bake history";
                 } else {
                     restoredCount = record.size();
-                    success = service.undoLast(context.getWorld());
+                    success = service.undoLast(actorId, context.getWorld());
                     remainingHistory = history.size();
                     status = success
                         ? "Restored " + restoredCount + " blocks"

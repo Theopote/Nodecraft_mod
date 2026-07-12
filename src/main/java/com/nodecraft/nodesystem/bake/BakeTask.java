@@ -18,6 +18,7 @@ public class BakeTask {
     private final World world;
     private final List<Placement> placements;
     private final PlacementMode placementMode;
+    private final UUID actorId;
     private final boolean recordUndo;
     private final int blocksPerTick;
     private final long timeBudgetNanos;
@@ -38,7 +39,7 @@ public class BakeTask {
                     boolean recordUndo,
                     int blocksPerTick,
                     Runnable onComplete) {
-        this(taskId, world, toPlacements(positions, targetState), placementMode, recordUndo, blocksPerTick, 0L, onComplete);
+        this(taskId, world, toPlacements(positions, targetState), placementMode, recordUndo, blocksPerTick, 0L, BakePlacementService.SERVER_ACTOR_ID, onComplete);
     }
 
     public BakeTask(UUID taskId,
@@ -48,12 +49,14 @@ public class BakeTask {
                     boolean recordUndo,
                     int blocksPerTick,
                     long timeBudgetNanos,
+                    UUID actorId,
                     Runnable onComplete) {
         this.taskId = taskId != null ? taskId : UUID.randomUUID();
         this.world = world;
         this.placements = copyPlacements(placements);
         this.placementMode = placementMode != null ? placementMode : PlacementMode.OVERWRITE;
         this.recordUndo = recordUndo;
+        this.actorId = actorId != null ? actorId : BakePlacementService.SERVER_ACTOR_ID;
         this.blocksPerTick = Math.max(1, blocksPerTick);
         this.timeBudgetNanos = Math.max(0L, timeBudgetNanos);
         this.onComplete = onComplete;
@@ -65,6 +68,10 @@ public class BakeTask {
 
     public World getWorld() {
         return world;
+    }
+
+    public UUID getActorId() {
+        return actorId;
     }
 
     public boolean isCompleted() {

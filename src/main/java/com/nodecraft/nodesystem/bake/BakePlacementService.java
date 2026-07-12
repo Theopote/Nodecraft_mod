@@ -4,13 +4,17 @@ import com.nodecraft.core.NodeCraft;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.block.BlockState;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -21,10 +25,12 @@ public class BakePlacementService {
     public static final int DEFAULT_BLOCKS_PER_TICK = 2000;
     public static final long DEFAULT_TICK_BUDGET_NANOS = 4_000_000L;
 
+    public static final UUID SERVER_ACTOR_ID = UUID.fromString("00000000-0000-0000-0000-000000000000");
+
     private static BakePlacementService instance;
 
     private final Deque<BakeTask> queue = new ArrayDeque<>();
-    private final BakeHistory history = new BakeHistory();
+    private final Map<UUID, BakeHistory> histories = new HashMap<>();
     private boolean tickRegistered = false;
     private int defaultBlocksPerTick = DEFAULT_BLOCKS_PER_TICK;
     private long defaultTickBudgetNanos = DEFAULT_TICK_BUDGET_NANOS;
@@ -49,12 +55,17 @@ public class BakePlacementService {
         processTick();
     }
 
+    public static UUID resolveActorId(@Nullable ServerPlayerEntity player) {
+        return player != null ? player.getUuid() : SERVER_ACTOR_ID;
+    }
+
     public UUID enqueue(World world,
                         List<BlockPos> positions,
                         BlockState targetState,
                         PlacementMode mode,
                         boolean recordUndo,
                         int blocksPerTick,
+                        @Nullable UUID actorId,
                         Runnable onComplete) {
         if (positions == null || targetState == null) {
             return null;
@@ -65,7 +76,7 @@ public class BakePlacementService {
                 placements.add(new BakeTask.Placement(pos, targetState));
             }
         }
-        return enqueuePlacements(world, placements, mode, recordUndo, blocksPerTick, defaultTickBudgetNanos, onComplete);
+        return enqueuePlacements(world, placements, mode, recordUndo, blocksPerTick, defaultTickBudgetNanos, actorId, onComplete);
     }
 
     public UUID enqueuePlacements(World world,
@@ -74,6 +85,7 @@ public class BakePlacementService {
                                   boolean recordUndo,
                                   int blocksPerTick,
                                   long tickBudgetNanos,
+                                  @Nullable UUID actorId,
                                   Runnable onComplete) {
         if (world == null || placements == null || placements.isEmpty()) {
             NodeCraft.LOGGER.warn("BakePlacementService: invalid enqueue request");
@@ -89,6 +101,7 @@ public class BakePlacementService {
             recordUndo,
             resolveBlocksPerTick(blocksPerTick),
             resolveTickBudgetNanos(tickBudgetNanos),
+            resolveActorId(actorId),
             onComplete
         );
         synchronized (queue) {
@@ -167,28 +180,33 @@ public class BakePlacementService {
         }
     }
 
-    public BakeHistory getHistory() {
-        return history;
+    public BakeHistory getHistory(UUID actorId) {
+        UUID resolvedActorId = resolveActorId(actorId);
+        synchronized (histories) {
+            return histories.computeIfAbsent(resolvedActorId, ignored -> new BakeHistory());
+        }
     }
 
-    public boolean undoLast(World world) {
+    public boolean undoLast(UUID actorId, World world) {
         if (world == null) {
             return false;
         }
+        BakeHistory history = getHistory(actorId);
         boolean success = history.undoLast(world);
         if (success) {
-            NodeCraft.LOGGER.debug("Undid last baked transaction");
+            NodeCraft.LOGGER.debug("Undid last baked transaction for actor {}", resolveActorId(actorId));
         }
         return success;
     }
 
-    public boolean redoLast(World world) {
+    public boolean redoLast(UUID actorId, World world) {
         if (world == null) {
             return false;
         }
+        BakeHistory history = getHistory(actorId);
         boolean success = history.redoLast(world);
         if (success) {
-            NodeCraft.LOGGER.debug("Redid last baked transaction");
+            NodeCraft.LOGGER.debug("Redid last baked transaction for actor {}", resolveActorId(actorId));
         }
         return success;
     }
@@ -224,7 +242,7 @@ public class BakePlacementService {
             for (BakeTask.BakeUndoRecord ur : task.getUndoRecords()) {
                 record.add(ur.pos(), ur.previousState());
             }
-            history.push(record);
+            getHistory(task.getActorId()).push(record);
         }
         NodeCraft.LOGGER.debug(
             "Bake task {} completed. placed={}, skipped={}, total={}",
@@ -233,6 +251,10 @@ public class BakePlacementService {
             task.getSkippedCount(),
             task.getTotalCount()
         );
+    }
+
+    private UUID resolveActorId(@Nullable UUID actorId) {
+        return actorId != null ? actorId : SERVER_ACTOR_ID;
     }
 
     private int resolveBlocksPerTick(int blocksPerTick) {

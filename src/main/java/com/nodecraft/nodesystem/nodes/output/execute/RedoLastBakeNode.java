@@ -37,23 +37,24 @@ public class RedoLastBakeNode extends BaseCustomUINode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         BakePlacementService service = BakePlacementService.getInstance();
+        UUID actorId = context != null ? BakePlacementService.resolveActorId(context.getPlayer()) : BakePlacementService.SERVER_ACTOR_ID;
         boolean success = false;
         String status = "No redo executed";
 
         if (inputValues.get(INPUT_TRIGGER_ID) != null) {
             if (context == null || context.getWorld() == null) {
                 status = "Missing execution context";
-            } else if (service.getHistory().redoSize() == 0) {
+            } else if (service.getHistory(actorId).redoSize() == 0) {
                 status = "No recorded bake redo history";
             } else {
-                success = service.redoLast(context.getWorld());
+                success = service.redoLast(actorId, context.getWorld());
                 status = success ? "Redid last bake operation" : "Redo failed";
             }
         }
 
         outputValues.put(OUTPUT_SUCCESS_ID, success);
-        outputValues.put(OUTPUT_REMAINING_REDO_ID, service.getHistory().redoSize());
-        outputValues.put(OUTPUT_REMAINING_HISTORY_ID, service.getHistory().size());
+        outputValues.put(OUTPUT_REMAINING_REDO_ID, service.getHistory(actorId).redoSize());
+        outputValues.put(OUTPUT_REMAINING_HISTORY_ID, service.getHistory(actorId).size());
         outputValues.put(OUTPUT_STATUS_ID, status);
     }
 
