@@ -170,7 +170,7 @@ public class TweenCurvesNode extends AbstractCurveNode {
     }
 
     public void setDefaultCount(int defaultCount) {
-        int resolved = Math.max(0, defaultCount);
+        int resolved = GenerationLimits.clampPositiveCount(Math.max(0, defaultCount));
         if (this.defaultCount != resolved) {
             this.defaultCount = resolved;
             markDirty();

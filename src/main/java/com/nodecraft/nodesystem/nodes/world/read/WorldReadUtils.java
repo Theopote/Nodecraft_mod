@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.read;
 
 import com.nodecraft.nodesystem.datatypes.RegionData;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.Vector3;
 import net.minecraft.block.BlockState;
 import net.minecraft.registry.Registries;
@@ -84,6 +85,14 @@ final class WorldReadUtils {
         }
         String targetId = resolveBlockId(target);
         return targetId != null && blockId(state).equals(targetId);
+    }
+
+    static int resolveMaxListElements(@Nullable Object value) {
+        int requested = value instanceof Number number ? Math.max(0, number.intValue()) : 0;
+        if (requested <= 0) {
+            return GenerationLimits.MAX_LIST_ELEMENTS;
+        }
+        return GenerationLimits.clampPositiveCount(requested);
     }
 
     static String truncate(String value, int maxLength) {

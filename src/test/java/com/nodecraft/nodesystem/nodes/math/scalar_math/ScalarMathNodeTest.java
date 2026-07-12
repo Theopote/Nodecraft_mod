@@ -63,4 +63,20 @@ class ScalarMathNodeTest {
         assertTrue((Boolean) outputs.get("output_valid"));
         assertEquals(5.0d, (Double) outputs.get("output_result"), 1.0e-12);
     }
+
+    @Test
+    void remapRejectsDegenerateInputRange() {
+        RemapNode node = new RemapNode();
+
+        Map<String, Object> outputs = node.compute(Map.of(
+            "input_value", 0.5d,
+            "input_in_min", 1.0d,
+            "input_in_max", 1.0d,
+            "input_out_min", 0.0d,
+            "input_out_max", 10.0d
+        ));
+
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertTrue(Double.isNaN((Double) outputs.get("output_result")));
+    }
 }

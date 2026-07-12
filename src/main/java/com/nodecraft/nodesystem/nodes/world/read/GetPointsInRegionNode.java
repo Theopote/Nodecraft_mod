@@ -42,7 +42,7 @@ public class GetPointsInRegionNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_REGION_ID, "Region", "Region to read", NodeDataType.REGION, this));
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Optional coordinates to filter", NodeDataType.BLOCK_LIST, this));
-        addInputPort(new BasePort(INPUT_MAX_POINTS_ID, "Max Points", "Maximum returned points; 0 means unlimited", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_MAX_POINTS_ID, "Max Points", "Maximum returned points; 0 uses the global generation cap", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_USE_INPUT_COORDINATES_ID, "Use Input Coordinates", "Filter input coordinates instead of generating region points", NodeDataType.BOOLEAN, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Block positions inside the region", NodeDataType.BLOCK_LIST, this));
@@ -68,7 +68,7 @@ public class GetPointsInRegionNode extends BaseNode {
 
         Object regionObj = inputValues.get(INPUT_REGION_ID);
         Object coordinatesObj = inputValues.get(INPUT_COORDINATES_ID);
-        int maxPoints = inputValues.get(INPUT_MAX_POINTS_ID) instanceof Number n ? Math.max(0, n.intValue()) : 0;
+        int maxPoints = WorldReadUtils.resolveMaxListElements(inputValues.get(INPUT_MAX_POINTS_ID));
         boolean useInputCoordinates = inputValues.get(INPUT_USE_INPUT_COORDINATES_ID) instanceof Boolean value
             ? value
             : filterFromCoordinates;
@@ -78,11 +78,11 @@ public class GetPointsInRegionNode extends BaseNode {
             valid = true;
             if (useInputCoordinates && coordinatesObj instanceof BlockPosList coordinates) {
                 filterPointsInRegion(coordinates, region, maxPoints, result);
-                hitLimit = maxPoints > 0 && result.size() >= maxPoints;
+                hitLimit = result.size() >= maxPoints;
             } else {
-                sampled = maxPoints > 0 && totalPossible > maxPoints;
+                sampled = totalPossible > maxPoints;
                 generatePointsInRegion(region, maxPoints, sampled, result);
-                hitLimit = sampled;
+                hitLimit = sampled || result.size() >= maxPoints;
             }
         }
 
@@ -103,7 +103,7 @@ public class GetPointsInRegionNode extends BaseNode {
         for (BlockPos pos : coordinates) {
             if (isPointInRegion(pos, min, max)) {
                 result.add(pos);
-                if (maxPoints > 0 && result.size() >= maxPoints) {
+                if (result.size() >= maxPoints) {
                     return;
                 }
             }
@@ -124,7 +124,7 @@ public class GetPointsInRegionNode extends BaseNode {
 
         for (BlockPos pos : BlockPos.iterate(min, max)) {
             result.add(pos);
-            if (maxPoints > 0 && result.size() >= maxPoints) {
+            if (result.size() >= maxPoints) {
                 return;
             }
         }

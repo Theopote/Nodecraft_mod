@@ -44,7 +44,7 @@ public class RemapNode extends BaseNode {
         addInputPort(new BasePort(INPUT_OUT_MAX_ID, "Out Max", "Output range maximum", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_CLAMP_ID, "Clamp", "Clamp result to output range", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_RESULT_ID, "Result", "The remapped value", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the value input is a valid finite number", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether inputs are finite and the input range is distinct", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -85,13 +85,20 @@ public class RemapNode extends BaseNode {
         double outMax = outMaxObj instanceof Number ? ((Number) outMaxObj).doubleValue() : defaultOutMax;
         boolean clamp = clampObj instanceof Boolean ? (Boolean) clampObj : defaultClamp;
 
-        double result;
-        if (Math.abs(inMax - inMin) < 1e-10) {
-            result = (outMin + outMax) / 2.0;
-        } else {
-            double normalizedValue = (value - inMin) / (inMax - inMin);
-            result = outMin + normalizedValue * (outMax - outMin);
+        if (!Double.isFinite(inMin) || !Double.isFinite(inMax)
+            || !Double.isFinite(outMin) || !Double.isFinite(outMax)) {
+            outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
         }
+        if (Math.abs(inMax - inMin) <= 1.0e-12d) {
+            outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
+        }
+
+        double normalizedValue = (value - inMin) / (inMax - inMin);
+        double result = outMin + normalizedValue * (outMax - outMin);
 
         if (clamp) {
             double minOut = Math.min(outMin, outMax);
