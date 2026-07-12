@@ -34,6 +34,64 @@ public final class GenerationLimits {
     }
 
     /**
+     * Caps grid repetition counts for nodes that iterate {@code 0..count} along each axis.
+     * Scales axes down when {@code (x+1)(y+1)(z+1) * itemsPerCell} would exceed {@link #MAX_LIST_ELEMENTS}.
+     */
+    public static GridAxisCounts clampGridCounts(int xCount, int yCount, int zCount, int itemsPerCell) {
+        int x = clampGridAxis(xCount);
+        int y = clampGridAxis(yCount);
+        int z = clampGridAxis(zCount);
+        int perCell = Math.max(1, itemsPerCell);
+
+        while (estimatedInclusiveGridOutputSize(x, y, z, perCell) > MAX_LIST_ELEMENTS) {
+            if (z > 0 && z >= x && z >= y) {
+                z--;
+            } else if (y > 0 && y >= x) {
+                y--;
+            } else if (x > 0) {
+                x--;
+            } else {
+                break;
+            }
+        }
+        return new GridAxisCounts(x, y, z);
+    }
+
+    /**
+     * Caps grid counts for nodes that iterate {@code 0..count-1} along each axis.
+     */
+    public static GridAxisCounts clampExclusiveGridCounts(int xCount, int yCount, int zCount, int itemsPerCell) {
+        int x = clampPositiveGridAxis(xCount);
+        int y = clampPositiveGridAxis(yCount);
+        int z = clampPositiveGridAxis(zCount);
+        int perCell = Math.max(1, itemsPerCell);
+
+        while ((long) x * y * z * perCell > MAX_LIST_ELEMENTS) {
+            if (z > 1 && z >= x && z >= y) {
+                z--;
+            } else if (y > 1 && y >= x) {
+                y--;
+            } else if (x > 1) {
+                x--;
+            } else {
+                break;
+            }
+        }
+        return new GridAxisCounts(x, y, z);
+    }
+
+    private static int clampPositiveGridAxis(int count) {
+        return Math.max(1, Math.min(MAX_GRID_AXIS, count));
+    }
+
+    private static long estimatedInclusiveGridOutputSize(int xCount, int yCount, int zCount, int itemsPerCell) {
+        return (long) (xCount + 1) * (yCount + 1) * (zCount + 1) * itemsPerCell;
+    }
+
+    public record GridAxisCounts(int xCount, int yCount, int zCount) {
+    }
+
+    /**
      * Caps repeat iterations so {@code count * itemsPerRepeat} does not exceed {@link #MAX_LIST_ELEMENTS}.
      */
     public static int clampRepeatCount(int count, int itemsPerRepeat) {

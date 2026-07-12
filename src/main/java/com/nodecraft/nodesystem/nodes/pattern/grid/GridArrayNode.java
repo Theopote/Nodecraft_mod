@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -141,10 +142,16 @@ public class GridArrayNode extends BaseNode {
             xDistance = Math.max(0.1, xDistance);
             yDistance = Math.max(0.1, yDistance);
             zDistance = Math.max(0.1, zDistance);
-            
-            xCount = Math.max(0, xCount);
-            yCount = Math.max(0, yCount);
-            zCount = Math.max(0, zCount);
+
+            GenerationLimits.GridAxisCounts gridCounts = GenerationLimits.clampGridCounts(
+                xCount,
+                yCount,
+                gridType == GridType.GRID_3D ? zCount : 0,
+                coordinates.size()
+            );
+            xCount = gridCounts.xCount();
+            yCount = gridCounts.yCount();
+            zCount = gridCounts.zCount();
             
             // 创建网格阵列
             if (gridType == GridType.GRID_3D) {

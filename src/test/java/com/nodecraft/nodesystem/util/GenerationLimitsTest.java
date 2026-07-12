@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.util;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GenerationLimitsTest {
 
@@ -21,5 +22,23 @@ class GenerationLimitsTest {
     @Test
     void clampGridAxisCapsLargeValues() {
         assertEquals(GenerationLimits.MAX_GRID_AXIS, GenerationLimits.clampGridAxis(Integer.MAX_VALUE));
+    }
+
+    @Test
+    void clampGridCountsScalesDownWhenProductWouldOverflow() {
+        GenerationLimits.GridAxisCounts counts = GenerationLimits.clampGridCounts(
+            Integer.MAX_VALUE,
+            Integer.MAX_VALUE,
+            Integer.MAX_VALUE,
+            1
+        );
+
+        long outputSize = (long) (counts.xCount() + 1)
+            * (counts.yCount() + 1)
+            * (counts.zCount() + 1);
+        assertTrue(outputSize <= GenerationLimits.MAX_LIST_ELEMENTS);
+        assertTrue(counts.xCount() <= GenerationLimits.MAX_GRID_AXIS);
+        assertTrue(counts.yCount() <= GenerationLimits.MAX_GRID_AXIS);
+        assertTrue(counts.zCount() <= GenerationLimits.MAX_GRID_AXIS);
     }
 }

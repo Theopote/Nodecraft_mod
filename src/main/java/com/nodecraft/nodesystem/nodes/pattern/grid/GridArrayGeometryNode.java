@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryTransform;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -90,13 +91,18 @@ public class GridArrayGeometryNode extends BaseNode {
         Vector3d xStep = resolveStep(INPUT_X_DIRECTION_ID, INPUT_X_DISTANCE_ID, new Vector3d(1.0d, 0.0d, 0.0d), 1.0d);
         Vector3d yStep = resolveStep(INPUT_Y_DIRECTION_ID, INPUT_Y_DISTANCE_ID, new Vector3d(0.0d, 1.0d, 0.0d), 1.0d);
         Vector3d zStep = resolveStep(INPUT_Z_DIRECTION_ID, INPUT_Z_DISTANCE_ID, new Vector3d(0.0d, 0.0d, 1.0d), 1.0d);
-        int xCount = Math.max(1, getInputInt(INPUT_X_COUNT_ID, 1));
-        int yCount = Math.max(1, getInputInt(INPUT_Y_COUNT_ID, 1));
-        int zCount = Math.max(1, getInputInt(INPUT_Z_COUNT_ID, 1));
+        int xCount = getInputInt(INPUT_X_COUNT_ID, 1);
+        int yCount = getInputInt(INPUT_Y_COUNT_ID, 1);
+        int zCount = getInputInt(INPUT_Z_COUNT_ID, 1);
         if (xStep == null || yStep == null || zStep == null) {
             writeResult(List.of(), List.of(), false);
             return;
         }
+
+        GenerationLimits.GridAxisCounts gridCounts = GenerationLimits.clampExclusiveGridCounts(xCount, yCount, zCount, 1);
+        xCount = gridCounts.xCount();
+        yCount = gridCounts.yCount();
+        zCount = gridCounts.zCount();
 
         int capacity = xCount * yCount * zCount;
         List<GeometryData> copies = new ArrayList<>(capacity);

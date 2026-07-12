@@ -51,6 +51,7 @@ class GeometryVoxelizerTest {
 
         assertTrue(GeometryVoxelizer.voxelize(oversizedSdf, true).isEmpty());
         assertTrue(GeometryVoxelizer.voxelize(oversizedBox, true).isEmpty());
+        assertTrue(GeometryVoxelizer.voxelizeBox(oversizedBox, true).isEmpty());
     }
 
     @Test

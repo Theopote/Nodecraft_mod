@@ -358,6 +358,9 @@ public final class GeometryVoxelizer {
 
     public static BlockPosList voxelizeBox(BoxGeometryData geometry, boolean fillSolid) {
         BlockPosList blocks = new BlockPosList();
+        if (boundingVolumeExceedsLimit(geometry)) {
+            return blocks;
+        }
 
         if (geometry.isOriented()) {
             RegionData region = BoxBlockGenerator.createOrientedBoundingRegion(
@@ -411,6 +414,10 @@ public final class GeometryVoxelizer {
 
     public static BlockPosList voxelizeCylinder(CylinderGeometryData geometry, boolean fillSolid) {
         BlockPosList blocks = new BlockPosList();
+        if (boundingVolumeExceedsLimit(geometry)) {
+            return blocks;
+        }
+
         RegionData region = CylinderBlockGenerator.createBoundingRegion(geometry);
         CylinderBlockGenerator.populateCylinder(blocks, region, geometry, fillSolid);
         return blocks;
