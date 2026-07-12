@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryTransform;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -71,7 +72,7 @@ public class LinearArrayGeometryNode extends BaseNode {
 
         Vector3d direction = inputValues.get(INPUT_DIRECTION_ID) instanceof Vector3d value ? new Vector3d(value) : new Vector3d(1.0d, 0.0d, 0.0d);
         double distance = getInputDouble(INPUT_DISTANCE_ID, 1.0d);
-        int count = Math.max(0, getInputInteger(INPUT_COUNT_ID, 1));
+        int count = GenerationLimits.clampNonNegativeCount(getInputInteger(INPUT_COUNT_ID, 1));
         if (!isFinite(direction) || direction.lengthSquared() <= 1.0e-12d || !Double.isFinite(distance)) {
             writeResult(List.of(), false);
             return;

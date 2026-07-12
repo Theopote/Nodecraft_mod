@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 
@@ -50,7 +51,7 @@ public class RandomVectorNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        int count = getValueAsInt(inputValues.get(INPUT_COUNT_ID), 1);
+        int count = GenerationLimits.clampNonNegativeCount(getValueAsInt(inputValues.get(INPUT_COUNT_ID), 1));
         Vec3d minCorner = getValueAsVec3d(inputValues.get(INPUT_MIN_CORNER_ID), Vec3d.ZERO);
         Vec3d maxCorner = getValueAsVec3d(inputValues.get(INPUT_MAX_CORNER_ID), new Vec3d(1, 1, 1));
         Object seedVal = inputValues.get(INPUT_SEED_ID);

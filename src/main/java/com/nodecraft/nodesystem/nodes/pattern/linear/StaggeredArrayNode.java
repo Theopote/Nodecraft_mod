@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -79,8 +80,8 @@ public class StaggeredArrayNode extends BaseNode {
         double stepDistance = getDouble(INPUT_STEP_DISTANCE_ID, 1.0d);
         double rowDistance = getDouble(INPUT_ROW_DISTANCE_ID, 1.0d);
         double staggerOffset = getDouble(INPUT_STAGGER_OFFSET_ID, stepDistance * 0.5d);
-        int stepCount = Math.max(0, getInt(INPUT_STEP_COUNT_ID, 5));
-        int rowCount = Math.max(0, getInt(INPUT_ROW_COUNT_ID, 3));
+        int stepCount = GenerationLimits.clampGridAxis(getInt(INPUT_STEP_COUNT_ID, 5));
+        int rowCount = GenerationLimits.clampGridAxis(getInt(INPUT_ROW_COUNT_ID, 3));
 
         Vector3d stepVec = new Vector3d(stepDir).mul(stepDistance);
         Vector3d rowVec = new Vector3d(rowDir).mul(rowDistance);

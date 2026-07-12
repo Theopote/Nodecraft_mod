@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryTransform;
 import org.jetbrains.annotations.Nullable;
 import org.joml.AxisAngle4d;
@@ -76,7 +77,7 @@ public class PolarArrayGeometryNode extends BaseNode {
 
         Vector3d center = inputValues.get(INPUT_CENTER_ID) instanceof Vector3d value ? new Vector3d(value) : new Vector3d();
         Vector3d axis = inputValues.get(INPUT_AXIS_ID) instanceof Vector3d value ? new Vector3d(value) : new Vector3d(0.0d, 1.0d, 0.0d);
-        int count = Math.max(0, getInputInteger(INPUT_COUNT_ID, 1));
+        int count = GenerationLimits.clampNonNegativeCount(getInputInteger(INPUT_COUNT_ID, 1));
         double totalAngle = getInputDouble(INPUT_TOTAL_ANGLE_ID, 360.0d);
         if (!isFinite(center) || !isFinite(axis) || axis.lengthSquared() <= 1.0e-12d || !Double.isFinite(totalAngle)) {
             writeResult(List.of(), false);

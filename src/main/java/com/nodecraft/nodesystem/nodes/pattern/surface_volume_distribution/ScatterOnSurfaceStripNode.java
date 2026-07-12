@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -84,7 +85,7 @@ public class ScatterOnSurfaceStripNode extends BaseNode {
             return;
         }
 
-        int resolvedCount = Math.max(1, inputValues.get(INPUT_COUNT_ID) instanceof Number n ? n.intValue() : count);
+        int resolvedCount = GenerationLimits.clampPositiveCount(inputValues.get(INPUT_COUNT_ID) instanceof Number n ? n.intValue() : count);
         int resolvedSeed = inputValues.get(INPUT_SEED_ID) instanceof Number n ? n.intValue() : seed;
         double spacing = Math.max(0.0d, inputValues.get(INPUT_MIN_SPACING_ID) instanceof Number n ? n.doubleValue() : minSpacing);
         double spacingSq = spacing * spacing;

@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -100,6 +101,9 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
         Object countObj = inputValues.get(INPUT_COUNT_ID);
 
         int count = countObj instanceof Number n ? n.intValue() : -1;
+        if (count >= 2) {
+            count = GenerationLimits.clampPositiveCount(count);
+        }
         double spacing = spacingObj instanceof Number s ? s.doubleValue() : 0.0d;
 
         List<Double> sampleDistances;

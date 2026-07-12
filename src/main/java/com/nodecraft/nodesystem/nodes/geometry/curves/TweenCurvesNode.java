@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -118,7 +119,7 @@ public class TweenCurvesNode extends AbstractCurveNode {
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> pathA = resolvePath(INPUT_CURVE_A_ID, INPUT_POLYLINE_A_ID, INPUT_LINE_A_ID, reverseA);
         List<Vector3d> pathB = resolvePath(INPUT_CURVE_B_ID, INPUT_POLYLINE_B_ID, INPUT_LINE_B_ID, reverseB);
-        int count = Math.max(0, readIntInput(INPUT_COUNT_ID, defaultCount));
+        int count = GenerationLimits.clampPositiveCount(Math.max(0, readIntInput(INPUT_COUNT_ID, defaultCount)));
         int samples = Math.max(2, readIntInput(INPUT_SAMPLES_ID, defaultSamples));
         if (pathA == null || pathB == null || count < 1) {
             writeInvalid();

@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -121,7 +122,7 @@ public class PolarArrayNode extends BaseNode {
             }
             
             // 确保计数为正数
-            count = Math.max(1, count);
+            count = GenerationLimits.clampRepeatCount(Math.max(1, count), coordinates.size());
             
             // 计算每个实例的旋转角度（弧度）
             double angleIncrement = Math.toRadians(totalAngleDegrees) / count;

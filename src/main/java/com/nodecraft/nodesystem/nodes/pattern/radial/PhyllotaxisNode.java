@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -67,7 +68,7 @@ public class PhyllotaxisNode extends BaseNode {
             return;
         }
 
-        int count = Math.max(1, getInt(INPUT_COUNT_ID, 256));
+        int count = GenerationLimits.clampRepeatCount(Math.max(1, getInt(INPUT_COUNT_ID, 256)), source.size());
         double radiusScale = Math.max(0.0d, getDouble(INPUT_RADIUS_SCALE_ID, 0.75d));
         double angleStepRadians = Math.toRadians(getDouble(INPUT_ANGLE_STEP_ID, 137.507764d));
         double startAngleRadians = Math.toRadians(getDouble(INPUT_START_ANGLE_ID, 0.0d));

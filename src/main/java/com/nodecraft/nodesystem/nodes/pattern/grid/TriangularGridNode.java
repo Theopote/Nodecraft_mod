@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -59,8 +60,8 @@ public class TriangularGridNode extends BaseNode {
         }
 
         double side = Math.max(0.25d, getDouble(INPUT_SIDE_LENGTH_ID, 2.0d));
-        int uCount = Math.max(0, getInt(INPUT_U_COUNT_ID, 8));
-        int vCount = Math.max(0, getInt(INPUT_V_COUNT_ID, 8));
+        int uCount = GenerationLimits.clampGridAxis(getInt(INPUT_U_COUNT_ID, 8));
+        int vCount = GenerationLimits.clampGridAxis(getInt(INPUT_V_COUNT_ID, 8));
         double rowStep = side * Math.sqrt(3.0d) * 0.5d;
 
         BlockPosList anchors = new BlockPosList();

@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -57,8 +58,8 @@ public class HexGridNode extends BaseNode {
             return;
         }
         double radius = Math.max(0.25d, getDouble(INPUT_RADIUS_ID, 1.0d));
-        int qCount = Math.max(0, getInt(INPUT_Q_COUNT_ID, 4));
-        int rCount = Math.max(0, getInt(INPUT_R_COUNT_ID, 4));
+        int qCount = GenerationLimits.clampGridAxis(getInt(INPUT_Q_COUNT_ID, 4));
+        int rCount = GenerationLimits.clampGridAxis(getInt(INPUT_R_COUNT_ID, 4));
 
         BlockPosList result = new BlockPosList();
         for (int q = -qCount; q <= qCount; q++) {

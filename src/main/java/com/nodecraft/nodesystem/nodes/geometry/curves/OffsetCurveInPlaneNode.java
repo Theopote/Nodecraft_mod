@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -165,6 +166,7 @@ public class OffsetCurveInPlaneNode extends AbstractCurveNode {
     private List<Double> buildSampleDistances(double total, int count, double spacing) {
         List<Double> distances = new ArrayList<>();
         if (count >= 2) {
+            count = GenerationLimits.clampPositiveCount(count);
             for (int i = 0; i < count; i++) {
                 distances.add(total * i / (double) (count - 1));
             }

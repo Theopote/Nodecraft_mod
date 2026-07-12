@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.block.BlockState;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.math.BlockPos;
@@ -81,8 +82,12 @@ public class FloodFillNode extends BaseNode {
             return;
         }
 
-        int maxDistance = inputValues.get(INPUT_MAX_DISTANCE_ID) instanceof Number n ? Math.max(0, n.intValue()) : 128;
-        int maxBlocks = inputValues.get(INPUT_MAX_BLOCKS_ID) instanceof Number n ? Math.max(1, n.intValue()) : 10000;
+        int maxDistance = inputValues.get(INPUT_MAX_DISTANCE_ID) instanceof Number n
+            ? GenerationLimits.clampGridAxis(n.intValue())
+            : 128;
+        int maxBlocks = inputValues.get(INPUT_MAX_BLOCKS_ID) instanceof Number n
+            ? GenerationLimits.clampPositiveCount(n.intValue())
+            : 10000;
         boolean diagonals = inputValues.get(INPUT_INCLUDE_DIAGONALS_ID) instanceof Boolean b && b;
         int[][] offsets = diagonals ? OFFSETS_26 : OFFSETS_6;
 

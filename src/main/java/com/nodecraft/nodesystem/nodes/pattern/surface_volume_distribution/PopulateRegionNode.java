@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -129,7 +130,7 @@ public class PopulateRegionNode extends BaseNode {
             
             // 获取数量
             int count = (countObj instanceof Number) ? ((Number) countObj).intValue() : 10;
-            count = Math.max(1, count); // 确保至少生成1个坐标
+            count = GenerationLimits.clampPositiveCount(count); // 确保至少生成1个坐标
             
             // 根据分布类型进行处理
             if (distributionType == DistributionType.RANDOM) {

@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -71,7 +72,7 @@ public class RainbowCurveOffsetNode extends AbstractCurveNode {
         }
 
         int count = inputValues.get(INPUT_COUNT_ID) instanceof Number number ? number.intValue() : 5;
-        count = Math.max(1, count);
+        count = GenerationLimits.clampPositiveCount(count);
         double separation = inputValues.get(INPUT_SEPARATION_ID) instanceof Number number ? number.doubleValue() : 1.0d;
         if (!Double.isFinite(separation) || Math.abs(separation) <= EPS) {
             writeInvalid();

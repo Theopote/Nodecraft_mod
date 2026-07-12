@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.Curve;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -174,6 +175,9 @@ public class ArrayAlongCurveNode extends BaseNode {
         Object spacingObj = inputValues.get(INPUT_SPACING_ID);
 
         int count = countObj instanceof Number number ? number.intValue() : -1;
+        if (count >= 2) {
+            count = GenerationLimits.clampPositiveCount(count);
+        }
         double spacing = spacingObj instanceof Number number ? number.doubleValue() : 0.0d;
 
         List<Double> sampleDistances = new ArrayList<>();

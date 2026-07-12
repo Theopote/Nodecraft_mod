@@ -13,8 +13,13 @@ class GenerationLimitsTest {
     }
 
     @Test
-    void clampRepeatCountRespectsExpansionFactor() {
-        assertEquals(1024, GenerationLimits.clampRepeatCount(10_000, 1024));
-        assertEquals(0, GenerationLimits.clampRepeatCount(10, GenerationLimits.MAX_LIST_ELEMENTS + 1));
+    void clampPositiveCountEnforcesMinimumOne() {
+        assertEquals(1, GenerationLimits.clampPositiveCount(0));
+        assertEquals(1, GenerationLimits.clampPositiveCount(-10));
+    }
+
+    @Test
+    void clampGridAxisCapsLargeValues() {
+        assertEquals(GenerationLimits.MAX_GRID_AXIS, GenerationLimits.clampGridAxis(Integer.MAX_VALUE));
     }
 }

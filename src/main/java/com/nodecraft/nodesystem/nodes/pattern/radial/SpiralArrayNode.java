@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -61,7 +62,7 @@ public class SpiralArrayNode extends BaseNode {
             outputValues.put(OUTPUT_COORDINATES_ID, new BlockPosList());
             return;
         }
-        int count = Math.max(1, getInt(INPUT_COUNT_ID, 24));
+        int count = GenerationLimits.clampRepeatCount(Math.max(1, getInt(INPUT_COUNT_ID, 24)), source.size());
         double turns = getDouble(INPUT_TURNS_ID, 2.0d);
         double startRadius = getDouble(INPUT_START_RADIUS_ID, 2.0d);
         double radiusStep = getDouble(INPUT_RADIUS_STEP_ID, 0.15d);

@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -117,7 +118,7 @@ public class LinearArrayNode extends BaseNode {
                 }
                 
                 distance = Math.max(0.1, distance); // 确保距离为正
-                count = Math.max(1, count); // 确保至少复制一次
+                count = GenerationLimits.clampRepeatCount(Math.max(1, count), coordinates.size()); // 确保至少复制一次
                 
                 // 创建线性阵列
                 createLinearArray(coordinates, direction, distance, count, includeOriginal, result, branches);
@@ -158,7 +159,7 @@ public class LinearArrayNode extends BaseNode {
                 // 输入不完整，但仍然可能使用默认值创建阵列
                 if (countObj instanceof Number) {
                     count = ((Number) countObj).intValue();
-                    count = Math.max(1, count);
+                    count = GenerationLimits.clampRepeatCount(Math.max(1, count), coordinates.size());
                 }
                 
                 // 使用默认参数创建线性阵列

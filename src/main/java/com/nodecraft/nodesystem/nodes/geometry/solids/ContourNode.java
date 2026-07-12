@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.nodes.geometry.solids.SectionContourUtils.SectionResult;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
@@ -108,7 +109,7 @@ public class ContourNode extends BaseNode {
         }
         normal.normalize();
 
-        int count = Math.max(1, getInt(INPUT_COUNT_ID, 10));
+        int count = GenerationLimits.clampPositiveCount(getInt(INPUT_COUNT_ID, 10));
         double spacing = getDouble(INPUT_SPACING_ID, 1.0d);
         if (!Double.isFinite(spacing) || Math.abs(spacing) <= 1.0e-12d) {
             writeInvalid();

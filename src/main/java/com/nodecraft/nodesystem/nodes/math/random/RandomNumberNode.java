@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -49,7 +50,7 @@ public class RandomNumberNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        int count = getValueAsInt(inputValues.get(INPUT_COUNT_ID), 1);
+        int count = GenerationLimits.clampNonNegativeCount(getValueAsInt(inputValues.get(INPUT_COUNT_ID), 1));
         double min = getValueAsDouble(inputValues.get(INPUT_MIN_ID), 0.0);
         double max = getValueAsDouble(inputValues.get(INPUT_MAX_ID), 1.0);
         Object seedVal = inputValues.get(INPUT_SEED_ID);

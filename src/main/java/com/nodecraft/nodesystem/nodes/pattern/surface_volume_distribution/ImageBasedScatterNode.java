@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
@@ -100,7 +101,7 @@ public class ImageBasedScatterNode extends BaseNode {
             return;
         }
 
-        int targetCount = Math.max(1, inputValues.get(INPUT_COUNT_ID) instanceof Number n ? n.intValue() : count);
+        int targetCount = GenerationLimits.clampPositiveCount(inputValues.get(INPUT_COUNT_ID) instanceof Number n ? n.intValue() : count);
         int resolvedSeed = inputValues.get(INPUT_SEED_ID) instanceof Number n ? n.intValue() : seed;
         double resolvedThreshold = clamp01(inputValues.get(INPUT_THRESHOLD_ID) instanceof Number n ? n.doubleValue() : threshold);
         boolean resolvedInvert = inputValues.get(INPUT_INVERT_ID) instanceof Boolean b ? b : invert;

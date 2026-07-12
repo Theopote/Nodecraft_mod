@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -75,7 +76,7 @@ public class RandomListItemNode extends BaseNode {
             return;
         }
 
-        count = Math.max(0, count);
+        count = GenerationLimits.clampNonNegativeCount(count);
         if (!allowDuplicates && count > inputList.size()) {
             count = inputList.size();
         }

@@ -10,6 +10,11 @@ public final class GenerationLimits {
      */
     public static final int MAX_LIST_ELEMENTS = 1_048_576;
 
+    /**
+     * Maximum repetitions per axis for 2D grid/array nodes before multiplying by source size.
+     */
+    public static final int MAX_GRID_AXIS = 1024;
+
     private GenerationLimits() {
     }
 
@@ -18,6 +23,14 @@ public final class GenerationLimits {
             return 0;
         }
         return Math.min(count, MAX_LIST_ELEMENTS);
+    }
+
+    public static int clampPositiveCount(int count) {
+        return Math.max(1, Math.min(MAX_LIST_ELEMENTS, count));
+    }
+
+    public static int clampGridAxis(int count) {
+        return clampNonNegativeCount(Math.min(count, MAX_GRID_AXIS));
     }
 
     /**

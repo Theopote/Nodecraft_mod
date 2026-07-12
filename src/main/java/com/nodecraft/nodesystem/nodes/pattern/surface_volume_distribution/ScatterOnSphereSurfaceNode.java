@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -102,7 +103,7 @@ public class ScatterOnSphereSurfaceNode extends BaseNode {
             return;
         }
 
-        int resolvedCount = resolvePositiveInt(inputValues.get(INPUT_COUNT_ID), count, 1, 100000);
+        int resolvedCount = resolvePositiveInt(inputValues.get(INPUT_COUNT_ID), count, 1, GenerationLimits.MAX_LIST_ELEMENTS);
         int resolvedSeed = resolveInt(inputValues.get(INPUT_SEED_ID), seed);
 
         List<Vector3d> normals = switch (distributionMode) {
@@ -171,7 +172,7 @@ public class ScatterOnSphereSurfaceNode extends BaseNode {
     }
 
     public void setCount(int count) {
-        this.count = Math.max(1, count);
+        this.count = GenerationLimits.clampPositiveCount(count);
         markDirty();
     }
 
