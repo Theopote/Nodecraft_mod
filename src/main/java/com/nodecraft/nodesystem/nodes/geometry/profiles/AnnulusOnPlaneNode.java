@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -75,7 +76,7 @@ public class AnnulusOnPlaneNode extends BaseNode {
         }
         double inner = inN.doubleValue();
         double outer = outN.doubleValue();
-        int segments = Math.max(3, segN.intValue());
+        int segments = GenerationLimits.clampSegments(3, segN.intValue());
         if (!Double.isFinite(inner) || !Double.isFinite(outer) || inner <= 0.0d || outer <= 0.0d || inner >= outer) {
             writeInvalid();
             return;

@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 
@@ -82,7 +83,6 @@ public class InterpolateSplineNode extends AbstractCurveNode {
             }
         }
 
-        int resolutionPerSegment = Math.max(2, getInputInt(INPUT_RESOLUTION_ID, defaultResolutionPerSegment));
         double alpha = clamp(getInputDouble(INPUT_ALPHA_ID, defaultAlpha), 0.0d, 1.0d);
 
         if (points.size() < 2) {
@@ -90,6 +90,13 @@ public class InterpolateSplineNode extends AbstractCurveNode {
             outputValues.put(OUTPUT_CONTROL_COUNT_ID, points.size());
             return;
         }
+
+        int segmentCount = closed ? points.size() : points.size() - 1;
+        int resolutionPerSegment = GenerationLimits.clampResolutionPerUnit(
+            2,
+            getInputInt(INPUT_RESOLUTION_ID, defaultResolutionPerSegment),
+            segmentCount
+        );
 
         List<Vec3d> sampled = sampleCatmullRom(points, resolutionPerSegment, alpha, closed);
         if (sampled.size() < 2) {
@@ -124,7 +131,7 @@ public class InterpolateSplineNode extends AbstractCurveNode {
     }
 
     public void setDefaultResolutionPerSegment(int defaultResolutionPerSegment) {
-        int resolved = Math.max(2, defaultResolutionPerSegment);
+        int resolved = GenerationLimits.clampSegments(2, defaultResolutionPerSegment);
         if (this.defaultResolutionPerSegment != resolved) {
             this.defaultResolutionPerSegment = resolved;
             markDirty();

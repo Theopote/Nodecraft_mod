@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -65,7 +66,7 @@ public class SemiCircleOnPlaneNode extends BaseNode {
             return;
         }
         double radius = rN.doubleValue();
-        int segments = Math.max(1, segN.intValue());
+        int segments = GenerationLimits.clampSegments(1, segN.intValue());
         if (!Double.isFinite(radius) || radius <= 0.0d) {
             writeInvalid();
             return;

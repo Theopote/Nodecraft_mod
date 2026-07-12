@@ -60,4 +60,30 @@ class GenerationLimitsTest {
         assertTrue(GenerationLimits.clampAttemptBudget(Integer.MAX_VALUE, Integer.MAX_VALUE)
             <= GenerationLimits.MAX_LIST_ELEMENTS * 100L);
     }
+
+    @Test
+    void clampSegmentsEnforcesMinimumAndMaximum() {
+        assertEquals(3, GenerationLimits.clampSegments(3, 1));
+        assertEquals(GenerationLimits.MAX_SEGMENTS, GenerationLimits.clampSegments(2, Integer.MAX_VALUE));
+    }
+
+    @Test
+    void clampHeartSegmentsUsesLooserMaximum() {
+        assertEquals(24, GenerationLimits.clampHeartSegments(1));
+        assertEquals(GenerationLimits.MAX_HEART_SEGMENTS, GenerationLimits.clampHeartSegments(Integer.MAX_VALUE));
+        assertTrue(GenerationLimits.MAX_HEART_SEGMENTS > GenerationLimits.MAX_SEGMENTS);
+    }
+
+    @Test
+    void clampResolutionPerUnitScalesDownForManyUnits() {
+        int resolution = GenerationLimits.clampResolutionPerUnit(2, Integer.MAX_VALUE, 1024);
+        assertTrue((long) resolution * 1024 <= GenerationLimits.MAX_LIST_ELEMENTS);
+        assertTrue(resolution >= 2);
+    }
+
+    @Test
+    void clampBoundsSamplesCapsCubicGrowth() {
+        assertEquals(GenerationLimits.MAX_BOUNDS_SAMPLES, GenerationLimits.clampBoundsSamples(Integer.MAX_VALUE));
+        assertEquals(2, GenerationLimits.clampBoundsSamples(0));
+    }
 }

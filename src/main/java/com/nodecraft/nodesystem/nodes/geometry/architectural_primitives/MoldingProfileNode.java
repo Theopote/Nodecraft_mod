@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -88,7 +89,7 @@ public class MoldingProfileNode extends BaseNode {
         double width = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_WIDTH_ID), 0.5d);
         double height = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_HEIGHT_ID), 0.5d);
         double depth = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_DEPTH_ID), 0.1d);
-        int segments = Math.max(4, ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_SEGMENTS_ID), 8));
+        int segments = GenerationLimits.clampSegments(4, ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_SEGMENTS_ID), 8));
         String profileType = resolveProfileType(inputValues.get(INPUT_PROFILE_TYPE_ID));
 
         List<Vector3d> points = buildProfilePoints(center, basis, profileType, width, height, depth, segments);

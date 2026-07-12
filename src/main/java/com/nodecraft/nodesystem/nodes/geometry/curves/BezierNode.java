@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 
@@ -72,7 +73,7 @@ public class BezierNode extends AbstractCurveNode {
             }
         }
 
-        int resolution = Math.max(2, getInputInt(INPUT_RESOLUTION_ID, defaultResolution));
+        int resolution = GenerationLimits.clampSegments(2, getInputInt(INPUT_RESOLUTION_ID, defaultResolution));
         if (controlPoints.size() < 3) {
             writeInvalid();
             outputValues.put(OUTPUT_CONTROL_COUNT_ID, controlPoints.size());
@@ -106,7 +107,7 @@ public class BezierNode extends AbstractCurveNode {
     }
 
     public void setDefaultResolution(int defaultResolution) {
-        int resolved = Math.max(2, defaultResolution);
+        int resolved = GenerationLimits.clampSegments(2, defaultResolution);
         if (this.defaultResolution != resolved) {
             this.defaultResolution = resolved;
             markDirty();

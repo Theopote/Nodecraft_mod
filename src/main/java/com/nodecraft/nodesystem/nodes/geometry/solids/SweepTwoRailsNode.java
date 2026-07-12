@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -138,7 +139,7 @@ public class SweepTwoRailsNode extends BaseNode {
             Collections.reverse(profilePoints);
         }
 
-        int resolvedSectionCount = Math.max(2, sectionCount);
+        int resolvedSectionCount = GenerationLimits.clampSectionCountForProfile(2, sectionCount, profilePoints.size());
         List<Vector3d> railA = resamplePath(rawRailA, resolvedSectionCount);
         List<Vector3d> railB = resamplePath(rawRailB, resolvedSectionCount);
         List<Vector3d> centers = computeCenters(railA, railB);
@@ -215,7 +216,7 @@ public class SweepTwoRailsNode extends BaseNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("sectionCount") instanceof Number value) sectionCount = Math.max(2, value.intValue());
+        if (map.get("sectionCount") instanceof Number value) sectionCount = GenerationLimits.clampSegments(2, value.intValue());
         if (map.get("closeProfile") instanceof Boolean value) closeProfile = value;
         if (map.get("flipProfile") instanceof Boolean value) flipProfile = value;
         if (map.get("orientToRails") instanceof Boolean value) orientToRails = value;
@@ -231,7 +232,7 @@ public class SweepTwoRailsNode extends BaseNode {
     }
 
     public void setSectionCount(int sectionCount) {
-        this.sectionCount = Math.max(2, sectionCount);
+        this.sectionCount = GenerationLimits.clampSegments(2, sectionCount);
         markDirty();
     }
 

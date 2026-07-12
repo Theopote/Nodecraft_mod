@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -78,7 +79,7 @@ public class AnnularSectorOnPlaneNode extends BaseNode {
         double outer = outN.doubleValue();
         double start = Math.toRadians(sN.doubleValue());
         double end = Math.toRadians(eN.doubleValue());
-        int segments = Math.max(1, segN.intValue());
+        int segments = GenerationLimits.clampSegments(1, segN.intValue());
         if (!Double.isFinite(inner) || !Double.isFinite(outer) || inner <= 0.0d || outer <= 0.0d || inner >= outer || Math.abs(end - start) < 1.0e-9d) {
             writeInvalid();
             return;

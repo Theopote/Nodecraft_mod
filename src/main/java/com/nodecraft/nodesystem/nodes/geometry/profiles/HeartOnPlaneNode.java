@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -69,7 +70,7 @@ public class HeartOnPlaneNode extends BaseNode {
         }
         double width = wN.doubleValue();
         double height = hN.doubleValue();
-        int segments = Math.max(24, sN.intValue());
+        int segments = GenerationLimits.clampHeartSegments(sN.intValue());
         if (!Double.isFinite(width) || !Double.isFinite(height) || width <= 0.0d || height <= 0.0d) {
             writeInvalid();
             return;

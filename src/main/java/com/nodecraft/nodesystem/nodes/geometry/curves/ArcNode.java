@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -85,7 +86,7 @@ public class ArcNode extends AbstractCurveNode {
         double radius = readDoubleInput(INPUT_RADIUS_ID, defaultRadius);
         double startDegrees = readDoubleInput(INPUT_START_ANGLE_ID, 0.0d);
         double endDegrees = readDoubleInput(INPUT_END_ANGLE_ID, 90.0d);
-        int resolution = Math.max(2, readIntInput(INPUT_RESOLUTION_ID, defaultResolution));
+        int resolution = GenerationLimits.clampSegments(2, readIntInput(INPUT_RESOLUTION_ID, defaultResolution));
 
         // Validate inputs: center and normal are required
         if (normal == null || normal.lengthSquared() <= EPSILON) {
@@ -153,7 +154,7 @@ public class ArcNode extends AbstractCurveNode {
     }
 
     public void setDefaultResolution(int defaultResolution) {
-        int resolved = Math.max(2, defaultResolution);
+        int resolved = GenerationLimits.clampSegments(2, defaultResolution);
         if (this.defaultResolution != resolved) {
             this.defaultResolution = resolved;
             markDirty();

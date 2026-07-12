@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -115,7 +116,7 @@ public class BlendCurvesNode extends AbstractCurveNode {
             return;
         }
 
-        int segments = Math.max(1, getInputInt(INPUT_SEGMENTS_ID, defaultSegments));
+        int segments = GenerationLimits.clampSegments(1, getInputInt(INPUT_SEGMENTS_ID, defaultSegments));
         double lengthA = Math.max(0.0d, getInputDouble(INPUT_LENGTH_A_ID, defaultLengthA));
         double lengthB = Math.max(0.0d, getInputDouble(INPUT_LENGTH_B_ID, defaultLengthB));
         List<Vector3d> blendPoints = continuity == Continuity.G0
@@ -214,7 +215,7 @@ public class BlendCurvesNode extends AbstractCurveNode {
     }
 
     public void setDefaultSegments(int defaultSegments) {
-        int resolved = Math.max(1, defaultSegments);
+        int resolved = GenerationLimits.clampSegments(1, defaultSegments);
         if (this.defaultSegments != resolved) {
             this.defaultSegments = resolved;
             markDirty();

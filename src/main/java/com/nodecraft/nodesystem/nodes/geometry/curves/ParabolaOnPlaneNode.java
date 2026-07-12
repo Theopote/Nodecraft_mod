@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -65,7 +66,7 @@ public class ParabolaOnPlaneNode extends AbstractCurveNode {
         double curvature = readDoubleInput(INPUT_CURVATURE_ID, Double.NaN);
         double xMin = readDoubleInput(INPUT_X_MIN_ID, Double.NaN);
         double xMax = readDoubleInput(INPUT_X_MAX_ID, Double.NaN);
-        int segments = Math.max(2, readIntInput(INPUT_SEGMENTS_ID, 0));
+        int segments = GenerationLimits.clampSegments(2, readIntInput(INPUT_SEGMENTS_ID, 0));
         if (!Double.isFinite(curvature) || !Double.isFinite(xMin) || !Double.isFinite(xMax) || Math.abs(xMax - xMin) < 1.0e-9d) {
             writeInvalidOutputs();
             return;

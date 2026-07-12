@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -65,7 +66,7 @@ public class CircleOnPlaneNode extends BaseNode {
             return;
         }
         double radius = radiusNumber.doubleValue();
-        int segments = Math.max(3, segmentNumber.intValue());
+        int segments = GenerationLimits.clampSegments(3, segmentNumber.intValue());
         if (!Double.isFinite(radius) || radius <= 0.0d) {
             writeInvalid();
             return;

@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -98,8 +99,14 @@ public class RevolveProfileNode extends BaseNode {
         }
 
         boolean closedRevolution = Math.abs(Math.abs(angleDegrees) - 360.0d) <= 1.0e-6d;
-        int steps = Math.max(2, getInputInt(INPUT_STEPS_ID, defaultSteps));
+        int steps = GenerationLimits.clampSegments(2, getInputInt(INPUT_STEPS_ID, defaultSteps));
         int sectionCount = closedRevolution ? steps : steps + 1;
+        sectionCount = GenerationLimits.clampSectionCountForProfile(
+            closedRevolution ? 2 : 3,
+            sectionCount,
+            baseUniquePoints.size()
+        );
+        steps = closedRevolution ? sectionCount : sectionCount - 1;
 
         List<Object> sectionProfiles = new ArrayList<>(sectionCount);
         List<Object> sectionPaths = new ArrayList<>(sectionCount);
@@ -157,7 +164,7 @@ public class RevolveProfileNode extends BaseNode {
     }
 
     public void setDefaultSteps(int defaultSteps) {
-        this.defaultSteps = Math.max(2, defaultSteps);
+        this.defaultSteps = GenerationLimits.clampSegments(2, defaultSteps);
         markDirty();
     }
 

@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -59,7 +60,7 @@ public class InfinityCurveOnPlaneNode extends AbstractCurveNode {
             return;
         }
         double size = readDoubleInput(INPUT_SIZE_ID, Double.NaN);
-        int segments = Math.max(8, readIntInput(INPUT_SEGMENTS_ID, 0));
+        int segments = GenerationLimits.clampSegments(8, readIntInput(INPUT_SEGMENTS_ID, 0));
         if (!Double.isFinite(size) || size <= 0.0d) {
             writeInvalidOutputs();
             return;

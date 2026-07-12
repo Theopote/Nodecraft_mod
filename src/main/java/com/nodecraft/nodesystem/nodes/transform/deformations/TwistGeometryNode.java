@@ -15,6 +15,7 @@ import com.nodecraft.nodesystem.datatypes.VoxelizedGeometrySdfData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SdfBoundsEstimator;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -148,7 +149,7 @@ public class TwistGeometryNode extends BaseNode {
             source.min,
             source.max,
             twisted,
-            Math.max(2, boundsSamples),
+            GenerationLimits.clampBoundsSamples(boundsSamples),
             Math.max(0.0d, boundsPadding)
         );
         if (outputBounds == null || !outputBounds.isValid()) {
@@ -243,7 +244,7 @@ public class TwistGeometryNode extends BaseNode {
                                                           int samplesPerAxis,
                                                           double padding) {
         Bounds bounds = null;
-        int samples = Math.max(2, samplesPerAxis);
+        int samples = GenerationLimits.clampBoundsSamples(samplesPerAxis);
         for (int ix = 0; ix < samples; ix++) {
             double x = lerp(sourceMin.x, sourceMax.x, ix / (double) (samples - 1));
             for (int iy = 0; iy < samples; iy++) {
@@ -367,7 +368,7 @@ public class TwistGeometryNode extends BaseNode {
     }
 
     public void setBoundsSamples(int boundsSamples) {
-        this.boundsSamples = Math.max(2, boundsSamples);
+        this.boundsSamples = GenerationLimits.clampBoundsSamples(boundsSamples);
         markDirty();
     }
 

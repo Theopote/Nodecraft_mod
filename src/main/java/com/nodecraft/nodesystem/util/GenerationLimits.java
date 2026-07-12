@@ -20,6 +20,21 @@ public final class GenerationLimits {
      */
     public static final int MAX_LOOP_ITERATIONS = 100_000;
 
+    /**
+     * Maximum segment/resolution count for most geometry-generation nodes.
+     */
+    public static final int MAX_SEGMENTS = 131_072;
+
+    /**
+     * Looser segment cap for shapes that need higher resolution to stay smooth.
+     */
+    public static final int MAX_HEART_SEGMENTS = 524_288;
+
+    /**
+     * Maximum per-axis samples for cubic bounds-estimation grids.
+     */
+    public static final int MAX_BOUNDS_SAMPLES = 128;
+
     private GenerationLimits() {
     }
 
@@ -138,5 +153,75 @@ public final class GenerationLimits {
      */
     public static int clampLoopIterations(int count) {
         return Math.max(1, Math.min(MAX_LOOP_ITERATIONS, count));
+    }
+
+    /**
+     * Clamps curve/profile segment counts to {@code [min, MAX_SEGMENTS]}.
+     */
+    public static int clampSegments(int min, int requested) {
+        return clampSegments(min, MAX_SEGMENTS, requested);
+    }
+
+    /**
+     * Clamps segment counts to {@code [min, max]}.
+     */
+    public static int clampSegments(int min, int max, int requested) {
+        return Math.max(min, Math.min(max, requested));
+    }
+
+    /**
+     * Clamps heart-profile segment counts with a looser upper bound than {@link #clampSegments(int, int)}.
+     */
+    public static int clampHeartSegments(int requested) {
+        return Math.max(24, Math.min(MAX_HEART_SEGMENTS, requested));
+    }
+
+    /**
+     * Clamps per-unit resolution so {@code unitCount * resolution} does not exceed {@link #MAX_LIST_ELEMENTS}.
+     */
+    public static int clampResolutionPerUnit(int min, int requested, int unitCount) {
+        int clamped = clampSegments(min, requested);
+        int units = Math.max(1, unitCount);
+        long maxPerUnit = MAX_LIST_ELEMENTS / (long) units;
+        if (maxPerUnit < min) {
+            return min;
+        }
+        return (int) Math.min(clamped, maxPerUnit);
+    }
+
+    /**
+     * Clamps section counts so {@code profilePointCount * sectionCount} does not exceed {@link #MAX_LIST_ELEMENTS}.
+     */
+    public static int clampSectionCountForProfile(int min, int requested, int profilePointCount) {
+        int clamped = clampSegments(min, requested);
+        int profileSize = Math.max(1, profilePointCount);
+        long maxSections = MAX_LIST_ELEMENTS / (long) profileSize;
+        if (maxSections < min) {
+            return min;
+        }
+        return (int) Math.min(clamped, maxSections);
+    }
+
+    /**
+     * Clamps helix segments-per-turn so {@code turns * segmentsPerTurn} stays within {@link #MAX_LIST_ELEMENTS}.
+     */
+    public static int clampSegmentsPerTurn(int min, int requested, double turns) {
+        int clamped = clampSegments(min, requested);
+        if (!Double.isFinite(turns) || turns <= 0.0d) {
+            return clamped;
+        }
+        long totalSegments = (long) Math.ceil(turns * clamped);
+        if (totalSegments <= MAX_LIST_ELEMENTS) {
+            return clamped;
+        }
+        long maxPerTurn = (long) Math.floor((double) MAX_LIST_ELEMENTS / Math.ceil(turns));
+        return (int) Math.max(min, Math.min(clamped, maxPerTurn));
+    }
+
+    /**
+     * Clamps per-axis bounds sampling for cubic grid estimators.
+     */
+    public static int clampBoundsSamples(int requested) {
+        return Math.max(2, Math.min(MAX_BOUNDS_SAMPLES, requested));
     }
 }

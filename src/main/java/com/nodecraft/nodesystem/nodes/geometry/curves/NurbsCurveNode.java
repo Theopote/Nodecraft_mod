@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 
@@ -97,7 +98,7 @@ public class NurbsCurveNode extends AbstractCurveNode {
 
         List<Double> weights = resolveWeights(inputValues.get(INPUT_WEIGHTS_ID), controlPoints.size());
         int requestedDegree = Math.max(1, getInputInt(INPUT_DEGREE_ID, defaultDegree));
-        int resolutionPerSpan = Math.max(2, getInputInt(INPUT_RESOLUTION_ID, defaultResolutionPerSpan));
+        int requestedResolution = getInputInt(INPUT_RESOLUTION_ID, defaultResolutionPerSpan);
 
         int effectiveDegree = Math.min(Math.min(5, requestedDegree), controlPoints.size() - 1);
         int n = controlPoints.size() - 1;
@@ -105,6 +106,7 @@ public class NurbsCurveNode extends AbstractCurveNode {
         double[] knots = CurveMathUtils.buildClampedUniformKnots(knotCount, effectiveDegree, n);
 
         int spanCount = Math.max(1, n - effectiveDegree + 1);
+        int resolutionPerSpan = GenerationLimits.clampResolutionPerUnit(2, requestedResolution, spanCount);
         int totalSamples = spanCount * resolutionPerSpan + 1;
         double uStart = knots[effectiveDegree];
         double uEnd = knots[n + 1];
@@ -155,7 +157,7 @@ public class NurbsCurveNode extends AbstractCurveNode {
     }
 
     public void setDefaultResolutionPerSpan(int defaultResolutionPerSpan) {
-        int resolved = Math.max(2, defaultResolutionPerSpan);
+        int resolved = GenerationLimits.clampSegments(2, defaultResolutionPerSpan);
         if (this.defaultResolutionPerSpan != resolved) {
             this.defaultResolutionPerSpan = resolved;
             markDirty();

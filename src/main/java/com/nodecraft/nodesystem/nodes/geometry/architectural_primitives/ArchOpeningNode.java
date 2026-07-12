@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -73,7 +74,7 @@ public class ArchOpeningNode extends BaseNode {
                 double width = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_WIDTH_ID), 2.0d);
                 double stemHeight = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_HEIGHT_ID), 2.0d);
                 double depth = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_DEPTH_ID), 1.0d);
-                int segments = Math.max(6, ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_SEGMENTS_ID), 12));
+                int segments = GenerationLimits.clampSegments(6, ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_SEGMENTS_ID), 12));
                 String archType = resolveArchType(inputValues.get(INPUT_ARCH_TYPE_ID));
 
                 geometry = buildArchVolume(frame, width, stemHeight, depth, segments, archType);
