@@ -22,6 +22,8 @@ import java.util.UUID;
 )
 public class SlerpVectorsNode extends BaseNode {
 
+    private static final double DEGENERATE_DOT_EPS = 1.0e-6d;
+
     @NodeProperty(displayName = "Shortest Path", category = "Slerp", order = 1)
     private boolean shortestPath = true;
 
@@ -89,8 +91,10 @@ public class SlerpVectorsNode extends BaseNode {
 
         double angle = Math.acos(Math.max(-1.0d, Math.min(1.0d, dot)));
         Vector3d direction;
-        if (1.0d - dot < 1.0e-6d) {
+        if (1.0d - dot < DEGENERATE_DOT_EPS) {
             direction = new Vector3d(a).lerp(b, t).normalize();
+        } else if (1.0d + dot < DEGENERATE_DOT_EPS) {
+            direction = degenerateLongArcDirection(a, b, angle, t);
         } else {
             double sinTheta = Math.sin(angle);
             double wA = Math.sin((1.0d - t) * angle) / sinTheta;
@@ -106,6 +110,31 @@ public class SlerpVectorsNode extends BaseNode {
         outputValues.put(OUTPUT_RESULT_ID, direction);
         outputValues.put(OUTPUT_ANGLE_ID, angle);
         outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    private Vector3d degenerateLongArcDirection(Vector3d a, Vector3d b, double angle, double t) {
+        Vector3d lerped = new Vector3d(a).lerp(b, t);
+        if (lerped.lengthSquared() >= VectorUtils.EPS) {
+            return lerped.normalize();
+        }
+        return rotateAroundAxis(a, orthogonalAxis(a), angle * t);
+    }
+
+    private static Vector3d orthogonalAxis(Vector3d a) {
+        Vector3d axis = new Vector3d(a).cross(0.0d, 1.0d, 0.0d);
+        if (axis.lengthSquared() < VectorUtils.EPS) {
+            axis = new Vector3d(a).cross(0.0d, 0.0d, 1.0d);
+        }
+        return axis.normalize();
+    }
+
+    private static Vector3d rotateAroundAxis(Vector3d vector, Vector3d axis, double radians) {
+        double cos = Math.cos(radians);
+        double sin = Math.sin(radians);
+        Vector3d rotated = new Vector3d(vector).mul(cos);
+        rotated.add(new Vector3d(axis).cross(vector).mul(sin));
+        rotated.add(new Vector3d(axis).mul(axis.dot(vector) * (1.0d - cos)));
+        return rotated.normalize();
     }
 
     private void writeInvalid() {
