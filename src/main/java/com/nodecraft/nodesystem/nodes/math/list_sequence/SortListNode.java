@@ -14,9 +14,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
-/**
- *                                                         
- */
 @NodeInfo(
     id = "math.list.sort_list",
     displayName = "Sort List",
@@ -25,16 +22,14 @@ import java.util.UUID;
 )
 public class SortListNode extends BaseNode {
     
-    // ---              ?---
-    private boolean descending = false; //                     ?
-    private SortType sortType = SortType.AUTO; //              ?
+    private boolean descending = false;
+    private SortType sortType = SortType.AUTO;
     
-    // ---                       ---
     public enum SortType {
         AUTO("Auto"), //                                
         NUMERIC("Numeric"), //               ?
         TEXT("Text"), //              ?
-        LENGTH("Length"); //                                                             ?
+        LENGTH("Length");
         
         private final String label;
         
@@ -47,67 +42,45 @@ public class SortListNode extends BaseNode {
         }
     }
     
-    // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
     private static final String OUTPUT_LIST_ID = "output_list";
     
-    /**
-     *                                         ?
-     */
     public SortListNode() {
-        //                    ?- data.lists.sort_list
         super(UUID.randomUUID(), "math.list.sort_list");
         
-        //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
                 "The list to sort", NodeDataType.LIST, this);
         addInputPort(listInput);
         
-        //                    ?
         IPort listOutput = new BasePort(OUTPUT_LIST_ID, "Sorted List", 
                 "The sorted list", NodeDataType.LIST, this);
         addOutputPort(listOutput);
     }
     
-    /**
-     *                         ?
-     * @param context                ?
-     */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        //              ?
         Object inputObj = inputValues.get(INPUT_LIST_ID);
         
         List<Object> resultList = new ArrayList<>();
         
-        //              ?
         if (inputObj instanceof List) {
             List<?> inputList = (List<?>) inputObj;
             
-            //                                                            ?
             resultList.addAll(inputList);
             
-            //                                      ?
             if (resultList.isEmpty()) {
                 outputValues.put(OUTPUT_LIST_ID, resultList);
                 return;
             }
             
-            //             ?
             sort(resultList);
         }
         
-        //              ?
         outputValues.put(OUTPUT_LIST_ID, resultList);
     }
     
-    /**
-     *                       ?
-     * @param list                    ?
-     */
     @SuppressWarnings("unchecked")
     private void sort(List<Object> list) {
-        //                                           ?
         Object firstNonNull = null;
         for (Object item : list) {
             if (item != null) {
@@ -116,12 +89,10 @@ public class SortListNode extends BaseNode {
             }
         }
         
-        //                                                    
         if (firstNonNull == null) {
             return;
         }
         
-        //                                     ?
         Comparator<Object> comparator = null;
         
         switch (sortType) {
@@ -139,7 +110,6 @@ public class SortListNode extends BaseNode {
                 
             case AUTO:
             default:
-                //                    ?
                 if (firstNonNull instanceof Number) {
                     comparator = createNumericComparator();
                 } else if (firstNonNull instanceof String) {
@@ -147,19 +117,15 @@ public class SortListNode extends BaseNode {
                 } else if (firstNonNull instanceof List || firstNonNull instanceof Object[]) {
                     comparator = createLengthComparator();
                 } else {
-                    //                                                      Comparable         ?
                     try {
-                        //                                                       ?
                         comparator = new Comparator<Object>() {
                             @SuppressWarnings("unchecked")
                             @Override
                             public int compare(Object o1, Object o2) {
-                                //              ?
                                 if (o1 == null && o2 == null) return 0;
                                 if (o1 == null) return descending ? 1 : -1;
                                 if (o2 == null) return descending ? -1 : 1;
                                 
-                                //                           mparable      ?
                                 if (o1 instanceof Comparable && o2 instanceof Comparable) {
                                     try {
                                         int result = ((Comparable<Object>) o1).compareTo(o2);
@@ -170,43 +136,34 @@ public class SortListNode extends BaseNode {
                                         return descending ? -result : result;
                                     }
                                 } else {
-                                    //               Comparable                            ?
                                     int result = o1.toString().compareTo(o2.toString());
                                     return descending ? -result : result;
                                 }
                             }
                         };
                     } catch (Exception e) {
-                        //                                    String                   ?
                         comparator = createTextComparator();
                     }
                 }
                 break;
         }
         
-        //              ?
         if (comparator != null) {
             Collections.sort(list, comparator);
         }
     }
     
-    /**
-     *                         ?
-     */
     private Comparator<Object> createNumericComparator() {
         return new Comparator<Object>() {
             @Override
             public int compare(Object o1, Object o2) {
-                //              ?
                 if (o1 == null && o2 == null) return 0;
                 if (o1 == null) return descending ? 1 : -1;
                 if (o2 == null) return descending ? -1 : 1;
                 
-                //                                  ?
                 double v1 = toDouble(o1);
                 double v2 = toDouble(o2);
                 
-                //       ?
                 int result = Double.compare(v1, v2);
                 return descending ? -result : result;
             }
@@ -226,47 +183,35 @@ public class SortListNode extends BaseNode {
         };
     }
     
-    /**
-     *                       ?
-     */
     private Comparator<Object> createTextComparator() {
         return new Comparator<Object>() {
             @Override
             public int compare(Object o1, Object o2) {
-                //              ?
                 if (o1 == null && o2 == null) return 0;
                 if (o1 == null) return descending ? 1 : -1;
                 if (o2 == null) return descending ? -1 : 1;
                 
-                //                         ?
                 int result = o1.toString().compareTo(o2.toString());
                 return descending ? -result : result;
             }
         };
     }
     
-    /**
-     *                       ?
-     */
     private Comparator<Object> createLengthComparator() {
         return new Comparator<Object>() {
             @Override
             public int compare(Object o1, Object o2) {
-                //              ?
                 if (o1 == null && o2 == null) return 0;
                 if (o1 == null) return descending ? 1 : -1;
                 if (o2 == null) return descending ? -1 : 1;
                 
-                //              ?
                 int len1 = getLength(o1);
                 int len2 = getLength(o2);
                 
-                //       ?
                 int result = Integer.compare(len1, len2);
                 return descending ? -result : result;
             }
             
-            //                 ?       ?
             private int getLength(Object obj) {
                 if (obj instanceof String) {
                     return ((String) obj).length();
@@ -306,7 +251,6 @@ public class SortListNode extends BaseNode {
         }
     }
     
-    // ---                         ?---
     
     @Override
     public Object getNodeState() {
@@ -334,7 +278,6 @@ public class SortListNode extends BaseNode {
                     try {
                         setSortType(SortType.valueOf((String) type));
                     } catch (IllegalArgumentException e) {
-                        //                                            ?
                         setSortType(SortType.AUTO);
                     }
                 }

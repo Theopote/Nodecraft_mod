@@ -14,9 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- *                                                                       ?
- */
 @NodeInfo(
     id = "math.list.group_list",
     displayName = "Group List",
@@ -25,24 +22,17 @@ import java.util.UUID;
 )
 public class GroupListNode extends BaseNode {
     
-    // ---              ?---
     private boolean skipInvalidKeys = false; //                            
     
-    // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
     private static final String INPUT_KEYS_ID = "input_keys";
     private static final String OUTPUT_GROUPS_ID = "output_groups";
     private static final String OUTPUT_KEYS_ID = "output_unique_keys";
     private static final String OUTPUT_COUNT_ID = "output_group_count";
     
-    /**
-     *                                         ?
-     */
     public GroupListNode() {
-        //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.group_list");
         
-        //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
                 "The list to group", NodeDataType.LIST, this);
         addInputPort(listInput);
@@ -51,7 +41,6 @@ public class GroupListNode extends BaseNode {
                 "List of keys to group by", NodeDataType.LIST, this);
         addInputPort(keysInput);
         
-        //                    ?
         IPort groupsOutput = new BasePort(OUTPUT_GROUPS_ID, "Groups", 
                 "List of grouped items (lists)", NodeDataType.LIST, this);
         addOutputPort(groupsOutput);
@@ -65,61 +54,46 @@ public class GroupListNode extends BaseNode {
         addOutputPort(countOutput);
     }
     
-    /**
-     *                         ?
-     * @param context                ?
-     */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        //              ?
         Object listObj = inputValues.get(INPUT_LIST_ID);
         Object keysObj = inputValues.get(INPUT_KEYS_ID);
         
-        //                ?
         Map<Object, List<Object>> groups = new HashMap<>();
         List<Object> uniqueKeys = new ArrayList<>();
         
-        //              ?
         if (listObj instanceof List && keysObj instanceof List) {
             List<?> inputList = (List<?>) listObj;
             List<?> keysList = (List<?>) keysObj;
             
-            //                             ?
             for (int i = 0; i < inputList.size(); i++) {
                 Object item = inputList.get(i);
                 
-                //                              ?
                 Object key = null;
                 if (i < keysList.size()) {
                     key = keysList.get(i);
                 }
                 
-                //                ?
                 if (key == null && skipInvalidKeys) {
                     continue;
                 }
                 
-                //                                   ?
                 if (!groups.containsKey(key)) {
-                    //                        ?
                     List<Object> group = new ArrayList<>();
                     group.add(item);
                     groups.put(key, group);
                     uniqueKeys.add(key);
                 } else {
-                    //                                  ?
                     groups.get(key).add(item);
                 }
             }
         }
         
-        //                            ?
         List<Object> groupsList = new ArrayList<>();
         for (Object key : uniqueKeys) {
             groupsList.add(groups.get(key));
         }
         
-        //              ?
         outputValues.put(OUTPUT_GROUPS_ID, groupsList);
         outputValues.put(OUTPUT_KEYS_ID, uniqueKeys);
         outputValues.put(OUTPUT_COUNT_ID, uniqueKeys.size());
@@ -138,7 +112,6 @@ public class GroupListNode extends BaseNode {
         }
     }
     
-    // ---                         ?---
     
     @Override
     public Object getNodeState() {

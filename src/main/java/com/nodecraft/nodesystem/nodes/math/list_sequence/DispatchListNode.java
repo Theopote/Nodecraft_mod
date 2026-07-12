@@ -12,9 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- *                                                                                     ?
- */
 @NodeInfo(
     id = "math.list.dispatch_list",
     displayName = "Dispatch List",
@@ -23,24 +20,17 @@ import java.util.UUID;
 )
 public class DispatchListNode extends BaseNode {
     
-    // ---              ?---
-    private boolean useDefaultValue = false; //                                                         ?
-    private boolean defaultValue = false; //                ?
+    private boolean useDefaultValue = false;
+    private boolean defaultValue = false;
     
-    // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
     private static final String INPUT_CONDITION_ID = "input_condition";
     private static final String OUTPUT_TRUE_LIST_ID = "output_true";
     private static final String OUTPUT_FALSE_LIST_ID = "output_false";
     
-    /**
-     *                                         ?
-     */
     public DispatchListNode() {
-        //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.dispatch_list");
         
-        //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
                 "The list to split", NodeDataType.LIST, this);
         addInputPort(listInput);
@@ -49,7 +39,6 @@ public class DispatchListNode extends BaseNode {
                 "Boolean list or single boolean value", NodeDataType.ANY, this);
         addInputPort(conditionInput);
         
-        //                    ?
         IPort trueOutput = new BasePort(OUTPUT_TRUE_LIST_ID, "True List", 
                 "Items for which the condition was true", NodeDataType.LIST, this);
         addOutputPort(trueOutput);
@@ -59,29 +48,21 @@ public class DispatchListNode extends BaseNode {
         addOutputPort(falseOutput);
     }
     
-    /**
-     *                         ?
-     * @param context                ?
-     */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        //              ?
         Object listObj = inputValues.get(INPUT_LIST_ID);
         Object conditionObj = inputValues.get(INPUT_CONDITION_ID);
         
         List<Object> trueList = new ArrayList<>();
         List<Object> falseList = new ArrayList<>();
         
-        //              ?
         if (listObj instanceof List) {
             List<?> inputList = (List<?>) listObj;
             
-            //                                                    ?
             if (conditionObj instanceof List) {
                 List<?> conditionList = (List<?>) conditionObj;
                 processWithConditionList(inputList, conditionList, trueList, falseList);
             } else if (conditionObj instanceof Boolean) {
-                //                ?-                           ?
                 boolean condition = (Boolean) conditionObj;
                 if (condition) {
                     trueList.addAll(inputList);
@@ -89,7 +70,6 @@ public class DispatchListNode extends BaseNode {
                     falseList.addAll(inputList);
                 }
             } else {
-                //          ?-                       ?
                 if (useDefaultValue && defaultValue) {
                     trueList.addAll(inputList);
                 } else {
@@ -98,21 +78,15 @@ public class DispatchListNode extends BaseNode {
             }
         }
         
-        //              ?
         outputValues.put(OUTPUT_TRUE_LIST_ID, trueList);
         outputValues.put(OUTPUT_FALSE_LIST_ID, falseList);
     }
     
-    /**
-     *                                  ?
-     */
     private void processWithConditionList(List<?> inputList, List<?> conditionList, 
                                          List<Object> trueList, List<Object> falseList) {
-        //                ?
         for (int i = 0; i < inputList.size(); i++) {
             Object item = inputList.get(i);
             
-            //              ?
             boolean condition;
             if (i < conditionList.size()) {
                 Object condObj = conditionList.get(i);
@@ -122,11 +96,9 @@ public class DispatchListNode extends BaseNode {
                     condition = useDefaultValue ? defaultValue : false;
                 }
             } else {
-                //                            ?
                 condition = useDefaultValue ? defaultValue : false;
             }
             
-            //                     ?
             if (condition) {
                 trueList.add(item);
             } else {
@@ -159,7 +131,6 @@ public class DispatchListNode extends BaseNode {
         }
     }
     
-    // ---                         ?---
     
     @Override
     public Object getNodeState() {

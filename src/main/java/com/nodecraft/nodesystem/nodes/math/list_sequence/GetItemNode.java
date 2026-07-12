@@ -11,9 +11,6 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import java.util.List;
 import java.util.UUID;
 
-/**
- *                                                                             ?
- */
 @NodeInfo(
     id = "math.list.get_item",
     displayName = "Get Item",
@@ -22,24 +19,17 @@ import java.util.UUID;
 )
 public class GetItemNode extends BaseNode {
     
-    // ---              ?---
-    private boolean allowNegativeIndex = true; //                                                              ?
-    private boolean wrapIndex = false; //                                     ?
+    private boolean allowNegativeIndex = true;
+    private boolean wrapIndex = false;
     
-    // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
     private static final String INPUT_INDEX_ID = "input_index";
     private static final String OUTPUT_ITEM_ID = "output_item";
     private static final String OUTPUT_FOUND_ID = "output_found";
     
-    /**
-     *                                             ?
-     */
     public GetItemNode() {
-        //                    ?- data.lists.get_item
         super(UUID.randomUUID(), "math.list.get_item");
         
-        //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
                 "The list to get an item from", NodeDataType.LIST, this);
         addInputPort(listInput);
@@ -48,7 +38,6 @@ public class GetItemNode extends BaseNode {
                 "The index of the item (0-based)", NodeDataType.INTEGER, this);
         addInputPort(indexInput);
         
-        //                    ?
         IPort itemOutput = new BasePort(OUTPUT_ITEM_ID, "Item", 
                 "The item at the specified index", NodeDataType.ANY, this);
         addOutputPort(itemOutput);
@@ -58,20 +47,14 @@ public class GetItemNode extends BaseNode {
         addOutputPort(foundOutput);
     }
     
-    /**
-     *                         ?
-     * @param context                ?
-     */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        //                               ?
         Object inputObj = inputValues.get(INPUT_LIST_ID);
         Object indexObj = inputValues.get(INPUT_INDEX_ID);
         
         Object item = null;
         boolean found = false;
         
-        //                 ?
         if (inputObj instanceof List && indexObj instanceof Number) {
             List<?> list = (List<?>) inputObj;
             int listSize = list.size();
@@ -79,26 +62,21 @@ public class GetItemNode extends BaseNode {
             if (listSize > 0) {
                 int index = ((Number) indexObj).intValue();
                 
-                //                                                       ?
                 if (index < 0 && allowNegativeIndex) {
                     index = listSize + index;
                 }
                 
-                //                    ?
                 if (wrapIndex && listSize > 0) {
-                    //                                                        ?
                     index = ((index % listSize) + listSize) % listSize;
                     found = true;
                     item = list.get(index);
                 } else if (index >= 0 && index < listSize) {
-                    //                    ?
                     found = true;
                     item = list.get(index);
                 }
             }
         }
         
-        //              ?
         outputValues.put(OUTPUT_ITEM_ID, item);
         outputValues.put(OUTPUT_FOUND_ID, found);
     }
@@ -127,7 +105,6 @@ public class GetItemNode extends BaseNode {
         }
     }
     
-    // ---                         ?---
     
     @Override
     public Object getNodeState() {

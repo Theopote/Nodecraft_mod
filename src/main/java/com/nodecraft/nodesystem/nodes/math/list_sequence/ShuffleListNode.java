@@ -14,9 +14,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
-/**
- *                                                  ?
- */
 @NodeInfo(
     id = "math.list.shuffle_list",
     displayName = "Shuffle List",
@@ -25,23 +22,16 @@ import java.util.UUID;
 )
 public class ShuffleListNode extends BaseNode {
     
-    // ---              ?---
-    private long seed = 0; //                      ?                           
-    private boolean preserveInput = false; //                            ?
+    private long seed = 0;
+    private boolean preserveInput = false;
     
-    // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
     private static final String INPUT_SEED_ID = "input_seed";
     private static final String OUTPUT_LIST_ID = "output_list";
     
-    /**
-     *                                         ?
-     */
     public ShuffleListNode() {
-        //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.shuffle_list");
         
-        //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
                 "The list to shuffle", NodeDataType.LIST, this);
         addInputPort(listInput);
@@ -50,50 +40,37 @@ public class ShuffleListNode extends BaseNode {
                 "Optional random seed (integer)", NodeDataType.INTEGER, this);
         addInputPort(seedInput);
         
-        //                    ?
         IPort listOutput = new BasePort(OUTPUT_LIST_ID, "Shuffled List", 
                 "The list with elements in random order", NodeDataType.LIST, this);
         addOutputPort(listOutput);
     }
     
-    /**
-     *                         ?
-     * @param context                ?
-     */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        //              ?
         Object inputObj = inputValues.get(INPUT_LIST_ID);
         Object seedObj = inputValues.get(INPUT_SEED_ID);
         
         List<Object> resultList = new ArrayList<>();
         
-        //              ?
         if (inputObj instanceof List) {
             List<?> inputList = (List<?>) inputObj;
             
-            //                                                            ?
             resultList.addAll(inputList);
             
-            //                       ?
             long actualSeed = seed;
             if (seedObj instanceof Number) {
                 actualSeed = ((Number) seedObj).longValue();
             }
             
-            //              ?
             if (!resultList.isEmpty()) {
                 if (actualSeed != 0) {
-                    //                    ?
                     Collections.shuffle(resultList, new Random(actualSeed));
                 } else {
-                    //                                   ?
                     Collections.shuffle(resultList);
                 }
             }
         }
         
-        //              ?
         outputValues.put(OUTPUT_LIST_ID, resultList);
     }
     
@@ -121,7 +98,6 @@ public class ShuffleListNode extends BaseNode {
         }
     }
     
-    // ---                         ?---
     
     @Override
     public Object getNodeState() {

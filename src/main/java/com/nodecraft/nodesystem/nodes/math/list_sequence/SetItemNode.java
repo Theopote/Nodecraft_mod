@@ -12,9 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- *                                                                           ?
- */
 @NodeInfo(
     id = "math.list.set_item",
     displayName = "Set Item",
@@ -23,26 +20,19 @@ import java.util.UUID;
 )
 public class SetItemNode extends BaseNode {
     
-    // ---              ?---
-    private boolean allowNegativeIndex = true; //                                                              ?
-    private boolean wrapIndex = false; //                                     ?
-    private boolean expandList = false; //                                                   ?
+    private boolean allowNegativeIndex = true;
+    private boolean wrapIndex = false;
+    private boolean expandList = false;
     
-    // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
     private static final String INPUT_INDEX_ID = "input_index";
     private static final String INPUT_VALUE_ID = "input_value";
     private static final String OUTPUT_LIST_ID = "output_list";
     private static final String OUTPUT_SUCCESS_ID = "output_success";
     
-    /**
-     *                                              
-     */
     public SetItemNode() {
-        //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.set_item");
         
-        //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
                 "The list to modify", NodeDataType.LIST, this);
         addInputPort(listInput);
@@ -55,7 +45,6 @@ public class SetItemNode extends BaseNode {
                 "The new value to set at the specified index", NodeDataType.ANY, this);
         addInputPort(valueInput);
         
-        //                    ?
         IPort listOutput = new BasePort(OUTPUT_LIST_ID, "Modified List", 
                 "The modified list with the new value set", NodeDataType.LIST, this);
         addOutputPort(listOutput);
@@ -65,13 +54,8 @@ public class SetItemNode extends BaseNode {
         addOutputPort(successOutput);
     }
     
-    /**
-     *                         ?
-     * @param context                ?
-     */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        //              ?
         Object inputObj = inputValues.get(INPUT_LIST_ID);
         Object indexObj = inputValues.get(INPUT_INDEX_ID);
         Object valueObj = inputValues.get(INPUT_VALUE_ID);
@@ -79,11 +63,9 @@ public class SetItemNode extends BaseNode {
         List<Object> resultList = new ArrayList<>();
         boolean success = false;
         
-        //              ?
         if (inputObj instanceof List && indexObj instanceof Number) {
             List<?> inputList = (List<?>) inputObj;
             
-            //                                       ?
             for (Object item : inputList) {
                 resultList.add(item);
             }
@@ -91,23 +73,18 @@ public class SetItemNode extends BaseNode {
             int listSize = resultList.size();
             int index = ((Number) indexObj).intValue();
             
-            //                                                       ?
             if (index < 0 && allowNegativeIndex) {
                 index = listSize + index;
             }
             
-            //                    ?
             if (wrapIndex && listSize > 0) {
-                //                                                        ?
                 index = ((index % listSize) + listSize) % listSize;
                 resultList.set(index, valueObj);
                 success = true;
             } else if (index >= 0 && index < listSize) {
-                //                    ?
                 resultList.set(index, valueObj);
                 success = true;
             } else if (expandList && index >= 0) {
-                //                                ?
                 while (resultList.size() <= index) {
                     resultList.add(null);
                 }
@@ -116,7 +93,6 @@ public class SetItemNode extends BaseNode {
             }
         }
         
-        //              ?
         outputValues.put(OUTPUT_LIST_ID, resultList);
         outputValues.put(OUTPUT_SUCCESS_ID, success);
     }
@@ -156,7 +132,6 @@ public class SetItemNode extends BaseNode {
         }
     }
     
-    // ---                         ?---
     
     @Override
     public Object getNodeState() {

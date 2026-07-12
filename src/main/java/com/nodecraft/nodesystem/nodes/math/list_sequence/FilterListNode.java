@@ -12,9 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- *                                                                                  ?
- */
 @NodeInfo(
     id = "math.list.filter_list",
     displayName = "Filter List",
@@ -23,24 +20,17 @@ import java.util.UUID;
 )
 public class FilterListNode extends BaseNode {
     
-    // ---              ?---
-    private boolean invert = false; //                                                  lse         ?
+    private boolean invert = false;
     
-    // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
     private static final String INPUT_CONDITION_ID = "input_condition";
     private static final String OUTPUT_LIST_ID = "output_list";
     private static final String OUTPUT_REMOVED_ID = "output_removed";
     private static final String OUTPUT_COUNT_ID = "output_count";
     
-    /**
-     *                                         ?
-     */
     public FilterListNode() {
-        //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.filter_list");
         
-        //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
                 "The list to filter", NodeDataType.LIST, this);
         addInputPort(listInput);
@@ -49,7 +39,6 @@ public class FilterListNode extends BaseNode {
                 "Boolean list or single boolean value", NodeDataType.ANY, this);
         addInputPort(conditionInput);
         
-        //                    ?
         IPort listOutput = new BasePort(OUTPUT_LIST_ID, "Filtered List", 
                 "The list after filtering", NodeDataType.LIST, this);
         addOutputPort(listOutput);
@@ -63,29 +52,21 @@ public class FilterListNode extends BaseNode {
         addOutputPort(countOutput);
     }
     
-    /**
-     *                         ?
-     * @param context                ?
-     */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        //              ?
         Object listObj = inputValues.get(INPUT_LIST_ID);
         Object conditionObj = inputValues.get(INPUT_CONDITION_ID);
         
         List<Object> filteredList = new ArrayList<>();
         List<Object> removedList = new ArrayList<>();
         
-        //              ?
         if (listObj instanceof List) {
             List<?> inputList = (List<?>) listObj;
             
-            //                                                    ?
             if (conditionObj instanceof List) {
                 List<?> conditionList = (List<?>) conditionObj;
                 filterWithConditionList(inputList, conditionList, filteredList, removedList);
             } else if (conditionObj instanceof Boolean) {
-                //                ?-                             ?
                 boolean condition = (Boolean) conditionObj;
                 if (condition != invert) { //         vert                           
                     filteredList.addAll(inputList);
@@ -93,27 +74,20 @@ public class FilterListNode extends BaseNode {
                     removedList.addAll(inputList);
                 }
             } else {
-                //          ?-              ?
                 removedList.addAll(inputList);
             }
         }
         
-        //              ?
         outputValues.put(OUTPUT_LIST_ID, filteredList);
         outputValues.put(OUTPUT_REMOVED_ID, removedList);
         outputValues.put(OUTPUT_COUNT_ID, filteredList.size());
     }
     
-    /**
-     *                                  ?
-     */
     private void filterWithConditionList(List<?> inputList, List<?> conditionList, 
                                        List<Object> filteredList, List<Object> removedList) {
-        //                ?
         for (int i = 0; i < inputList.size(); i++) {
             Object item = inputList.get(i);
             
-            //              ?
             boolean keep = false;
             if (i < conditionList.size()) {
                 Object condObj = conditionList.get(i);
@@ -122,12 +96,10 @@ public class FilterListNode extends BaseNode {
                 }
             }
             
-            //         vert                    ?
             if (invert) {
                 keep = !keep;
             }
             
-            //                     ?
             if (keep) {
                 filteredList.add(item);
             } else {
@@ -149,7 +121,6 @@ public class FilterListNode extends BaseNode {
         }
     }
     
-    // ---                         ?---
     
     @Override
     public Object getNodeState() {

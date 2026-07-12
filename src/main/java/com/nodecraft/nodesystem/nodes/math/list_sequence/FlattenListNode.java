@@ -12,9 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- *                                                                       ?
- */
 @NodeInfo(
     id = "math.list.flatten_list",
     displayName = "Flatten List",
@@ -23,23 +20,16 @@ import java.util.UUID;
 )
 public class FlattenListNode extends BaseNode {
     
-    // ---              ?---
-    private int maxDepth = -1; //                         -1                   ?
+    private int maxDepth = -1;
     private boolean preserveTypes = false; //                                         
     
-    // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
     private static final String INPUT_DEPTH_ID = "input_depth";
     private static final String OUTPUT_LIST_ID = "output_list";
     
-    /**
-     *                                         ?
-     */
     public FlattenListNode() {
-        //                    ?- data.lists.flatten_list
         super(UUID.randomUUID(), "math.list.flatten_list");
         
-        //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
                 "The nested list to flatten", NodeDataType.LIST, this);
         addInputPort(listInput);
@@ -48,23 +38,16 @@ public class FlattenListNode extends BaseNode {
                 "Maximum flattening depth (optional)", NodeDataType.INTEGER, this);
         addInputPort(depthInput);
         
-        //                    ?
         IPort listOutput = new BasePort(OUTPUT_LIST_ID, "Flattened List", 
                 "The resulting flattened list", NodeDataType.LIST, this);
         addOutputPort(listOutput);
     }
     
-    /**
-     *                         ?
-     * @param context                ?
-     */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        //              ?
         Object listObj = inputValues.get(INPUT_LIST_ID);
         Object depthObj = inputValues.get(INPUT_DEPTH_ID);
         
-        //                    ?
         int depth = maxDepth;
         if (depthObj instanceof Number) {
             depth = ((Number) depthObj).intValue();
@@ -72,15 +55,12 @@ public class FlattenListNode extends BaseNode {
         
         List<Object> resultList = new ArrayList<>();
         
-        //             ?
         if (listObj instanceof List) {
             flatten((List<?>) listObj, resultList, 0, depth);
         } else if (listObj != null) {
-            //                                           ?
             resultList.add(listObj);
         }
         
-        //              ?
         outputValues.put(OUTPUT_LIST_ID, resultList);
     }
     
@@ -92,29 +72,23 @@ public class FlattenListNode extends BaseNode {
      * @param maxDepth             ?
      */
     private void flatten(List<?> input, List<Object> output, int currentDepth, int maxDepth) {
-        //                                  ?
         if (maxDepth >= 0 && currentDepth >= maxDepth) {
             output.addAll(input);
             return;
         }
         
-        //                                   ?
         for (Object item : input) {
             if (item instanceof List) {
-                //                            ?
                 flatten((List<?>) item, output, currentDepth + 1, maxDepth);
             } else if (preserveTypes || item == null) {
-                //                              ?
                 output.add(item);
             } else {
-                //                                                       ?
                 try {
                     Object[] array = (Object[]) item;
                     for (Object arrayItem : array) {
                         output.add(arrayItem);
                     }
                 } catch (ClassCastException e) {
-                    //                              ?
                     output.add(item);
                 }
             }
@@ -145,7 +119,6 @@ public class FlattenListNode extends BaseNode {
         }
     }
     
-    // ---                         ?---
     
     @Override
     public Object getNodeState() {

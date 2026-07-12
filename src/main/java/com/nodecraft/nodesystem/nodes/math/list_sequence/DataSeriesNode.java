@@ -13,9 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- *                               ?
- */
 @NodeInfo(
     id = "math.sequence.series",
     displayName = "Data Series",
@@ -24,10 +21,9 @@ import java.util.UUID;
 )
 public class DataSeriesNode extends BaseNode {
     
-    // ---       ?---
-    private boolean useIntegerType = true; //                          ?
-    private int defaultCount = 10; //              ?
-    private double defaultStart = 0; //        ?
+    private boolean useIntegerType = true;
+    private int defaultCount = 10;
+    private double defaultStart = 0;
     private double defaultStep = 1; //       
     
     // ---    /      ID ---
@@ -37,14 +33,9 @@ public class DataSeriesNode extends BaseNode {
     private static final String OUTPUT_SERIES_ID = "output_series";
     private static final String OUTPUT_SUM_ID = "output_sum";
     
-    /**
-     *                   ?
-     */
     public DataSeriesNode() {
-        //           - data.sequence.series
         super(UUID.randomUUID(), "math.sequence.series");
         
-        //          
         IPort startInput = new BasePort(INPUT_START_ID, "Start", 
                 "Starting value of the series", NodeDataType.DOUBLE, this);
         addInputPort(startInput);
@@ -57,7 +48,6 @@ public class DataSeriesNode extends BaseNode {
                 "Number of elements to generate", NodeDataType.INTEGER, this);
         addInputPort(countInput);
         
-        //          
         IPort seriesOutput = new BasePort(OUTPUT_SERIES_ID, "Series", 
                 "The generated sequence", NodeDataType.LIST, this);
         addOutputPort(seriesOutput);
@@ -67,18 +57,12 @@ public class DataSeriesNode extends BaseNode {
         addOutputPort(sumOutput);
     }
     
-    /**
-     *            
-     * @param context        ?
-     */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        //       
         Object startObj = inputValues.get(INPUT_START_ID);
         Object stepObj = inputValues.get(INPUT_STEP_ID);
         Object countObj = inputValues.get(INPUT_COUNT_ID);
         
-        //                
         double start = defaultStart;
         if (startObj instanceof Number) {
             start = ((Number) startObj).doubleValue();
@@ -101,7 +85,6 @@ public class DataSeriesNode extends BaseNode {
             return;
         }
         
-        //       
         List<Object> series = new ArrayList<>();
         double sum = 0;
         
@@ -109,7 +92,6 @@ public class DataSeriesNode extends BaseNode {
             double value = start + i * step;
             Object element;
             
-            //                         
             if (useIntegerType) {
                 element = (int) Math.round(value);
                 sum += (int) Math.round(value);
@@ -121,7 +103,6 @@ public class DataSeriesNode extends BaseNode {
             series.add(element);
         }
         
-        //       
         outputValues.put(OUTPUT_SERIES_ID, series);
         outputValues.put(OUTPUT_SUM_ID, useIntegerType ? (int) Math.round(sum) : sum);
     }
@@ -173,7 +154,6 @@ public class DataSeriesNode extends BaseNode {
         }
     }
     
-    // ---             ---
     
     @Override
     public Object getNodeState() {

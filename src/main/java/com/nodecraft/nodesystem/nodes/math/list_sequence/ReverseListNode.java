@@ -35,12 +35,10 @@ public class ReverseListNode extends BaseNode {
         //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.reverse_list");
         
-        //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
                 "The list to reverse", NodeDataType.LIST, this);
         addInputPort(listInput);
         
-        //                    ?
         IPort listOutput = new BasePort(OUTPUT_LIST_ID, "Reversed List", 
                 "The list with elements in reverse order", NodeDataType.LIST, this);
         addOutputPort(listOutput);
@@ -52,23 +50,18 @@ public class ReverseListNode extends BaseNode {
      */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        //              ?
         Object inputObj = inputValues.get(INPUT_LIST_ID);
         
         List<Object> resultList = new ArrayList<>();
         
-        //              ?
         if (inputObj instanceof List) {
             List<?> inputList = (List<?>) inputObj;
             
-            //                                                            ?
             resultList.addAll(inputList);
             
-            //              ?
             Collections.reverse(resultList);
         }
         
-        //              ?
         outputValues.put(OUTPUT_LIST_ID, resultList);
     }
     

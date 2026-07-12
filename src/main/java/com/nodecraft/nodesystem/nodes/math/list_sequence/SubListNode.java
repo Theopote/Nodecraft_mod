@@ -12,9 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- *                                          ?
- */
 @NodeInfo(
     id = "math.list.sub_list",
     displayName = "Sub List",
@@ -23,24 +20,17 @@ import java.util.UUID;
 )
 public class SubListNode extends BaseNode {
     
-    // ---              ?---
-    private boolean allowNegativeIndex = true; //                                                              ?
-    private boolean clampToList = true; //                                           ?
+    private boolean allowNegativeIndex = true;
+    private boolean clampToList = true;
     
-    // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
     private static final String INPUT_START_ID = "input_start";
     private static final String INPUT_END_ID = "input_end";
     private static final String OUTPUT_SUBLIST_ID = "output_sublist";
     
-    /**
-     *                                        
-     */
     public SubListNode() {
-        //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.sub_list");
         
-        //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
                 "The source list", NodeDataType.LIST, this);
         addInputPort(listInput);
@@ -53,63 +43,48 @@ public class SubListNode extends BaseNode {
                 "The ending index (exclusive)", NodeDataType.INTEGER, this);
         addInputPort(endInput);
         
-        //                    ?
         IPort sublistOutput = new BasePort(OUTPUT_SUBLIST_ID, "Sub List", 
                 "The resulting sub list", NodeDataType.LIST, this);
         addOutputPort(sublistOutput);
     }
     
-    /**
-     *                         ?
-     * @param context                ?
-     */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        //              ?
         Object inputObj = inputValues.get(INPUT_LIST_ID);
         Object startObj = inputValues.get(INPUT_START_ID);
         Object endObj = inputValues.get(INPUT_END_ID);
         
         List<Object> resultList = new ArrayList<>();
         
-        //              ?
         if (inputObj instanceof List) {
             List<?> inputList = (List<?>) inputObj;
             int listSize = inputList.size();
             
-            //                             ?
             int startIndex = 0;
             int endIndex = listSize;
             
-            //                    ?
             if (startObj instanceof Number) {
                 startIndex = ((Number) startObj).intValue();
                 
-                //                ?
                 if (startIndex < 0 && allowNegativeIndex) {
                     startIndex = listSize + startIndex;
                 }
                 
-                //                            
                 if (clampToList) {
                     startIndex = Math.max(0, Math.min(startIndex, listSize));
                 } else if (startIndex < 0 || startIndex > listSize) {
-                    //                                                        ?
                     outputValues.put(OUTPUT_SUBLIST_ID, resultList);
                     return;
                 }
             }
             
-            //                    ?
             if (endObj instanceof Number) {
                 endIndex = ((Number) endObj).intValue();
                 
-                //                ?
                 if (endIndex < 0 && allowNegativeIndex) {
                     endIndex = listSize + endIndex;
                 }
                 
-                //                            
                 if (clampToList) {
                     endIndex = Math.max(startIndex, Math.min(endIndex, listSize));
                 } else if (endIndex < startIndex || endIndex > listSize) {
@@ -118,13 +93,11 @@ public class SubListNode extends BaseNode {
                 }
             }
             
-            //                 ?
             for (int i = startIndex; i < endIndex; i++) {
                 resultList.add(inputList.get(i));
             }
         }
         
-        //              ?
         outputValues.put(OUTPUT_SUBLIST_ID, resultList);
     }
     
@@ -152,7 +125,6 @@ public class SubListNode extends BaseNode {
         }
     }
     
-    // ---                         ?---
     
     @Override
     public Object getNodeState() {

@@ -33,12 +33,10 @@ public class ListLengthNode extends BaseNode {
         //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.list_length");
         
-        //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
                 "The list to get the length of", NodeDataType.LIST, this);
         addInputPort(listInput);
         
-        //                    ?
         IPort lengthOutput = new BasePort(OUTPUT_LENGTH_ID, "Length", 
                 "The number of items in the list", NodeDataType.INTEGER, this);
         addOutputPort(lengthOutput);
@@ -50,7 +48,6 @@ public class ListLengthNode extends BaseNode {
      */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        //                    ?
         Object inputObj = inputValues.get(INPUT_LIST_ID);
         int length = 0;
         
@@ -60,7 +57,6 @@ public class ListLengthNode extends BaseNode {
             length = list.size();
         }
         
-        //              ?
         outputValues.put(OUTPUT_LENGTH_ID, length);
     }
     

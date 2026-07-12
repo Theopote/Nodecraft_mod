@@ -13,9 +13,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-/**
- *                                                                                
- */
 @NodeInfo(
     id = "math.list.remove_item",
     displayName = "Remove Item",
@@ -24,12 +21,10 @@ import java.util.UUID;
 )
 public class RemoveItemNode extends BaseNode {
     
-    // ---              ?---
-    private boolean useIndex = true; //                                                      ?
-    private boolean allowNegativeIndex = true; //                                                              ?
-    private boolean removeAllMatches = false; //                                                                     ?
+    private boolean useIndex = true;
+    private boolean allowNegativeIndex = true;
+    private boolean removeAllMatches = false;
     
-    // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
     private static final String INPUT_INDEX_ID = "input_index";
     private static final String INPUT_VALUE_ID = "input_value";
@@ -37,14 +32,9 @@ public class RemoveItemNode extends BaseNode {
     private static final String OUTPUT_REMOVED_ID = "output_removed";
     private static final String OUTPUT_COUNT_ID = "output_remove_count";
     
-    /**
-     *                                              
-     */
     public RemoveItemNode() {
-        //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.remove_item");
         
-        //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
                 "The list to remove from", NodeDataType.LIST, this);
         addInputPort(listInput);
@@ -57,7 +47,6 @@ public class RemoveItemNode extends BaseNode {
                 "The value to remove (used if 'Use Index' is false)", NodeDataType.ANY, this);
         addInputPort(valueInput);
         
-        //                    ?
         IPort listOutput = new BasePort(OUTPUT_LIST_ID, "Modified List", 
                 "The list with item(s) removed", NodeDataType.LIST, this);
         addOutputPort(listOutput);
@@ -71,13 +60,8 @@ public class RemoveItemNode extends BaseNode {
         addOutputPort(countOutput);
     }
     
-    /**
-     *                         ?
-     * @param context                ?
-     */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        //              ?
         Object inputObj = inputValues.get(INPUT_LIST_ID);
         Object indexObj = inputValues.get(INPUT_INDEX_ID);
         Object valueObj = inputValues.get(INPUT_VALUE_ID);
@@ -87,54 +71,43 @@ public class RemoveItemNode extends BaseNode {
         Object removedItem = null;
         int removeCount = 0;
         
-        //              ?
         if (inputObj instanceof List) {
             List<?> inputList = (List<?>) inputObj;
             
-            //                                       ?
             for (Object item : inputList) {
                 resultList.add(item);
             }
             
-            //                ?
             if (useIndex && indexObj instanceof Number) {
                 int index = ((Number) indexObj).intValue();
                 int listSize = resultList.size();
                 
-                //                                                       ?
                 if (index < 0 && allowNegativeIndex) {
                     index = listSize + index;
                 }
                 
-                //                           ?
                 if (index >= 0 && index < listSize) {
                     removedItem = resultList.remove(index);
                     removeCount = 1;
                 }
             } 
-            //             ?
             else if (!useIndex && hasValueInput) {
-                //                                   ?
                 if (removeAllMatches) {
                     List<Object> toRemove = new ArrayList<>();
                     
-                    //                         ?
                     for (Object item : resultList) {
                         if (Objects.equals(item, valueObj)) {
                             toRemove.add(item);
                             removeCount++;
                             
-                            //                                  ?
                             if (removedItem == null) {
                                 removedItem = item;
                             }
                         }
                     }
                     
-                    //                         ?
                     resultList.removeAll(toRemove);
                 } 
-                //                               ?
                 else {
                     int index = resultList.indexOf(valueObj);
                     if (index >= 0) {
@@ -145,7 +118,6 @@ public class RemoveItemNode extends BaseNode {
             }
         }
         
-        //              ?
         outputValues.put(OUTPUT_LIST_ID, resultList);
         outputValues.put(OUTPUT_REMOVED_ID, removedItem);
         outputValues.put(OUTPUT_COUNT_ID, removeCount);
@@ -186,7 +158,6 @@ public class RemoveItemNode extends BaseNode {
         }
     }
     
-    // ---                         ?---
     
     @Override
     public Object getNodeState() {

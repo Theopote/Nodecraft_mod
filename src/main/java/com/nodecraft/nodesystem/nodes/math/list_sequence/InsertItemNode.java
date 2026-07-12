@@ -12,9 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- *                                                                               ?
- */
 @NodeInfo(
     id = "math.list.insert_item",
     displayName = "Insert Item",
@@ -23,24 +20,17 @@ import java.util.UUID;
 )
 public class InsertItemNode extends BaseNode {
     
-    // ---              ?---
-    private boolean allowNegativeIndex = true; //                                                              ?
-    private boolean append = true; //                                                               ?
+    private boolean allowNegativeIndex = true;
+    private boolean append = true;
     
-    // ---       ?              D ---
     private static final String INPUT_LIST_ID = "input_list";
     private static final String INPUT_INDEX_ID = "input_index";
     private static final String INPUT_VALUE_ID = "input_value";
     private static final String OUTPUT_LIST_ID = "output_list";
     
-    /**
-     *                                              
-     */
     public InsertItemNode() {
-        //                                        UID.randomUUID()              D
         super(UUID.randomUUID(), "math.list.insert_item");
         
-        //                    ?
         IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
                 "The list to insert into", NodeDataType.LIST, this);
         addInputPort(listInput);
@@ -53,19 +43,13 @@ public class InsertItemNode extends BaseNode {
                 "The value to insert at the specified index", NodeDataType.ANY, this);
         addInputPort(valueInput);
         
-        //                    ?
         IPort listOutput = new BasePort(OUTPUT_LIST_ID, "Modified List", 
                 "The list with the inserted item", NodeDataType.LIST, this);
         addOutputPort(listOutput);
     }
     
-    /**
-     *                         ?
-     * @param context                ?
-     */
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        //              ?
         Object inputObj = inputValues.get(INPUT_LIST_ID);
         Object indexObj = inputValues.get(INPUT_INDEX_ID);
         Object valueObj = inputValues.get(INPUT_VALUE_ID);
@@ -73,47 +57,37 @@ public class InsertItemNode extends BaseNode {
         
         List<Object> resultList = new ArrayList<>();
         
-        //              ?
         if (inputObj instanceof List) {
             List<?> inputList = (List<?>) inputObj;
             
-            //                                       ?
             for (Object item : inputList) {
                 resultList.add(item);
             }
             
             int listSize = resultList.size();
             
-            //                                  ?
             int insertIndex = listSize;
             
-            //                        ?
             if (indexObj instanceof Number) {
                 int index = ((Number) indexObj).intValue();
                 
-                //                                                       ?
                 if (index < 0 && allowNegativeIndex) {
                     index = listSize + index;
                 }
                 
-                //                            ?
                 if (index >= 0 && index <= listSize) {
                     insertIndex = index;
                 } else if (!append) {
-                    //                                                                       ?
                     outputValues.put(OUTPUT_LIST_ID, resultList);
                     return;
                 }
             }
             
-            //              ?
             resultList.add(insertIndex, valueObj);
         } else if (hasValueInput) {
-            //                                                                                          ?
             resultList.add(valueObj);
         }
         
-        //              ?
         outputValues.put(OUTPUT_LIST_ID, resultList);
     }
     
@@ -141,7 +115,6 @@ public class InsertItemNode extends BaseNode {
         }
     }
     
-    // ---                         ?---
     
     @Override
     public Object getNodeState() {
