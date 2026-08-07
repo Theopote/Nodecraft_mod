@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.preview.TrackedPreviewPlacementService;
 import net.minecraft.block.Blocks;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.test.TestContext;
+import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
@@ -25,7 +26,7 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
  */
 public class NodeCraftGameTest implements CustomTestMethodInvoker {
 
-    @GameTest(templateName = "empty_5x5x5")
+    @GameTest
     public void trackedPreviewCleanupRestoresBlocks(TestContext ctx) {
         ServerWorld world = ctx.getWorld();
         TrackedPreviewPlacementService service = TrackedPreviewPlacementService.getInstance();
@@ -43,18 +44,18 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
             PlacementMode.OVERWRITE
         );
 
-        ctx.assertBlockState(pos1, state -> state.isOf(Blocks.STONE));
-        ctx.assertBlockState(pos2, state -> state.isOf(Blocks.STONE));
+        ctx.expectBlock(Blocks.STONE, pos1);
+        ctx.expectBlock(Blocks.STONE, pos2);
 
         int restored = service.clearTrackedPreviewOnWorldThread(world, nodeId, executionContext);
-        ctx.assertValueEqual(restored, 2);
-        ctx.assertBlockState(pos1, state -> state.isOf(Blocks.AIR));
-        ctx.assertBlockState(pos2, state -> state.isOf(Blocks.AIR));
+        ctx.assertEquals(2, restored, "restored block count");
+        ctx.checkBlockState(pos1, state -> state.isOf(Blocks.AIR), state -> Text.literal("Expected air at pos1"));
+        ctx.checkBlockState(pos2, state -> state.isOf(Blocks.AIR), state -> Text.literal("Expected air at pos2"));
 
         ctx.complete();
     }
 
-    @GameTest(templateName = "empty_5x5x5")
+    @GameTest
     public void trackedPreviewCleanupWithoutContextOnServerThread(TestContext ctx) {
         ServerWorld world = ctx.getWorld();
         TrackedPreviewPlacementService service = TrackedPreviewPlacementService.getInstance();
@@ -71,13 +72,13 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         );
 
         int restored = service.clearTrackedPreview(world, nodeId);
-        ctx.assertValueEqual(restored, 1);
-        ctx.assertBlockState(pos, state -> state.isOf(Blocks.AIR));
+        ctx.assertEquals(1, restored, "restored block count");
+        ctx.checkBlockState(pos, state -> state.isOf(Blocks.AIR), state -> Text.literal("Expected air"));
 
         ctx.complete();
     }
 
-    @GameTest(templateName = "empty_5x5x5")
+    @GameTest
     public void bakeAsyncUndoRedoCycle(TestContext ctx) {
         World world = ctx.getWorld();
         BakePlacementService service = BakePlacementService.getInstance();
@@ -102,25 +103,25 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         );
         drainTasks(service);
 
-        ctx.assertValueEqual(history.size(), 1);
-        ctx.assertValueEqual(history.redoSize(), 0);
-        ctx.assertBlockState(pos, state -> state.isOf(Blocks.STONE));
+        ctx.assertEquals(1, history.size(), "history size after apply");
+        ctx.assertEquals(0, history.redoSize(), "redo size after apply");
+        ctx.expectBlock(Blocks.STONE, pos);
 
         UUID undoTaskId = service.undoLastAsync(actorId, world, 1000, 1_000_000L);
-        ctx.assertValueNonNull(undoTaskId);
+        ctx.assertTrue(undoTaskId != null, "undo task id");
         drainTasks(service);
 
-        ctx.assertValueEqual(history.size(), 0);
-        ctx.assertValueEqual(history.redoSize(), 1);
-        ctx.assertBlockState(pos, state -> state.isOf(Blocks.AIR));
+        ctx.assertEquals(0, history.size(), "history size after undo");
+        ctx.assertEquals(1, history.redoSize(), "redo size after undo");
+        ctx.checkBlockState(pos, state -> state.isOf(Blocks.AIR), state -> Text.literal("Expected air after undo"));
 
         UUID redoTaskId = service.redoLastAsync(actorId, world, 1000, 1_000_000L);
-        ctx.assertValueNonNull(redoTaskId);
+        ctx.assertTrue(redoTaskId != null, "redo task id");
         drainTasks(service);
 
-        ctx.assertValueEqual(history.size(), 1);
-        ctx.assertValueEqual(history.redoSize(), 0);
-        ctx.assertBlockState(pos, state -> state.isOf(Blocks.STONE));
+        ctx.assertEquals(1, history.size(), "history size after redo");
+        ctx.assertEquals(0, history.redoSize(), "redo size after redo");
+        ctx.expectBlock(Blocks.STONE, pos);
 
         ctx.complete();
     }
