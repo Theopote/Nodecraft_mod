@@ -190,6 +190,70 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         ctx.complete();
     }
 
+    /**
+     * Timeout abort uses the same transaction rollback as cancel, but terminals as {@link BakeTaskState#TIMED_OUT}.
+     * Mirrors ApplyChangesNode sync-await timeout: cancelTask(..., TIMED_OUT) then await abort/rollback.
+     */
+    @GameTest
+    public void bakeApplyTimeoutRollsBackWorld(TestContext ctx) {
+        World world = ctx.getWorld();
+        BakePlacementService service = BakePlacementService.getInstance();
+        resetBakeService(service);
+
+        UUID actorId = UUID.randomUUID();
+        BakeHistory history = service.getHistory(actorId);
+        history.clear();
+
+        BlockPos rel1 = new BlockPos(1, 1, 1);
+        BlockPos rel2 = new BlockPos(2, 1, 1);
+        BlockPos rel3 = new BlockPos(3, 1, 1);
+        BlockPos abs1 = ctx.getAbsolutePos(rel1);
+        BlockPos abs2 = ctx.getAbsolutePos(rel2);
+        BlockPos abs3 = ctx.getAbsolutePos(rel3);
+
+        // Seed so rollback must restore STONE, not only air.
+        ctx.setBlockState(rel1, Blocks.STONE.getDefaultState());
+
+        UUID taskId = service.enqueuePlacements(
+            world,
+            List.of(
+                new BakeTask.Placement(abs1, Blocks.GOLD_BLOCK.getDefaultState()),
+                new BakeTask.Placement(abs2, Blocks.GOLD_BLOCK.getDefaultState()),
+                new BakeTask.Placement(abs3, Blocks.GOLD_BLOCK.getDefaultState())
+            ),
+            PlacementMode.OVERWRITE,
+            true,
+            BakeOperationKind.APPLY,
+            1,
+            0L,
+            actorId,
+            null
+        );
+        ctx.assertTrue(taskId != null, "apply task id");
+
+        service.processTick();
+        ctx.expectBlock(Blocks.GOLD_BLOCK, rel1);
+        ctx.checkBlockState(rel2, state -> state.isOf(Blocks.AIR), state -> Text.literal("pos2 still air before timeout"));
+        ctx.assertEquals(0, history.size(), "history empty while task still running");
+
+        ctx.assertTrue(service.cancelTask(taskId, BakeTaskState.TIMED_OUT), "timeout abort");
+        boolean aborted = service.awaitTaskAborted(taskId, System.currentTimeMillis() + 5_000L);
+        ctx.assertTrue(aborted, "await timed-out abort finished");
+
+        ctx.assertEquals(0, history.size(), "timed-out apply must not commit history");
+        ctx.assertEquals(0, history.redoSize(), "redo empty after timeout rollback");
+        ctx.expectBlock(Blocks.STONE, rel1);
+        ctx.checkBlockState(rel2, state -> state.isOf(Blocks.AIR), state -> Text.literal("pos2 stays air"));
+        ctx.checkBlockState(rel3, state -> state.isOf(Blocks.AIR), state -> Text.literal("pos3 stays air"));
+
+        BakePlacementService.TaskSnapshot snapshot = service.getTaskSnapshot(taskId);
+        ctx.assertTrue(snapshot != null, "snapshot retained");
+        ctx.assertEquals(BakeTaskState.TIMED_OUT, snapshot.state(), "terminal timeout state");
+        ctx.assertEquals(0, snapshot.rollbackFailedCount(), "clean timeout rollback");
+
+        ctx.complete();
+    }
+
     @GameTest
     public void bakeApplyCancelUsesTimeSlicedRollback(TestContext ctx) {
         World world = ctx.getWorld();
