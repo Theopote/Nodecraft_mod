@@ -1,5 +1,6 @@
 package com.nodecraft.gametest;
 
+import com.nodecraft.gui.editor.preview.AutoPreviewController;
 import com.nodecraft.nodesystem.bake.BakeHistory;
 import com.nodecraft.nodesystem.bake.BakeOperationKind;
 import com.nodecraft.nodesystem.bake.BakePlacementService;
@@ -7,6 +8,9 @@ import com.nodecraft.nodesystem.bake.BakeTask;
 import com.nodecraft.nodesystem.bake.BakeTaskState;
 import com.nodecraft.nodesystem.bake.PlacementMode;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.execution.runtime.ExecutionSession;
+import com.nodecraft.nodesystem.execution.runtime.NodeExecutionScheduler;
+import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.preview.TrackedPreviewPlacementService;
 import net.minecraft.block.Blocks;
 import net.minecraft.server.world.ServerWorld;
@@ -18,6 +22,8 @@ import net.minecraft.world.World;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import net.fabricmc.fabric.api.gametest.v1.CustomTestMethodInvoker;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -466,6 +472,63 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         ctx.complete();
     }
 
+    /**
+     * Smoke: AutoPreviewController preview path runs on the server GameTest world without
+     * committing bake history, and skips {@code output.execute.*} side effects.
+     */
+    @GameTest
+    public void autoPreviewControllerSmokeSkipsExecuteAndLeavesHistoryEmpty(TestContext ctx) throws Exception {
+        World world = ctx.getWorld();
+        BakePlacementService bake = BakePlacementService.getInstance();
+        resetBakeService(bake);
+
+        UUID actorId = UUID.randomUUID();
+        BakeHistory history = bake.getHistory(actorId);
+        history.clear();
+
+        AtomicLong clock = new AtomicLong(5_000L);
+        AtomicLong dirtyVersion = new AtomicLong(0L);
+
+        NodeGraph graph = new NodeGraph("preview-smoke");
+        PreviewPassThroughNode source = new PreviewPassThroughNode("src", "value");
+        PreviewSideEffectNode sideEffect = new PreviewSideEffectNode();
+        graph.addNode(source);
+        graph.addNode(sideEffect);
+        graph.connect(source.getId(), "out", sideEffect.getId(), "in");
+
+        AutoPreviewController controller = new AutoPreviewController(
+                () -> graph,
+                new AutoPreviewController.DirtyVersionSource() {
+                    @Override
+                    public long getDirtyVersion() {
+                        return dirtyVersion.get();
+                    }
+
+                    @Override
+                    public void markDirty() {
+                        dirtyVersion.incrementAndGet();
+                    }
+                },
+                () -> ExecutionContext.createEmpty(world),
+                clock::get,
+                NodeExecutionScheduler.client()
+        );
+
+        controller.notifyNodeDirty(source, 1L);
+        clock.addAndGet(AutoPreviewController.DEBOUNCE_MS + 1L);
+        controller.tick();
+
+        ExecutionSession session = controller.activeSession();
+        ctx.assertTrue(session != null, "preview session started");
+        Boolean ok = session.result().get(5, TimeUnit.SECONDS);
+        ctx.assertTrue(Boolean.TRUE.equals(ok), "preview session completed");
+        ctx.assertEquals(0, sideEffect.executionCount(), "output.execute skipped in preview");
+        ctx.assertEquals(0, history.size(), "preview must not commit bake history");
+
+        NodeExecutionScheduler.client().cancelPreview();
+        ctx.complete();
+    }
+
     @Override
     public void invokeTestMethod(TestContext context, Method method) throws ReflectiveOperationException {
         method.invoke(this, context);
@@ -479,6 +542,48 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
     private static void drainTasks(BakePlacementService service) {
         for (int i = 0; i < 100 && service.getQueueSize() > 0; i++) {
             service.processTick();
+        }
+    }
+
+    private static final class PreviewPassThroughNode extends com.nodecraft.nodesystem.core.BaseNode {
+        private final Object payload;
+
+        private PreviewPassThroughNode(String suffix, Object payload) {
+            super(UUID.randomUUID(), "test.pass." + suffix);
+            this.payload = payload;
+            addInputPort(new com.nodecraft.nodesystem.core.BasePort(
+                    "in", "In", "input", com.nodecraft.nodesystem.api.NodeDataType.ANY, this));
+            addOutputPort(new com.nodecraft.nodesystem.core.BasePort(
+                    "out", "Out", "output", com.nodecraft.nodesystem.api.NodeDataType.ANY, this));
+        }
+
+        @Override
+        public void processNode(@org.jetbrains.annotations.Nullable ExecutionContext context) {
+            Object incoming = inputValues.get("in");
+            outputValues.put("out", incoming != null ? incoming : payload);
+        }
+    }
+
+    private static final class PreviewSideEffectNode extends com.nodecraft.nodesystem.core.BaseNode {
+        private final java.util.concurrent.atomic.AtomicInteger executions =
+                new java.util.concurrent.atomic.AtomicInteger();
+
+        private PreviewSideEffectNode() {
+            super(UUID.randomUUID(), "output.execute.test_side_effect");
+            addInputPort(new com.nodecraft.nodesystem.core.BasePort(
+                    "in", "In", "input", com.nodecraft.nodesystem.api.NodeDataType.ANY, this));
+            addOutputPort(new com.nodecraft.nodesystem.core.BasePort(
+                    "out", "Out", "output", com.nodecraft.nodesystem.api.NodeDataType.ANY, this));
+        }
+
+        @Override
+        public void processNode(@org.jetbrains.annotations.Nullable ExecutionContext context) {
+            executions.incrementAndGet();
+            outputValues.put("out", inputValues.get("in"));
+        }
+
+        int executionCount() {
+            return executions.get();
         }
     }
 }

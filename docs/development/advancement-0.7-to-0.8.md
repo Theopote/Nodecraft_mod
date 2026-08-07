@@ -103,9 +103,10 @@ Not: spin a full `NodeExecutor` worker lifecycle on every edit.
 - [x] Auto-preview path uses incremental plan + shared scheduler + supersede cancel
 - [x] Preview mode skips `output.execute.*` side effects
 - [x] Cancellation is first-class (session + generation id + cooperative token)
-- [x] Acceptance tests from design doc pass (unit supersede + skip + manual exclusivity done; GameTest smoke still open)
+- [x] Acceptance tests from design doc pass (unit supersede + skip + manual exclusivity + AutoPreviewController smoke; GameTest auto-preview smoke added)
 - [x] Manual Run uses shared scheduler (`MenuBarRenderer` → `ExecutionPlan.manual`)
 - [x] Remaining ephemeral `NodeExecutor` pools only for rare ad-hoc `executeAsync()` without scheduler; `executeSync()` (SubgraphNode nested) creates no pool
+- [x] `AutoPreviewController` extracted from `ImGuiNodeEditor`
 
 ---
 

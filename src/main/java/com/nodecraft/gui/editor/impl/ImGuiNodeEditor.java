@@ -11,12 +11,14 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.dialogs.MessageDialog;
 import com.nodecraft.gui.editor.NodeEditorFactory;
 import com.nodecraft.gui.editor.base.GraphApplyHistoryView;
 import com.nodecraft.gui.editor.base.GraphApplyTarget;
 import com.nodecraft.gui.editor.base.GraphNodeAnchor;
 import com.nodecraft.gui.editor.base.INodeEditor;
 import com.nodecraft.gui.editor.integration.ImGuiInputAdapter;
+import com.nodecraft.gui.editor.preview.AutoPreviewController;
 import com.nodecraft.gui.recommendation.NodeRecommendationApplyResult;
 import com.nodecraft.gui.recommendation.NodeRecommendationContext;
 import com.nodecraft.gui.recommendation.NodeRecommendationPopupRenderer;
@@ -27,22 +29,17 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.execution.ExecFrontierSnapshot;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.execution.IncrementalExecutionPlanner;
-import com.nodecraft.nodesystem.execution.runtime.ExecutionPlan;
-import com.nodecraft.nodesystem.execution.runtime.ExecutionSession;
-import com.nodecraft.nodesystem.execution.runtime.NodeExecutionScheduler;
-import com.nodecraft.gui.dialogs.MessageDialog;
 import com.nodecraft.nodesystem.graph.GraphLoadResult;
 import com.nodecraft.nodesystem.graph.GraphSerializer;
 import com.nodecraft.nodesystem.graph.NodeGraph;
-import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphCallStackBridge;
-import com.nodecraft.nodesystem.nodes.variable.VariableScopeBridge;
 import com.nodecraft.nodesystem.graph.SubgraphExtractionService;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.io.SavedPosition;
+import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphCallStackBridge;
 import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphNode;
+import com.nodecraft.nodesystem.nodes.variable.VariableScopeBridge;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 import imgui.ImDrawList;
@@ -107,15 +104,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     private final java.util.Set<UUID> disabledNodes = new HashSet<>();
     private final java.util.Set<UUID> hiddenNodes = new HashSet<>();
 
-    private static final long AUTO_PREVIEW_DEBOUNCE_MS = 250L;
-    private static final long AUTO_PREVIEW_POLL_INTERVAL_MS = 750L;
-    private long lastObservedDirtyVersion = -1L;
-    private long pendingAutoPreviewVersion = -1L;
-    private long lastAutoPreviewDirtyChangeAt = 0L;
-    private long lastAutoPreviewExecutionAt = 0L;
-    private volatile ExecutionSession autoPreviewSession = null;
-    private long graphDirtyEpoch = 0L;
-    private final java.util.Set<UUID> invalidatedNodeIds = new HashSet<>();
+    private final AutoPreviewController autoPreviewController;
 
     /**
      * 获取单例实例
@@ -140,43 +129,57 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         this.history = new ImGuiNodeHistory(this);
         this.clipboard = new ImGuiNodeClipboard(this);
         this.recommendationPopup = new NodeRecommendationPopupRenderer(this, NodeRecommendations.get());
+        this.autoPreviewController = new AutoPreviewController(
+                () -> currentGraph,
+                new AutoPreviewController.DirtyVersionSource() {
+                    @Override
+                    public long getDirtyVersion() {
+                        return io != null ? io.getDirtyVersion() : -1L;
+                    }
+
+                    @Override
+                    public void markDirty() {
+                        if (io != null) {
+                            io.markDirty();
+                        }
+                    }
+                },
+                this::createAutoPreviewExecutionContext
+        );
         BaseNode.addDirtyListener(this::handleNodeDirty);
     }
 
     private void handleNodeDirty(BaseNode node, long dirtyVersion) {
-        if (node == null || io == null || currentGraph == null) {
-            return;
-        }
-        if (currentGraph.getNode(node.getId()) == null) {
-            return;
-        }
-        invalidatedNodeIds.addAll(IncrementalExecutionPlanner.resolveInvalidationScope(currentGraph, node.getId()));
-        graphDirtyEpoch++;
-        io.markDirty();
-        NodeCraft.LOGGER.debug(
-                "Graph dirty version bumped from node {} dirty version {}. Impacted nodes: {}, graphDirtyEpoch={}",
-                node.getId(),
-                dirtyVersion,
-                invalidatedNodeIds.size(),
-                graphDirtyEpoch
-        );
+        autoPreviewController.notifyNodeDirty(node, dirtyVersion);
     }
 
     private void markGraphStructureDirty() {
         if (io == null) {
             return;
         }
-        invalidatedNodeIds.clear();
-        if (currentGraph != null) {
-            currentGraph.getExecutionCache().clear();
-        }
-        graphDirtyEpoch++;
-        io.markDirty();
-        NodeCraft.LOGGER.debug("Graph structure dirty. graphDirtyEpoch={}", graphDirtyEpoch);
+        autoPreviewController.notifyStructureDirty();
     }
 
     public void notifyGraphStructureChanged() {
         markGraphStructureDirty();
+    }
+
+    @Nullable
+    private ExecutionContext createAutoPreviewExecutionContext() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client == null || client.world == null) {
+            return null;
+        }
+        World world = client.world;
+        ServerPlayerEntity serverPlayer = null;
+        IntegratedServer integratedServer = client.getServer();
+        if (integratedServer != null && client.player != null) {
+            serverPlayer = integratedServer.getPlayerManager().getPlayer(client.player.getUuid());
+            if (serverPlayer != null) {
+                world = integratedServer.getOverworld();
+            }
+        }
+        return new ExecutionContext(world, serverPlayer);
     }
 
     /**
@@ -504,7 +507,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             menus.renderNodeSearchPopup(); // 渲染搜索弹窗（如果弹窗已打开）
             menus.renderSavePresetDialog();
             recommendationPopup.render();
-            maybeAutoExecutePreviewGraph();
+            autoPreviewController.tick();
             renderSubgraphRenamePopup();
             renderSubgraphNavigationOverlay(canvasPos);
 
@@ -1290,11 +1293,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     @Override
     public ExecFrontierSnapshot getActiveExecFrontierSnapshot() {
-        ExecutionSession session = autoPreviewSession;
-        if (session != null && session.isExecuting()) {
-            return session.execFrontierSnapshot();
-        }
-        return ExecFrontierSnapshot.EMPTY;
+        return autoPreviewController.activeExecFrontierSnapshot();
     }
 
     @Override
@@ -2149,114 +2148,6 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     private static float getSafeWidth(NodePosition position) {
         return position.width > 0.0f ? position.width : 150.0f;
-    }
-
-    private void maybeAutoExecutePreviewGraph() {
-        if (currentGraph == null || io == null) {
-            return;
-        }
-
-        long currentDirtyVersion = io.getDirtyVersion();
-        long now = System.currentTimeMillis();
-        if (currentDirtyVersion != lastObservedDirtyVersion) {
-            lastObservedDirtyVersion = currentDirtyVersion;
-            pendingAutoPreviewVersion = currentDirtyVersion;
-            lastAutoPreviewDirtyChangeAt = now;
-        }
-
-        boolean hasPendingDirtyExecution = pendingAutoPreviewVersion >= 0;
-        boolean shouldPollPreview = now - lastAutoPreviewExecutionAt >= AUTO_PREVIEW_POLL_INTERVAL_MS;
-        if (!hasPendingDirtyExecution && !shouldPollPreview) {
-            return;
-        }
-
-        NodeExecutionScheduler scheduler = NodeExecutionScheduler.client();
-        if (scheduler.activeManual().map(ExecutionSession::isExecuting).orElse(false)) {
-            // Keep pending dirty; retry after manual Run finishes.
-            return;
-        }
-
-        // Scheduler supersedes in-flight preview; do not block waiting for the previous run.
-        if (hasPendingDirtyExecution && now - lastAutoPreviewDirtyChangeAt < AUTO_PREVIEW_DEBOUNCE_MS) {
-            return;
-        }
-
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client == null || client.world == null) {
-            return;
-        }
-
-        World world = client.world;
-        ServerPlayerEntity serverPlayer = null;
-        IntegratedServer integratedServer = client.getServer();
-        if (integratedServer != null && client.player != null) {
-            serverPlayer = integratedServer.getPlayerManager().getPlayer(client.player.getUuid());
-            if (serverPlayer != null) {
-                world = integratedServer.getOverworld();
-            }
-        }
-
-        final long executingVersion = hasPendingDirtyExecution ? pendingAutoPreviewVersion : currentDirtyVersion;
-        final String triggerReason = hasPendingDirtyExecution ? "dirty" : "poll";
-        pendingAutoPreviewVersion = -1L;
-        lastAutoPreviewExecutionAt = now;
-
-        java.util.Set<UUID> executionScope = hasPendingDirtyExecution && !invalidatedNodeIds.isEmpty()
-                ? new HashSet<>(invalidatedNodeIds)
-                : null;
-        invalidatedNodeIds.clear();
-
-        ExecutionPlan plan = ExecutionPlan.preview(executionScope);
-        ExecutionSession session = scheduler.submit(
-                currentGraph,
-                new ExecutionContext(world, serverPlayer),
-                plan,
-                executingVersion
-        );
-        if (session.cancellation().isCancelled() && !session.isExecuting()) {
-            // Skipped while manual run owned the worker — restore pending dirty for retry.
-            if (hasPendingDirtyExecution) {
-                pendingAutoPreviewVersion = executingVersion;
-            }
-            return;
-        }
-        autoPreviewSession = session;
-        NodeCraft.LOGGER.debug(
-                "自动执行预览图: reason={}, dirtyVersion={}, nodes={}, mode={}, scopeSize={}, session={}",
-                triggerReason,
-                executingVersion,
-                currentGraph.getNodes().size(),
-                executionScope == null ? "full" : "partial",
-                executionScope == null ? 0 : executionScope.size(),
-                session.sessionId()
-        );
-        session.result().whenComplete((result, throwable) -> {
-            if (autoPreviewSession == session) {
-                autoPreviewSession = null;
-            }
-            if (throwable != null) {
-                if (session.cancellation().isCancelled()) {
-                    NodeCraft.LOGGER.debug(
-                            "自动执行预览图已取消: reason={}, dirtyVersion={}",
-                            triggerReason,
-                            executingVersion
-                    );
-                    return;
-                }
-                NodeCraft.LOGGER.error(
-                        "自动执行预览图异常: reason={}, dirtyVersion={}",
-                        triggerReason,
-                        executingVersion,
-                        throwable
-                );
-                return;
-            }
-            if (Boolean.TRUE.equals(result)) {
-                NodeCraft.LOGGER.debug("自动执行预览图完成: reason={}, dirtyVersion={}", triggerReason, executingVersion);
-            } else {
-                NodeCraft.LOGGER.debug("自动执行预览图失败/取消: reason={}, dirtyVersion={}", triggerReason, executingVersion);
-            }
-        });
     }
 
     @Override
