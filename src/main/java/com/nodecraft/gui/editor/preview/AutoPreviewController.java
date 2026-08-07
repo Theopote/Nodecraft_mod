@@ -82,6 +82,7 @@ public final class AutoPreviewController {
         invalidatedNodeIds.addAll(IncrementalExecutionPlanner.resolveInvalidationScope(graph, node.getId()));
         graphDirtyEpoch++;
         dirtyVersionSource.markDirty();
+        stampPendingDirty(dirtyVersionSource.getDirtyVersion());
         NodeCraft.LOGGER.debug(
                 "Auto-preview dirty from node {} (nodeDirtyVersion={}). Impacted={}, graphDirtyEpoch={}",
                 node.getId(),
@@ -99,7 +100,17 @@ public final class AutoPreviewController {
         }
         graphDirtyEpoch++;
         dirtyVersionSource.markDirty();
+        stampPendingDirty(dirtyVersionSource.getDirtyVersion());
         NodeCraft.LOGGER.debug("Auto-preview structure dirty. graphDirtyEpoch={}", graphDirtyEpoch);
+    }
+
+    /**
+     * Starts debounce from the moment dirty is notified (not only when {@link #tick()} first observes it).
+     */
+    private void stampPendingDirty(long dirtyVersion) {
+        lastObservedDirtyVersion = dirtyVersion;
+        pendingAutoPreviewVersion = dirtyVersion;
+        lastAutoPreviewDirtyChangeAt = clock.getAsLong();
     }
 
     /**

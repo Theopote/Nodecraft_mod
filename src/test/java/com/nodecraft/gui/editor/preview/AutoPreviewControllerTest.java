@@ -62,7 +62,7 @@ class AutoPreviewControllerTest {
         assertEquals(1L, dirtyVersion.get());
         assertTrue(controller.invalidatedNodeIdsView().size() >= 1, "dirty node should invalidate a scope");
 
-        controller.tick(); // still within debounce — no completed preview yet
+        controller.tick(); // still within debounce window stamped at notify
         clock.addAndGet(AutoPreviewController.DEBOUNCE_MS + 1L);
         controller.tick();
 
@@ -74,6 +74,45 @@ class AutoPreviewControllerTest {
         assertNotNull(session, "preview session should start after debounce");
         assertTrue(Boolean.TRUE.equals(session.result().get(3, TimeUnit.SECONDS)));
         assertEquals(0, sideEffect.executionCount(), "preview must skip output.execute.*");
+    }
+
+    @Test
+    void debounceClockAdvanceAfterNotifyAllowsImmediateSubmitOnNextTick() throws Exception {
+        AtomicLong clock = new AtomicLong(2_000L);
+        AtomicLong dirtyVersion = new AtomicLong(0L);
+
+        NodeGraph graph = new NodeGraph("auto-preview-advance-first");
+        PassThroughNode source = new PassThroughNode("source", "ok");
+        graph.addNode(source);
+
+        AutoPreviewController controller = new AutoPreviewController(
+                () -> graph,
+                new AutoPreviewController.DirtyVersionSource() {
+                    @Override
+                    public long getDirtyVersion() {
+                        return dirtyVersion.get();
+                    }
+
+                    @Override
+                    public void markDirty() {
+                        dirtyVersion.incrementAndGet();
+                    }
+                },
+                () -> new ExecutionContext(null, null),
+                clock::get,
+                NodeExecutionScheduler.client()
+        );
+
+        controller.notifyNodeDirty(source, 1L);
+        clock.addAndGet(AutoPreviewController.DEBOUNCE_MS + 1L);
+        controller.tick();
+
+        ExecutionSession session = controller.activeSession();
+        if (session == null) {
+            session = NodeExecutionScheduler.client().activePreview().orElse(null);
+        }
+        assertNotNull(session, "session should start when clock already advanced past debounce");
+        assertTrue(Boolean.TRUE.equals(session.result().get(3, TimeUnit.SECONDS)));
     }
 
     private static final class PassThroughNode extends BaseNode {

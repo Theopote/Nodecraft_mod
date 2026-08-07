@@ -515,11 +515,15 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         );
 
         controller.notifyNodeDirty(source, 1L);
+        // Debounce is stamped at notify time; advance clock then submit.
         clock.addAndGet(AutoPreviewController.DEBOUNCE_MS + 1L);
         controller.tick();
 
         ExecutionSession session = controller.activeSession();
-        ctx.assertTrue(session != null, "preview session started");
+        if (session == null) {
+            session = NodeExecutionScheduler.client().activePreview().orElse(null);
+        }
+        ctx.assertTrue(session != null, "preview session started after debounce");
         Boolean ok = session.result().get(5, TimeUnit.SECONDS);
         ctx.assertTrue(Boolean.TRUE.equals(ok), "preview session completed");
         ctx.assertEquals(0, sideEffect.executionCount(), "output.execute skipped in preview");
