@@ -5,14 +5,12 @@
 
 ## Current position
 
-Rough version ladder:
-
 | Stage | Theme | Status |
 |-------|--------|--------|
-| 0.5 | Preview / Bake | Done (feature) |
-| 0.6 | Execution (dataflow + exec frontier) | Done (baseline) |
-| **0.7** | **Stability** (transaction / cancel / CI) | **Near complete — closeout below** |
-| **0.8** | **Interactive Runtime** (scheduler / incremental auto-preview) | **Next major phase** |
+| 0.5 | Preview / Bake | Done |
+| 0.6 | Execution (dataflow + exec frontier) | Done |
+| **0.7** | **Stability** | **PASS (`v0.7-stability`)** |
+| **0.8** | **Interactive Runtime** | **Vertical slice + Node Contract fence PASS** |
 | 0.9 | Compatibility / format freeze | Later |
 | 1.0 | Release | Later |
 
@@ -22,126 +20,71 @@ One-line goal for 0.8:
 
 ## Working rule
 
-1. **Write / update the advancement doc for the phase** (this file + linked design notes).
-2. **Define exit gates** (tests, CI, tag, or design freeze).
-3. **Implement only the current gate’s checklist** — no parallel eight-track rewrites.
-4. **Mark the gate PASS**, then open the next phase.
-
-Do not start Phase B implementation until Phase A is PASS and tagged.
+1. Write / update the advancement doc for the phase.
+2. Define exit gates.
+3. Implement only the current gate’s checklist.
+4. Mark the gate PASS, then open the next phase.
 
 ---
 
-## Phase A — Transaction Final Pass (now)
+## Phase A — Transaction Final Pass — PASS
 
-**Goal:** Formally close Bake / Preview / ApplyChanges P0–P1 stability.
-
-### Checklist
-
-| Work | Priority | Status |
-|------|----------|--------|
-| Duplicate `BlockPos` rollback (`putIfAbsent` originals) | P0 | Done |
-| Duplicate-position GameTests | P0 | Done |
-| Rollback failure counts + `ROLLBACK_FAILED` + BakeStatusNode | P1 | Done |
-| `cancelAll` does not sync-drain giant rollback; `shutdownFlush` for stop | P1 | Done |
-| Timeout → rollback GameTest | P0 | Done (`bakeApplyTimeoutRollsBackWorld`) |
-| Latest CI green (incl. new GameTests) | Gate | **PASS** — CI badge passing on `master` (`9dbfc5e`, runs #30/#31) |
-| Tag `v0.7-stability` | Gate | **PASS** — tag on closeout commit |
-
-Detail checklist: [`phase-a-stability-closeout.md`](./phase-a-stability-closeout.md)
-
-### Phase A exit criteria
-
-- [x] Timeout abort rolls world back; history unchanged; terminal state is `TIMED_OUT` (or `ROLLBACK_FAILED` if restores fail)
-- [x] CI build + unit tests + GameTests green on the closeout commit
-- [x] Git tag `v0.7-stability` on that commit
-- [x] Announce: **NodeCraft P0/P1 Stability Audit: PASS**
-
-Phase A is **PASS**. Open Phase B with a design freeze review of [`../architecture/execution-runtime-2.0.md`](../architecture/execution-runtime-2.0.md) before coding.
+Tag: `v0.7-stability`. Detail: [`phase-a-stability-closeout.md`](./phase-a-stability-closeout.md)
 
 ---
 
-## Phase B — Execution Runtime 2.0 (next major)
+## Phase B — Execution Runtime 2.0 — Vertical slice PASS
 
-**Design note (write before coding):** [`../architecture/execution-runtime-2.0.md`](../architecture/execution-runtime-2.0.md)
+Design: [`../architecture/execution-runtime-2.0.md`](../architecture/execution-runtime-2.0.md)
 
-### Intent
+### Landed
 
-| Today (`NodeExecutor`) | Target |
-|------------------------|--------|
-| Owns graph run + thread pool + frontier + routing + preview hooks | One **execution session** |
-| New worker lifecycle on many preview paths | Shared **NodeExecutionScheduler** |
+- [x] Design freeze resolutions
+- [x] `ClientNodeExecutionScheduler` shared worker
+- [x] Auto-preview supersede cancel + skip `output.execute.*`
+- [x] Manual Run on shared scheduler
+- [x] `executeSync` creates no ephemeral pool (nested subgraph-safe)
+- [x] `AutoPreviewController` extracted
+- [x] Unit + GameTest smoke for preview contracts
 
-Target shape:
+### Optional follow-ups (not blocking B′)
 
-```text
-Graph
-  → ExecutionPlan / IncrementalExecutionPlanner
-  → NodeExecutionScheduler
-       ├── worker execution
-       ├── world-thread work
-       ├── cancellation
-       ├── incremental re-exec
-       ├── priority
-       └── task / session lifecycle
-```
-
-### Why this is next
-
-Dirty propagation, incremental planner, and preview already exist. The missing product leap is:
-
-```text
-property change → dirty nodes → IncrementalExecutionPlanner
-  → NodeExecutionScheduler → affected subgraph only → preview update
-```
-
-Not: spin a full `NodeExecutor` worker lifecycle on every edit.
-
-### Phase B exit criteria (draft)
-
-- [x] Design doc reviewed (API boundaries, cancel, world-thread, session vs scheduler) — see `execution-runtime-2.0.md` freeze resolutions
-- [x] Scheduler owns pools / queue for auto-preview (`ClientNodeExecutionScheduler`)
-- [x] Auto-preview path uses incremental plan + shared scheduler + supersede cancel
-- [x] Preview mode skips `output.execute.*` side effects
-- [x] Cancellation is first-class (session + generation id + cooperative token)
-- [x] Acceptance tests from design doc pass (unit supersede + skip + manual exclusivity + AutoPreviewController smoke; GameTest auto-preview smoke added)
-- [x] Manual Run uses shared scheduler (`MenuBarRenderer` → `ExecutionPlan.manual`)
-- [x] Remaining ephemeral `NodeExecutor` pools only for rare ad-hoc `executeAsync()` without scheduler; `executeSync()` (SubgraphNode nested) creates no pool
-- [x] `AutoPreviewController` extracted from `ImGuiNodeEditor`
+- Editor HUD for active session / generation
+- Incremental dirty-scope GameTest beyond smoke
+- Tag `v0.8-runtime-slice` after CI green on this fence
 
 ---
 
-## Later phases (do not start in parallel)
+## Phase B′ — Node Contract Test Suite — PASS
 
-Ordered backlog — pick one after B has a working vertical slice:
+**Goal:** Cheap regression fence for the ~500+ node catalog.
 
-| Phase | Theme | Notes |
-|-------|--------|------|
-| B′ | Node Contract Test Suite | Can land a thin suite right after A tag; cheap regression fence |
-| C | Build-time `NodeCatalog` | After B vertical slice; unify registry / AI schema / docs |
-| D | Full contract suite expansion | ID uniqueness, ports, ser/de, no preview side effects on `output.execute` |
-| E | Node Library display / icon caches | After interactive path is stable |
-| F | `ImGuiNodeEditor` split (`EditorDocumentState` first) | After auto-preview controller boundary is clear |
-| G | `EditorInteractionMode` / input capture coordinator | After F first cut |
-| H | Docs `architecture/` + `contracts/` + move old FINAL/FIXES → `history/` | Continuous, opportunistic |
-| I | `GraphFormatVersion` + migration era | Before public asset compatibility promises |
+Contracts: [`../contracts/node-metadata.md`](../contracts/node-metadata.md)
+
+| Work | Status |
+|------|--------|
+| Unique registry / annotation IDs | PASS |
+| Annotation id == runtime `typeId` | PASS |
+| Port IDs unique per node | PASS |
+| Non-blank category | PASS |
+| Scanner skips nested/anonymous helpers | PASS |
+
+Exit: `NodeContractTest` green on CI.
+
+---
+
+## Later phases (ordered)
+
+| Phase | Theme |
+|-------|--------|
+| C | Build-time `NodeCatalog` |
+| D | Expand contracts (ser/de roundtrip, preview side-effect policy formalized) |
+| E | Node Library display / icon caches |
+| F | `EditorDocumentState` split |
+| G | `EditorInteractionMode` |
+| H | Docs history cleanup |
+| I | `GraphFormatVersion` |
 
 ## Explicit non-goals (now)
 
-- Adding 50–100 nodes in bulk
-- Full `ImGuiNodeEditor` rewrite
-- Mass SVG→PNG conversion
-- New UI framework
-- Redesigning the graph data structure
-- Multiplayer collab
-- Large “AI auto-model” features
-
-These move the kernel again after it just became auditable.
-
----
-
-## Suggested week-one sequence
-
-1. ~~Finish Phase A TODO (timeout GameTest → CI → tag).~~ **PASS (`v0.7-stability`)**
-2. ~~Freeze Phase B design in `execution-runtime-2.0.md`.~~ **RESOLVED**
-3. Implement the smallest B vertical slice: **shared client scheduler + preview supersede cancel + skip `output.execute`**.
-4. Optionally add a thin Node Contract suite (ID uniqueness) as a side fence — not a second mainline.
+- Bulk node expansion, full editor rewrite, new UI framework, graph schema redesign, multiplayer, large AI auto-model features.

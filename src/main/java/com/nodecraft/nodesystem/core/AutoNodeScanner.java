@@ -136,6 +136,10 @@ public final class AutoNodeScanner {
             if (Modifier.isAbstract(clazz.getModifiers())) {
                 return false;
             }
+            // Nested / anonymous helpers (esp. under test classpath) are not catalog nodes.
+            if (clazz.isAnonymousClass() || clazz.isLocalClass() || clazz.getEnclosingClass() != null) {
+                return false;
+            }
             if (clazz.isAnnotationPresent(Deprecated.class)) {
                 return false;
             }
