@@ -77,6 +77,9 @@ public class PresetRegistry {
 
         } catch (IOException e) {
             LOGGER.error("Failed to scan preset directory", e);
+        } catch (java.io.UncheckedIOException e) {
+            // Files.walk can throw UncheckedIOException when a subdirectory is inaccessible.
+            LOGGER.error("Failed to scan preset directory (access error)", e);
         }
     }
 

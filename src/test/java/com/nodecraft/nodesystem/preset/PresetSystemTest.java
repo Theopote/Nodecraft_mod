@@ -92,9 +92,11 @@ public class PresetSystemTest {
     @Test
     public void testPresetRegistry() {
         PresetRegistry registry = new PresetRegistry();
-        registry.loadPresets(tempDir.getParent());
+        // Load from the temp dir itself — walking getParent() can hit AccessDenied on CI runners.
+        registry.loadPresets(tempDir);
 
-        assertTrue(registry.getPresetCount() >= 0);
+        assertEquals(1, registry.getPresetCount(), "should load the preset.json written in setup");
+        assertNotNull(registry.getPreset("test.simple_box"));
     }
 
     @Test
