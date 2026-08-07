@@ -74,8 +74,11 @@ public class BakeHistory {
      * Asynchronous undo - executes block restores across multiple ticks via BakePlacementService.
      * This prevents server lag on large builds.
      * 
-     * IMPORTANT: The record is only moved from undo to redo stack after successful completion.
-     * If the async task fails, the record remains in the undo stack for retry.
+     * CORRECT SEMANTICS:
+     * 1. Capture current world state (for redo)
+     * 2. Restore previous state from undo record
+     * 3. On success: pop from undoStack, push captured state to redoStack
+     * 4. On failure: undo record remains in undoStack for retry
      *
      * @param actorId Actor performing the undo
      * @param world Target world
@@ -85,34 +88,42 @@ public class BakeHistory {
      */
     public UUID undoLastAsync(UUID actorId, World world, int blocksPerTick, long tickBudgetNanos) {
         // Peek instead of pop - only remove on success
-        UndoRecord record = peek();
-        if (record == null || world == null) {
+        UndoRecord undoRecord = peek();
+        if (undoRecord == null || world == null) {
             return null;
         }
 
+        // CRITICAL: Capture current world state BEFORE undo (for redo)
+        UndoRecord redoRecord = new UndoRecord(UUID.randomUUID());
+        for (int i = 0; i < undoRecord.size(); i++) {
+            BlockPos pos = undoRecord.getPositions().get(i);
+            BlockState currentState = world.getBlockState(pos);
+            redoRecord.add(pos, currentState);
+        }
+
         // Convert UndoRecord to placements
-        List<BakeTask.Placement> placements = new ArrayList<>(record.size());
-        for (int i = 0; i < record.size(); i++) {
+        List<BakeTask.Placement> placements = new ArrayList<>(undoRecord.size());
+        for (int i = 0; i < undoRecord.size(); i++) {
             placements.add(new BakeTask.Placement(
-                record.getPositions().get(i),
-                record.getPreviousStates().get(i)
+                undoRecord.getPositions().get(i),
+                undoRecord.getPreviousStates().get(i)
             ));
         }
 
-        // Enqueue undo as a bake task WITHOUT recording (this is a restore operation)
+        // Enqueue undo as a bake task WITHOUT recording (manual stack management)
         UUID taskId = BakePlacementService.getInstance().enqueuePlacements(
             world,
             placements,
             PlacementMode.OVERWRITE,
-            false, // Don't record - this is undo, not a new operation
+            false, // Don't auto-record - we manage stacks manually
             blocksPerTick,
             tickBudgetNanos,
             actorId,
             () -> {
-                // On successful completion, move record from undo to redo stack
+                // On successful completion: undo → redoStack
                 UndoRecord completed = pop();
                 if (completed != null) {
-                    redoStack.add(completed);
+                    redoStack.add(redoRecord);  // Push captured state to redo
                     trim(redoStack);
                 }
             }
@@ -125,8 +136,11 @@ public class BakeHistory {
      * Asynchronous redo - executes block restores across multiple ticks via BakePlacementService.
      * This prevents server lag on large builds.
      * 
-     * IMPORTANT: The record is only moved from redo to undo stack after successful completion.
-     * If the async task fails, the record remains in the redo stack for retry.
+     * CORRECT SEMANTICS:
+     * 1. Capture current world state (for undo)
+     * 2. Restore state from redo record
+     * 3. On success: pop from redoStack, push captured state to undoStack
+     * 4. On failure: redo record remains in redoStack for retry
      *
      * @param actorId Actor performing the redo
      * @param world Target world
@@ -136,34 +150,42 @@ public class BakeHistory {
      */
     public UUID redoLastAsync(UUID actorId, World world, int blocksPerTick, long tickBudgetNanos) {
         // Peek instead of removing - only remove on success
-        UndoRecord record = redoStack.isEmpty() ? null : redoStack.getLast();
-        if (record == null || world == null) {
+        UndoRecord redoRecord = redoStack.isEmpty() ? null : redoStack.getLast();
+        if (redoRecord == null || world == null) {
             return null;
         }
 
+        // CRITICAL: Capture current world state BEFORE redo (for undo)
+        UndoRecord undoRecord = new UndoRecord(UUID.randomUUID());
+        for (int i = 0; i < redoRecord.size(); i++) {
+            BlockPos pos = redoRecord.getPositions().get(i);
+            BlockState currentState = world.getBlockState(pos);
+            undoRecord.add(pos, currentState);
+        }
+
         // Convert UndoRecord to placements
-        List<BakeTask.Placement> placements = new ArrayList<>(record.size());
-        for (int i = 0; i < record.size(); i++) {
+        List<BakeTask.Placement> placements = new ArrayList<>(redoRecord.size());
+        for (int i = 0; i < redoRecord.size(); i++) {
             placements.add(new BakeTask.Placement(
-                record.getPositions().get(i),
-                record.getPreviousStates().get(i)
+                redoRecord.getPositions().get(i),
+                redoRecord.getPreviousStates().get(i)
             ));
         }
 
-        // Enqueue redo as a bake task WITHOUT recording (this is a restore operation)
+        // Enqueue redo as a bake task WITHOUT recording (manual stack management)
         UUID taskId = BakePlacementService.getInstance().enqueuePlacements(
             world,
             placements,
             PlacementMode.OVERWRITE,
-            false, // Don't record - this is redo, not a new operation
+            false, // Don't auto-record - we manage stacks manually
             blocksPerTick,
             tickBudgetNanos,
             actorId,
             () -> {
-                // On successful completion, move record from redo to undo stack
+                // On successful completion: redo → undoStack
                 if (!redoStack.isEmpty()) {
-                    UndoRecord completed = redoStack.removeLast();
-                    undoStack.add(completed);
+                    redoStack.removeLast();
+                    undoStack.add(undoRecord);  // Push captured state to undo
                     trim(undoStack);
                 }
             }
