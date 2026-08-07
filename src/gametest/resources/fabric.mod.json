@@ -1,0 +1,18 @@
+{
+	"schemaVersion": 1,
+	"id": "nodecraft-test",
+	"version": "1.0.0",
+	"name": "NodeCraft Game Tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"com.nodecraft.gametest.NodeCraftGameTest"
+		]
+	},
+	"depends": {
+		"nodecraft": "*",
+		"fabric-api": "*",
+		"minecraft": "~1.21.11",
+		"fabricloader": ">=0.18.4"
+	}
+}
