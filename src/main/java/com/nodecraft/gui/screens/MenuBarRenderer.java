@@ -17,7 +17,9 @@ import com.nodecraft.gui.editor.impl.ImGuiNodeIO;
 import com.nodecraft.gui.style.MinecraftTheme;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.ExecutionProfiler;
-import com.nodecraft.nodesystem.execution.NodeExecutor;
+import com.nodecraft.nodesystem.execution.runtime.ExecutionPlan;
+import com.nodecraft.nodesystem.execution.runtime.ExecutionSession;
+import com.nodecraft.nodesystem.execution.runtime.NodeExecutionScheduler;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.interaction.AreaPreviewStyleSettings;
 import com.nodecraft.nodesystem.interaction.NodeEditorInteractionManager;
@@ -49,8 +51,8 @@ public class MenuBarRenderer {
     // 最近文件路径
     private Path lastSavedPath = null;
     
-    // 执行器引用
-    private NodeExecutor currentExecutor = null;
+    // 手动 Run 会话（共享 NodeExecutionScheduler）
+    private ExecutionSession currentManualSession = null;
     private String executionStatus = null;
     private long executionStatusTime = 0;
 
@@ -431,7 +433,7 @@ public class MenuBarRenderer {
                     execGraph = execEditor.getCurrentGraph();
                 }
                 
-                boolean isExecuting = currentExecutor != null && currentExecutor.isExecuting();
+                boolean isExecuting = isExecuting();
                 boolean hasGraph = execGraph != null && !execGraph.getNodes().isEmpty();
                 
                 // 执行节点图
@@ -910,7 +912,7 @@ public class MenuBarRenderer {
                 ImGuiNodeEditor execEditor = (ImGuiNodeEditor) execCanvas.getNodeEditor();
                 execGraph = execEditor.getCurrentGraph();
             }
-            boolean isExecuting = currentExecutor != null && currentExecutor.isExecuting();
+            boolean isExecuting = isExecuting();
             if (execGraph != null && !execGraph.getNodes().isEmpty() && !isExecuting) {
                 executeNodeGraph(execGraph);
             }
@@ -923,7 +925,7 @@ public class MenuBarRenderer {
      * 检查当前是否正在执行
      */
     boolean isExecuting() {
-        return currentExecutor != null && currentExecutor.isExecuting();
+        return currentManualSession != null && currentManualSession.isExecuting();
     }
 
     /**
@@ -939,55 +941,66 @@ public class MenuBarRenderer {
                 NodeCraft.LOGGER.error("无法执行节点图: 客户端未进入世界");
                 return;
             }
-            
-            // 尝试获取服务端世界和玩家（单人模式下）
+
             World world = client.world;
             ServerPlayerEntity serverPlayer = null;
-            
+
             IntegratedServer integratedServer = client.getServer();
             if (integratedServer != null && client.player != null) {
                 serverPlayer = integratedServer.getPlayerManager()
                     .getPlayer(client.player.getUuid());
                 if (serverPlayer != null) {
-                    // 使用服务端的主世界维度
                     world = integratedServer.getOverworld();
                 }
             }
-            
-            // 创建执行上下文
+
             ExecutionContext context = new ExecutionContext(world, serverPlayer);
-            
-            // 创建执行器并异步执行
-            currentExecutor = new NodeExecutor(graph, context);
-            NodeExecutor executor = currentExecutor;
-            
-            NodeCraft.LOGGER.info("开始执行节点图: {} 个节点", graph.getNodes().size());
+            ExecutionSession session = NodeExecutionScheduler.client().submit(
+                    graph,
+                    context,
+                    ExecutionPlan.manual(null),
+                    0L
+            );
+            currentManualSession = session;
+
+            NodeCraft.LOGGER.info("开始执行节点图: {} 个节点 (session={})", graph.getNodes().size(), session.sessionId());
             executionStatus = null;
-            
-            executor.executeAsync().thenAccept(result -> {
-                ExecutionProfiler.Profile profile = executor.getLastExecutionProfile();
-                if (result) {
+
+            session.result().whenComplete((result, throwable) -> {
+                if (currentManualSession == session) {
+                    currentManualSession = null;
+                }
+                if (throwable != null) {
+                    if (session.cancellation().isCancelled()) {
+                        executionStatus = "已取消";
+                        executionStatusTime = System.currentTimeMillis();
+                        NodeCraft.LOGGER.info("节点图执行已取消");
+                        return;
+                    }
+                    executionStatus = "错误: " + throwable.getMessage();
+                    executionStatusTime = System.currentTimeMillis();
+                    NodeCraft.LOGGER.error("节点图执行时发生异常", throwable);
+                    return;
+                }
+                ExecutionProfiler.Profile profile = session.lastProfile();
+                if (Boolean.TRUE.equals(result)) {
                     executionStatus = formatExecutionStatus("成功完成", profile);
                     NodeCraft.LOGGER.info("节点图执行成功: {}", formatExecutionProfile(profile, 3));
+                } else if (session.cancellation().isCancelled()) {
+                    executionStatus = "已取消";
+                    NodeCraft.LOGGER.info("节点图执行已取消");
                 } else {
                     executionStatus = formatExecutionStatus("执行失败", profile);
                     NodeCraft.LOGGER.warn("节点图执行失败: {}", formatExecutionProfile(profile, 3));
                 }
                 executionStatusTime = System.currentTimeMillis();
-                currentExecutor = null;
-            }).exceptionally(throwable -> {
-                executionStatus = "错误: " + throwable.getMessage();
-                executionStatusTime = System.currentTimeMillis();
-                NodeCraft.LOGGER.error("节点图执行时发生异常", throwable);
-                currentExecutor = null;
-                return null;
             });
-            
+
         } catch (Exception e) {
             executionStatus = "错误: " + e.getMessage();
             executionStatusTime = System.currentTimeMillis();
             NodeCraft.LOGGER.error("启动节点图执行失败", e);
-            currentExecutor = null;
+            currentManualSession = null;
         }
     }
 
@@ -1006,17 +1019,18 @@ public class MenuBarRenderer {
         }
         return profile.formatSummary(topN);
     }
-    
+
     /**
      * 停止当前执行（包级可见，供快捷键调用）
      */
     void stopExecution() {
-        if (currentExecutor != null) {
-            currentExecutor.stop();
-            executionStatus = "已取消";
-            executionStatusTime = System.currentTimeMillis();
-            NodeCraft.LOGGER.info("节点图执行已取消");
-            currentExecutor = null;
+        NodeExecutionScheduler.client().cancelManual();
+        if (currentManualSession != null) {
+            currentManualSession.cancellation().cancel();
+            currentManualSession = null;
         }
+        executionStatus = "已取消";
+        executionStatusTime = System.currentTimeMillis();
+        NodeCraft.LOGGER.info("节点图执行已取消");
     }
 }

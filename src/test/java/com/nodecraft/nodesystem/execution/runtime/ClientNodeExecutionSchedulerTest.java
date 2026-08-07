@@ -25,6 +25,7 @@ class ClientNodeExecutionSchedulerTest {
     @AfterEach
     void cancelLeftoverPreview() {
         NodeExecutionScheduler.client().cancelPreview();
+        NodeExecutionScheduler.client().cancelManual();
     }
 
     @Test
@@ -98,6 +99,54 @@ class ClientNodeExecutionSchedulerTest {
         assertTrue(second.result().get(3, TimeUnit.SECONDS), "latest preview should complete");
         assertEquals(0, firstTailRuns.get(), "cancelled session must not continue after cancel point");
         assertEquals(1, secondRuns.get());
+    }
+
+    @Test
+    void manualRunCancelsPreviewAndBlocksNewPreview() throws Exception {
+        NodeExecutionScheduler scheduler = NodeExecutionScheduler.client();
+
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+
+        NodeGraph previewGraph = new NodeGraph("preview");
+        BlockingNode blocker = new BlockingNode("preview-block", started, release);
+        previewGraph.addNode(blocker);
+
+        ExecutionSession preview = scheduler.submit(
+                previewGraph,
+                null,
+                ExecutionPlan.preview(null),
+                10L
+        );
+        assertTrue(started.await(3, TimeUnit.SECONDS));
+
+        AtomicInteger manualRuns = new AtomicInteger();
+        NodeGraph manualGraph = new NodeGraph("manual");
+        CountingNode manualNode = new CountingNode("manual", manualRuns);
+        manualGraph.addNode(manualNode);
+
+        ExecutionSession manual = scheduler.submit(
+                manualGraph,
+                null,
+                ExecutionPlan.manual(null),
+                0L
+        );
+        assertTrue(preview.cancellation().isCancelled(), "manual run must cancel preview");
+        assertEquals(manual.sessionId(), scheduler.activeManual().orElseThrow().sessionId());
+
+        ExecutionSession skipped = scheduler.submit(
+                manualGraph,
+                null,
+                ExecutionPlan.preview(null),
+                11L
+        );
+        assertTrue(skipped.cancellation().isCancelled());
+        assertFalse(skipped.isExecuting());
+        assertFalse(Boolean.TRUE.equals(skipped.result().get(1, TimeUnit.SECONDS)));
+
+        release.countDown();
+        assertTrue(manual.result().get(3, TimeUnit.SECONDS));
+        assertEquals(1, manualRuns.get());
     }
 
     private static final class PassThroughNode extends BaseNode {

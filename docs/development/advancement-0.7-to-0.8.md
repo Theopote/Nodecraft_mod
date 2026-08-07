@@ -103,8 +103,9 @@ Not: spin a full `NodeExecutor` worker lifecycle on every edit.
 - [x] Auto-preview path uses incremental plan + shared scheduler + supersede cancel
 - [x] Preview mode skips `output.execute.*` side effects
 - [x] Cancellation is first-class (session + generation id + cooperative token)
-- [ ] Acceptance tests from design doc pass (unit supersede + skip done; GameTest smoke still open)
-- [ ] `NodeExecutor` no longer owns a pool for manual Run (still ephemeral for non-scheduler paths)
+- [x] Acceptance tests from design doc pass (unit supersede + skip + manual exclusivity done; GameTest smoke still open)
+- [x] Manual Run uses shared scheduler (`MenuBarRenderer` → `ExecutionPlan.manual`)
+- [ ] Remaining ephemeral `NodeExecutor` pools only for subgraph/tests/non-editor paths
 
 ---
 

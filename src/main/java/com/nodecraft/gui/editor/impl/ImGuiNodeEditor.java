@@ -2170,6 +2170,12 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             return;
         }
 
+        NodeExecutionScheduler scheduler = NodeExecutionScheduler.client();
+        if (scheduler.activeManual().map(ExecutionSession::isExecuting).orElse(false)) {
+            // Keep pending dirty; retry after manual Run finishes.
+            return;
+        }
+
         // Scheduler supersedes in-flight preview; do not block waiting for the previous run.
         if (hasPendingDirtyExecution && now - lastAutoPreviewDirtyChangeAt < AUTO_PREVIEW_DEBOUNCE_MS) {
             return;
@@ -2201,12 +2207,19 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         invalidatedNodeIds.clear();
 
         ExecutionPlan plan = ExecutionPlan.preview(executionScope);
-        ExecutionSession session = NodeExecutionScheduler.client().submit(
+        ExecutionSession session = scheduler.submit(
                 currentGraph,
                 new ExecutionContext(world, serverPlayer),
                 plan,
                 executingVersion
         );
+        if (session.cancellation().isCancelled() && !session.isExecuting()) {
+            // Skipped while manual run owned the worker — restore pending dirty for retry.
+            if (hasPendingDirtyExecution) {
+                pendingAutoPreviewVersion = executingVersion;
+            }
+            return;
+        }
         autoPreviewSession = session;
         NodeCraft.LOGGER.debug(
                 "自动执行预览图: reason={}, dirtyVersion={}, nodes={}, mode={}, scopeSize={}, session={}",
