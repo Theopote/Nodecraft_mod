@@ -246,17 +246,19 @@ public class ApplyChangesNode extends BaseCustomUINode {
             status = "Error: " + e.getMessage();
             statusMessage = status;
             LOGGER.error("ApplyChangesNode execution failed", e);
-            publishOutputs(success, operationCount, executionTime, status);
+            publishOutputs(success, operationCount, executionTime, status, "", false);
         } finally {
             isExecuting.set(false);
         }
     }
 
-    private void publishOutputs(boolean success, int operationCount, int executionTime, String status) {
+    private void publishOutputs(boolean success, int operationCount, int executionTime, String status, String taskId, boolean isAsync) {
         outputValues.put(OUTPUT_SUCCESS_ID, success);
         outputValues.put(OUTPUT_OPERATION_COUNT_ID, operationCount);
         outputValues.put(OUTPUT_EXECUTION_TIME_ID, executionTime);
         outputValues.put(OUTPUT_STATUS_ID, status);
+        outputValues.put(OUTPUT_TASK_ID, taskId);
+        outputValues.put(OUTPUT_IS_ASYNC, isAsync);
     }
 
     private boolean coerceBoolean(Object value) {
@@ -326,6 +328,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
         }
 
         int count = 0;
+        UUID lastTaskId = null;
         for (Map.Entry<String, List<BlockPlacementData>> entry : byBlockId.entrySet()) {
             BlockState defaultState = resolveBlockState(entry.getKey());
             if (defaultState == null) {
@@ -339,7 +342,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
                     BlockState state = applyBlockStateData(defaultState, placement.stateData());
                     queuedPlacements.add(new BakeTask.Placement(placement.pos(), state));
                 }
-                BakePlacementService.getInstance().enqueuePlacements(
+                UUID taskId = BakePlacementService.getInstance().enqueuePlacements(
                     context.getWorld(),
                     queuedPlacements,
                     placementMode,
@@ -349,11 +352,14 @@ public class ApplyChangesNode extends BaseCustomUINode {
                     BakePlacementService.resolveActorId(context.getPlayer()),
                     null
                 );
+                if (taskId != null) {
+                    lastTaskId = taskId;
+                }
                 count += queuedPlacements.size();
             } else {
                 for (BlockPlacementData placement : placementBatch) {
                     if (isTimedOut(deadlineMillis)) {
-                        return new ApplyResult(count, true);
+                        return new ApplyResult(count, true, null);
                     }
                     BlockPos pos = placement.pos();
                     if (placementMode == PlacementMode.INCREMENTAL && !context.getWorld().isAir(pos)) {
@@ -366,7 +372,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 }
             }
         }
-        return new ApplyResult(count, false);
+        return new ApplyResult(count, false, lastTaskId);
     }
 
     private BlockState applyBlockStateData(BlockState baseState, @Nullable BlockStateData stateData) {
@@ -396,7 +402,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
 
     private ApplyResult applyUniformBlocks(ExecutionContext context, BlockPosList blocks, BlockState targetState, long deadlineMillis) {
         if (useAsyncBake) {
-            BakePlacementService.getInstance().enqueue(
+            UUID taskId = BakePlacementService.getInstance().enqueue(
                 context.getWorld(),
                 new ArrayList<>(blocks.getPositions()),
                 targetState,
@@ -406,13 +412,13 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 BakePlacementService.resolveActorId(context.getPlayer()),
                 null
             );
-            return new ApplyResult(blocks.size(), false);
+            return new ApplyResult(blocks.size(), false, taskId);
         }
 
         int count = 0;
         for (BlockPos pos : blocks) {
             if (isTimedOut(deadlineMillis)) {
-                return new ApplyResult(count, true);
+                return new ApplyResult(count, true, null);
             }
             if (placementMode == PlacementMode.INCREMENTAL && !context.getWorld().isAir(pos)) {
                 continue;
@@ -421,7 +427,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 count++;
             }
         }
-        return new ApplyResult(count, false);
+        return new ApplyResult(count, false, null);
     }
 
     private boolean isTimedOut(long deadlineMillis) {
@@ -635,7 +641,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
         return Math.max(1L, tickBudgetMillis) * 1_000_000L;
     }
 
-    private record ApplyResult(int operationCount, boolean timedOut) {
+    private record ApplyResult(int operationCount, boolean timedOut, UUID taskId) {
     }
 
     @Override
