@@ -235,23 +235,37 @@ public class PropertyPanelComponent implements EditorComponent {
             // 检测ImGui控件的交互状态
             boolean changed = ImGui.inputText("##" + prop.name, imStr, flags | ImGuiInputTextFlags.EnterReturnsTrue);
 
-            // 如果控件刚变为活跃，标记属性为正在编辑状态
-            if (ImGui.isItemActive()) {
+            // 读取当前状态（在任何状态修改之前）
+            boolean isActive = ImGui.isItemActive();
+            boolean wasDeactivated = ImGui.isItemDeactivated();
+            boolean wasBeingEdited = panel.isPropertyBeingEdited(node, prop.name);
+
+            // 更新编辑状态标记
+            if (isActive && !wasBeingEdited) {
                 panel.markPropertyBeingEdited(node, prop.name);
             }
-            // 如果控件刚变为不活跃，标记属性为编辑完成状态
-            if (ImGui.isItemDeactivated() && panel.isPropertyBeingEdited(node, prop.name)) {
-                panel.markPropertyEditingFinished(node, prop.name);
+
+            // 决定是否需要保存
+            boolean shouldSave = false;
+            if (changed) {
+                // 按下 Enter 键
+                shouldSave = true;
+            } else if (wasDeactivated && wasBeingEdited) {
+                // 失焦且之前正在编辑，检查值是否真的改变了
+                shouldSave = !imStr.get().equals(currentValue);
             }
 
-            // 如果按下了回车键或失去焦点，且值已更改 - 立即保存
-            if (changed || (ImGui.isItemDeactivated() && panel.isPropertyBeingEdited(node, prop.name))) {
-                if (!isReadOnly) {
-                    if (!imStr.get().equals(currentValue)) { // 避免不必要的setter调用
-                        panel.applyPropertyValue(node, prop, imStr.get());
-                        NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), imStr.get());
-                    }
+            // 保存属性值
+            if (shouldSave && !isReadOnly) {
+                if (!imStr.get().equals(currentValue)) { // 避免不必要的setter调用
+                    panel.applyPropertyValue(node, prop, imStr.get());
+                    NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), imStr.get());
                 }
+            }
+
+            // 最后清理编辑状态（在保存之后）
+            if (wasDeactivated && wasBeingEdited) {
+                panel.markPropertyEditingFinished(node, prop.name);
             }
 
             if (panel.isGeometryViewerBlockType(node, prop)) {

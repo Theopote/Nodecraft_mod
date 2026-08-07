@@ -38,6 +38,8 @@ public class NodeIconManager {
 
     private final Map<String, Integer> textureCache = new HashMap<>();
     private final Map<String, Integer> categoryColors = new HashMap<>();
+    // Negative cache: tracks resources that don't exist to avoid repeated lookups
+    private final java.util.Set<String> missingResources = new java.util.HashSet<>();
 
     private NodeIconManager() {
         initCategoryColors();
@@ -62,6 +64,7 @@ public class NodeIconManager {
             GL11.glDeleteTextures(id);
         }
         textureCache.clear();
+        missingResources.clear();
         NodeCraft.LOGGER.info("Node icon manager cleaned up");
     }
 
@@ -225,14 +228,25 @@ public class NodeIconManager {
     }
 
     private int loadOrGet(String cacheKey, String resourcePath) {
+        // Check positive cache first
         Integer cached = textureCache.get(cacheKey);
         if (cached != null) {
             return cached;
         }
 
+        // Check negative cache - if we know this resource doesn't exist, skip loading
+        if (missingResources.contains(cacheKey)) {
+            return 0;
+        }
+
         int texId = loadSvgFromResource(resourcePath);
         if (texId != 0) {
+            // Success - cache the texture ID
             textureCache.put(cacheKey, texId);
+        } else {
+            // Failed to load - add to negative cache to avoid future attempts
+            missingResources.add(cacheKey);
+            NodeCraft.LOGGER.debug("Added to negative cache: {}", cacheKey);
         }
         return texId;
     }

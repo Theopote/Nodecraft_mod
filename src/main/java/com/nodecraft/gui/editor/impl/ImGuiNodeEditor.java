@@ -2048,13 +2048,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     @Override
     public boolean hasUnsavedChanges() {
-        if (io != null && io.isDirty()) {
-            return true;
-        }
-        if (currentGraph == null) {
-            return false;
-        }
-        return !currentGraph.getNodes().isEmpty();
+        // Only rely on the dirty flag tracked by ImGuiNodeIO
+        // This flag is set to true when the graph is modified and false when saved
+        return io != null && io.isDirty();
     }
 
     @Override

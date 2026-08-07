@@ -568,7 +568,8 @@ public class NodeExecutor {
         for (INode node : graph.getNodes()) {
             String ownerNodeId = node.getId().toString();
             PreviewManager.hideNodePreviews(ownerNodeId);
-            TrackedPreviewPlacementService.getInstance().clearTrackedPreviewAcrossWorlds(ownerNodeId);
+            // Use thread-safe version that ensures world restoration happens on server thread
+            TrackedPreviewPlacementService.getInstance().clearTrackedPreviewAcrossWorlds(ownerNodeId, context);
         }
     }
 

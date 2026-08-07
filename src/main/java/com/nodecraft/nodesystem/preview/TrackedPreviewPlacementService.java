@@ -26,6 +26,13 @@ public final class TrackedPreviewPlacementService {
 
     private static final TrackedPreviewPlacementService INSTANCE = new TrackedPreviewPlacementService();
 
+    /**
+     * Maximum number of blocks that can be tracked in a single preview.
+     * This prevents performance issues when previewing very large models.
+     * Use GHOST preview for models exceeding this limit.
+     */
+    public static final int MAX_TRACKED_PREVIEW_BLOCKS = 20_000;
+
     private final Map<World, Map<String, TrackedPreviewState>> trackedPreviews = new IdentityHashMap<>();
 
     private TrackedPreviewPlacementService() {
@@ -63,6 +70,25 @@ public final class TrackedPreviewPlacementService {
         if (requestedPositions.isEmpty()) {
             clearTrackedPreview(world, nodeId);
             return 0;
+        }
+
+        // Check and enforce maximum tracked preview size
+        if (requestedPositions.size() > MAX_TRACKED_PREVIEW_BLOCKS) {
+            NodeCraft.LOGGER.warn(
+                "TrackedPreviewPlacementService: Requested {} blocks for preview, but limit is {}. " +
+                "Consider using GHOST preview for large models. Preview will be limited to {} blocks. nodeId={}",
+                requestedPositions.size(), MAX_TRACKED_PREVIEW_BLOCKS, MAX_TRACKED_PREVIEW_BLOCKS, nodeId
+            );
+
+            // Sample down to the limit
+            List<BlockPos> positionsList = new ArrayList<>(requestedPositions);
+            requestedPositions.clear();
+
+            // Use simple sampling: take every Nth position
+            int step = Math.max(1, positionsList.size() / MAX_TRACKED_PREVIEW_BLOCKS);
+            for (int i = 0; i < positionsList.size() && requestedPositions.size() < MAX_TRACKED_PREVIEW_BLOCKS; i += step) {
+                requestedPositions.add(positionsList.get(i));
+            }
         }
 
         int placedCount = 0;
@@ -128,6 +154,20 @@ public final class TrackedPreviewPlacementService {
     }
 
     public synchronized int clearTrackedPreview(World world, String nodeId) {
+        return clearTrackedPreviewInternal(world, nodeId, null);
+    }
+
+    /**
+     * Thread-safe version that ensures world restoration happens on the server thread.
+     * Use this when called from worker threads (e.g., during node execution cleanup).
+     */
+    public synchronized int clearTrackedPreviewOnWorldThread(World world, String nodeId,
+                                                              com.nodecraft.nodesystem.execution.ExecutionContext context) {
+        return clearTrackedPreviewInternal(world, nodeId, context);
+    }
+
+    private synchronized int clearTrackedPreviewInternal(World world, String nodeId,
+                                                          com.nodecraft.nodesystem.execution.ExecutionContext context) {
         if (world == null || nodeId == null || nodeId.isEmpty()) {
             return 0;
         }
@@ -146,8 +186,42 @@ public final class TrackedPreviewPlacementService {
             return 0;
         }
 
+        // Copy the states to restore before potentially switching threads
+        final Map<BlockPos, BlockState> statesToRestore = new java.util.LinkedHashMap<>(trackedState.previousStates());
+
+        // Perform restoration on the world thread if context is available
+        if (context != null) {
+            try {
+                return context.callOnWorldThread(() -> {
+                    int count = 0;
+                    for (Map.Entry<BlockPos, BlockState> entry : statesToRestore.entrySet()) {
+                        if (world.setBlockState(entry.getKey(), entry.getValue(), Block.NOTIFY_ALL)) {
+                            count++;
+                        }
+                    }
+                    NodeCraft.LOGGER.debug(
+                            "TrackedPreviewPlacementService.clearTrackedPreview nodeId={} restored={} (on world thread)",
+                            nodeId, count
+                    );
+                    return count;
+                });
+            } catch (Exception e) {
+                NodeCraft.LOGGER.error("Failed to clear tracked preview on world thread, falling back to direct restoration", e);
+            }
+        }
+
+        // Fallback: direct restoration (legacy behavior, but log warning if not on server thread)
+        if (world instanceof net.minecraft.server.world.ServerWorld serverWorld) {
+            if (!serverWorld.getServer().isOnThread()) {
+                NodeCraft.LOGGER.warn(
+                    "TrackedPreviewPlacementService clearing preview from non-server thread without ExecutionContext. " +
+                    "This may cause thread safety issues. nodeId={}", nodeId
+                );
+            }
+        }
+
         int restoredCount = 0;
-        for (Map.Entry<BlockPos, BlockState> entry : trackedState.previousStates().entrySet()) {
+        for (Map.Entry<BlockPos, BlockState> entry : statesToRestore.entrySet()) {
             if (world.setBlockState(entry.getKey(), entry.getValue(), Block.NOTIFY_ALL)) {
                 restoredCount++;
             }
@@ -217,6 +291,14 @@ public final class TrackedPreviewPlacementService {
     }
 
     public synchronized int clearTrackedPreviewAcrossWorlds(String nodeId) {
+        return clearTrackedPreviewAcrossWorlds(nodeId, null);
+    }
+
+    /**
+     * Thread-safe version that clears tracked preview across all worlds using ExecutionContext.
+     */
+    public synchronized int clearTrackedPreviewAcrossWorlds(String nodeId,
+                                                             com.nodecraft.nodesystem.execution.ExecutionContext context) {
         if (nodeId == null || nodeId.isEmpty()) {
             return 0;
         }
@@ -224,7 +306,7 @@ public final class TrackedPreviewPlacementService {
         int restoredCount = 0;
         List<World> worlds = new ArrayList<>(trackedPreviews.keySet());
         for (World world : worlds) {
-            restoredCount += clearTrackedPreview(world, nodeId);
+            restoredCount += clearTrackedPreviewInternal(world, nodeId, context);
         }
         return restoredCount;
     }
