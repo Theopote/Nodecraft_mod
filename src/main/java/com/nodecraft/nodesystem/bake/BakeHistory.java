@@ -225,6 +225,16 @@ public class BakeHistory {
             this.bakeId = bakeId;
         }
 
+        /**
+         * Creates a non-empty record for stack-semantics unit tests without bootstrapping MC registries.
+         */
+        static UndoRecord syntheticForStackTest(UUID bakeId) {
+            UndoRecord record = new UndoRecord(bakeId);
+            record.positions.add(BlockPos.ORIGIN);
+            record.previousStates.add(null);
+            return record;
+        }
+
         public void add(BlockPos pos, BlockState previousState) {
             if (pos == null || previousState == null) {
                 return;

@@ -69,7 +69,6 @@ dependencies {
 	implementation "com.google.code.gson:gson:${project.gson_version}"
 
 	// Tests
-	testImplementation "net.fabricmc:fabric-loader-junit:${project.loader_version}"
 	testImplementation "org.junit.jupiter:junit-jupiter:${project.junit_version}"
 	testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${project.junit_version}"
 	testRuntimeOnly "org.junit.platform:junit-platform-launcher:${project.junit_platform_version}"

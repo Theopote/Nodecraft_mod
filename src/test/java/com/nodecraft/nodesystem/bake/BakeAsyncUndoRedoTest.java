@@ -1,10 +1,5 @@
 package com.nodecraft.nodesystem.bake;
 
-import net.minecraft.Bootstrap;
-import net.minecraft.SharedConstants;
-import net.minecraft.block.Blocks;
-import net.minecraft.util.math.BlockPos;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -24,12 +19,6 @@ import static org.junit.jupiter.api.Assertions.*;
 class BakeAsyncUndoRedoTest {
 
     private BakeHistory history;
-
-    @BeforeAll
-    static void bootstrapMinecraft() {
-        SharedConstants.tryDetectVersion();
-        Bootstrap.bootStrap();
-    }
 
     @BeforeEach
     void setUp() {
@@ -124,8 +113,6 @@ class BakeAsyncUndoRedoTest {
     }
 
     private static BakeHistory.UndoRecord record(String label) {
-        BakeHistory.UndoRecord record = new BakeHistory.UndoRecord(UUID.nameUUIDFromBytes(label.getBytes()));
-        record.add(new BlockPos(0, 64, 0), Blocks.STONE.getDefaultState());
-        return record;
+        return BakeHistory.UndoRecord.syntheticForStackTest(UUID.nameUUIDFromBytes(label.getBytes()));
     }
 }
