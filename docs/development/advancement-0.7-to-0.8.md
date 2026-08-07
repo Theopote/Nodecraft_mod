@@ -98,11 +98,12 @@ Not: spin a full `NodeExecutor` worker lifecycle on every edit.
 
 ### Phase B exit criteria (draft)
 
-- [ ] Design doc reviewed (API boundaries, cancel, world-thread, session vs scheduler)
+- [x] Design doc reviewed (API boundaries, cancel, world-thread, session vs scheduler) — see `execution-runtime-2.0.md` freeze resolutions
 - [ ] Scheduler owns pools / queue; `NodeExecutor` is session-scoped
-- [ ] Auto-preview path uses incremental plan + shared scheduler
-- [ ] Cancellation is first-class (session + in-flight world work policy)
-- [ ] GameTests / contract tests cover cancel + incremental preview smoke
+- [ ] Auto-preview path uses incremental plan + shared scheduler + supersede cancel
+- [ ] Preview mode skips `output.execute.*` side effects
+- [ ] Cancellation is first-class (session + generation id)
+- [ ] Acceptance tests from design doc pass
 
 ---
 
@@ -137,7 +138,7 @@ These move the kernel again after it just became auditable.
 
 ## Suggested week-one sequence
 
-1. Finish Phase A TODO (timeout GameTest → CI → tag).
-2. Freeze Phase B design in `execution-runtime-2.0.md` (APIs + non-goals).
-3. Implement the smallest B vertical slice: **incremental auto-preview session on shared scheduler**.
+1. ~~Finish Phase A TODO (timeout GameTest → CI → tag).~~ **PASS (`v0.7-stability`)**
+2. ~~Freeze Phase B design in `execution-runtime-2.0.md`.~~ **RESOLVED**
+3. Implement the smallest B vertical slice: **shared client scheduler + preview supersede cancel + skip `output.execute`**.
 4. Optionally add a thin Node Contract suite (ID uniqueness) as a side fence — not a second mainline.
