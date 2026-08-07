@@ -44,8 +44,8 @@ Do not start Phase B implementation until Phase A is PASS and tagged.
 | Rollback failure counts + `ROLLBACK_FAILED` + BakeStatusNode | P1 | Done |
 | `cancelAll` does not sync-drain giant rollback; `shutdownFlush` for stop | P1 | Done |
 | Timeout → rollback GameTest | P0 | Done (`bakeApplyTimeoutRollsBackWorld`) |
-| Latest CI green (incl. new GameTests) | Gate | **TODO** |
-| Tag `v0.7-stability` (or `stability-baseline`) | Gate | **TODO** |
+| Latest CI green (incl. new GameTests) | Gate | **In progress** — pushed `360b74f`, awaiting Actions |
+| Tag `v0.7-stability` (or `stability-baseline`) | Gate | **TODO after CI green** |
 
 Detail checklist: [`phase-a-stability-closeout.md`](./phase-a-stability-closeout.md)
 
