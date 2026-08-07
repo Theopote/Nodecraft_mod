@@ -99,11 +99,12 @@ Not: spin a full `NodeExecutor` worker lifecycle on every edit.
 ### Phase B exit criteria (draft)
 
 - [x] Design doc reviewed (API boundaries, cancel, world-thread, session vs scheduler) — see `execution-runtime-2.0.md` freeze resolutions
-- [ ] Scheduler owns pools / queue; `NodeExecutor` is session-scoped
-- [ ] Auto-preview path uses incremental plan + shared scheduler + supersede cancel
-- [ ] Preview mode skips `output.execute.*` side effects
-- [ ] Cancellation is first-class (session + generation id)
-- [ ] Acceptance tests from design doc pass
+- [x] Scheduler owns pools / queue for auto-preview (`ClientNodeExecutionScheduler`)
+- [x] Auto-preview path uses incremental plan + shared scheduler + supersede cancel
+- [x] Preview mode skips `output.execute.*` side effects
+- [x] Cancellation is first-class (session + generation id + cooperative token)
+- [ ] Acceptance tests from design doc pass (unit supersede + skip done; GameTest smoke still open)
+- [ ] `NodeExecutor` no longer owns a pool for manual Run (still ephemeral for non-scheduler paths)
 
 ---
 

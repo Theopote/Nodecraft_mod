@@ -4,10 +4,11 @@ import com.nodecraft.nodesystem.api.ExecLoopNode;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.execution.runtime.CancellationToken;
 import com.nodecraft.nodesystem.graph.NodeGraph;
-import com.nodecraft.nodesystem.preview.PreviewManager;
-import com.nodecraft.nodesystem.nodes.variable.VariableScopeBridge;
 import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphCallStackBridge;
+import com.nodecraft.nodesystem.nodes.variable.VariableScopeBridge;
+import com.nodecraft.nodesystem.preview.PreviewManager;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +49,10 @@ public class NodeExecutor {
     private final Set<UUID> executionScopeNodeIds;
     private final IncrementalExecutionOptions incrementalOptions;
     private final ExecutionRunLimits runLimits;
+    private final CancellationToken cancellation;
+    private final boolean skipOutputExecuteSideEffects;
+    private final ExecutorService executorService;
+    private final boolean shutdownWorkerOnComplete;
     private final Map<UUID, NodeState> nodeStates = new HashMap<>();
     private final Set<UUID> forcedExecRecomputeNodeIds = new HashSet<>();
     private volatile ExecFrontierSnapshot execFrontierSnapshot = ExecFrontierSnapshot.EMPTY;
@@ -57,7 +62,6 @@ public class NodeExecutor {
     private volatile CompletableFuture<Boolean> executionFuture;
     private final ExecutionProfiler profiler = new ExecutionProfiler();
     private volatile ExecutionProfiler.Profile lastExecutionProfile = new ExecutionProfiler.Profile(0L, 0, List.of());
-    private final ExecutorService executorService = Executors.newSingleThreadExecutor(new NodeExecutorThreadFactory());
 
     private enum NodeState {
         NOT_VISITED,
@@ -94,11 +98,50 @@ public class NodeExecutor {
             IncrementalExecutionOptions incrementalOptions,
             ExecutionRunLimits runLimits
     ) {
+        this(
+                graph,
+                context,
+                executionScopeNodeIds,
+                incrementalOptions,
+                runLimits,
+                CancellationToken.none(),
+                false,
+                null,
+                true
+        );
+    }
+
+    /**
+     * Full constructor used by {@link com.nodecraft.nodesystem.execution.runtime.NodeExecutionScheduler}.
+     *
+     * @param sharedWorker optional shared worker; when non-null and {@code shutdownWorkerOnComplete} is false,
+     *                     the worker is not shut down after the run
+     */
+    public NodeExecutor(
+            NodeGraph graph,
+            ExecutionContext context,
+            Set<UUID> executionScopeNodeIds,
+            IncrementalExecutionOptions incrementalOptions,
+            ExecutionRunLimits runLimits,
+            CancellationToken cancellation,
+            boolean skipOutputExecuteSideEffects,
+            ExecutorService sharedWorker,
+            boolean shutdownWorkerOnComplete
+    ) {
         this.graph = graph;
         this.context = context;
         this.executionScopeNodeIds = executionScopeNodeIds == null ? null : new HashSet<>(executionScopeNodeIds);
         this.incrementalOptions = incrementalOptions == null ? IncrementalExecutionOptions.defaults() : incrementalOptions;
         this.runLimits = runLimits == null ? ExecutionRunLimits.defaults() : runLimits;
+        this.cancellation = cancellation != null ? cancellation : CancellationToken.none();
+        this.skipOutputExecuteSideEffects = skipOutputExecuteSideEffects;
+        if (sharedWorker != null) {
+            this.executorService = sharedWorker;
+            this.shutdownWorkerOnComplete = shutdownWorkerOnComplete;
+        } else {
+            this.executorService = Executors.newSingleThreadExecutor(new NodeExecutorThreadFactory());
+            this.shutdownWorkerOnComplete = true;
+        }
     }
 
     public ExecutionProfiler.Profile getLastExecutionProfile() {
@@ -126,7 +169,9 @@ public class NodeExecutor {
                 executionFuture.completeExceptionally(e);
             } finally {
                 isExecuting.set(false);
-                executorService.shutdown();
+                if (shutdownWorkerOnComplete) {
+                    executorService.shutdown();
+                }
             }
         }, executorService);
         return executionFuture;
@@ -147,7 +192,9 @@ public class NodeExecutor {
             return false;
         } finally {
             isExecuting.set(false);
-            executorService.shutdown();
+            if (shutdownWorkerOnComplete) {
+                executorService.shutdown();
+            }
         }
     }
 
@@ -163,16 +210,28 @@ public class NodeExecutor {
     }
 
     public void stop() {
-        if (isExecuting.get() && executionFuture != null && !executionFuture.isDone()) {
+        cancellation.cancel();
+        if (!isExecuting.get() || executionFuture == null || executionFuture.isDone()) {
+            return;
+        }
+        if (shutdownWorkerOnComplete) {
             executionFuture.cancel(true);
             isExecuting.set(false);
             executorService.shutdownNow();
             clearGraphPreviews();
+            return;
         }
+        // Shared scheduler worker: cooperative cancel only. Do not cancel the future
+        // (that can surface CancellationException on the caller) or interrupt the pool thread.
+        clearGraphPreviews();
     }
 
     public boolean isExecuting() {
         return isExecuting.get();
+    }
+
+    private boolean isCancelRequested() {
+        return cancellation.isCancelled() || Thread.currentThread().isInterrupted();
     }
 
     private boolean executeGraph() {
@@ -223,7 +282,7 @@ public class NodeExecutor {
         Set<UUID> recomputedThisRun = new HashSet<>();
         NodeExecutionCache executionCache = graph.getExecutionCache();
         for (INode node : sortedNodes) {
-            if (Thread.currentThread().isInterrupted()) {
+            if (isCancelRequested()) {
                 lastExecutionProfile = profiler.finish();
                 clearGraphPreviews();
                 return false;
@@ -297,7 +356,7 @@ public class NodeExecutor {
             Runnable onNodeExecuted
     ) {
         while (!frontier.isEmpty()) {
-            if (Thread.currentThread().isInterrupted()) {
+            if (isCancelRequested()) {
                 return false;
             }
 
@@ -576,6 +635,9 @@ public class NodeExecutor {
             NodeExecutionCache executionCache,
             boolean execFrontierVisit
     ) {
+        if (skipOutputExecuteSideEffects && isPermanentSideEffectNode(node)) {
+            return false;
+        }
         if (executionScopeNodeIds == null || executionScopeNodeIds.isEmpty()) {
             return true;
         }
@@ -679,6 +741,16 @@ public class NodeExecutor {
                 || typeId.startsWith("input.context.")
                 || typeId.startsWith("output.execute.")
                 || typeId.startsWith("output.preview.");
+    }
+
+    /**
+     * Permanent bake/apply side effects that must not run during auto-preview.
+     */
+    public static boolean isPermanentSideEffectNode(INode node) {
+        if (node == null || node.getTypeId() == null) {
+            return false;
+        }
+        return node.getTypeId().startsWith("output.execute.");
     }
 
     private static final class NodeExecutorThreadFactory implements ThreadFactory {

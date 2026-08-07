@@ -19,7 +19,8 @@ class NodeExecutorWorldThreadPolicyTest {
     }
 
     @Test
-    void pureMathNodesCanStayOnWorkerThread() {
-        assertFalse(NodeExecutor.requiresWorldThread(new IfNode()));
+    void permanentSideEffectNodesAreDetectedByTypePrefix() {
+        assertTrue(NodeExecutor.isPermanentSideEffectNode(new ApplyChangesNode()));
+        assertFalse(NodeExecutor.isPermanentSideEffectNode(new IfNode()));
     }
 }

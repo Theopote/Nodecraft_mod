@@ -240,4 +240,4 @@ ImGuiNodeEditor.maybeAutoExecutePreviewGraph()
 - [x] Answers to open questions written here
 - [x] Public API sketch (package + key methods) agreed
 - [x] Vertical-slice acceptance tests listed
-- [ ] Coding starts — **first PR = scheduler + preview path only**
+- [x] Coding starts — **first PR = scheduler + preview path only** (landed: shared client scheduler, supersede cancel, skip `output.execute`)

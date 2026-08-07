@@ -27,9 +27,10 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.execution.ExecFrontierSnapshot;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.execution.IncrementalExecutionOptions;
 import com.nodecraft.nodesystem.execution.IncrementalExecutionPlanner;
-import com.nodecraft.nodesystem.execution.NodeExecutor;
+import com.nodecraft.nodesystem.execution.runtime.ExecutionPlan;
+import com.nodecraft.nodesystem.execution.runtime.ExecutionSession;
+import com.nodecraft.nodesystem.execution.runtime.NodeExecutionScheduler;
 import com.nodecraft.gui.dialogs.MessageDialog;
 import com.nodecraft.nodesystem.graph.GraphLoadResult;
 import com.nodecraft.nodesystem.graph.GraphSerializer;
@@ -112,7 +113,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     private long pendingAutoPreviewVersion = -1L;
     private long lastAutoPreviewDirtyChangeAt = 0L;
     private long lastAutoPreviewExecutionAt = 0L;
-    private NodeExecutor autoPreviewExecutor = null;
+    private volatile ExecutionSession autoPreviewSession = null;
     private long graphDirtyEpoch = 0L;
     private final java.util.Set<UUID> invalidatedNodeIds = new HashSet<>();
 
@@ -1289,8 +1290,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     @Override
     public ExecFrontierSnapshot getActiveExecFrontierSnapshot() {
-        if (autoPreviewExecutor != null && autoPreviewExecutor.isExecuting()) {
-            return autoPreviewExecutor.getExecFrontierSnapshot();
+        ExecutionSession session = autoPreviewSession;
+        if (session != null && session.isExecuting()) {
+            return session.execFrontierSnapshot();
         }
         return ExecFrontierSnapshot.EMPTY;
     }
@@ -2168,10 +2170,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             return;
         }
 
-        if (autoPreviewExecutor != null && autoPreviewExecutor.isExecuting()) {
-            return;
-        }
-
+        // Scheduler supersedes in-flight preview; do not block waiting for the previous run.
         if (hasPendingDirtyExecution && now - lastAutoPreviewDirtyChangeAt < AUTO_PREVIEW_DEBOUNCE_MS) {
             return;
         }
@@ -2200,31 +2199,50 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 ? new HashSet<>(invalidatedNodeIds)
                 : null;
         invalidatedNodeIds.clear();
-        autoPreviewExecutor = new NodeExecutor(
+
+        ExecutionPlan plan = ExecutionPlan.preview(executionScope);
+        ExecutionSession session = NodeExecutionScheduler.client().submit(
                 currentGraph,
                 new ExecutionContext(world, serverPlayer),
-                executionScope,
-                IncrementalExecutionOptions.previewDefaults()
+                plan,
+                executingVersion
         );
+        autoPreviewSession = session;
         NodeCraft.LOGGER.debug(
-                "自动执行预览图: reason={}, dirtyVersion={}, nodes={}, mode={}, scopeSize={}",
+                "自动执行预览图: reason={}, dirtyVersion={}, nodes={}, mode={}, scopeSize={}, session={}",
                 triggerReason,
                 executingVersion,
                 currentGraph.getNodes().size(),
                 executionScope == null ? "full" : "partial",
-                executionScope == null ? 0 : executionScope.size()
+                executionScope == null ? 0 : executionScope.size(),
+                session.sessionId()
         );
-        autoPreviewExecutor.executeAsync().thenAccept(result -> {
-            if (result) {
+        session.result().whenComplete((result, throwable) -> {
+            if (autoPreviewSession == session) {
+                autoPreviewSession = null;
+            }
+            if (throwable != null) {
+                if (session.cancellation().isCancelled()) {
+                    NodeCraft.LOGGER.debug(
+                            "自动执行预览图已取消: reason={}, dirtyVersion={}",
+                            triggerReason,
+                            executingVersion
+                    );
+                    return;
+                }
+                NodeCraft.LOGGER.error(
+                        "自动执行预览图异常: reason={}, dirtyVersion={}",
+                        triggerReason,
+                        executingVersion,
+                        throwable
+                );
+                return;
+            }
+            if (Boolean.TRUE.equals(result)) {
                 NodeCraft.LOGGER.debug("自动执行预览图完成: reason={}, dirtyVersion={}", triggerReason, executingVersion);
             } else {
-                NodeCraft.LOGGER.debug("自动执行预览图失败: reason={}, dirtyVersion={}", triggerReason, executingVersion);
+                NodeCraft.LOGGER.debug("自动执行预览图失败/取消: reason={}, dirtyVersion={}", triggerReason, executingVersion);
             }
-            autoPreviewExecutor = null;
-        }).exceptionally(throwable -> {
-            NodeCraft.LOGGER.error("自动执行预览图异常: reason={}, dirtyVersion={}", triggerReason, executingVersion, throwable);
-            autoPreviewExecutor = null;
-            return null;
         });
     }
 
