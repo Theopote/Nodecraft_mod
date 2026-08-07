@@ -562,15 +562,29 @@ public class BakePlacementService {
         task.markAborted();
         rememberTaskSnapshot(task);
 
-        NodeCraft.LOGGER.debug(
-            "Bake task {} ({}) {} after rollback. placed={}, skipped={}, total={}",
-            task.getTaskId(),
-            task.getOperationKind(),
-            task.getState(),
-            task.getPlacedCount(),
-            task.getSkippedCount(),
-            task.getTotalCount()
-        );
+        if (task.getRollbackFailedCount() > 0) {
+            NodeCraft.LOGGER.warn(
+                "Bake task {} ({}) {} after incomplete rollback. attempted={}, restored={}, failed={}, placed={}, total={}",
+                task.getTaskId(),
+                task.getOperationKind(),
+                task.getState(),
+                task.getRollbackAttemptedCount(),
+                task.getRollbackRestoredCount(),
+                task.getRollbackFailedCount(),
+                task.getPlacedCount(),
+                task.getTotalCount()
+            );
+        } else {
+            NodeCraft.LOGGER.debug(
+                "Bake task {} ({}) {} after rollback. placed={}, skipped={}, total={}",
+                task.getTaskId(),
+                task.getOperationKind(),
+                task.getState(),
+                task.getPlacedCount(),
+                task.getSkippedCount(),
+                task.getTotalCount()
+            );
+        }
     }
 
     private void commitTaskHistory(BakeTask task) {
@@ -610,7 +624,10 @@ public class BakePlacementService {
                                int totalCount,
                                int remainingCount,
                                double progress,
-                               BakeTaskState state) {
+                               BakeTaskState state,
+                               int rollbackAttemptedCount,
+                               int rollbackRestoredCount,
+                               int rollbackFailedCount) {
         static TaskSnapshot from(BakeTask task) {
             return new TaskSnapshot(
                 task.getTaskId(),
@@ -619,7 +636,10 @@ public class BakePlacementService {
                 task.getTotalCount(),
                 task.getRemainingCount(),
                 task.getProgress(),
-                task.getState()
+                task.getState(),
+                task.getRollbackAttemptedCount(),
+                task.getRollbackRestoredCount(),
+                task.getRollbackFailedCount()
             );
         }
 

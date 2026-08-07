@@ -22,7 +22,7 @@ import java.util.UUID;
 @NodeInfo(
     id = "output.execute.bake_status",
     displayName = "Bake Status",
-    description = "Polls BakePlacementService for a task ID and reports state, progress, placed, and skipped counts.",
+    description = "Polls BakePlacementService for a task ID and reports state, progress, placed, skipped, and rollback-failed counts.",
     category = "output.execute",
     order = 1
 )
@@ -38,6 +38,7 @@ public class BakeStatusNode extends BaseCustomUINode {
     private volatile float progress = 0.0f;
     private volatile int placedCount = 0;
     private volatile int skippedCount = 0;
+    private volatile int rollbackFailedCount = 0;
     private volatile int totalCount = 0;
     private volatile int remainingCount = 0;
     private volatile String statusMessage = "Provide a Task ID";
@@ -50,6 +51,7 @@ public class BakeStatusNode extends BaseCustomUINode {
     private static final String OUTPUT_PROGRESS_ID = "output_progress";
     private static final String OUTPUT_PLACED_ID = "output_placed";
     private static final String OUTPUT_SKIPPED_ID = "output_skipped";
+    private static final String OUTPUT_ROLLBACK_FAILED_ID = "output_rollback_failed";
     private static final String OUTPUT_TOTAL_ID = "output_total";
     private static final String OUTPUT_REMAINING_ID = "output_remaining";
     private static final String OUTPUT_STATUS_ID = "output_status";
@@ -60,10 +62,11 @@ public class BakeStatusNode extends BaseCustomUINode {
         addInputPort(new BasePort(INPUT_TASK_ID_ID, "Task ID", "Bake task UUID from Apply Changes", NodeDataType.STRING, this));
 
         addOutputPort(new BasePort(OUTPUT_FOUND_ID, "Found", "Whether the task snapshot was found", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_STATE_ID, "State", "BakeTaskState display name (Queued, Running, Completed, Cancelled, Timed Out, ...)", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_STATE_ID, "State", "BakeTaskState display name (Queued, Running, Completed, Cancelled, Timed Out, Rollback Failed, ...)", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_PROGRESS_ID, "Progress", "Bake progress from 0.0 to 1.0", NodeDataType.FLOAT, this));
         addOutputPort(new BasePort(OUTPUT_PLACED_ID, "Placed", "Blocks placed so far", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_SKIPPED_ID, "Skipped", "Blocks skipped so far", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_ROLLBACK_FAILED_ID, "Rollback Failed", "Blocks that failed to restore during abort rollback", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_TOTAL_ID, "Total", "Total blocks in the task", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_REMAINING_ID, "Remaining", "Blocks remaining in the task", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_STATUS_ID, "Status", "Human-readable bake status", NodeDataType.STRING, this));
@@ -104,6 +107,7 @@ public class BakeStatusNode extends BaseCustomUINode {
         progress = (float) snapshot.progress();
         placedCount = snapshot.placedCount();
         skippedCount = snapshot.skippedCount();
+        rollbackFailedCount = snapshot.rollbackFailedCount();
         totalCount = snapshot.totalCount();
         remainingCount = snapshot.remainingCount();
         statusMessage = formatStatus(snapshot);
@@ -113,6 +117,7 @@ public class BakeStatusNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_PROGRESS_ID, progress);
         outputValues.put(OUTPUT_PLACED_ID, placedCount);
         outputValues.put(OUTPUT_SKIPPED_ID, skippedCount);
+        outputValues.put(OUTPUT_ROLLBACK_FAILED_ID, rollbackFailedCount);
         outputValues.put(OUTPUT_TOTAL_ID, totalCount);
         outputValues.put(OUTPUT_REMAINING_ID, remainingCount);
         outputValues.put(OUTPUT_STATUS_ID, statusMessage);
@@ -124,6 +129,7 @@ public class BakeStatusNode extends BaseCustomUINode {
         progress = 0.0f;
         placedCount = 0;
         skippedCount = 0;
+        rollbackFailedCount = 0;
         totalCount = 0;
         remainingCount = 0;
         statusMessage = message;
@@ -136,6 +142,7 @@ public class BakeStatusNode extends BaseCustomUINode {
         progress = 0.0f;
         placedCount = 0;
         skippedCount = 0;
+        rollbackFailedCount = 0;
         totalCount = 0;
         remainingCount = 0;
         statusMessage = message;
@@ -148,6 +155,7 @@ public class BakeStatusNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_PROGRESS_ID, progress);
         outputValues.put(OUTPUT_PLACED_ID, placedCount);
         outputValues.put(OUTPUT_SKIPPED_ID, skippedCount);
+        outputValues.put(OUTPUT_ROLLBACK_FAILED_ID, rollbackFailedCount);
         outputValues.put(OUTPUT_TOTAL_ID, totalCount);
         outputValues.put(OUTPUT_REMAINING_ID, remainingCount);
         outputValues.put(OUTPUT_STATUS_ID, statusMessage);
@@ -161,6 +169,18 @@ public class BakeStatusNode extends BaseCustomUINode {
     }
 
     private static String formatStatus(BakePlacementService.TaskSnapshot snapshot) {
+        if (snapshot.rollbackFailedCount() > 0) {
+            return String.format(
+                Locale.ROOT,
+                "%s: rollback restored %d, failed %d / %d attempted (placed %d, skipped %d)",
+                snapshot.resolveState(),
+                snapshot.rollbackRestoredCount(),
+                snapshot.rollbackFailedCount(),
+                snapshot.rollbackAttemptedCount(),
+                snapshot.placedCount(),
+                snapshot.skippedCount()
+            );
+        }
         return String.format(
             Locale.ROOT,
             "%s: placed %d, skipped %d, remaining %d / %d (%.0f%%)",
@@ -201,7 +221,7 @@ public class BakeStatusNode extends BaseCustomUINode {
                 int statusColor = switch (state) {
                     case "Running", "Cancelling", "Rolling Back" -> 0xFF44AADD;
                     case "Completed" -> 0xFF44DD44;
-                    case "Cancelled", "Timed Out", "Failed", "Not Found" -> 0xFFFF6666;
+                    case "Cancelled", "Timed Out", "Failed", "Rollback Failed", "Not Found" -> 0xFFFF6666;
                     case "Queued" -> 0xFFFFCC44;
                     default -> 0xFF888888;
                 };

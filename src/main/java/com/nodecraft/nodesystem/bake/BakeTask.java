@@ -44,6 +44,9 @@ public class BakeTask {
     private int nextIndex = 0;
     /** During rollback: remaining entries to restore (counts down from size to 0). */
     private int rollbackRemaining = 0;
+    private int rollbackAttemptedCount = 0;
+    private int rollbackRestoredCount = 0;
+    private int rollbackFailedCount = 0;
     private BakeTaskState state = BakeTaskState.QUEUED;
     private BakeTaskState pendingAbortState = BakeTaskState.CANCELLED;
     private int placedCount = 0;
@@ -158,8 +161,21 @@ public class BakeTask {
     public boolean isCancelled() {
         return state == BakeTaskState.CANCELLED
             || state == BakeTaskState.TIMED_OUT
+            || state == BakeTaskState.ROLLBACK_FAILED
             || state == BakeTaskState.CANCELLING
             || state == BakeTaskState.ROLLING_BACK;
+    }
+
+    public int getRollbackAttemptedCount() {
+        return rollbackAttemptedCount;
+    }
+
+    public int getRollbackRestoredCount() {
+        return rollbackRestoredCount;
+    }
+
+    public int getRollbackFailedCount() {
+        return rollbackFailedCount;
     }
 
     public boolean isRollbackFinished() {
@@ -264,11 +280,18 @@ public class BakeTask {
             Map.Entry<BlockPos, BlockState> entry = rollbackEntries.get(rollbackRemaining);
             BlockPos pos = entry.getKey();
             BlockState previous = entry.getValue();
+            rollbackAttemptedCount++;
             if (pos == null || previous == null) {
+                rollbackFailedCount++;
                 continue;
             }
             if (world.setBlockState(pos, previous, Block.NOTIFY_ALL)) {
                 restoredThisTick++;
+                rollbackRestoredCount++;
+            } else {
+                // Advance past the entry so the task can terminate, but record the failure
+                // so the terminal state is ROLLBACK_FAILED rather than a clean CANCELLED.
+                rollbackFailedCount++;
             }
         }
         return restoredThisTick;
@@ -306,6 +329,9 @@ public class BakeTask {
         state = BakeTaskState.ROLLING_BACK;
         rollbackEntries = List.copyOf(originalStates.entrySet());
         rollbackRemaining = rollbackEntries.size();
+        rollbackAttemptedCount = 0;
+        rollbackRestoredCount = 0;
+        rollbackFailedCount = 0;
     }
 
     /**
@@ -319,6 +345,10 @@ public class BakeTask {
     }
 
     void markAborted() {
+        if (rollbackFailedCount > 0) {
+            state = BakeTaskState.ROLLBACK_FAILED;
+            return;
+        }
         state = pendingAbortState != null ? pendingAbortState : BakeTaskState.CANCELLED;
     }
 

@@ -22,6 +22,7 @@ class BakeTaskSnapshotTest {
         assertEquals("Cancelled", snapshot(taskId, BakeTaskState.CANCELLED).resolveState());
         assertEquals("Timed Out", snapshot(taskId, BakeTaskState.TIMED_OUT).resolveState());
         assertEquals("Failed", snapshot(taskId, BakeTaskState.FAILED).resolveState());
+        assertEquals("Rollback Failed", snapshot(taskId, BakeTaskState.ROLLBACK_FAILED).resolveState());
     }
 
     @Test
@@ -30,6 +31,7 @@ class BakeTaskSnapshotTest {
         assertTrue(snapshot(taskId, BakeTaskState.CANCELLED).cancelled());
         assertTrue(snapshot(taskId, BakeTaskState.TIMED_OUT).cancelled());
         assertTrue(snapshot(taskId, BakeTaskState.FAILED).cancelled());
+        assertTrue(snapshot(taskId, BakeTaskState.ROLLBACK_FAILED).cancelled());
     }
 
     @Test
@@ -38,6 +40,6 @@ class BakeTaskSnapshotTest {
     }
 
     private static BakePlacementService.TaskSnapshot snapshot(UUID taskId, BakeTaskState state) {
-        return new BakePlacementService.TaskSnapshot(taskId, 0, 0, 10, 10, 0.0d, state);
+        return new BakePlacementService.TaskSnapshot(taskId, 0, 0, 10, 10, 0.0d, state, 0, 0, 0);
     }
 }

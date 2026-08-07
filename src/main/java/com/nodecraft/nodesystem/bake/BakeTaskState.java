@@ -6,7 +6,8 @@ package com.nodecraft.nodesystem.bake;
  * Transaction model:
  * <ul>
  *   <li>{@link #COMPLETED} — commit (history may be updated)</li>
- *   <li>{@link #CANCELLED} / {@link #TIMED_OUT} — rollback (world restored, history unchanged)</li>
+ *   <li>{@link #CANCELLED} / {@link #TIMED_OUT} — rollback succeeded (world restored, history unchanged)</li>
+ *   <li>{@link #ROLLBACK_FAILED} — abort attempted but one or more restores failed; world may be inconsistent</li>
  * </ul>
  */
 public enum BakeTaskState {
@@ -17,17 +18,23 @@ public enum BakeTaskState {
     ROLLING_BACK,
     CANCELLED,
     FAILED,
-    TIMED_OUT;
+    TIMED_OUT,
+    /** Abort rollback finished attempting restores, but at least one {@code setBlockState} failed. */
+    ROLLBACK_FAILED;
 
     public boolean isTerminal() {
         return this == COMPLETED
             || this == CANCELLED
             || this == TIMED_OUT
-            || this == FAILED;
+            || this == FAILED
+            || this == ROLLBACK_FAILED;
     }
 
     public boolean isAbort() {
-        return this == CANCELLED || this == TIMED_OUT || this == FAILED;
+        return this == CANCELLED
+            || this == TIMED_OUT
+            || this == FAILED
+            || this == ROLLBACK_FAILED;
     }
 
     public String displayName() {
@@ -40,6 +47,7 @@ public enum BakeTaskState {
             case CANCELLED -> "Cancelled";
             case FAILED -> "Failed";
             case TIMED_OUT -> "Timed Out";
+            case ROLLBACK_FAILED -> "Rollback Failed";
         };
     }
 }
