@@ -8,9 +8,9 @@ import java.util.Map;
  */
 public class SavedGraph {
     /**
-     * Saved graph format version. {@link GraphFormat#LEGACY_UNSPECIFIED} means a pre-versioning file.
+     * Saved graph format version. {@link GraphFormatVersion#LEGACY_UNSPECIFIED} means a pre-versioning file.
      */
-    public int formatVersion = GraphFormat.LEGACY_UNSPECIFIED;
+    public int formatVersion = GraphFormatVersion.LEGACY_UNSPECIFIED;
     public String graphName;
     public List<SavedNode> nodes;
     public List<SavedConnection> connections;

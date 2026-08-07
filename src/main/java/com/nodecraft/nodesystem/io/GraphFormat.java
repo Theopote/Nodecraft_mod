@@ -1,15 +1,18 @@
 package com.nodecraft.nodesystem.io;
 
 /**
- * Version constants for the {@link SavedGraph} on-disk format.
+ * @deprecated Use {@link GraphFormatVersion}. Kept as a compatibility alias for older call sites.
  */
+@Deprecated
 public final class GraphFormat {
 
-    /** Pre-versioning files, or JSON that omitted {@link SavedGraph#formatVersion}. */
-    public static final int LEGACY_UNSPECIFIED = 0;
+    /** @deprecated Use {@link GraphFormatVersion#LEGACY_UNSPECIFIED}. */
+    @Deprecated
+    public static final int LEGACY_UNSPECIFIED = GraphFormatVersion.LEGACY_UNSPECIFIED;
 
-    /** Current format: explicit version field and migration registry support. */
-    public static final int CURRENT = 1;
+    /** @deprecated Use {@link GraphFormatVersion#CURRENT}. */
+    @Deprecated
+    public static final int CURRENT = GraphFormatVersion.CURRENT;
 
     private GraphFormat() {
     }

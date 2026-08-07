@@ -1,6 +1,6 @@
 # NodeCraft Advancement: 0.7 Stability → 0.8 Interactive Runtime
 
-> Source of truth for the next project phase.  
+> Source of truth for the 0.8 phase track.  
 > Older `FINAL-*` / `FIXES-*` / `*-COMPLETE.md` notes are historical; see [`../history/`](../history/). Do not treat them as current policy.
 
 ## Current position
@@ -10,8 +10,8 @@
 | 0.5 | Preview / Bake | Done |
 | 0.6 | Execution (dataflow + exec frontier) | Done |
 | **0.7** | **Stability** | **PASS (`v0.7-stability`)** |
-| **0.8** | **Interactive Runtime** | **B–H PASS — next: I GraphFormatVersion** |
-| 0.9 | Compatibility / format freeze | Later |
+| **0.8** | **Interactive Runtime** | **PASS (phases A–I)** |
+| 0.9 | Compatibility / format freeze follow-through | Later |
 | 1.0 | Release | Later |
 
 One-line goal for 0.8:
@@ -47,29 +47,11 @@ Design: [`../architecture/execution-runtime-2.0.md`](../architecture/execution-r
 - [x] `AutoPreviewController` extracted
 - [x] Unit + GameTest smoke for preview contracts
 
-### Optional follow-ups (not blocking B′)
-
-- Editor HUD for active session / generation
-- Incremental dirty-scope GameTest beyond smoke
-- Tag `v0.8-runtime-slice` after CI green on this fence
-
 ---
 
 ## Phase B′ — Node Contract Test Suite — PASS
 
-**Goal:** Cheap regression fence for the ~500+ node catalog.
-
 Contracts: [`../contracts/node-metadata.md`](../contracts/node-metadata.md)
-
-| Work | Status |
-|------|--------|
-| Unique registry / annotation IDs | PASS |
-| Annotation id == runtime `typeId` | PASS |
-| Port IDs unique per node | PASS |
-| Non-blank category | PASS |
-| Scanner skips nested/anonymous helpers | PASS |
-
-Exit: `NodeContractTest` green on CI.
 
 ---
 
@@ -77,31 +59,11 @@ Exit: `NodeContractTest` green on CI.
 
 Design: [`../architecture/node-catalog.md`](../architecture/node-catalog.md)
 
-| Work | Status |
-|------|--------|
-| Design freeze | PASS |
-| Gradle `generateNodeCatalog` → `GeneratedNodeCatalog` | PASS |
-| `DefaultNodeProvider` primary path = catalog | PASS |
-| `AutoNodeScanner` fallback when catalog empty | PASS |
-| `NodeCatalogContractTest` | PASS |
-
-Exit: catalog registration used in prod path; contract tests green.
-
 ---
 
 ## Phase D — Expand contracts — PASS
 
-| Work | Status |
-|------|--------|
-| Preview side-effect policy formalized (`PreviewSideEffectPolicy`) | PASS |
-| `PreviewSideEffectContractTest` (catalog `output.execute.*`) | PASS |
-| Node state ser/de catalog roundtrip | PASS |
-| Docs: `preview-side-effects.md`, `node-state-serde.md` | PASS |
-
-Contracts:
-
-- [`../contracts/preview-side-effects.md`](../contracts/preview-side-effects.md)
-- [`../contracts/node-state-serde.md`](../contracts/node-state-serde.md)
+Contracts: [`../contracts/preview-side-effects.md`](../contracts/preview-side-effects.md), [`../contracts/node-state-serde.md`](../contracts/node-state-serde.md)
 
 ---
 
@@ -109,25 +71,11 @@ Contracts:
 
 Design: [`../architecture/node-library-display-cache.md`](../architecture/node-library-display-cache.md)
 
-| Work | Status |
-|------|--------|
-| `NodeIconPathResolver` (pure path logic) | PASS |
-| Icon resolution memo in `NodeIconManager` | PASS |
-| `NodeLibraryDisplayCache` for sorted lists | PASS |
-| Unit tests for resolver + display cache | PASS |
-
 ---
 
 ## Phase F — EditorDocumentState split — PASS
 
 Design: [`../architecture/editor-document-state.md`](../architecture/editor-document-state.md)
-
-| Work | Status |
-|------|--------|
-| `EditorDocumentState` (graph / positions / dirty) | PASS |
-| `ImGuiNodeEditor` + `ImGuiNodeIO` wired to document | PASS |
-| Auto-preview uses document as `DirtyVersionSource` | PASS |
-| `EditorDocumentStateTest` | PASS |
 
 ---
 
@@ -135,34 +83,34 @@ Design: [`../architecture/editor-document-state.md`](../architecture/editor-docu
 
 Design: [`../architecture/editor-interaction-mode.md`](../architecture/editor-interaction-mode.md)
 
-| Work | Status |
-|------|--------|
-| `EditorInteractionMode` enum | PASS |
-| `EditorInteractionState` (mode + selection) | PASS |
-| `ImGuiNodeInteraction` uses shared mode | PASS |
-| `ImGuiNodeEditor` selection delegates to interaction state | PASS |
-| Unit tests | PASS |
-
 ---
 
 ## Phase H — Docs history cleanup — PASS
 
 Detail: [`docs-history-cleanup.md`](./docs-history-cleanup.md)
 
+---
+
+## Phase I — GraphFormatVersion — PASS
+
+Design: [`../architecture/graph-format-version.md`](../architecture/graph-format-version.md)  
+Contract: [`../contracts/graph-format.md`](../contracts/graph-format.md)
+
 | Work | Status |
 |------|--------|
-| `docs/history/` archive + index | PASS |
-| Move root/docs FINAL/FIXES/COMPLETE dumps | PASS |
-| Development README points to archive | PASS |
+| `GraphFormatVersion` canonical API + policy helpers | PASS |
+| `GraphFormat` deprecated alias | PASS |
+| Migration / serializer wired to `GraphFormatVersion` | PASS |
+| `GraphFormatVersionContractTest` | PASS |
 
 ---
 
-## Later phases (ordered)
+## 0.8 result
 
-| Phase | Theme |
-|-------|--------|
-| I | `GraphFormatVersion` |
+**Interactive Runtime track (A–I): PASS**
 
-## Explicit non-goals (now)
+Suggested optional tag: `v0.8-interactive-runtime` after CI green on this tip.
 
-- Bulk node expansion, full editor rewrite, new UI framework, graph schema redesign, multiplayer, large AI auto-model features.
+## Explicit non-goals (still)
+
+- Bulk node expansion, full editor rewrite, new UI framework, graph schema redesign beyond versioned migrations, multiplayer, large AI auto-model features.

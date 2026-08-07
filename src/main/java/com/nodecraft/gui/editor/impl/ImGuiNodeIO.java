@@ -16,7 +16,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.graph.GraphLoadResult;
 import com.nodecraft.nodesystem.graph.GraphSerializer;
-import com.nodecraft.nodesystem.io.GraphFormat;
+import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
@@ -97,7 +97,7 @@ public class ImGuiNodeIO {
 
         NodeCraft.LOGGER.info("开始保存节点图到: {}", filePath);
         SavedGraph savedGraph = new SavedGraph();
-        savedGraph.formatVersion = GraphFormat.CURRENT;
+        savedGraph.formatVersion = GraphFormatVersion.CURRENT;
         savedGraph.graphName = currentGraph.getName();
         savedGraph.nodes = new ArrayList<>();
         savedGraph.connections = new ArrayList<>();

@@ -1,7 +1,7 @@
 package com.nodecraft.nodesystem.graph;
 
 import com.nodecraft.gui.node.NodeInfo;
-import com.nodecraft.nodesystem.io.GraphFormat;
+import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -40,7 +40,7 @@ class GraphMigrationRegistryTest {
     void legacyGraphIsMigratedToCurrentVersion() {
         SavedGraph legacy = new SavedGraph();
         legacy.graphName = "legacy";
-        legacy.formatVersion = GraphFormat.LEGACY_UNSPECIFIED;
+        legacy.formatVersion = GraphFormatVersion.LEGACY_UNSPECIFIED;
         legacy.nodes = null;
         legacy.connections = null;
         legacy.nodePositions = null;
@@ -51,7 +51,7 @@ class GraphMigrationRegistryTest {
         legacy.nodes = java.util.List.of(node);
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(legacy);
-        assertEquals(GraphFormat.CURRENT, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
         assertNotNull(migrated.nodes);
         assertNotNull(migrated.connections);
         assertNotNull(migrated.nodePositions);
@@ -61,11 +61,11 @@ class GraphMigrationRegistryTest {
     @Test
     void migrateToCurrentLeavesFutureVersionsUntouched() {
         SavedGraph future = new SavedGraph();
-        future.formatVersion = GraphFormat.CURRENT + 5;
+        future.formatVersion = GraphFormatVersion.CURRENT + 5;
         future.graphName = "future";
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(future);
-        assertEquals(GraphFormat.CURRENT + 5, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT + 5, migrated.formatVersion);
         assertEquals("future", migrated.graphName);
     }
 
@@ -82,6 +82,6 @@ class GraphMigrationRegistryTest {
 
         GraphLoadResult result = GraphSerializer.loadFromSavedGraph(legacy);
         assertEquals(1, result.graph().getNodes().size());
-        assertEquals(GraphFormat.CURRENT, legacy.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, legacy.formatVersion);
     }
 }

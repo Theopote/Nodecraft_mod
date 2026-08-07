@@ -13,6 +13,7 @@ Related architecture:
 - [`../architecture/node-library-display-cache.md`](../architecture/node-library-display-cache.md) — Library icon/display caches (Phase E)
 - [`../architecture/editor-document-state.md`](../architecture/editor-document-state.md) — EditorDocumentState split (Phase F)
 - [`../architecture/editor-interaction-mode.md`](../architecture/editor-interaction-mode.md) — EditorInteractionMode (Phase G)
+- [`../architecture/graph-format-version.md`](../architecture/graph-format-version.md) — GraphFormatVersion (Phase I)
 
 Contracts:
 

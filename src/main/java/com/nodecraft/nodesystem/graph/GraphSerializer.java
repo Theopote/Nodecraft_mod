@@ -5,7 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.nodecraft.core.exception.NodeValidationException;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.core.BaseNode;
-import com.nodecraft.nodesystem.io.GraphFormat;
+import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
@@ -47,7 +47,7 @@ public class GraphSerializer {
         if (graph == null) return null;
 
         SavedGraph savedGraph = new SavedGraph();
-        savedGraph.formatVersion = GraphFormat.CURRENT;
+        savedGraph.formatVersion = GraphFormatVersion.CURRENT;
         savedGraph.graphName = graph.getName();
         savedGraph.nodes = new ArrayList<>();
         savedGraph.connections = new ArrayList<>();

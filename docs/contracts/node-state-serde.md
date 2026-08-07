@@ -26,4 +26,6 @@ The suite fails only if the combined failure ratio ≥ 25% of the registry size.
 
 - Full JSON graph roundtrip for every node (covered sparsely by `GraphSerializerTest`)
 - Guaranteeing identity of non-Map / opaque state objects
-- `GraphFormatVersion` freeze (Phase I)
+- Network graph sync / multiplayer formats
+
+`GraphFormatVersion` freeze: [`graph-format.md`](./graph-format.md) / Phase I.

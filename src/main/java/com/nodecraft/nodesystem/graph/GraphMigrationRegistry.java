@@ -1,6 +1,6 @@
 package com.nodecraft.nodesystem.graph;
 
-import com.nodecraft.nodesystem.io.GraphFormat;
+import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
@@ -20,7 +20,7 @@ public final class GraphMigrationRegistry {
     private static final Logger LOGGER = LoggerFactory.getLogger(GraphMigrationRegistry.class);
 
     /**
-     * Old node type IDs to their replacement IDs for graphs below {@link GraphFormat#CURRENT}.
+     * Old node type IDs to their replacement IDs for graphs below {@link GraphFormatVersion#CURRENT}.
      * Add entries here when renaming node IDs; do not rely on {@link NodeRegistry#resolveCanonicalNodeId(String)}.
      */
     private static final Map<String, String> NODE_TYPE_ALIASES = Map.of(
@@ -42,18 +42,18 @@ public final class GraphMigrationRegistry {
             return null;
         }
 
-        int version = normalizeVersion(input.formatVersion);
-        if (version > GraphFormat.CURRENT) {
+        int version = GraphFormatVersion.normalize(input.formatVersion);
+        if (GraphFormatVersion.isNewerThanCurrent(version)) {
             LOGGER.warn(
                 "Saved graph format version {} is newer than supported version {}. Loading best-effort without migration.",
                 version,
-                GraphFormat.CURRENT
+                GraphFormatVersion.CURRENT
             );
             return input;
         }
 
         SavedGraph current = input;
-        while (version < GraphFormat.CURRENT) {
+        while (GraphFormatVersion.needsMigration(version)) {
             current = migrateStep(current, version);
             version++;
             current.formatVersion = version;
@@ -61,13 +61,9 @@ public final class GraphMigrationRegistry {
         return current;
     }
 
-    static int normalizeVersion(int formatVersion) {
-        return Math.max(formatVersion, GraphFormat.LEGACY_UNSPECIFIED);
-    }
-
     private static SavedGraph migrateStep(SavedGraph graph, int fromVersion) {
         return switch (fromVersion) {
-            case GraphFormat.LEGACY_UNSPECIFIED -> migrateLegacyToV1(graph);
+            case GraphFormatVersion.LEGACY_UNSPECIFIED -> migrateLegacyToV1(graph);
             default -> graph;
         };
     }
