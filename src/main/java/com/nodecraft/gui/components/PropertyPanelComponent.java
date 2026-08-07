@@ -220,9 +220,8 @@ public class PropertyPanelComponent implements EditorComponent {
             } else {
                 imStr = (ImString) panel.tempValues.get(tempKey);
 
-                // 关键改进：检查属性是否正在被编辑，避免覆盖用户输入
-                // 仅当 ImGui 控件不活跃且属性未被锁定编辑时，才从节点同步值
-                if (!ImGui.isItemActive() && !panel.isPropertyBeingEdited(node, prop.name)) {
+                // 仅当属性未被锁定编辑时，才从节点同步值
+                if (!panel.isPropertyBeingEdited(node, prop.name)) {
                     if (!imStr.get().equals(currentValue)) {
                         imStr.set(currentValue);
                     }
@@ -386,8 +385,8 @@ public class PropertyPanelComponent implements EditorComponent {
             } else {
                 textValue = (ImString)panel.tempValues.get(tempKey);
 
-                // 只有在用户未编辑且值变化时才从节点同步值
-                if (!ImGui.isItemActive() && !panel.isPropertyBeingEdited(node, prop.name)) {
+                // 仅当属性未被锁定编辑时，才从节点同步值
+                if (!panel.isPropertyBeingEdited(node, prop.name)) {
                     try {
                         double currentTextValue = Double.parseDouble(textValue.get());
                         if (Math.abs(currentTextValue - currentValue) > 1e-12) { // 使用epsilon比较浮点数
@@ -405,25 +404,43 @@ public class PropertyPanelComponent implements EditorComponent {
             boolean isReadOnly = prop.setter == null;
             if (isReadOnly) flags |= ImGuiInputTextFlags.ReadOnly;
 
-            boolean valueChanged = ImGui.inputText("##" + prop.name, textValue, flags | ImGuiInputTextFlags.EnterReturnsTrue);
+            boolean changed = ImGui.inputText("##" + prop.name, textValue, flags | ImGuiInputTextFlags.EnterReturnsTrue);
 
-            // 标记编辑状态
-            if (ImGui.isItemActive()) panel.markPropertyBeingEdited(node, prop.name);
-            if (ImGui.isItemDeactivated()) panel.markPropertyEditingFinished(node, prop.name);
+            boolean isActive = ImGui.isItemActive();
+            boolean wasDeactivated = ImGui.isItemDeactivated();
+            boolean wasBeingEdited = panel.isPropertyBeingEdited(node, prop.name);
 
-            // 如果按下了回车键或失去焦点，且正在编辑
-            if (!isReadOnly && (valueChanged || (ImGui.isItemDeactivated() && panel.isPropertyBeingEdited(node, prop.name)))) {
+            if (isActive && !wasBeingEdited) {
+                panel.markPropertyBeingEdited(node, prop.name);
+            }
+
+            boolean shouldSave = false;
+            if (changed) {
+                shouldSave = true;
+            } else if (wasDeactivated && wasBeingEdited) {
                 try {
                     double newValue = Double.parseDouble(textValue.get());
-                    if (Math.abs(newValue - currentValue) > 1e-12) { // 避免不必要的setter调用
+                    shouldSave = Math.abs(newValue - currentValue) > 1e-12;
+                } catch (NumberFormatException ignored) {
+                    shouldSave = false;
+                }
+            }
+
+            if (shouldSave && !isReadOnly) {
+                try {
+                    double newValue = Double.parseDouble(textValue.get());
+                    if (Math.abs(newValue - currentValue) > 1e-12) {
                         panel.applyPropertyValue(node, prop, newValue);
                         NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), newValue);
                     }
                 } catch (NumberFormatException e) {
-                    // 输入的不是有效数字，显示错误但不修改值
                     ImGui.sameLine();
                     ImGui.textColored(1.0f, 0.3f, 0.3f, 1.0f, "无效数字");
                 }
+            }
+
+            if (wasDeactivated && wasBeingEdited) {
+                panel.markPropertyEditingFinished(node, prop.name);
             }
 
             // 在输入框后添加一个快速拖动控件
@@ -432,10 +449,6 @@ public class PropertyPanelComponent implements EditorComponent {
                 ImGui.pushItemWidth(ImGui.getContentRegionAvailX() * 0.25f);
 
                 float[] dragValue = new float[]{0.0f}; // 拖动增量
-
-                // 拖动控件激活时，标记属性为正在编辑状态
-                if (ImGui.isItemActive()) panel.markPropertyBeingEdited(node, prop.name);
-                if (ImGui.isItemDeactivated()) panel.markPropertyEditingFinished(node, prop.name);
 
                 if (ImGui.dragFloat("##drag_" + prop.name, dragValue, 0.01f, 0.0f, 0.0f, "%.3f")) {
                     try {
@@ -453,6 +466,8 @@ public class PropertyPanelComponent implements EditorComponent {
                         // 无效数字时忽略拖动
                     }
                 }
+                if (ImGui.isItemActive()) panel.markPropertyBeingEdited(node, prop.name);
+                if (ImGui.isItemDeactivated()) panel.markPropertyEditingFinished(node, prop.name);
                 ImGui.popItemWidth();
             }
 
