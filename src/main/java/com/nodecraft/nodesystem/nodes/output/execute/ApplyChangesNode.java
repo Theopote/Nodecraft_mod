@@ -147,17 +147,17 @@ public class ApplyChangesNode extends BaseCustomUINode {
 
         boolean manualTrigger = applyRequested.getAndSet(false);
         if (triggerObj == null && !manualTrigger) {
-            publishOutputs(success, operationCount, executionTime, status);
+            publishOutputs(success, operationCount, executionTime, status, "", false);
             return;
         }
 
         if (!isExecuting.compareAndSet(false, true)) {
-            publishOutputs(false, 0, 0, "Execution already in progress");
+            publishOutputs(false, 0, 0, "Execution already in progress", "", false);
             return;
         }
         try {
             if (context == null || context.getWorld() == null) {
-                publishOutputs(false, 0, 0, "Missing execution context");
+                publishOutputs(false, 0, 0, "Missing execution context", "", false);
                 return;
             }
 

@@ -73,6 +73,9 @@ public class BakeHistory {
     /**
      * Asynchronous undo - executes block restores across multiple ticks via BakePlacementService.
      * This prevents server lag on large builds.
+     * 
+     * IMPORTANT: The record is only moved from undo to redo stack after successful completion.
+     * If the async task fails, the record remains in the undo stack for retry.
      *
      * @param actorId Actor performing the undo
      * @param world Target world
@@ -81,7 +84,8 @@ public class BakeHistory {
      * @return Task ID if undo was queued, null if nothing to undo
      */
     public UUID undoLastAsync(UUID actorId, World world, int blocksPerTick, long tickBudgetNanos) {
-        UndoRecord record = pop();
+        // Peek instead of pop - only remove on success
+        UndoRecord record = peek();
         if (record == null || world == null) {
             return null;
         }
@@ -95,18 +99,22 @@ public class BakeHistory {
             ));
         }
 
-        // Enqueue undo as a bake task with inverse recording
+        // Enqueue undo as a bake task WITHOUT recording (this is a restore operation)
         UUID taskId = BakePlacementService.getInstance().enqueuePlacements(
             world,
             placements,
             PlacementMode.OVERWRITE,
-            true, // Record undo so we can redo
+            false, // Don't record - this is undo, not a new operation
             blocksPerTick,
             tickBudgetNanos,
             actorId,
             () -> {
-                // On completion, push the inverse to redo stack
-                // This will be handled by BakePlacementService.finishTask
+                // On successful completion, move record from undo to redo stack
+                UndoRecord completed = pop();
+                if (completed != null) {
+                    redoStack.add(completed);
+                    trim(redoStack);
+                }
             }
         );
 
@@ -116,6 +124,9 @@ public class BakeHistory {
     /**
      * Asynchronous redo - executes block restores across multiple ticks via BakePlacementService.
      * This prevents server lag on large builds.
+     * 
+     * IMPORTANT: The record is only moved from redo to undo stack after successful completion.
+     * If the async task fails, the record remains in the redo stack for retry.
      *
      * @param actorId Actor performing the redo
      * @param world Target world
@@ -124,7 +135,8 @@ public class BakeHistory {
      * @return Task ID if redo was queued, null if nothing to redo
      */
     public UUID redoLastAsync(UUID actorId, World world, int blocksPerTick, long tickBudgetNanos) {
-        UndoRecord record = redoStack.isEmpty() ? null : redoStack.removeLast();
+        // Peek instead of removing - only remove on success
+        UndoRecord record = redoStack.isEmpty() ? null : redoStack.getLast();
         if (record == null || world == null) {
             return null;
         }
@@ -138,18 +150,22 @@ public class BakeHistory {
             ));
         }
 
-        // Enqueue redo as a bake task with inverse recording
+        // Enqueue redo as a bake task WITHOUT recording (this is a restore operation)
         UUID taskId = BakePlacementService.getInstance().enqueuePlacements(
             world,
             placements,
             PlacementMode.OVERWRITE,
-            true, // Record undo so we can undo again
+            false, // Don't record - this is redo, not a new operation
             blocksPerTick,
             tickBudgetNanos,
             actorId,
             () -> {
-                // On completion, push the inverse to undo stack
-                // This will be handled by BakePlacementService.finishTask
+                // On successful completion, move record from redo to undo stack
+                if (!redoStack.isEmpty()) {
+                    UndoRecord completed = redoStack.removeLast();
+                    undoStack.add(completed);
+                    trim(undoStack);
+                }
             }
         );
 

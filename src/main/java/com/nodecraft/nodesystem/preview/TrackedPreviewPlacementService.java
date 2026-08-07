@@ -6,13 +6,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
-import java.util.ArrayList;
-import java.util.IdentityHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import com.nodecraft.nodesystem.bake.PlacementMode;
 
@@ -189,7 +183,7 @@ public final class TrackedPreviewPlacementService {
         // Copy the states to restore before potentially switching threads
         final Map<BlockPos, BlockState> statesToRestore = new java.util.LinkedHashMap<>(trackedState.previousStates());
 
-        // Perform restoration on the world thread if context is available
+        // Path 1: ExecutionContext available - use callOnWorldThread
         if (context != null) {
             try {
                 return context.callOnWorldThread(() -> {
@@ -200,26 +194,42 @@ public final class TrackedPreviewPlacementService {
                         }
                     }
                     NodeCraft.LOGGER.debug(
-                            "TrackedPreviewPlacementService.clearTrackedPreview nodeId={} restored={} (on world thread)",
+                            "TrackedPreviewPlacementService.clearTrackedPreview nodeId={} restored={} (via ExecutionContext)",
                             nodeId, count
                     );
                     return count;
                 });
             } catch (Exception e) {
-                NodeCraft.LOGGER.error("Failed to clear tracked preview on world thread, falling back to direct restoration", e);
+                NodeCraft.LOGGER.error("Failed to clear tracked preview via ExecutionContext", e);
+                // Continue to fallback path
             }
         }
 
-        // Fallback: direct restoration (legacy behavior, but log warning if not on server thread)
+        // Path 2: ServerWorld available but no ExecutionContext - schedule on server thread
         if (world instanceof net.minecraft.server.world.ServerWorld serverWorld) {
-            if (!serverWorld.getServer().isOnThread()) {
-                NodeCraft.LOGGER.warn(
-                    "TrackedPreviewPlacementService clearing preview from non-server thread without ExecutionContext. " +
-                    "This may cause thread safety issues. nodeId={}", nodeId
+            if (!Objects.requireNonNull(serverWorld.getServer()).isOnThread()) {
+                NodeCraft.LOGGER.debug(
+                    "TrackedPreviewPlacementService scheduling preview cleanup on server thread (no ExecutionContext). nodeId={}", 
+                    nodeId
                 );
+                serverWorld.getServer().execute(() -> {
+                    int count = 0;
+                    for (Map.Entry<BlockPos, BlockState> entry : statesToRestore.entrySet()) {
+                        if (world.setBlockState(entry.getKey(), entry.getValue(), Block.NOTIFY_ALL)) {
+                            count++;
+                        }
+                    }
+                    NodeCraft.LOGGER.debug(
+                            "TrackedPreviewPlacementService.clearTrackedPreview nodeId={} restored={} (scheduled)",
+                            nodeId, count
+                    );
+                });
+                // Return 0 because async - actual count unknown
+                return 0;
             }
         }
 
+        // Path 3: Already on server thread or non-server world - direct restoration
         int restoredCount = 0;
         for (Map.Entry<BlockPos, BlockState> entry : statesToRestore.entrySet()) {
             if (world.setBlockState(entry.getKey(), entry.getValue(), Block.NOTIFY_ALL)) {
@@ -232,7 +242,7 @@ public final class TrackedPreviewPlacementService {
         }
 
         NodeCraft.LOGGER.debug(
-                "TrackedPreviewPlacementService.clearTrackedPreview nodeId={} restored={}",
+                "TrackedPreviewPlacementService.clearTrackedPreview nodeId={} restored={} (direct)",
                 nodeId, restoredCount
         );
 
