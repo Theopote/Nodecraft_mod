@@ -36,6 +36,10 @@ public class BakeHistory {
         return undoStack.isEmpty() ? null : undoStack.getLast();
     }
 
+    /**
+     * Synchronous undo - executes all block restores in a single operation.
+     * WARNING: This can cause server lag for large builds. Consider using undoLastAsync instead.
+     */
     public boolean undoLast(World world) {
         UndoRecord record = pop();
         if (record == null || world == null) {
@@ -49,6 +53,10 @@ public class BakeHistory {
         return true;
     }
 
+    /**
+     * Synchronous redo - executes all block restores in a single operation.
+     * WARNING: This can cause server lag for large builds. Consider using redoLastAsync instead.
+     */
     public boolean redoLast(World world) {
         UndoRecord record = redoStack.isEmpty() ? null : redoStack.removeLast();
         if (record == null || world == null) {
@@ -60,6 +68,92 @@ public class BakeHistory {
             trim(undoStack);
         }
         return true;
+    }
+
+    /**
+     * Asynchronous undo - executes block restores across multiple ticks via BakePlacementService.
+     * This prevents server lag on large builds.
+     *
+     * @param actorId Actor performing the undo
+     * @param world Target world
+     * @param blocksPerTick Maximum blocks to restore per tick
+     * @param tickBudgetNanos Maximum time budget per tick in nanoseconds
+     * @return Task ID if undo was queued, null if nothing to undo
+     */
+    public UUID undoLastAsync(UUID actorId, World world, int blocksPerTick, long tickBudgetNanos) {
+        UndoRecord record = pop();
+        if (record == null || world == null) {
+            return null;
+        }
+
+        // Convert UndoRecord to placements
+        List<BakeTask.Placement> placements = new ArrayList<>(record.size());
+        for (int i = 0; i < record.size(); i++) {
+            placements.add(new BakeTask.Placement(
+                record.getPositions().get(i),
+                record.getPreviousStates().get(i)
+            ));
+        }
+
+        // Enqueue undo as a bake task with inverse recording
+        UUID taskId = BakePlacementService.getInstance().enqueuePlacements(
+            world,
+            placements,
+            PlacementMode.OVERWRITE,
+            true, // Record undo so we can redo
+            blocksPerTick,
+            tickBudgetNanos,
+            actorId,
+            () -> {
+                // On completion, push the inverse to redo stack
+                // This will be handled by BakePlacementService.finishTask
+            }
+        );
+
+        return taskId;
+    }
+
+    /**
+     * Asynchronous redo - executes block restores across multiple ticks via BakePlacementService.
+     * This prevents server lag on large builds.
+     *
+     * @param actorId Actor performing the redo
+     * @param world Target world
+     * @param blocksPerTick Maximum blocks to restore per tick
+     * @param tickBudgetNanos Maximum time budget per tick in nanoseconds
+     * @return Task ID if redo was queued, null if nothing to redo
+     */
+    public UUID redoLastAsync(UUID actorId, World world, int blocksPerTick, long tickBudgetNanos) {
+        UndoRecord record = redoStack.isEmpty() ? null : redoStack.removeLast();
+        if (record == null || world == null) {
+            return null;
+        }
+
+        // Convert UndoRecord to placements
+        List<BakeTask.Placement> placements = new ArrayList<>(record.size());
+        for (int i = 0; i < record.size(); i++) {
+            placements.add(new BakeTask.Placement(
+                record.getPositions().get(i),
+                record.getPreviousStates().get(i)
+            ));
+        }
+
+        // Enqueue redo as a bake task with inverse recording
+        UUID taskId = BakePlacementService.getInstance().enqueuePlacements(
+            world,
+            placements,
+            PlacementMode.OVERWRITE,
+            true, // Record undo so we can undo again
+            blocksPerTick,
+            tickBudgetNanos,
+            actorId,
+            () -> {
+                // On completion, push the inverse to undo stack
+                // This will be handled by BakePlacementService.finishTask
+            }
+        );
+
+        return taskId;
     }
 
     public boolean hasUndo() {

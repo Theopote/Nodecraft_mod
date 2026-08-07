@@ -199,6 +199,39 @@ public class BakePlacementService {
         return success;
     }
 
+    /**
+     * Asynchronously undo the last baked transaction for the given actor.
+     * This uses the tick-sliced system to prevent server lag on large builds.
+     *
+     * @param actorId Actor performing the undo
+     * @param world Target world
+     * @return Task ID if undo was queued, null if nothing to undo
+     */
+    public UUID undoLastAsync(UUID actorId, World world) {
+        return undoLastAsync(actorId, world, defaultBlocksPerTick, defaultTickBudgetNanos);
+    }
+
+    /**
+     * Asynchronously undo the last baked transaction for the given actor with custom settings.
+     *
+     * @param actorId Actor performing the undo
+     * @param world Target world
+     * @param blocksPerTick Maximum blocks to restore per tick
+     * @param tickBudgetNanos Maximum time budget per tick in nanoseconds
+     * @return Task ID if undo was queued, null if nothing to undo
+     */
+    public UUID undoLastAsync(UUID actorId, World world, int blocksPerTick, long tickBudgetNanos) {
+        if (world == null) {
+            return null;
+        }
+        BakeHistory history = getHistory(actorId);
+        UUID taskId = history.undoLastAsync(resolveActorId(actorId), world, blocksPerTick, tickBudgetNanos);
+        if (taskId != null) {
+            NodeCraft.LOGGER.debug("Queued async undo for actor {} (task: {})", resolveActorId(actorId), taskId);
+        }
+        return taskId;
+    }
+
     public boolean redoLast(UUID actorId, World world) {
         if (world == null) {
             return false;
@@ -209,6 +242,39 @@ public class BakePlacementService {
             NodeCraft.LOGGER.debug("Redid last baked transaction for actor {}", resolveActorId(actorId));
         }
         return success;
+    }
+
+    /**
+     * Asynchronously redo the last undone transaction for the given actor.
+     * This uses the tick-sliced system to prevent server lag on large builds.
+     *
+     * @param actorId Actor performing the redo
+     * @param world Target world
+     * @return Task ID if redo was queued, null if nothing to redo
+     */
+    public UUID redoLastAsync(UUID actorId, World world) {
+        return redoLastAsync(actorId, world, defaultBlocksPerTick, defaultTickBudgetNanos);
+    }
+
+    /**
+     * Asynchronously redo the last undone transaction for the given actor with custom settings.
+     *
+     * @param actorId Actor performing the redo
+     * @param world Target world
+     * @param blocksPerTick Maximum blocks to restore per tick
+     * @param tickBudgetNanos Maximum time budget per tick in nanoseconds
+     * @return Task ID if redo was queued, null if nothing to redo
+     */
+    public UUID redoLastAsync(UUID actorId, World world, int blocksPerTick, long tickBudgetNanos) {
+        if (world == null) {
+            return null;
+        }
+        BakeHistory history = getHistory(actorId);
+        UUID taskId = history.redoLastAsync(resolveActorId(actorId), world, blocksPerTick, tickBudgetNanos);
+        if (taskId != null) {
+            NodeCraft.LOGGER.debug("Queued async redo for actor {} (task: {})", resolveActorId(actorId), taskId);
+        }
+        return taskId;
     }
 
     public int getQueueSize() {

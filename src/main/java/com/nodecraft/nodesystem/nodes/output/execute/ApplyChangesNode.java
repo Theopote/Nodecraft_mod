@@ -98,6 +98,8 @@ public class ApplyChangesNode extends BaseCustomUINode {
     private static final String OUTPUT_OPERATION_COUNT_ID = "output_operation_count";
     private static final String OUTPUT_EXECUTION_TIME_ID = "output_execution_time";
     private static final String OUTPUT_STATUS_ID = "output_status";
+    private static final String OUTPUT_TASK_ID = "output_task_id";
+    private static final String OUTPUT_IS_ASYNC = "output_is_async";
 
     public ApplyChangesNode() {
         super(UUID.randomUUID(), "output.execute.apply_changes");
@@ -113,10 +115,12 @@ public class ApplyChangesNode extends BaseCustomUINode {
         addInputPort(new BasePort(INPUT_BLOCK_PLACEMENTS_TREE_ID, "Block Placements Tree", "Tree-grouped per-position block assignments", NodeDataType.DATA_TREE, this));
         addInputPort(new BasePort(INPUT_NOTIFY_ID, "Notify On Complete", "Overrides node notification behavior", NodeDataType.BOOLEAN, this));
 
-        addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether placement succeeded", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_OPERATION_COUNT_ID, "Operation Count", "Number of queued or placed blocks", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_EXECUTION_TIME_ID, "Execution Time", "Execution time in milliseconds", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether placement succeeded or was queued", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_OPERATION_COUNT_ID, "Operation Count", "Number of blocks placed (sync) or queued (async)", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_EXECUTION_TIME_ID, "Execution Time", "Execution time in milliseconds (queueing time for async)", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_STATUS_ID, "Status", "Execution status message", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_TASK_ID, "Task ID", "Bake task UUID for async operations (empty for sync)", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_IS_ASYNC, "Is Async", "Whether the operation was queued asynchronously", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -167,33 +171,42 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 operationCount = applyResult.operationCount();
                 success = !applyResult.timedOut();
                 executionTime = (int) (System.currentTimeMillis() - startTime);
+
+                String taskId = applyResult.taskId() != null ? applyResult.taskId().toString() : "";
+                boolean isAsync = useAsyncBake;
+
                 if (applyResult.timedOut()) {
                     status = "Timed out after " + executionTimeout + "s; placed " + operationCount + " blocks";
                     progressPercentage = 0.0f;
                     statusMessage = "Timed out";
+                } else if (useAsyncBake) {
+                    // Async mode: operation is queued, not completed
+                    status = "Queued " + operationCount + " block placements for async execution";
+                    progressPercentage = 0.1f; // 10% = queued, not completed
+                    statusMessage = "Queued (Task: " + taskId + ")";
                 } else {
-                    status = useAsyncBake
-                        ? "Queued " + operationCount + " block placements"
-                        : "Placed " + operationCount + " blocks";
+                    // Sync mode: operation is completed
+                    status = "Placed " + operationCount + " blocks (synchronous)";
                     progressPercentage = 1.0f;
                     statusMessage = "Completed";
                 }
+
                 if (notify) {
                     LOGGER.info("ApplyChangesNode: {}, {}ms", status, executionTime);
                 }
-                publishOutputs(success, operationCount, executionTime, status);
+                publishOutputs(success, operationCount, executionTime, status, taskId, isAsync);
                 return;
             }
 
             BlockPosList blocks = resolveBlocks(blocksObj, geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj);
             if (blocks.isEmpty()) {
-                publishOutputs(false, 0, 0, "No blocks or geometry to apply");
+                publishOutputs(false, 0, 0, "No blocks or geometry to apply", "", false);
                 return;
             }
 
             BlockState targetState = resolveBlockState(blockType);
             if (targetState == null) {
-                publishOutputs(false, 0, 0, "Invalid block type: " + blockType);
+                publishOutputs(false, 0, 0, "Invalid block type: " + blockType, "", false);
                 return;
             }
 
@@ -204,22 +217,31 @@ public class ApplyChangesNode extends BaseCustomUINode {
             operationCount = applyResult.operationCount();
             success = !applyResult.timedOut();
             executionTime = (int) (System.currentTimeMillis() - startTime);
+
+            String taskId = applyResult.taskId() != null ? applyResult.taskId().toString() : "";
+            boolean isAsync = useAsyncBake;
+
             if (applyResult.timedOut()) {
                 status = "Timed out after " + executionTimeout + "s; placed " + operationCount + "/" + blocks.size() + " blocks";
                 progressPercentage = 0.0f;
                 statusMessage = "Timed out";
+            } else if (useAsyncBake) {
+                // Async mode: operation is queued, not completed
+                status = "Queued " + operationCount + " blocks for async execution";
+                progressPercentage = 0.1f; // 10% = queued, not completed
+                statusMessage = "Queued (Task: " + taskId + ")";
             } else {
-                status = useAsyncBake
-                    ? "Queued " + operationCount + " blocks"
-                    : "Placed " + operationCount + "/" + blocks.size() + " blocks";
+                // Sync mode: operation is completed
+                status = "Placed " + operationCount + "/" + blocks.size() + " blocks (synchronous)";
                 progressPercentage = 1.0f;
                 statusMessage = "Completed";
             }
+
             if (notify) {
                 LOGGER.info("ApplyChangesNode: {}, {}ms", status, executionTime);
             }
 
-            publishOutputs(success, operationCount, executionTime, status);
+            publishOutputs(success, operationCount, executionTime, status, taskId, isAsync);
         } catch (Exception e) {
             status = "Error: " + e.getMessage();
             statusMessage = status;

@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.output.execute;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.bake.BakePlacementService;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -19,19 +20,24 @@ import java.util.UUID;
 )
 public class RedoLastBakeNode extends BaseCustomUINode {
 
+    @NodeProperty(displayName = "Use Async", category = "Execution", order = 1)
+    private boolean useAsync = true;
+
     private static final String INPUT_TRIGGER_ID = "input_trigger";
     private static final String OUTPUT_SUCCESS_ID = "output_success";
     private static final String OUTPUT_REMAINING_REDO_ID = "output_remaining_redo";
     private static final String OUTPUT_REMAINING_HISTORY_ID = "output_remaining_history";
     private static final String OUTPUT_STATUS_ID = "output_status";
+    private static final String OUTPUT_TASK_ID = "output_task_id";
 
     public RedoLastBakeNode() {
         super(UUID.randomUUID(), "output.execute.redo_last_bake");
         addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "Any non-null value triggers redo", NodeDataType.ANY, this));
-        addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether a redo record was applied", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether a redo record was applied or queued", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_REMAINING_REDO_ID, "Remaining Redo", "Number of remaining redo records", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_REMAINING_HISTORY_ID, "Remaining History", "Number of undo records after redo", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_STATUS_ID, "Status", "Redo status message", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_TASK_ID, "Task ID", "Task UUID for async operations (empty for sync)", NodeDataType.STRING, this));
     }
 
     @Override
@@ -40,6 +46,7 @@ public class RedoLastBakeNode extends BaseCustomUINode {
         UUID actorId = context != null ? BakePlacementService.resolveActorId(context.getPlayer()) : BakePlacementService.SERVER_ACTOR_ID;
         boolean success = false;
         String status = "No redo executed";
+        String taskId = "";
 
         if (inputValues.get(INPUT_TRIGGER_ID) != null) {
             if (context == null || context.getWorld() == null) {
@@ -47,8 +54,22 @@ public class RedoLastBakeNode extends BaseCustomUINode {
             } else if (service.getHistory(actorId).redoSize() == 0) {
                 status = "No recorded bake redo history";
             } else {
-                success = service.redoLast(actorId, context.getWorld());
-                status = success ? "Redid last bake operation" : "Redo failed";
+                if (useAsync) {
+                    // Use async redo - prevents server lag on large builds
+                    UUID redoTaskId = service.redoLastAsync(actorId, context.getWorld());
+                    success = redoTaskId != null;
+
+                    if (success) {
+                        taskId = redoTaskId.toString();
+                        status = "Queued async redo (Task: " + taskId + ")";
+                    } else {
+                        status = "Async redo failed to queue";
+                    }
+                } else {
+                    // Use sync redo - WARNING: can cause lag on large builds
+                    success = service.redoLast(actorId, context.getWorld());
+                    status = success ? "Redid last bake operation (sync)" : "Redo failed";
+                }
             }
         }
 
@@ -56,6 +77,18 @@ public class RedoLastBakeNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_REMAINING_REDO_ID, service.getHistory(actorId).redoSize());
         outputValues.put(OUTPUT_REMAINING_HISTORY_ID, service.getHistory(actorId).size());
         outputValues.put(OUTPUT_STATUS_ID, status);
+        outputValues.put(OUTPUT_TASK_ID, taskId);
+    }
+
+    public boolean isUseAsync() {
+        return useAsync;
+    }
+
+    public void setUseAsync(boolean value) {
+        if (useAsync != value) {
+            useAsync = value;
+            markDirty();
+        }
     }
 
     @Override
