@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.execution.runtime.CancellationToken;
+import com.nodecraft.nodesystem.execution.runtime.PreviewSideEffectPolicy;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphCallStackBridge;
 import com.nodecraft.nodesystem.nodes.variable.VariableScopeBridge;
@@ -675,7 +676,7 @@ public class NodeExecutor {
             NodeExecutionCache executionCache,
             boolean execFrontierVisit
     ) {
-        if (skipOutputExecuteSideEffects && isPermanentSideEffectNode(node)) {
+        if (skipOutputExecuteSideEffects && PreviewSideEffectPolicy.isPermanentSideEffectNode(node)) {
             return false;
         }
         if (executionScopeNodeIds == null || executionScopeNodeIds.isEmpty()) {
@@ -785,12 +786,11 @@ public class NodeExecutor {
 
     /**
      * Permanent bake/apply side effects that must not run during auto-preview.
+     *
+     * @see PreviewSideEffectPolicy
      */
     public static boolean isPermanentSideEffectNode(INode node) {
-        if (node == null || node.getTypeId() == null) {
-            return false;
-        }
-        return node.getTypeId().startsWith("output.execute.");
+        return PreviewSideEffectPolicy.isPermanentSideEffectNode(node);
     }
 
     private static final class NodeExecutorThreadFactory implements ThreadFactory {

@@ -10,7 +10,7 @@
 | 0.5 | Preview / Bake | Done |
 | 0.6 | Execution (dataflow + exec frontier) | Done |
 | **0.7** | **Stability** | **PASS (`v0.7-stability`)** |
-| **0.8** | **Interactive Runtime** | **B/B′/C PASS — next: D contracts expand** |
+| **0.8** | **Interactive Runtime** | **B/B′/C/D PASS — next: E library caches** |
 | 0.9 | Compatibility / format freeze | Later |
 | 1.0 | Release | Later |
 
@@ -89,11 +89,26 @@ Exit: catalog registration used in prod path; contract tests green.
 
 ---
 
+## Phase D — Expand contracts — PASS
+
+| Work | Status |
+|------|--------|
+| Preview side-effect policy formalized (`PreviewSideEffectPolicy`) | PASS |
+| `PreviewSideEffectContractTest` (catalog `output.execute.*`) | PASS |
+| Node state ser/de catalog roundtrip | PASS |
+| Docs: `preview-side-effects.md`, `node-state-serde.md` | PASS |
+
+Contracts:
+
+- [`../contracts/preview-side-effects.md`](../contracts/preview-side-effects.md)
+- [`../contracts/node-state-serde.md`](../contracts/node-state-serde.md)
+
+---
+
 ## Later phases (ordered)
 
 | Phase | Theme |
 |-------|--------|
-| D | Expand contracts (ser/de roundtrip, preview side-effect policy formalized) |
 | E | Node Library display / icon caches |
 | F | `EditorDocumentState` split |
 | G | `EditorInteractionMode` |

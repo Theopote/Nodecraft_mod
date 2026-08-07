@@ -34,5 +34,10 @@ per-node unit tests as the library grows past ~500 nodes.
 ## Running
 
 ```bash
-./gradlew test --tests "com.nodecraft.nodesystem.contract.NodeContractTest"
+./gradlew test --tests "com.nodecraft.nodesystem.contract.*"
 ```
+
+Related Phase D contracts:
+
+- [`preview-side-effects.md`](./preview-side-effects.md)
+- [`node-state-serde.md`](./node-state-serde.md)
