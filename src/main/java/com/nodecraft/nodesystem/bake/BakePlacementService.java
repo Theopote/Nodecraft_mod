@@ -13,6 +13,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -29,8 +30,20 @@ public class BakePlacementService {
 
     private static BakePlacementService instance;
 
+    private static final int RECENT_TASK_SNAPSHOT_LIMIT = 128;
+
     private final Deque<BakeTask> queue = new ArrayDeque<>();
     private final Map<UUID, BakeHistory> histories = new HashMap<>();
+    private final Map<UUID, TaskSnapshot> recentTaskSnapshots = new LinkedHashMap<>(
+        RECENT_TASK_SNAPSHOT_LIMIT,
+        0.75f,
+        true
+    ) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<UUID, TaskSnapshot> eldest) {
+            return size() > RECENT_TASK_SNAPSHOT_LIMIT;
+        }
+    };
     private boolean tickRegistered = false;
     private int defaultBlocksPerTick = DEFAULT_BLOCKS_PER_TICK;
     private long defaultTickBudgetNanos = DEFAULT_TICK_BUDGET_NANOS;
@@ -169,6 +182,7 @@ public class BakePlacementService {
             for (BakeTask task : queue) {
                 if (taskId.equals(task.getTaskId())) {
                     task.cancel();
+                    rememberTaskSnapshot(task);
                     queue.remove(task);
                     NodeCraft.LOGGER.info("Cancelled bake task {}", taskId);
                     return true;
@@ -183,6 +197,7 @@ public class BakePlacementService {
         synchronized (queue) {
             for (BakeTask task : queue) {
                 task.cancel();
+                rememberTaskSnapshot(task);
                 count++;
             }
             queue.clear();
@@ -200,6 +215,38 @@ public class BakePlacementService {
                 snapshots.add(TaskSnapshot.from(task));
             }
             return snapshots;
+        }
+    }
+
+    /**
+     * Returns the live or most recently finished snapshot for a bake task.
+     */
+    @Nullable
+    public TaskSnapshot getTaskSnapshot(UUID taskId) {
+        if (taskId == null) {
+            return null;
+        }
+
+        synchronized (queue) {
+            for (BakeTask task : queue) {
+                if (taskId.equals(task.getTaskId())) {
+                    return TaskSnapshot.from(task);
+                }
+            }
+        }
+
+        synchronized (recentTaskSnapshots) {
+            return recentTaskSnapshots.get(taskId);
+        }
+    }
+
+    private void rememberTaskSnapshot(BakeTask task) {
+        if (task == null) {
+            return;
+        }
+        TaskSnapshot snapshot = TaskSnapshot.from(task);
+        synchronized (recentTaskSnapshots) {
+            recentTaskSnapshots.put(task.getTaskId(), snapshot);
         }
     }
 
@@ -323,6 +370,7 @@ public class BakePlacementService {
     }
 
     private void finishTask(BakeTask task) {
+        rememberTaskSnapshot(task);
         if (task.isCancelled()) {
             return;
         }
@@ -386,6 +434,19 @@ public class BakePlacementService {
                 task.getProgress(),
                 task.isCancelled()
             );
+        }
+
+        public String resolveState() {
+            if (cancelled) {
+                return "Cancelled";
+            }
+            if (totalCount == 0 || remainingCount == 0) {
+                return "Completed";
+            }
+            if (placedCount > 0 || progress > 0.0d) {
+                return "Running";
+            }
+            return "Queued";
         }
     }
 }

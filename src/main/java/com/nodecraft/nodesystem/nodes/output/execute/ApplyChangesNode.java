@@ -28,7 +28,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -36,12 +35,14 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Applies explicit placements, placement trees, or voxelized geometry to the world.
+ * Submits block placements to the world synchronously or via the async bake queue.
+ * <p>This node reports submit/queue status only. Monitor running bake tasks with dedicated
+ * downstream nodes such as {@link BakeStatusNode} that read {@link BakePlacementService#getTaskSnapshots()}.</p>
  */
 @NodeInfo(
     id = "output.execute.apply_changes",
     displayName = "Apply Changes",
-    description = "Applies explicit placements, placement trees, or voxelized geometry to the world.",
+    description = "Submits explicit placements, placement trees, or voxelized geometry to the world. Async mode queues a single bake task and returns its task ID.",
     category = "output.execute",
     order = 0
 )
@@ -49,7 +50,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApplyChangesNode.class);
 
-    @NodeProperty(displayName = "Show Progress Bar", category = "Execution", order = 1)
+    @NodeProperty(displayName = "Show Submit Status UI", category = "Execution", order = 1)
     private boolean showProgressBar = true;
 
     @NodeProperty(displayName = "Notify On Complete", category = "Execution", order = 2)
@@ -119,7 +120,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
         addOutputPort(new BasePort(OUTPUT_OPERATION_COUNT_ID, "Operation Count", "Number of blocks placed (sync) or queued (async)", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_EXECUTION_TIME_ID, "Execution Time", "Execution time in milliseconds (queueing time for async)", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_STATUS_ID, "Status", "Execution status message", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_TASK_ID, "Task ID", "Bake task UUID for async operations (empty for sync)", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_TASK_ID, "Task ID", "Single bake task UUID for the entire async submit (empty for sync)", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_IS_ASYNC, "Is Async", "Whether the operation was queued asynchronously", NodeDataType.BOOLEAN, this));
     }
 
@@ -180,10 +181,11 @@ public class ApplyChangesNode extends BaseCustomUINode {
                     progressPercentage = 0.0f;
                     statusMessage = "Timed out";
                 } else if (useAsyncBake) {
-                    // Async mode: operation is queued, not completed
-                    status = "Queued " + operationCount + " block placements for async execution";
-                    progressPercentage = 0.1f; // 10% = queued, not completed
-                    statusMessage = "Queued (Task: " + taskId + ")";
+                    status = "Submitted " + operationCount + " block placements (task " + taskId + ")";
+                    progressPercentage = 0.0f;
+                    statusMessage = taskId.isEmpty()
+                        ? "Submitted"
+                        : "Submitted (Task: " + taskId + ")";
                 } else {
                     // Sync mode: operation is completed
                     status = "Placed " + operationCount + " blocks (synchronous)";
@@ -226,10 +228,11 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 progressPercentage = 0.0f;
                 statusMessage = "Timed out";
             } else if (useAsyncBake) {
-                // Async mode: operation is queued, not completed
-                status = "Queued " + operationCount + " blocks for async execution";
-                progressPercentage = 0.1f; // 10% = queued, not completed
-                statusMessage = "Queued (Task: " + taskId + ")";
+                status = "Submitted " + operationCount + " blocks (task " + taskId + ")";
+                progressPercentage = 0.0f;
+                statusMessage = taskId.isEmpty()
+                    ? "Submitted"
+                    : "Submitted (Task: " + taskId + ")";
             } else {
                 // Sync mode: operation is completed
                 status = "Placed " + operationCount + "/" + blocks.size() + " blocks (synchronous)";
@@ -322,57 +325,55 @@ public class ApplyChangesNode extends BaseCustomUINode {
     }
 
     private ApplyResult applyPlacementList(ExecutionContext context, List<BlockPlacementData> placements, long deadlineMillis) {
-        Map<String, List<BlockPlacementData>> byBlockId = new LinkedHashMap<>();
-        for (BlockPlacementData placement : placements) {
-            byBlockId.computeIfAbsent(placement.blockId(), ignored -> new ArrayList<>()).add(placement);
+        if (useAsyncBake) {
+            List<BakeTask.Placement> queuedPlacements = new ArrayList<>(placements.size());
+            for (BlockPlacementData placement : placements) {
+                BlockState defaultState = resolveBlockState(placement.blockId());
+                if (defaultState == null) {
+                    continue;
+                }
+                BlockState state = applyBlockStateData(defaultState, placement.stateData());
+                queuedPlacements.add(new BakeTask.Placement(placement.pos(), state));
+            }
+
+            if (queuedPlacements.isEmpty()) {
+                return new ApplyResult(0, false, null);
+            }
+
+            UUID taskId = BakePlacementService.getInstance().enqueuePlacements(
+                context.getWorld(),
+                queuedPlacements,
+                placementMode,
+                recordUndo,
+                blocksPerTick,
+                tickBudgetNanos(),
+                BakePlacementService.resolveActorId(context.getPlayer()),
+                null
+            );
+            return new ApplyResult(queuedPlacements.size(), false, taskId);
         }
 
         int count = 0;
-        UUID lastTaskId = null;
-        for (Map.Entry<String, List<BlockPlacementData>> entry : byBlockId.entrySet()) {
-            BlockState defaultState = resolveBlockState(entry.getKey());
+        for (BlockPlacementData placement : placements) {
+            if (isTimedOut(deadlineMillis)) {
+                return new ApplyResult(count, true, null);
+            }
+
+            BlockState defaultState = resolveBlockState(placement.blockId());
             if (defaultState == null) {
                 continue;
             }
 
-            List<BlockPlacementData> placementBatch = entry.getValue();
-            if (useAsyncBake) {
-                List<BakeTask.Placement> queuedPlacements = new ArrayList<>(placementBatch.size());
-                for (BlockPlacementData placement : placementBatch) {
-                    BlockState state = applyBlockStateData(defaultState, placement.stateData());
-                    queuedPlacements.add(new BakeTask.Placement(placement.pos(), state));
-                }
-                UUID taskId = BakePlacementService.getInstance().enqueuePlacements(
-                    context.getWorld(),
-                    queuedPlacements,
-                    placementMode,
-                    recordUndo,
-                    blocksPerTick,
-                    tickBudgetNanos(),
-                    BakePlacementService.resolveActorId(context.getPlayer()),
-                    null
-                );
-                if (taskId != null) {
-                    lastTaskId = taskId;
-                }
-                count += queuedPlacements.size();
-            } else {
-                for (BlockPlacementData placement : placementBatch) {
-                    if (isTimedOut(deadlineMillis)) {
-                        return new ApplyResult(count, true, null);
-                    }
-                    BlockPos pos = placement.pos();
-                    if (placementMode == PlacementMode.INCREMENTAL && !context.getWorld().isAir(pos)) {
-                        continue;
-                    }
-                    BlockState state = applyBlockStateData(defaultState, placement.stateData());
-                    if (context.getWorld().setBlockState(pos, state, Block.NOTIFY_ALL)) {
-                        count++;
-                    }
-                }
+            BlockPos pos = placement.pos();
+            if (placementMode == PlacementMode.INCREMENTAL && !context.getWorld().isAir(pos)) {
+                continue;
+            }
+            BlockState state = applyBlockStateData(defaultState, placement.stateData());
+            if (context.getWorld().setBlockState(pos, state, Block.NOTIFY_ALL)) {
+                count++;
             }
         }
-        return new ApplyResult(count, false, lastTaskId);
+        return new ApplyResult(count, false, null);
     }
 
     private BlockState applyBlockStateData(BlockState baseState, @Nullable BlockStateData stateData) {
@@ -490,16 +491,22 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 }
                 l.addVerticalSpacing(getSmallPadding());
 
-                int statusColor = isExecuting.get() ? 0xFF44AADD : (progressPercentage >= 1.0f ? 0xFF44DD44 : 0xFF888888);
+                int statusColor = isExecuting.get()
+                    ? 0xFF44AADD
+                    : (progressPercentage >= 1.0f ? 0xFF44DD44 : 0xFF888888);
                 ImGui.pushStyleColor(ImGuiCol.Text, statusColor);
                 ImGui.text(statusMessage);
                 ImGui.popStyleColor();
                 l.addVerticalSpacing(getSmallPadding());
 
-                if (showProgressBar) {
+                if (showProgressBar && (!useAsyncBake || progressPercentage >= 1.0f)) {
                     float progressCursorX = ImGui.getCursorPosX();
                     ImGui.setCursorPosX(progressCursorX + edgeMargin);
                     ImGui.progressBar(progressPercentage, progressWidth, ImGui.getFrameHeight(), String.format("%.0f%%", progressPercentage * 100));
+                } else if (showProgressBar && useAsyncBake && !isExecuting.get() && progressPercentage < 1.0f) {
+                    float hintCursorX = ImGui.getCursorPosX();
+                    ImGui.setCursorPosX(hintCursorX + edgeMargin);
+                    ImGui.textDisabled("Monitor bake progress with a Bake Status node");
                 }
 
                 l.addVerticalSpacing(getMediumPadding());
@@ -561,7 +568,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
         applyRequested.set(true);
         executionId = UUID.randomUUID();
         progressPercentage = 0.0f;
-        statusMessage = "Queued";
+        statusMessage = "Ready";
         markDirty();
     }
 
