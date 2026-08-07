@@ -16,6 +16,8 @@ import imgui.ImGui;
 import imgui.ImVec2;
 import imgui.flag.ImGuiMouseButton;
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.editor.interaction.EditorInteractionMode;
+import com.nodecraft.gui.editor.interaction.EditorInteractionState;
 
 /**
  * ImGui节点编辑器的交互逻辑组件。
@@ -24,22 +26,9 @@ import com.nodecraft.core.NodeCraft;
  */
 public class ImGuiNodeInteraction {
 
-    /**
-     * 交互状态枚举 - 使用状态机模式管理复杂的交互逻辑。
-     * 定义了编辑器当前可能处于的交互模式。
-     */
-    public enum InteractionState {
-        IDLE,                // 空闲状态：没有进行任何交互
-        DRAGGING_NODE,       // 拖拽节点状态：正在拖动一个或多个节点
-        BOX_SELECTING,       // 框选状态：正在拖动鼠标进行区域选择
-        CREATING_CONNECTION, // 创建连接状态：正在从一个端口拖出连接线
-        PANNING_CANVAS       // 平移画布状态：正在拖动画布背景
-    }
-
     private final ICanvasEditor editor; // 对画布编辑器的引用，用于访问编辑器状态和调用其功能
 
-    // 状态机相关：当前交互状态
-    private InteractionState currentState = InteractionState.IDLE;
+    private final EditorInteractionState interactionState;
 
     // 框选状态变量：存储框选区域的世界坐标起始和结束点
     private NodePosition boxSelectStart = new NodePosition(0, 0);
@@ -94,16 +83,25 @@ public class ImGuiNodeInteraction {
      * 构造函数。
      * @param editor 画布编辑器的引用。
      */
-    public ImGuiNodeInteraction(ICanvasEditor editor) {
+    public ImGuiNodeInteraction(ICanvasEditor editor, EditorInteractionState interactionState) {
         this.editor = editor;
+        this.interactionState = java.util.Objects.requireNonNull(interactionState, "interactionState");
+    }
+
+    public EditorInteractionState getInteractionState() {
+        return interactionState;
+    }
+
+    public EditorInteractionMode getMode() {
+        return interactionState.getMode();
     }
 
     // --- Getter 方法 ---
     public NodePosition getBoxSelectStart() { return boxSelectStart; }
     public NodePosition getBoxSelectEnd() { return boxSelectEnd; }
-    public boolean isBoxSelecting() { return currentState == InteractionState.BOX_SELECTING; }
-    public boolean isDraggingNode() { return currentState == InteractionState.DRAGGING_NODE; }
-    public boolean isCreatingConnection() { return currentState == InteractionState.CREATING_CONNECTION; }
+    public boolean isBoxSelecting() { return interactionState.getMode() == EditorInteractionMode.BOX_SELECTING; }
+    public boolean isDraggingNode() { return interactionState.getMode() == EditorInteractionMode.DRAGGING_NODE; }
+    public boolean isCreatingConnection() { return interactionState.getMode() == EditorInteractionMode.CREATING_CONNECTION; }
     public ImVec2 getDragPreviewLineStartPos() { return dragPreviewLineStartPos; }
     public boolean isFromOutputPort() { return isFromOutputPort; }
     public UUID getHoveredNodeId() { return hoveredNodeId; }
@@ -198,7 +196,7 @@ public class ImGuiNodeInteraction {
      */
     public boolean tryStartNodeDraggingFromNodeBody(UUID nodeId) {
         // 只有在 IDLE 状态才能启动拖拽
-        if (currentState != InteractionState.IDLE) {
+        if (!interactionState.isIdle()) {
             return false;
         }
 
@@ -215,7 +213,7 @@ public class ImGuiNodeInteraction {
                 return false;
             }
 
-            currentState = InteractionState.DRAGGING_NODE;
+            interactionState.forceMode(EditorInteractionMode.DRAGGING_NODE);
             draggingNodeId = nodeId; // 记录发起拖拽的节点ID
             ImGui.getIO().setWantCaptureMouse(true); // 明确设置捕获鼠标，阻止父窗口移动
             NodeCraft.LOGGER.debug("从节点主体启动拖拽：{}", nodeId);
@@ -229,10 +227,10 @@ public class ImGuiNodeInteraction {
      * 当鼠标从节点主体 invisible button 或自定义 UI 控件释放时调用。
      */
     public void tryStopNodeDragging() {
-        if (currentState == InteractionState.DRAGGING_NODE) {
+        if (interactionState.getMode() == EditorInteractionMode.DRAGGING_NODE) {
             // 只有当鼠标左键真的抬起时才停止拖拽
             if (ImGuiInputAdapter.isMouseReleased(ImGuiMouseButton.Left)) {
-                currentState = InteractionState.IDLE;
+                interactionState.resetToIdle();
                 draggingNodeId = null;
                 ImGui.getIO().setWantCaptureMouse(false); // 释放鼠标捕获
                 NodeCraft.LOGGER.debug("节点拖动结束（鼠标释放）");
@@ -250,13 +248,13 @@ public class ImGuiNodeInteraction {
      * @param mousePos 鼠标屏幕位置。
      */
     public boolean tryStartCanvasPanning(ImVec2 mousePos) {
-        if (currentState != InteractionState.IDLE) {
+        if (!interactionState.isIdle()) {
             return false;
         }
 
         // 确保鼠标左键刚刚按下，且 ImGui 未被其他更高优先级元素捕获
         if (ImGuiInputAdapter.isMouseClicked(ImGuiMouseButton.Left) && !ImGui.getIO().getWantCaptureMouse()) {
-            currentState = InteractionState.PANNING_CANVAS;
+            interactionState.forceMode(EditorInteractionMode.PANNING_CANVAS);
             panStartMousePos.x = mousePos.x;
             panStartMousePos.y = mousePos.y;
             initialCanvasOffsetX = editor.getCanvasOffsetX();
@@ -274,7 +272,7 @@ public class ImGuiNodeInteraction {
      * @param canvasPos 画布窗口的屏幕位置。
      */
     public void handleCanvasPanning(ImVec2 canvasPos) {
-        if (currentState != InteractionState.PANNING_CANVAS) {
+        if (interactionState.getMode() != EditorInteractionMode.PANNING_CANVAS) {
             return;
         }
 
@@ -293,7 +291,7 @@ public class ImGuiNodeInteraction {
             editor.setCanvasOffset(newOffsetX, newOffsetY);
         } else {
             // 鼠标左键释放，结束平移
-            currentState = InteractionState.IDLE;
+            interactionState.resetToIdle();
             ImGui.getIO().setWantCaptureMouse(false); // 释放鼠标捕获
             NodeCraft.LOGGER.debug("画布平移结束");
         }
@@ -310,11 +308,11 @@ public class ImGuiNodeInteraction {
      */
     public void handleBoxSelection(ImVec2 mousePos, ImVec2 canvasPos, Map<UUID, NodePosition> nodePositions, NodeGraph graph) {
         // 处理进行中的框选：只有当当前状态为 BOX_SELECTING 时
-        if (currentState == InteractionState.BOX_SELECTING) {
+        if (interactionState.getMode() == EditorInteractionMode.BOX_SELECTING) {
             // 如果检测到节点拖放操作开始，立即取消框选
             if (CanvasComponent.isNodeDragDropActive()) {
                 NodeCraft.LOGGER.debug("检测到节点拖放操作开始，取消当前框选");
-                currentState = InteractionState.IDLE;
+                interactionState.resetToIdle();
                 ImGui.getIO().setWantCaptureMouse(false); // 释放鼠标捕获
                 return;
             }
@@ -323,7 +321,7 @@ public class ImGuiNodeInteraction {
                 boxSelectEnd.x = (mousePos.x - canvasPos.x - editor.getCanvasOffsetX()) / editor.getCanvasZoom();
                 boxSelectEnd.y = (mousePos.y - canvasPos.y - editor.getCanvasOffsetY()) / editor.getCanvasZoom();
             } else { // 鼠标左键抬起，完成框选
-                currentState = InteractionState.IDLE;
+                interactionState.resetToIdle();
                 processBoxSelectionResult(nodePositions, graph, editor.getSelectedNodeIds());
                 ImGui.getIO().setWantCaptureMouse(false); // 释放鼠标捕获
             }
@@ -336,10 +334,10 @@ public class ImGuiNodeInteraction {
      * @param canvasPos 画布屏幕位置。
      */
     public void startBoxSelection(ImVec2 mousePos, ImVec2 canvasPos) {
-        NodeCraft.LOGGER.debug("startBoxSelection被调用 - currentState: {}", currentState);
+        NodeCraft.LOGGER.debug("startBoxSelection被调用 - currentState: {}", interactionState.getMode());
         
-        if (currentState != InteractionState.IDLE) {
-            NodeCraft.LOGGER.debug("startBoxSelection失败 - 当前状态不是IDLE: {}", currentState);
+        if (!interactionState.isIdle()) {
+            NodeCraft.LOGGER.debug("startBoxSelection失败 - 当前状态不是IDLE: {}", interactionState.getMode());
             return;
         }
         
@@ -349,12 +347,12 @@ public class ImGuiNodeInteraction {
             return;
         }
 
-        currentState = InteractionState.BOX_SELECTING;
+        interactionState.forceMode(EditorInteractionMode.BOX_SELECTING);
         float worldX = (mousePos.x - canvasPos.x - editor.getCanvasOffsetX()) / editor.getCanvasZoom();
         float worldY = (mousePos.y - canvasPos.y - editor.getCanvasOffsetY()) / editor.getCanvasZoom();
         boxSelectStart = new NodePosition(worldX, worldY);
         boxSelectEnd = new NodePosition(worldX, worldY);
-        NodeCraft.LOGGER.debug("框选成功启动，起始点: ({}, {}), 状态设置为: {}", worldX, worldY, currentState);
+        NodeCraft.LOGGER.debug("框选成功启动，起始点: ({}, {}), 状态设置为: {}", worldX, worldY, interactionState.getMode());
         ImGui.getIO().setWantCaptureMouse(true); // 确保启动框选时，鼠标事件被捕获，防止主窗口移动
         NodeCraft.LOGGER.debug("框选启动完成 - setWantCaptureMouse(true)");
     }
@@ -430,7 +428,7 @@ public class ImGuiNodeInteraction {
      */
     public boolean tryStartConnectionCreation(UUID hoveredNodeId, String hoveredPortId, boolean isOutputPort,
                                               Map<UUID, Map<String, ImVec2>> portScreenPositions) {
-        if (currentState != InteractionState.IDLE || hoveredNodeId == null || hoveredPortId == null) {
+        if (!interactionState.isIdle() || hoveredNodeId == null || hoveredPortId == null) {
             return false;
         }
 
@@ -445,7 +443,7 @@ public class ImGuiNodeInteraction {
                 Map<String, ImVec2> ports = portScreenPositions.get(hoveredNodeId);
                 if (ports.containsKey(hoveredPortId)) {
                     ImVec2 portPos = ports.get(hoveredPortId);
-                    currentState = InteractionState.CREATING_CONNECTION;
+                    interactionState.forceMode(EditorInteractionMode.CREATING_CONNECTION);
                     sourceNodeId = hoveredNodeId;
                     sourcePortId = hoveredPortId;
                     dragPreviewLineStartPos = portPos;
@@ -466,7 +464,7 @@ public class ImGuiNodeInteraction {
      * @param portScreenPositions 端口屏幕位置映射。
      */
     public void handleActiveConnectionCreation(NodeGraph graph, Map<UUID, Map<String, ImVec2>> portScreenPositions) {
-        if (currentState != InteractionState.CREATING_CONNECTION) {
+        if (interactionState.getMode() != EditorInteractionMode.CREATING_CONNECTION) {
             return;
         }
 
@@ -476,7 +474,7 @@ public class ImGuiNodeInteraction {
             String dragSourcePortId = sourcePortId;
             boolean dragFromOutputPort = isFromOutputPort;
 
-            currentState = InteractionState.IDLE; // 重置状态
+            interactionState.resetToIdle(); // 重置状态
             ImGui.getIO().setWantCaptureMouse(false); // 释放鼠标捕获
             float endX = ImGui.getMousePosX();
             float endY = ImGui.getMousePosY();

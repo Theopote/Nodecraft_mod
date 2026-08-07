@@ -18,6 +18,7 @@ import com.nodecraft.gui.editor.base.GraphApplyTarget;
 import com.nodecraft.gui.editor.base.GraphNodeAnchor;
 import com.nodecraft.gui.editor.base.INodeEditor;
 import com.nodecraft.gui.editor.document.EditorDocumentState;
+import com.nodecraft.gui.editor.interaction.EditorInteractionState;
 import com.nodecraft.gui.editor.integration.ImGuiInputAdapter;
 import com.nodecraft.gui.editor.preview.AutoPreviewController;
 import com.nodecraft.gui.recommendation.NodeRecommendationApplyResult;
@@ -83,9 +84,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     // portScreenPositions 存储的是端口的屏幕坐标 (已缩放)，每帧更新
     private Map<UUID, Map<String, ImVec2>> portScreenPositions = new HashMap<>();
 
-    // 节点选中状态
-    private UUID selectedNodeId = null;
-    private final java.util.Set<UUID> selectedNodeIds = new HashSet<>();
+    private final EditorInteractionState interactionState = new EditorInteractionState();
 
     // 画布视图状态变量
     private float canvasZoom = 1.0f;
@@ -124,7 +123,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     private ImGuiNodeEditor() {
         this.renderer = new ImGuiNodeRenderer(this);
         this.io = new ImGuiNodeIO(this);
-        this.interaction = new ImGuiNodeInteraction(this);
+        this.interaction = new ImGuiNodeInteraction(this, interactionState);
         this.menus = new ImGuiNodeMenus(this, this.io);
         this.history = new ImGuiNodeHistory(this);
         this.clipboard = new ImGuiNodeClipboard(this);
@@ -331,7 +330,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             }
 
             // 3. 渲染背景连接线（未选中节点之间的连接）
-            renderer.renderConnectionsDirect(drawList, document.getGraph(), portScreenPositions, selectedNodeIds);
+            renderer.renderConnectionsDirect(drawList, document.getGraph(), portScreenPositions, interactionState.getSelectedNodeIds());
 
             // 4. 渲染节点（包含节点主体、标题和自定义UI）。
             // 节点渲染会设置 ImGui.invisibleButton，并更新 ImGui.isItemActive() 状态。
@@ -349,10 +348,10 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 interaction.setPendingClickTargetNodeId(null);
             }
             // 【关键修改点】：节点选择和拖拽的启动和持续移动逻辑现在都移到 ImGuiNodeRenderer 内部处理。
-            renderer.renderNodesDirect(drawList, canvasPos, document.getGraph(), document.getNodePositions(), portScreenPositions, selectedNodeIds);
+            renderer.renderNodesDirect(drawList, canvasPos, document.getGraph(), document.getNodePositions(), portScreenPositions, interactionState.getSelectedNodeIds());
 
             // 5. 渲染前景连接线（与选中节点相关的连接，显示在节点上方）
-            renderer.renderForegroundConnections(drawList, document.getGraph(), portScreenPositions, selectedNodeIds);
+            renderer.renderForegroundConnections(drawList, document.getGraph(), portScreenPositions, interactionState.getSelectedNodeIds());
 
             // 6. 更新端口和连接的悬停状态
             // 这两个方法会更新 interaction.hoveredNodeId, hoveredPortId, isHoveredPortOutput, isHoveringConnection 等
@@ -408,9 +407,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                         NodeCraft.LOGGER.debug("鼠标点击在画布空白区域 (清除选择/框选/平移画布) - 鼠标位置: ({}, {})", mousePos.x, mousePos.y);
                         // 如果鼠标在画布空白区域，并且当前没有按住Ctrl键，清除所有选择
                         if (!ImGui.getIO().getKeyCtrl()) {
-                            NodeCraft.LOGGER.debug("清除选择 - 当前选中节点数: {}", selectedNodeIds.size());
+                            NodeCraft.LOGGER.debug("清除选择 - 当前选中节点数: {}", interactionState.getSelectedNodeIds().size());
                             this.clearSelectedNodes();
-                            NodeCraft.LOGGER.debug("选择已清除 - 当前选中节点数: {}", selectedNodeIds.size());
+                            NodeCraft.LOGGER.debug("选择已清除 - 当前选中节点数: {}", interactionState.getSelectedNodeIds().size());
                         }
                         // 启动框选 (使用新的专门的启动方法)
                         NodeCraft.LOGGER.debug("尝试启动框选");
@@ -639,8 +638,8 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
         // 如果拖动节点属于当前选中集，则整体移动选中集；否则只移动拖动源节点
         java.util.Set<UUID> moveTargets = new java.util.HashSet<>();
-        if (!selectedNodeIds.isEmpty() && selectedNodeIds.contains(draggingNodeId)) {
-            moveTargets.addAll(selectedNodeIds);
+        if (!interactionState.getSelectedNodeIds().isEmpty() && interactionState.getSelectedNodeIds().contains(draggingNodeId)) {
+            moveTargets.addAll(interactionState.getSelectedNodeIds());
         } else {
             moveTargets.add(draggingNodeId);
         }
@@ -1019,12 +1018,12 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         // Then iterate backwards to hit-test the top-most drawn node first.
         List<INode> renderOrder = new java.util.ArrayList<>(nodes.size());
         for (INode node : nodes) {
-            if (!selectedNodeIds.contains(node.getId())) {
+            if (!interactionState.getSelectedNodeIds().contains(node.getId())) {
                 renderOrder.add(node);
             }
         }
         for (INode node : nodes) {
-            if (selectedNodeIds.contains(node.getId())) {
+            if (interactionState.getSelectedNodeIds().contains(node.getId())) {
                 renderOrder.add(node);
             }
         }
@@ -1199,20 +1198,20 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     @Override
     public UUID getSelectedNodeId() {
-        return selectedNodeId;
+        return interactionState.getPrimarySelectedNodeId();
     }
 
     @Override
     public void setSelectedNodeId(UUID nodeId) {
-        this.selectedNodeId = nodeId;
+        interactionState.setPrimarySelectedNodeId(nodeId);
         if (nodeId != null) {
-            this.selectedNodeIds.add(nodeId);
-            NodeCraft.LOGGER.debug("设置选中节点ID: {}, 当前选中节点数: {}", nodeId, selectedNodeIds.size());
-        } else {
-            // 如果传入null，表示清空主选中节点，但不清空selectedNodeIds集合
-            // clearSelectedNodes() 方法负责清空整个集合
+            NodeCraft.LOGGER.debug("设置选中节点ID: {}, 当前选中节点数: {}", nodeId, interactionState.getSelectedNodeIds().size());
         }
         notifyEditorComponents("nodeSelected", nodeId); // 通知选择事件
+    }
+
+    public EditorInteractionState getInteractionState() {
+        return interactionState;
     }
 
     /**
@@ -1242,28 +1241,22 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     @Override
     public java.util.Set<UUID> getSelectedNodeIds() {
-        return selectedNodeIds;
+        return interactionState.getSelectedNodeIds();
     }
 
     @Override
     public void clearSelectedNodes() {
-        this.selectedNodeIds.clear();
-        this.selectedNodeId = null;
+        interactionState.clearSelection();
         NodeCraft.LOGGER.debug("已清除所有选中节点");
         notifyEditorComponents("nodeSelectionCleared", null); // 通知清除选择事件
     }
 
     @Override
     public void removeSelectedNode(UUID nodeId) {
-        this.selectedNodeIds.remove(nodeId);
-        if (nodeId != null && nodeId.equals(selectedNodeId)) {
-            selectedNodeId = null;
-            // 如果移除了主选节点，尝试将集合中的第一个节点设置为主选
-            if (!selectedNodeIds.isEmpty()) {
-                setSelectedNodeId(selectedNodeIds.iterator().next());
-            } else {
-                notifyEditorComponents("nodeSelectionCleared", null);
-            }
+        boolean wasPrimary = nodeId != null && nodeId.equals(interactionState.getPrimarySelectedNodeId());
+        interactionState.removeFromSelection(nodeId);
+        if (wasPrimary && !interactionState.hasSelection()) {
+            notifyEditorComponents("nodeSelectionCleared", null);
         }
     }
 
@@ -1410,11 +1403,11 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     }
 
     public boolean createSubgraphFromSelection() {
-        if (document.getGraph() == null || selectedNodeIds.isEmpty()) {
+        if (document.getGraph() == null || interactionState.getSelectedNodeIds().isEmpty()) {
             return false;
         }
 
-        java.util.Set<UUID> selection = new java.util.LinkedHashSet<>(selectedNodeIds);
+        java.util.Set<UUID> selection = new java.util.LinkedHashSet<>(interactionState.getSelectedNodeIds());
         String subgraphName = document.getGraph().getName() != null && !document.getGraph().getName().isBlank()
             ? document.getGraph().getName() + " Selection"
             : "Extracted Subgraph";
@@ -1483,10 +1476,10 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     }
 
     public boolean openSelectedSubgraph() {
-        if (selectedNodeIds.size() != 1) {
+        if (interactionState.getSelectedNodeIds().size() != 1) {
             return false;
         }
-        return openSubgraphNode(selectedNodeIds.iterator().next());
+        return openSubgraphNode(interactionState.getSelectedNodeIds().iterator().next());
     }
 
     public boolean closeCurrentSubgraph() {
@@ -1513,7 +1506,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             document.replaceNodePositions(copyNodePositions(context.parentPositions()));
             clearSelectedNodes();
             if (document.getGraph().getNode(context.wrapperNodeId()) != null) {
-                selectedNodeIds.add(context.wrapperNodeId());
+                interactionState.getSelectedNodeIds().add(context.wrapperNodeId());
                 setSelectedNodeId(context.wrapperNodeId());
             }
             markGraphStructureDirty();
@@ -1604,11 +1597,11 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     }
 
     public boolean dissolveSelectedSubgraph() {
-        if (document.getGraph() == null || selectedNodeIds.size() != 1) {
+        if (document.getGraph() == null || interactionState.getSelectedNodeIds().size() != 1) {
             return false;
         }
 
-        UUID wrapperNodeId = selectedNodeIds.iterator().next();
+        UUID wrapperNodeId = interactionState.getSelectedNodeIds().iterator().next();
         INode wrapperNode = document.getGraph().getNode(wrapperNodeId);
         if (!isSubgraphNode(wrapperNode)) {
             return false;
@@ -1760,7 +1753,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             }
 
             clearSelectedNodes();
-            selectedNodeIds.addAll(restoredNodeIds.values());
+            interactionState.getSelectedNodeIds().addAll(restoredNodeIds.values());
             setSelectedNodeId(restoredNodeIds.values().iterator().next());
             markGraphStructureDirty();
             if (wasRecording) {
@@ -2183,11 +2176,11 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             NodeCraft.LOGGER.warn("无法复制节点：当前没有节点图");
             return false;
         }
-        if (selectedNodeIds.isEmpty()) {
+        if (interactionState.getSelectedNodeIds().isEmpty()) {
             NodeCraft.LOGGER.warn("没有选中的节点可复制");
             return false;
         }
-        UUID nodeId = selectedNodeIds.iterator().next();
+        UUID nodeId = interactionState.getSelectedNodeIds().iterator().next();
         INode sourceNode = document.getGraph().getNode(nodeId);
         if (sourceNode == null) {
             NodeCraft.LOGGER.error("复制失败：找不到选中的节点 {}", nodeId);

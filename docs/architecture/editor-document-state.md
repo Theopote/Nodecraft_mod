@@ -21,12 +21,13 @@ ImGuiNodeEditor (UI / interaction)
 | `Map<UUID, NodePosition> nodePositions` | Canvas layout for the active graph |
 | `dirty` / `dirtyVersion` | Unsaved flag + monotonic generation for auto-preview |
 
-## Stays on the editor (deferred)
+## Stays on the editor (deferred / later)
 
-- Selection (`selectedNodeId` / `selectedNodeIds`) — Phase G interaction mode
 - Subgraph edit stack / rename UI
 - Canvas zoom/offset, display mode, custom colors, disabled/hidden sets
 - History / clipboard / menus / renderer
+
+Selection + exclusive gesture mode moved to Phase G (`EditorInteractionState`).
 
 ## Wiring
 

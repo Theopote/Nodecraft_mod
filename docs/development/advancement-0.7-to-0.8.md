@@ -10,7 +10,7 @@
 | 0.5 | Preview / Bake | Done |
 | 0.6 | Execution (dataflow + exec frontier) | Done |
 | **0.7** | **Stability** | **PASS (`v0.7-stability`)** |
-| **0.8** | **Interactive Runtime** | **B–F PASS — next: G EditorInteractionMode** |
+| **0.8** | **Interactive Runtime** | **B–G PASS — next: H docs cleanup** |
 | 0.9 | Compatibility / format freeze | Later |
 | 1.0 | Release | Later |
 
@@ -131,11 +131,24 @@ Design: [`../architecture/editor-document-state.md`](../architecture/editor-docu
 
 ---
 
+## Phase G — EditorInteractionMode — PASS
+
+Design: [`../architecture/editor-interaction-mode.md`](../architecture/editor-interaction-mode.md)
+
+| Work | Status |
+|------|--------|
+| `EditorInteractionMode` enum | PASS |
+| `EditorInteractionState` (mode + selection) | PASS |
+| `ImGuiNodeInteraction` uses shared mode | PASS |
+| `ImGuiNodeEditor` selection delegates to interaction state | PASS |
+| Unit tests | PASS |
+
+---
+
 ## Later phases (ordered)
 
 | Phase | Theme |
 |-------|--------|
-| G | `EditorInteractionMode` |
 | H | Docs history cleanup |
 | I | `GraphFormatVersion` |
 
