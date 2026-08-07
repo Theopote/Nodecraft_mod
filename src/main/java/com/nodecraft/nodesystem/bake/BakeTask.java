@@ -4,6 +4,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +12,9 @@ import java.util.UUID;
 
 /**
  * Time-sliced block placement task driven from the server tick.
+ * <p>
+ * Cancel / timeout always rolls back in-world progress using captured previous states,
+ * so World and BakeHistory stay consistent (COMPLETED = commit, CANCELLED/TIMED_OUT = rollback).
  */
 public class BakeTask {
 
@@ -20,7 +24,7 @@ public class BakeTask {
     private final PlacementMode placementMode;
     private final UUID actorId;
     private final boolean recordUndo;
-    private final BakeOperationKind operationKind;  // NEW: semantic meaning for history
+    private final BakeOperationKind operationKind;
     private final int blocksPerTick;
     private final long timeBudgetNanos;
     private final Runnable onComplete;
@@ -28,8 +32,8 @@ public class BakeTask {
 
     private final List<BakeUndoRecord> undoRecords = new ArrayList<>();
     private int nextIndex = 0;
-    private boolean completed = false;
-    private boolean cancelled = false;
+    private BakeTaskState state = BakeTaskState.QUEUED;
+    private BakeTaskState pendingAbortState = BakeTaskState.CANCELLED;
     private int placedCount = 0;
     private int skippedCount = 0;
 
@@ -41,7 +45,7 @@ public class BakeTask {
                     boolean recordUndo,
                     int blocksPerTick,
                     Runnable onComplete) {
-        this(taskId, world, toPlacements(positions, targetState), placementMode, recordUndo, 
+        this(taskId, world, toPlacements(positions, targetState), placementMode, recordUndo,
              BakeOperationKind.APPLY, blocksPerTick, 0L, BakePlacementService.SERVER_ACTOR_ID, onComplete);
     }
 
@@ -54,7 +58,7 @@ public class BakeTask {
                     long timeBudgetNanos,
                     UUID actorId,
                     Runnable onComplete) {
-        this(taskId, world, placements, placementMode, recordUndo, 
+        this(taskId, world, placements, placementMode, recordUndo,
              BakeOperationKind.APPLY, blocksPerTick, timeBudgetNanos, actorId, onComplete);
     }
 
@@ -82,7 +86,7 @@ public class BakeTask {
                     long timeBudgetNanos,
                     UUID actorId,
                     Runnable onComplete,
-                    @org.jetbrains.annotations.Nullable Runnable onCancel) {
+                    @Nullable Runnable onCancel) {
         this.taskId = taskId != null ? taskId : UUID.randomUUID();
         this.world = world;
         this.placements = copyPlacements(placements);
@@ -108,9 +112,12 @@ public class BakeTask {
         return actorId;
     }
 
-
     public BakeOperationKind getOperationKind() {
         return operationKind;
+    }
+
+    public boolean isRecordUndo() {
+        return recordUndo;
     }
 
     public Runnable getOnComplete() {
@@ -120,12 +127,25 @@ public class BakeTask {
     public Runnable getOnCancel() {
         return onCancel;
     }
+
+    public BakeTaskState getState() {
+        return state;
+    }
+
+    /**
+     * Whether this task should leave the active queue (finished or aborting).
+     */
     public boolean isCompleted() {
-        return completed;
+        return state.isTerminal()
+            || state == BakeTaskState.CANCELLING
+            || state == BakeTaskState.ROLLING_BACK;
     }
 
     public boolean isCancelled() {
-        return cancelled;
+        return state == BakeTaskState.CANCELLED
+            || state == BakeTaskState.TIMED_OUT
+            || state == BakeTaskState.CANCELLING
+            || state == BakeTaskState.ROLLING_BACK;
     }
 
     public int getPlacedCount() {
@@ -150,9 +170,15 @@ public class BakeTask {
 
     @SuppressWarnings("deprecation")
     public int processTick() {
-        if (completed || cancelled || world == null) {
+        if (state != BakeTaskState.QUEUED && state != BakeTaskState.RUNNING) {
             return -1;
         }
+        if (world == null) {
+            state = BakeTaskState.FAILED;
+            return -1;
+        }
+
+        state = BakeTaskState.RUNNING;
 
         int limit = Math.min(nextIndex + blocksPerTick, placements.size());
         long deadline = timeBudgetNanos > 0L ? System.nanoTime() + timeBudgetNanos : Long.MAX_VALUE;
@@ -172,30 +198,64 @@ public class BakeTask {
                 continue;
             }
 
-            BlockState previous = recordUndo ? world.getBlockState(pos) : null;
+            // Always capture previous state so cancel/timeout can roll back the transaction.
+            BlockState previous = world.getBlockState(pos);
             if (world.setBlockState(pos, targetState, Block.NOTIFY_ALL)) {
                 placedThisTick++;
                 placedCount++;
-                if (recordUndo && previous != null) {
-                    undoRecords.add(new BakeUndoRecord(pos, previous));
-                }
+                undoRecords.add(new BakeUndoRecord(pos, previous));
             } else {
                 skippedCount++;
             }
         }
 
         if (nextIndex >= placements.size()) {
-            completed = true;
+            state = BakeTaskState.COMPLETED;
         }
         return placedThisTick;
     }
 
+    /**
+     * Requests cancellation. Prefer {@link #requestCancel(BakeTaskState)} with
+     * {@link BakeTaskState#CANCELLED} or {@link BakeTaskState#TIMED_OUT}.
+     */
     public void cancel() {
-        cancelled = true;
-        completed = true;
+        requestCancel(BakeTaskState.CANCELLED);
+    }
+
+    public void requestCancel(BakeTaskState terminalState) {
+        if (state.isTerminal() || state == BakeTaskState.CANCELLING || state == BakeTaskState.ROLLING_BACK) {
+            return;
+        }
+        BakeTaskState resolved = terminalState == BakeTaskState.TIMED_OUT
+            ? BakeTaskState.TIMED_OUT
+            : BakeTaskState.CANCELLED;
+        // Stash desired terminal; finalizeCancelledTask advances through CANCELLING/ROLLING_BACK.
+        state = BakeTaskState.CANCELLING;
+        this.pendingAbortState = resolved;
+    }
+
+    BakeTaskState getPendingAbortState() {
+        return pendingAbortState;
+    }
+
+    /**
+     * Rolls back blocks written by this task so the world matches pre-task state.
+     * Currently synchronous; large rollbacks may lag a tick (async RollbackTask is a follow-up).
+     */
+    public void rollback() {
+        state = BakeTaskState.ROLLING_BACK;
+        undo();
+    }
+
+    void markAborted() {
+        state = pendingAbortState != null ? pendingAbortState : BakeTaskState.CANCELLED;
     }
 
     public void undo() {
+        if (world == null) {
+            return;
+        }
         for (BakeUndoRecord rec : undoRecords) {
             world.setBlockState(rec.pos(), rec.previousState(), Block.NOTIFY_ALL);
         }

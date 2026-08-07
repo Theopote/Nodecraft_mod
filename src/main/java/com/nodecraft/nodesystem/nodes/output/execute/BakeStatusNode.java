@@ -60,7 +60,7 @@ public class BakeStatusNode extends BaseCustomUINode {
         addInputPort(new BasePort(INPUT_TASK_ID_ID, "Task ID", "Bake task UUID from Apply Changes", NodeDataType.STRING, this));
 
         addOutputPort(new BasePort(OUTPUT_FOUND_ID, "Found", "Whether the task snapshot was found", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_STATE_ID, "State", "Queued, Running, Completed, or Cancelled", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_STATE_ID, "State", "BakeTaskState display name (Queued, Running, Completed, Cancelled, Timed Out, ...)", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_PROGRESS_ID, "Progress", "Bake progress from 0.0 to 1.0", NodeDataType.FLOAT, this));
         addOutputPort(new BasePort(OUTPUT_PLACED_ID, "Placed", "Blocks placed so far", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_SKIPPED_ID, "Skipped", "Blocks skipped so far", NodeDataType.INTEGER, this));
@@ -199,9 +199,9 @@ public class BakeStatusNode extends BaseCustomUINode {
                 l.addVerticalSpacing(getMediumPadding());
 
                 int statusColor = switch (state) {
-                    case "Running" -> 0xFF44AADD;
+                    case "Running", "Cancelling", "Rolling Back" -> 0xFF44AADD;
                     case "Completed" -> 0xFF44DD44;
-                    case "Cancelled", "Not Found" -> 0xFFFF6666;
+                    case "Cancelled", "Timed Out", "Failed", "Not Found" -> 0xFFFF6666;
                     case "Queued" -> 0xFFFFCC44;
                     default -> 0xFF888888;
                 };

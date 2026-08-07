@@ -200,6 +200,15 @@ public class BakePlacementService {
     }
 
     public boolean cancelTask(UUID taskId) {
+        return cancelTask(taskId, BakeTaskState.CANCELLED);
+    }
+
+    /**
+     * Cancels a queued/running task and rolls back its in-world progress.
+     *
+     * @param terminalState {@link BakeTaskState#CANCELLED} or {@link BakeTaskState#TIMED_OUT}
+     */
+    public boolean cancelTask(UUID taskId, BakeTaskState terminalState) {
         if (taskId == null) {
             return false;
         }
@@ -215,13 +224,12 @@ public class BakePlacementService {
             if (task == null) {
                 return false;
             }
-            task.cancel();
+            task.requestCancel(terminalState != null ? terminalState : BakeTaskState.CANCELLED);
             queue.remove(task);
         }
 
-        // History / world rollback must not run while holding the queue monitor.
         finalizeCancelledTask(task);
-        NodeCraft.LOGGER.info("Cancelled bake task {}", taskId);
+        NodeCraft.LOGGER.info("Cancelled bake task {} ({})", taskId, task.getState());
         return true;
     }
 
@@ -230,7 +238,7 @@ public class BakePlacementService {
         synchronized (queue) {
             cancelledTasks = new ArrayList<>(queue);
             for (BakeTask task : cancelledTasks) {
-                task.cancel();
+                task.requestCancel(BakeTaskState.CANCELLED);
             }
             queue.clear();
         }
@@ -291,7 +299,7 @@ public class BakePlacementService {
             processTick();
             if (isTaskFinished(taskId)) {
                 TaskSnapshot snapshot = getTaskSnapshot(taskId);
-                return snapshot == null || !snapshot.cancelled();
+                return snapshot != null && snapshot.state() == BakeTaskState.COMPLETED;
             }
         }
         return false;
@@ -441,8 +449,10 @@ public class BakePlacementService {
 
     private void finishTask(BakeTask task) {
         rememberTaskSnapshot(task);
-        if (task.isCancelled()) {
-            // Cancel path owns history / rollback via finalizeCancelledTask.
+        if (task.getState().isAbort()
+            || task.getState() == BakeTaskState.CANCELLING
+            || task.getState() == BakeTaskState.ROLLING_BACK) {
+            // Cancel path owns rollback / stack restore via finalizeCancelledTask.
             return;
         }
 
@@ -463,37 +473,29 @@ public class BakePlacementService {
     }
 
     /**
-     * Cancel / timeout finalization.
-     * <ul>
-     *   <li>{@link BakeOperationKind#APPLY}: keep partial world writes and commit captured
-     *       undo records so timeout/cancel remains undoable.</li>
-     *   <li>{@link BakeOperationKind#UNDO} / {@link BakeOperationKind#REDO}: abort the
-     *       transaction — roll back in-world progress, then restore stacks via
-     *       {@link BakeTask#getOnCancel()}.</li>
-     * </ul>
+     * Cancel / timeout = rollback current task (database-style abort).
+     * <ol>
+     *   <li>Restore world using captured previous states</li>
+     *   <li>Restore UNDO/REDO stacks via {@link BakeTask#getOnCancel()} when present</li>
+     *   <li>Do not commit history — World and History stay aligned</li>
+     * </ol>
+     * Large synchronous rollbacks may lag a tick; a future {@code RollbackTask} can time-slice this.
      */
     private void finalizeCancelledTask(BakeTask task) {
+        if (!task.getUndoRecords().isEmpty()) {
+            task.rollback();
+        }
+        if (task.getOnCancel() != null) {
+            task.getOnCancel().run();
+        }
+        task.markAborted();
         rememberTaskSnapshot(task);
 
-        BakeOperationKind kind = task.getOperationKind();
-        if (kind == BakeOperationKind.UNDO || kind == BakeOperationKind.REDO) {
-            if (!task.getUndoRecords().isEmpty()) {
-                task.undo();
-            }
-            if (task.getOnCancel() != null) {
-                task.getOnCancel().run();
-            }
-        } else {
-            commitTaskHistory(task);
-            if (task.getOnCancel() != null) {
-                task.getOnCancel().run();
-            }
-        }
-
         NodeCraft.LOGGER.debug(
-            "Bake task {} ({}) cancelled. placed={}, skipped={}, total={}",
+            "Bake task {} ({}) {} after rollback. placed={}, skipped={}, total={}",
             task.getTaskId(),
-            kind,
+            task.getOperationKind(),
+            task.getState(),
             task.getPlacedCount(),
             task.getSkippedCount(),
             task.getTotalCount()
@@ -501,7 +503,7 @@ public class BakePlacementService {
     }
 
     private void commitTaskHistory(BakeTask task) {
-        if (task.getUndoRecords().isEmpty()) {
+        if (!task.isRecordUndo() || task.getUndoRecords().isEmpty()) {
             return;
         }
 
@@ -537,7 +539,7 @@ public class BakePlacementService {
                                int totalCount,
                                int remainingCount,
                                double progress,
-                               boolean cancelled) {
+                               BakeTaskState state) {
         static TaskSnapshot from(BakeTask task) {
             return new TaskSnapshot(
                 task.getTaskId(),
@@ -546,21 +548,16 @@ public class BakePlacementService {
                 task.getTotalCount(),
                 task.getRemainingCount(),
                 task.getProgress(),
-                task.isCancelled()
+                task.getState()
             );
         }
 
+        public boolean cancelled() {
+            return state != null && state.isAbort();
+        }
+
         public String resolveState() {
-            if (cancelled) {
-                return "Cancelled";
-            }
-            if (totalCount == 0 || remainingCount == 0) {
-                return "Completed";
-            }
-            if (placedCount > 0 || progress > 0.0d) {
-                return "Running";
-            }
-            return "Queued";
+            return state != null ? state.displayName() : BakeTaskState.FAILED.displayName();
         }
     }
 }

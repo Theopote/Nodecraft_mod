@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.bake.BakePlacementService;
 import com.nodecraft.nodesystem.bake.BakeTask;
+import com.nodecraft.nodesystem.bake.BakeTaskState;
 import com.nodecraft.nodesystem.bake.PlacementMode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
@@ -410,14 +411,10 @@ public class ApplyChangesNode extends BaseCustomUINode {
             service.awaitTaskCompletion(taskId, deadlineMillis)
         );
         if (!Boolean.TRUE.equals(completed)) {
+            // Timeout aborts the transaction: roll world back, leave history unchanged.
+            service.cancelTask(taskId, BakeTaskState.TIMED_OUT);
             BakePlacementService.TaskSnapshot snapshot = service.getTaskSnapshot(taskId);
             int placed = snapshot != null ? snapshot.placedCount() : 0;
-            // Match previous sync timeout semantics: stop further writes.
-            service.cancelTask(taskId);
-            snapshot = service.getTaskSnapshot(taskId);
-            if (snapshot != null) {
-                placed = snapshot.placedCount();
-            }
             return new ApplyResult(placed, true, taskId);
         }
 

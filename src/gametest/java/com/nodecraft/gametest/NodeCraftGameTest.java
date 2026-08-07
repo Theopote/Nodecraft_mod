@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.bake.BakeHistory;
 import com.nodecraft.nodesystem.bake.BakeOperationKind;
 import com.nodecraft.nodesystem.bake.BakePlacementService;
 import com.nodecraft.nodesystem.bake.BakeTask;
+import com.nodecraft.nodesystem.bake.BakeTaskState;
 import com.nodecraft.nodesystem.bake.PlacementMode;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.TrackedPreviewPlacementService;
@@ -127,7 +128,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
     }
 
     @GameTest
-    public void bakeApplyCancelCommitsPartialHistory(TestContext ctx) {
+    public void bakeApplyCancelRollsBackWorld(TestContext ctx) {
         World world = ctx.getWorld();
         BakePlacementService service = BakePlacementService.getInstance();
         service.cancelAll();
@@ -163,14 +164,15 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         ctx.assertEquals(0, history.size(), "history empty while task still running");
 
         ctx.assertTrue(service.cancelTask(taskId), "cancel apply");
-        ctx.assertEquals(1, history.size(), "partial apply must commit undo history");
-        ctx.assertEquals(0, history.redoSize(), "redo empty after partial apply cancel");
-        ctx.expectBlock(Blocks.STONE, pos1);
-        ctx.checkBlockState(pos2, state -> state.isOf(Blocks.AIR), state -> Text.literal("unprocessed pos2 stays air"));
+        ctx.assertEquals(0, history.size(), "cancelled apply must not commit history");
+        ctx.assertEquals(0, history.redoSize(), "redo empty after apply rollback");
+        ctx.checkBlockState(pos1, state -> state.isOf(Blocks.AIR), state -> Text.literal("rolled back pos1"));
+        ctx.checkBlockState(pos2, state -> state.isOf(Blocks.AIR), state -> Text.literal("pos2 stays air"));
+        ctx.checkBlockState(pos3, state -> state.isOf(Blocks.AIR), state -> Text.literal("pos3 stays air"));
 
-        ctx.assertTrue(service.undoLast(actorId, world), "undo partial apply");
-        ctx.checkBlockState(pos1, state -> state.isOf(Blocks.AIR), state -> Text.literal("partial apply undone"));
-        ctx.assertEquals(0, history.size(), "history empty after undoing partial apply");
+        BakePlacementService.TaskSnapshot snapshot = service.getTaskSnapshot(taskId);
+        ctx.assertTrue(snapshot != null, "snapshot retained");
+        ctx.assertEquals(BakeTaskState.CANCELLED, snapshot.state(), "terminal cancel state");
 
         ctx.complete();
     }
@@ -212,14 +214,16 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         ctx.assertEquals(0, history.size(), "undo record popped at enqueue");
 
         service.processTick();
-        ctx.checkBlockState(pos1, state -> state.isOf(Blocks.AIR) || state.isOf(Blocks.STONE),
-            state -> Text.literal("first undo tick may restore one block"));
 
         ctx.assertTrue(service.cancelTask(undoTaskId), "cancel undo");
         ctx.assertEquals(1, history.size(), "cancelled undo must restore undo stack");
         ctx.assertEquals(0, history.redoSize(), "cancelled undo must not leave redo residue");
         ctx.expectBlock(Blocks.STONE, pos1);
         ctx.expectBlock(Blocks.STONE, pos2);
+
+        BakePlacementService.TaskSnapshot snapshot = service.getTaskSnapshot(undoTaskId);
+        ctx.assertTrue(snapshot != null, "undo cancel snapshot retained");
+        ctx.assertEquals(BakeTaskState.CANCELLED, snapshot.state(), "undo cancel terminal state");
 
         ctx.complete();
     }

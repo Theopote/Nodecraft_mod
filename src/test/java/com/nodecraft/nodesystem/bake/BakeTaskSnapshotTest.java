@@ -6,34 +6,38 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BakeTaskSnapshotTest {
 
     @Test
-    void resolveStateReportsQueuedRunningCompletedAndCancelled() {
+    void resolveStateUsesBakeTaskStateDisplayNames() {
         UUID taskId = UUID.randomUUID();
 
-        BakePlacementService.TaskSnapshot queued = new BakePlacementService.TaskSnapshot(
-            taskId, 0, 0, 10, 10, 0.0d, false
-        );
-        BakePlacementService.TaskSnapshot running = new BakePlacementService.TaskSnapshot(
-            taskId, 3, 1, 10, 6, 0.4d, false
-        );
-        BakePlacementService.TaskSnapshot completed = new BakePlacementService.TaskSnapshot(
-            taskId, 9, 1, 10, 0, 1.0d, false
-        );
-        BakePlacementService.TaskSnapshot cancelled = new BakePlacementService.TaskSnapshot(
-            taskId, 2, 0, 10, 8, 0.2d, true
-        );
+        assertEquals("Queued", snapshot(taskId, BakeTaskState.QUEUED).resolveState());
+        assertEquals("Running", snapshot(taskId, BakeTaskState.RUNNING).resolveState());
+        assertEquals("Completed", snapshot(taskId, BakeTaskState.COMPLETED).resolveState());
+        assertEquals("Cancelling", snapshot(taskId, BakeTaskState.CANCELLING).resolveState());
+        assertEquals("Rolling Back", snapshot(taskId, BakeTaskState.ROLLING_BACK).resolveState());
+        assertEquals("Cancelled", snapshot(taskId, BakeTaskState.CANCELLED).resolveState());
+        assertEquals("Timed Out", snapshot(taskId, BakeTaskState.TIMED_OUT).resolveState());
+        assertEquals("Failed", snapshot(taskId, BakeTaskState.FAILED).resolveState());
+    }
 
-        assertEquals("Queued", queued.resolveState());
-        assertEquals("Running", running.resolveState());
-        assertEquals("Completed", completed.resolveState());
-        assertEquals("Cancelled", cancelled.resolveState());
+    @Test
+    void abortStatesReportCancelledFlag() {
+        UUID taskId = UUID.randomUUID();
+        assertTrue(snapshot(taskId, BakeTaskState.CANCELLED).cancelled());
+        assertTrue(snapshot(taskId, BakeTaskState.TIMED_OUT).cancelled());
+        assertTrue(snapshot(taskId, BakeTaskState.FAILED).cancelled());
     }
 
     @Test
     void getTaskSnapshotReturnsNullForUnknownTask() {
         assertNull(BakePlacementService.getInstance().getTaskSnapshot(UUID.randomUUID()));
+    }
+
+    private static BakePlacementService.TaskSnapshot snapshot(UUID taskId, BakeTaskState state) {
+        return new BakePlacementService.TaskSnapshot(taskId, 0, 0, 10, 10, 0.0d, state);
     }
 }

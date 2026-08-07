@@ -120,18 +120,18 @@ class BakeAsyncUndoRedoTest {
     }
 
     @Test
-    void cancelledApplyShouldCommitPartialUndoLikeSuccessfulFinish() {
-        // Policy mirror of BakePlacementService.finalizeCancelledTask(APPLY):
-        // partial undoRecords are pushed so timeout/cancel remains undoable.
-        history.push(record("partial-apply"));
+    void cancelledApplyShouldRollbackWithoutTouchingHistory() {
+        // Policy: CANCELLED APPLY rolls world back; history stays empty / unchanged.
+        history.push(record("prior-committed"));
+        assertEquals(1, history.size());
+        // Cancel of an in-flight APPLY does not push — size remains prior commits only.
         assertEquals(1, history.size());
         assertEquals(0, history.redoSize());
     }
 
     @Test
     void cancelledUndoShouldAbortWithoutLeavingRedoResidue() {
-        // Policy mirror of BakePlacementService.finalizeCancelledTask(UNDO):
-        // roll back in-world progress, then restore the popped undo record.
+        // Policy: CANCELLED UNDO rolls world back, then pushUndo restores the popped record.
         history.push(record("full-apply"));
         BakeHistory.UndoRecord popped = history.pop();
         assertNotNull(popped);
