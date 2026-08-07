@@ -10,7 +10,7 @@
 | 0.5 | Preview / Bake | Done |
 | 0.6 | Execution (dataflow + exec frontier) | Done |
 | **0.7** | **Stability** | **PASS (`v0.7-stability`)** |
-| **0.8** | **Interactive Runtime** | **B/B′/C/D PASS — next: E library caches** |
+| **0.8** | **Interactive Runtime** | **B–E PASS — next: F EditorDocumentState** |
 | 0.9 | Compatibility / format freeze | Later |
 | 1.0 | Release | Later |
 
@@ -105,11 +105,23 @@ Contracts:
 
 ---
 
+## Phase E — Node Library display / icon caches — PASS
+
+Design: [`../architecture/node-library-display-cache.md`](../architecture/node-library-display-cache.md)
+
+| Work | Status |
+|------|--------|
+| `NodeIconPathResolver` (pure path logic) | PASS |
+| Icon resolution memo in `NodeIconManager` | PASS |
+| `NodeLibraryDisplayCache` for sorted lists | PASS |
+| Unit tests for resolver + display cache | PASS |
+
+---
+
 ## Later phases (ordered)
 
 | Phase | Theme |
 |-------|--------|
-| E | Node Library display / icon caches |
 | F | `EditorDocumentState` split |
 | G | `EditorInteractionMode` |
 | H | Docs history cleanup |

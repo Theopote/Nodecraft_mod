@@ -33,7 +33,7 @@ Emit a deterministic catalog of built-in node metadata at build time, then regis
 - Feeding AI schema / `NODE_LIBRARY.md` / compatibility manifests from the same pipeline (follow-up)
 - Annotation processor module
 - Removing `AutoNodeScanner` source (kept as recovery fallback)
-- Icon / display caches (Phase E)
+- Icon / display caches (Phase E — landed)
 
 ## Exit gates
 

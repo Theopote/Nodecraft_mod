@@ -12,7 +12,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.Comparator;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -233,6 +232,7 @@ public class NodeLibraryComponent implements EditorComponent {
 
     // Icon manager.
     private final NodeIconManager iconManager = NodeIconManager.getInstance();
+    private final NodeLibraryDisplayCache displayCache = new NodeLibraryDisplayCache();
 
     // Search manager.
     private final NodeSearchManager searchManager = new NodeSearchManager();
@@ -372,6 +372,7 @@ public class NodeLibraryComponent implements EditorComponent {
     public void cleanup() {
         // Release icon resources.
         iconManager.cleanup();
+        displayCache.clear();
     }
 
     /**
@@ -1025,11 +1026,9 @@ public class NodeLibraryComponent implements EditorComponent {
     }
 
     private List<NodeInfo> getSortedNodesForDisplay(DisplayCategory displayCategory) {
-        List<NodeInfo> nodes = new ArrayList<>(displayCategory.getNodes());
-        nodes.sort(Comparator
-                .comparingInt(NodeInfo::getOrder)
-                .thenComparing(NodeInfo::getDisplayName, String.CASE_INSENSITIVE_ORDER));
-        return nodes;
+        long epoch = NodeRegistry.getInstance().getIntrospectionEpoch();
+        String cacheKey = displayCategory.getId() + "#" + System.identityHashCode(displayCategory.getNodes());
+        return displayCache.getSortedNodes(epoch, cacheKey, displayCategory.getNodes());
     }
 
     private List<NodeInfo> getVisibleNodes(List<NodeInfo> nodes) {

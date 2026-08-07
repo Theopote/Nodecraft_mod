@@ -20,26 +20,30 @@ import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Loads node-library SVG icons from Minecraft resources and rasterizes them to
  * OpenGL textures for ImGui.
+ * <p>
+ * Caches both GPU textures and the winning resolution key so subsequent frames
+ * skip the multi-candidate path walk. See {@code docs/architecture/node-library-display-cache.md}.
  */
 public class NodeIconManager {
 
     private static NodeIconManager instance;
 
-    private static final String ICON_NAMESPACE = "nodecraft";
-    private static final String ICON_BASE_PATH = "textures/icons/nodes/";
-    private static final String SVG_EXTENSION = ".svg";
     private static final int ICON_RENDER_SIZE = 64;
 
     private final Map<String, Integer> textureCache = new HashMap<>();
     private final Map<String, Integer> categoryColors = new HashMap<>();
-    // Negative cache: tracks resources that don't exist to avoid repeated lookups
-    private final java.util.Set<String> missingResources = new java.util.HashSet<>();
+    /** Negative cache: resources known missing. */
+    private final Set<String> missingResources = new HashSet<>();
+    /** Logical node key → winning texture-cache key. */
+    private final Map<String, String> resolvedTextureKeys = new HashMap<>();
 
     private NodeIconManager() {
         initCategoryColors();
@@ -65,61 +69,46 @@ public class NodeIconManager {
         }
         textureCache.clear();
         missingResources.clear();
+        resolvedTextureKeys.clear();
         NodeCraft.LOGGER.info("Node icon manager cleaned up");
     }
 
     /**
      * Loads the icon for a node.
      * <p>
-     * Lookup order:
-     * 1. Explicit node metadata icon.
-     * 2. Node id path, for example geometry.boolean.union ->
-     *    textures/icons/nodes/geometry/boolean/union.svg.
-     * 3. Subcategory icon, for example geometry.boolean ->
-     *    textures/icons/nodes/geometry/boolean.svg.
-     * 4. Main category icon, for example geometry ->
-     *    textures/icons/nodes/geometry/geometry.svg.
-     * 5. Category-colored fallback texture.
+     * Lookup order is defined by {@link NodeIconPathResolver#candidates}.
      */
     public int loadNodeIcon(String nodeId, String category, String explicitIcon) {
         if (!isOnRenderThread("load node icon")) {
             return 0;
         }
 
-        String normalizedCategory = normalizeId(category);
+        String logicalKey = NodeIconPathResolver.logicalKey(nodeId, category, explicitIcon);
+        String resolvedKey = resolvedTextureKeys.get(logicalKey);
+        if (resolvedKey != null) {
+            Integer cached = textureCache.get(resolvedKey);
+            if (cached != null) {
+                return cached;
+            }
+            // Stale resolution (e.g. after partial clear) — re-resolve.
+            resolvedTextureKeys.remove(logicalKey);
+        }
 
-        String explicitPath = normalizeIconPath(explicitIcon);
-        if (explicitPath != null) {
-            int texId = loadOrGet("explicit:" + explicitPath, explicitPath);
+        for (NodeIconPathResolver.Candidate candidate : NodeIconPathResolver.candidates(nodeId, category, explicitIcon)) {
+            if (candidate.kind() == NodeIconPathResolver.CandidateKind.FALLBACK) {
+                int fallbackId = getFallbackTexture(candidate.fallbackCategory());
+                resolvedTextureKeys.put(logicalKey, candidate.cacheKey());
+                return fallbackId;
+            }
+
+            int texId = loadOrGet(candidate.cacheKey(), candidate.resourcePath());
             if (texId != 0) {
+                resolvedTextureKeys.put(logicalKey, candidate.cacheKey());
                 return texId;
             }
         }
 
-        String normalizedNodeId = normalizeId(nodeId);
-        if (!normalizedNodeId.isEmpty()) {
-            int texId = loadOrGet("node:" + normalizedNodeId, buildNodePath(normalizedNodeId));
-            if (texId != 0) {
-                return texId;
-            }
-        }
-
-        if (!normalizedCategory.isEmpty()) {
-            int texId = loadOrGet("subcat:" + normalizedCategory, buildCategoryPath(normalizedCategory));
-            if (texId != 0) {
-                return texId;
-            }
-        }
-
-        String mainCategory = extractMainCategory(normalizedCategory);
-        if (!mainCategory.isEmpty()) {
-            int texId = loadOrGet("cat:" + mainCategory, ICON_BASE_PATH + mainCategory + "/" + mainCategory + SVG_EXTENSION);
-            if (texId != 0) {
-                return texId;
-            }
-        }
-
-        return getFallbackTexture(mainCategory);
+        return getFallbackTexture("unknown");
     }
 
     public int loadNodeIcon(String nodeId, String category) {
@@ -131,7 +120,7 @@ public class NodeIconManager {
             return 0;
         }
 
-        String resourcePath = normalizeIconPath(iconId);
+        String resourcePath = NodeIconPathResolver.normalizeIconPath(iconId);
         if (resourcePath == null) {
             return 0;
         }
@@ -139,112 +128,34 @@ public class NodeIconManager {
     }
 
     public String getCategoryIconId(String categoryId) {
-        String mainCategory = extractMainCategory(normalizeId(categoryId));
+        String mainCategory = NodeIconPathResolver.extractMainCategory(categoryId);
         return mainCategory.isEmpty() ? "" : "cat:" + mainCategory;
     }
 
-    private String buildNodePath(String nodeId) {
-        String[] parts = nodeId.split("\\.");
-        String fileName = parts[parts.length - 1];
-
-        if (parts.length == 1) {
-            return ICON_BASE_PATH + fileName + "/" + fileName + SVG_EXTENSION;
-        }
-
-        StringBuilder path = new StringBuilder(ICON_BASE_PATH);
-        for (int i = 0; i < parts.length - 1; i++) {
-            if (!parts[i].isBlank()) {
-                path.append(parts[i]).append('/');
-            }
-        }
-        path.append(fileName).append(SVG_EXTENSION);
-        return path.toString();
+    /** Package-visible for tests. */
+    int resolvedCacheSize() {
+        return resolvedTextureKeys.size();
     }
 
-    private String buildCategoryPath(String category) {
-        String[] parts = category.split("\\.");
-        if (parts.length == 1) {
-            return ICON_BASE_PATH + parts[0] + "/" + parts[0] + SVG_EXTENSION;
-        }
-
-        StringBuilder path = new StringBuilder(ICON_BASE_PATH);
-        path.append(parts[0]).append('/');
-        for (int i = 1; i < parts.length; i++) {
-            path.append(parts[i]);
-            if (i < parts.length - 1) {
-                path.append('/');
-            }
-        }
-        path.append(SVG_EXTENSION);
-        return path.toString();
-    }
-
-    private String normalizeIconPath(String icon) {
-        if (icon == null || icon.isBlank()) {
-            return null;
-        }
-
-        String path = icon.trim().replace('\\', '/');
-        if (path.startsWith("cat:")) {
-            String mainCategory = normalizeId(path.substring("cat:".length()));
-            return mainCategory.isEmpty() ? null : ICON_BASE_PATH + mainCategory + "/" + mainCategory + SVG_EXTENSION;
-        }
-
-        int namespaceSeparator = path.indexOf(':');
-        if (namespaceSeparator >= 0) {
-            String namespace = path.substring(0, namespaceSeparator);
-            if (!ICON_NAMESPACE.equals(namespace)) {
-                return null;
-            }
-            path = path.substring(namespaceSeparator + 1);
-        }
-
-        while (path.startsWith("/")) {
-            path = path.substring(1);
-        }
-
-        if (!path.startsWith(ICON_BASE_PATH)) {
-            if (!path.contains("/") && path.contains(".")) {
-                path = path.replace('.', '/');
-            }
-            path = ICON_BASE_PATH + path;
-        }
-        if (!path.endsWith(SVG_EXTENSION)) {
-            path += SVG_EXTENSION;
-        }
-        return path;
-    }
-
-    private String normalizeId(String value) {
-        return value == null ? "" : value.trim().toLowerCase().replace('/', '.').replace('\\', '.');
-    }
-
-    private String extractMainCategory(String category) {
-        if (category == null || category.isBlank()) {
-            return "";
-        }
-        int dot = category.indexOf('.');
-        return dot >= 0 ? category.substring(0, dot) : category;
+    /** Package-visible for tests — clears resolution memo without touching GL textures. */
+    void clearResolutionCache() {
+        resolvedTextureKeys.clear();
     }
 
     private int loadOrGet(String cacheKey, String resourcePath) {
-        // Check positive cache first
         Integer cached = textureCache.get(cacheKey);
         if (cached != null) {
             return cached;
         }
 
-        // Check negative cache - if we know this resource doesn't exist, skip loading
         if (missingResources.contains(cacheKey)) {
             return 0;
         }
 
         int texId = loadSvgFromResource(resourcePath);
         if (texId != 0) {
-            // Success - cache the texture ID
             textureCache.put(cacheKey, texId);
         } else {
-            // Failed to load - add to negative cache to avoid future attempts
             missingResources.add(cacheKey);
             NodeCraft.LOGGER.debug("Added to negative cache: {}", cacheKey);
         }
@@ -253,7 +164,7 @@ public class NodeIconManager {
 
     private int loadSvgFromResource(String resourcePath) {
         try {
-            Identifier id = Identifier.tryParse(ICON_NAMESPACE + ":" + resourcePath);
+            Identifier id = Identifier.tryParse(NodeIconPathResolver.ICON_NAMESPACE + ":" + resourcePath);
             if (id == null) {
                 return 0;
             }
