@@ -44,19 +44,19 @@ Do not start Phase B implementation until Phase A is PASS and tagged.
 | Rollback failure counts + `ROLLBACK_FAILED` + BakeStatusNode | P1 | Done |
 | `cancelAll` does not sync-drain giant rollback; `shutdownFlush` for stop | P1 | Done |
 | Timeout → rollback GameTest | P0 | Done (`bakeApplyTimeoutRollsBackWorld`) |
-| Latest CI green (incl. new GameTests) | Gate | **In progress** — pushed `360b74f`, awaiting Actions |
-| Tag `v0.7-stability` (or `stability-baseline`) | Gate | **TODO after CI green** |
+| Latest CI green (incl. new GameTests) | Gate | **PASS** — CI badge passing on `master` (`9dbfc5e`, runs #30/#31) |
+| Tag `v0.7-stability` | Gate | **PASS** — tag on closeout commit |
 
 Detail checklist: [`phase-a-stability-closeout.md`](./phase-a-stability-closeout.md)
 
 ### Phase A exit criteria
 
-- [ ] Timeout abort rolls world back; history unchanged; terminal state is `TIMED_OUT` (or `ROLLBACK_FAILED` if restores fail)
-- [ ] CI build + unit tests + GameTests green on the closeout commit
-- [ ] Git tag `v0.7-stability` on that commit
-- [ ] Announce: **NodeCraft P0/P1 Stability Audit: PASS**
+- [x] Timeout abort rolls world back; history unchanged; terminal state is `TIMED_OUT` (or `ROLLBACK_FAILED` if restores fail)
+- [x] CI build + unit tests + GameTests green on the closeout commit
+- [x] Git tag `v0.7-stability` on that commit
+- [x] Announce: **NodeCraft P0/P1 Stability Audit: PASS**
 
-Only then open Phase B coding.
+Phase A is **PASS**. Open Phase B with a design freeze review of [`../architecture/execution-runtime-2.0.md`](../architecture/execution-runtime-2.0.md) before coding.
 
 ---
 

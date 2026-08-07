@@ -2,7 +2,7 @@
 
 Parent roadmap: [`../development/advancement-0.7-to-0.8.md`](../development/advancement-0.7-to-0.8.md)
 
-**Status:** Draft for design freeze — **do not implement** until Phase A (`v0.7-stability`) is PASS.
+**Status:** Design freeze — Phase A (`v0.7-stability`) is PASS. Resolve open questions below before coding the vertical slice.
 
 ## Problem
 
@@ -115,7 +115,7 @@ Constraints:
 
 ## Freeze checklist
 
-- [ ] Phase A tagged
+- [x] Phase A tagged (`v0.7-stability`)
 - [ ] Answers to open questions written here
 - [ ] Public API sketch (package + key methods) agreed
 - [ ] Vertical-slice acceptance tests listed
