@@ -105,6 +105,30 @@ public class BakePlacementService {
                                   long tickBudgetNanos,
                                   @Nullable UUID actorId,
                                   Runnable onComplete) {
+        return enqueuePlacements(
+            world,
+            placements,
+            mode,
+            recordUndo,
+            operationKind,
+            blocksPerTick,
+            tickBudgetNanos,
+            actorId,
+            onComplete,
+            null
+        );
+    }
+
+    public UUID enqueuePlacements(World world,
+                                  List<BakeTask.Placement> placements,
+                                  PlacementMode mode,
+                                  boolean recordUndo,
+                                  BakeOperationKind operationKind,
+                                  int blocksPerTick,
+                                  long tickBudgetNanos,
+                                  @Nullable UUID actorId,
+                                  @Nullable Runnable onComplete,
+                                  @Nullable Runnable onCancel) {
         if (world == null || placements == null || placements.isEmpty()) {
             NodeCraft.LOGGER.warn("BakePlacementService: invalid enqueue request");
             return null;
@@ -121,12 +145,13 @@ public class BakePlacementService {
             resolveBlocksPerTick(blocksPerTick),
             resolveTickBudgetNanos(tickBudgetNanos),
             resolveActorId(actorId),
-            onComplete
+            onComplete,
+            onCancel
         );
         synchronized (queue) {
             queue.addLast(task);
         }
-        NodeCraft.LOGGER.debug("Queued {} bake task {} with {} placements", 
+        NodeCraft.LOGGER.debug("Queued {} bake task {} with {} placements",
                               operationKind, taskId, placements.size());
         return taskId;
     }
@@ -182,6 +207,9 @@ public class BakePlacementService {
             for (BakeTask task : queue) {
                 if (taskId.equals(task.getTaskId())) {
                     task.cancel();
+                    if (task.getOnCancel() != null) {
+                        task.getOnCancel().run();
+                    }
                     rememberTaskSnapshot(task);
                     queue.remove(task);
                     NodeCraft.LOGGER.info("Cancelled bake task {}", taskId);
@@ -197,6 +225,9 @@ public class BakePlacementService {
         synchronized (queue) {
             for (BakeTask task : queue) {
                 task.cancel();
+                if (task.getOnCancel() != null) {
+                    task.getOnCancel().run();
+                }
                 rememberTaskSnapshot(task);
                 count++;
             }
@@ -237,6 +268,39 @@ public class BakePlacementService {
 
         synchronized (recentTaskSnapshots) {
             return recentTaskSnapshots.get(taskId);
+        }
+    }
+
+    /**
+     * Drains the bake queue until the task finishes or the deadline is reached.
+     * Must run on the Minecraft server thread.
+     */
+    public boolean awaitTaskCompletion(UUID taskId, long deadlineMillis) {
+        if (taskId == null) {
+            return false;
+        }
+
+        long deadline = deadlineMillis > 0L ? deadlineMillis : Long.MAX_VALUE;
+        while (System.currentTimeMillis() < deadline) {
+            processTick();
+            if (isTaskFinished(taskId)) {
+                TaskSnapshot snapshot = getTaskSnapshot(taskId);
+                return snapshot == null || !snapshot.cancelled();
+            }
+        }
+        return false;
+    }
+
+    private boolean isTaskFinished(UUID taskId) {
+        synchronized (queue) {
+            for (BakeTask task : queue) {
+                if (taskId.equals(task.getTaskId())) {
+                    return false;
+                }
+            }
+        }
+        synchronized (recentTaskSnapshots) {
+            return recentTaskSnapshots.containsKey(taskId);
         }
     }
 

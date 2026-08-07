@@ -16,7 +16,6 @@ import com.nodecraft.nodesystem.util.BlockStateData;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
-import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.registry.Registries;
 import net.minecraft.state.property.Property;
@@ -120,8 +119,8 @@ public class ApplyChangesNode extends BaseCustomUINode {
         addOutputPort(new BasePort(OUTPUT_OPERATION_COUNT_ID, "Operation Count", "Number of blocks placed (sync) or queued (async)", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_EXECUTION_TIME_ID, "Execution Time", "Execution time in milliseconds (queueing time for async)", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_STATUS_ID, "Status", "Execution status message", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_TASK_ID, "Task ID", "Single bake task UUID for the entire async submit (empty for sync)", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_IS_ASYNC, "Is Async", "Whether the operation was queued asynchronously", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_TASK_ID, "Task ID", "Bake task UUID for this Apply Changes submit", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_IS_ASYNC, "Is Async", "Whether the operation was queued asynchronously (false when sync awaited completion)", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -325,55 +324,21 @@ public class ApplyChangesNode extends BaseCustomUINode {
     }
 
     private ApplyResult applyPlacementList(ExecutionContext context, List<BlockPlacementData> placements, long deadlineMillis) {
-        if (useAsyncBake) {
-            List<BakeTask.Placement> queuedPlacements = new ArrayList<>(placements.size());
-            for (BlockPlacementData placement : placements) {
-                BlockState defaultState = resolveBlockState(placement.blockId());
-                if (defaultState == null) {
-                    continue;
-                }
-                BlockState state = applyBlockStateData(defaultState, placement.stateData());
-                queuedPlacements.add(new BakeTask.Placement(placement.pos(), state));
-            }
-
-            if (queuedPlacements.isEmpty()) {
-                return new ApplyResult(0, false, null);
-            }
-
-            UUID taskId = BakePlacementService.getInstance().enqueuePlacements(
-                context.getWorld(),
-                queuedPlacements,
-                placementMode,
-                recordUndo,
-                blocksPerTick,
-                tickBudgetNanos(),
-                BakePlacementService.resolveActorId(context.getPlayer()),
-                null
-            );
-            return new ApplyResult(queuedPlacements.size(), false, taskId);
-        }
-
-        int count = 0;
+        List<BakeTask.Placement> queuedPlacements = new ArrayList<>(placements.size());
         for (BlockPlacementData placement : placements) {
-            if (isTimedOut(deadlineMillis)) {
-                return new ApplyResult(count, true, null);
-            }
-
             BlockState defaultState = resolveBlockState(placement.blockId());
             if (defaultState == null) {
                 continue;
             }
-
-            BlockPos pos = placement.pos();
-            if (placementMode == PlacementMode.INCREMENTAL && !context.getWorld().isAir(pos)) {
-                continue;
-            }
             BlockState state = applyBlockStateData(defaultState, placement.stateData());
-            if (context.getWorld().setBlockState(pos, state, Block.NOTIFY_ALL)) {
-                count++;
-            }
+            queuedPlacements.add(new BakeTask.Placement(placement.pos(), state));
         }
-        return new ApplyResult(count, false, null);
+
+        if (queuedPlacements.isEmpty()) {
+            return new ApplyResult(0, false, null);
+        }
+
+        return enqueueAndMaybeAwait(context, queuedPlacements, deadlineMillis);
     }
 
     private BlockState applyBlockStateData(BlockState baseState, @Nullable BlockStateData stateData) {
@@ -402,37 +367,63 @@ public class ApplyChangesNode extends BaseCustomUINode {
     }
 
     private ApplyResult applyUniformBlocks(ExecutionContext context, BlockPosList blocks, BlockState targetState, long deadlineMillis) {
-        if (useAsyncBake) {
-            UUID taskId = BakePlacementService.getInstance().enqueue(
-                context.getWorld(),
-                new ArrayList<>(blocks.getPositions()),
-                targetState,
-                placementMode,
-                recordUndo,
-                blocksPerTick,
-                BakePlacementService.resolveActorId(context.getPlayer()),
-                null
-            );
-            return new ApplyResult(blocks.size(), false, taskId);
-        }
-
-        int count = 0;
+        List<BakeTask.Placement> queuedPlacements = new ArrayList<>(blocks.size());
         for (BlockPos pos : blocks) {
-            if (isTimedOut(deadlineMillis)) {
-                return new ApplyResult(count, true, null);
-            }
-            if (placementMode == PlacementMode.INCREMENTAL && !context.getWorld().isAir(pos)) {
-                continue;
-            }
-            if (context.getWorld().setBlockState(pos.toImmutable(), targetState, Block.NOTIFY_ALL)) {
-                count++;
+            if (pos != null) {
+                queuedPlacements.add(new BakeTask.Placement(pos.toImmutable(), targetState));
             }
         }
-        return new ApplyResult(count, false, null);
+        if (queuedPlacements.isEmpty()) {
+            return new ApplyResult(0, false, null);
+        }
+        return enqueueAndMaybeAwait(context, queuedPlacements, deadlineMillis);
     }
 
-    private boolean isTimedOut(long deadlineMillis) {
-        return !useAsyncBake && System.currentTimeMillis() >= deadlineMillis;
+    /**
+     * All Apply Changes writes go through the bake pipeline so undo, placement mode,
+     * and profiling share one code path. Sync mode is enqueue + await completion.
+     */
+    private ApplyResult enqueueAndMaybeAwait(ExecutionContext context,
+                                             List<BakeTask.Placement> queuedPlacements,
+                                             long deadlineMillis) {
+        BakePlacementService service = BakePlacementService.getInstance();
+        UUID taskId = service.enqueuePlacements(
+            context.getWorld(),
+            queuedPlacements,
+            placementMode,
+            recordUndo,
+            blocksPerTick,
+            tickBudgetNanos(),
+            BakePlacementService.resolveActorId(context.getPlayer()),
+            null
+        );
+
+        if (taskId == null) {
+            return new ApplyResult(0, false, null);
+        }
+
+        if (useAsyncBake) {
+            return new ApplyResult(queuedPlacements.size(), false, taskId);
+        }
+
+        Boolean completed = context.callOnWorldThread(() ->
+            service.awaitTaskCompletion(taskId, deadlineMillis)
+        );
+        if (!Boolean.TRUE.equals(completed)) {
+            BakePlacementService.TaskSnapshot snapshot = service.getTaskSnapshot(taskId);
+            int placed = snapshot != null ? snapshot.placedCount() : 0;
+            // Match previous sync timeout semantics: stop further writes.
+            service.cancelTask(taskId);
+            snapshot = service.getTaskSnapshot(taskId);
+            if (snapshot != null) {
+                placed = snapshot.placedCount();
+            }
+            return new ApplyResult(placed, true, taskId);
+        }
+
+        BakePlacementService.TaskSnapshot snapshot = service.getTaskSnapshot(taskId);
+        int placed = snapshot != null ? snapshot.placedCount() : queuedPlacements.size();
+        return new ApplyResult(placed, false, taskId);
     }
 
     private BlockState resolveBlockState(String blockId) {

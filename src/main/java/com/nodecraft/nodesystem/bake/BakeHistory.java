@@ -91,9 +91,10 @@ public class BakeHistory {
         if (record == null || world == null) {
             return false;
         }
-        record.apply(world);
-        undoStack.add(record);
-        trim(undoStack);
+        UndoRecord inverse = record.captureInverseAfterApply(world);
+        if (inverse != null && inverse.size() > 0) {
+            pushUndo(inverse);
+        }
         return true;
     }
     /**
@@ -109,13 +110,11 @@ public class BakeHistory {
      * @return Task ID if undo was queued, null if nothing to undo
      */
     public UUID undoLastAsync(UUID actorId, World world, int blocksPerTick, long tickBudgetNanos) {
-        // Peek instead of pop - only remove on success
-        UndoRecord undoRecord = peek();
+        UndoRecord undoRecord = pop();
         if (undoRecord == null || world == null) {
             return null;
         }
 
-        // Convert UndoRecord to placements
         List<BakeTask.Placement> placements = new ArrayList<>(undoRecord.size());
         for (int i = 0; i < undoRecord.size(); i++) {
             placements.add(new BakeTask.Placement(
@@ -124,22 +123,22 @@ public class BakeHistory {
             ));
         }
 
-        // Enqueue with UNDO kind - service will route inverse to redoStack
-        // On successful completion, remove from undo stack
-        // Record the inverse
-        // Semantic: this is an undo operation
-
-        return BakePlacementService.getInstance().enqueuePlacements(
+        UUID taskId = BakePlacementService.getInstance().enqueuePlacements(
             world,
             placements,
             PlacementMode.OVERWRITE,
-            true,  // Record the inverse
-            BakeOperationKind.UNDO,  // Semantic: this is an undo operation
+            true,
+            BakeOperationKind.UNDO,
             blocksPerTick,
             tickBudgetNanos,
             actorId,
-                this::pop
+            null,
+            () -> pushUndo(undoRecord)
         );
+        if (taskId == null) {
+            pushUndo(undoRecord);
+        }
+        return taskId;
     }
 
     /**
@@ -155,13 +154,11 @@ public class BakeHistory {
      * @return Task ID if redo was queued, null if nothing to redo
      */
     public UUID redoLastAsync(UUID actorId, World world, int blocksPerTick, long tickBudgetNanos) {
-        // Peek instead of removing - only remove on success
-        UndoRecord redoRecord = redoStack.isEmpty() ? null : redoStack.getLast();
+        UndoRecord redoRecord = redoStack.isEmpty() ? null : redoStack.removeLast();
         if (redoRecord == null || world == null) {
             return null;
         }
 
-        // Convert UndoRecord to placements
         List<BakeTask.Placement> placements = new ArrayList<>(redoRecord.size());
         for (int i = 0; i < redoRecord.size(); i++) {
             placements.add(new BakeTask.Placement(
@@ -170,27 +167,22 @@ public class BakeHistory {
             ));
         }
 
-        // Enqueue with REDO kind - service will route inverse to undoStack
-        // Record the inverse
-        // Semantic: this is a redo operation
-        // On successful completion, remove from redo stack
-
-        return BakePlacementService.getInstance().enqueuePlacements(
+        UUID taskId = BakePlacementService.getInstance().enqueuePlacements(
             world,
             placements,
             PlacementMode.OVERWRITE,
-            true,  // Record the inverse
-            BakeOperationKind.REDO,  // Semantic: this is a redo operation
+            true,
+            BakeOperationKind.REDO,
             blocksPerTick,
             tickBudgetNanos,
             actorId,
-            () -> {
-                // On successful completion, remove from redo stack
-                if (!redoStack.isEmpty()) {
-                    redoStack.removeLast();
-                }
-            }
+            null,
+            () -> pushRedo(redoRecord)
         );
+        if (taskId == null) {
+            pushRedo(redoRecord);
+        }
+        return taskId;
     }
 
     public boolean hasUndo() {
@@ -248,9 +240,13 @@ public class BakeHistory {
         }
 
         public void apply(World world) {
-            applyAndCaptureInverse(world);
+            captureInverseAfterApply(world);
             positions.clear();
             previousStates.clear();
+        }
+
+        UndoRecord captureInverseAfterApply(World world) {
+            return applyAndCaptureInverse(world);
         }
 
         private UndoRecord applyAndCaptureInverse(World world) {

@@ -102,6 +102,24 @@ class BakeAsyncUndoRedoTest {
     }
 
     @Test
+    void asyncUndoCancelRestoresUndoWithoutClearingRedo() {
+        history.push(record("A"));
+        history.pushRedo(record("pre-existing-redo"));
+        assertEquals(1, history.size());
+        assertEquals(1, history.redoSize());
+
+        BakeHistory.UndoRecord popped = history.pop();
+        assertNotNull(popped);
+        assertEquals(0, history.size());
+
+        // Cancel restore must use pushUndo (not push) so redo survives.
+        history.pushUndo(popped);
+
+        assertEquals(1, history.size());
+        assertEquals(1, history.redoSize(), "Cancel restore must not clear redo");
+    }
+
+    @Test
     void emptyRecordsAreIgnored() {
         BakeHistory.UndoRecord empty = new BakeHistory.UndoRecord(UUID.randomUUID());
         history.push(empty);

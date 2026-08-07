@@ -24,6 +24,7 @@ public class BakeTask {
     private final int blocksPerTick;
     private final long timeBudgetNanos;
     private final Runnable onComplete;
+    private final Runnable onCancel;
 
     private final List<BakeUndoRecord> undoRecords = new ArrayList<>();
     private int nextIndex = 0;
@@ -67,6 +68,21 @@ public class BakeTask {
                     long timeBudgetNanos,
                     UUID actorId,
                     Runnable onComplete) {
+        this(taskId, world, placements, placementMode, recordUndo,
+             operationKind, blocksPerTick, timeBudgetNanos, actorId, onComplete, null);
+    }
+
+    public BakeTask(UUID taskId,
+                    World world,
+                    List<Placement> placements,
+                    PlacementMode placementMode,
+                    boolean recordUndo,
+                    BakeOperationKind operationKind,
+                    int blocksPerTick,
+                    long timeBudgetNanos,
+                    UUID actorId,
+                    Runnable onComplete,
+                    @org.jetbrains.annotations.Nullable Runnable onCancel) {
         this.taskId = taskId != null ? taskId : UUID.randomUUID();
         this.world = world;
         this.placements = copyPlacements(placements);
@@ -77,6 +93,7 @@ public class BakeTask {
         this.blocksPerTick = Math.max(1, blocksPerTick);
         this.timeBudgetNanos = Math.max(0L, timeBudgetNanos);
         this.onComplete = onComplete;
+        this.onCancel = onCancel;
     }
 
     public UUID getTaskId() {
@@ -98,6 +115,10 @@ public class BakeTask {
 
     public Runnable getOnComplete() {
         return onComplete;
+    }
+
+    public Runnable getOnCancel() {
+        return onCancel;
     }
     public boolean isCompleted() {
         return completed;
@@ -165,9 +186,6 @@ public class BakeTask {
 
         if (nextIndex >= placements.size()) {
             completed = true;
-            if (onComplete != null) {
-                onComplete.run();
-            }
         }
         return placedThisTick;
     }
