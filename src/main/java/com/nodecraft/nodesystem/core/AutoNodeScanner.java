@@ -147,6 +147,21 @@ public final class AutoNodeScanner {
             return registerNodeByAnnotation(registry, clazz, annotation);
         } catch (ClassNotFoundException e) {
             NodeCraft.LOGGER.debug("Node class could not be loaded during scanning: {}", className);
+        } catch (LinkageError e) {
+            // Dedicated server / GameTest cannot load client-only node implementations.
+            NodeCraft.LOGGER.debug(
+                "Skipping node {} in this environment: {}",
+                className,
+                e.getMessage()
+            );
+        } catch (RuntimeException e) {
+            // Fabric rejects client classes on SERVER with RuntimeException("Cannot load class ... environment type SERVER").
+            String message = e.getMessage();
+            if (message != null && message.contains("environment type")) {
+                NodeCraft.LOGGER.debug("Skipping environment-incompatible node {}: {}", className, message);
+            } else {
+                NodeCraft.LOGGER.error("Failed to process scanned class {}: {}", className, e.getMessage(), e);
+            }
         } catch (Exception e) {
             NodeCraft.LOGGER.error("Failed to process scanned class {}: {}", className, e.getMessage(), e);
         }
