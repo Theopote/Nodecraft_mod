@@ -69,59 +69,158 @@ public final class TrackedPreviewPlacementService {
             return clearTrackedPreviewOnWorldThread(world, nodeId, context);
         }
 
+        Set<BlockPos> requestedPositions = buildRequestedPositions(positions);
+        if (requestedPositions.isEmpty()) {
+            return clearTrackedPreviewOnWorldThread(world, nodeId, context);
+        }
+
+        enforceTrackedPreviewLimit(requestedPositions, nodeId);
+
         try {
-            return runOnWorldThread(world, () ->
-                updateTrackedPreviewDirect(world, nodeId, positions, previewState, placementMode, context)
-            );
+            return runOnWorldThread(world, () -> applyTrackedPreviewUpdate(
+                world,
+                nodeId,
+                requestedPositions,
+                previewState,
+                placementMode
+            ));
         } catch (Exception e) {
             NodeCraft.LOGGER.error("Failed to update tracked preview on world thread. nodeId={}", nodeId, e);
             return 0;
         }
     }
 
-    private synchronized int updateTrackedPreviewDirect(World world,
-                                                        String nodeId,
-                                                        List<BlockPos> positions,
-                                                        BlockState previewState,
-                                                        PlacementMode placementMode,
-                                                        @Nullable ExecutionContext context) {
+    public int clearTrackedPreview(World world, String nodeId) {
+        return clearTrackedPreviewOnWorldThread(world, nodeId, null);
+    }
+
+    /**
+     * Restores tracked preview blocks on the server thread.
+     * Thread safety is enforced by this service; {@code context} is optional metadata for callers.
+     */
+    public int clearTrackedPreviewOnWorldThread(World world, String nodeId, @Nullable ExecutionContext context) {
+        try {
+            return clearTrackedPreviewInternal(world, nodeId);
+        } catch (Exception e) {
+            NodeCraft.LOGGER.error("Failed to clear tracked preview on world thread. nodeId={}", nodeId, e);
+            return 0;
+        }
+    }
+
+    private int clearTrackedPreviewInternal(World world, String nodeId) {
+        Map<BlockPos, BlockState> statesToRestore = detachTrackedPreviewState(world, nodeId);
+        if (statesToRestore == null) {
+            NodeCraft.LOGGER.debug("TrackedPreviewPlacementService.clearTrackedPreview nodeId={} had no tracked state", nodeId);
+            return 0;
+        }
+
+        int restoredCount = restoreDetachedPreviewBlocks(world, statesToRestore);
+        NodeCraft.LOGGER.debug(
+                "TrackedPreviewPlacementService.clearTrackedPreview nodeId={} restored={}",
+                nodeId, restoredCount
+        );
+        return restoredCount;
+    }
+
+    public int getTrackedCount(World world, String nodeId) {
+        if (world == null || nodeId == null || nodeId.isEmpty()) {
+            return 0;
+        }
+
+        synchronized (this) {
+            Map<String, TrackedPreviewState> byNode = trackedPreviews.get(world);
+            if (byNode == null) {
+                return 0;
+            }
+
+            TrackedPreviewState trackedState = byNode.get(nodeId);
+            return trackedState == null ? 0 : trackedState.previousStates().size();
+        }
+    }
+
+    public List<String> getTrackedPreviewIds(World world) {
+        synchronized (this) {
+            Map<String, TrackedPreviewState> byNode = trackedPreviews.get(world);
+            if (byNode == null || byNode.isEmpty()) {
+                return List.of();
+            }
+            return new ArrayList<>(byNode.keySet());
+        }
+    }
+
+    public int clearAllTrackedPreviews(World world) {
+        return clearAllTrackedPreviews(world, null);
+    }
+
+    public int clearAllTrackedPreviews(World world, @Nullable ExecutionContext context) {
+        if (world == null) {
+            return 0;
+        }
+
+        List<String> previewIds = getTrackedPreviewIds(world);
+        int restoredCount = 0;
+        for (String previewId : previewIds) {
+            restoredCount += clearTrackedPreviewInternal(world, previewId);
+        }
+        NodeCraft.LOGGER.info(
+                "TrackedPreviewPlacementService.clearAllTrackedPreviews clearedPreviews={} restoredBlocks={}",
+                previewIds.size(), restoredCount
+        );
+        return restoredCount;
+    }
+
+    public boolean hasAnyTrackedPreviews(String nodeId) {
+        if (nodeId == null || nodeId.isEmpty()) {
+            return false;
+        }
+
+        synchronized (this) {
+            for (Map<String, TrackedPreviewState> byNode : trackedPreviews.values()) {
+                if (byNode.containsKey(nodeId)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public int clearTrackedPreviewAcrossWorlds(String nodeId) {
+        return clearTrackedPreviewAcrossWorlds(nodeId, null);
+    }
+
+    /**
+     * Clears tracked preview across all worlds on the server thread.
+     * Thread safety is enforced by this service; {@code context} is optional metadata for callers.
+     */
+    public int clearTrackedPreviewAcrossWorlds(String nodeId, @Nullable ExecutionContext context) {
+        if (nodeId == null || nodeId.isEmpty()) {
+            return 0;
+        }
+
+        List<World> worlds;
+        synchronized (this) {
+            worlds = new ArrayList<>(trackedPreviews.keySet());
+        }
+
+        int restoredCount = 0;
+        for (World world : worlds) {
+            restoredCount += clearTrackedPreviewInternal(world, nodeId);
+        }
+        return restoredCount;
+    }
+
+    private int applyTrackedPreviewUpdate(World world,
+                                           String nodeId,
+                                           Set<BlockPos> requestedPositions,
+                                           BlockState previewState,
+                                           PlacementMode placementMode) {
         assertOnServerThread(world);
 
-        Map<String, TrackedPreviewState> byNode = trackedPreviews.computeIfAbsent(world, ignored -> new LinkedHashMap<>());
-        TrackedPreviewState previousTrackedState = byNode.get(nodeId);
-
+        TrackedPreviewState previousTrackedState = readTrackedPreviewState(world, nodeId);
         Map<BlockPos, BlockState> trackedOriginalStates = previousTrackedState == null
                 ? new LinkedHashMap<>()
                 : new LinkedHashMap<>(previousTrackedState.previousStates());
         BlockState previousPreviewState = previousTrackedState == null ? null : previousTrackedState.previewState();
-
-        Set<BlockPos> requestedPositions = new LinkedHashSet<>();
-        for (BlockPos originalPos : positions) {
-            if (originalPos != null) {
-                requestedPositions.add(originalPos.toImmutable());
-            }
-        }
-
-        if (requestedPositions.isEmpty()) {
-            return clearTrackedPreviewInternal(world, nodeId, context);
-        }
-
-        // Check and enforce maximum tracked preview size
-        if (requestedPositions.size() > MAX_TRACKED_PREVIEW_BLOCKS) {
-            NodeCraft.LOGGER.warn(
-                "TrackedPreviewPlacementService: Requested {} blocks for preview, but limit is {}. " +
-                "Consider using GHOST preview for large models. Preview will be limited to {} blocks. nodeId={}",
-                requestedPositions.size(), MAX_TRACKED_PREVIEW_BLOCKS, MAX_TRACKED_PREVIEW_BLOCKS, nodeId
-            );
-
-            List<BlockPos> positionsList = new ArrayList<>(requestedPositions);
-            requestedPositions.clear();
-
-            int step = Math.max(1, positionsList.size() / MAX_TRACKED_PREVIEW_BLOCKS);
-            for (int i = 0; i < positionsList.size() && requestedPositions.size() < MAX_TRACKED_PREVIEW_BLOCKS; i += step) {
-                requestedPositions.add(positionsList.get(i));
-            }
-        }
 
         int placedCount = 0;
         int skippedCount = 0;
@@ -167,13 +266,10 @@ public final class TrackedPreviewPlacementService {
             }
         }
 
-        if (!trackedOriginalStates.isEmpty()) {
-            byNode.put(nodeId, new TrackedPreviewState(trackedOriginalStates, previewState));
-        } else {
-            byNode.remove(nodeId);
-        }
-
-        removeWorldIfEmpty(world);
+        TrackedPreviewState nextState = trackedOriginalStates.isEmpty()
+                ? null
+                : new TrackedPreviewState(trackedOriginalStates, previewState);
+        commitTrackedPreviewState(world, nodeId, nextState);
 
         NodeCraft.LOGGER.debug(
                 "TrackedPreviewPlacementService.updateTrackedPreview nodeId={} requested={} placed={} skipped={} restored={} unchanged={} tracked={}",
@@ -183,42 +279,35 @@ public final class TrackedPreviewPlacementService {
         return trackedOriginalStates.size();
     }
 
-    public int clearTrackedPreview(World world, String nodeId) {
-        return clearTrackedPreviewOnWorldThread(world, nodeId, null);
-    }
-
-    /**
-     * Restores tracked preview blocks on the server thread.
-     * Thread safety is enforced by this service; {@code context} is optional metadata for callers.
-     */
-    public int clearTrackedPreviewOnWorldThread(World world, String nodeId, @Nullable ExecutionContext context) {
-        try {
-            return clearTrackedPreviewInternal(world, nodeId, context);
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("Failed to clear tracked preview on world thread. nodeId={}", nodeId, e);
-            return 0;
-        }
-    }
-
-    private synchronized int clearTrackedPreviewInternal(World world, String nodeId, @Nullable ExecutionContext context) {
+    @Nullable
+    private Map<BlockPos, BlockState> detachTrackedPreviewState(World world, String nodeId) {
         if (world == null || nodeId == null || nodeId.isEmpty()) {
-            return 0;
+            return null;
         }
 
-        Map<String, TrackedPreviewState> byNode = trackedPreviews.get(world);
-        if (byNode == null) {
-            return 0;
-        }
+        synchronized (this) {
+            Map<String, TrackedPreviewState> byNode = trackedPreviews.get(world);
+            if (byNode == null) {
+                return null;
+            }
 
-        TrackedPreviewState trackedState = byNode.remove(nodeId);
-        if (trackedState == null) {
+            TrackedPreviewState trackedState = byNode.remove(nodeId);
+            if (trackedState == null) {
+                removeWorldIfEmpty(world);
+                return null;
+            }
+
             removeWorldIfEmpty(world);
-            NodeCraft.LOGGER.debug("TrackedPreviewPlacementService.clearTrackedPreview nodeId={} had no tracked state", nodeId);
+            return new LinkedHashMap<>(trackedState.previousStates());
+        }
+    }
+
+    private int restoreDetachedPreviewBlocks(World world, Map<BlockPos, BlockState> statesToRestore) {
+        if (statesToRestore.isEmpty()) {
             return 0;
         }
 
-        final Map<BlockPos, BlockState> statesToRestore = new LinkedHashMap<>(trackedState.previousStates());
-        int restoredCount = runOnWorldThread(world, () -> {
+        return runOnWorldThread(world, () -> {
             assertOnServerThread(world);
             int count = 0;
             for (Map.Entry<BlockPos, BlockState> entry : statesToRestore.entrySet()) {
@@ -228,91 +317,67 @@ public final class TrackedPreviewPlacementService {
             }
             return count;
         });
-
-        removeWorldIfEmpty(world);
-
-        NodeCraft.LOGGER.debug(
-                "TrackedPreviewPlacementService.clearTrackedPreview nodeId={} restored={}",
-                nodeId, restoredCount
-        );
-
-        return restoredCount;
     }
 
-    public synchronized int getTrackedCount(World world, String nodeId) {
-        if (world == null || nodeId == null || nodeId.isEmpty()) {
-            return 0;
+    @Nullable
+    private TrackedPreviewState readTrackedPreviewState(World world, String nodeId) {
+        synchronized (this) {
+            Map<String, TrackedPreviewState> byNode = trackedPreviews.get(world);
+            if (byNode == null) {
+                return null;
+            }
+            TrackedPreviewState state = byNode.get(nodeId);
+            if (state == null) {
+                return null;
+            }
+            return new TrackedPreviewState(new LinkedHashMap<>(state.previousStates()), state.previewState());
         }
-
-        Map<String, TrackedPreviewState> byNode = trackedPreviews.get(world);
-        if (byNode == null) {
-            return 0;
-        }
-
-        TrackedPreviewState trackedState = byNode.get(nodeId);
-        return trackedState == null ? 0 : trackedState.previousStates().size();
     }
 
-    public synchronized List<String> getTrackedPreviewIds(World world) {
-        Map<String, TrackedPreviewState> byNode = trackedPreviews.get(world);
-        if (byNode == null || byNode.isEmpty()) {
-            return List.of();
+    private void commitTrackedPreviewState(World world, String nodeId, @Nullable TrackedPreviewState nextState) {
+        synchronized (this) {
+            if (nextState == null) {
+                Map<String, TrackedPreviewState> byNode = trackedPreviews.get(world);
+                if (byNode != null) {
+                    byNode.remove(nodeId);
+                    removeWorldIfEmpty(world);
+                }
+                return;
+            }
+
+            Map<String, TrackedPreviewState> byNode = trackedPreviews.computeIfAbsent(world, ignored -> new LinkedHashMap<>());
+            byNode.put(nodeId, nextState);
         }
-        return new ArrayList<>(byNode.keySet());
     }
 
-    public int clearAllTrackedPreviews(World world) {
-        return clearAllTrackedPreviews(world, null);
-    }
-
-    public int clearAllTrackedPreviews(World world, @Nullable ExecutionContext context) {
-        if (world == null) {
-            return 0;
-        }
-
-        List<String> previewIds = getTrackedPreviewIds(world);
-        int restoredCount = 0;
-        for (String previewId : previewIds) {
-            restoredCount += clearTrackedPreviewInternal(world, previewId, context);
-        }
-        NodeCraft.LOGGER.info(
-                "TrackedPreviewPlacementService.clearAllTrackedPreviews clearedPreviews={} restoredBlocks={}",
-                previewIds.size(), restoredCount
-        );
-        return restoredCount;
-    }
-
-    public synchronized boolean hasAnyTrackedPreviews(String nodeId) {
-        if (nodeId == null || nodeId.isEmpty()) {
-            return false;
-        }
-        for (Map<String, TrackedPreviewState> byNode : trackedPreviews.values()) {
-            if (byNode.containsKey(nodeId)) {
-                return true;
+    private static Set<BlockPos> buildRequestedPositions(List<BlockPos> positions) {
+        Set<BlockPos> requestedPositions = new LinkedHashSet<>();
+        for (BlockPos originalPos : positions) {
+            if (originalPos != null) {
+                requestedPositions.add(originalPos.toImmutable());
             }
         }
-        return false;
+        return requestedPositions;
     }
 
-    public int clearTrackedPreviewAcrossWorlds(String nodeId) {
-        return clearTrackedPreviewAcrossWorlds(nodeId, null);
-    }
-
-    /**
-     * Clears tracked preview across all worlds on the server thread.
-     * Thread safety is enforced by this service; {@code context} is optional metadata for callers.
-     */
-    public int clearTrackedPreviewAcrossWorlds(String nodeId, @Nullable ExecutionContext context) {
-        if (nodeId == null || nodeId.isEmpty()) {
-            return 0;
+    private static void enforceTrackedPreviewLimit(Set<BlockPos> requestedPositions, String nodeId) {
+        if (requestedPositions.size() <= MAX_TRACKED_PREVIEW_BLOCKS) {
+            return;
         }
 
-        int restoredCount = 0;
-        List<World> worlds = new ArrayList<>(trackedPreviews.keySet());
-        for (World world : worlds) {
-            restoredCount += clearTrackedPreviewInternal(world, nodeId, context);
+        NodeCraft.LOGGER.warn(
+            "TrackedPreviewPlacementService: Requested {} blocks for preview, but limit is {}. " +
+            "Consider using GHOST preview for large models. Preview will be limited to {} blocks. nodeId={}",
+            requestedPositions.size(), MAX_TRACKED_PREVIEW_BLOCKS, MAX_TRACKED_PREVIEW_BLOCKS, nodeId
+        );
+
+        List<BlockPos> positionsList = new ArrayList<>(requestedPositions);
+        requestedPositions.clear();
+
+        int step = Math.max(1, positionsList.size() / MAX_TRACKED_PREVIEW_BLOCKS);
+        for (int i = 0; i < positionsList.size() && requestedPositions.size() < MAX_TRACKED_PREVIEW_BLOCKS; i += step) {
+            requestedPositions.add(positionsList.get(i));
         }
-        return restoredCount;
     }
 
     private void removeWorldIfEmpty(World world) {
