@@ -1,6 +1,7 @@
 # gradle
 
 .gradle/
+.gradle-ci-verify/
 build/
 out/
 classes/

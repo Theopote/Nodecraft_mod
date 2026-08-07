@@ -19,7 +19,6 @@ repositories {
 		url = 'https://maven.isxander.dev/releases'
 		name = 'Xander Maven'
 	}
-	maven { url 'https://jitpack.io' }
 }
 
 loom {
@@ -50,14 +49,20 @@ dependencies {
 	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
-	// GUI - ImGui
-	modImplementation "com.github.SpaiR:imgui-java:v${project.imgui_version}"
-	include "com.github.SpaiR:imgui-java-binding:v${project.imgui_version}"
-	include "com.github.SpaiR:imgui-java-lwjgl3:v${project.imgui_version}"
-	include "com.github.SpaiR:imgui-java-gl3:v${project.imgui_version}"
-	include "com.github.SpaiR:imgui-java-natives-windows:v${project.imgui_version}"
-	include "com.github.SpaiR:imgui-java-natives-linux:v${project.imgui_version}"
-	include "com.github.SpaiR:imgui-java-natives-macos:v${project.imgui_version}"
+	// GUI - ImGui (Maven Central; avoid JitPack for CI stability)
+	// ImGuiImplGl3 lives in imgui-java-lwjgl3 on Central (no separate gl3 artifact).
+	// Exclude org.lwjgl so we compile/run against Minecraft's LWJGL (3.3.3), not imgui's BOM (3.3.4).
+	modImplementation "io.github.spair:imgui-java-binding:${project.imgui_version}"
+	modImplementation("io.github.spair:imgui-java-lwjgl3:${project.imgui_version}") {
+		exclude group: 'org.lwjgl'
+	}
+	include "io.github.spair:imgui-java-binding:${project.imgui_version}"
+	include("io.github.spair:imgui-java-lwjgl3:${project.imgui_version}") {
+		exclude group: 'org.lwjgl'
+	}
+	include "io.github.spair:imgui-java-natives-windows:${project.imgui_version}"
+	include "io.github.spair:imgui-java-natives-linux:${project.imgui_version}"
+	include "io.github.spair:imgui-java-natives-macos:${project.imgui_version}"
 
 	// Algorithms & math libraries
 	implementation "org.locationtech.jts:jts-core:${project.jts_version}"

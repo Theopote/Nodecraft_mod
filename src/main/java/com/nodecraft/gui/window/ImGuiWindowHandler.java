@@ -141,22 +141,25 @@ public class ImGuiWindowHandler {
     }
     
     /**
-     * 检查窗口是否是ImGui创建的窗口
-     * @param windowHandle 窗口句柄
-     * @return 是否是ImGui窗口
+     * 检查窗口是否是ImGui创建的窗口.
+     * <p>Minecraft ships LWJGL 3.3.3, which lacks {@code glfwGetWindowTitle} (GLFW 3.4 / LWJGL 3.3.4+).
+     * Viewport windows are separate GLFW contexts, so any non-main window is treated as an ImGui candidate.
      */
     private boolean isImGuiWindow(long windowHandle) {
         try {
-            // 检查窗口标题是否包含NodeCraft相关内容
-            String title = GLFW.glfwGetWindowTitle(windowHandle);
-            if (title != null && (title.contains("NodeCraft") || title.contains("编辑器"))) {
-                return true;
+            if (windowHandle == 0L) {
+                return false;
             }
-            
-            // 检查窗口是否有ImGui特征
-            // 这里可以添加更多的检测逻辑
-            
-            return false;
+
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client != null && client.getWindow() != null) {
+                long mainHandle = client.getWindow().getHandle();
+                if (windowHandle == mainHandle) {
+                    return false;
+                }
+            }
+
+            return true;
         } catch (Exception e) {
             NodeCraft.LOGGER.debug("检查窗口类型时出错: {}", e.getMessage());
             return false;
