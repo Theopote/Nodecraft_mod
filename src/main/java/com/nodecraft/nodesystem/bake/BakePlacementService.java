@@ -76,13 +76,18 @@ public class BakePlacementService {
                 placements.add(new BakeTask.Placement(pos, targetState));
             }
         }
-        return enqueuePlacements(world, placements, mode, recordUndo, blocksPerTick, defaultTickBudgetNanos, actorId, onComplete);
+        return enqueuePlacements(world, placements, mode, recordUndo, BakeOperationKind.APPLY, blocksPerTick, defaultTickBudgetNanos, actorId, onComplete);
     }
 
+    /**
+     * Enqueue placements with explicit operation kind for history semantics.
+     * This is the preferred method for undo/redo operations.
+     */
     public UUID enqueuePlacements(World world,
                                   List<BakeTask.Placement> placements,
                                   PlacementMode mode,
                                   boolean recordUndo,
+                                  BakeOperationKind operationKind,
                                   int blocksPerTick,
                                   long tickBudgetNanos,
                                   @Nullable UUID actorId,
@@ -99,6 +104,7 @@ public class BakePlacementService {
             placements,
             mode,
             recordUndo,
+            operationKind,
             resolveBlocksPerTick(blocksPerTick),
             resolveTickBudgetNanos(tickBudgetNanos),
             resolveActorId(actorId),
@@ -107,11 +113,28 @@ public class BakePlacementService {
         synchronized (queue) {
             queue.addLast(task);
         }
-        NodeCraft.LOGGER.debug("Queued bake task {} with {} placements", taskId, placements.size());
+        NodeCraft.LOGGER.debug("Queued {} bake task {} with {} placements", 
+                              operationKind, taskId, placements.size());
         return taskId;
     }
 
-    void processTick() {
+    /**
+     * Legacy method - defaults to APPLY operation kind.
+     */
+    public UUID enqueuePlacements(World world,
+                                  List<BakeTask.Placement> placements,
+                                  PlacementMode mode,
+                                  boolean recordUndo,
+                                  int blocksPerTick,
+                                  long tickBudgetNanos,
+                                  @Nullable UUID actorId,
+                                  Runnable onComplete) {
+        return enqueuePlacements(world, placements, mode, recordUndo, 
+                                BakeOperationKind.APPLY, blocksPerTick, 
+                                tickBudgetNanos, actorId, onComplete);
+
+    }
+    public void processTick() {
         long deadline = System.nanoTime() + defaultTickBudgetNanos;
         while (System.nanoTime() < deadline) {
             BakeTask task;
@@ -303,16 +326,31 @@ public class BakePlacementService {
         if (task.isCancelled()) {
             return;
         }
+        
+        // Route inverse record to correct stack based on operation kind
         if (!task.getUndoRecords().isEmpty()) {
             BakeHistory.UndoRecord record = new BakeHistory.UndoRecord(task.getTaskId());
             for (BakeTask.BakeUndoRecord ur : task.getUndoRecords()) {
                 record.add(ur.pos(), ur.previousState());
             }
-            getHistory(task.getActorId()).push(record);
+            
+            BakeHistory history = getHistory(task.getActorId());
+            switch (task.getOperationKind()) {
+                case APPLY -> history.push(record);      // Normal bake: inverse → undo stack (clears redo)
+                case UNDO -> history.pushRedo(record);   // Undo: inverse → redo stack
+                case REDO -> history.pushUndo(record);   // Redo: inverse → undo stack
+                case NONE -> { /* No history recording */ }
+            }
         }
+        
+        if (task.getOnComplete() != null) {
+            task.getOnComplete().run();
+        }
+        
         NodeCraft.LOGGER.debug(
-            "Bake task {} completed. placed={}, skipped={}, total={}",
+            "Bake task {} ({}) completed. placed={}, skipped={}, total={}",
             task.getTaskId(),
+            task.getOperationKind(),
             task.getPlacedCount(),
             task.getSkippedCount(),
             task.getTotalCount()

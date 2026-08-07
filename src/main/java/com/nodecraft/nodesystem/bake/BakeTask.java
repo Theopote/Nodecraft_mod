@@ -20,6 +20,7 @@ public class BakeTask {
     private final PlacementMode placementMode;
     private final UUID actorId;
     private final boolean recordUndo;
+    private final BakeOperationKind operationKind;  // NEW: semantic meaning for history
     private final int blocksPerTick;
     private final long timeBudgetNanos;
     private final Runnable onComplete;
@@ -39,7 +40,8 @@ public class BakeTask {
                     boolean recordUndo,
                     int blocksPerTick,
                     Runnable onComplete) {
-        this(taskId, world, toPlacements(positions, targetState), placementMode, recordUndo, blocksPerTick, 0L, BakePlacementService.SERVER_ACTOR_ID, onComplete);
+        this(taskId, world, toPlacements(positions, targetState), placementMode, recordUndo, 
+             BakeOperationKind.APPLY, blocksPerTick, 0L, BakePlacementService.SERVER_ACTOR_ID, onComplete);
     }
 
     public BakeTask(UUID taskId,
@@ -51,11 +53,26 @@ public class BakeTask {
                     long timeBudgetNanos,
                     UUID actorId,
                     Runnable onComplete) {
+        this(taskId, world, placements, placementMode, recordUndo, 
+             BakeOperationKind.APPLY, blocksPerTick, timeBudgetNanos, actorId, onComplete);
+    }
+
+    public BakeTask(UUID taskId,
+                    World world,
+                    List<Placement> placements,
+                    PlacementMode placementMode,
+                    boolean recordUndo,
+                    BakeOperationKind operationKind,
+                    int blocksPerTick,
+                    long timeBudgetNanos,
+                    UUID actorId,
+                    Runnable onComplete) {
         this.taskId = taskId != null ? taskId : UUID.randomUUID();
         this.world = world;
         this.placements = copyPlacements(placements);
         this.placementMode = placementMode != null ? placementMode : PlacementMode.OVERWRITE;
         this.recordUndo = recordUndo;
+        this.operationKind = operationKind != null ? operationKind : BakeOperationKind.APPLY;
         this.actorId = actorId != null ? actorId : BakePlacementService.SERVER_ACTOR_ID;
         this.blocksPerTick = Math.max(1, blocksPerTick);
         this.timeBudgetNanos = Math.max(0L, timeBudgetNanos);
@@ -74,6 +91,14 @@ public class BakeTask {
         return actorId;
     }
 
+
+    public BakeOperationKind getOperationKind() {
+        return operationKind;
+    }
+
+    public Runnable getOnComplete() {
+        return onComplete;
+    }
     public boolean isCompleted() {
         return completed;
     }

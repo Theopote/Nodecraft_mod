@@ -19,6 +19,11 @@ public class BakeHistory {
     private final List<UndoRecord> undoStack = new ArrayList<>();
     private final List<UndoRecord> redoStack = new ArrayList<>();
 
+    /**
+     * Push a record to the undo stack.
+     * This is for normal APPLY operations - the inverse of what was just done.
+     * Clears the redo stack (standard undo/redo semantics).
+     */
     public void push(UndoRecord record) {
         if (record == null || record.size() == 0) {
             return;
@@ -26,6 +31,30 @@ public class BakeHistory {
         undoStack.add(record);
         redoStack.clear();
         trim(undoStack);
+    }
+
+    /**
+     * Push a record to the undo stack without clearing redo stack.
+     * This is for REDO operations - the inverse goes back to undo.
+     */
+    public void pushUndo(UndoRecord record) {
+        if (record == null || record.size() == 0) {
+            return;
+        }
+        undoStack.add(record);
+        trim(undoStack);
+    }
+
+    /**
+     * Push a record to the redo stack.
+     * This is for UNDO operations - the inverse goes to redo.
+     */
+    public void pushRedo(UndoRecord record) {
+        if (record == null || record.size() == 0) {
+            return;
+        }
+        redoStack.add(record);
+        trim(redoStack);
     }
 
     public UndoRecord pop() {
@@ -62,23 +91,16 @@ public class BakeHistory {
         if (record == null || world == null) {
             return false;
         }
-        UndoRecord undoRecord = record.applyAndCaptureInverse(world);
-        if (undoRecord != null && undoRecord.size() > 0) {
-            undoStack.add(undoRecord);
-            trim(undoStack);
-        }
+        record.apply(world);
+        undoStack.add(record);
+        trim(undoStack);
         return true;
     }
-
     /**
      * Asynchronous undo - executes block restores across multiple ticks via BakePlacementService.
      * This prevents server lag on large builds.
-     * 
-     * CORRECT SEMANTICS:
-     * 1. Capture current world state (for redo)
-     * 2. Restore previous state from undo record
-     * 3. On success: pop from undoStack, push captured state to redoStack
-     * 4. On failure: undo record remains in undoStack for retry
+     * <p>
+     * With BakeOperationKind.UNDO, the service automatically routes the inverse to redoStack.
      *
      * @param actorId Actor performing the undo
      * @param world Target world
@@ -93,14 +115,6 @@ public class BakeHistory {
             return null;
         }
 
-        // CRITICAL: Capture current world state BEFORE undo (for redo)
-        UndoRecord redoRecord = new UndoRecord(UUID.randomUUID());
-        for (int i = 0; i < undoRecord.size(); i++) {
-            BlockPos pos = undoRecord.getPositions().get(i);
-            BlockState currentState = world.getBlockState(pos);
-            redoRecord.add(pos, currentState);
-        }
-
         // Convert UndoRecord to placements
         List<BakeTask.Placement> placements = new ArrayList<>(undoRecord.size());
         for (int i = 0; i < undoRecord.size(); i++) {
@@ -110,37 +124,29 @@ public class BakeHistory {
             ));
         }
 
-        // Enqueue undo as a bake task WITHOUT recording (manual stack management)
-        UUID taskId = BakePlacementService.getInstance().enqueuePlacements(
+        // Enqueue with UNDO kind - service will route inverse to redoStack
+        // On successful completion, remove from undo stack
+        // Record the inverse
+        // Semantic: this is an undo operation
+
+        return BakePlacementService.getInstance().enqueuePlacements(
             world,
             placements,
             PlacementMode.OVERWRITE,
-            false, // Don't auto-record - we manage stacks manually
+            true,  // Record the inverse
+            BakeOperationKind.UNDO,  // Semantic: this is an undo operation
             blocksPerTick,
             tickBudgetNanos,
             actorId,
-            () -> {
-                // On successful completion: undo → redoStack
-                UndoRecord completed = pop();
-                if (completed != null) {
-                    redoStack.add(redoRecord);  // Push captured state to redo
-                    trim(redoStack);
-                }
-            }
+                this::pop
         );
-
-        return taskId;
     }
 
     /**
      * Asynchronous redo - executes block restores across multiple ticks via BakePlacementService.
      * This prevents server lag on large builds.
-     * 
-     * CORRECT SEMANTICS:
-     * 1. Capture current world state (for undo)
-     * 2. Restore state from redo record
-     * 3. On success: pop from redoStack, push captured state to undoStack
-     * 4. On failure: redo record remains in redoStack for retry
+     * <p>
+     * With BakeOperationKind.REDO, the service automatically routes the inverse to undoStack.
      *
      * @param actorId Actor performing the redo
      * @param world Target world
@@ -155,14 +161,6 @@ public class BakeHistory {
             return null;
         }
 
-        // CRITICAL: Capture current world state BEFORE redo (for undo)
-        UndoRecord undoRecord = new UndoRecord(UUID.randomUUID());
-        for (int i = 0; i < redoRecord.size(); i++) {
-            BlockPos pos = redoRecord.getPositions().get(i);
-            BlockState currentState = world.getBlockState(pos);
-            undoRecord.add(pos, currentState);
-        }
-
         // Convert UndoRecord to placements
         List<BakeTask.Placement> placements = new ArrayList<>(redoRecord.size());
         for (int i = 0; i < redoRecord.size(); i++) {
@@ -172,26 +170,27 @@ public class BakeHistory {
             ));
         }
 
-        // Enqueue redo as a bake task WITHOUT recording (manual stack management)
-        UUID taskId = BakePlacementService.getInstance().enqueuePlacements(
+        // Enqueue with REDO kind - service will route inverse to undoStack
+        // Record the inverse
+        // Semantic: this is a redo operation
+        // On successful completion, remove from redo stack
+
+        return BakePlacementService.getInstance().enqueuePlacements(
             world,
             placements,
             PlacementMode.OVERWRITE,
-            false, // Don't auto-record - we manage stacks manually
+            true,  // Record the inverse
+            BakeOperationKind.REDO,  // Semantic: this is a redo operation
             blocksPerTick,
             tickBudgetNanos,
             actorId,
             () -> {
-                // On successful completion: redo → undoStack
+                // On successful completion, remove from redo stack
                 if (!redoStack.isEmpty()) {
                     redoStack.removeLast();
-                    undoStack.add(undoRecord);  // Push captured state to undo
-                    trim(undoStack);
                 }
             }
         );
-
-        return taskId;
     }
 
     public boolean hasUndo() {
