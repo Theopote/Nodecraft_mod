@@ -7,7 +7,9 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -15,6 +17,11 @@ import java.util.UUID;
  * <p>
  * Cancel / timeout always rolls back in-world progress using captured previous states,
  * so World and BakeHistory stay consistent (COMPLETED = commit, CANCELLED/TIMED_OUT = rollback).
+ * <p>
+ * Per-position transaction semantics: only the first successful write to a {@link BlockPos}
+ * records the pre-transaction state ({@code putIfAbsent}). Repeated writes to the same
+ * coordinate do not create intermediate undo entries, so rollback always restores the
+ * world as it was when the task began — independent of upstream position uniqueness.
  */
 public class BakeTask {
 
@@ -30,9 +37,13 @@ public class BakeTask {
     private final Runnable onComplete;
     private final Runnable onCancel;
 
-    private final List<BakeUndoRecord> undoRecords = new ArrayList<>();
+    /** Insertion-ordered original states; one entry per written BlockPos. */
+    private final LinkedHashMap<BlockPos, BlockState> originalStates = new LinkedHashMap<>();
+    /** Snapshot of originalStates entries for indexed LIFO rollback; set in beginTimeSlicedRollback. */
+    private List<Map.Entry<BlockPos, BlockState>> rollbackEntries = List.of();
     private int nextIndex = 0;
-    private int rollbackIndex = 0;
+    /** During rollback: remaining entries to restore (counts down from size to 0). */
+    private int rollbackRemaining = 0;
     private BakeTaskState state = BakeTaskState.QUEUED;
     private BakeTaskState pendingAbortState = BakeTaskState.CANCELLED;
     private int placedCount = 0;
@@ -152,7 +163,7 @@ public class BakeTask {
     }
 
     public boolean isRollbackFinished() {
-        return rollbackIndex >= undoRecords.size();
+        return rollbackRemaining <= 0;
     }
 
     public int getPlacedCount() {
@@ -164,22 +175,23 @@ public class BakeTask {
     }
 
     public int getTotalCount() {
-        return state == BakeTaskState.ROLLING_BACK ? undoRecords.size() : placements.size();
+        return state == BakeTaskState.ROLLING_BACK ? originalStates.size() : placements.size();
     }
 
     public int getRemainingCount() {
         if (state == BakeTaskState.ROLLING_BACK) {
-            return Math.max(0, undoRecords.size() - rollbackIndex);
+            return Math.max(0, rollbackRemaining);
         }
         return Math.max(0, placements.size() - nextIndex);
     }
 
     public double getProgress() {
         if (state == BakeTaskState.ROLLING_BACK) {
-            if (undoRecords.isEmpty()) {
+            int total = originalStates.size();
+            if (total == 0) {
                 return 1.0d;
             }
-            return Math.min(1.0d, (double) rollbackIndex / (double) undoRecords.size());
+            return Math.min(1.0d, (double) (total - rollbackRemaining) / (double) total);
         }
         return placements.isEmpty() ? 1.0d : Math.min(1.0d, (double) nextIndex / (double) placements.size());
     }
@@ -217,12 +229,12 @@ public class BakeTask {
                 continue;
             }
 
-            // Always capture previous state so cancel/timeout can roll back the transaction.
+            // Capture pre-transaction state once per position (first successful write wins).
             BlockState previous = world.getBlockState(pos);
             if (world.setBlockState(pos, targetState, Block.NOTIFY_ALL)) {
                 placedThisTick++;
                 placedCount++;
-                undoRecords.add(new BakeUndoRecord(pos, previous));
+                originalStates.putIfAbsent(pos.toImmutable(), previous);
             } else {
                 skippedCount++;
             }
@@ -241,16 +253,21 @@ public class BakeTask {
             return -1;
         }
 
-        int limit = Math.min(rollbackIndex + blocksPerTick, undoRecords.size());
+        // LIFO over insertion order: last unique write first, then earlier ones.
+        // With one entry per pos this equals restoring every recorded original state.
+        int limit = Math.max(0, rollbackRemaining - blocksPerTick);
         long deadline = timeBudgetNanos > 0L ? System.nanoTime() + timeBudgetNanos : Long.MAX_VALUE;
         int restoredThisTick = 0;
 
-        while (rollbackIndex < limit && System.nanoTime() < deadline) {
-            BakeUndoRecord rec = undoRecords.get(rollbackIndex++);
-            if (rec.pos() == null || rec.previousState() == null) {
+        while (rollbackRemaining > limit && System.nanoTime() < deadline) {
+            rollbackRemaining--;
+            Map.Entry<BlockPos, BlockState> entry = rollbackEntries.get(rollbackRemaining);
+            BlockPos pos = entry.getKey();
+            BlockState previous = entry.getValue();
+            if (pos == null || previous == null) {
                 continue;
             }
-            if (world.setBlockState(rec.pos(), rec.previousState(), Block.NOTIFY_ALL)) {
+            if (world.setBlockState(pos, previous, Block.NOTIFY_ALL)) {
                 restoredThisTick++;
             }
         }
@@ -282,12 +299,13 @@ public class BakeTask {
     }
 
     /**
-     * Switches this task into time-sliced rollback mode using captured undo records.
+     * Switches this task into time-sliced rollback mode using captured original states.
      * The task must be re-queued by {@link BakePlacementService}.
      */
     public void beginTimeSlicedRollback() {
         state = BakeTaskState.ROLLING_BACK;
-        rollbackIndex = 0;
+        rollbackEntries = List.copyOf(originalStates.entrySet());
+        rollbackRemaining = rollbackEntries.size();
     }
 
     /**
@@ -311,8 +329,16 @@ public class BakeTask {
         }
     }
 
+    /**
+     * Original pre-transaction states for positions successfully written by this task.
+     * One record per {@link BlockPos}; insertion order follows first successful write.
+     */
     public List<BakeUndoRecord> getUndoRecords() {
-        return new ArrayList<>(undoRecords);
+        List<BakeUndoRecord> out = new ArrayList<>(originalStates.size());
+        for (Map.Entry<BlockPos, BlockState> entry : originalStates.entrySet()) {
+            out.add(new BakeUndoRecord(entry.getKey(), entry.getValue()));
+        }
+        return out;
     }
 
     private static List<Placement> toPlacements(List<BlockPos> positions, BlockState targetState) {

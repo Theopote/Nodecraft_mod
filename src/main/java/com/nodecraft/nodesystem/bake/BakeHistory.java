@@ -5,8 +5,9 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -210,8 +211,8 @@ public class BakeHistory {
 
     public static class UndoRecord {
         private final UUID bakeId;
-        private final List<BlockPos> positions = new ArrayList<>();
-        private final List<BlockState> previousStates = new ArrayList<>();
+        /** First-write-wins original states; preserves insertion order for apply/async enqueue. */
+        private final LinkedHashMap<BlockPos, BlockState> originalStates = new LinkedHashMap<>();
 
         public UndoRecord(UUID bakeId) {
             this.bakeId = bakeId;
@@ -222,27 +223,28 @@ public class BakeHistory {
          */
         static UndoRecord syntheticForStackTest(UUID bakeId) {
             UndoRecord record = new UndoRecord(bakeId);
-            record.positions.add(BlockPos.ORIGIN);
-            record.previousStates.add(null);
+            record.originalStates.put(BlockPos.ORIGIN, null);
             return record;
         }
 
+        /**
+         * Records the pre-transaction state for {@code pos}. Subsequent calls for the same
+         * position are ignored so history stores transaction-start state only.
+         */
         public void add(BlockPos pos, BlockState previousState) {
             if (pos == null || previousState == null) {
                 return;
             }
-            positions.add(pos.toImmutable());
-            previousStates.add(previousState);
+            originalStates.putIfAbsent(pos.toImmutable(), previousState);
         }
 
         public int size() {
-            return positions.size();
+            return originalStates.size();
         }
 
         public void apply(World world) {
             captureInverseAfterApply(world);
-            positions.clear();
-            previousStates.clear();
+            originalStates.clear();
         }
 
         UndoRecord captureInverseAfterApply(World world) {
@@ -254,9 +256,12 @@ public class BakeHistory {
                 return null;
             }
             UndoRecord inverse = new UndoRecord(bakeId);
-            for (int i = 0; i < positions.size(); i++) {
-                BlockPos pos = positions.get(i);
-                BlockState targetState = previousStates.get(i);
+            // Restore in reverse insertion order (LIFO).
+            List<Map.Entry<BlockPos, BlockState>> entries = new ArrayList<>(originalStates.entrySet());
+            for (int i = entries.size() - 1; i >= 0; i--) {
+                Map.Entry<BlockPos, BlockState> entry = entries.get(i);
+                BlockPos pos = entry.getKey();
+                BlockState targetState = entry.getValue();
                 BlockState currentState = world.getBlockState(pos);
                 inverse.add(pos, currentState);
                 world.setBlockState(pos, targetState, 3);
@@ -269,11 +274,11 @@ public class BakeHistory {
         }
 
         public List<BlockPos> getPositions() {
-            return Collections.unmodifiableList(positions);
+            return List.copyOf(originalStates.keySet());
         }
 
         public List<BlockState> getPreviousStates() {
-            return Collections.unmodifiableList(previousStates);
+            return List.copyOf(originalStates.values());
         }
     }
 }

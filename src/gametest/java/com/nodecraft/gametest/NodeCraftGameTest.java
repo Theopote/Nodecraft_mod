@@ -299,6 +299,109 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         ctx.complete();
     }
 
+    /**
+     * Transaction invariant: repeated writes to the same BlockPos in one BakeTask must
+     * rollback to the pre-transaction state (putIfAbsent), not an intermediate write.
+     */
+    @GameTest
+    public void bakeDuplicatePosCancelRestoresPreTransactionState(TestContext ctx) {
+        World world = ctx.getWorld();
+        BakePlacementService service = BakePlacementService.getInstance();
+        service.cancelAll();
+
+        UUID actorId = UUID.randomUUID();
+        BakeHistory history = service.getHistory(actorId);
+        history.clear();
+
+        BlockPos relP = new BlockPos(1, 1, 1);
+        BlockPos relQ = new BlockPos(2, 1, 1);
+        BlockPos absP = ctx.getAbsolutePos(relP);
+        BlockPos absQ = ctx.getAbsolutePos(relQ);
+
+        // Keep a third placement so the task is still RUNNING after two writes to P.
+        UUID taskId = service.enqueuePlacements(
+            world,
+            List.of(
+                new BakeTask.Placement(absP, Blocks.STONE.getDefaultState()),
+                new BakeTask.Placement(absP, Blocks.GOLD_BLOCK.getDefaultState()),
+                new BakeTask.Placement(absQ, Blocks.STONE.getDefaultState())
+            ),
+            PlacementMode.OVERWRITE,
+            true,
+            BakeOperationKind.APPLY,
+            2,
+            0L,
+            actorId,
+            null
+        );
+        ctx.assertTrue(taskId != null, "apply task id");
+
+        service.processTick();
+        ctx.expectBlock(Blocks.GOLD_BLOCK, relP);
+        ctx.checkBlockState(relQ, state -> state.isOf(Blocks.AIR), state -> Text.literal("Q still pending"));
+
+        ctx.assertTrue(service.cancelTask(taskId), "cancel after duplicate writes to P");
+        drainTasks(service);
+
+        ctx.checkBlockState(relP, state -> state.isOf(Blocks.AIR),
+            state -> Text.literal("P must restore to pre-txn AIR, not intermediate STONE"));
+        ctx.checkBlockState(relQ, state -> state.isOf(Blocks.AIR), state -> Text.literal("Q stays air"));
+        ctx.assertEquals(0, history.size(), "cancelled apply must not commit history");
+
+        ctx.complete();
+    }
+
+    /**
+     * Completed apply with duplicate positions commits one history entry per unique pos
+     * and undo restores the pre-transaction world.
+     */
+    @GameTest
+    public void bakeDuplicatePosCommitUndoRestoresOriginal(TestContext ctx) {
+        World world = ctx.getWorld();
+        BakePlacementService service = BakePlacementService.getInstance();
+        service.cancelAll();
+
+        UUID actorId = UUID.randomUUID();
+        BakeHistory history = service.getHistory(actorId);
+        history.clear();
+
+        BlockPos relP = new BlockPos(1, 1, 1);
+        BlockPos absP = ctx.getAbsolutePos(relP);
+
+        service.enqueuePlacements(
+            world,
+            List.of(
+                new BakeTask.Placement(absP, Blocks.STONE.getDefaultState()),
+                new BakeTask.Placement(absP, Blocks.GOLD_BLOCK.getDefaultState())
+            ),
+            PlacementMode.OVERWRITE,
+            true,
+            BakeOperationKind.APPLY,
+            1000,
+            1_000_000L,
+            actorId,
+            null
+        );
+        drainTasks(service);
+
+        ctx.expectBlock(Blocks.GOLD_BLOCK, relP);
+        ctx.assertEquals(1, history.size(), "one undo transaction");
+        BakeHistory.UndoRecord committed = history.peek();
+        ctx.assertTrue(committed != null, "committed record");
+        ctx.assertEquals(1, committed.size(), "one unique position in history");
+
+        UUID undoId = service.undoLastAsync(actorId, world, 1000, 1_000_000L);
+        ctx.assertTrue(undoId != null, "undo queued");
+        drainTasks(service);
+
+        ctx.checkBlockState(relP, state -> state.isOf(Blocks.AIR),
+            state -> Text.literal("undo must restore pre-txn AIR"));
+        ctx.assertEquals(0, history.size(), "undo stack empty");
+        ctx.assertEquals(1, history.redoSize(), "redo has inverse");
+
+        ctx.complete();
+    }
+
     @Override
     public void invokeTestMethod(TestContext context, Method method) throws ReflectiveOperationException {
         method.invoke(this, context);
