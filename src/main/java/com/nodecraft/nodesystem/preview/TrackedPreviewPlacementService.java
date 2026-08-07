@@ -56,7 +56,8 @@ public final class TrackedPreviewPlacementService {
     }
 
     /**
-     * Thread-safe version that applies preview block mutations on the server thread.
+     * Applies preview block mutations on the server thread.
+     * Thread safety is enforced by this service; {@code context} is optional metadata for callers.
      */
     public int updateTrackedPreviewOnWorldThread(World world,
                                                    String nodeId,
@@ -69,7 +70,7 @@ public final class TrackedPreviewPlacementService {
         }
 
         try {
-            return runOnWorldThread(world, context, () ->
+            return runOnWorldThread(world, () ->
                 updateTrackedPreviewDirect(world, nodeId, positions, previewState, placementMode, context)
             );
         } catch (Exception e) {
@@ -84,6 +85,8 @@ public final class TrackedPreviewPlacementService {
                                                         BlockState previewState,
                                                         PlacementMode placementMode,
                                                         @Nullable ExecutionContext context) {
+        assertOnServerThread(world);
+
         Map<String, TrackedPreviewState> byNode = trackedPreviews.computeIfAbsent(world, ignored -> new LinkedHashMap<>());
         TrackedPreviewState previousTrackedState = byNode.get(nodeId);
 
@@ -185,7 +188,8 @@ public final class TrackedPreviewPlacementService {
     }
 
     /**
-     * Thread-safe version that ensures world restoration happens on the server thread.
+     * Restores tracked preview blocks on the server thread.
+     * Thread safety is enforced by this service; {@code context} is optional metadata for callers.
      */
     public int clearTrackedPreviewOnWorldThread(World world, String nodeId, @Nullable ExecutionContext context) {
         try {
@@ -214,7 +218,8 @@ public final class TrackedPreviewPlacementService {
         }
 
         final Map<BlockPos, BlockState> statesToRestore = new LinkedHashMap<>(trackedState.previousStates());
-        int restoredCount = runOnWorldThread(world, context, () -> {
+        int restoredCount = runOnWorldThread(world, () -> {
+            assertOnServerThread(world);
             int count = 0;
             for (Map.Entry<BlockPos, BlockState> entry : statesToRestore.entrySet()) {
                 if (world.setBlockState(entry.getKey(), entry.getValue(), Block.NOTIFY_ALL)) {
@@ -294,7 +299,8 @@ public final class TrackedPreviewPlacementService {
     }
 
     /**
-     * Clears tracked preview across all worlds, marshaling world mutations onto the server thread.
+     * Clears tracked preview across all worlds on the server thread.
+     * Thread safety is enforced by this service; {@code context} is optional metadata for callers.
      */
     public int clearTrackedPreviewAcrossWorlds(String nodeId, @Nullable ExecutionContext context) {
         if (nodeId == null || nodeId.isEmpty()) {
@@ -316,27 +322,41 @@ public final class TrackedPreviewPlacementService {
         }
     }
 
-    private static <T> T runOnWorldThread(World world, @Nullable ExecutionContext context, Supplier<T> supplier) {
+    private static <T> T runOnWorldThread(World world, Supplier<T> supplier) {
         if (supplier == null) {
             return null;
         }
-        if (context != null) {
-            return context.callOnWorldThread(supplier);
+        if (!(world instanceof ServerWorld serverWorld)) {
+            throw new IllegalStateException("Preview world mutations require a ServerWorld");
         }
-        if (world instanceof ServerWorld serverWorld) {
-            MinecraftServer server = serverWorld.getServer();
-            if (server != null && !server.isOnThread()) {
-                try {
-                    return server.submit(supplier).get();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new IllegalStateException("Failed to run preview work on the Minecraft server thread", e);
-                } catch (ExecutionException e) {
-                    throw new IllegalStateException("Preview work failed on the Minecraft server thread", e.getCause());
-                }
+
+        MinecraftServer server = serverWorld.getServer();
+        if (server == null) {
+            throw new IllegalStateException("Minecraft server unavailable for preview world mutation");
+        }
+
+        if (!server.isOnThread()) {
+            try {
+                return server.submit(supplier).get();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Interrupted while scheduling preview work on server thread", e);
+            } catch (ExecutionException e) {
+                throw new IllegalStateException("Preview work failed on server thread", e.getCause());
             }
         }
+
         return supplier.get();
+    }
+
+    private static void assertOnServerThread(World world) {
+        if (!(world instanceof ServerWorld serverWorld)) {
+            throw new IllegalStateException("Preview world mutations require a ServerWorld");
+        }
+        MinecraftServer server = serverWorld.getServer();
+        if (server == null || !server.isOnThread()) {
+            throw new IllegalStateException("Preview world mutation invoked off server thread");
+        }
     }
 
     private record TrackedPreviewState(Map<BlockPos, BlockState> previousStates, BlockState previewState) {
