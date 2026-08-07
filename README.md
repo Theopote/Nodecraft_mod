@@ -116,6 +116,9 @@ Generated plans are validated before they can be applied. Connection creation us
 - `src/main/java/com/nodecraft/gui`: editor UI, panels, dialogs, AI assistant UI, and ImGui integration.
 - `src/main/java/com/nodecraft/nodesystem`: node API, graph model, execution, preview, data types, and node implementations.
 - `src/main/resources/assets/nodecraft`: mod assets, language files, models, textures, fonts, and node icons.
+- `docs/development`: current roadmap and phase checklists.
+- `docs/architecture` / `docs/contracts`: design freezes and regression contracts.
+- `docs/history`: archived status / fix notes (not current policy).
 
 ## License
 

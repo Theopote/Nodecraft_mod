@@ -1,7 +1,7 @@
 # NodeCraft Advancement: 0.7 Stability → 0.8 Interactive Runtime
 
 > Source of truth for the next project phase.  
-> Older `FINAL-*` / `FIXES-*` / `*-COMPLETE.md` notes are historical; do not treat them as current policy.
+> Older `FINAL-*` / `FIXES-*` / `*-COMPLETE.md` notes are historical; see [`../history/`](../history/). Do not treat them as current policy.
 
 ## Current position
 
@@ -10,7 +10,7 @@
 | 0.5 | Preview / Bake | Done |
 | 0.6 | Execution (dataflow + exec frontier) | Done |
 | **0.7** | **Stability** | **PASS (`v0.7-stability`)** |
-| **0.8** | **Interactive Runtime** | **B–G PASS — next: H docs cleanup** |
+| **0.8** | **Interactive Runtime** | **B–H PASS — next: I GraphFormatVersion** |
 | 0.9 | Compatibility / format freeze | Later |
 | 1.0 | Release | Later |
 
@@ -145,11 +145,22 @@ Design: [`../architecture/editor-interaction-mode.md`](../architecture/editor-in
 
 ---
 
+## Phase H — Docs history cleanup — PASS
+
+Detail: [`docs-history-cleanup.md`](./docs-history-cleanup.md)
+
+| Work | Status |
+|------|--------|
+| `docs/history/` archive + index | PASS |
+| Move root/docs FINAL/FIXES/COMPLETE dumps | PASS |
+| Development README points to archive | PASS |
+
+---
+
 ## Later phases (ordered)
 
 | Phase | Theme |
 |-------|--------|
-| H | Docs history cleanup |
 | I | `GraphFormatVersion` |
 
 ## Explicit non-goals (now)
