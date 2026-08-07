@@ -2,6 +2,7 @@ package com.nodecraft.gui.editor.impl;
 
 import java.util.Map;
 import java.util.UUID;
+import com.nodecraft.gui.editor.document.EditorDocumentState;
 import com.nodecraft.nodesystem.execution.ExecFrontierSnapshot;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.io.SavedGraph;
@@ -83,6 +84,13 @@ public interface ICanvasEditor {
     boolean hasUnsavedChanges();
     boolean duplicateSelectedNode();
     boolean alignNodes(java.util.Set<UUID> nodeIds, NodeAlignmentAction action);
+
+    /**
+     * Document-level graph/layout/dirty state. Default null for test doubles.
+     */
+    default EditorDocumentState getDocumentState() {
+        return null;
+    }
 
     void setNodeCustomColor(UUID nodeId, int color);
     Integer getNodeCustomColor(UUID nodeId);

@@ -38,8 +38,6 @@ public class ImGuiNodeIO {
     private final Path defaultSavePath;
     private Path lastSavedPath = null;
     private String lastOperationError = null;
-    private boolean dirty = false; // 跟踪是否有未保存的更改
-    private long dirtyVersion = 0L;
     
     /**
      * 构造函数
@@ -146,7 +144,7 @@ public class ImGuiNodeIO {
             }
             Files.writeString(filePath, json, StandardCharsets.UTF_8);
             lastSavedPath = filePath;
-            dirty = false;
+            clearUnsavedFlag();
             NodeCraft.LOGGER.info("节点图成功保存到: {}", filePath);
             return true;
         } catch (IOException e) {
@@ -211,7 +209,7 @@ public class ImGuiNodeIO {
             editor.setCurrentGraph(loadResult.graph());
             editor.setNodePositions(newPositions);
             lastSavedPath = filePath;
-            dirty = false;
+            clearUnsavedFlag();
 
             String userMessage = loadResult.userMessage();
             if (userMessage != null) {
@@ -273,7 +271,8 @@ public class ImGuiNodeIO {
      * @return 如果有未保存的更改返回true，否则返回false
      */
     public boolean isDirty() {
-        return dirty;
+        var document = editor.getDocumentState();
+        return document != null && document.isDirty();
     }
 
     /**
@@ -281,14 +280,24 @@ public class ImGuiNodeIO {
      * 每次调用 markDirty() 时递增，用于触发自动预览重算。
      */
     public long getDirtyVersion() {
-        return dirtyVersion;
+        var document = editor.getDocumentState();
+        return document != null ? document.getDirtyVersion() : 0L;
     }
     
     /**
      * 标记节点图已修改
      */
     public void markDirty() {
-        dirty = true;
-        dirtyVersion++;
+        var document = editor.getDocumentState();
+        if (document != null) {
+            document.markDirty();
+        }
+    }
+
+    private void clearUnsavedFlag() {
+        var document = editor.getDocumentState();
+        if (document != null) {
+            document.clearUnsavedFlag();
+        }
     }
 } 

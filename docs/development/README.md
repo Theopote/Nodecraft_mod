@@ -10,3 +10,4 @@ Related architecture:
 - [`../architecture/execution-runtime-2.0.md`](../architecture/execution-runtime-2.0.md) — Runtime 2.0 design freeze
 - [`../architecture/node-catalog.md`](../architecture/node-catalog.md) — Build-time NodeCatalog (Phase C)
 - [`../architecture/node-library-display-cache.md`](../architecture/node-library-display-cache.md) — Library icon/display caches (Phase E)
+- [`../architecture/editor-document-state.md`](../architecture/editor-document-state.md) — EditorDocumentState split (Phase F)

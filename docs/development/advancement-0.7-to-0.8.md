@@ -10,7 +10,7 @@
 | 0.5 | Preview / Bake | Done |
 | 0.6 | Execution (dataflow + exec frontier) | Done |
 | **0.7** | **Stability** | **PASS (`v0.7-stability`)** |
-| **0.8** | **Interactive Runtime** | **B–E PASS — next: F EditorDocumentState** |
+| **0.8** | **Interactive Runtime** | **B–F PASS — next: G EditorInteractionMode** |
 | 0.9 | Compatibility / format freeze | Later |
 | 1.0 | Release | Later |
 
@@ -118,11 +118,23 @@ Design: [`../architecture/node-library-display-cache.md`](../architecture/node-l
 
 ---
 
+## Phase F — EditorDocumentState split — PASS
+
+Design: [`../architecture/editor-document-state.md`](../architecture/editor-document-state.md)
+
+| Work | Status |
+|------|--------|
+| `EditorDocumentState` (graph / positions / dirty) | PASS |
+| `ImGuiNodeEditor` + `ImGuiNodeIO` wired to document | PASS |
+| Auto-preview uses document as `DirtyVersionSource` | PASS |
+| `EditorDocumentStateTest` | PASS |
+
+---
+
 ## Later phases (ordered)
 
 | Phase | Theme |
 |-------|--------|
-| F | `EditorDocumentState` split |
 | G | `EditorInteractionMode` |
 | H | Docs history cleanup |
 | I | `GraphFormatVersion` |

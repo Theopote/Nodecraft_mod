@@ -17,6 +17,7 @@ import com.nodecraft.gui.editor.base.GraphApplyHistoryView;
 import com.nodecraft.gui.editor.base.GraphApplyTarget;
 import com.nodecraft.gui.editor.base.GraphNodeAnchor;
 import com.nodecraft.gui.editor.base.INodeEditor;
+import com.nodecraft.gui.editor.document.EditorDocumentState;
 import com.nodecraft.gui.editor.integration.ImGuiInputAdapter;
 import com.nodecraft.gui.editor.preview.AutoPreviewController;
 import com.nodecraft.gui.recommendation.NodeRecommendationApplyResult;
@@ -74,8 +75,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     // 编辑器状态
     private boolean isOpen = false;
-    private NodeGraph currentGraph;
-    private Map<UUID, NodePosition> nodePositions = new HashMap<>();
+    private final EditorDocumentState document = new EditorDocumentState();
     private final Deque<SubgraphEditContext> subgraphEditStack = new ArrayDeque<>();
     private UUID subgraphRenameNodeId;
     private final ImString subgraphRenameBuffer = new ImString(128);
@@ -130,20 +130,8 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         this.clipboard = new ImGuiNodeClipboard(this);
         this.recommendationPopup = new NodeRecommendationPopupRenderer(this, NodeRecommendations.get());
         this.autoPreviewController = new AutoPreviewController(
-                () -> currentGraph,
-                new AutoPreviewController.DirtyVersionSource() {
-                    @Override
-                    public long getDirtyVersion() {
-                        return io != null ? io.getDirtyVersion() : -1L;
-                    }
-
-                    @Override
-                    public void markDirty() {
-                        if (io != null) {
-                            io.markDirty();
-                        }
-                    }
-                },
+                document::getGraph,
+                document,
                 this::createAutoPreviewExecutionContext
         );
         BaseNode.addDirtyListener(this::handleNodeDirty);
@@ -154,9 +142,6 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     }
 
     private void markGraphStructureDirty() {
-        if (io == null) {
-            return;
-        }
         autoPreviewController.notifyStructureDirty();
     }
 
@@ -187,8 +172,8 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
      */
     @Override
     public void init() {
-        if (currentGraph == null) {
-            currentGraph = new NodeGraph("默认节点图");
+        if (document.getGraph() == null) {
+            document.setGraph(new NodeGraph("默认节点图"));
 
             // 添加一些示例节点用于测试和演示
             try {
@@ -322,16 +307,16 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
             // 2. 先计算所有节点的尺寸和端口位置
             // 这一步会更新 NodePosition 中的 width/height 字段，并填充 portScreenPositions
-            renderer.calculatePortPositions(canvasPos, currentGraph, nodePositions, portScreenPositions);
+            renderer.calculatePortPositions(canvasPos, document.getGraph(), document.getNodePositions(), portScreenPositions);
 
             boolean subgraphDoubleClickConsumed = false;
             if (ImGui.isMouseDoubleClicked(ImGuiMouseButton.Left)
                     && !interaction.isCreatingConnection()
                     && !interaction.isBoxSelecting()
-                    && currentGraph != null) {
+                    && document.getGraph() != null) {
                 UUID doubleClickedNodeId = getNodeIdUnderMouse(mousePos.x, mousePos.y);
                 INode doubleClickedNode = doubleClickedNodeId != null
-                    ? currentGraph.getNode(doubleClickedNodeId)
+                    ? document.getGraph().getNode(doubleClickedNodeId)
                     : null;
                 if (doubleClickedNode instanceof SubgraphNode) {
                     subgraphDoubleClickConsumed = true;
@@ -346,7 +331,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             }
 
             // 3. 渲染背景连接线（未选中节点之间的连接）
-            renderer.renderConnectionsDirect(drawList, currentGraph, portScreenPositions, selectedNodeIds);
+            renderer.renderConnectionsDirect(drawList, document.getGraph(), portScreenPositions, selectedNodeIds);
 
             // 4. 渲染节点（包含节点主体、标题和自定义UI）。
             // 节点渲染会设置 ImGui.invisibleButton，并更新 ImGui.isItemActive() 状态。
@@ -364,16 +349,16 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 interaction.setPendingClickTargetNodeId(null);
             }
             // 【关键修改点】：节点选择和拖拽的启动和持续移动逻辑现在都移到 ImGuiNodeRenderer 内部处理。
-            renderer.renderNodesDirect(drawList, canvasPos, currentGraph, nodePositions, portScreenPositions, selectedNodeIds);
+            renderer.renderNodesDirect(drawList, canvasPos, document.getGraph(), document.getNodePositions(), portScreenPositions, selectedNodeIds);
 
             // 5. 渲染前景连接线（与选中节点相关的连接，显示在节点上方）
-            renderer.renderForegroundConnections(drawList, currentGraph, portScreenPositions, selectedNodeIds);
+            renderer.renderForegroundConnections(drawList, document.getGraph(), portScreenPositions, selectedNodeIds);
 
             // 6. 更新端口和连接的悬停状态
             // 这两个方法会更新 interaction.hoveredNodeId, hoveredPortId, isHoveredPortOutput, isHoveringConnection 等
-            interaction.updateHoveredPort(mousePos, portScreenPositions, currentGraph);
-            interaction.updateHoveredConnection(mousePos, portScreenPositions, currentGraph);
-            renderHoveredPortTooltip(currentGraph, interaction);
+            interaction.updateHoveredPort(mousePos, portScreenPositions, document.getGraph());
+            interaction.updateHoveredConnection(mousePos, portScreenPositions, document.getGraph());
+            renderHoveredPortTooltip(document.getGraph(), interaction);
 
             // 6.5 双击连接线自动插入中继节点（Reroute）
             if (ImGui.isMouseDoubleClicked(ImGuiMouseButton.Left)
@@ -381,7 +366,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                     && !interaction.isCreatingConnection()
                     && !interaction.isDraggingNode()
                     && !interaction.isBoxSelecting()
-                    && currentGraph != null) {
+                    && document.getGraph() != null) {
                 // 捕获鼠标，避免被画布层当作空白处双击处理
                 ImGui.getIO().setWantCaptureMouse(true);
                 insertRerouteNodeOnHoveredConnection(mousePos, canvasPos);
@@ -389,11 +374,11 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
             // 7. 处理进行中的连接创建（绘制预览线，鼠标释放时完成连接）
             // 此方法内部会检查 interaction.isCreatingConnection()
-            interaction.handleActiveConnectionCreation(currentGraph, portScreenPositions);
+            interaction.handleActiveConnectionCreation(document.getGraph(), portScreenPositions);
 
             // 8. 处理进行中的框选的更新和完成
             // 此方法内部会检查 interaction.isBoxSelecting()，并在鼠标释放时处理框选结果
-            interaction.handleBoxSelection(mousePos, canvasPos, nodePositions, currentGraph);
+            interaction.handleBoxSelection(mousePos, canvasPos, document.getNodePositions(), document.getGraph());
 
             // 9. 处理画布平移（如果正在平移）
             interaction.handleCanvasPanning(canvasPos);
@@ -415,7 +400,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                     // 获取当前鼠标下方的节点信息
                     UUID nodeUnderMouse = this.getNodeIdUnderMouse(mousePos.x, mousePos.y);
                     // 重新检测鼠标是否在端口上，确保准确性
-                    boolean isMouseOnPort = interaction.updateHoveredPort(mousePos, portScreenPositions, currentGraph);
+                    boolean isMouseOnPort = interaction.updateHoveredPort(mousePos, portScreenPositions, document.getGraph());
                     NodeCraft.LOGGER.debug("节点检测 - nodeUnderMouse: {}, isMouseOnPort: {}", nodeUnderMouse, isMouseOnPort);
 
                     // 只有当鼠标不在节点也不在端口上时，才启动画布级别的交互 (框选或平移)
@@ -455,9 +440,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
             // 11. 渲染连接预览线 (如果正在创建连接)，类型不匹配时显示红色
             if (interaction.isCreatingConnection()) {
-                boolean previewTypeMismatch = computeConnectionPreviewTypeMismatch(currentGraph, interaction);
+                boolean previewTypeMismatch = computeConnectionPreviewTypeMismatch(document.getGraph(), interaction);
                 renderer.drawConnectionPreview(drawList, interaction.getDragPreviewLineStartPos(), canvasZoom, interaction.isFromOutputPort(), previewTypeMismatch);
-                String previewInvalidReason = getConnectionPreviewInvalidReason(currentGraph, interaction);
+                String previewInvalidReason = getConnectionPreviewInvalidReason(document.getGraph(), interaction);
                 if (previewInvalidReason != null) {
                     ImGui.setTooltip(previewInvalidReason);
                 }
@@ -470,15 +455,15 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
             // 13. 处理连接线断开 (右键点击连接线)
             // 此方法不依赖 ImGui.isAnyItemActive()，因为它处理的是右键事件，且鼠标已在连接线上。
-            interaction.handleConnectionDisconnection(currentGraph, portScreenPositions);
+            interaction.handleConnectionDisconnection(document.getGraph(), portScreenPositions);
 
             // 13.5 悬停在类型不匹配的连线上时显示提示
-            if (interaction.isHoveringConnection() && currentGraph != null) {
+            if (interaction.isHoveringConnection() && document.getGraph() != null) {
                 UUID srcId = interaction.getHoveredConnectionSourceNodeId();
                 String srcPortId = interaction.getHoveredConnectionSourcePortId();
                 UUID tgtId = interaction.getHoveredConnectionTargetNodeId();
                 String tgtPortId = interaction.getHoveredConnectionTargetPortId();
-                for (NodeGraph.Connection c : currentGraph.getConnections()) {
+                for (NodeGraph.Connection c : document.getGraph().getConnections()) {
                     if (c.sourceNode.getId().equals(srcId) && c.sourcePort.getId().equals(srcPortId)
                             && c.targetNode.getId().equals(tgtId) && c.targetPort.getId().equals(tgtPortId)) {
                         if (!NodeDataType.isConnectableTo(c.sourcePort.getDataType(), c.targetPort.getDataType())) {
@@ -523,7 +508,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         }
 
         int depth = subgraphEditStack.size();
-        String graphName = shortSubgraphName(currentGraph != null ? currentGraph.getName() : null);
+        String graphName = shortSubgraphName(document.getGraph() != null ? document.getGraph().getName() : null);
         String contextLabel = "SUBGRAPH " + depth + "  /  " + graphName;
         float buttonX = canvasPos.x + 12.0f;
         float buttonY = canvasPos.y + 12.0f;
@@ -574,7 +559,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     }
 
     private void requestSubgraphRename(UUID nodeId) {
-        INode node = currentGraph != null ? currentGraph.getNode(nodeId) : null;
+        INode node = document.getGraph() != null ? document.getGraph().getNode(nodeId) : null;
         if (!(node instanceof SubgraphNode)) {
             return;
         }
@@ -614,7 +599,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     }
 
     private boolean isMouseOverNodeHeader(UUID nodeId, ImVec2 mousePos, ImVec2 canvasPos) {
-        NodePosition position = nodePositions.get(nodeId);
+        NodePosition position = document.getNodePositions().get(nodeId);
         if (position == null || mousePos == null || canvasPos == null) {
             return false;
         }
@@ -662,7 +647,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
         boolean moved = false;
         for (UUID nodeId : moveTargets) {
-            NodePosition nodePos = nodePositions.get(nodeId);
+            NodePosition nodePos = document.getNodePositions().get(nodeId);
             if (nodePos != null) {
                 nodePos.x += deltaX;
                 nodePos.y += deltaY;
@@ -676,23 +661,23 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     }
 
     private void cleanupDanglingConnections() {
-        if (currentGraph == null) {
+        if (document.getGraph() == null) {
             return;
         }
 
         int removedCount = 0;
-        for (NodeGraph.Connection connection : currentGraph.getConnections()) {
+        for (NodeGraph.Connection connection : document.getGraph().getConnections()) {
             INode sourceNode = connection.sourceNode;
             INode targetNode = connection.targetNode;
             if (sourceNode == null || targetNode == null) {
-                currentGraph.removeConnection(connection);
+                document.getGraph().removeConnection(connection);
                 removedCount++;
                 continue;
             }
 
             if (!hasPort(sourceNode.getOutputPorts(), connection.sourcePort.getId())
                     || !hasPort(targetNode.getInputPorts(), connection.targetPort.getId())) {
-                currentGraph.removeConnection(connection);
+                document.getGraph().removeConnection(connection);
                 removedCount++;
             }
         }
@@ -734,7 +719,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             return;
         }
 
-        if (currentGraph == null || !currentGraph.isConnected(sourceNodeId, sourcePortId, targetNodeId, targetPortId)) {
+        if (document.getGraph() == null || !document.getGraph().isConnected(sourceNodeId, sourcePortId, targetNodeId, targetPortId)) {
             return;
         }
 
@@ -750,8 +735,8 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         UUID rerouteNodeId = rerouteNode.getId();
         boolean oldDisconnected = disconnectPorts(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
         if (!oldDisconnected) {
-            currentGraph.removeNode(rerouteNodeId);
-            nodePositions.remove(rerouteNodeId);
+            document.getGraph().removeNode(rerouteNodeId);
+            document.getNodePositions().remove(rerouteNodeId);
             NodeCraft.LOGGER.warn("双击连接线插入中继失败：无法断开原连接");
             return;
         }
@@ -763,8 +748,8 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             // 回滚：尽最大努力恢复原连接
             disconnectPorts(sourceNodeId, sourcePortId, rerouteNodeId, "input_signal");
             disconnectPorts(rerouteNodeId, "output_signal", targetNodeId, targetPortId);
-            currentGraph.removeNode(rerouteNodeId);
-            nodePositions.remove(rerouteNodeId);
+            document.getGraph().removeNode(rerouteNodeId);
+            document.getNodePositions().remove(rerouteNodeId);
             connectPorts(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
             NodeCraft.LOGGER.warn("双击连接线插入中继失败：连接重建失败，已回滚");
             return;
@@ -918,7 +903,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
      */
     @Override
     public INode addNodeWithState(String nodeTypeId, @Nullable UUID oldNodeId, float x, float y, @Nullable Object nodeState) {
-        if (currentGraph == null) {
+        if (document.getGraph() == null) {
             NodeCraft.LOGGER.error("无法添加节点: 当前没有节点图");
             return null;
         }
@@ -941,8 +926,8 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 }
             }
 
-            currentGraph.addNode(node); // 将新创建的节点添加到图中
-            nodePositions.put(node.getId(), new NodePosition(x, y));
+            document.getGraph().addNode(node); // 将新创建的节点添加到图中
+            document.getNodePositions().put(node.getId(), new NodePosition(x, y));
 
               markGraphStructureDirty();
 
@@ -975,21 +960,21 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
      */
     @Override
     public boolean connectPorts(UUID sourceNodeId, String sourcePortId, UUID targetNodeId, String targetPortId) {
-        if (currentGraph == null) {
+        if (document.getGraph() == null) {
             NodeCraft.LOGGER.error("无法连接端口: 当前没有节点图");
             return false;
         }
 
         try {
-            INode sourceNode = currentGraph.getNode(sourceNodeId);
-            INode targetNode = currentGraph.getNode(targetNodeId);
+            INode sourceNode = document.getGraph().getNode(sourceNodeId);
+            INode targetNode = document.getGraph().getNode(targetNodeId);
 
             if (sourceNode == null || targetNode == null) {
                 NodeCraft.LOGGER.error("无法连接端口: 未找在节点");
                 return false;
             }
 
-            boolean success = currentGraph.connect(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
+            boolean success = document.getGraph().connect(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
 
             if (success) {
                   markGraphStructureDirty();
@@ -1021,13 +1006,13 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
      */
     @Override
     public UUID getNodeIdUnderMouse(float mouseX, float mouseY) {
-        if (currentGraph == null) {
-            // NodeCraft.LOGGER.debug("getNodeIdUnderMouse: currentGraph 为空"); // Too verbose
+        if (document.getGraph() == null) {
+            // NodeCraft.LOGGER.debug("getNodeIdUnderMouse: document.getGraph() 为空"); // Too verbose
             return null;
         }
 
         ImVec2 canvasWindowPos = ImGui.getWindowPos(); // Get ImGui window position
-        List<INode> nodes = currentGraph.getNodes();
+        List<INode> nodes = document.getGraph().getNodes();
 
         // Keep hit-testing in the same layering order as rendering:
         // 1) unselected nodes, 2) selected nodes.
@@ -1049,7 +1034,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         for (int i = renderOrder.size() - 1; i >= 0; i--) { // Iterate backwards to pick top-most node
             INode node = renderOrder.get(i);
             UUID nodeId = node.getId();
-            NodePosition pos = nodePositions.get(nodeId);
+            NodePosition pos = document.getNodePositions().get(nodeId);
 
             if (pos != null) {
                 // Calculate node screen coordinates
@@ -1128,10 +1113,10 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     public NodeRecommendationApplyResult applyRecommendation(
             NodeRecommendationContext context,
             com.nodecraft.gui.recommendation.NodeRecommendation recommendation) {
-        if (currentGraph == null || context == null || recommendation == null) {
+        if (document.getGraph() == null || context == null || recommendation == null) {
             return NodeRecommendationApplyResult.failure("Editor graph or recommendation missing");
         }
-        return NodeRecommendations.get().apply(this, currentGraph, context, recommendation);
+        return NodeRecommendations.get().apply(this, document.getGraph(), context, recommendation);
     }
 
     public float screenToWorldX(float screenX) {
@@ -1175,16 +1160,17 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     @Override
     public NodeGraph getCurrentGraph() {
-        return currentGraph;
+        return document.getGraph();
     }
 
     public void setCurrentGraph(NodeGraph graph) {
-        if (this.currentGraph != null) {
-            String graphId = this.currentGraph.getId().toString();
+        if (document.getGraph() != null) {
+            String graphId = document.getGraph().getId().toString();
             VariableScopeBridge.clearFallbackScope(graphId);
             SubgraphCallStackBridge.clearFallbackScope(graphId);
         }
-        this.currentGraph = graph;
+        document.setGraph(graph);
+        document.clearNodePositions();
         subgraphEditStack.clear();
         clearSelectedNodes();
         if (history != null) {
@@ -1194,21 +1180,21 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     @Override
     public Map<UUID, NodePosition> getNodePositions() {
-        return nodePositions;
+        return document.getNodePositions();
     }
 
     @Override
     public NodePosition getNodePosition(UUID nodeId) {
-        return nodePositions.get(nodeId);
+        return document.getNodePosition(nodeId);
     }
 
     public void setNodePositions(Map<UUID, NodePosition> positions) {
-        this.nodePositions = positions;
+        document.replaceNodePositions(positions);
     }
 
     @Override
     public void clearNodePositions() {
-        this.nodePositions.clear();
+        document.getNodePositions().clear();
     }
 
     @Override
@@ -1283,7 +1269,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     @Override
     public void removeNodePosition(UUID nodeId) {
-        this.nodePositions.remove(nodeId);
+        document.getNodePositions().remove(nodeId);
     }
 
     @Override
@@ -1424,23 +1410,23 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     }
 
     public boolean createSubgraphFromSelection() {
-        if (currentGraph == null || selectedNodeIds.isEmpty()) {
+        if (document.getGraph() == null || selectedNodeIds.isEmpty()) {
             return false;
         }
 
         java.util.Set<UUID> selection = new java.util.LinkedHashSet<>(selectedNodeIds);
-        String subgraphName = currentGraph.getName() != null && !currentGraph.getName().isBlank()
-            ? currentGraph.getName() + " Selection"
+        String subgraphName = document.getGraph().getName() != null && !document.getGraph().getName().isBlank()
+            ? document.getGraph().getName() + " Selection"
             : "Extracted Subgraph";
         boolean wasRecording = history != null && history.isRecording();
         SavedGraph beforeSnapshot = null;
 
         try {
-            syncGraphNodePositions(currentGraph, nodePositions);
+            syncGraphNodePositions(document.getGraph(), document.getNodePositions());
             if (wasRecording) {
-                beforeSnapshot = toSavedGraphWithPositions(currentGraph, nodePositions);
+                beforeSnapshot = toSavedGraphWithPositions(document.getGraph(), document.getNodePositions());
             }
-            SubgraphExtractionService.ExtractionResult extraction = SubgraphExtractionService.extract(currentGraph, selection, subgraphName);
+            SubgraphExtractionService.ExtractionResult extraction = SubgraphExtractionService.extract(document.getGraph(), selection, subgraphName);
             String embeddedGraphJson = GraphSerializer.toJson(extraction.savedGraph());
             Map<String, Object> subgraphState = buildSubgraphNodeState(extraction, subgraphName, embeddedGraphJson);
             NodePosition wrapperPosition = selectionCenter(selection);
@@ -1461,7 +1447,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 }
 
                 for (UUID nodeId : new ArrayList<>(selection)) {
-                    if (currentGraph.removeNode(nodeId)) {
+                    if (document.getGraph().removeNode(nodeId)) {
                         removeNodePosition(nodeId);
                         removeSelectedNode(nodeId);
                     }
@@ -1472,7 +1458,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 setSelectedNodeId(wrapper.getId());
                 markGraphStructureDirty();
                 if (wasRecording) {
-                    SavedGraph afterSnapshot = toSavedGraphWithPositions(currentGraph, nodePositions);
+                    SavedGraph afterSnapshot = toSavedGraphWithPositions(document.getGraph(), document.getNodePositions());
                     history.resumeRecording();
                     history.recordGraphTransaction("Create Subgraph", beforeSnapshot, afterSnapshot);
                     history.pauseRecording();
@@ -1504,14 +1490,14 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     }
 
     public boolean closeCurrentSubgraph() {
-        if (subgraphEditStack.isEmpty() || currentGraph == null) {
+        if (subgraphEditStack.isEmpty() || document.getGraph() == null) {
             return false;
         }
 
         SubgraphEditContext context = subgraphEditStack.pop();
         try {
-            syncGraphNodePositions(currentGraph, nodePositions);
-            SavedGraph savedGraph = toSavedGraphWithPositions(currentGraph, nodePositions);
+            syncGraphNodePositions(document.getGraph(), document.getNodePositions());
+            SavedGraph savedGraph = toSavedGraphWithPositions(document.getGraph(), document.getNodePositions());
             String embeddedGraphJson = GraphSerializer.toJson(savedGraph);
 
             INode wrapperNode = context.parentGraph().getNode(context.wrapperNodeId());
@@ -1523,15 +1509,15 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 NodeCraft.LOGGER.warn("Cannot write edited subgraph back because wrapper node is missing: {}", context.wrapperNodeId());
             }
 
-            currentGraph = context.parentGraph();
-            nodePositions = copyNodePositions(context.parentPositions());
+            document.setGraph(context.parentGraph());
+            document.replaceNodePositions(copyNodePositions(context.parentPositions()));
             clearSelectedNodes();
-            if (currentGraph.getNode(context.wrapperNodeId()) != null) {
+            if (document.getGraph().getNode(context.wrapperNodeId()) != null) {
                 selectedNodeIds.add(context.wrapperNodeId());
                 setSelectedNodeId(context.wrapperNodeId());
             }
             markGraphStructureDirty();
-            SavedGraph parentAfter = toSavedGraphWithPositions(currentGraph, nodePositions);
+            SavedGraph parentAfter = toSavedGraphWithPositions(document.getGraph(), document.getNodePositions());
             history.exitScope();
             history.recordGraphTransaction("Edit Subgraph", context.parentSnapshotBefore(), parentAfter);
             NodeCraft.LOGGER.info("Closed subgraph editor and wrote changes back to wrapper {}", context.wrapperNodeId());
@@ -1558,8 +1544,8 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 return false;
             }
             LoadedGraph loadedGraph = toLoadedGraph(snapshot, loadResult);
-            currentGraph = loadedGraph.graph();
-            nodePositions = loadedGraph.positions();
+            document.setGraph(loadedGraph.graph());
+            document.replaceNodePositions(loadedGraph.positions());
             clearSelectedNodes();
             markGraphStructureDirty();
             return true;
@@ -1570,10 +1556,10 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     }
 
     private boolean openSubgraphNode(UUID wrapperNodeId) {
-        if (currentGraph == null || wrapperNodeId == null) {
+        if (document.getGraph() == null || wrapperNodeId == null) {
             return false;
         }
-        INode wrapperNode = currentGraph.getNode(wrapperNodeId);
+        INode wrapperNode = document.getGraph().getNode(wrapperNodeId);
         if (!isSubgraphNode(wrapperNode)) {
             return false;
         }
@@ -1591,17 +1577,17 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             }
             LoadedGraph loadedGraph = toLoadedGraph(savedGraph, loadResult);
 
-            syncGraphNodePositions(currentGraph, nodePositions);
-            SavedGraph parentSnapshotBefore = toSavedGraphWithPositions(currentGraph, nodePositions);
+            syncGraphNodePositions(document.getGraph(), document.getNodePositions());
+            SavedGraph parentSnapshotBefore = toSavedGraphWithPositions(document.getGraph(), document.getNodePositions());
             subgraphEditStack.push(new SubgraphEditContext(
-                currentGraph,
-                copyNodePositions(nodePositions),
+                document.getGraph(),
+                copyNodePositions(document.getNodePositions()),
                 wrapperNodeId,
                 parentSnapshotBefore
             ));
             history.enterScope();
-            currentGraph = loadedGraph.graph();
-            nodePositions = loadedGraph.positions();
+            document.setGraph(loadedGraph.graph());
+            document.replaceNodePositions(loadedGraph.positions());
             clearSelectedNodes();
             markGraphStructureDirty();
             NodeCraft.LOGGER.info("Opened embedded subgraph from wrapper {}", wrapperNodeId);
@@ -1618,12 +1604,12 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     }
 
     public boolean dissolveSelectedSubgraph() {
-        if (currentGraph == null || selectedNodeIds.size() != 1) {
+        if (document.getGraph() == null || selectedNodeIds.size() != 1) {
             return false;
         }
 
         UUID wrapperNodeId = selectedNodeIds.iterator().next();
-        INode wrapperNode = currentGraph.getNode(wrapperNodeId);
+        INode wrapperNode = document.getGraph().getNode(wrapperNodeId);
         if (!isSubgraphNode(wrapperNode)) {
             return false;
         }
@@ -1634,8 +1620,8 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         }
 
         boolean wasRecording = history != null && history.isRecording();
-        syncGraphNodePositions(currentGraph, nodePositions);
-        SavedGraph beforeSnapshot = wasRecording ? toSavedGraphWithPositions(currentGraph, nodePositions) : null;
+        syncGraphNodePositions(document.getGraph(), document.getNodePositions());
+        SavedGraph beforeSnapshot = wasRecording ? toSavedGraphWithPositions(document.getGraph(), document.getNodePositions()) : null;
 
         try {
             SavedGraph savedGraph = GraphSerializer.fromJson(embeddedGraphJson);
@@ -1676,7 +1662,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
             java.util.List<NodeGraph.Connection> wrapperInputs = new ArrayList<>();
             java.util.List<NodeGraph.Connection> wrapperOutputs = new ArrayList<>();
-            for (NodeGraph.Connection connection : currentGraph.getConnections()) {
+            for (NodeGraph.Connection connection : document.getGraph().getConnections()) {
                 if (connection.targetNode.getId().equals(wrapperNodeId)) {
                     wrapperInputs.add(connection);
                 } else if (connection.sourceNode.getId().equals(wrapperNodeId)) {
@@ -1684,7 +1670,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 }
             }
 
-            NodePosition wrapperPosition = nodePositions.getOrDefault(wrapperNodeId, new NodePosition(0.0f, 0.0f));
+            NodePosition wrapperPosition = document.getNodePositions().getOrDefault(wrapperNodeId, new NodePosition(0.0f, 0.0f));
             NodePosition savedCenter = savedGraphCenter(savedGraph);
             float offsetX = wrapperPosition.x - savedCenter.x;
             float offsetY = wrapperPosition.y - savedCenter.y;
@@ -1706,13 +1692,13 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                     continue;
                 }
 
-                currentGraph.addNode(restoredBase);
+                document.getGraph().addNode(restoredBase);
                 restoredNodeIds.put(savedNode.nodeId, restoredBase.getId());
 
                 SavedPosition savedPosition = savedGraph.nodePositions != null ? savedGraph.nodePositions.get(savedNode.nodeId) : null;
                 float x = savedPosition != null ? savedPosition.x + offsetX : wrapperPosition.x + fallbackIndex * 24.0f;
                 float y = savedPosition != null ? savedPosition.y + offsetY : wrapperPosition.y + fallbackIndex * 18.0f;
-                nodePositions.put(restoredBase.getId(), new NodePosition(x, y));
+                document.getNodePositions().put(restoredBase.getId(), new NodePosition(x, y));
                 restoredBase.setPosition(x, y);
                 fallbackIndex++;
             }
@@ -1726,12 +1712,12 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                     UUID sourceId = restoredNodeIds.get(connection.sourceNodeId);
                     UUID targetId = restoredNodeIds.get(connection.targetNodeId);
                     if (sourceId != null && targetId != null) {
-                        currentGraph.connect(sourceId, connection.sourcePortId, targetId, connection.targetPortId);
+                        document.getGraph().connect(sourceId, connection.sourcePortId, targetId, connection.targetPortId);
                     }
                 }
             }
 
-            currentGraph.removeNode(wrapperNodeId);
+            document.getGraph().removeNode(wrapperNodeId);
             removeNodePosition(wrapperNodeId);
             removeSelectedNode(wrapperNodeId);
 
@@ -1744,7 +1730,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 for (BoundaryInputTarget target : targets) {
                     UUID restoredTargetId = restoredNodeIds.get(target.nodeId());
                     if (restoredTargetId != null) {
-                        currentGraph.connect(
+                        document.getGraph().connect(
                             wrapperInput.sourceNode.getId(),
                             wrapperInput.sourcePort.getId(),
                             restoredTargetId,
@@ -1763,7 +1749,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 for (BoundaryOutputSource source : sources) {
                     UUID restoredSourceId = restoredNodeIds.get(source.nodeId());
                     if (restoredSourceId != null) {
-                        currentGraph.connect(
+                        document.getGraph().connect(
                             restoredSourceId,
                             source.portId(),
                             wrapperOutput.targetNode.getId(),
@@ -1781,7 +1767,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 history.recordGraphTransaction(
                     "Dissolve Subgraph",
                     beforeSnapshot,
-                    toSavedGraphWithPositions(currentGraph, nodePositions)
+                    toSavedGraphWithPositions(document.getGraph(), document.getNodePositions())
                 );
             }
             NodeCraft.LOGGER.info("Dissolved subgraph node {} into {} nodes", wrapperNodeId, restoredNodeIds.size());
@@ -1817,11 +1803,11 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     }
 
     boolean renameSubgraphNode(UUID nodeId, String requestedName) {
-        if (currentGraph == null || nodeId == null || requestedName == null) {
+        if (document.getGraph() == null || nodeId == null || requestedName == null) {
             return false;
         }
         String name = requestedName.trim();
-        INode node = currentGraph.getNode(nodeId);
+        INode node = document.getGraph().getNode(nodeId);
         if (!(node instanceof SubgraphNode subgraphNode) || name.isEmpty()) {
             return false;
         }
@@ -1830,8 +1816,8 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         }
 
         boolean wasRecording = history != null && history.isRecording();
-        syncGraphNodePositions(currentGraph, nodePositions);
-        SavedGraph before = wasRecording ? toSavedGraphWithPositions(currentGraph, nodePositions) : null;
+        syncGraphNodePositions(document.getGraph(), document.getNodePositions());
+        SavedGraph before = wasRecording ? toSavedGraphWithPositions(document.getGraph(), document.getNodePositions()) : null;
         Map<String, Object> state = copyStateMap(subgraphNode.getNodeState());
         state.put("displayName", name);
         subgraphNode.setNodeState(state);
@@ -1840,7 +1826,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             history.recordGraphTransaction(
                 "Rename Subgraph",
                 before,
-                toSavedGraphWithPositions(currentGraph, nodePositions)
+                toSavedGraphWithPositions(document.getGraph(), document.getNodePositions())
             );
         }
         return true;
@@ -1848,7 +1834,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     private void reconnectSubgraphBoundaries(UUID wrapperNodeId, SubgraphExtractionService.ExtractionResult extraction) {
         for (SubgraphExtractionService.InputBinding binding : extraction.inputBindings()) {
-            currentGraph.connect(
+            document.getGraph().connect(
                 binding.externalSourceNodeId(),
                 binding.externalSourcePortId(),
                 wrapperNodeId,
@@ -1857,7 +1843,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         }
 
         for (SubgraphExtractionService.OutputBinding binding : extraction.outputBindings()) {
-            currentGraph.connect(
+            document.getGraph().connect(
                 wrapperNodeId,
                 dynamicOutputPortId(binding.outputKey()),
                 binding.externalTargetNodeId(),
@@ -1934,7 +1920,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         boolean found = false;
 
         for (UUID nodeId : selection) {
-            NodePosition position = nodePositions.get(nodeId);
+            NodePosition position = document.getNodePositions().get(nodeId);
             if (position == null) {
                 continue;
             }
@@ -2049,9 +2035,19 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     @Override
     public boolean hasUnsavedChanges() {
-        // Only rely on the dirty flag tracked by ImGuiNodeIO
-        // This flag is set to true when the graph is modified and false when saved
-        return io != null && io.isDirty();
+        return document.isDirty();
+    }
+
+    /**
+     * Active document state (graph, layout, dirty generation).
+     */
+    public EditorDocumentState getDocument() {
+        return document;
+    }
+
+    @Override
+    public EditorDocumentState getDocumentState() {
+        return document;
     }
 
     @Override
@@ -2062,7 +2058,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
         List<NodePosition> positions = new java.util.ArrayList<>();
         for (UUID nodeId : nodeIds) {
-            NodePosition position = nodePositions.get(nodeId);
+            NodePosition position = document.getNodePositions().get(nodeId);
             if (position != null) {
                 positions.add(position);
             }
@@ -2152,20 +2148,20 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     @Override
     public boolean disconnectPorts(UUID sourceNodeId, String sourcePortId, UUID targetNodeId, String targetPortId) {
-        if (currentGraph == null) return false;
+        if (document.getGraph() == null) return false;
         try {
-            INode sourceNode = currentGraph.getNode(sourceNodeId);
-            INode targetNode = currentGraph.getNode(targetNodeId);
+            INode sourceNode = document.getGraph().getNode(sourceNodeId);
+            INode targetNode = document.getGraph().getNode(targetNodeId);
             if (sourceNode == null || targetNode == null) {
                 NodeCraft.LOGGER.warn("断开连接失败：未找到源节点或目标节点");
                 return false;
             }
-            if (currentGraph.isConnected(sourceNodeId, sourcePortId, targetNodeId, targetPortId)) {
+            if (document.getGraph().isConnected(sourceNodeId, sourcePortId, targetNodeId, targetPortId)) {
                 // 只有在历史记录启用时才记录历史
                 if (history != null && history.isRecording()) {
                     history.recordRemoveConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
                 }
-                currentGraph.disconnectPorts(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
+                document.getGraph().disconnectPorts(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
                 markGraphStructureDirty();
                 NodeCraft.LOGGER.info("成功断开连接: {}({}) -> {}({})",
                         sourceNode.getDisplayName(), sourcePortId,
@@ -2183,7 +2179,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     @Override
     public boolean duplicateSelectedNode() {
-        if (currentGraph == null) {
+        if (document.getGraph() == null) {
             NodeCraft.LOGGER.warn("无法复制节点：当前没有节点图");
             return false;
         }
@@ -2192,7 +2188,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             return false;
         }
         UUID nodeId = selectedNodeIds.iterator().next();
-        INode sourceNode = currentGraph.getNode(nodeId);
+        INode sourceNode = document.getGraph().getNode(nodeId);
         if (sourceNode == null) {
             NodeCraft.LOGGER.error("复制失败：找不到选中的节点 {}", nodeId);
             return false;
