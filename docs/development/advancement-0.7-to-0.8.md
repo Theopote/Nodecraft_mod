@@ -10,7 +10,7 @@
 | 0.5 | Preview / Bake | Done |
 | 0.6 | Execution (dataflow + exec frontier) | Done |
 | **0.7** | **Stability** | **PASS (`v0.7-stability`)** |
-| **0.8** | **Interactive Runtime** | **Vertical slice + Node Contract fence PASS** |
+| **0.8** | **Interactive Runtime** | **B/B′/C PASS — next: D contracts expand** |
 | 0.9 | Compatibility / format freeze | Later |
 | 1.0 | Release | Later |
 
@@ -73,11 +73,26 @@ Exit: `NodeContractTest` green on CI.
 
 ---
 
+## Phase C — Build-time NodeCatalog — PASS
+
+Design: [`../architecture/node-catalog.md`](../architecture/node-catalog.md)
+
+| Work | Status |
+|------|--------|
+| Design freeze | PASS |
+| Gradle `generateNodeCatalog` → `GeneratedNodeCatalog` | PASS |
+| `DefaultNodeProvider` primary path = catalog | PASS |
+| `AutoNodeScanner` fallback when catalog empty | PASS |
+| `NodeCatalogContractTest` | PASS |
+
+Exit: catalog registration used in prod path; contract tests green.
+
+---
+
 ## Later phases (ordered)
 
 | Phase | Theme |
 |-------|--------|
-| C | Build-time `NodeCatalog` |
 | D | Expand contracts (ser/de roundtrip, preview side-effect policy formalized) |
 | E | Node Library display / icon caches |
 | F | `EditorDocumentState` split |

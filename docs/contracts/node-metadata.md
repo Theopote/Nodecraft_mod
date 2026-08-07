@@ -7,7 +7,9 @@ per-node unit tests as the library grows past ~500 nodes.
 
 - Annotation: `com.nodecraft.nodesystem.api.NodeInfo`
 - Runtime registry metadata: `com.nodecraft.gui.node.NodeInfo`
+- Build-time catalog: `GeneratedNodeCatalog` via Gradle `generateNodeCatalog`
 - Suite: `com.nodecraft.nodesystem.contract.NodeContractTest`
+- Catalog suite: `com.nodecraft.nodesystem.catalog.NodeCatalogContractTest`
 
 ## Invariants (Phase B′)
 
@@ -19,6 +21,7 @@ per-node unit tests as the library grows past ~500 nodes.
 | Runtime typeId | `INode.getTypeId()` equals registry id (case-insensitive) |
 | Category present | `@NodeInfo.category` and registry category are non-blank |
 | Port IDs unique | Within one instantiable node, all input+output port ids are unique and non-blank |
+| Catalog ⊆ registry | Every `GeneratedNodeCatalog.IDS` entry is present in `NodeRegistry` after init |
 
 ## Soft rules
 

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.core;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.nodesystem.catalog.NodeCatalog;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.spi.INodeProvider;
 
@@ -17,16 +18,25 @@ public class DefaultNodeProvider implements INodeProvider {
             // Register top-level categories first.
             registerMainCategories(registry);
 
-            // Discover and register nodes through annotation scanning.
-            int nodeCount = AutoNodeScanner.scanAndRegisterNodes(registry);
+            // Primary path: build-time catalog (see docs/architecture/node-catalog.md).
+            int nodeCount = NodeCatalog.registerAll(registry);
+            if (nodeCount > 0) {
+                NodeCraft.LOGGER.info(
+                        "Registered {} built-in nodes from build-time catalog (entries={}).",
+                        nodeCount,
+                        NodeCatalog.entryCount());
+            } else {
+                NodeCraft.LOGGER.warn("Build-time NodeCatalog registered no nodes; falling back to AutoNodeScanner.");
+                nodeCount = AutoNodeScanner.scanAndRegisterNodes(registry);
+            }
 
-            // If scanning finds nothing, log diagnostics and register fallback categories.
+            // If both paths find nothing, log diagnostics and register fallback categories.
             if (nodeCount == 0) {
-                NodeCraft.LOGGER.warn("Auto node scanning registered no nodes. Check the following:");
-                NodeCraft.LOGGER.warn("1. Node classes are under the expected package path (com.nodecraft.nodesystem.nodes)");
-                NodeCraft.LOGGER.warn("2. Node classes correctly implement the INode interface");
-                NodeCraft.LOGGER.warn("3. Node classes expose a no-argument constructor");
-                NodeCraft.LOGGER.warn("4. Node classes use the expected package and category structure");
+                NodeCraft.LOGGER.warn("Node registration found no nodes. Check the following:");
+                NodeCraft.LOGGER.warn("1. generateNodeCatalog ran before compile (Gradle task)");
+                NodeCraft.LOGGER.warn("2. Node classes are under com.nodecraft.nodesystem.nodes");
+                NodeCraft.LOGGER.warn("3. Node classes correctly implement INode with @NodeInfo");
+                NodeCraft.LOGGER.warn("4. Node classes expose a no-argument constructor");
 
                 // Keep the editor bootable even when scanning fails.
                 registerExampleNodes(registry);

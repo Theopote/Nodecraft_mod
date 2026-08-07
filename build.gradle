@@ -120,6 +120,8 @@ jar {
 	}
 }
 
+apply from: 'gradle/node-catalog.gradle'
+
 // Task to run the preset converter
 tasks.register('runPresetConverter', JavaExec) {
 	group = 'nodecraft'
