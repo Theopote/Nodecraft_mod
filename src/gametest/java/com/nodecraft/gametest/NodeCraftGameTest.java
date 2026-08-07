@@ -90,7 +90,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
     public void bakeAsyncUndoRedoCycle(TestContext ctx) {
         World world = ctx.getWorld();
         BakePlacementService service = BakePlacementService.getInstance();
-        service.cancelAll();
+        resetBakeService(service);
 
         UUID actorId = UUID.randomUUID();
         BakeHistory history = service.getHistory(actorId);
@@ -139,7 +139,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
     public void bakeApplyCancelRollsBackWorld(TestContext ctx) {
         World world = ctx.getWorld();
         BakePlacementService service = BakePlacementService.getInstance();
-        service.cancelAll();
+        resetBakeService(service);
 
         UUID actorId = UUID.randomUUID();
         BakeHistory history = service.getHistory(actorId);
@@ -194,7 +194,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
     public void bakeApplyCancelUsesTimeSlicedRollback(TestContext ctx) {
         World world = ctx.getWorld();
         BakePlacementService service = BakePlacementService.getInstance();
-        service.cancelAll();
+        resetBakeService(service);
 
         UUID actorId = UUID.randomUUID();
         BakeHistory history = service.getHistory(actorId);
@@ -248,7 +248,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
     public void bakeUndoCancelAbortsAndRestoresStack(TestContext ctx) {
         World world = ctx.getWorld();
         BakePlacementService service = BakePlacementService.getInstance();
-        service.cancelAll();
+        resetBakeService(service);
 
         UUID actorId = UUID.randomUUID();
         BakeHistory history = service.getHistory(actorId);
@@ -307,7 +307,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
     public void bakeDuplicatePosCancelRestoresPreTransactionState(TestContext ctx) {
         World world = ctx.getWorld();
         BakePlacementService service = BakePlacementService.getInstance();
-        service.cancelAll();
+        resetBakeService(service);
 
         UUID actorId = UUID.randomUUID();
         BakeHistory history = service.getHistory(actorId);
@@ -359,7 +359,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
     public void bakeDuplicatePosCommitUndoRestoresOriginal(TestContext ctx) {
         World world = ctx.getWorld();
         BakePlacementService service = BakePlacementService.getInstance();
-        service.cancelAll();
+        resetBakeService(service);
 
         UUID actorId = UUID.randomUUID();
         BakeHistory history = service.getHistory(actorId);
@@ -405,6 +405,11 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
     @Override
     public void invokeTestMethod(TestContext context, Method method) throws ReflectiveOperationException {
         method.invoke(this, context);
+    }
+
+    private static void resetBakeService(BakePlacementService service) {
+        // Tests need a clean queue; shutdownFlush request-cancels then drains rollbacks.
+        service.shutdownFlush();
     }
 
     private static void drainTasks(BakePlacementService service) {

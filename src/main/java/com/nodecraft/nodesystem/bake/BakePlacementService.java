@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.bake;
 
 import com.nodecraft.core.NodeCraft;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.block.BlockState;
 import net.minecraft.server.MinecraftServer;
@@ -60,8 +61,9 @@ public class BakePlacementService {
             return;
         }
         ServerTickEvents.END_SERVER_TICK.register(this::onServerTick);
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> shutdownFlush());
         tickRegistered = true;
-        NodeCraft.LOGGER.debug("BakePlacementService registered with ServerTickEvents");
+        NodeCraft.LOGGER.debug("BakePlacementService registered with ServerTickEvents + SERVER_STOPPING flush");
     }
 
     private void onServerTick(MinecraftServer server) {
@@ -266,6 +268,18 @@ public class BakePlacementService {
         return false;
     }
 
+    /**
+     * Requests cancellation of every queued task and keeps abort rollbacks time-sliced.
+     * <p>
+     * Does <strong>not</strong> synchronously finish large {@link BakeTaskState#ROLLING_BACK}
+     * work in this call — that would stall the server thread. In-flight rollbacks are
+     * re-queued and continue across subsequent {@link #processTick()} invocations.
+     * <p>
+     * For server shutdown / emergency cleanup that must finish restores before exit,
+     * use {@link #shutdownFlush()} instead.
+     *
+     * @return number of non-terminal tasks that were requested to cancel (or kept rolling back)
+     */
     public int cancelAll() {
         List<BakeTask> cancelledTasks;
         synchronized (queue) {
@@ -278,23 +292,79 @@ public class BakePlacementService {
             if (task.getState().isTerminal()) {
                 continue;
             }
-            if (task.getState() == BakeTaskState.ROLLING_BACK) {
-                // Finish remaining rollback synchronously so cancelAll is definitive.
-                while (!task.isRollbackFinished()) {
-                    task.processTick();
-                }
-                finishRollback(task);
-            } else {
+            if (task.getState() != BakeTaskState.ROLLING_BACK
+                && task.getState() != BakeTaskState.CANCELLING) {
                 task.requestCancel(BakeTaskState.CANCELLED);
-                finalizeCancelledTask(task);
             }
+            // Re-queues time-sliced rollback when needed; never drains the whole rollback here.
+            finalizeCancelledTask(task);
             count++;
         }
 
         if (count > 0) {
-            NodeCraft.LOGGER.info("Cancelled {} queued bake tasks", count);
+            NodeCraft.LOGGER.info("Requested cancel for {} bake tasks (rollbacks remain time-sliced)", count);
         }
         return count;
+    }
+
+    /**
+     * Emergency cleanup: request-cancel everything, then synchronously drain remaining
+     * rollbacks until the queue is empty. Intended for server shutdown only — may stall
+     * the calling thread on very large restores.
+     *
+     * @return number of tasks that were flushed from the queue during the drain phase
+     */
+    public int shutdownFlush() {
+        cancelAll();
+
+        int flushed = 0;
+        // Bound iterations so a stuck task cannot hang shutdown forever.
+        for (int safety = 0; safety < 1_000_000 && getQueueSize() > 0; safety++) {
+            BakeTask task;
+            synchronized (queue) {
+                task = queue.pollFirst();
+            }
+            if (task == null) {
+                break;
+            }
+            if (task.getState().isTerminal()) {
+                rememberTaskSnapshot(task);
+                flushed++;
+                continue;
+            }
+
+            if (task.getState() != BakeTaskState.ROLLING_BACK
+                && task.getState() != BakeTaskState.CANCELLING) {
+                task.requestCancel(BakeTaskState.CANCELLED);
+            }
+
+            if (task.getState() == BakeTaskState.CANCELLING) {
+                if (task.getUndoRecords().isEmpty()) {
+                    finishRollback(task);
+                    flushed++;
+                    continue;
+                }
+                task.beginTimeSlicedRollback();
+            }
+
+            if (task.getState() == BakeTaskState.ROLLING_BACK) {
+                while (!task.isRollbackFinished()) {
+                    task.processTick();
+                }
+                finishRollback(task);
+                flushed++;
+                continue;
+            }
+
+            // Unexpected non-terminal state — force abort finish without world restore.
+            finishRollback(task);
+            flushed++;
+        }
+
+        if (flushed > 0) {
+            NodeCraft.LOGGER.info("Shutdown-flushed {} bake tasks", flushed);
+        }
+        return flushed;
     }
 
     public List<TaskSnapshot> getTaskSnapshots() {
