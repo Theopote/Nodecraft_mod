@@ -203,40 +203,46 @@ public class BakePlacementService {
         if (taskId == null) {
             return false;
         }
+
+        BakeTask task = null;
         synchronized (queue) {
-            for (BakeTask task : queue) {
-                if (taskId.equals(task.getTaskId())) {
-                    task.cancel();
-                    if (task.getOnCancel() != null) {
-                        task.getOnCancel().run();
-                    }
-                    rememberTaskSnapshot(task);
-                    queue.remove(task);
-                    NodeCraft.LOGGER.info("Cancelled bake task {}", taskId);
-                    return true;
+            for (BakeTask candidate : queue) {
+                if (taskId.equals(candidate.getTaskId())) {
+                    task = candidate;
+                    break;
                 }
             }
+            if (task == null) {
+                return false;
+            }
+            task.cancel();
+            queue.remove(task);
         }
-        return false;
+
+        // History / world rollback must not run while holding the queue monitor.
+        finalizeCancelledTask(task);
+        NodeCraft.LOGGER.info("Cancelled bake task {}", taskId);
+        return true;
     }
 
     public int cancelAll() {
-        int count = 0;
+        List<BakeTask> cancelledTasks;
         synchronized (queue) {
-            for (BakeTask task : queue) {
+            cancelledTasks = new ArrayList<>(queue);
+            for (BakeTask task : cancelledTasks) {
                 task.cancel();
-                if (task.getOnCancel() != null) {
-                    task.getOnCancel().run();
-                }
-                rememberTaskSnapshot(task);
-                count++;
             }
             queue.clear();
         }
-        if (count > 0) {
-            NodeCraft.LOGGER.info("Cancelled {} queued bake tasks", count);
+
+        for (BakeTask task : cancelledTasks) {
+            finalizeCancelledTask(task);
         }
-        return count;
+
+        if (!cancelledTasks.isEmpty()) {
+            NodeCraft.LOGGER.info("Cancelled {} queued bake tasks", cancelledTasks.size());
+        }
+        return cancelledTasks.size();
     }
 
     public List<TaskSnapshot> getTaskSnapshots() {
@@ -436,29 +442,16 @@ public class BakePlacementService {
     private void finishTask(BakeTask task) {
         rememberTaskSnapshot(task);
         if (task.isCancelled()) {
+            // Cancel path owns history / rollback via finalizeCancelledTask.
             return;
         }
-        
-        // Route inverse record to correct stack based on operation kind
-        if (!task.getUndoRecords().isEmpty()) {
-            BakeHistory.UndoRecord record = new BakeHistory.UndoRecord(task.getTaskId());
-            for (BakeTask.BakeUndoRecord ur : task.getUndoRecords()) {
-                record.add(ur.pos(), ur.previousState());
-            }
-            
-            BakeHistory history = getHistory(task.getActorId());
-            switch (task.getOperationKind()) {
-                case APPLY -> history.push(record);      // Normal bake: inverse → undo stack (clears redo)
-                case UNDO -> history.pushRedo(record);   // Undo: inverse → redo stack
-                case REDO -> history.pushUndo(record);   // Redo: inverse → undo stack
-                case NONE -> { /* No history recording */ }
-            }
-        }
-        
+
+        commitTaskHistory(task);
+
         if (task.getOnComplete() != null) {
             task.getOnComplete().run();
         }
-        
+
         NodeCraft.LOGGER.debug(
             "Bake task {} ({}) completed. placed={}, skipped={}, total={}",
             task.getTaskId(),
@@ -467,6 +460,63 @@ public class BakePlacementService {
             task.getSkippedCount(),
             task.getTotalCount()
         );
+    }
+
+    /**
+     * Cancel / timeout finalization.
+     * <ul>
+     *   <li>{@link BakeOperationKind#APPLY}: keep partial world writes and commit captured
+     *       undo records so timeout/cancel remains undoable.</li>
+     *   <li>{@link BakeOperationKind#UNDO} / {@link BakeOperationKind#REDO}: abort the
+     *       transaction — roll back in-world progress, then restore stacks via
+     *       {@link BakeTask#getOnCancel()}.</li>
+     * </ul>
+     */
+    private void finalizeCancelledTask(BakeTask task) {
+        rememberTaskSnapshot(task);
+
+        BakeOperationKind kind = task.getOperationKind();
+        if (kind == BakeOperationKind.UNDO || kind == BakeOperationKind.REDO) {
+            if (!task.getUndoRecords().isEmpty()) {
+                task.undo();
+            }
+            if (task.getOnCancel() != null) {
+                task.getOnCancel().run();
+            }
+        } else {
+            commitTaskHistory(task);
+            if (task.getOnCancel() != null) {
+                task.getOnCancel().run();
+            }
+        }
+
+        NodeCraft.LOGGER.debug(
+            "Bake task {} ({}) cancelled. placed={}, skipped={}, total={}",
+            task.getTaskId(),
+            kind,
+            task.getPlacedCount(),
+            task.getSkippedCount(),
+            task.getTotalCount()
+        );
+    }
+
+    private void commitTaskHistory(BakeTask task) {
+        if (task.getUndoRecords().isEmpty()) {
+            return;
+        }
+
+        BakeHistory.UndoRecord record = new BakeHistory.UndoRecord(task.getTaskId());
+        for (BakeTask.BakeUndoRecord ur : task.getUndoRecords()) {
+            record.add(ur.pos(), ur.previousState());
+        }
+
+        BakeHistory history = getHistory(task.getActorId());
+        switch (task.getOperationKind()) {
+            case APPLY -> history.push(record);
+            case UNDO -> history.pushRedo(record);
+            case REDO -> history.pushUndo(record);
+            case NONE -> { /* No history recording */ }
+        }
     }
 
     private UUID resolveActorId(@Nullable UUID actorId) {

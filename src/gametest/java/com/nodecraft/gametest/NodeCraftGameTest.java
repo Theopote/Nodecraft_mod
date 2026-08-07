@@ -126,6 +126,104 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         ctx.complete();
     }
 
+    @GameTest
+    public void bakeApplyCancelCommitsPartialHistory(TestContext ctx) {
+        World world = ctx.getWorld();
+        BakePlacementService service = BakePlacementService.getInstance();
+        service.cancelAll();
+
+        UUID actorId = UUID.randomUUID();
+        BakeHistory history = service.getHistory(actorId);
+        history.clear();
+
+        BlockPos pos1 = ctx.getAbsolutePos(new BlockPos(1, 1, 1));
+        BlockPos pos2 = ctx.getAbsolutePos(new BlockPos(2, 1, 1));
+        BlockPos pos3 = ctx.getAbsolutePos(new BlockPos(3, 1, 1));
+
+        UUID taskId = service.enqueuePlacements(
+            world,
+            List.of(
+                new BakeTask.Placement(pos1, Blocks.STONE.getDefaultState()),
+                new BakeTask.Placement(pos2, Blocks.STONE.getDefaultState()),
+                new BakeTask.Placement(pos3, Blocks.STONE.getDefaultState())
+            ),
+            PlacementMode.OVERWRITE,
+            true,
+            BakeOperationKind.APPLY,
+            1,
+            0L,
+            actorId,
+            null
+        );
+        ctx.assertTrue(taskId != null, "apply task id");
+
+        service.processTick();
+        ctx.expectBlock(Blocks.STONE, pos1);
+        ctx.checkBlockState(pos2, state -> state.isOf(Blocks.AIR), state -> Text.literal("pos2 still air before cancel"));
+        ctx.assertEquals(0, history.size(), "history empty while task still running");
+
+        ctx.assertTrue(service.cancelTask(taskId), "cancel apply");
+        ctx.assertEquals(1, history.size(), "partial apply must commit undo history");
+        ctx.assertEquals(0, history.redoSize(), "redo empty after partial apply cancel");
+        ctx.expectBlock(Blocks.STONE, pos1);
+        ctx.checkBlockState(pos2, state -> state.isOf(Blocks.AIR), state -> Text.literal("unprocessed pos2 stays air"));
+
+        ctx.assertTrue(service.undoLast(actorId, world), "undo partial apply");
+        ctx.checkBlockState(pos1, state -> state.isOf(Blocks.AIR), state -> Text.literal("partial apply undone"));
+        ctx.assertEquals(0, history.size(), "history empty after undoing partial apply");
+
+        ctx.complete();
+    }
+
+    @GameTest
+    public void bakeUndoCancelAbortsAndRestoresStack(TestContext ctx) {
+        World world = ctx.getWorld();
+        BakePlacementService service = BakePlacementService.getInstance();
+        service.cancelAll();
+
+        UUID actorId = UUID.randomUUID();
+        BakeHistory history = service.getHistory(actorId);
+        history.clear();
+
+        BlockPos pos1 = ctx.getAbsolutePos(new BlockPos(1, 1, 1));
+        BlockPos pos2 = ctx.getAbsolutePos(new BlockPos(2, 1, 1));
+
+        service.enqueuePlacements(
+            world,
+            List.of(
+                new BakeTask.Placement(pos1, Blocks.STONE.getDefaultState()),
+                new BakeTask.Placement(pos2, Blocks.STONE.getDefaultState())
+            ),
+            PlacementMode.OVERWRITE,
+            true,
+            BakeOperationKind.APPLY,
+            1000,
+            1_000_000L,
+            actorId,
+            null
+        );
+        drainTasks(service);
+        ctx.assertEquals(1, history.size(), "history after apply");
+        ctx.expectBlock(Blocks.STONE, pos1);
+        ctx.expectBlock(Blocks.STONE, pos2);
+
+        UUID undoTaskId = service.undoLastAsync(actorId, world, 1, 0L);
+        ctx.assertTrue(undoTaskId != null, "undo task id");
+        ctx.assertEquals(0, history.size(), "undo record popped at enqueue");
+
+        service.processTick();
+        ctx.checkBlockState(pos1, state -> state.isOf(Blocks.AIR) || state.isOf(Blocks.STONE),
+            state -> Text.literal("first undo tick may restore one block"));
+
+        ctx.assertTrue(service.cancelTask(undoTaskId), "cancel undo");
+        ctx.assertEquals(1, history.size(), "cancelled undo must restore undo stack");
+        ctx.assertEquals(0, history.redoSize(), "cancelled undo must not leave redo residue");
+        ctx.expectBlock(Blocks.STONE, pos1);
+        ctx.expectBlock(Blocks.STONE, pos2);
+
+        ctx.complete();
+    }
+
     @Override
     public void invokeTestMethod(TestContext context, Method method) throws ReflectiveOperationException {
         method.invoke(this, context);
