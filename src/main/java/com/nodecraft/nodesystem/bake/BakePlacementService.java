@@ -229,28 +229,72 @@ public class BakePlacementService {
         }
 
         finalizeCancelledTask(task);
-        NodeCraft.LOGGER.info("Cancelled bake task {} ({})", taskId, task.getState());
+        NodeCraft.LOGGER.info("Cancelled bake task {} (state={})", taskId, task.getState());
         return true;
+    }
+
+    /**
+     * Waits until a cancelled task finishes rollback and reaches an abort terminal state.
+     * Must run on the Minecraft server thread.
+     */
+    public boolean awaitTaskAborted(UUID taskId, long deadlineMillis) {
+        if (taskId == null) {
+            return false;
+        }
+        long deadline = deadlineMillis > 0L ? deadlineMillis : Long.MAX_VALUE;
+        while (System.currentTimeMillis() < deadline) {
+            processTick();
+            TaskSnapshot snapshot = getTaskSnapshot(taskId);
+            if (snapshot != null && snapshot.state() != null && snapshot.state().isAbort()) {
+                return true;
+            }
+            if (snapshot == null && !isTaskInQueue(taskId)) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private boolean isTaskInQueue(UUID taskId) {
+        synchronized (queue) {
+            for (BakeTask task : queue) {
+                if (taskId.equals(task.getTaskId())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public int cancelAll() {
         List<BakeTask> cancelledTasks;
         synchronized (queue) {
             cancelledTasks = new ArrayList<>(queue);
-            for (BakeTask task : cancelledTasks) {
-                task.requestCancel(BakeTaskState.CANCELLED);
-            }
             queue.clear();
         }
 
+        int count = 0;
         for (BakeTask task : cancelledTasks) {
-            finalizeCancelledTask(task);
+            if (task.getState().isTerminal()) {
+                continue;
+            }
+            if (task.getState() == BakeTaskState.ROLLING_BACK) {
+                // Finish remaining rollback synchronously so cancelAll is definitive.
+                while (!task.isRollbackFinished()) {
+                    task.processTick();
+                }
+                finishRollback(task);
+            } else {
+                task.requestCancel(BakeTaskState.CANCELLED);
+                finalizeCancelledTask(task);
+            }
+            count++;
         }
 
-        if (!cancelledTasks.isEmpty()) {
-            NodeCraft.LOGGER.info("Cancelled {} queued bake tasks", cancelledTasks.size());
+        if (count > 0) {
+            NodeCraft.LOGGER.info("Cancelled {} queued bake tasks", count);
         }
-        return cancelledTasks.size();
+        return count;
     }
 
     public List<TaskSnapshot> getTaskSnapshots() {
@@ -448,11 +492,13 @@ public class BakePlacementService {
     }
 
     private void finishTask(BakeTask task) {
+        if (task.getState() == BakeTaskState.ROLLING_BACK) {
+            finishRollback(task);
+            return;
+        }
+
         rememberTaskSnapshot(task);
-        if (task.getState().isAbort()
-            || task.getState() == BakeTaskState.CANCELLING
-            || task.getState() == BakeTaskState.ROLLING_BACK) {
-            // Cancel path owns rollback / stack restore via finalizeCancelledTask.
+        if (task.getState().isAbort() || task.getState() == BakeTaskState.CANCELLING) {
             return;
         }
 
@@ -473,18 +519,43 @@ public class BakePlacementService {
     }
 
     /**
-     * Cancel / timeout = rollback current task (database-style abort).
-     * <ol>
-     *   <li>Restore world using captured previous states</li>
-     *   <li>Restore UNDO/REDO stacks via {@link BakeTask#getOnCancel()} when present</li>
-     *   <li>Do not commit history — World and History stay aligned</li>
-     * </ol>
-     * Large synchronous rollbacks may lag a tick; a future {@code RollbackTask} can time-slice this.
+     * Cancel / timeout = database-style abort.
+     * <p>
+     * With captured writes, the task is re-queued in {@link BakeTaskState#ROLLING_BACK}
+     * and restored across ticks. With no writes, it aborts immediately.
      */
     private void finalizeCancelledTask(BakeTask task) {
-        if (!task.getUndoRecords().isEmpty()) {
-            task.rollback();
+        if (task.getState() == BakeTaskState.ROLLING_BACK) {
+            if (task.isRollbackFinished()) {
+                finishRollback(task);
+            } else {
+                synchronized (queue) {
+                    queue.addFirst(task);
+                }
+                rememberTaskSnapshot(task);
+            }
+            return;
         }
+
+        if (task.getUndoRecords().isEmpty()) {
+            finishRollback(task);
+            return;
+        }
+
+        task.beginTimeSlicedRollback();
+        synchronized (queue) {
+            queue.addFirst(task);
+        }
+        rememberTaskSnapshot(task);
+        NodeCraft.LOGGER.debug(
+            "Bake task {} ({}) entered time-sliced rollback ({} blocks)",
+            task.getTaskId(),
+            task.getOperationKind(),
+            task.getUndoRecords().size()
+        );
+    }
+
+    private void finishRollback(BakeTask task) {
         if (task.getOnCancel() != null) {
             task.getOnCancel().run();
         }
@@ -517,7 +588,7 @@ public class BakePlacementService {
             case APPLY -> history.push(record);
             case UNDO -> history.pushRedo(record);
             case REDO -> history.pushUndo(record);
-            case NONE -> { /* No history recording */ }
+            case NONE, ROLLBACK -> { /* No history recording */ }
         }
     }
 

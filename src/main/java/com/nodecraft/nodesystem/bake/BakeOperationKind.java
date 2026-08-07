@@ -28,5 +28,11 @@ public enum BakeOperationKind {
      * No history recording - temporary/preview operations.
      * Inverse is discarded.
      */
-    NONE
+    NONE,
+
+    /**
+     * Internal rollback of an aborted APPLY/UNDO/REDO task.
+     * Restores captured previous states; never commits BakeHistory.
+     */
+    ROLLBACK
 }

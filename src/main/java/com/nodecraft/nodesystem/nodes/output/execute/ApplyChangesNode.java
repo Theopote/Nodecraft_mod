@@ -411,10 +411,16 @@ public class ApplyChangesNode extends BaseCustomUINode {
             service.awaitTaskCompletion(taskId, deadlineMillis)
         );
         if (!Boolean.TRUE.equals(completed)) {
-            // Timeout aborts the transaction: roll world back, leave history unchanged.
-            service.cancelTask(taskId, BakeTaskState.TIMED_OUT);
+            // Timeout aborts the transaction and waits for time-sliced rollback to finish.
+            Boolean aborted = context.callOnWorldThread(() -> {
+                service.cancelTask(taskId, BakeTaskState.TIMED_OUT);
+                return service.awaitTaskAborted(taskId, deadlineMillis);
+            });
             BakePlacementService.TaskSnapshot snapshot = service.getTaskSnapshot(taskId);
             int placed = snapshot != null ? snapshot.placedCount() : 0;
+            if (!Boolean.TRUE.equals(aborted)) {
+                LOGGER.warn("ApplyChangesNode: timed out waiting for bake rollback of task {}", taskId);
+            }
             return new ApplyResult(placed, true, taskId);
         }
 

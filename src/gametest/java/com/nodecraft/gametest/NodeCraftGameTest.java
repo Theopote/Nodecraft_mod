@@ -164,6 +164,8 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         ctx.assertEquals(0, history.size(), "history empty while task still running");
 
         ctx.assertTrue(service.cancelTask(taskId), "cancel apply");
+        drainTasks(service);
+
         ctx.assertEquals(0, history.size(), "cancelled apply must not commit history");
         ctx.assertEquals(0, history.redoSize(), "redo empty after apply rollback");
         ctx.checkBlockState(pos1, state -> state.isOf(Blocks.AIR), state -> Text.literal("rolled back pos1"));
@@ -173,6 +175,57 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         BakePlacementService.TaskSnapshot snapshot = service.getTaskSnapshot(taskId);
         ctx.assertTrue(snapshot != null, "snapshot retained");
         ctx.assertEquals(BakeTaskState.CANCELLED, snapshot.state(), "terminal cancel state");
+
+        ctx.complete();
+    }
+
+    @GameTest
+    public void bakeApplyCancelUsesTimeSlicedRollback(TestContext ctx) {
+        World world = ctx.getWorld();
+        BakePlacementService service = BakePlacementService.getInstance();
+        service.cancelAll();
+
+        UUID actorId = UUID.randomUUID();
+        BakeHistory history = service.getHistory(actorId);
+        history.clear();
+
+        BlockPos pos1 = ctx.getAbsolutePos(new BlockPos(1, 1, 1));
+        BlockPos pos2 = ctx.getAbsolutePos(new BlockPos(2, 1, 1));
+
+        // Seed prior world state so rollback has a non-air previous state to restore.
+        world.setBlockState(pos1, Blocks.STONE.getDefaultState());
+        world.setBlockState(pos2, Blocks.STONE.getDefaultState());
+
+        UUID taskId = service.enqueuePlacements(
+            world,
+            List.of(
+                new BakeTask.Placement(pos1, Blocks.GOLD_BLOCK.getDefaultState()),
+                new BakeTask.Placement(pos2, Blocks.GOLD_BLOCK.getDefaultState())
+            ),
+            PlacementMode.OVERWRITE,
+            true,
+            BakeOperationKind.APPLY,
+            1,
+            0L,
+            actorId,
+            null
+        );
+        ctx.assertTrue(taskId != null, "apply task id");
+
+        service.processTick();
+        ctx.expectBlock(Blocks.GOLD_BLOCK, pos1);
+        ctx.expectBlock(Blocks.STONE, pos2);
+
+        ctx.assertTrue(service.cancelTask(taskId), "cancel mid apply");
+        BakePlacementService.TaskSnapshot rolling = service.getTaskSnapshot(taskId);
+        ctx.assertTrue(rolling != null, "live snapshot during rollback");
+        ctx.assertEquals(BakeTaskState.ROLLING_BACK, rolling.state(), "enters ROLLING_BACK before drain");
+
+        drainTasks(service);
+        ctx.expectBlock(Blocks.STONE, pos1);
+        ctx.expectBlock(Blocks.STONE, pos2);
+        ctx.assertEquals(0, history.size(), "no history on aborted apply");
+        ctx.assertEquals(BakeTaskState.CANCELLED, service.getTaskSnapshot(taskId).state(), "abort terminal");
 
         ctx.complete();
     }
@@ -216,6 +269,8 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         service.processTick();
 
         ctx.assertTrue(service.cancelTask(undoTaskId), "cancel undo");
+        drainTasks(service);
+
         ctx.assertEquals(1, history.size(), "cancelled undo must restore undo stack");
         ctx.assertEquals(0, history.redoSize(), "cancelled undo must not leave redo residue");
         ctx.expectBlock(Blocks.STONE, pos1);
