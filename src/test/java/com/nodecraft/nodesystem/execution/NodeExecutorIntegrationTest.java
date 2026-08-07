@@ -241,6 +241,28 @@ class NodeExecutorIntegrationTest {
         assertFalse(executor.getExecFrontierSnapshot().isActive());
     }
 
+    @Test
+    void executeSyncDoesNotCreateEphemeralWorkerThread() {
+        NodeGraph graph = new NodeGraph("sync-no-pool");
+        PassThroughNode source = new PassThroughNode("source", "alpha");
+        graph.addNode(source);
+
+        int before = countNodecraftGraphWorkerThreads();
+        assertTrue(new NodeExecutor(graph).executeSync());
+        assertEquals(before, countNodecraftGraphWorkerThreads(), "executeSync must not spawn nodecraft-graph-worker threads");
+    }
+
+    private static int countNodecraftGraphWorkerThreads() {
+        int count = 0;
+        for (Thread thread : Thread.getAllStackTraces().keySet()) {
+            String name = thread.getName();
+            if (name != null && name.startsWith("nodecraft-graph-worker-")) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     private static final class ExecCountingStepNode extends BaseNode {
         private final AtomicInteger executions = new AtomicInteger();
 

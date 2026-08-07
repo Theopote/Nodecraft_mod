@@ -105,7 +105,7 @@ Not: spin a full `NodeExecutor` worker lifecycle on every edit.
 - [x] Cancellation is first-class (session + generation id + cooperative token)
 - [x] Acceptance tests from design doc pass (unit supersede + skip + manual exclusivity done; GameTest smoke still open)
 - [x] Manual Run uses shared scheduler (`MenuBarRenderer` → `ExecutionPlan.manual`)
-- [ ] Remaining ephemeral `NodeExecutor` pools only for subgraph/tests/non-editor paths
+- [x] Remaining ephemeral `NodeExecutor` pools only for rare ad-hoc `executeAsync()` without scheduler; `executeSync()` (SubgraphNode nested) creates no pool
 
 ---
 

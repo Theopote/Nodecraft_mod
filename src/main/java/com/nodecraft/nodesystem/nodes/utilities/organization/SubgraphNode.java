@@ -550,6 +550,8 @@ public class SubgraphNode extends BaseNode {
 
             boolean success;
             try {
+                // Nested sync on the caller thread — must not submit to the shared scheduler
+                // worker and await (would deadlock). executeSync creates no ephemeral pool.
                 NodeExecutor executor = new NodeExecutor(subgraph, context);
                 success = executor.executeSync();
             } catch (Exception e) {

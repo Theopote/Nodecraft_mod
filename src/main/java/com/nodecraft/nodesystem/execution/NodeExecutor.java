@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphCallStackBridge;
 import com.nodecraft.nodesystem.nodes.variable.VariableScopeBridge;
 import com.nodecraft.nodesystem.preview.PreviewManager;
+import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,8 +52,11 @@ public class NodeExecutor {
     private final ExecutionRunLimits runLimits;
     private final CancellationToken cancellation;
     private final boolean skipOutputExecuteSideEffects;
-    private final ExecutorService executorService;
-    private final boolean shutdownWorkerOnComplete;
+    /** Injected shared worker from {@link com.nodecraft.nodesystem.execution.runtime.NodeExecutionScheduler}; null for ad-hoc runs. */
+    private final @Nullable ExecutorService sharedWorker;
+    /** Lazily created only for {@link #executeAsync()} when no shared worker is provided. */
+    private volatile @Nullable ExecutorService ephemeralWorker;
+    private final boolean shutdownEphemeralOnComplete;
     private final Map<UUID, NodeState> nodeStates = new HashMap<>();
     private final Set<UUID> forcedExecRecomputeNodeIds = new HashSet<>();
     private volatile ExecFrontierSnapshot execFrontierSnapshot = ExecFrontierSnapshot.EMPTY;
@@ -115,7 +119,9 @@ public class NodeExecutor {
      * Full constructor used by {@link com.nodecraft.nodesystem.execution.runtime.NodeExecutionScheduler}.
      *
      * @param sharedWorker optional shared worker; when non-null and {@code shutdownWorkerOnComplete} is false,
-     *                     the worker is not shut down after the run
+     *                     the worker is not shut down after the run. When null, no thread pool is created for
+     *                     {@link #executeSync()} (nested subgraph-safe); an ephemeral pool is created lazily
+     *                     only if {@link #executeAsync()} is used.
      */
     public NodeExecutor(
             NodeGraph graph,
@@ -135,13 +141,9 @@ public class NodeExecutor {
         this.runLimits = runLimits == null ? ExecutionRunLimits.defaults() : runLimits;
         this.cancellation = cancellation != null ? cancellation : CancellationToken.none();
         this.skipOutputExecuteSideEffects = skipOutputExecuteSideEffects;
-        if (sharedWorker != null) {
-            this.executorService = sharedWorker;
-            this.shutdownWorkerOnComplete = shutdownWorkerOnComplete;
-        } else {
-            this.executorService = Executors.newSingleThreadExecutor(new NodeExecutorThreadFactory());
-            this.shutdownWorkerOnComplete = true;
-        }
+        this.sharedWorker = sharedWorker;
+        this.ephemeralWorker = null;
+        this.shutdownEphemeralOnComplete = sharedWorker == null && shutdownWorkerOnComplete;
     }
 
     public ExecutionProfiler.Profile getLastExecutionProfile() {
@@ -157,6 +159,7 @@ public class NodeExecutor {
             return CompletableFuture.completedFuture(false);
         }
 
+        ExecutorService worker = resolveAsyncWorker();
         executionFuture = new CompletableFuture<>();
         CompletableFuture.runAsync(() -> {
             try {
@@ -169,14 +172,16 @@ public class NodeExecutor {
                 executionFuture.completeExceptionally(e);
             } finally {
                 isExecuting.set(false);
-                if (shutdownWorkerOnComplete) {
-                    executorService.shutdown();
-                }
+                shutdownEphemeralWorkerIfOwned();
             }
-        }, executorService);
+        }, worker);
         return executionFuture;
     }
 
+    /**
+     * Runs on the calling thread. Safe for nested subgraph execution (must not re-enter the
+     * shared single-thread scheduler worker and await). Does not create a thread pool.
+     */
     public boolean executeSync() {
         if (!isExecuting.compareAndSet(false, true)) {
             return false;
@@ -192,9 +197,6 @@ public class NodeExecutor {
             return false;
         } finally {
             isExecuting.set(false);
-            if (shutdownWorkerOnComplete) {
-                executorService.shutdown();
-            }
         }
     }
 
@@ -214,10 +216,10 @@ public class NodeExecutor {
         if (!isExecuting.get() || executionFuture == null || executionFuture.isDone()) {
             return;
         }
-        if (shutdownWorkerOnComplete) {
+        if (sharedWorker == null) {
             executionFuture.cancel(true);
             isExecuting.set(false);
-            executorService.shutdownNow();
+            shutdownEphemeralWorkerNowIfOwned();
             clearGraphPreviews();
             return;
         }
@@ -232,6 +234,44 @@ public class NodeExecutor {
 
     private boolean isCancelRequested() {
         return cancellation.isCancelled() || Thread.currentThread().isInterrupted();
+    }
+
+    private ExecutorService resolveAsyncWorker() {
+        if (sharedWorker != null) {
+            return sharedWorker;
+        }
+        ExecutorService existing = ephemeralWorker;
+        if (existing != null) {
+            return existing;
+        }
+        synchronized (this) {
+            if (ephemeralWorker == null) {
+                ephemeralWorker = Executors.newSingleThreadExecutor(new NodeExecutorThreadFactory());
+            }
+            return ephemeralWorker;
+        }
+    }
+
+    private void shutdownEphemeralWorkerIfOwned() {
+        if (!shutdownEphemeralOnComplete) {
+            return;
+        }
+        ExecutorService worker = ephemeralWorker;
+        ephemeralWorker = null;
+        if (worker != null) {
+            worker.shutdown();
+        }
+    }
+
+    private void shutdownEphemeralWorkerNowIfOwned() {
+        if (!shutdownEphemeralOnComplete) {
+            return;
+        }
+        ExecutorService worker = ephemeralWorker;
+        ephemeralWorker = null;
+        if (worker != null) {
+            worker.shutdownNow();
+        }
     }
 
     private boolean executeGraph() {
