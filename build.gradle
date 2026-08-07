@@ -52,10 +52,14 @@ dependencies {
 	// GUI - ImGui (Maven Central; avoid JitPack for CI stability)
 	// ImGuiImplGl3 lives in imgui-java-lwjgl3 on Central (no separate gl3 artifact).
 	// Exclude org.lwjgl so we compile/run against Minecraft's LWJGL (3.3.3), not imgui's BOM (3.3.4).
+	// Natives must be modImplementation (not only include) so runClient can extract imgui-java64 from the classpath.
 	modImplementation "io.github.spair:imgui-java-binding:${project.imgui_version}"
 	modImplementation("io.github.spair:imgui-java-lwjgl3:${project.imgui_version}") {
 		exclude group: 'org.lwjgl'
 	}
+	modImplementation "io.github.spair:imgui-java-natives-windows:${project.imgui_version}"
+	modImplementation "io.github.spair:imgui-java-natives-linux:${project.imgui_version}"
+	modImplementation "io.github.spair:imgui-java-natives-macos:${project.imgui_version}"
 	include "io.github.spair:imgui-java-binding:${project.imgui_version}"
 	include("io.github.spair:imgui-java-lwjgl3:${project.imgui_version}") {
 		exclude group: 'org.lwjgl'
