@@ -6,7 +6,6 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.preview.PreviewManager;
-import com.nodecraft.nodesystem.preview.TrackedPreviewPlacementService;
 import com.nodecraft.nodesystem.nodes.variable.VariableScopeBridge;
 import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphCallStackBridge;
 import org.jspecify.annotations.NonNull;
@@ -567,9 +566,7 @@ public class NodeExecutor {
         }
         for (INode node : graph.getNodes()) {
             String ownerNodeId = node.getId().toString();
-            PreviewManager.hideNodePreviews(ownerNodeId);
-            // Use thread-safe version that ensures world restoration happens on server thread
-            TrackedPreviewPlacementService.getInstance().clearTrackedPreviewAcrossWorlds(ownerNodeId, context);
+            PreviewManager.hideNodePreviews(ownerNodeId, context);
         }
     }
 

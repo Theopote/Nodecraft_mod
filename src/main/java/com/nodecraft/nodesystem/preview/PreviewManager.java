@@ -150,7 +150,7 @@ public final class PreviewManager {
         if (previousBackend != null && previousBackend != request.backend()) {
             // Force immediate backend switch visibility update even when transient empty input is present.
             RENDERER.hidePreviewsByNodeAndType(nodeId, "ghost_block");
-            TrackedPreviewPlacementService.getInstance().clearTrackedPreviewAcrossWorlds(nodeId);
+            TrackedPreviewPlacementService.getInstance().clearTrackedPreviewAcrossWorlds(nodeId, ctx);
             clearTrackedWorldRequestState(nodeId);
         }
 
@@ -165,7 +165,7 @@ public final class PreviewManager {
             }
             touchNonEmpty(nodeId, "ghost_block");
             // Backend switch safety: entering GHOST should always clear tracked-world remnants immediately.
-            TrackedPreviewPlacementService.getInstance().clearTrackedPreviewAcrossWorlds(nodeId);
+            TrackedPreviewPlacementService.getInstance().clearTrackedPreviewAcrossWorlds(nodeId, ctx);
             clearTrackedWorldRequestState(nodeId);
             return RENDERER.upsertPreview(nodeId, "ghost_block", blocksPayload, opts);
         }
@@ -179,7 +179,7 @@ public final class PreviewManager {
             }
             List<PreviewBlock> cells = blocksPayload.getBlocks();
             if (cells.isEmpty()) {
-                TrackedPreviewPlacementService.getInstance().clearTrackedPreview(ctx.getWorld(), nodeId);
+                TrackedPreviewPlacementService.getInstance().clearTrackedPreviewOnWorldThread(ctx.getWorld(), nodeId, ctx);
                 clearTrackedWorldRequestState(nodeId);
                 return nodeId + ":tracked:cleared";
             }
@@ -196,12 +196,13 @@ public final class PreviewManager {
                 return lastRequestState.previewId();
             }
 
-            int placed = TrackedPreviewPlacementService.getInstance().updateTrackedPreview(
+            int placed = TrackedPreviewPlacementService.getInstance().updateTrackedPreviewOnWorldThread(
                 ctx.getWorld(),
                 nodeId,
                 new ArrayList<>(positions),
                 state,
-                PlacementMode.OVERWRITE
+                PlacementMode.OVERWRITE,
+                ctx
             );
             String previewId = nodeId + ":tracked:" + placed;
             LAST_TRACKED_WORLD_REQUEST_BY_NODE.put(nodeId, new TrackedWorldRequestState(worldKey, requestSignature, previewId));
@@ -531,10 +532,14 @@ public final class PreviewManager {
     }
 
     public static void hideNodePreviews(String nodeId) {
+        hideNodePreviews(nodeId, null);
+    }
+
+    public static void hideNodePreviews(String nodeId, @Nullable ExecutionContext context) {
         RENDERER.hidePreviewsByNode(nodeId);
         TrackedPreviewPlacementService service = TrackedPreviewPlacementService.getInstance();
         if (service.hasAnyTrackedPreviews(nodeId)) {
-            service.clearTrackedPreviewAcrossWorlds(nodeId);
+            service.clearTrackedPreviewAcrossWorlds(nodeId, context);
         }
         clearTrackedWorldRequestState(nodeId);
     }

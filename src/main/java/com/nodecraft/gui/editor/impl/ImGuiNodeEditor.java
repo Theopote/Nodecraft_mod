@@ -2451,8 +2451,6 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         }
         String ownerNodeId = nodeId.toString();
         com.nodecraft.nodesystem.preview.PreviewManager.hideNodePreviews(ownerNodeId);
-        com.nodecraft.nodesystem.preview.TrackedPreviewPlacementService.getInstance()
-            .clearTrackedPreviewAcrossWorlds(ownerNodeId);
     }
 
 }

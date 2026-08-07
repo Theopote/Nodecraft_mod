@@ -130,8 +130,6 @@ public class NodeGraph {
 
         String ownerNodeId = node.getId().toString();
         com.nodecraft.nodesystem.preview.PreviewManager.hideNodePreviews(ownerNodeId);
-        com.nodecraft.nodesystem.preview.TrackedPreviewPlacementService.getInstance()
-            .clearTrackedPreviewAcrossWorlds(ownerNodeId);
 
         if (node instanceof BaseNode baseNode) {
             try {

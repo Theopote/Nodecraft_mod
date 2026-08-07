@@ -1,14 +1,25 @@
 package com.nodecraft.nodesystem.preview;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.nodesystem.bake.PlacementMode;
+import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
-
-import com.nodecraft.nodesystem.bake.PlacementMode;
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.function.Supplier;
 
 /**
  * Tracks temporary preview blocks placed directly into the world.
@@ -36,16 +47,43 @@ public final class TrackedPreviewPlacementService {
         return INSTANCE;
     }
 
-    public synchronized int updateTrackedPreview(World world,
-                                                 String nodeId,
-                                                 List<BlockPos> positions,
-                                                 BlockState previewState,
-                                                 PlacementMode placementMode) {
+    public int updateTrackedPreview(World world,
+                                    String nodeId,
+                                    List<BlockPos> positions,
+                                    BlockState previewState,
+                                    PlacementMode placementMode) {
+        return updateTrackedPreviewOnWorldThread(world, nodeId, positions, previewState, placementMode, null);
+    }
+
+    /**
+     * Thread-safe version that applies preview block mutations on the server thread.
+     */
+    public int updateTrackedPreviewOnWorldThread(World world,
+                                                   String nodeId,
+                                                   List<BlockPos> positions,
+                                                   BlockState previewState,
+                                                   PlacementMode placementMode,
+                                                   @Nullable ExecutionContext context) {
         if (world == null || nodeId == null || nodeId.isEmpty() || positions == null || positions.isEmpty() || previewState == null) {
-            clearTrackedPreview(world, nodeId);
-            return 0;
+            return clearTrackedPreviewOnWorldThread(world, nodeId, context);
         }
 
+        try {
+            return runOnWorldThread(world, context, () ->
+                updateTrackedPreviewDirect(world, nodeId, positions, previewState, placementMode, context)
+            );
+        } catch (Exception e) {
+            NodeCraft.LOGGER.error("Failed to update tracked preview on world thread. nodeId={}", nodeId, e);
+            return 0;
+        }
+    }
+
+    private synchronized int updateTrackedPreviewDirect(World world,
+                                                        String nodeId,
+                                                        List<BlockPos> positions,
+                                                        BlockState previewState,
+                                                        PlacementMode placementMode,
+                                                        @Nullable ExecutionContext context) {
         Map<String, TrackedPreviewState> byNode = trackedPreviews.computeIfAbsent(world, ignored -> new LinkedHashMap<>());
         TrackedPreviewState previousTrackedState = byNode.get(nodeId);
 
@@ -62,8 +100,7 @@ public final class TrackedPreviewPlacementService {
         }
 
         if (requestedPositions.isEmpty()) {
-            clearTrackedPreview(world, nodeId);
-            return 0;
+            return clearTrackedPreviewInternal(world, nodeId, context);
         }
 
         // Check and enforce maximum tracked preview size
@@ -74,11 +111,9 @@ public final class TrackedPreviewPlacementService {
                 requestedPositions.size(), MAX_TRACKED_PREVIEW_BLOCKS, MAX_TRACKED_PREVIEW_BLOCKS, nodeId
             );
 
-            // Sample down to the limit
             List<BlockPos> positionsList = new ArrayList<>(requestedPositions);
             requestedPositions.clear();
 
-            // Use simple sampling: take every Nth position
             int step = Math.max(1, positionsList.size() / MAX_TRACKED_PREVIEW_BLOCKS);
             for (int i = 0; i < positionsList.size() && requestedPositions.size() < MAX_TRACKED_PREVIEW_BLOCKS; i += step) {
                 requestedPositions.add(positionsList.get(i));
@@ -135,9 +170,7 @@ public final class TrackedPreviewPlacementService {
             byNode.remove(nodeId);
         }
 
-        if (byNode.isEmpty()) {
-            trackedPreviews.remove(world);
-        }
+        removeWorldIfEmpty(world);
 
         NodeCraft.LOGGER.debug(
                 "TrackedPreviewPlacementService.updateTrackedPreview nodeId={} requested={} placed={} skipped={} restored={} unchanged={} tracked={}",
@@ -147,21 +180,23 @@ public final class TrackedPreviewPlacementService {
         return trackedOriginalStates.size();
     }
 
-    public synchronized int clearTrackedPreview(World world, String nodeId) {
-        return clearTrackedPreviewInternal(world, nodeId, null);
+    public int clearTrackedPreview(World world, String nodeId) {
+        return clearTrackedPreviewOnWorldThread(world, nodeId, null);
     }
 
     /**
      * Thread-safe version that ensures world restoration happens on the server thread.
-     * Use this when called from worker threads (e.g., during node execution cleanup).
      */
-    public synchronized int clearTrackedPreviewOnWorldThread(World world, String nodeId,
-                                                              com.nodecraft.nodesystem.execution.ExecutionContext context) {
-        return clearTrackedPreviewInternal(world, nodeId, context);
+    public int clearTrackedPreviewOnWorldThread(World world, String nodeId, @Nullable ExecutionContext context) {
+        try {
+            return clearTrackedPreviewInternal(world, nodeId, context);
+        } catch (Exception e) {
+            NodeCraft.LOGGER.error("Failed to clear tracked preview on world thread. nodeId={}", nodeId, e);
+            return 0;
+        }
     }
 
-    private synchronized int clearTrackedPreviewInternal(World world, String nodeId,
-                                                          com.nodecraft.nodesystem.execution.ExecutionContext context) {
+    private synchronized int clearTrackedPreviewInternal(World world, String nodeId, @Nullable ExecutionContext context) {
         if (world == null || nodeId == null || nodeId.isEmpty()) {
             return 0;
         }
@@ -173,76 +208,26 @@ public final class TrackedPreviewPlacementService {
 
         TrackedPreviewState trackedState = byNode.remove(nodeId);
         if (trackedState == null) {
-            if (byNode.isEmpty()) {
-                trackedPreviews.remove(world);
-            }
+            removeWorldIfEmpty(world);
             NodeCraft.LOGGER.debug("TrackedPreviewPlacementService.clearTrackedPreview nodeId={} had no tracked state", nodeId);
             return 0;
         }
 
-        // Copy the states to restore before potentially switching threads
-        final Map<BlockPos, BlockState> statesToRestore = new java.util.LinkedHashMap<>(trackedState.previousStates());
-
-        // Path 1: ExecutionContext available - use callOnWorldThread
-        if (context != null) {
-            try {
-                return context.callOnWorldThread(() -> {
-                    int count = 0;
-                    for (Map.Entry<BlockPos, BlockState> entry : statesToRestore.entrySet()) {
-                        if (world.setBlockState(entry.getKey(), entry.getValue(), Block.NOTIFY_ALL)) {
-                            count++;
-                        }
-                    }
-                    NodeCraft.LOGGER.debug(
-                            "TrackedPreviewPlacementService.clearTrackedPreview nodeId={} restored={} (via ExecutionContext)",
-                            nodeId, count
-                    );
-                    return count;
-                });
-            } catch (Exception e) {
-                NodeCraft.LOGGER.error("Failed to clear tracked preview via ExecutionContext", e);
-                // Continue to fallback path
+        final Map<BlockPos, BlockState> statesToRestore = new LinkedHashMap<>(trackedState.previousStates());
+        int restoredCount = runOnWorldThread(world, context, () -> {
+            int count = 0;
+            for (Map.Entry<BlockPos, BlockState> entry : statesToRestore.entrySet()) {
+                if (world.setBlockState(entry.getKey(), entry.getValue(), Block.NOTIFY_ALL)) {
+                    count++;
+                }
             }
-        }
+            return count;
+        });
 
-        // Path 2: ServerWorld available but no ExecutionContext - schedule on server thread
-        if (world instanceof net.minecraft.server.world.ServerWorld serverWorld) {
-            if (!Objects.requireNonNull(serverWorld.getServer()).isOnThread()) {
-                NodeCraft.LOGGER.debug(
-                    "TrackedPreviewPlacementService scheduling preview cleanup on server thread (no ExecutionContext). nodeId={}", 
-                    nodeId
-                );
-                serverWorld.getServer().execute(() -> {
-                    int count = 0;
-                    for (Map.Entry<BlockPos, BlockState> entry : statesToRestore.entrySet()) {
-                        if (world.setBlockState(entry.getKey(), entry.getValue(), Block.NOTIFY_ALL)) {
-                            count++;
-                        }
-                    }
-                    NodeCraft.LOGGER.debug(
-                            "TrackedPreviewPlacementService.clearTrackedPreview nodeId={} restored={} (scheduled)",
-                            nodeId, count
-                    );
-                });
-                // Return 0 because async - actual count unknown
-                return 0;
-            }
-        }
-
-        // Path 3: Already on server thread or non-server world - direct restoration
-        int restoredCount = 0;
-        for (Map.Entry<BlockPos, BlockState> entry : statesToRestore.entrySet()) {
-            if (world.setBlockState(entry.getKey(), entry.getValue(), Block.NOTIFY_ALL)) {
-                restoredCount++;
-            }
-        }
-
-        if (byNode.isEmpty()) {
-            trackedPreviews.remove(world);
-        }
+        removeWorldIfEmpty(world);
 
         NodeCraft.LOGGER.debug(
-                "TrackedPreviewPlacementService.clearTrackedPreview nodeId={} restored={} (direct)",
+                "TrackedPreviewPlacementService.clearTrackedPreview nodeId={} restored={}",
                 nodeId, restoredCount
         );
 
@@ -271,7 +256,11 @@ public final class TrackedPreviewPlacementService {
         return new ArrayList<>(byNode.keySet());
     }
 
-    public synchronized int clearAllTrackedPreviews(World world) {
+    public int clearAllTrackedPreviews(World world) {
+        return clearAllTrackedPreviews(world, null);
+    }
+
+    public int clearAllTrackedPreviews(World world, @Nullable ExecutionContext context) {
         if (world == null) {
             return 0;
         }
@@ -279,7 +268,7 @@ public final class TrackedPreviewPlacementService {
         List<String> previewIds = getTrackedPreviewIds(world);
         int restoredCount = 0;
         for (String previewId : previewIds) {
-            restoredCount += clearTrackedPreview(world, previewId);
+            restoredCount += clearTrackedPreviewInternal(world, previewId, context);
         }
         NodeCraft.LOGGER.info(
                 "TrackedPreviewPlacementService.clearAllTrackedPreviews clearedPreviews={} restoredBlocks={}",
@@ -300,15 +289,14 @@ public final class TrackedPreviewPlacementService {
         return false;
     }
 
-    public synchronized int clearTrackedPreviewAcrossWorlds(String nodeId) {
+    public int clearTrackedPreviewAcrossWorlds(String nodeId) {
         return clearTrackedPreviewAcrossWorlds(nodeId, null);
     }
 
     /**
-     * Thread-safe version that clears tracked preview across all worlds using ExecutionContext.
+     * Clears tracked preview across all worlds, marshaling world mutations onto the server thread.
      */
-    public synchronized int clearTrackedPreviewAcrossWorlds(String nodeId,
-                                                             com.nodecraft.nodesystem.execution.ExecutionContext context) {
+    public int clearTrackedPreviewAcrossWorlds(String nodeId, @Nullable ExecutionContext context) {
         if (nodeId == null || nodeId.isEmpty()) {
             return 0;
         }
@@ -319,6 +307,36 @@ public final class TrackedPreviewPlacementService {
             restoredCount += clearTrackedPreviewInternal(world, nodeId, context);
         }
         return restoredCount;
+    }
+
+    private void removeWorldIfEmpty(World world) {
+        Map<String, TrackedPreviewState> byNode = trackedPreviews.get(world);
+        if (byNode != null && byNode.isEmpty()) {
+            trackedPreviews.remove(world);
+        }
+    }
+
+    private static <T> T runOnWorldThread(World world, @Nullable ExecutionContext context, Supplier<T> supplier) {
+        if (supplier == null) {
+            return null;
+        }
+        if (context != null) {
+            return context.callOnWorldThread(supplier);
+        }
+        if (world instanceof ServerWorld serverWorld) {
+            MinecraftServer server = serverWorld.getServer();
+            if (server != null && !server.isOnThread()) {
+                try {
+                    return server.submit(supplier).get();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("Failed to run preview work on the Minecraft server thread", e);
+                } catch (ExecutionException e) {
+                    throw new IllegalStateException("Preview work failed on the Minecraft server thread", e.getCause());
+                }
+            }
+        }
+        return supplier.get();
     }
 
     private record TrackedPreviewState(Map<BlockPos, BlockState> previousStates, BlockState previewState) {
