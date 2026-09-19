@@ -11,7 +11,7 @@ public final class PropertySectionOrganizer {
     private PropertySectionOrganizer() {
     }
 
-        public static OrganizedProperties organize(List<PropertyDescriptor> properties) {
+    public static OrganizedProperties organize(List<PropertyDescriptor> properties) {
         Map<String, List<PropertyDescriptor>> groupedProperties = properties.stream()
                 .collect(Collectors.groupingBy(prop -> PropertyCategoryFormatter.normalize(prop.category)));
 
@@ -21,17 +21,34 @@ public final class PropertySectionOrganizer {
         }
 
         List<String> categories = new ArrayList<>(groupedProperties.keySet());
-        categories.sort(Comparator.naturalOrder());
+        categories.sort(sectionComparator());
 
         List<PropertySection> sections = categories.stream()
                 .map(category -> new PropertySection(
                         category,
                         PropertyCategoryFormatter.format(category),
-                        List.copyOf(groupedProperties.get(category))
+                        List.copyOf(groupedProperties.get(category)),
+                        AdvancedPropertyCategories.collapsedByDefault(category)
                 ))
                 .toList();
 
         return new OrganizedProperties(generalProperties, sections);
+    }
+
+    /** Advanced / compatibility sections sort last and start collapsed. */
+    public static boolean isCollapsedByDefault(String categoryKey) {
+        return AdvancedPropertyCategories.collapsedByDefault(categoryKey);
+    }
+
+    private static Comparator<String> sectionComparator() {
+        return (a, b) -> {
+            boolean aDeferred = AdvancedPropertyCategories.isAdvanced(a);
+            boolean bDeferred = AdvancedPropertyCategories.isAdvanced(b);
+            if (aDeferred != bDeferred) {
+                return aDeferred ? 1 : -1;
+            }
+            return a.compareToIgnoreCase(b);
+        };
     }
 
     public record OrganizedProperties(
@@ -43,7 +60,11 @@ public final class PropertySectionOrganizer {
     public record PropertySection(
             String categoryKey,
             String displayName,
-            List<PropertyDescriptor> properties
+            List<PropertyDescriptor> properties,
+            boolean collapsedByDefault
     ) {
+        public PropertySection(String categoryKey, String displayName, List<PropertyDescriptor> properties) {
+            this(categoryKey, displayName, properties, AdvancedPropertyCategories.collapsedByDefault(categoryKey));
+        }
     }
 }

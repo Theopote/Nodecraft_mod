@@ -135,6 +135,9 @@ Preview mode enforces `@NodeInfo(effect = …)` via `NodeEffect` + `PreviewSideE
 Enforced in `NodeExecutor.shouldExecuteNode` when `ExecutionPlan.skipOutputExecuteSideEffects` is true.
 Contract: `docs/contracts/preview-side-effects.md`, suite `PreviewSideEffectContractTest`.
 
+World-state ownership for preview vs bake: `docs/architecture/preview-world-boundary.md`
+(GHOST default; `TRACKED_WORLD` demoted to compat; permanent edits via `BakePlacementService`).
+
 ## Cache ownership
 
 **Decision: keep `NodeExecutionCache` on `NodeGraph` (graph-level).**

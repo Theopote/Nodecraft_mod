@@ -93,6 +93,12 @@ public final class GeometryViewerPropertySupport {
      * @return GeometryViewer-specific label, or {@code null} to use the generic humanized name
      */
     public static String enumDisplayNameOverride(INode node, PropertyDescriptor prop, Enum<?> value) {
+        if (value instanceof PreviewBackend backend) {
+            return switch (backend) {
+                case GHOST -> "Ghost (default)";
+                case TRACKED_WORLD -> "Tracked World (compat)";
+            };
+        }
         if (!(node instanceof GeometryViewerNode) || !"ghostRenderMode".equals(prop.name)) {
             return null;
         }
@@ -113,6 +119,17 @@ public final class GeometryViewerPropertySupport {
             String[] names,
             int selectedIndex
     ) {
+        if (prop != null && "previewBackend".equals(prop.name)) {
+            String current = (selectedIndex >= 0 && selectedIndex < names.length) ? names[selectedIndex] : "";
+            String gateHint = com.nodecraft.nodesystem.preview.TrackedWorldCompatGate.isCompatSelectionEnabled()
+                    ? "- Compat gate ON (-Dnodecraft.preview.trackedWorldCompat=true)\n"
+                    : "- Compat gate OFF: new nodes only offer Ghost; enable with -Dnodecraft.preview.trackedWorldCompat=true\n";
+            return "Current: " + current + "\n"
+                    + "- Ghost (default): render-only overlay; no world mutation\n"
+                    + "- Tracked World (compat): temporary blocks + restore; prefer Bake for permanent edits\n"
+                    + gateHint
+                    + "See docs/architecture/preview-world-boundary.md";
+        }
         if (!(node instanceof GeometryViewerNode) || !"ghostRenderMode".equals(prop.name)) {
             return null;
         }

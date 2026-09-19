@@ -6,6 +6,8 @@ import com.nodecraft.gui.components.property.core.PropertyDescriptor;
 import com.nodecraft.gui.components.property.core.PropertyRenderer;
 import com.nodecraft.gui.components.property.support.EnumPropertyLabels;
 import com.nodecraft.nodesystem.api.INode;
+import com.nodecraft.nodesystem.preview.PreviewBackend;
+import com.nodecraft.nodesystem.preview.TrackedWorldCompatGate;
 import imgui.ImGui;
 import imgui.type.ImInt;
 
@@ -28,10 +30,13 @@ public final class EnumPropertyRenderer {
                 return;
             }
 
-            Enum<?>[] values = currentValue.getDeclaringClass().getEnumConstants();
+            Enum<?>[] values = resolveEnumValues(currentValue);
             String[] names = EnumPropertyLabels.buildDisplayNames(node, prop, values);
 
-            int currentIndex = currentValue.ordinal();
+            int currentIndex = indexOf(values, currentValue);
+            if (currentIndex < 0) {
+                currentIndex = 0;
+            }
             ImInt selectedIndex = new ImInt(currentIndex);
             boolean isReadOnly = prop.setter == null;
 
@@ -66,5 +71,21 @@ public final class EnumPropertyRenderer {
         } catch (Throwable e) {
             panel.handlePropertyError(prop, e);
         }
+    }
+
+    private static Enum<?>[] resolveEnumValues(Enum<?> currentValue) {
+        if (currentValue instanceof PreviewBackend backend) {
+            return TrackedWorldCompatGate.backendsForEditor(backend);
+        }
+        return currentValue.getDeclaringClass().getEnumConstants();
+    }
+
+    private static int indexOf(Enum<?>[] values, Enum<?> current) {
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == current) {
+                return i;
+            }
+        }
+        return -1;
     }
 }

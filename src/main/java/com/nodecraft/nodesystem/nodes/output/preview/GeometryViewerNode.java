@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.PreviewBackend;
 import com.nodecraft.nodesystem.preview.PreviewGuideBuilder;
 import com.nodecraft.nodesystem.preview.PreviewManager;
+import com.nodecraft.nodesystem.preview.TrackedWorldCompatGate;
 import com.nodecraft.nodesystem.preview.gizmo.GizmoGraphBinding;
 import com.nodecraft.nodesystem.preview.gizmo.GizmoNodeSupport;
 import com.nodecraft.nodesystem.preview.gizmo.GizmoTransformTarget;
@@ -97,7 +98,12 @@ public class GeometryViewerNode extends BaseCustomUINode {
     @NodeProperty(displayName = "Block Type", category = "Preview", order = 4)
     private String blockType = "minecraft:stone";
 
-    @NodeProperty(displayName = "Preview Backend", category = "Display", order = 6)
+    @NodeProperty(
+        displayName = "Preview Backend",
+        category = "Advanced",
+        order = 6,
+        description = "Default is Ghost (render-only). Tracked World is a compatibility backend; permanent world edits use Bake / Apply."
+    )
     private PreviewBackend previewBackend = PreviewBackend.GHOST;
 
     @NodeProperty(displayName = "Solid Geometry", category = "Display", order = 7)
@@ -786,7 +792,17 @@ public class GeometryViewerNode extends BaseCustomUINode {
     }
 
     public void setPreviewBackend(PreviewBackend value) {
-        PreviewBackend sanitized = value != null ? value : PreviewBackend.GHOST;
+        setPreviewBackend(value, false);
+    }
+
+    /**
+     * @param restoreFromSavedState when true, legacy TRACKED_WORLD is kept even if
+     *        the compat gate is closed (graph load / undo). UI edits use {@code false}.
+     */
+    public void setPreviewBackend(PreviewBackend value, boolean restoreFromSavedState) {
+        PreviewBackend sanitized = restoreFromSavedState
+                ? TrackedWorldCompatGate.sanitizeRestored(value)
+                : TrackedWorldCompatGate.sanitizeSelection(value);
         if (previewBackend != sanitized) {
             previewBackend = sanitized;
             markDirty();
@@ -853,7 +869,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
         }
         if (map.get("previewBackend") instanceof String value) {
             try {
-                setPreviewBackend(PreviewBackend.valueOf(value));
+                setPreviewBackend(PreviewBackend.valueOf(value), true);
             } catch (IllegalArgumentException ignored) {
             }
         }

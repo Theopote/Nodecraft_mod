@@ -24,8 +24,11 @@ import java.util.function.Supplier;
 /**
  * Tracks temporary preview blocks placed directly into the world.
  * Clearing a tracked preview restores the previous world state.
- * This service only manages preview lifecycle and never commits builds.
- * It is a controlled backend and should not be used as the default preview path.
+ * <p>
+ * Compatibility / special preview backend — not the default path.
+ * Prefer {@link PreviewBackend#GHOST} via {@link PreviewManager}; durable edits
+ * belong in {@code BakePlacementService}.
+ * See {@code docs/architecture/preview-world-boundary.md}.
  */
 public final class TrackedPreviewPlacementService {
 

@@ -29,6 +29,8 @@ final class PropertyCategoryFormatter {
             case "UI设置" -> "UI Settings";
             case "数值" -> "Values";
             case "范围" -> "Range";
+            case "Advanced" -> "Advanced";
+            case "Compatibility", "Compat" -> "Compatibility";
             default -> formatSingleWord(normalized);
         };
     }

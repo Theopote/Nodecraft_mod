@@ -30,7 +30,7 @@ class PropertySupportHelpersTest {
     @Test
     void geometryViewerHidesGhostOnlyPropsOnNonGhostBackend() {
         GeometryViewerNode node = new GeometryViewerNode();
-        node.setPreviewBackend(PreviewBackend.TRACKED_WORLD);
+        node.setPreviewBackend(PreviewBackend.TRACKED_WORLD, true);
 
         assertFalse(GeometryViewerPropertySupport.shouldDisplayProperty(
                 node, descriptor("previewColor", "Preview Color", String.class)));
@@ -55,6 +55,16 @@ class PropertySupportHelpersTest {
         assertEquals("Block Color", names[GeometryViewerNode.GhostRenderMode.BLOCK_COLOR.ordinal()]);
         assertEquals("Solid Color", names[GeometryViewerNode.GhostRenderMode.SOLID_COLOR.ordinal()]);
         assertEquals("Wireframe", names[GeometryViewerNode.GhostRenderMode.WIREFRAME.ordinal()]);
+    }
+
+    @Test
+    void previewBackendLabelsMarkTrackedAsCompat() {
+        GeometryViewerNode node = new GeometryViewerNode();
+        PropertyDescriptor prop = descriptor("previewBackend", "Preview Backend", PreviewBackend.class);
+        String[] names = EnumPropertyLabels.buildDisplayNames(node, prop, PreviewBackend.values());
+
+        assertEquals("Ghost (default)", names[PreviewBackend.GHOST.ordinal()]);
+        assertEquals("Tracked World (compat)", names[PreviewBackend.TRACKED_WORLD.ordinal()]);
     }
 
     private static PropertyDescriptor descriptor(String name, String displayName, Class<?> type) {

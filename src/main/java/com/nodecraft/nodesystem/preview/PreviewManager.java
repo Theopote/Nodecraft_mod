@@ -34,8 +34,13 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * High-level helper API for preview rendering.
- * <p>统一入口为 {@link #showPreview(PreviewRequest)}；{@code showPaths} 等便捷方法内部转调协议类型。
- * 新节点请直接构造 {@link com.nodecraft.nodesystem.preview.protocol.PreviewRequest}。
+ * <p>
+ * Unified entry: {@link #showPreview(PreviewRequest)}. Convenience helpers
+ * ({@code showPaths}, …) construct protocol types and pass {@link PreviewBackend#GHOST}.
+ * <p>
+ * Sole product dispatch for {@link PreviewBackend#TRACKED_WORLD} block previews;
+ * non-{@link PreviewKind#BLOCKS} kinds must stay GHOST.
+ * See {@link TrackedWorldCapabilityInventory}.
  */
 public final class PreviewManager {
 

@@ -54,3 +54,11 @@ Suite: `PreviewSideEffectContractTest`.
 
 - Incremental exec-frontier preview
 - Changing bake/apply semantics in manual runs
+- Retiring `TRACKED_WORLD` in this contract (see
+  `docs/architecture/preview-world-boundary.md` — demote first, delete later)
+
+## Preview backend note
+
+`PREVIEW_WRITE` allows `output.preview.*`. Product default remains **GHOST**
+(render-only). `TRACKED_WORLD` is a compatibility / special backend that still
+mutates then restores; permanent placement stays on `BakePlacementService`.

@@ -430,7 +430,8 @@ public class PropertyPanelComponent implements EditorComponent {
         for (PropertySectionOrganizer.PropertySection section : organizedProperties.sections()) {
             if (!section.displayName().isEmpty()) {
                 ImGui.pushStyleColor(ImGuiCol.Text, 0.72f, 0.76f, 0.82f, 1.0f);
-                boolean open = ImGui.collapsingHeader(section.displayName(), ImGuiTreeNodeFlags.DefaultOpen);
+                int headerFlags = section.collapsedByDefault() ? 0 : ImGuiTreeNodeFlags.DefaultOpen;
+                boolean open = ImGui.collapsingHeader(section.displayName(), headerFlags);
                 ImGui.popStyleColor();
                 if (open) {
                     renderPropertyGroup(section.properties(), section.categoryKey());
