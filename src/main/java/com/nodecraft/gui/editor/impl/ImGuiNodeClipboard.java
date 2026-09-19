@@ -483,65 +483,11 @@ public class ImGuiNodeClipboard implements ClipboardOwner {
     }
     
     /**
-     * 删除选中的节点
+     * 删除选中的节点（委托给编辑器命令层，保留剪贴板入口兼容）。
      * @return 是否删除成功
      */
     public boolean deleteSelectedNodes() {
-        try {
-            // 获取当前节点图
-            NodeGraph graph = editor.getCurrentGraph();
-            if (graph == null) return false;
-            
-            // 获取选中的节点
-            Set<UUID> selectedNodeIds = editor.getSelectedNodeIds();
-            if (selectedNodeIds.isEmpty()) {
-                return false;
-            }
-            
-            // 获取历史记录组件
-            ImGuiNodeHistory history = null;
-            if (editor instanceof ImGuiNodeEditor) {
-                history = editor.getHistory();
-            }
-
-            List<ImGuiNodeHistory.RemovedNodeSnapshot> snapshots = new ArrayList<>();
-            if (history != null && history.isRecording()) {
-                for (UUID nodeId : new ArrayList<>(selectedNodeIds)) {
-                    INode node = graph.getNode(nodeId);
-                    if (node == null) {
-                        continue;
-                    }
-                    NodePosition pos = editor.getNodePosition(nodeId);
-                    if (pos == null) {
-                        pos = new NodePosition(0, 0);
-                    }
-                    ImGuiNodeHistory.RemovedNodeSnapshot snapshot = history.captureRemovedNodeSnapshot(node, pos.x, pos.y);
-                    if (snapshot != null) {
-                        snapshots.add(snapshot);
-                    }
-                }
-                if (!snapshots.isEmpty()) {
-                    history.recordRemoveNodes(snapshots);
-                }
-            }
-            
-            // 删除选中的节点
-            for (UUID nodeId : new ArrayList<>(selectedNodeIds)) {
-                INode node = graph.getNode(nodeId);
-                if (node != null) {
-                    // 删除节点
-                    graph.removeNode(nodeId);
-                    editor.removeNodePosition(nodeId);
-                    editor.removeSelectedNode(nodeId);
-                }
-            }
-            
-            NodeCraft.LOGGER.info("已删除选中的节点");
-            return true;
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("删除节点时出错: {}", e.getMessage(), e);
-            return false;
-        }
+        return editor.deleteSelectedNodes();
     }
     
     /**

@@ -172,7 +172,8 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         @Override public void notifyNodeAdded(Map<String, Object> eventData) { notifyEditorComponents("node_added", eventData); }
         @Override public void clearSelectedNodes() { ImGuiNodeEditor.this.clearSelectedNodes(); }
         @Override public void setSelectedNodeId(UUID nodeId) { ImGuiNodeEditor.this.setSelectedNodeId(nodeId); }
-        @Override public boolean deleteSelectedViaClipboard() { return clipboard.deleteSelectedNodes(); }
+        @Override public void removeNodePosition(UUID nodeId) { ImGuiNodeEditor.this.removeNodePosition(nodeId); }
+        @Override public void removeSelectedNode(UUID nodeId) { ImGuiNodeEditor.this.removeSelectedNode(nodeId); }
     }
 
     private void handleNodeDirty(BaseNode node, long dirtyVersion) {

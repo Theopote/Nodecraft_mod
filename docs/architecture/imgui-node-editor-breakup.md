@@ -12,13 +12,16 @@ ImGuiNodeEditor                    (frame loop + wiring only)
 ├─ EditorViewportState             ✓ zoom / pan / grid (Phase J)
 ├─ SubgraphEditService             ✓ stack + create/open/close/dissolve/rename (Phase K)
 ├─ ConnectionEditService           ✓ connect/disconnect/reroute/preview (Phase L)
-├─ NodeCommandService              ✓ add/delete/duplicate/align (Phase M)
+├─ NodeCommandService              ✓ add/delete/duplicate/align (Phase M + delete tighten)
 ├─ EditorSession                   ✓ open + presentation flags (Phase N)
 │
-├─ ImGuiNodeHistory / Clipboard    (already extracted; delete still via clipboard)
+├─ ImGuiNodeHistory / Clipboard    (clipboard: copy/cut/paste; delete delegates to commands)
 ├─ AutoPreviewController           ✓
 └─ ImGuiNodeRenderer / Interaction (already extracted; navigation chrome stays on editor)
 ```
+
+`CanvasComponent` no longer mirrors viewport/session state — it reads/writes
+`EditorViewportState` / `EditorSession` through `ICanvasEditor`.
 
 ## Principle
 
@@ -33,9 +36,7 @@ ImGuiNodeEditor                    (frame loop + wiring only)
 
 **Owns:** canvas zoom, offset X/Y, show-grid flag.
 
-**Still deferred:**
-
-- `CanvasComponent` mirrored zoom/offset (dual write until a later merge)
+**CanvasComponent:** pan/zoom/grid UI mutates the same `EditorViewportState` (no local copies).
 
 ## Phase K — SubgraphEditService
 
@@ -53,24 +54,35 @@ ImGuiNodeEditor                    (frame loop + wiring only)
 
 **Owns:** add / addWithState / deleteSelected / duplicateSelected / align.
 
-**Still via clipboard:** multi-select delete snapshot/history (`Host.deleteSelectedViaClipboard`) — clipboard remains owner of that implementation until a later tighten.
+**Still via clipboard:** ~~multi-select delete~~ — delete ownership folded into `NodeCommandService` (see Phase M tighten below).
 
-**Host:** document, interaction, history, dirty notify, `node_added` event, selection helpers.
+**Host:** document, interaction, history, dirty notify, `node_added` event, selection helpers, remove position/selection.
 
-## Phase N — EditorSession (current)
+## Phase N — EditorSession
 
 **Owns:** `isOpen`; node display mode; show-previews flag; per-node custom colors; disabled / hidden sets.
 
-**Side effects via Host:** structure-dirty notify; `PreviewManager.hideNodePreviews` on disable (kept on editor host, not inside session).
+**CanvasComponent:** display-mode / show-previews UI mutates the same `EditorSession` (no local copies).
 
-**Stays mirrored (deferred):** `CanvasComponent` still holds its own display-mode / show-previews copies and pushes into the editor.
+**Side effects via Host:** structure-dirty notify; `PreviewManager.hideNodePreviews` on disable (kept on editor host, not inside session).
 
 **API:** `ICanvasEditor.getEditorSession()`; open/color/disabled/visible methods remain thin delegates on `ImGuiNodeEditor`.
 
+## Phase M tighten — delete ownership
+
+**Owns:** multi-select delete + history snapshots (`captureRemovedNodeSnapshot` / `recordRemoveNodes`).
+
+**Clipboard:** `ImGuiNodeClipboard.deleteSelectedNodes()` is a thin delegate to `editor.deleteSelectedNodes()` (cut still goes through clipboard → editor → commands).
+
+## Phase O — CanvasComponent mirror collapse (current)
+
+**Removed dual-write:** `CanvasComponent` no longer stores zoom/offset/grid/display/preview copies or pushes `setCanvasView` each frame.
+
+**Still on CanvasComponent:** drag/zoom gesture chrome, grid drawing, context menu, `NodeDisplayMode` enum (maps to `EditorSession` ints).
+
 ## Later phases (order)
 
-1. Optional: fold clipboard delete ownership into `NodeCommandService`
-2. Optional: collapse CanvasComponent mirror onto `EditorViewportState` / `EditorSession`
+_None remaining on this breakup track._ Optional follow-ups live outside this doc (AI panel / SelectedBlockNode / multi-doc).
 
 ## Non-goals (still)
 
@@ -92,3 +104,13 @@ As previously documented.
 1. Open / display / colors / disabled / hidden live in `EditorSession`
 2. `EditorSessionTest` green; editor public API unchanged as thin delegates
 3. Renderer / menus still read via `ICanvasEditor` delegates (no direct session coupling required)
+
+### Phase M tighten (delete)
+1. Delete logic lives in `NodeCommandService`; no `deleteSelectedViaClipboard` Host hook
+2. Clipboard delete is a delegate only; cut still works
+3. Delete unit test + existing editor command tests green
+
+### Phase O
+1. `CanvasComponent` has no mirrored zoom/offset/grid/display/preview fields
+2. Pan/zoom/grid/display/preview mutations go through `EditorViewportState` / `EditorSession`
+3. Editor command / session / subgraph tests green

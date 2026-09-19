@@ -11,8 +11,12 @@ import com.nodecraft.gui.preset.GraphPresetApplier;
 import com.nodecraft.gui.preset.GraphPresetCatalog;
 import com.nodecraft.gui.preset.GraphPresetRules;
 import com.nodecraft.gui.editor.base.INodeEditor;
+import com.nodecraft.gui.editor.impl.ICanvasEditor;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
 import com.nodecraft.gui.editor.impl.NodePosition;
+import com.nodecraft.gui.editor.session.EditorSession;
+import com.nodecraft.gui.editor.viewport.EditorViewportState;
+import org.jetbrains.annotations.Nullable;
 
 import imgui.ImDrawList;
 import imgui.ImGui;
@@ -42,14 +46,10 @@ public class CanvasComponent implements EditorComponent {
         static final String PRESET_DRAG_DROP_PAYLOAD_TYPE = GraphPresetCatalog.PRESET_DRAG_PAYLOAD;
     }
     
-    // 画布状态
-    private float canvasZoom = 1.0f;
-    private float canvasOffsetX = 0;
-    private float canvasOffsetY = 0;
+    // 画布交互瞬态（zoom/pan/grid/display 归属 editor viewport/session）
     private boolean isDraggingCanvas = false;
     private final ImVec2 lastMousePos = new ImVec2();
     private float gridSize = CanvasConstants.DEFAULT_GRID_SIZE; // 使用常量作为默认值
-    private boolean showGrid = true;
     private boolean visible = true;
     private final String componentId = "canvas";
     
@@ -81,12 +81,6 @@ public class CanvasComponent implements EditorComponent {
         TEXT_ONLY    // 仅文本
     }
     
-    // 当前节点显示模式
-    private NodeDisplayMode nodeDisplayMode = NodeDisplayMode.FULL;
-    
-    // 是否显示节点预览
-    private boolean showNodePreviews = true;
-    
     /**
      * 节点添加回调接口
      */
@@ -105,6 +99,73 @@ public class CanvasComponent implements EditorComponent {
         // 强制要求 nodeEditor 非空
         this.nodeEditor = Objects.requireNonNull(nodeEditor, "节点编辑器 (nodeEditor) 不能为空"); 
         this.dropCallback = dropCallback;
+    }
+
+    private @Nullable EditorViewportState viewport() {
+        if (nodeEditor instanceof ICanvasEditor canvas) {
+            return canvas.getViewportState();
+        }
+        return null;
+    }
+
+    private @Nullable EditorSession session() {
+        if (nodeEditor instanceof ICanvasEditor canvas) {
+            return canvas.getEditorSession();
+        }
+        return null;
+    }
+
+    private float canvasZoom() {
+        EditorViewportState viewport = viewport();
+        return viewport != null ? viewport.getZoom() : EditorViewportState.DEFAULT_ZOOM;
+    }
+
+    private float canvasOffsetX() {
+        EditorViewportState viewport = viewport();
+        return viewport != null ? viewport.getOffsetX() : 0.0f;
+    }
+
+    private float canvasOffsetY() {
+        EditorViewportState viewport = viewport();
+        return viewport != null ? viewport.getOffsetY() : 0.0f;
+    }
+
+    private boolean showGridFlag() {
+        EditorViewportState viewport = viewport();
+        return viewport == null || viewport.isShowGrid();
+    }
+
+    private void writeCanvasView(float zoom, float offsetX, float offsetY) {
+        EditorViewportState viewport = viewport();
+        if (viewport != null) {
+            viewport.setView(zoom, offsetX, offsetY);
+            return;
+        }
+        if (nodeEditor instanceof ImGuiNodeEditor editor) {
+            editor.setCanvasView(zoom, offsetX, offsetY);
+        }
+    }
+
+    private void writeCanvasOffset(float offsetX, float offsetY) {
+        EditorViewportState viewport = viewport();
+        if (viewport != null) {
+            viewport.setOffset(offsetX, offsetY);
+            return;
+        }
+        if (nodeEditor instanceof ImGuiNodeEditor editor) {
+            editor.setCanvasOffset(offsetX, offsetY);
+        }
+    }
+
+    private void writeCanvasZoom(float zoom) {
+        EditorViewportState viewport = viewport();
+        if (viewport != null) {
+            viewport.setZoom(zoom);
+            return;
+        }
+        if (nodeEditor instanceof ImGuiNodeEditor editor) {
+            editor.setCanvasZoom(zoom);
+        }
     }
     
     /**
@@ -285,8 +346,8 @@ public class CanvasComponent implements EditorComponent {
             }
             
             // 如果启用网格，先绘制网格（放在节点渲染前，这样网格就会在底层）
-            if (showGrid) {
-                drawGrid(canvasScreenPos, canvasSize, gridSize, canvasOffsetX, canvasOffsetY);
+            if (showGridFlag()) {
+                drawGrid(canvasScreenPos, canvasSize, gridSize, canvasOffsetX(), canvasOffsetY());
             }
             
             // 在网格之上渲染节点和连接线
@@ -351,20 +412,20 @@ public class CanvasComponent implements EditorComponent {
     private void handleCanvasZooming(ImVec2 canvasScreenPos, ImVec2 canvasSize, ImGuiIO io) {
         float mouseWheel = io.getMouseWheel();
         if (mouseWheel != 0) {
-            float prevZoom = canvasZoom;
-            // 使用常量进行缩放限制和步长
-            canvasZoom = Math.max(CanvasConstants.MIN_ZOOM, 
-                             Math.min(CanvasConstants.MAX_ZOOM, canvasZoom + mouseWheel * CanvasConstants.ZOOM_STEP));
-            
-            // 以鼠标为中心缩放
-            float mouseXInCanvas = (io.getMousePosX() - canvasScreenPos.x - canvasOffsetX) / prevZoom;
-            float mouseYInCanvas = (io.getMousePosY() - canvasScreenPos.y - canvasOffsetY) / prevZoom;
-            
-            canvasOffsetX += mouseXInCanvas * (prevZoom - canvasZoom);
-            canvasOffsetY += mouseYInCanvas * (prevZoom - canvasZoom);
+            float prevZoom = canvasZoom();
+            float nextZoom = Math.max(CanvasConstants.MIN_ZOOM,
+                             Math.min(CanvasConstants.MAX_ZOOM, prevZoom + mouseWheel * CanvasConstants.ZOOM_STEP));
 
-            NodeCraft.LOGGER.debug("画布缩放: {}->{}，滚轮={}，位置=({}, {})", 
-                prevZoom, canvasZoom, mouseWheel, io.getMousePosX(), io.getMousePosY());
+            // 以鼠标为中心缩放
+            float mouseXInCanvas = (io.getMousePosX() - canvasScreenPos.x - canvasOffsetX()) / prevZoom;
+            float mouseYInCanvas = (io.getMousePosY() - canvasScreenPos.y - canvasOffsetY()) / prevZoom;
+
+            float nextOffsetX = canvasOffsetX() + mouseXInCanvas * (prevZoom - nextZoom);
+            float nextOffsetY = canvasOffsetY() + mouseYInCanvas * (prevZoom - nextZoom);
+            writeCanvasView(nextZoom, nextOffsetX, nextOffsetY);
+
+            NodeCraft.LOGGER.debug("画布缩放: {}->{}，滚轮={}，位置=({}, {})",
+                prevZoom, nextZoom, mouseWheel, io.getMousePosX(), io.getMousePosY());
         }
     }
 
@@ -379,23 +440,22 @@ public class CanvasComponent implements EditorComponent {
             
             // 只在有实际移动时更新偏移（避免浮点数累积误差）
             if (Math.abs(deltaX) > 0.5f || Math.abs(deltaY) > 0.5f) {
-                canvasOffsetX += deltaX;
-                canvasOffsetY += deltaY;
-                
+                writeCanvasOffset(canvasOffsetX() + deltaX, canvasOffsetY() + deltaY);
+
                 // 每10帧记录一次拖动信息
                 if (Math.random() < 0.1) {
-                    NodeCraft.LOGGER.debug("画布拖动中: 偏移=({}, {}), 增量=({}, {})", 
-                        canvasOffsetX, canvasOffsetY, deltaX, deltaY);
+                    NodeCraft.LOGGER.debug("画布拖动中: 偏移=({}, {}), 增量=({}, {})",
+                        canvasOffsetX(), canvasOffsetY(), deltaX, deltaY);
                 }
             }
-            
+
             lastMousePos.set(io.getMousePosX(), io.getMousePosY());
         }
-        
+
         // 结束画布拖动 (改为中键)
         if (isDraggingCanvas && !ImGui.isMouseDown(2)) { // 1表示ImGui中的右键按钮索引 -> 改为 2 (中键)
             isDraggingCanvas = false;
-            NodeCraft.LOGGER.debug("结束画布拖动: 最终偏移=({}, {})", canvasOffsetX, canvasOffsetY);
+            NodeCraft.LOGGER.debug("结束画布拖动: 最终偏移=({}, {})", canvasOffsetX(), canvasOffsetY());
         }
     }
 
@@ -420,8 +480,8 @@ public class CanvasComponent implements EditorComponent {
             
             if (!isOverNode) {
                 // 计算世界坐标
-                float worldX = (io.getMousePosX() - canvasScreenPos.x - canvasOffsetX) / canvasZoom;
-                float worldY = (io.getMousePosY() - canvasScreenPos.y - canvasOffsetY) / canvasZoom;
+                float worldX = (io.getMousePosX() - canvasScreenPos.x - canvasOffsetX()) / canvasZoom();
+                float worldY = (io.getMousePosY() - canvasScreenPos.y - canvasOffsetY()) / canvasZoom();
                 openNodeSearchPopup(worldX, worldY);
             }
         }
@@ -447,12 +507,7 @@ public class CanvasComponent implements EditorComponent {
      */
     private void renderEditorContent() {
         try {
-            // 构造函数已确保 nodeEditor 不为 null
-            if (nodeEditor instanceof ImGuiNodeEditor imguiEditor) {
-                // 同步画布状态到ImGuiNodeEditor
-                imguiEditor.setCanvasView(canvasZoom, canvasOffsetX, canvasOffsetY);
-            }
-            
+            // Viewport is already the single owner — no dual-write sync needed.
             nodeEditor.renderImGui();
         } catch (Exception e) {
             // 使用通用异常处理方法
@@ -530,8 +585,8 @@ public class CanvasComponent implements EditorComponent {
         }
 
         ImGuiIO io = ImGui.getIO();
-        float dropX = (io.getMousePosX() - canvasScreenPos.x - canvasOffsetX) / canvasZoom;
-        float dropY = (io.getMousePosY() - canvasScreenPos.y - canvasOffsetY) / canvasZoom;
+        float dropX = (io.getMousePosX() - canvasScreenPos.x - canvasOffsetX()) / canvasZoom();
+        float dropY = (io.getMousePosY() - canvasScreenPos.y - canvasOffsetY()) / canvasZoom();
 
         NodeCraft.LOGGER.info("节点已拖放到画布: {} 在位置 ({}, {})", nodeId, dropX, dropY);
         if (dropCallback != null) {
@@ -556,8 +611,8 @@ public class CanvasComponent implements EditorComponent {
         }
 
         ImGuiIO io = ImGui.getIO();
-        float dropX = (io.getMousePosX() - canvasScreenPos.x - canvasOffsetX) / canvasZoom;
-        float dropY = (io.getMousePosY() - canvasScreenPos.y - canvasOffsetY) / canvasZoom;
+        float dropX = (io.getMousePosX() - canvasScreenPos.x - canvasOffsetX()) / canvasZoom();
+        float dropY = (io.getMousePosY() - canvasScreenPos.y - canvasOffsetY()) / canvasZoom();
 
         GraphPresetApplier.ApplyResult result = GraphPresetApplier.apply(preset, dropX, dropY);
         if (!result.success()) {
@@ -581,6 +636,7 @@ public class CanvasComponent implements EditorComponent {
      * 绘制网格 (改进版，考虑缩放和偏移)
      */
     private void drawGrid(ImVec2 canvasScreenPos, ImVec2 canvasSize, float worldGridSize, float offsetX, float offsetY) {
+        float canvasZoom = canvasZoom();
         if (worldGridSize <= 0 || canvasZoom <= 0) return;
 
         // 网格与画布背景共享透明度，避免背景设为0时仍残留网格层。
@@ -646,22 +702,22 @@ public class CanvasComponent implements EditorComponent {
      * 设置是否显示网格
      */
     public void setShowGrid(boolean showGrid) {
-        this.showGrid = showGrid;
-        
-        // 将网格显示状态传递给编辑器实例
-        if (nodeEditor instanceof ImGuiNodeEditor editor) {
+        EditorViewportState viewport = viewport();
+        if (viewport != null) {
+            viewport.setShowGrid(showGrid);
+        } else if (nodeEditor instanceof ImGuiNodeEditor editor) {
             editor.setShowGrid(showGrid);
         }
-        
+
         NodeCraft.LOGGER.info("网格显示状态已设置为: {}", showGrid ? "显示" : "隐藏");
     }
-    
+
     /**
      * 获取是否显示网格
      * @return 是否显示网格
      */
     public boolean isShowGrid() {
-        return showGrid;
+        return showGridFlag();
     }
 
     /**
@@ -669,15 +725,13 @@ public class CanvasComponent implements EditorComponent {
      * 这是 "重置视图" 菜单项应该调用的功能。
      */
     public void resetToDefault() {
-        this.canvasZoom = 1.0f;
-        this.canvasOffsetX = 0;
-        this.canvasOffsetY = 0;
-        NodeCraft.LOGGER.info("画布视图已重置到默认状态 (1.0x, (0,0)偏移)");
-        
-        // 传递给编辑器，确保编辑器也同步这个状态
-        if (nodeEditor instanceof ImGuiNodeEditor) {
-            ((ImGuiNodeEditor)nodeEditor).setCanvasView(canvasZoom, canvasOffsetX, canvasOffsetY);
+        EditorViewportState viewport = viewport();
+        if (viewport != null) {
+            viewport.resetView();
+        } else {
+            writeCanvasView(EditorViewportState.DEFAULT_ZOOM, 0.0f, 0.0f);
         }
+        NodeCraft.LOGGER.info("画布视图已重置到默认状态 (1.0x, (0,0)偏移)");
     }
     
     /**
@@ -788,132 +842,118 @@ public class CanvasComponent implements EditorComponent {
         float offsetX = -minX * scale + (viewportWidth - contentWidth * scale) / 2;
         float offsetY = -minY * scale + (viewportHeight - contentHeight * scale) / 2;
         
-        // 应用缩放和偏移
-        this.canvasZoom = scale;
-        this.canvasOffsetX = offsetX;
-        this.canvasOffsetY = offsetY;
-        
+        writeCanvasView(scale, offsetX, offsetY);
+
         NodeCraft.LOGGER.info("画布已适应所有节点：缩放 = {}, 偏移 = ({}, {})", scale, offsetX, offsetY);
-        NodeCraft.LOGGER.debug("节点边界：({}, {}) 到 ({}, {}), 内容尺寸：{} x {}", 
+        NodeCraft.LOGGER.debug("节点边界：({}, {}) 到 ({}, {}), 内容尺寸：{} x {}",
                               minX, minY, maxX, maxY, contentWidth, contentHeight);
-        NodeCraft.LOGGER.debug("视口尺寸：{} x {}, 缩放比例：scaleX={}, scaleY={}, 最终scale={}", 
+        NodeCraft.LOGGER.debug("视口尺寸：{} x {}, 缩放比例：scaleX={}, scaleY={}, 最终scale={}",
                               viewportWidth, viewportHeight, scaleX, scaleY, scale);
-        NodeCraft.LOGGER.debug("居中偏移：extraOffsetX={}, extraOffsetY={}", 
+        NodeCraft.LOGGER.debug("居中偏移：extraOffsetX={}, extraOffsetY={}",
                               (viewportWidth - contentWidth * scale) / 2, (viewportHeight - contentHeight * scale) / 2);
-        
-        // 同步画布状态到ImGuiNodeEditor
-        if (nodeEditor instanceof ImGuiNodeEditor) {
-            ((ImGuiNodeEditor)nodeEditor).setCanvasView(canvasZoom, canvasOffsetX, canvasOffsetY);
-        }
     }
     
     /**
      * 放大画布视图
      */
     public void zoomIn() {
-        this.canvasZoom = Math.min(this.canvasZoom + CanvasConstants.ZOOM_STEP, CanvasConstants.MAX_ZOOM);
-        NodeCraft.LOGGER.info("画布放大: {}", this.canvasZoom);
+        float nextZoom = Math.min(canvasZoom() + CanvasConstants.ZOOM_STEP, CanvasConstants.MAX_ZOOM);
+        writeCanvasZoom(nextZoom);
+        NodeCraft.LOGGER.info("画布放大: {}", nextZoom);
     }
-    
+
     /**
      * 缩小画布视图
      */
     public void zoomOut() {
-        this.canvasZoom = Math.max(this.canvasZoom - CanvasConstants.ZOOM_STEP, CanvasConstants.MIN_ZOOM);
-        NodeCraft.LOGGER.info("画布缩小: {}", this.canvasZoom);
+        float nextZoom = Math.max(canvasZoom() - CanvasConstants.ZOOM_STEP, CanvasConstants.MIN_ZOOM);
+        writeCanvasZoom(nextZoom);
+        NodeCraft.LOGGER.info("画布缩小: {}", nextZoom);
     }
-    
 
-    
     /**
      * 切换网格显示
      */
     public void toggleGrid() {
-        setShowGrid(!showGrid);
+        setShowGrid(!showGridFlag());
     }
-    
+
     /**
      * 切换节点显示模式
      */
     public void toggleNodeDisplayMode() {
-        // 按顺序循环切换显示模式
-        switch (nodeDisplayMode) {
-            case FULL:
-                nodeDisplayMode = NodeDisplayMode.COMPACT;
-                NodeCraft.LOGGER.info("节点显示模式: 紧凑模式");
-                break;
-            case COMPACT:
-                nodeDisplayMode = NodeDisplayMode.ICON_ONLY;
-                NodeCraft.LOGGER.info("节点显示模式: 仅图标");
-                break;
-            case ICON_ONLY:
-                nodeDisplayMode = NodeDisplayMode.TEXT_ONLY;
-                NodeCraft.LOGGER.info("节点显示模式: 仅文本");
-                break;
-            case TEXT_ONLY:
-                nodeDisplayMode = NodeDisplayMode.FULL;
-                NodeCraft.LOGGER.info("节点显示模式: 完整模式");
-                break;
-        }
-        
-        // 将显示模式传递给编辑器
-        if (nodeEditor instanceof ImGuiNodeEditor editor) {
-            editor.setNodeDisplayMode(nodeDisplayMode.ordinal());
-        }
+        NodeDisplayMode next = switch (getNodeDisplayMode()) {
+            case FULL -> NodeDisplayMode.COMPACT;
+            case COMPACT -> NodeDisplayMode.ICON_ONLY;
+            case ICON_ONLY -> NodeDisplayMode.TEXT_ONLY;
+            case TEXT_ONLY -> NodeDisplayMode.FULL;
+        };
+        setNodeDisplayMode(next);
+        NodeCraft.LOGGER.info("节点显示模式: {}", switch (next) {
+            case FULL -> "完整模式";
+            case COMPACT -> "紧凑模式";
+            case ICON_ONLY -> "仅图标";
+            case TEXT_ONLY -> "仅文本";
+        });
     }
-    
+
     /**
      * 获取当前节点显示模式
      * @return 当前节点显示模式
      */
     public NodeDisplayMode getNodeDisplayMode() {
-        return nodeDisplayMode;
+        EditorSession session = session();
+        int mode = session != null ? session.getNodeDisplayMode() : EditorSession.DISPLAY_MODE_FULL;
+        NodeDisplayMode[] values = NodeDisplayMode.values();
+        if (mode < 0 || mode >= values.length) {
+            return NodeDisplayMode.FULL;
+        }
+        return values[mode];
     }
-    
+
     /**
      * 设置节点显示模式
      * @param mode 要设置的显示模式
      */
     public void setNodeDisplayMode(NodeDisplayMode mode) {
-        this.nodeDisplayMode = mode;
-        
-        // 将显示模式传递给编辑器
-        if (nodeEditor instanceof ImGuiNodeEditor editor) {
-            editor.setNodeDisplayMode(nodeDisplayMode.ordinal());
+        if (mode == null) {
+            return;
+        }
+        EditorSession session = session();
+        if (session != null) {
+            session.setNodeDisplayMode(mode.ordinal());
+        } else if (nodeEditor instanceof ImGuiNodeEditor editor) {
+            editor.setNodeDisplayMode(mode.ordinal());
         }
     }
-    
+
     /**
      * 切换节点预览
      */
     public void toggleNodePreviews() {
-        showNodePreviews = !showNodePreviews;
-        NodeCraft.LOGGER.info("节点预览: {}", showNodePreviews ? "开启" : "关闭");
-        
-        // 将预览状态传递给编辑器
-        if (nodeEditor instanceof ImGuiNodeEditor editor) {
-            editor.setShowNodePreviews(showNodePreviews);
-        }
+        setShowNodePreviews(!isShowNodePreviews());
+        NodeCraft.LOGGER.info("节点预览: {}", isShowNodePreviews() ? "开启" : "关闭");
     }
-    
+
     /**
      * 获取是否显示节点预览
      * @return 是否显示节点预览
      */
     public boolean isShowNodePreviews() {
-        return showNodePreviews;
+        EditorSession session = session();
+        return session == null || session.isShowNodePreviews();
     }
-    
+
     /**
      * 设置是否显示节点预览
      * @param show 是否显示
      */
     public void setShowNodePreviews(boolean show) {
-        this.showNodePreviews = show;
-        
-        // 将预览状态传递给编辑器
-        if (nodeEditor instanceof ImGuiNodeEditor editor) {
-            editor.setShowNodePreviews(showNodePreviews);
+        EditorSession session = session();
+        if (session != null) {
+            session.setShowNodePreviews(show);
+        } else if (nodeEditor instanceof ImGuiNodeEditor editor) {
+            editor.setShowNodePreviews(show);
         }
     }
     
@@ -967,8 +1007,8 @@ public class CanvasComponent implements EditorComponent {
                 ImGui.openPopup("CanvasContextMenu");
                 
                 // 记录右键点击的世界坐标，用于后续可能的节点添加
-                contextMenuPosX = (ImGui.getIO().getMousePosX() - canvasScreenPos.x - canvasOffsetX) / canvasZoom;
-                contextMenuPosY = (ImGui.getIO().getMousePosY() - canvasScreenPos.y - canvasOffsetY) / canvasZoom;
+                contextMenuPosX = (ImGui.getIO().getMousePosX() - canvasScreenPos.x - canvasOffsetX()) / canvasZoom();
+                contextMenuPosY = (ImGui.getIO().getMousePosY() - canvasScreenPos.y - canvasOffsetY()) / canvasZoom();
                 
                 NodeCraft.LOGGER.debug("在画布空白处右键，显示画布菜单");
             }
@@ -1000,11 +1040,12 @@ public class CanvasComponent implements EditorComponent {
                     ImGui.separator();
                     
                     // 添加菜单项：切换网格显示 (文本根据当前状态变化)
-                    if (ImGui.menuItem(showGrid ? "隐藏网格" : "显示网格")) {
-                        setShowGrid(!showGrid);
+                    if (ImGui.menuItem(showGridFlag() ? "隐藏网格" : "显示网格")) {
+                        setShowGrid(!showGridFlag());
                     }
-                    
+
                     // 节点显示模式子菜单
+                    NodeDisplayMode nodeDisplayMode = getNodeDisplayMode();
                     if (ImGui.beginMenu("节点显示模式")) {
                         if (ImGui.menuItem("完整模式", null, nodeDisplayMode == NodeDisplayMode.FULL)) {
                             setNodeDisplayMode(NodeDisplayMode.FULL);
@@ -1020,9 +1061,9 @@ public class CanvasComponent implements EditorComponent {
                         }
                         ImGui.endMenu();
                     }
-                    
+
                     // 节点预览选项
-                    if (ImGui.menuItem("节点预览", null, showNodePreviews)) {
+                    if (ImGui.menuItem("节点预览", null, isShowNodePreviews())) {
                         toggleNodePreviews();
                     }
                     
@@ -1056,7 +1097,7 @@ public class CanvasComponent implements EditorComponent {
      * @return 缩放比例
      */
     public float getCanvasZoom() {
-        return canvasZoom;
+        return canvasZoom();
     }
 
     /**
@@ -1089,8 +1130,8 @@ public class CanvasComponent implements EditorComponent {
         float screenCenterY = canvasScreenPos.y + currentDisplayHeight / 2.0f;
 
         // 将屏幕中心点转换为世界坐标
-        float worldX = (screenCenterX - canvasOffsetX) / canvasZoom;
-        float worldY = (screenCenterY - canvasOffsetY) / canvasZoom;
+        float worldX = (screenCenterX - canvasOffsetX()) / canvasZoom();
+        float worldY = (screenCenterY - canvasOffsetY()) / canvasZoom();
 
         return new ImVec2(worldX, worldY);
     }

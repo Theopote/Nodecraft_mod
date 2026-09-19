@@ -7,6 +7,7 @@ import com.nodecraft.gui.editor.impl.ImGuiNodeHistory;
 import com.nodecraft.gui.editor.impl.NodePosition;
 import com.nodecraft.gui.editor.interaction.EditorInteractionState;
 import com.nodecraft.nodesystem.api.INode;
+import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.jetbrains.annotations.Nullable;
 
@@ -42,10 +43,9 @@ public final class NodeCommandService {
 
         void setSelectedNodeId(UUID nodeId);
 
-        /**
-         * Clipboard currently owns multi-select delete + history snapshots.
-         */
-        boolean deleteSelectedViaClipboard();
+        void removeNodePosition(UUID nodeId);
+
+        void removeSelectedNode(UUID nodeId);
     }
 
     private final Host host;
@@ -113,11 +113,57 @@ public final class NodeCommandService {
     }
 
     public boolean deleteSelected() {
-        boolean result = host.deleteSelectedViaClipboard();
-        if (result) {
+        try {
+            EditorDocumentState document = host.document();
+            NodeGraph graph = document.getGraph();
+            if (graph == null) {
+                return false;
+            }
+
+            Set<UUID> selectedNodeIds = host.interaction().getSelectedNodeIds();
+            if (selectedNodeIds.isEmpty()) {
+                return false;
+            }
+
+            ImGuiNodeHistory history = host.history();
+            List<ImGuiNodeHistory.RemovedNodeSnapshot> snapshots = new ArrayList<>();
+            if (history != null && history.isRecording()) {
+                for (UUID nodeId : new ArrayList<>(selectedNodeIds)) {
+                    INode node = graph.getNode(nodeId);
+                    if (node == null) {
+                        continue;
+                    }
+                    NodePosition pos = document.getNodePosition(nodeId);
+                    if (pos == null) {
+                        pos = new NodePosition(0, 0);
+                    }
+                    ImGuiNodeHistory.RemovedNodeSnapshot snapshot =
+                            history.captureRemovedNodeSnapshot(node, pos.x, pos.y);
+                    if (snapshot != null) {
+                        snapshots.add(snapshot);
+                    }
+                }
+                if (!snapshots.isEmpty()) {
+                    history.recordRemoveNodes(snapshots);
+                }
+            }
+
+            for (UUID nodeId : new ArrayList<>(selectedNodeIds)) {
+                INode node = graph.getNode(nodeId);
+                if (node != null) {
+                    graph.removeNode(nodeId);
+                    host.removeNodePosition(nodeId);
+                    host.removeSelectedNode(nodeId);
+                }
+            }
+
+            NodeCraft.LOGGER.info("已删除选中的节点");
             host.notifyStructureDirty();
+            return true;
+        } catch (Exception e) {
+            NodeCraft.LOGGER.error("删除节点时出错: {}", e.getMessage(), e);
+            return false;
         }
-        return result;
     }
 
     public boolean duplicateSelected() {
