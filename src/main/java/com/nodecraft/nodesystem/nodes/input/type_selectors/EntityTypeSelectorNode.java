@@ -115,12 +115,17 @@ public class EntityTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
     }
 
     @Override
-    protected void setAllowModdedFlag(boolean allowModded) {
+    protected void applyAllowModdedQuietly(boolean allowModded) {
         this.allowModded = allowModded;
         normalizeFilterState();
         if (!allowModded && !selectedEntity.startsWith("minecraft:")) {
-            setSelectedEntity(getDefaultId());
+            applySelectedId(getDefaultId());
         }
+    }
+
+    @Override
+    protected void setAllowModdedFlag(boolean allowModded) {
+        applyAllowModdedQuietly(allowModded);
         updateFilteredListFromSearch();
     }
 
@@ -277,10 +282,7 @@ public class EntityTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
     public void setNodeState(Object state) {
         if (state instanceof Map<?, ?> map) {
             if (map.get("selectedEntity") instanceof String value) {
-                setSelectedEntity(value);
-            }
-            if (map.get("allowModded") instanceof Boolean bool) {
-                setAllowModded(bool);
+                applyValidatedId(value, getDefaultId());
             }
             restoreFilterState(
                 map.get("allowModded") instanceof Boolean b ? b : allowModded,

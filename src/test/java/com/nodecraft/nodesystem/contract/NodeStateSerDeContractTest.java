@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.contract;
 
+import com.nodecraft.gui.node.NodeInfo;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.junit.jupiter.api.BeforeAll;
@@ -34,6 +35,14 @@ class NodeStateSerDeContractTest {
         int checked = 0;
 
         for (String nodeId : registry.getAllNodeIds()) {
+            NodeInfo info = registry.getNodeInfo(nodeId);
+            if (info == null || info.getNodeClass() == null) {
+                continue;
+            }
+            if (!ContractAllowlists.isUnitEligible(info.getNodeClass(), nodeId)) {
+                continue;
+            }
+
             INode original;
             try {
                 original = registry.createNodeInstance(nodeId);
@@ -46,7 +55,7 @@ class NodeStateSerDeContractTest {
             try {
                 state = original.getNodeState();
             } catch (Throwable e) {
-                failures.add(nodeId + " getNodeState: " + rootMessage(e));
+                failures.add(nodeId + " getNodeState: " + ContractTestSupport.rootMessage(e));
                 continue;
             }
 
@@ -54,14 +63,14 @@ class NodeStateSerDeContractTest {
             try {
                 reloaded = registry.createNodeInstance(nodeId);
             } catch (Throwable e) {
-                failures.add(nodeId + " recreate: " + rootMessage(e));
+                failures.add(nodeId + " recreate: " + ContractTestSupport.rootMessage(e));
                 continue;
             }
 
             try {
                 reloaded.setNodeState(state);
             } catch (Throwable e) {
-                failures.add(nodeId + " setNodeState: " + rootMessage(e));
+                failures.add(nodeId + " setNodeState: " + ContractTestSupport.rootMessage(e));
                 continue;
             }
 
@@ -69,7 +78,7 @@ class NodeStateSerDeContractTest {
             try {
                 roundTripped = reloaded.getNodeState();
             } catch (Throwable e) {
-                failures.add(nodeId + " get after set: " + rootMessage(e));
+                failures.add(nodeId + " get after set: " + ContractTestSupport.rootMessage(e));
                 continue;
             }
 
@@ -91,12 +100,13 @@ class NodeStateSerDeContractTest {
             }
         }
 
-        assertTrue(checked > 0, "expected to instantiate at least one node");
-        double failureRatio = failures.isEmpty() ? 0.0 : (double) failures.size() / (double) registry.getNodeCount();
-        assertTrue(
-                failureRatio < 0.25,
-                "too many ser/de failures (" + failures.size() + "/" + registry.getNodeCount()
-                        + " checked=" + checked + "): " + preview(failures)
+        assertTrue(checked > 0, "expected to instantiate at least one UNIT-eligible node");
+        ContractTestSupport.assertRatioBelowCeiling(
+                failures,
+                checked,
+                ContractThresholds.MAX_SERDE_FAILURE_RATIO,
+                "ser/de failures",
+                ContractThresholds.PHASE
         );
     }
 
@@ -114,23 +124,5 @@ class NodeStateSerDeContractTest {
             return rightEnum.name().equals(sequence.toString());
         }
         return false;
-    }
-
-    private static String preview(List<String> items) {
-        int limit = Math.min(12, items.size());
-        String body = String.join("; ", items.subList(0, limit));
-        if (items.size() > limit) {
-            body += "; ... +" + (items.size() - limit) + " more";
-        }
-        return body;
-    }
-
-    private static String rootMessage(Throwable error) {
-        Throwable cursor = error;
-        while (cursor.getCause() != null && cursor.getCause() != cursor) {
-            cursor = cursor.getCause();
-        }
-        String message = cursor.getMessage();
-        return cursor.getClass().getSimpleName() + (message == null ? "" : ": " + message);
     }
 }

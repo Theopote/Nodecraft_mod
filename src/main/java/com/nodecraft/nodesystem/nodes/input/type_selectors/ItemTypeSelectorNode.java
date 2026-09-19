@@ -115,12 +115,17 @@ public class ItemTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
     }
 
     @Override
-    protected void setAllowModdedFlag(boolean allowModded) {
+    protected void applyAllowModdedQuietly(boolean allowModded) {
         this.allowModded = allowModded;
         normalizeFilterState();
         if (!allowModded && !selectedItem.startsWith("minecraft:")) {
-            setSelectedItem(getDefaultId());
+            applySelectedId(getDefaultId());
         }
+    }
+
+    @Override
+    protected void setAllowModdedFlag(boolean allowModded) {
+        applyAllowModdedQuietly(allowModded);
         updateFilteredListFromSearch();
     }
 
@@ -284,10 +289,7 @@ public class ItemTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
     public void setNodeState(Object state) {
         if (state instanceof Map<?, ?> map) {
             if (map.get("selectedItem") instanceof String value) {
-                setSelectedItem(value);
-            }
-            if (map.get("allowModded") instanceof Boolean bool) {
-                setAllowModded(bool);
+                applyValidatedId(value, getDefaultId());
             }
             restoreFilterState(
                 map.get("allowModded") instanceof Boolean b ? b : allowModded,

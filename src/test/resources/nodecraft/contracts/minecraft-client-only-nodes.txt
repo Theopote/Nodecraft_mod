@@ -1,0 +1,6 @@
+# Nodes that require a live Minecraft client / registry bootstrap for contract coverage.
+# One canonical node id per line. Prefer @ContractEnvironment(MINECRAFT_CLIENT) on the class.
+#
+# Headless UNIT contract tests skip these ids entirely:
+#   known unsupported = explicit (this file or annotation)
+#   unexpected failure on UNIT-eligible nodes = test failure

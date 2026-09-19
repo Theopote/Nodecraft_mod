@@ -61,6 +61,8 @@ class NodeContractTest {
         List<String> missingAnnotation = new ArrayList<>();
         List<String> instantiateFailures = new ArrayList<>();
 
+        int unitEligible = 0;
+
         for (String nodeId : registry.getAllNodeIds()) {
             NodeInfo info = registry.getNodeInfo(nodeId);
             if (info == null || info.getNodeClass() == null) {
@@ -70,11 +72,14 @@ class NodeContractTest {
             if (isNestedOrSynthetic(info.getNodeClass())) {
                 continue;
             }
+            if (!ContractAllowlists.isUnitEligible(info.getNodeClass(), nodeId)) {
+                continue;
+            }
+            unitEligible++;
 
             com.nodecraft.nodesystem.api.NodeInfo annotation =
                     info.getNodeClass().getAnnotation(com.nodecraft.nodesystem.api.NodeInfo.class);
             if (annotation == null) {
-                // Convention-registered production nodes are still allowed; track separately later.
                 missingAnnotation.add(nodeId + " (" + info.getNodeClass().getName() + ")");
                 continue;
             }
@@ -97,33 +102,27 @@ class NodeContractTest {
                     mismatches.add(nodeId + " -> runtime typeId=" + typeId);
                 }
             } catch (Exception | LinkageError e) {
-                // Some nodes may require Minecraft registries at construction time.
-                instantiateFailures.add(nodeId + " (" + rootMessage(e) + ")");
+                instantiateFailures.add(nodeId + " (" + ContractTestSupport.rootMessage(e) + ")");
             }
         }
 
         assertTrue(mismatches.isEmpty(),
-                "id/typeId/category mismatches (" + mismatches.size() + "): " + preview(mismatches));
+                "id/typeId/category mismatches (" + mismatches.size() + "): " + ContractTestSupport.preview(mismatches));
 
-        // Prefer @NodeInfo everywhere; allow a small convention-registered residual.
-        double missingRatio = missingAnnotation.isEmpty()
-                ? 0.0
-                : (double) missingAnnotation.size() / (double) registry.getNodeCount();
-        assertTrue(
-                missingRatio < 0.05,
-                "too many nodes missing @NodeInfo (" + missingAnnotation.size() + "/" + registry.getNodeCount()
-                        + "): " + preview(missingAnnotation)
+        assertTrue(unitEligible > 0, "expected UNIT-eligible nodes in registry");
+        ContractTestSupport.assertRatioBelowCeiling(
+                missingAnnotation,
+                unitEligible,
+                ContractThresholds.MAX_MISSING_NODE_INFO_RATIO,
+                "missing @NodeInfo",
+                ContractThresholds.PHASE
         );
-
-        // Instantiation failures are reported but do not fail the suite until env-free ctors are universal.
-        // Keep a soft ceiling so sudden mass breakage is still visible.
-        double failureRatio = instantiateFailures.isEmpty()
-                ? 0.0
-                : (double) instantiateFailures.size() / (double) registry.getNodeCount();
-        assertTrue(
-                failureRatio < 0.25,
-                "too many instantiate failures (" + instantiateFailures.size() + "/" + registry.getNodeCount()
-                        + "): " + preview(instantiateFailures)
+        ContractTestSupport.assertRatioBelowCeiling(
+                instantiateFailures,
+                unitEligible,
+                ContractThresholds.MAX_INSTANTIATE_FAILURE_RATIO,
+                "instantiate failures",
+                ContractThresholds.PHASE
         );
     }
 
@@ -133,6 +132,13 @@ class NodeContractTest {
         int checked = 0;
 
         for (String nodeId : registry.getAllNodeIds()) {
+            NodeInfo info = registry.getNodeInfo(nodeId);
+            if (info == null || info.getNodeClass() == null) {
+                continue;
+            }
+            if (!ContractAllowlists.isUnitEligible(info.getNodeClass(), nodeId)) {
+                continue;
+            }
             INode instance;
             try {
                 instance = registry.createNodeInstance(nodeId);
@@ -158,7 +164,7 @@ class NodeContractTest {
 
         assertTrue(checked > 0, "expected to instantiate at least one node for port checks");
         assertTrue(violations.isEmpty(),
-                "duplicate/blank port ids (" + violations.size() + "): " + preview(violations));
+                "duplicate/blank port ids (" + violations.size() + "): " + ContractTestSupport.preview(violations));
     }
 
     @Test
@@ -217,21 +223,4 @@ class NodeContractTest {
                 || type.getName().contains("$");
     }
 
-    private static String preview(List<String> items) {
-        int limit = Math.min(12, items.size());
-        String body = String.join("; ", items.subList(0, limit));
-        if (items.size() > limit) {
-            body += "; ... +" + (items.size() - limit) + " more";
-        }
-        return body;
-    }
-
-    private static String rootMessage(Throwable error) {
-        Throwable cursor = error;
-        while (cursor.getCause() != null && cursor.getCause() != cursor) {
-            cursor = cursor.getCause();
-        }
-        String message = cursor.getMessage();
-        return cursor.getClass().getSimpleName() + (message == null ? "" : ": " + message);
-    }
 }

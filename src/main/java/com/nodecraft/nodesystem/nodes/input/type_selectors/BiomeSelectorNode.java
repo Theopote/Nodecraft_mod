@@ -104,12 +104,17 @@ public class BiomeSelectorNode extends AbstractRegistryTypeSelectorNode {
     }
 
     @Override
-    protected void setAllowModdedFlag(boolean allowModded) {
+    protected void applyAllowModdedQuietly(boolean allowModded) {
         this.allowModded = allowModded;
         normalizeFilterState();
         if (!allowModded && !selectedBiome.startsWith("minecraft:")) {
-            setSelectedBiome(getDefaultId());
+            applySelectedId(getDefaultId());
         }
+    }
+
+    @Override
+    protected void setAllowModdedFlag(boolean allowModded) {
+        applyAllowModdedQuietly(allowModded);
         updateFilteredListFromSearch();
     }
 
@@ -243,10 +248,7 @@ public class BiomeSelectorNode extends AbstractRegistryTypeSelectorNode {
     public void setNodeState(Object state) {
         if (state instanceof Map<?, ?> map) {
             if (map.get("selectedBiome") instanceof String value) {
-                setSelectedBiome(value);
-            }
-            if (map.get("allowModded") instanceof Boolean bool) {
-                setAllowModded(bool);
+                applyValidatedId(value, getDefaultId());
             }
             restoreFilterState(
                 map.get("allowModded") instanceof Boolean b ? b : allowModded,

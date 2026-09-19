@@ -685,12 +685,16 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
     }
 
     public void setAllowModded(boolean allowModded) {
+        applyAllowModdedQuietly(allowModded);
+        updateFilteredList(getSearchBuffer().get());
+    }
+
+    private void applyAllowModdedQuietly(boolean allowModded) {
         this.allowModded = allowModded;
         normalizeFilterState();
         if (!allowModded && !selectedBlock.startsWith("minecraft:")) {
             setSelectedBlock("minecraft:stone");
         }
-        updateFilteredList(getSearchBuffer().get());
     }
 
     @Override
@@ -716,10 +720,10 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
                 setSelectedBlock(value);
             }
             if (map.get("allowModded") instanceof Boolean bool) {
-                setAllowModded(bool);
+                applyAllowModdedQuietly(bool);
+            } else {
+                normalizeFilterState();
             }
-            normalizeFilterState();
-            updateFilteredList(getSearchBuffer().get());
         }
     }
 

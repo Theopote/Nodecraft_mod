@@ -193,8 +193,11 @@ public class PoissonDiskOnPlaneNode extends BaseNode {
     }
 
     public void setMaxAttempts(int maxAttempts) {
-        this.maxAttempts = GenerationLimits.clampAttemptBudget(Math.max(100, maxAttempts), 1);
-        markDirty();
+        int resolved = Math.max(100, maxAttempts);
+        if (this.maxAttempts != resolved) {
+            this.maxAttempts = resolved;
+            markDirty();
+        }
     }
 
     @Override

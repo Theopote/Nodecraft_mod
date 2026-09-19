@@ -12,10 +12,17 @@ For each instantiable registered node type:
 3. When both states are `Map`s, keys present in the original map must survive with
    value-equivalent payloads (numbers compared numerically; enums may coerce via name).
 
-## Soft ceiling
+## Environment split
 
-Instantiation or roundtrip may fail for nodes that touch Minecraft registries.
-The suite fails only if the combined failure ratio ≥ 25% of the registry size.
+Nodes annotated `@ContractEnvironment(MINECRAFT_CLIENT)` (or listed in
+`src/test/resources/nodecraft/contracts/minecraft-client-only-nodes.txt`) are excluded from headless ser/de
+fences. Cover them in a dedicated Minecraft client / gametest task.
+
+## Soft ceiling (phase **0.9-A**)
+
+Roundtrip failures on checked instantiable **UNIT-eligible** nodes must stay below **10%**.
+Denominator is `checked` (instantiated nodes), not full registry size.
+See [`contract-thresholds.md`](./contract-thresholds.md).
 
 ## Suites
 

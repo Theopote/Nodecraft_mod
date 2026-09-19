@@ -77,6 +77,9 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
 
     protected abstract void setAllowModdedFlag(boolean allowModded);
 
+    /** Assign allow-modded without touching registry-backed picker caches (ser/de restore). */
+    protected abstract void applyAllowModdedQuietly(boolean allowModded);
+
     protected abstract String getDefaultId();
 
     protected abstract String[] getQuickPickIds();
@@ -190,11 +193,10 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
     }
 
     protected final void restoreFilterState(boolean allowModded, String category, boolean minecraftOnlyFilter) {
-        setAllowModdedFlag(allowModded);
+        applyAllowModdedQuietly(allowModded);
         selectedCategory = sanitizeCategory(category);
         minecraftOnly = minecraftOnlyFilter;
         normalizeFilterState();
-        updateFilteredListFromSearch();
     }
 
     protected final String getFilterCategory() {
