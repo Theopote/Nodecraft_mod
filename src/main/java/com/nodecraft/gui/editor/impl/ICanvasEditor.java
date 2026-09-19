@@ -3,6 +3,7 @@ package com.nodecraft.gui.editor.impl;
 import java.util.Map;
 import java.util.UUID;
 import com.nodecraft.gui.editor.document.EditorDocumentState;
+import com.nodecraft.gui.editor.session.EditorSession;
 import com.nodecraft.gui.editor.viewport.EditorViewportState;
 import com.nodecraft.nodesystem.execution.ExecFrontierSnapshot;
 import com.nodecraft.nodesystem.graph.NodeGraph;
@@ -97,6 +98,13 @@ public interface ICanvasEditor {
      * Canvas viewport (zoom/pan/grid). Default null for test doubles.
      */
     default EditorViewportState getViewportState() {
+        return null;
+    }
+
+    /**
+     * Session presentation (open / display mode / colors / disabled / hidden). Default null for test doubles.
+     */
+    default EditorSession getEditorSession() {
         return null;
     }
 

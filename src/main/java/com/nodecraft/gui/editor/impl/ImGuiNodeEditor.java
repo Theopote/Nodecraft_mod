@@ -4,8 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.List;
-import java.util.HashSet;
-import java.util.ArrayList;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.dialogs.MessageDialog;
@@ -21,6 +19,7 @@ import com.nodecraft.gui.editor.integration.ImGuiInputAdapter;
 import com.nodecraft.gui.editor.preview.AutoPreviewController;
 import com.nodecraft.gui.editor.command.NodeCommandService;
 import com.nodecraft.gui.editor.connection.ConnectionEditService;
+import com.nodecraft.gui.editor.session.EditorSession;
 import com.nodecraft.gui.editor.subgraph.SubgraphEditService;
 import com.nodecraft.gui.editor.viewport.EditorViewportState;
 import com.nodecraft.gui.recommendation.NodeRecommendationApplyResult;
@@ -40,7 +39,6 @@ import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphCallStackBridge;
 import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphNode;
 import com.nodecraft.nodesystem.nodes.variable.VariableScopeBridge;
-import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 import imgui.ImDrawList;
 import imgui.ImGui;
@@ -73,7 +71,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     private final NodeRecommendationPopupRenderer recommendationPopup;
 
     // 编辑器状态
-    private boolean isOpen = false;
+    private final EditorSession session;
     private final EditorDocumentState document = new EditorDocumentState();
     private final EditorViewportState viewport = new EditorViewportState();
     private final SubgraphEditService subgraphEdits;
@@ -86,17 +84,6 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     private Map<UUID, Map<String, ImVec2>> portScreenPositions = new HashMap<>();
 
     private final EditorInteractionState interactionState = new EditorInteractionState();
-
-    // 节点显示模式
-    private int nodeDisplayMode = 0; // 0=完整, 1=紧凑, 2=仅图标, 3=仅文本
-    private boolean showNodePreviews = true;
-
-    // 节点自定义颜色存储
-    private final Map<UUID, Integer> nodeCustomColors = new HashMap<>();
-
-    // 节点状态存储
-    private final java.util.Set<UUID> disabledNodes = new HashSet<>();
-    private final java.util.Set<UUID> hiddenNodes = new HashSet<>();
 
     private final AutoPreviewController autoPreviewController;
 
@@ -125,6 +112,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         this.subgraphEdits = new SubgraphEditService(new SubgraphHost());
         this.connectionEdits = new ConnectionEditService(new ConnectionHost());
         this.nodeCommands = new NodeCommandService(new NodeCommandHost());
+        this.session = new EditorSession(new SessionHost());
         this.recommendationPopup = new NodeRecommendationPopupRenderer(this, NodeRecommendations.get());
         this.autoPreviewController = new AutoPreviewController(
                 document::getGraph,
@@ -132,6 +120,21 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 this::createAutoPreviewExecutionContext
         );
         BaseNode.addDirtyListener(this::handleNodeDirty);
+    }
+
+    private final class SessionHost implements EditorSession.Host {
+        @Override
+        public void notifyStructureDirty() {
+            markGraphStructureDirty();
+        }
+
+        @Override
+        public void clearNodePreviewArtifacts(UUID nodeId) {
+            if (nodeId == null) {
+                return;
+            }
+            com.nodecraft.nodesystem.preview.PreviewManager.hideNodePreviews(nodeId.toString());
+        }
     }
 
     private final class SubgraphHost implements SubgraphEditService.Host {
@@ -218,7 +221,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     @Override
     public void open() {
         NodeCraft.LOGGER.info("ImGuiNodeEditor打开");
-        isOpen = true;
+        session.setOpen(true);
     }
 
     /**
@@ -227,7 +230,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     @Override
     public void close() {
         NodeCraft.LOGGER.info("ImGuiNodeEditor关闭");
-        isOpen = false;
+        session.setOpen(false);
     }
 
     /**
@@ -236,7 +239,12 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
      */
     @Override
     public boolean isOpen() {
-        return isOpen;
+        return session.isOpen();
+    }
+
+    @Override
+    public EditorSession getEditorSession() {
+        return session;
     }
 
     /**
@@ -256,7 +264,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
      * 此方法由外部调用（例如，CanvasComponent），负责整个节点编辑器的ImGui渲染循环。
      */
     public void renderImGui() {
-        if (!isOpen) {
+        if (!session.isOpen()) {
             return;
         }
 
@@ -1216,148 +1224,61 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     }
 
     public void setNodeDisplayMode(int mode) {
-        this.nodeDisplayMode = mode;
-        NodeCraft.LOGGER.debug("设置节点显示模式: {}", mode);
+        session.setNodeDisplayMode(mode);
     }
-
 
     public void setShowNodePreviews(boolean show) {
-        this.showNodePreviews = show;
-        NodeCraft.LOGGER.debug("设置节点预览显示: {}", show);
+        session.setShowNodePreviews(show);
     }
 
-    // === 节点颜色管理方法 ===
-
-    /**
-     * 设置节点的自定义颜色
-     * @param nodeId 节点ID
-     * @param color 颜色值（ImGui格式的整数颜色）
-     */
+    @Override
     public void setNodeCustomColor(UUID nodeId, int color) {
-        if (nodeId != null) {
-            nodeCustomColors.put(nodeId, color);
-            NodeCraft.LOGGER.debug("设置节点 {} 的自定义颜色: {}", nodeId, String.format("0x%08X", color));
-        }
+        session.setNodeCustomColor(nodeId, color);
     }
 
-    /**
-     * 获取节点的自定义颜色
-     * @param nodeId 节点ID
-     * @return 自定义颜色，如果没有设置则返回null
-     */
+    @Override
     public Integer getNodeCustomColor(UUID nodeId) {
-        return nodeCustomColors.get(nodeId);
+        return session.getNodeCustomColor(nodeId);
     }
 
-    /**
-     * 移除节点的自定义颜色
-     * @param nodeId 节点ID
-     */
+    @Override
     public void removeNodeCustomColor(UUID nodeId) {
-        if (nodeId != null) {
-            nodeCustomColors.remove(nodeId);
-            NodeCraft.LOGGER.debug("移除节点 {} 的自定义颜色", nodeId);
-        }
+        session.removeNodeCustomColor(nodeId);
     }
 
-    /**
-     * 检查节点是否有自定义颜色
-     * @param nodeId 节点ID
-     * @return 是否有自定义颜色
-     */
+    @Override
     public boolean hasNodeCustomColor(UUID nodeId) {
-        return nodeCustomColors.containsKey(nodeId);
+        return session.hasNodeCustomColor(nodeId);
     }
-
-    // === 节点状态管理方法实现 ===
 
     @Override
     public boolean toggleNodeDisabled(UUID nodeId) {
-        if (nodeId == null) return false;
-        
-        boolean wasDisabled = disabledNodes.contains(nodeId);
-        if (wasDisabled) {
-            disabledNodes.remove(nodeId);
-            NodeCraft.LOGGER.info("启用节点: {}", nodeId);
-        } else {
-            disabledNodes.add(nodeId);
-            clearNodePreviewArtifacts(nodeId);
-            NodeCraft.LOGGER.info("禁用节点: {}", nodeId);
-        }
-        
-        // 标记编辑器为脏状态
-        markGraphStructureDirty();
-        
-        return !wasDisabled; // 返回新状态
+        return session.toggleNodeDisabled(nodeId);
     }
 
     @Override
     public void setNodeDisabled(UUID nodeId, boolean disabled) {
-        if (nodeId == null) return;
-        
-        if (disabled) {
-            disabledNodes.add(nodeId);
-            clearNodePreviewArtifacts(nodeId);
-        } else {
-            disabledNodes.remove(nodeId);
-        }
-        
-        NodeCraft.LOGGER.debug("设置节点 {} 禁用状态: {}", nodeId, disabled);
-        
-        markGraphStructureDirty();
+        session.setNodeDisabled(nodeId, disabled);
     }
 
     @Override
     public boolean isNodeDisabled(UUID nodeId) {
-        return nodeId != null && disabledNodes.contains(nodeId);
+        return session.isNodeDisabled(nodeId);
     }
 
     @Override
     public boolean toggleNodeVisible(UUID nodeId) {
-        if (nodeId == null) return true; // 默认可见
-        
-        boolean wasHidden = hiddenNodes.contains(nodeId);
-        if (wasHidden) {
-            hiddenNodes.remove(nodeId);
-            NodeCraft.LOGGER.info("显示节点: {}", nodeId);
-        } else {
-            hiddenNodes.add(nodeId);
-            NodeCraft.LOGGER.info("隐藏节点: {}", nodeId);
-        }
-        
-        // 标记编辑器为脏状态
-        markGraphStructureDirty();
-        
-        return !wasHidden; // 返回新状态（true=可见）
+        return session.toggleNodeVisible(nodeId);
     }
 
     @Override
     public void setNodeVisible(UUID nodeId, boolean visible) {
-        if (nodeId == null) return;
-        
-        if (visible) {
-            hiddenNodes.remove(nodeId);
-        } else {
-            hiddenNodes.add(nodeId);
-        }
-        
-        NodeCraft.LOGGER.debug("设置节点 {} 可见性: {}", nodeId, visible);
-        
-        markGraphStructureDirty();
+        session.setNodeVisible(nodeId, visible);
     }
 
     @Override
     public boolean isNodeVisible(UUID nodeId) {
-        return nodeId == null || !hiddenNodes.contains(nodeId); // 默认可见
-    }
-
-
-    private void clearNodePreviewArtifacts(UUID nodeId) {
-        if (nodeId == null) {
-            return;
-        }
-        String ownerNodeId = nodeId.toString();
-        com.nodecraft.nodesystem.preview.PreviewManager.hideNodePreviews(ownerNodeId);
+        return session.isNodeVisible(nodeId);
     }
 
 }
