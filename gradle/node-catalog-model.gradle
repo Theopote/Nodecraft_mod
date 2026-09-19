@@ -1,0 +1,269 @@
+/*
+ * Shared NodeCatalog model: collect @NodeInfo entries and emit intermediate JSON.
+ * Applied via node-catalog.gradle (U0). Downstream artifacts (docs / schema / manifests)
+ * should consume the JSON — not re-scan sources.
+ *
+ * See docs/architecture/node-catalog.md
+ */
+
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+
+ext.NODE_CATALOG_SCHEMA_VERSION = 1
+ext.NODE_CATALOG_BASE_PACKAGE = 'com.nodecraft.nodesystem.nodes'
+
+ext.collectNodeCatalogEntries = { File nodesDir ->
+	def entries = []
+	def basePackage = NODE_CATALOG_BASE_PACKAGE
+	nodesDir.eachFileRecurse { file ->
+		if (!file.name.endsWith('.java') || file.name.contains('$')) {
+			return
+		}
+		def text = file.getText('UTF-8')
+		def classMatcher = (text =~ /(?m)public\s+(?:final\s+)?class\s+(\w+)\b/)
+		if (!classMatcher.find()) {
+			return
+		}
+		def className = classMatcher.group(1)
+		if ((text =~ /public\s+abstract\s+class\s+${java.util.regex.Pattern.quote(className)}\b/).find()) {
+			return
+		}
+
+		def annoBody = extractNodeInfoBody(text)
+		def looksLikeNode =
+				(text =~ /extends\s+BaseNode\b/).find() ||
+						(text =~ /implements\s+[^{]*\bINode\b/).find()
+		if (annoBody == null) {
+			if (!className.endsWith('Node') || !looksLikeNode) {
+				return
+			}
+		}
+
+		def relative = nodesDir.toPath().relativize(file.toPath()).toString().replace('\\', '/')
+		def packageSuffix = relative.contains('/') ? relative.substring(0, relative.lastIndexOf('/')).replace('/', '.') : ''
+		def fqcn = packageSuffix.isEmpty() ? "${basePackage}.${className}" : "${basePackage}.${packageSuffix}.${className}"
+
+		def fields = annoBody != null ? parseAnnotationFields(annoBody) : [:]
+
+		if (isClassDeprecated(text, className)) {
+			return
+		}
+
+		def inferredCategory = inferCategory(packageSuffix)
+		def category = (fields.category ?: inferredCategory ?: '').toString().trim()
+		if (category.isEmpty()) {
+			return
+		}
+
+		def id = (fields.id ?: '').toString().trim()
+		if (id.isEmpty()) {
+			id = className.toLowerCase()
+			if (!id.endsWith('node')) {
+				id = id + '_node'
+			}
+		}
+
+		def displayName = (fields.displayName ?: '').toString().trim()
+		if (displayName.isEmpty()) {
+			displayName = formatClassName(className)
+		}
+
+		def description = (fields.description ?: '').toString()
+		def order = 2147483647
+		if (fields.order != null) {
+			try {
+				order = Integer.parseInt(fields.order.toString().trim())
+			} catch (NumberFormatException ignored) {
+				order = 2147483647
+			}
+		}
+		def icon = (fields.icon ?: '').toString()
+
+		entries << [
+				id         : id.toLowerCase(),
+				displayName: displayName,
+				description: description,
+				category   : category,
+				order      : order,
+				icon       : icon,
+				fqcn       : fqcn
+		]
+	}
+
+	def seen = new HashSet()
+	def unique = []
+	entries.each { e ->
+		if (seen.add(e.id)) {
+			unique << e
+		} else {
+			throw new GradleException("Duplicate node catalog id '${e.id}' (${e.fqcn})")
+		}
+	}
+	unique.sort { a, b -> a.id <=> b.id }
+	return unique
+}
+
+ext.buildNodeCatalogModel = { List entries ->
+	return [
+			schemaVersion: NODE_CATALOG_SCHEMA_VERSION,
+			generatedBy  : 'generateNodeCatalog',
+			entryCount   : entries.size(),
+			entries      : entries.collect { e ->
+				[
+						id         : e.id,
+						displayName: e.displayName,
+						description: e.description,
+						category   : e.category,
+						order      : e.order as int,
+						icon       : e.icon ?: '',
+						fqcn       : e.fqcn
+				]
+			}
+	]
+}
+
+ext.writeNodeCatalogModelJson = { File outFile, Map model ->
+	outFile.parentFile.mkdirs()
+	outFile.setText(JsonOutput.prettyPrint(JsonOutput.toJson(model)), 'UTF-8')
+}
+
+ext.readNodeCatalogModelJson = { File inFile ->
+	return new JsonSlurper().parseText(inFile.getText('UTF-8')) as Map
+}
+
+ext.validateNodeCatalogModel = { Map model ->
+	if (model.schemaVersion != NODE_CATALOG_SCHEMA_VERSION) {
+		throw new GradleException("Unsupported node catalog schemaVersion: ${model.schemaVersion}")
+	}
+	def entries = model.entries as List
+	if (entries == null) {
+		throw new GradleException('Node catalog model missing entries[]')
+	}
+	if ((model.entryCount as int) != entries.size()) {
+		throw new GradleException("Node catalog entryCount ${model.entryCount} != entries.size ${entries.size()}")
+	}
+	def seen = new HashSet()
+	entries.each { e ->
+		def id = e.id?.toString()
+		if (id == null || id.isBlank()) {
+			throw new GradleException('Node catalog entry missing id')
+		}
+		if (!seen.add(id)) {
+			throw new GradleException("Duplicate id in node catalog model: ${id}")
+		}
+		if (!e.fqcn?.toString()) {
+			throw new GradleException("Node catalog entry '${id}' missing fqcn")
+		}
+		if (!e.category?.toString()) {
+			throw new GradleException("Node catalog entry '${id}' missing category")
+		}
+	}
+	return entries.size()
+}
+
+ext.javaEscape = { String value ->
+	if (value == null) {
+		return ''
+	}
+	return value
+			.replace('\\', '\\\\')
+			.replace('"', '\\"')
+			.replace('\r', '')
+			.replace('\n', '\\n')
+			.replace('\t', '\\t')
+}
+
+ext.extractNodeInfoBody = { String text ->
+	def idx = text.indexOf('@NodeInfo')
+	if (idx < 0) {
+		return null
+	}
+	def start = text.indexOf('(', idx)
+	if (start < 0) {
+		return null
+	}
+	int depth = 0
+	for (int i = start; i < text.length(); i++) {
+		char c = text.charAt(i)
+		if (c == '"' as char) {
+			i++
+			while (i < text.length()) {
+				char s = text.charAt(i)
+				if (s == '\\' as char) {
+					i += 2
+					continue
+				}
+				if (s == '"' as char) {
+					break
+				}
+				i++
+			}
+			continue
+		}
+		if (c == '(' as char) {
+			depth++
+		} else if (c == ')' as char) {
+			depth--
+			if (depth == 0) {
+				return text.substring(start + 1, i)
+			}
+		}
+	}
+	return null
+}
+
+ext.parseAnnotationFields = { String body ->
+	def fields = [:]
+	['id', 'displayName', 'description', 'category', 'order', 'icon'].each { key ->
+		def matcher = (body =~ /(?s)\b${key}\s*=\s*("(?:\\.|[^"\\])*"|[^,\n\r)]+)/)
+		if (matcher.find()) {
+			def raw = matcher.group(1).trim()
+			if (raw.startsWith('"') && raw.endsWith('"')) {
+				fields[key] = unescapeJavaString(raw.substring(1, raw.length() - 1))
+			} else {
+				fields[key] = raw
+			}
+		}
+	}
+	return fields
+}
+
+ext.unescapeJavaString = { String value ->
+	return value
+			.replace('\\n', '\n')
+			.replace('\\t', '\t')
+			.replace('\\"', '"')
+			.replace('\\\\', '\\')
+}
+
+ext.isClassDeprecated = { String text, String className ->
+	def matcher = (text =~ /(?s)((?:@[\w.]+(?:\((?:[^()]|\([^()]*\))*\))?\s*)*)public\s+(?:final\s+)?class\s+${java.util.regex.Pattern.quote(className)}\b/)
+	if (!matcher.find()) {
+		return false
+	}
+	return matcher.group(1).contains('@Deprecated')
+}
+
+ext.inferCategory = { String packageSuffix ->
+	if (packageSuffix == null || packageSuffix.isEmpty()) {
+		return null
+	}
+	def parts = packageSuffix.split('\\.')
+	if (parts.length < 2) {
+		return null
+	}
+	return parts[0] + '.' + parts[1]
+}
+
+ext.formatClassName = { String className ->
+	def name = className.endsWith('Node') ? className.substring(0, className.length() - 4) : className
+	def result = new StringBuilder()
+	for (int i = 0; i < name.length(); i++) {
+		char c = name.charAt(i)
+		if (i > 0 && Character.isUpperCase(c)) {
+			result.append(' ')
+		}
+		result.append(c)
+	}
+	return result.toString()
+}

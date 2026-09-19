@@ -1,0 +1,96 @@
+/*
+ * U2: Generate build-time AI node schema stub from node-catalog.json.
+ * Stub covers inventory fields only (typeId / displayName / description / category).
+ * Ports & params still come from runtime AiNodeSchemaCatalog (needs instantiation).
+ *
+ * See docs/architecture/node-catalog.md
+ */
+
+import groovy.json.JsonOutput
+import java.security.MessageDigest
+
+def nodeCatalogModelFile = layout.buildDirectory.file('generated/nodeCatalog/node-catalog.json')
+def aiSchemaStubFile = layout.buildDirectory.file('generated/nodeCatalog/ai-node-schema-stub.json')
+
+tasks.register('generateAiNodeSchemaStub') {
+	group = 'nodecraft'
+	description = 'Generates ai-node-schema-stub.json (ids + display + category) from node-catalog.json'
+	dependsOn('generateNodeCatalog')
+	inputs.file(nodeCatalogModelFile)
+	outputs.file(aiSchemaStubFile)
+
+	doLast {
+		def modelFile = nodeCatalogModelFile.get().asFile
+		if (!modelFile.exists()) {
+			throw new GradleException("Missing catalog model: ${modelFile}")
+		}
+		def model = readNodeCatalogModelJson(modelFile)
+		validateNodeCatalogModel(model)
+
+		def stub = buildAiNodeSchemaStub(model.entries as List)
+		def out = aiSchemaStubFile.get().asFile
+		out.parentFile.mkdirs()
+		out.setText(JsonOutput.prettyPrint(JsonOutput.toJson(stub)), 'UTF-8')
+		logger.lifecycle("Generated AI schema stub (${stub.nodeCount} nodes, revision=${stub.revision}) -> ${out}")
+	}
+}
+
+ext.verifyAiNodeSchemaStub = { Map model ->
+	def stubFile = aiSchemaStubFile.get().asFile
+	if (!stubFile.exists()) {
+		throw new GradleException("Missing AI schema stub: ${stubFile}")
+	}
+	def stub = new groovy.json.JsonSlurper().parseText(stubFile.getText('UTF-8')) as Map
+	def count = model.entryCount as int
+	if ((stub.nodeCount as int) != count) {
+		throw new GradleException("AI schema stub nodeCount ${stub.nodeCount} != model entryCount ${count}")
+	}
+	if (stub.schemaKind?.toString() != 'catalog-stub') {
+		throw new GradleException("AI schema stub missing schemaKind=catalog-stub")
+	}
+	def modelIds = (model.entries as List).collect { it.id.toString() }
+	def stubIds = (stub.nodes as List).collect { it.typeId.toString() }
+	if (stubIds != modelIds) {
+		throw new GradleException('AI schema stub typeIds do not match node-catalog.json entry ids (order-sensitive)')
+	}
+	def expected = buildAiNodeSchemaStub(model.entries as List)
+	if (stub.revision?.toString() != expected.revision?.toString()) {
+		throw new GradleException("AI schema stub revision ${stub.revision} != expected ${expected.revision}")
+	}
+	logger.lifecycle("Verified AI schema stub (${count} typeIds, revision=${stub.revision})")
+}
+
+ext.buildAiNodeSchemaStub = { List entries ->
+	def nodes = entries.collect { e ->
+		[
+				typeId     : (e.id ?: '').toString(),
+				displayName: (e.displayName ?: '').toString(),
+				description: (e.description ?: '').toString(),
+				category   : (e.category ?: '').toString()
+		]
+	}
+	def revision = computeAiSchemaStubRevision(nodes)
+	return [
+			schemaExportVersion: 1,
+			schemaKind         : 'catalog-stub',
+			stub               : true,
+			source             : 'node-catalog.json',
+			nodeCount          : nodes.size(),
+			nodes              : nodes,
+			revision           : revision
+	]
+}
+
+ext.computeAiSchemaStubRevision = { List nodes ->
+	// Canonical compact payload (no revision field) — SHA-256 truncated to 16 hex chars
+	// to mirror AiNodeSchemaExporter.computeRevision shape.
+	def canonical = [schemaExportVersion: 1, nodeCount: nodes.size(), nodes: nodes]
+	def compact = JsonOutput.toJson(canonical)
+	try {
+		def digest = MessageDigest.getInstance('SHA-256')
+		byte[] hash = digest.digest(compact.getBytes('UTF-8'))
+		return hash.encodeHex().toString().substring(0, 16)
+	} catch (Exception ignored) {
+		return Integer.toHexString(compact.hashCode())
+	}
+}

@@ -1,9 +1,9 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**521**
+- **节点总数**：**522**
 - **分类总数**：**54**
-- **说明**：「节点名称」与「说明」列来自各节点类上的 `@NodeInfo` （与编辑器展示一致），若源码未写注解说明，则该列为 `-`。
+- **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
 ## 分类统计
 
@@ -12,7 +12,7 @@
 | `flow.control` | 3 |
 | `flow.loop` | 3 |
 | `geometry.architectural_primitives` | 14 |
-| `geometry.boolean` | 19 |
+| `geometry.boolean` | 18 |
 | `geometry.curves` | 24 |
 | `geometry.primitives` | 29 |
 | `geometry.profiles` | 24 |
@@ -37,7 +37,7 @@
 | `math.sequence` | 3 |
 | `math.trigonometry` | 14 |
 | `output.debug` | 4 |
-| `output.execute` | 8 |
+| `output.execute` | 9 |
 | `output.export` | 4 |
 | `output.preview` | 12 |
 | `pattern.grid` | 5 |
@@ -68,17 +68,17 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Branch | `flow.control.branch` | Routes an input signal to True or False output based on condition. | `BranchNode` |
-| Sequence | `flow.control.sequence` | Replicates one signal to ordered sequence outputs. | `SequenceNode` |
-| Do Once | `flow.control.do_once` | Allows a signal to pass once per execution context, unless reset. | `DoOnceNode` |
+| Branch | `flow.control.branch` | Routes data and exec flow by condition. Wire exec_true/exec_false for branch skipping; legacy data outputs still work in dataflow graphs. | `BranchNode` |
+| Sequence | `flow.control.sequence` | Replicates a signal across steps. Wire exec_step_N for ordered step-by-step execution; legacy data outputs remain for dataflow graphs. | `SequenceNode` |
+| Do Once | `flow.control.do_once` | Passes exec/data once per run unless reset. Wire exec_out for first pass and exec_blocked for repeats. | `DoOnceNode` |
 
 ## flow.loop（3）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| For Each Loop | `flow.loop.for_each` | Iterates over a list and exposes derived iteration data. | `ForEachLoopNode` |
+| For Each Loop | `flow.loop.for_each` | Expands a list into items. Wire exec_body for per-item side effects; legacy list outputs remain for dataflow graphs. | `ForEachLoopNode` |
 | Accumulator | `flow.loop.accumulator` | Accumulates list values into a single result. | `AccumulatorNode` |
-| While Loop | `flow.loop.while` | Processes input values while condition remains true, with iteration safety limits. | `WhileLoopNode` |
+| While Loop | `flow.loop.while` | Routes exec flow while condition is true. Wire exec_body for loop body and loop exec back to exec_in; exec_complete fires when condition is false. | `WhileLoopNode` |
 
 ## geometry.architectural_primitives（14）
 
@@ -99,7 +99,7 @@
 | Floor Slab With Beams | `geometry.architectural_primitives.floor_slab_with_beams` | Generates a floor slab and a configurable support beam grid | `FloorSlabWithBeamsNode` |
 | Molding Profile | `geometry.architectural_primitives.molding_profile` | Generates decorative molding cross-section profiles | `MoldingProfileNode` |
 
-## geometry.boolean（19）
+## geometry.boolean（18）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -140,8 +140,8 @@
 | NURBS Curve | `geometry.curves.nurbs` | Builds a sampled clamped uniform NURBS curve from control points and optional per-point weights | `NurbsCurveNode` |
 | Rainbow Curve Offset | `geometry.curves.rainbow_curve_offset` | Generates multiple parallel offset polylines around a space curve using path frames. | `RainbowCurveOffsetNode` |
 | Resample Polyline By Length | `geometry.curves.resample_polyline_length` | Resamples a polyline along its arc length using spacing, or using a total point count (count wins when both are provided) | `ResamplePolylineByLengthNode` |
-| Curve Rebuild By Length | `geometry.curves.rebuild_curve_length` | Rebuilds a curve/path to uniform arc-length samples using spacing, or using a total point count (count wins when both are provided) | `CurveRebuildByLengthNode` |
 | Polyline Length | `geometry.curves.polyline_length` | Computes the total length of a polyline or line segment | `PolylineLengthNode` |
+| Curve Rebuild By Length | `geometry.curves.rebuild_curve_length` | Rebuilds a curve/path to uniform arc-length samples using spacing, or using a total point count (count wins when both are provided) | `CurveRebuildByLengthNode` |
 | Curve Evaluate | `geometry.curves.evaluate_curve` | Evaluates a curve/path at normalized parameter t and outputs point, tangent, normal, and binormal | `CurveEvaluateNode` |
 | Curve Frame Along Path | `geometry.curves.frame_along_path` | Generates local frames along a curve/path using count or spacing, outputting origins, axes, and planes per sample | `CurveFrameAlongPathNode` |
 | Parabola On Plane | `geometry.curves.parabola_curve` | Builds a sampled parabola on a plane from vertex, curvature, x-range, and segment count | `ParabolaOnPlaneNode` |
@@ -473,8 +473,8 @@
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Range | `math.sequence.range` | Generates a numeric sequence from Start to End using Step. | `MathRangeNode` |
-| Data Series | `math.sequence.series` | Generates a series of numbers with constant increment | `DataSeriesNode` |
 | Repeat | `math.sequence.repeat` | Repeats a single data item or list multiple times | `RepeatNode` |
+| Data Series | `math.sequence.series` | Generates a series of numbers with constant increment | `DataSeriesNode` |
 
 ## math.trigonometry（14）
 
@@ -504,17 +504,18 @@
 | Execution Timer | `output.debug.execution_timer` | 测量连接到此节点的计算分支所花费的时间 | `ExecutionTimerNode` |
 | Panel | `output.debug.data_inspector` | 显示连接到其输入端口的原始数据（文本形式） | `PanelNode` |
 
-## output.execute（8）
+## output.execute（9）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Apply Changes | `output.execute.apply_changes` | Applies explicit placements, placement trees, or voxelized geometry to the world. | `ApplyChangesNode` |
+| Apply Changes | `output.execute.apply_changes` | Submits explicit placements, placement trees, or voxelized geometry to the world. Async mode queues a single bake task and returns its task ID. | `ApplyChangesNode` |
+| Bake Status | `output.execute.bake_status` | Polls BakePlacementService for a task ID and reports state, progress, placed, skipped, and rollback-failed counts. | `BakeStatusNode` |
 | Clear Preview | `output.execute.clear_preview` | Clears all active previews | `ClearAllPreviewsNode` |
 | Bake Geometry To Blocks | `output.execute.bake_geometry_to_blocks` | Bakes any supported geometry into Minecraft block coordinates for final execution | `GeometryToBlocksNode` |
-| SDF To Blocks | `output.execute.sdf_to_blocks` | Voxelizes a signed distance field directly into Minecraft block coordinates | `SdfToBlocksNode` |
 | Undo Last Bake | `output.execute.undo_last_bake` | Reverts the most recent recorded bake or apply-changes operation | `UndoLastBakeNode` |
-| Redo Last Bake | `output.execute.redo_last_bake` | 重新应用最近撤销的 bake 或 apply-changes 操作 | `RedoLastBakeNode` |
 | Bake Surface Strip To Blocks | `output.execute.bake_surface_strip_to_blocks` | Bakes a surface strip into block coordinates for final execution | `SurfaceStripToBlocksNode` |
+| Redo Last Bake | `output.execute.redo_last_bake` | Reapplies the most recently undone bake or apply-changes operation | `RedoLastBakeNode` |
+| SDF To Blocks | `output.execute.sdf_to_blocks` | Voxelizes a signed distance field directly into Minecraft block coordinates | `SdfToBlocksNode` |
 | Merge Block Placements | `output.execute.merge_block_placements` | Merges block placement lists and placement trees into execution-ready placements | `MergeBlockPlacementsNode` |
 
 ## output.export（4）
@@ -530,7 +531,7 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Geometry Viewer | `output.preview.geometry_viewer` | Previews geometry visually without committing changes to the world, with optional LOD sampling, bounding-box labels, pivot axes, and dominant direction vectors. | `GeometryViewerNode` |
+| Geometry Viewer | `output.preview.geometry_viewer` | Previews geometry visually without committing changes to the world. | `GeometryViewerNode` |
 | Preview Blocks | `output.preview.preview_blocks` | Previews block coordinates, placements, or placement trees as temporary ghost blocks. | `PreviewBlocksNode` |
 | Preview Points | `output.preview.preview_points` | Previews one or more reference points before voxelization | `PreviewPointsNode` |
 | Preview Vectors | `output.preview.preview_vectors` | Previews vectors and directions before voxelization | `PreviewVectorsNode` |
@@ -561,7 +562,7 @@
 | Along Path | `pattern.linear.along_path` | Repeats a block pattern at each resolved path point from a line, polyline, curve, or point list | `AlongPathNode` |
 | Staggered Array | `pattern.linear.staggered_array` | Repeats coordinates in rows and applies an alternating offset for brick-like staggering | `StaggeredArrayNode` |
 | Path Instances | `pattern.linear.path_instances` | Generates path instance frames (origin + axes) for oriented placement along a path. | `PathInstancesNode` |
-| Instance on Points | `pattern.linear.instance_on_points` | 在每个输入点上实例化方块或方块放置模板 | `InstanceOnPointsNode` |
+| Instance on Points | `pattern.linear.instance_on_points` | Instances a block or block-placement template at each input point. | `InstanceOnPointsNode` |
 | Linear Array Geometry | `pattern.linear.linear_array_geometry` | Creates repeated geometry copies along a direction vector | `LinearArrayGeometryNode` |
 | Curve Array Geometry | `pattern.linear.curve_array_geometry` | Creates repeated geometry copies along a curve, polyline, or line path with optional tangent orientation | `CurveArrayGeometryNode` |
 
@@ -570,7 +571,7 @@
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | L-System Expand String | `pattern.lsystem.expand_string` | Expands an L-system axiom using production rules for a fixed number of iterations (longest symbol match; probabilities as weights) | `LSystemExpandStringNode` |
-| L-System Turtle 3D | `pattern.lsystem.turtle_3d` | Traces a 3D polyline from L-system commands: F/f forward, +- yaw, & and ^ pitch, / and \\ roll, [] stack (local turns; angle in degrees) | `LSystemTurtle3DNode` |
+| L-System Turtle 3D | `pattern.lsystem.turtle_3d` | Traces a 3D polyline from L-system commands: F/f forward, +- yaw, & and ^ pitch, / and \ roll, [] stack (local turns; angle in degrees) | `LSystemTurtle3DNode` |
 
 ## pattern.radial（4）
 
@@ -626,8 +627,8 @@
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Coordinate Input | `reference.points.point_from_coordinates` | Inputs an integer coordinate and outputs Coordinate, Block Pos, X, Y, and Z. | `CoordinateInputNode` |
-| Block To Point | `reference.points.point_from_block` | Explicitly converts a block coordinate into a geometric point, with optional block-center offset | `BlockToPointNode` |
 | Construct Coordinate | `reference.points.construct_coordinate` | Constructs a block coordinate from X, Y, and Z integer components. | `ConstructCoordinateNode` |
+| Block To Point | `reference.points.point_from_block` | Explicitly converts a block coordinate into a geometric point, with optional block-center offset | `BlockToPointNode` |
 | Point Along Vector | `reference.points.point_along_vector` | Creates a new point by moving a start point along a direction vector by a distance | `PointAlongVectorNode` |
 | Block To Vector | `reference.points.block_to_vector` | Explicitly converts a block coordinate into a Vector3d position, with optional block-center offset. | `BlockToVectorNode` |
 | Deconstruct Coordinate | `reference.points.deconstruct_point` | Extracts X, Y, and Z integer components from a block coordinate. | `DeconstructCoordinateNode` |
@@ -649,9 +650,9 @@
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Vector Input | `reference.vectors.vector` | Inputs a 3D vector from panel values or optional X/Y/Z input ports, then outputs the vector and components. | `VectorInputNode` |
-| 2D Vector Input | `reference.vectors.vector2_input` | Inputs a 2D vector (X/Y or U/V) and outputs vector + components. | `Vector2InputNode` |
 | Construct Vector | `reference.vectors.construct_vector` | Constructs a Vector3d from X, Y, and Z components. | `ConstructVectorNode` |
 | Deconstruct Vector | `reference.vectors.deconstruct_vector` | Outputs the X, Y, and Z components of a vector. | `DeconstructVectorNode` |
+| 2D Vector Input | `reference.vectors.vector2_input` | Inputs a 2D vector (X/Y or U/V) and outputs vector + components. | `Vector2InputNode` |
 | Normalize Vector | `reference.vectors.normalize_vector` | Normalizes a vector to unit length. | `NormalizeVectorNode` |
 | Cross Product | `reference.vectors.cross_product` | Computes the cross product A x B and its magnitude. | `CrossProductNode` |
 | Dot Product | `reference.vectors.dot_product` | Computes the dot product of vectors A and B. | `DotProductNode` |
@@ -729,8 +730,8 @@
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Read Image | `utilities.fileio.read_image` | Reads a local image file and outputs dimensions, colors, and grayscale samples | `ReadImageNode` |
-| Import VOX | `utilities.fileio.import_vox` | 导入 MagicaVoxel .vox 文件，输出方块坐标、Block Placements、颜色和调色板索引 | `ImportVoxNode` |
 | Image Sampler | `utilities.fileio.image_sampler` | Samples color, channels, and grayscale values from image pixels using UV or pixel coordinates | `ImageSamplerNode` |
+| Import VOX | `utilities.fileio.import_vox` | Imports MagicaVoxel .vox files as block coordinates and placements | `ImportVoxNode` |
 
 ## utilities.morphology（1）
 
@@ -752,11 +753,6 @@
 
 ## variable（6）
 
-- `variable` 节点会读写执行作用域状态。图执行器只通过显式连线保证顺序；当写入必须先发生时，请把 Set/Remove/Clear 的输出连接到下游节点。
-- 用户变量名不能以 `__nodecraft.` 开头；该前缀保留给内部运行时数据。
-- `Exists` 表示名称是否存在，即使存储值为 `null` 也会为 true。要删除名称请使用 Remove Variable，不要把 `null` 当作删除标记。
-- Variable List 默认隐藏内部变量。Frame Local Variable 在 Clear Frame 与 Write 同时为 true 时，会先清空 frame，再把 Value 写入 Name。
-
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Set Variable | `variable.set` | Stores a value under a user variable name in the execution scope. Connect an output to downstream nodes when write order matters. | `SetVariableNode` |
@@ -774,11 +770,11 @@
 | Get Fluid Level | `world.query.get_fluid_level` | Gets the fluid state, type, and level for a block position | `GetFluidLevelNode` |
 | Is Grid Point | `world.query.is_grid_point` | Checks whether a geometric point already lies on the block grid without snapping | `IsGridPointNode` |
 | Filter Grid Points | `world.query.filter_grid_points` | Splits a point list into grid-aligned points and off-grid points without snapping | `FilterGridPointsNode` |
-| Filter Points By Rule | `world.query.filter_points_by_rule` | 按高度和可选表面坡度规则过滤点集 | `FilterPointsByRuleNode` |
 | Point In Region | `world.query.is_point_in_region` | Tests whether the center of a block position lies inside a region. | `IsPointInRegionNode` |
 | Raycast | `world.query.raycast` | Casts a ray in world space and returns nearest block/entity hit information. | `RaycastNode` |
 | Flood Fill | `world.query.flood_fill` | Runs BFS flood fill from a seed block using 6 or 26-neighbor connectivity. | `FloodFillNode` |
 | Get Neighbor Blocks | `world.query.get_neighbors` | Returns axis-ray neighbors or cube-volume neighbors around a center position. | `GetNeighborBlocksNode` |
+| Filter Points By Rule | `world.query.filter_points_by_rule` | Filters point sets by height and optional surface slope rules. | `FilterPointsByRuleNode` |
 | Get Entities In Region | `world.query.get_entities_in_region` | Gets entities inside a region with optional filtering | `GetEntitiesInRegionNode` |
 | Get Entity | `world.query.get_entity` | Finds an entity by UUID or by type near the current player. | `GetEntityNode` |
 
@@ -841,27 +837,27 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Set Block | `world.write.set_block` | 放置单个方块，并可在放置后应用方块实体 NBT 或 SNBT | `SetBlockNode` |
-| Set Blocks | `world.write.set_blocks` | 批量设置显式坐标上的方块，并可在放置后应用共享的方块实体 NBT 或 SNBT | `SetBlocksNode` |
+| Set Block | `world.write.set_block` | Places one block at one block position, with optional block-entity NBT | `SetBlockNode` |
+| Set Blocks | `world.write.set_blocks` | Sets blocks at explicit coordinates, with optional shared block-entity NBT | `SetBlocksNode` |
 | Fill Region | `world.write.fill_region` | Fills a region with a block | `FillRegionNode` |
 | Replace Blocks | `world.write.replace_blocks` | Replaces matching blocks in a region or coordinate list | `ReplaceBlocksNode` |
 | Clone Region | `world.write.clone_region` | 复制区域到另一个位置 | `CloneRegionNode` |
 | Clear Blocks | `world.write.remove_blocks` | Clears blocks at explicit coordinates by replacing them with air | `RemoveBlocksNode` |
-| Set Block NBT | `world.write.set_block_nbt` | 向目标位置已有的方块实体写入或合并 NBT 数据 | `SetBlockNbtNode` |
+| Set Block NBT | `world.write.set_block_nbt` | Writes or merges NBT data to a block entity at a target position. | `SetBlockNbtNode` |
 | Undo Last World Write | `world.write.undo_last_write` | Reverts the most recent recorded world.write block placement operation | `UndoLastWorldWriteNode` |
-| Redo Last World Write | `world.write.redo_last_write` | 重新应用最近撤销的 world.write 方块操作 | `RedoLastWorldWriteNode` |
 | Peek Last World Write Undo | `world.write.peek_last_undo` | Inspects the latest world.write undo record and outputs affected count and region bounds | `PeekLastWorldWriteUndoNode` |
+| Redo Last World Write | `world.write.redo_last_write` | Reapplies the most recently undone world.write block operation | `RedoLastWorldWriteNode` |
 | Clear World Write Undo History | `world.write.clear_undo_history` | Clears all recorded world.write undo history entries | `ClearWorldWriteUndoHistoryNode` |
 | Apply Redstone Power | `world.write.apply_redstone_power` | Places a temporary redstone power source next to a target block | `ApplyRedstonePowerNode` |
+| Teleport Entity | `world.write.entity_teleport` | 传送实体 | `EntityTeleportNode` |
 | Execute Command | `world.write.execute_command` | Executes a Minecraft command on the server | `ExecuteCommandNode` |
 | Remove Entities | `world.write.remove_entities` | 移除实体 | `RemoveEntitiesNode` |
 | Simulate Right Click | `world.write.simulate_right_click` | Simulates a server-side right click on a block | `SimulateRightClickNode` |
 | Spawn Entity | `world.write.spawn_entity` | Spawns an entity into the world at a given position | `SpawnEntityNode` |
-| Teleport Entity | `world.write.entity_teleport` | 传送实体 | `EntityTeleportNode` |
 | Write Sign Text | `world.write.write_sign_text` | Writes text to a sign block entity | `WriteSignTextNode` |
 
 ## 文档生成说明
 
-- 本文档由源码中的 `@NodeInfo` 元数据自动汇总生成。
-- 若某类节点缺少 `@NodeInfo`，会按包路径推断分类 ID，并按类名生成默认展示名。
-- 需要更完整的中文说明时，可在对应节点类的 `@NodeInfo.description` 中补充。
+- 本文档由 `./gradlew generateNodeLibraryDocs` 从 `build/generated/nodeCatalog/node-catalog.json` 生成。
+- 共享 SoT 与 `GeneratedNodeCatalog` 相同；请勿手改本文件。
+- 需要更完整说明时，在对应节点的 `@NodeInfo.description` 中补充后重新生成。

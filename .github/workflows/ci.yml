@@ -33,3 +33,19 @@ jobs:
 
       - name: Build
         run: ./gradlew --no-daemon --console plain build
+
+      - name: Node catalog coverage report
+        run: |
+          ./gradlew --no-daemon --console plain generateNodeCatalogCoverageReport
+          echo "----- node-coverage-report.md -----"
+          cat build/generated/nodeCatalog/node-coverage-report.md
+
+      - name: Upload node catalog coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-catalog-coverage
+          path: |
+            build/generated/nodeCatalog/node-coverage-report.json
+            build/generated/nodeCatalog/node-coverage-report.md
+          if-no-files-found: warn

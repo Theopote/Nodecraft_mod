@@ -1,0 +1,260 @@
+/*
+ * U3: Generate icon + compatibility manifests from node-catalog.json.
+ *
+ * Icon manifest: id → explicit icon + derived NodeIconPathResolver candidate paths
+ *   (+ whether the node-id SVG exists under assets).
+ * Compatibility manifest: V0→V1 nodeType aliases cross-checked against catalog ids.
+ *   Does not replace src/main/resources/nodecraft/migration/v0-to-v1.json (file migration SoT).
+ *
+ * See docs/architecture/node-catalog.md
+ */
+
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+
+def nodeCatalogModelFile = layout.buildDirectory.file('generated/nodeCatalog/node-catalog.json')
+def iconManifestFile = layout.buildDirectory.file('generated/nodeCatalog/node-icon-manifest.json')
+def compatibilityManifestFile = layout.buildDirectory.file('generated/nodeCatalog/node-compatibility-manifest.json')
+def migrationManifestSource = file('src/main/resources/nodecraft/migration/v0-to-v1.json')
+def iconAssetsRoot = file('src/main/resources/assets/nodecraft')
+
+tasks.register('generateNodeCatalogManifests') {
+	group = 'nodecraft'
+	description = 'Generates icon + compatibility manifests from node-catalog.json'
+	dependsOn('generateNodeCatalog')
+	inputs.file(nodeCatalogModelFile)
+	inputs.file(migrationManifestSource)
+	inputs.dir(iconAssetsRoot)
+	outputs.files(iconManifestFile, compatibilityManifestFile)
+
+	doLast {
+		def modelFile = nodeCatalogModelFile.get().asFile
+		if (!modelFile.exists()) {
+			throw new GradleException("Missing catalog model: ${modelFile}")
+		}
+		def model = readNodeCatalogModelJson(modelFile)
+		validateNodeCatalogModel(model)
+
+		def entries = model.entries as List
+		def iconManifest = buildNodeIconManifest(entries, iconAssetsRoot)
+		def iconOut = iconManifestFile.get().asFile
+		iconOut.parentFile.mkdirs()
+		iconOut.setText(JsonOutput.prettyPrint(JsonOutput.toJson(iconManifest)), 'UTF-8')
+
+		if (!migrationManifestSource.exists()) {
+			throw new GradleException("Missing migration manifest: ${migrationManifestSource}")
+		}
+		def migration = new JsonSlurper().parseText(migrationManifestSource.getText('UTF-8')) as Map
+		def compatManifest = buildNodeCompatibilityManifest(entries, migration)
+		def compatOut = compatibilityManifestFile.get().asFile
+		compatOut.setText(JsonOutput.prettyPrint(JsonOutput.toJson(compatManifest)), 'UTF-8')
+
+		logger.lifecycle(
+				"Generated catalog manifests: icons=${iconManifest.entryCount} " +
+						"(nodeSvg=${iconManifest.stats.nodePathExists}), " +
+						"aliases=${compatManifest.aliasCount} " +
+						"(missingTargets=${compatManifest.missingTargetCount}) -> ${iconOut.parentFile}")
+	}
+}
+
+ext.verifyNodeCatalogManifests = { Map model ->
+	def iconFile = iconManifestFile.get().asFile
+	def compatFile = compatibilityManifestFile.get().asFile
+	if (!iconFile.exists()) {
+		throw new GradleException("Missing icon manifest: ${iconFile}")
+	}
+	if (!compatFile.exists()) {
+		throw new GradleException("Missing compatibility manifest: ${compatFile}")
+	}
+
+	def icon = new JsonSlurper().parseText(iconFile.getText('UTF-8')) as Map
+	def compat = new JsonSlurper().parseText(compatFile.getText('UTF-8')) as Map
+	def count = model.entryCount as int
+	def modelIds = (model.entries as List).collect { it.id.toString() }
+
+	if ((icon.entryCount as int) != count) {
+		throw new GradleException("Icon manifest entryCount ${icon.entryCount} != model ${count}")
+	}
+	def iconIds = (icon.entries as List).collect { it.id.toString() }
+	if (iconIds != modelIds) {
+		throw new GradleException('Icon manifest ids do not match node-catalog.json entry ids (order-sensitive)')
+	}
+	def blankPaths = (icon.entries as List).findAll {
+		!(it.nodePath?.toString()) || !(it.subcategoryPath?.toString()) || !(it.mainCategoryPath?.toString())
+	}
+	if (!blankPaths.isEmpty()) {
+		throw new GradleException("Icon manifest has ${blankPaths.size()} entries with blank derived paths")
+	}
+
+	if (!migrationManifestSource.exists()) {
+		throw new GradleException("Missing migration manifest: ${migrationManifestSource}")
+	}
+	def migration = new JsonSlurper().parseText(migrationManifestSource.getText('UTF-8')) as Map
+	def expected = buildNodeCompatibilityManifest(model.entries as List, migration)
+	if ((compat.aliasCount as int) != (expected.aliasCount as int)) {
+		throw new GradleException("Compatibility aliasCount ${compat.aliasCount} != expected ${expected.aliasCount}")
+	}
+	def expectedPairs = (expected.aliases as List).collect { "${it.from}->${it.to}" }
+	def actualPairs = (compat.aliases as List).collect { "${it.from}->${it.to}" }
+	if (actualPairs != expectedPairs) {
+		throw new GradleException('Compatibility aliases do not match migration nodeTypes × catalog cross-check')
+	}
+	if ((compat.missingTargetCount as int) != (expected.missingTargets as List).size()) {
+		throw new GradleException("Compatibility missingTargetCount drift: ${compat.missingTargetCount}")
+	}
+	logger.lifecycle(
+			"Verified catalog manifests: icons=${count}, aliases=${compat.aliasCount}, " +
+					"missingTargets=${compat.missingTargetCount}")
+}
+
+ext.buildNodeIconManifest = { List entries, File assetsRoot ->
+	int withExplicit = 0
+	int nodePathExists = 0
+	int subcategoryExists = 0
+	int mainCategoryExists = 0
+	def rows = entries.collect { e ->
+		def id = (e.id ?: '').toString()
+		def category = (e.category ?: '').toString()
+		def explicit = (e.icon ?: '').toString().trim()
+		if (!explicit.isEmpty()) {
+			withExplicit++
+		}
+		def nodePath = iconBuildNodePath(id)
+		def subcategoryPath = iconBuildCategoryPath(category)
+		def main = iconExtractMainCategory(category)
+		def mainCategoryPath = main.isEmpty() ? '' : iconBuildCategoryPath(main)
+		def nodeExists = iconResourceExists(assetsRoot, nodePath)
+		def subExists = iconResourceExists(assetsRoot, subcategoryPath)
+		def mainExists = iconResourceExists(assetsRoot, mainCategoryPath)
+		if (nodeExists) {
+			nodePathExists++
+		}
+		if (subExists) {
+			subcategoryExists++
+		}
+		if (mainExists) {
+			mainCategoryExists++
+		}
+		[
+				id               : id,
+				category         : category,
+				mainCategory     : main,
+				explicitIcon     : explicit,
+				nodePath         : nodePath,
+				subcategoryPath  : subcategoryPath,
+				mainCategoryPath : mainCategoryPath,
+				nodePathExists   : nodeExists,
+				subcategoryExists: subExists,
+				mainCategoryExists: mainExists
+		]
+	}
+	return [
+			schemaVersion: 1,
+			source       : 'node-catalog.json',
+			iconBasePath : 'textures/icons/nodes/',
+			entryCount   : rows.size(),
+			entries      : rows,
+			stats        : [
+					withExplicitIcon   : withExplicit,
+					nodePathExists     : nodePathExists,
+					subcategoryExists  : subcategoryExists,
+					mainCategoryExists : mainCategoryExists
+			]
+	]
+}
+
+ext.buildNodeCompatibilityManifest = { List entries, Map migration ->
+	def catalogIds = new LinkedHashSet((entries as List).collect { it.id.toString() })
+	def nodeTypes = (migration.nodeTypes instanceof Map) ? (migration.nodeTypes as Map) : [:]
+	def aliases = []
+	def missingTargets = new LinkedHashSet()
+	nodeTypes.entrySet()
+			.sort { a, b -> a.key.toString() <=> b.key.toString() }
+			.each { entry ->
+				def from = entry.key.toString().toLowerCase()
+				def to = entry.value.toString().toLowerCase()
+				boolean inCatalog = catalogIds.contains(to)
+				if (!inCatalog) {
+					missingTargets << to
+				}
+				aliases << [
+						from           : from,
+						to             : to,
+						targetInCatalog: inCatalog
+				]
+			}
+	return [
+			schemaVersion      : 1,
+			source             : 'node-catalog.json + nodecraft/migration/v0-to-v1.json',
+			migrationSource    : 'src/main/resources/nodecraft/migration/v0-to-v1.json',
+			canonicalCount     : catalogIds.size(),
+			aliasCount         : aliases.size(),
+			missingTargetCount : missingTargets.size(),
+			aliases            : aliases,
+			missingTargets     : missingTargets.toList().sort()
+	]
+}
+
+ext.iconNormalizeId = { String value ->
+	if (value == null) {
+		return ''
+	}
+	return value.trim().toLowerCase(Locale.ROOT).replace('/', '.').replace('\\', '.')
+}
+
+ext.iconExtractMainCategory = { String category ->
+	def normalized = iconNormalizeId(category)
+	if (normalized.isEmpty()) {
+		return ''
+	}
+	int dot = normalized.indexOf('.')
+	return dot >= 0 ? normalized.substring(0, dot) : normalized
+}
+
+ext.iconBuildNodePath = { String nodeId ->
+	def normalized = iconNormalizeId(nodeId)
+	if (normalized.isEmpty()) {
+		return ''
+	}
+	def parts = normalized.split('\\.')
+	def fileName = parts[parts.length - 1]
+	if (parts.length == 1) {
+		return "textures/icons/nodes/${fileName}/${fileName}.svg"
+	}
+	def sb = new StringBuilder('textures/icons/nodes/')
+	for (int i = 0; i < parts.length - 1; i++) {
+		if (!parts[i].isBlank()) {
+			sb.append(parts[i]).append('/')
+		}
+	}
+	sb.append(fileName).append('.svg')
+	return sb.toString()
+}
+
+ext.iconBuildCategoryPath = { String category ->
+	def normalized = iconNormalizeId(category)
+	if (normalized.isEmpty()) {
+		return ''
+	}
+	def parts = normalized.split('\\.')
+	if (parts.length == 1) {
+		return "textures/icons/nodes/${parts[0]}/${parts[0]}.svg"
+	}
+	def sb = new StringBuilder('textures/icons/nodes/')
+	sb.append(parts[0]).append('/')
+	for (int i = 1; i < parts.length; i++) {
+		sb.append(parts[i])
+		if (i < parts.length - 1) {
+			sb.append('/')
+		}
+	}
+	sb.append('.svg')
+	return sb.toString()
+}
+
+ext.iconResourceExists = { File assetsRoot, String resourcePath ->
+	if (resourcePath == null || resourcePath.isBlank() || assetsRoot == null || !assetsRoot.exists()) {
+		return false
+	}
+	return new File(assetsRoot, resourcePath).isFile()
+}

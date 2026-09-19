@@ -1,0 +1,198 @@
+/*
+ * U4: Node catalog coverage report from shared SoT artifacts.
+ * Aggregates counts/gaps (descriptions, icons, migration targets) for CI visibility.
+ *
+ * See docs/architecture/node-catalog.md
+ */
+
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+
+def nodeCatalogModelFile = layout.buildDirectory.file('generated/nodeCatalog/node-catalog.json')
+def iconManifestFile = layout.buildDirectory.file('generated/nodeCatalog/node-icon-manifest.json')
+def compatibilityManifestFile = layout.buildDirectory.file('generated/nodeCatalog/node-compatibility-manifest.json')
+def aiSchemaStubFile = layout.buildDirectory.file('generated/nodeCatalog/ai-node-schema-stub.json')
+def coverageReportJson = layout.buildDirectory.file('generated/nodeCatalog/node-coverage-report.json')
+def coverageReportMd = layout.buildDirectory.file('generated/nodeCatalog/node-coverage-report.md')
+def nodeLibraryEn = file('docs/NODE_LIBRARY.md')
+def nodeLibraryZh = file('docs/NODE_LIBRARY.zh-CN.md')
+
+tasks.register('generateNodeCatalogCoverageReport') {
+	group = 'nodecraft'
+	description = 'Generates node coverage report (counts/gaps) from catalog SoT artifacts'
+	dependsOn('generateNodeCatalog', 'generateNodeCatalogManifests', 'generateAiNodeSchemaStub', 'generateNodeLibraryDocs')
+	inputs.files(nodeCatalogModelFile, iconManifestFile, compatibilityManifestFile, aiSchemaStubFile, nodeLibraryEn, nodeLibraryZh)
+	outputs.files(coverageReportJson, coverageReportMd)
+
+	doLast {
+		def report = buildNodeCatalogCoverageReport()
+		def jsonOut = coverageReportJson.get().asFile
+		def mdOut = coverageReportMd.get().asFile
+		jsonOut.parentFile.mkdirs()
+		jsonOut.setText(JsonOutput.prettyPrint(JsonOutput.toJson(report)), 'UTF-8')
+		mdOut.setText(renderNodeCatalogCoverageMarkdown(report), 'UTF-8')
+		logger.lifecycle(
+				"Generated node coverage report: nodes=${report.entryCount}, " +
+						"emptyDesc=${report.descriptions.empty}, " +
+						"missingSvg=${report.icons.missingNodeSvgCount}, " +
+						"missingAliasTargets=${report.compatibility.missingTargetCount} -> ${jsonOut.parentFile}")
+	}
+}
+
+ext.verifyNodeCatalogCoverageReport = { Map model ->
+	def jsonFile = coverageReportJson.get().asFile
+	def mdFile = coverageReportMd.get().asFile
+	if (!jsonFile.exists()) {
+		throw new GradleException("Missing coverage report JSON: ${jsonFile}")
+	}
+	if (!mdFile.exists()) {
+		throw new GradleException("Missing coverage report markdown: ${mdFile}")
+	}
+	def report = new JsonSlurper().parseText(jsonFile.getText('UTF-8')) as Map
+	def count = model.entryCount as int
+	if ((report.entryCount as int) != count) {
+		throw new GradleException("Coverage report entryCount ${report.entryCount} != model ${count}")
+	}
+	def expected = buildNodeCatalogCoverageReport()
+	if ((report.icons.missingNodeSvgCount as int) != (expected.icons.missingNodeSvgCount as int)) {
+		throw new GradleException('Coverage report icon gap count drifted from icon manifest')
+	}
+	if ((report.compatibility.missingTargetCount as int) != (expected.compatibility.missingTargetCount as int)) {
+		throw new GradleException('Coverage report compatibility gap count drifted')
+	}
+	if (!(report.artifacts?.aiSchemaStub as boolean) ||
+			!(report.artifacts?.docsEn as boolean) ||
+			!(report.artifacts?.docsZh as boolean)) {
+		throw new GradleException('Coverage report missing required artifact presence flags')
+	}
+	logger.lifecycle(
+			"Verified node coverage report (${count} nodes, missingSvg=${report.icons.missingNodeSvgCount}, " +
+					"missingAliasTargets=${report.compatibility.missingTargetCount})")
+}
+
+ext.buildNodeCatalogCoverageReport = {
+	def modelFile = nodeCatalogModelFile.get().asFile
+	def iconFile = iconManifestFile.get().asFile
+	def compatFile = compatibilityManifestFile.get().asFile
+	[modelFile, iconFile, compatFile].each { File f ->
+		if (!f.exists()) {
+			throw new GradleException("Missing coverage input: ${f}")
+		}
+	}
+
+	def model = readNodeCatalogModelJson(modelFile)
+	validateNodeCatalogModel(model)
+	def icon = new JsonSlurper().parseText(iconFile.getText('UTF-8')) as Map
+	def compat = new JsonSlurper().parseText(compatFile.getText('UTF-8')) as Map
+	def entries = model.entries as List
+
+	def emptyDescIds = entries
+			.findAll { !(it.description?.toString()?.trim()) }
+			.collect { it.id.toString() }
+	def filledDesc = entries.size() - emptyDescIds.size()
+
+	def byCategory = entries.groupBy { it.category.toString() }
+	def categories = byCategory.keySet().sort().collect { cat ->
+		[id: cat, count: byCategory[cat].size()]
+	}
+
+	def missingSvgIds = (icon.entries as List)
+			.findAll { !(it.nodePathExists as boolean) }
+			.collect { it.id.toString() }
+	def withExplicit = (icon.stats?.withExplicitIcon as Integer) ?: 0
+	def nodeSvgExists = (icon.stats?.nodePathExists as Integer) ?: (entries.size() - missingSvgIds.size())
+
+	def missingTargets = (compat.missingTargets as List)?.collect { it.toString() } ?: []
+	def aliasCount = (compat.aliasCount as Integer) ?: 0
+
+	return [
+			schemaVersion : 1,
+			source        : 'node-catalog.json + generated manifests',
+			entryCount    : entries.size(),
+			categoryCount : categories.size(),
+			categories    : categories,
+			descriptions  : [
+					filled  : filledDesc,
+					empty   : emptyDescIds.size(),
+					emptyIds: emptyDescIds
+			],
+			icons         : [
+					withExplicitIcon   : withExplicit,
+					nodePathExists     : nodeSvgExists,
+					missingNodeSvgCount: missingSvgIds.size(),
+					missingNodeSvgIds  : missingSvgIds
+			],
+			compatibility : [
+					aliasCount         : aliasCount,
+					missingTargetCount : missingTargets.size(),
+					missingTargets     : missingTargets
+			],
+			artifacts     : [
+					catalogJson   : modelFile.exists(),
+					aiSchemaStub  : aiSchemaStubFile.get().asFile.exists(),
+					iconManifest  : iconFile.exists(),
+					compatManifest: compatFile.exists(),
+					docsEn        : nodeLibraryEn.exists(),
+					docsZh        : nodeLibraryZh.exists()
+			]
+	]
+}
+
+ext.renderNodeCatalogCoverageMarkdown = { Map report ->
+	def sb = new StringBuilder()
+	sb.append('# NodeCraft Node Catalog Coverage\n\n')
+	sb.append('- Generated by `./gradlew generateNodeCatalogCoverageReport`\n')
+	sb.append('- Source: `').append(report.source).append('`\n')
+	sb.append('- Total nodes: **').append(report.entryCount).append('**\n')
+	sb.append('- Total categories: **').append(report.categoryCount).append('**\n\n')
+
+	sb.append('## Artifact Presence\n\n')
+	sb.append('| Artifact | Present |\n|---|---|\n')
+	(report.artifacts as Map).each { k, v ->
+		sb.append('| `').append(k).append('` | ').append(v ? 'yes' : '**no**').append(' |\n')
+	}
+	sb.append('\n')
+
+	sb.append('## Descriptions\n\n')
+	sb.append('- Filled: **').append(report.descriptions.filled).append('**\n')
+	sb.append('- Empty: **').append(report.descriptions.empty).append('**\n')
+	appendIdSample(sb, report.descriptions.emptyIds as List, 'Empty description ids')
+
+	sb.append('## Icons\n\n')
+	sb.append('- Explicit `@NodeInfo.icon`: **').append(report.icons.withExplicitIcon).append('**\n')
+	sb.append('- Node-id SVG present: **').append(report.icons.nodePathExists).append('**\n')
+	sb.append('- Missing node-id SVG: **').append(report.icons.missingNodeSvgCount).append('**\n')
+	appendIdSample(sb, report.icons.missingNodeSvgIds as List, 'Missing node SVG ids (sample)')
+
+	sb.append('## Compatibility (V0→V1 aliases)\n\n')
+	sb.append('- Alias count: **').append(report.compatibility.aliasCount).append('**\n')
+	sb.append('- Missing targets: **').append(report.compatibility.missingTargetCount).append('**\n')
+	appendIdSample(sb, report.compatibility.missingTargets as List, 'Missing alias targets')
+
+	sb.append('## Category Counts\n\n')
+	sb.append('| Category ID | Node Count |\n|---|---:|\n')
+	(report.categories as List).each { cat ->
+		sb.append('| `').append(cat.id).append('` | ').append(cat.count).append(' |\n')
+	}
+	sb.append('\n')
+
+	sb.append('## Notes\n\n')
+	sb.append('- Gaps are reported for visibility; this task does not fail the build on incomplete icons/descriptions.\n')
+	sb.append('- Structural drift is still caught by `verifyNodeCatalogModel`.\n')
+	return sb.toString()
+}
+
+ext.appendIdSample = { StringBuilder sb, List ids, String title, Integer limit = 40 ->
+	sb.append('\n### ').append(title).append('\n\n')
+	if (ids == null || ids.isEmpty()) {
+		sb.append('_none_\n\n')
+		return
+	}
+	int max = (limit == null || limit < 1) ? 40 : limit
+	def shown = ids.size() <= max ? ids : ids.subList(0, max)
+	shown.each { id -> sb.append('- `').append(id).append('`\n') }
+	if (ids.size() > shown.size()) {
+		sb.append('- … and ').append(ids.size() - shown.size()).append(' more\n')
+	}
+	sb.append('\n')
+}
