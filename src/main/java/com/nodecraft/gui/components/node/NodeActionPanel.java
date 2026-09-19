@@ -2,6 +2,7 @@ package com.nodecraft.gui.components.node;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.INode;
+import com.nodecraft.nodesystem.api.ResettableNode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.nodes.output.execute.ApplyChangesNode;
 import com.nodecraft.nodesystem.nodes.utilities.assist.SignalForkNode;
@@ -9,7 +10,6 @@ import com.nodecraft.nodesystem.nodes.utilities.assist.SignalMergeNode;
 import com.nodecraft.nodesystem.nodes.utilities.assist.TagRelayNode;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
-import java.lang.reflect.Method;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -51,16 +51,20 @@ public final class NodeActionPanel {
 
         if (ImGui.button("Reset Properties")) {
             clearCurrentNodeTempValues.run();
-            if (selectedNode instanceof com.nodecraft.nodesystem.core.BaseNode) {
+            if (selectedNode instanceof ResettableNode resettable) {
                 try {
-                    Method resetMethod = selectedNode.getClass().getMethod("resetProperties");
-                    resetMethod.invoke(selectedNode);
+                    resettable.resetProperties();
                     NodeCraft.LOGGER.info("Reset node properties for {}", selectedNode.getDisplayName());
-                } catch (NoSuchMethodException e) {
-                    NodeCraft.LOGGER.debug("Node {} does not expose resetProperties()", selectedNode.getDisplayName());
                 } catch (Exception e) {
-                    NodeCraft.LOGGER.error("Failed to reset node properties for {}: {}", selectedNode.getDisplayName(), e.getMessage());
+                    NodeCraft.LOGGER.error(
+                            "Failed to reset node properties for {}: {}",
+                            selectedNode.getDisplayName(),
+                            e.getMessage());
                 }
+            } else {
+                NodeCraft.LOGGER.debug(
+                        "Node {} does not implement ResettableNode",
+                        selectedNode.getDisplayName());
             }
         }
 

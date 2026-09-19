@@ -95,22 +95,4 @@ public class NodeDrawingUtils {
         int alphaInt = Math.min(Math.max((int)(alpha * 255), 0), 255);
         return (color & 0x00FFFFFF) | (alphaInt << 24);
     }
-
-    /**
-     * 检查节点是否应该进行反射检查
-     */
-    public static boolean shouldCheckReflection(com.nodecraft.nodesystem.api.INode node) {
-        if (node instanceof ICustomUICapable) {
-            return true;
-        }
-
-        String className = node.getClass().getSimpleName();
-        String packageName = node.getClass().getPackage() != null ? node.getClass().getPackage().getName() : "";
-        return className.contains("Custom") ||
-                className.contains("UI") ||
-                className.contains("Widget") ||
-                className.contains("Control") ||
-                packageName.contains("custom") ||
-                packageName.contains("ui");
-    }
 } 

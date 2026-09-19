@@ -207,40 +207,12 @@ public class PortPositionCalculator {
         float customUIUnscaledHeight = 0;
         float customUIUnscaledRequiredWidth = 0;
         boolean hasCustomUI = false;
-        ICustomUINode customUINode;
 
-        if (node instanceof ICustomUINode) {
-            customUINode = (ICustomUINode) node;
+        if (node instanceof ICustomUINode customUINode) {
             hasCustomUI = customUINode.hasCustomUI();
             if (hasCustomUI) {
                 customUIUnscaledHeight = customUINode.getCustomUIHeight();
                 customUIUnscaledRequiredWidth = customUINode.getMinRequiredUIWidth();
-            }
-        } else {
-            boolean shouldCheckReflection = NodeDrawingUtils.shouldCheckReflection(node);
-            if (shouldCheckReflection) {
-                try {
-                    java.lang.reflect.Method hasCustomUIMethod = node.getClass().getMethod("hasCustomUI");
-                    hasCustomUI = (Boolean) hasCustomUIMethod.invoke(node);
-                    if (hasCustomUI) {
-                        try {
-                            java.lang.reflect.Method getCustomUIHeightMethod = node.getClass().getMethod("getCustomUIHeight");
-                            customUIUnscaledHeight = (Float) getCustomUIHeightMethod.invoke(node);
-                        } catch (NoSuchMethodException e) {
-                            customUIUnscaledHeight = 0;
-                        }
-                        try {
-                            java.lang.reflect.Method getMinRequiredUIWidthMethod = node.getClass().getMethod("getMinRequiredUIWidth");
-                            customUIUnscaledRequiredWidth = (Float) getMinRequiredUIWidthMethod.invoke(node);
-                        } catch (NoSuchMethodException e) {
-                            customUIUnscaledRequiredWidth = 0;
-                        }
-                    }
-                } catch (Exception e) {
-                    hasCustomUI = false;
-                    customUIUnscaledHeight = 0;
-                    customUIUnscaledRequiredWidth = 0;
-                }
             }
         }
 

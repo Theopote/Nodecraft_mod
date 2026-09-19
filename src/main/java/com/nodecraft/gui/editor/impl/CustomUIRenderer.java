@@ -296,92 +296,29 @@ public class CustomUIRenderer {
     }
 
     /**
-     * 通过反射渲染自定义UI
-     */
-    private boolean renderCustomUIViaReflection(CustomUIRenderInfo info) {
-        try {
-            java.lang.reflect.Method renderCustomUIMethod = info.node.getClass().getMethod("renderCustomUI", float.class, float.class, float.class);
-            return (Boolean) renderCustomUIMethod.invoke(info.node, info.width, info.height, info.zoom);
-        } catch (NoSuchMethodException e1) {
-            try {
-                java.lang.reflect.Method renderCustomUIMethod = info.node.getClass().getMethod("renderCustomUI", float.class, float.class);
-                return (Boolean) renderCustomUIMethod.invoke(info.node, info.width, info.height);
-            } catch (NoSuchMethodException e2) {
-                try {
-                    java.lang.reflect.Method renderCustomUIMethod = info.node.getClass().getMethod("renderCustomUI", float.class);
-                    return (Boolean) renderCustomUIMethod.invoke(info.node, info.width);
-                } catch (Exception e3) {
-                    NodeCraft.LOGGER.warn("Failed to invoke renderCustomUI method for node {} (single-arg)", info.nodeId, e3);
-                }
-            } catch (Exception e2) {
-                NodeCraft.LOGGER.warn("Failed to invoke renderCustomUI method for node {} (two-arg)", info.nodeId, e2);
-            }
-        } catch (Exception e1) {
-            NodeCraft.LOGGER.warn("Failed to invoke renderCustomUI method for node {} (three-arg)", info.nodeId, e1);
-        }
-        return false;
-    }
-
-    /**
-     * 检查节点是否有自定义UI
+     * 检查节点是否有自定义UI（仅识别 {@link ICustomUINode}）。
      */
     public boolean hasCustomUI(INode node) {
-        if (node instanceof ICustomUINode customUINode) {
-            return customUINode.hasCustomUI();
-        }
-
-        boolean shouldCheckReflection = NodeDrawingUtils.shouldCheckReflection(node);
-        if (shouldCheckReflection) {
-            try {
-                java.lang.reflect.Method hasCustomUIMethod = node.getClass().getMethod("hasCustomUI");
-                return (Boolean) hasCustomUIMethod.invoke(node);
-            } catch (Exception e) {
-                return false;
-            }
-        }
-
-        return false;
+        return node instanceof ICustomUINode customUINode && customUINode.hasCustomUI();
     }
 
     /**
-     * 获取自定义UI的高度
+     * 获取自定义UI的高度（仅识别 {@link ICustomUINode}）。
      */
     public float getCustomUIHeight(INode node) {
         if (node instanceof ICustomUINode customUINode) {
             return customUINode.getCustomUIHeight();
         }
-
-        boolean shouldCheckReflection = NodeDrawingUtils.shouldCheckReflection(node);
-        if (shouldCheckReflection) {
-            try {
-                java.lang.reflect.Method getCustomUIHeightMethod = node.getClass().getMethod("getCustomUIHeight");
-                return (Float) getCustomUIHeightMethod.invoke(node);
-            } catch (Exception e) {
-                return 0;
-            }
-        }
-
         return 0;
     }
 
     /**
-     * 获取自定义UI的最小宽度
+     * 获取自定义UI的最小宽度（仅识别 {@link ICustomUINode}）。
      */
     public float getMinRequiredUIWidth(INode node) {
         if (node instanceof ICustomUINode customUINode) {
             return customUINode.getMinRequiredUIWidth();
         }
-
-        boolean shouldCheckReflection = NodeDrawingUtils.shouldCheckReflection(node);
-        if (shouldCheckReflection) {
-            try {
-                java.lang.reflect.Method getMinRequiredUIWidthMethod = node.getClass().getMethod("getMinRequiredUIWidth");
-                return (Float) getMinRequiredUIWidthMethod.invoke(node);
-            } catch (Exception e) {
-                return 0;
-            }
-        }
-
         return 0;
     }
-} 
+}

@@ -43,6 +43,7 @@ import com.nodecraft.gui.components.node.NodeGraphAccess;
 import com.nodecraft.gui.components.node.NodeStatusPresenter;
 import com.nodecraft.gui.components.property.core.PropertyDescriptor;
 import com.nodecraft.gui.components.property.core.PropertyEditSession;
+import com.nodecraft.gui.components.property.core.PropertyEditorRegistry;
 import com.nodecraft.gui.components.property.core.PropertyInspector;
 import com.nodecraft.gui.components.property.core.PropertyRenderer;
 import com.nodecraft.gui.components.property.core.PropertyRendererRegistry;
@@ -60,8 +61,6 @@ import imgui.flag.ImGuiTableColumnFlags; // 添加 ImGuiTableColumnFlags 导入
 import imgui.flag.ImGuiCol;
 import imgui.flag.ImGuiTreeNodeFlags;
 import imgui.flag.ImGuiWindowFlags;
-import imgui.type.ImBoolean;
-import imgui.type.ImInt;
 import imgui.type.ImString;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
@@ -148,363 +147,7 @@ public class PropertyPanelComponent implements EditorComponent {
         }
     }
 
-    // --- 各种类型的渲染器实现 ---
-    private static final PropertyRenderer BOOLEAN_RENDERER = (panel, node, prop, isDisabled) -> {
-        if (isDisabled) {
-            ImGui.textDisabled("(已禁用)");
-            if (ImGui.isItemHovered()) {
-                ImGui.setTooltip("属性 '" + prop.displayName + "' 因频繁错误已被禁用");
-            }
-            return;
-        }
-
-        try {
-            boolean currentValue = (boolean) prop.getter.invoke(node);
-            ImBoolean imVal = new ImBoolean(currentValue);
-            boolean isReadOnly = prop.setter == null;
-
-            if (isReadOnly) ImGui.beginDisabled();
-            if (ImGui.checkbox("##" + prop.name, imVal)) {
-                if (!isReadOnly) {
-                    // 立即保存到节点
-                    panel.applyPropertyValue(node, prop, imVal.get());
-                    NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), imVal.get());
-                }
-            }
-            if (isReadOnly) ImGui.endDisabled();
-
-            // 重置该属性的错误计数
-            panel.clearPropertyError(prop.name);
-        } catch (Throwable e) { // 统一捕获 Throwable
-            panel.handlePropertyError(prop, e);
-        }
-    };
-
-    private static final PropertyRenderer STRING_RENDERER = (panel, node, prop, isDisabled) -> {
-        if (isDisabled) {
-            ImGui.textDisabled("(已禁用)");
-            if (ImGui.isItemHovered()) {
-                ImGui.setTooltip("属性 '" + prop.displayName + "' 因频繁错误已被禁用");
-            }
-            return;
-        }
-
-        try {
-            String currentValue = (String) prop.getter.invoke(node);
-            if (currentValue == null) currentValue = "";
-            final String resolvedValue = currentValue;
-            boolean isReadOnly = prop.setter == null;
-
-            if (panel.shouldUseColorPickerForStringProperty(prop, resolvedValue)) {
-                panel.renderStringColorPropertyEditor(node, prop, resolvedValue, isReadOnly);
-                panel.clearPropertyError(prop.name);
-                return;
-            }
-
-            String tempKey = panel.getTempValueKey(node, prop.name);
-            ImString imStr = panel.getOrReplaceTempValue(tempKey, ImString.class, () -> new ImString(resolvedValue, 256));
-
-            // 仅当属性未被锁定编辑时，才从节点同步值
-            if (!panel.isPropertyBeingEdited(node, prop.name)) {
-                if (!imStr.get().equals(resolvedValue)) {
-                    imStr.set(resolvedValue);
-                }
-            }
-
-            int flags = ImGuiInputTextFlags.None;
-            if (isReadOnly) flags |= ImGuiInputTextFlags.ReadOnly;
-
-            // 检测ImGui控件的交互状态
-            boolean changed = ImGui.inputText("##" + prop.name, imStr, flags | ImGuiInputTextFlags.EnterReturnsTrue);
-
-            // 读取当前状态（在任何状态修改之前）
-            boolean isActive = ImGui.isItemActive();
-            boolean wasDeactivated = ImGui.isItemDeactivated();
-            boolean wasBeingEdited = panel.isPropertyBeingEdited(node, prop.name);
-
-            // 更新编辑状态标记
-            if (isActive && !wasBeingEdited) {
-                panel.markPropertyBeingEdited(node, prop.name);
-            }
-
-            // 决定是否需要保存
-            boolean shouldSave = false;
-            if (changed) {
-                // 按下 Enter 键
-                shouldSave = true;
-            } else if (wasDeactivated && wasBeingEdited) {
-                // 失焦且之前正在编辑，检查值是否真的改变了
-                shouldSave = !imStr.get().equals(currentValue);
-            }
-
-            // 保存属性值
-            if (shouldSave && !isReadOnly) {
-                if (!imStr.get().equals(currentValue)) { // 避免不必要的setter调用
-                    panel.applyPropertyValue(node, prop, imStr.get());
-                    NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), imStr.get());
-                }
-            }
-
-            // 最后清理编辑状态（在保存之后）
-            if (wasDeactivated && wasBeingEdited) {
-                panel.markPropertyEditingFinished(node, prop.name);
-            }
-
-            if (panel.isGeometryViewerBlockType(node, prop)) {
-                panel.renderGeometryViewerBlockTypeHint(imStr.get());
-            }
-
-            // 重置该属性的错误计数
-            panel.clearPropertyError(prop.name);
-        } catch (Throwable e) { // 统一捕获 Throwable
-            panel.handlePropertyError(prop, e);
-        }
-    };
-
-    private static final PropertyRenderer INT_RENDERER = (panel, node, prop, isDisabled) -> {
-        if (isDisabled) {
-            ImGui.textDisabled("(已禁用)");
-            if (ImGui.isItemHovered()) {
-                ImGui.setTooltip("属性 '" + prop.displayName + "' 因频繁错误已被禁用");
-            }
-            return;
-        }
-
-        try {
-            int currentValue = (int) prop.getter.invoke(node);
-            int[] valArr = {currentValue}; // ImGui dragInt 需要数组
-            boolean isReadOnly = prop.setter == null;
-
-            if (isReadOnly) ImGui.beginDisabled();
-            if (ImGui.dragInt("##" + prop.name, valArr, 1)) { // 默认速度为1
-                if (!isReadOnly) {
-                    if (valArr[0] != currentValue) { // 避免不必要的setter调用
-                        panel.applyPropertyValue(node, prop, valArr[0]);
-                        NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), valArr[0]);
-                    }
-                }
-            }
-            // 标记编辑状态
-            if (ImGui.isItemActive()) panel.markPropertyBeingEdited(node, prop.name);
-            if (ImGui.isItemDeactivated()) panel.markPropertyEditingFinished(node, prop.name);
-
-            if (isReadOnly) ImGui.endDisabled();
-
-            // 重置该属性的错误计数
-            panel.clearPropertyError(prop.name);
-        } catch (Throwable e) { // 统一捕获 Throwable
-            panel.handlePropertyError(prop, e);
-        }
-    };
-
-    private static final PropertyRenderer FLOAT_RENDERER = (panel, node, prop, isDisabled) -> {
-        if (isDisabled) {
-            ImGui.textDisabled("(已禁用)");
-            if (ImGui.isItemHovered()) {
-                ImGui.setTooltip("属性 '" + prop.displayName + "' 因频繁错误已被禁用");
-            }
-            return;
-        }
-
-        try {
-            float currentValue = (float) prop.getter.invoke(node);
-            float[] valArr = {currentValue};
-            boolean isReadOnly = prop.setter == null;
-            boolean isGeometryTransparency = panel.isGeometryViewerTransparency(node, prop);
-
-            if (isReadOnly) ImGui.beginDisabled();
-            boolean changed;
-            if (isGeometryTransparency) {
-                changed = ImGui.sliderFloat("##" + prop.name, valArr, 0.0f, 1.0f, "%.2f");
-            } else {
-                changed = ImGui.dragFloat("##" + prop.name, valArr, 0.01f);
-            }
-            if (changed) {
-                if (!isReadOnly) {
-                    if (valArr[0] != currentValue) { // 避免不必要的setter调用
-                        panel.applyPropertyValue(node, prop, valArr[0]);
-                        NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), valArr[0]);
-                    }
-                }
-            }
-            // 标记编辑状态
-            if (ImGui.isItemActive()) panel.markPropertyBeingEdited(node, prop.name);
-            if (ImGui.isItemDeactivated()) panel.markPropertyEditingFinished(node, prop.name);
-
-            if (isGeometryTransparency) {
-                ImGui.sameLine();
-                ImGui.text(String.format(Locale.ROOT, "%d%%", Math.round(valArr[0] * 100.0f)));
-            }
-
-            if (isReadOnly) ImGui.endDisabled();
-
-            // 重置该属性的错误计数
-            panel.clearPropertyError(prop.name);
-        } catch (Throwable e) { // 统一捕获 Throwable
-            panel.handlePropertyError(prop, e);
-        }
-    };
-
-    // 改进的双精度渲染器，使用文本输入保持精度
-    private static final PropertyRenderer DOUBLE_RENDERER = (panel, node, prop, isDisabled) -> {
-        if (isDisabled) {
-            ImGui.textDisabled("(已禁用)");
-            if (ImGui.isItemHovered()) {
-                ImGui.setTooltip("属性 '" + prop.displayName + "' 因频繁错误已被禁用");
-            }
-            return;
-        }
-
-        try {
-            double currentValue = (double) prop.getter.invoke(node);
-
-            String tempKey = panel.getTempValueKey(node, prop.name);
-            ImString textValue = panel.getOrReplaceTempValue(
-                    tempKey,
-                    ImString.class,
-                    () -> new ImString(String.format("%.12f", currentValue), 64));
-
-            // 仅当属性未被锁定编辑时，才从节点同步值
-            if (!panel.isPropertyBeingEdited(node, prop.name)) {
-                try {
-                    double currentTextValue = Double.parseDouble(textValue.get());
-                    if (Math.abs(currentTextValue - currentValue) > 1e-12) { // 使用epsilon比较浮点数
-                        textValue.set(String.format("%.12f", currentValue));
-                    }
-                } catch (NumberFormatException e) {
-                    // 如果当前文本不是有效数字，重置为当前值
-                    textValue.set(String.format("%.12f", currentValue));
-                }
-            }
-
-            // 文本输入框设置
-            int flags = ImGuiInputTextFlags.CharsDecimal;
-            boolean isReadOnly = prop.setter == null;
-            if (isReadOnly) flags |= ImGuiInputTextFlags.ReadOnly;
-
-            boolean changed = ImGui.inputText("##" + prop.name, textValue, flags | ImGuiInputTextFlags.EnterReturnsTrue);
-
-            boolean isActive = ImGui.isItemActive();
-            boolean wasDeactivated = ImGui.isItemDeactivated();
-            boolean wasBeingEdited = panel.isPropertyBeingEdited(node, prop.name);
-
-            if (isActive && !wasBeingEdited) {
-                panel.markPropertyBeingEdited(node, prop.name);
-            }
-
-            boolean shouldSave = false;
-            if (changed) {
-                shouldSave = true;
-            } else if (wasDeactivated && wasBeingEdited) {
-                try {
-                    double newValue = Double.parseDouble(textValue.get());
-                    shouldSave = Math.abs(newValue - currentValue) > 1e-12;
-                } catch (NumberFormatException ignored) {
-                    shouldSave = false;
-                }
-            }
-
-            if (shouldSave && !isReadOnly) {
-                try {
-                    double newValue = Double.parseDouble(textValue.get());
-                    if (Math.abs(newValue - currentValue) > 1e-12) {
-                        panel.applyPropertyValue(node, prop, newValue);
-                        NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), newValue);
-                    }
-                } catch (NumberFormatException e) {
-                    ImGui.sameLine();
-                    ImGui.textColored(1.0f, 0.3f, 0.3f, 1.0f, "无效数字");
-                }
-            }
-
-            if (wasDeactivated && wasBeingEdited) {
-                panel.markPropertyEditingFinished(node, prop.name);
-            }
-
-            // 在输入框后添加一个快速拖动控件
-            if (!isReadOnly) { // 只有可写属性才提供拖动
-                ImGui.sameLine();
-                ImGui.pushItemWidth(ImGui.getContentRegionAvailX() * 0.25f);
-
-                float[] dragValue = new float[]{0.0f}; // 拖动增量
-
-                if (ImGui.dragFloat("##drag_" + prop.name, dragValue, 0.01f, 0.0f, 0.0f, "%.3f")) {
-                    try {
-                        // 解析当前文本值
-                        double baseValue = Double.parseDouble(textValue.get());
-                        // 计算新值 (基值 + 拖动增量)
-                        double newValue = baseValue + dragValue[0];
-                        // 更新显示文本和节点值
-                        textValue.set(String.format("%.12f", newValue));
-                        panel.applyPropertyValue(node, prop, newValue);
-                        NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), newValue);
-                        // 重置拖动增量
-                        dragValue[0] = 0.0f;
-                    } catch (NumberFormatException e) {
-                        // 无效数字时忽略拖动
-                    }
-                }
-                if (ImGui.isItemActive()) panel.markPropertyBeingEdited(node, prop.name);
-                if (ImGui.isItemDeactivated()) panel.markPropertyEditingFinished(node, prop.name);
-                ImGui.popItemWidth();
-            }
-
-            // 重置该属性的错误计数
-            panel.clearPropertyError(prop.name);
-        } catch (Throwable e) { // 统一捕获 Throwable
-            panel.handlePropertyError(prop, e);
-        }
-    };
-
-    // 添加枚举类型渲染器
-    private static final PropertyRenderer ENUM_RENDERER = (panel, node, prop, isDisabled) -> {
-        if (isDisabled) {
-            ImGui.textDisabled("(已禁用)");
-            if (ImGui.isItemHovered()) {
-                ImGui.setTooltip("属性 '" + prop.displayName + "' 因频繁错误已被禁用");
-            }
-            return;
-        }
-
-        try {
-            Enum<?> currentValue = (Enum<?>) prop.getter.invoke(node);
-            if (currentValue == null) {
-                ImGui.textDisabled("(空)");
-                return;
-            }
-
-            // 获取枚举的所有值
-            Enum<?>[] values = currentValue.getDeclaringClass().getEnumConstants();
-                String[] names = panel.buildEnumDisplayNames(node, prop, values);
-
-            int currentIndex = currentValue.ordinal();
-            ImInt selectedIndex = new ImInt(currentIndex);
-            boolean isReadOnly = prop.setter == null;
-
-            if (isReadOnly) ImGui.beginDisabled();
-            if (ImGui.combo("##" + prop.name, selectedIndex, names)) {
-                if (!isReadOnly && selectedIndex.get() != currentIndex) { // 避免不必要的setter调用
-                    panel.applyPropertyValue(node, prop, values[selectedIndex.get()]);
-                    NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), values[selectedIndex.get()]);
-                }
-            }
-            // 标记编辑状态
-            if (ImGui.isItemActive()) panel.markPropertyBeingEdited(node, prop.name);
-            if (ImGui.isItemDeactivated()) panel.markPropertyEditingFinished(node, prop.name);
-
-            if (isReadOnly) ImGui.endDisabled();
-
-            // 如果鼠标悬停，显示所有可用值
-            if (ImGui.isItemHovered()) {
-                ImGui.setTooltip(panel.buildEnumTooltip(node, prop, values, names, selectedIndex.get()));
-            }
-
-            // 重置该属性的错误计数
-            panel.clearPropertyError(prop.name);
-        } catch (Throwable e) { // 统一捕获 Throwable
-            panel.handlePropertyError(prop, e);
-        }
-    };
+    // Primitive editors live in PropertyEditorRegistry / *PropertyRenderer.
 
     private static final PropertyRenderer VEC3_RENDERER = Vec3PropertyRenderer.RENDERER;
 
@@ -1052,15 +695,15 @@ public class PropertyPanelComponent implements EditorComponent {
         return true;
     }
 
-    private boolean isGeometryViewerTransparency(INode node, PropertyDescriptor prop) {
+    public boolean isGeometryViewerTransparency(INode node, PropertyDescriptor prop) {
         return node instanceof GeometryViewerNode && "transparency".equals(prop.name);
     }
 
-    private boolean isGeometryViewerBlockType(INode node, PropertyDescriptor prop) {
+    public boolean isGeometryViewerBlockType(INode node, PropertyDescriptor prop) {
         return node instanceof GeometryViewerNode && "blockType".equals(prop.name);
     }
 
-    private void renderGeometryViewerBlockTypeHint(String rawValue) {
+    public void renderGeometryViewerBlockTypeHint(String rawValue) {
         String value = rawValue != null ? rawValue.trim() : "";
         ImGui.sameLine();
         if (value.isEmpty()) {
@@ -1088,7 +731,7 @@ public class PropertyPanelComponent implements EditorComponent {
         }
     }
 
-    private String[] buildEnumDisplayNames(INode node, PropertyDescriptor prop, Enum<?>[] values) {
+    public String[] buildEnumDisplayNames(INode node, PropertyDescriptor prop, Enum<?>[] values) {
         String[] labels = new String[values.length];
         for (int i = 0; i < values.length; i++) {
             labels[i] = buildEnumDisplayName(node, prop, values[i]);
@@ -1129,7 +772,7 @@ public class PropertyPanelComponent implements EditorComponent {
         return out.toString();
     }
 
-    private String buildEnumTooltip(INode node, PropertyDescriptor prop, Enum<?>[] values, String[] names, int selectedIndex) {
+    public String buildEnumTooltip(INode node, PropertyDescriptor prop, Enum<?>[] values, String[] names, int selectedIndex) {
         if (node instanceof GeometryViewerNode && "ghostRenderMode".equals(prop.name)) {
             String current = (selectedIndex >= 0 && selectedIndex < names.length) ? names[selectedIndex] : "";
             return "Current: " + current + "\n"
@@ -1145,7 +788,7 @@ public class PropertyPanelComponent implements EditorComponent {
         return tooltip.toString();
     }
 
-    private boolean shouldUseColorPickerForStringProperty(PropertyDescriptor prop, String value) {
+    public boolean shouldUseColorPickerForStringProperty(PropertyDescriptor prop, String value) {
         if (prop == null) {
             return false;
         }
@@ -1161,7 +804,7 @@ public class PropertyPanelComponent implements EditorComponent {
         return value == null || value.isBlank();
     }
 
-    private void renderStringColorPropertyEditor(INode node, PropertyDescriptor prop, String currentValue, boolean isReadOnly) throws Throwable {
+    public void renderStringColorPropertyEditor(INode node, PropertyDescriptor prop, String currentValue, boolean isReadOnly) throws Throwable {
         String normalized = normalizeHexColor(currentValue);
         String tempKey = getTempValueKey(node, prop.name + "_hex_color");
         float[] rgb = editSession.getOrCreateTempValue(tempKey, () -> {
@@ -1232,16 +875,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
     // 渲染器注册表：类型 -> 渲染器
     static {
-        // 注册基本类型渲染器
-        registerRenderer(boolean.class, BOOLEAN_RENDERER);
-        registerRenderer(Boolean.class, BOOLEAN_RENDERER);
-        registerRenderer(String.class, STRING_RENDERER);
-        registerRenderer(int.class, INT_RENDERER);
-        registerRenderer(Integer.class, INT_RENDERER);
-        registerRenderer(float.class, FLOAT_RENDERER);
-        registerRenderer(Float.class, FLOAT_RENDERER);
-        registerRenderer(double.class, DOUBLE_RENDERER);
-        registerRenderer(Double.class, DOUBLE_RENDERER);
+        PropertyEditorRegistry.registerPrimitives();
         registerRenderer(Vec3.class, VEC3_RENDERER);
         registerRenderer(PlaneData.class, PLANE_RENDERER);
         registerRenderer(PolylineData.class, POLYLINE_RENDERER);
@@ -1299,7 +933,7 @@ public class PropertyPanelComponent implements EditorComponent {
      * @return 对应的渲染器，如果没有注册则返回null
      */
     public PropertyRenderer getRendererForType(Class<?> type) {
-        return PropertyRendererRegistry.getRendererForType(type, ENUM_RENDERER);
+        return PropertyRendererRegistry.getRendererForType(type, PropertyEditorRegistry.enumRenderer());
     }
 
     @Override
