@@ -1,96 +1,27 @@
 package com.nodecraft.gui.components.ai;
 
-import com.nodecraft.core.NodeCraft;
-import com.nodecraft.gui.ai.*;
-import com.nodecraft.gui.ai.AiIntentAnalysisService.UserIntent;
-import com.nodecraft.gui.components.ai.AiAssistantComponent.AiChatMessage;
+import com.nodecraft.gui.ai.AiAssistantController;
+import com.nodecraft.gui.ai.AiAssistantUiBindings;
+import com.nodecraft.gui.ai.AiDiagnosticsService;
+import com.nodecraft.gui.ai.AiGraphDiffService;
+import com.nodecraft.gui.ai.AiIntentAnalysisService;
+import com.nodecraft.gui.ai.AiProviderModelService;
 import com.nodecraft.gui.components.ai.AiAssistantComponent.AiGraphPlan;
-import com.nodecraft.gui.components.ai.AiAssistantComponent.AiPlanConnection;
-import com.nodecraft.gui.components.ai.AiAssistantComponent.AiPlanNode;
-import com.nodecraft.gui.editor.GraphApplyTargetResolver;
-import com.nodecraft.gui.editor.base.GraphApplyHistoryView;
-import com.nodecraft.gui.editor.base.GraphApplyTarget;
-import com.nodecraft.gui.editor.base.GraphNodeAnchor;
 import com.nodecraft.nodesystem.api.INode;
-import com.nodecraft.nodesystem.api.IPort;
-import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.graph.NodeGraph;
-import com.nodecraft.nodesystem.registry.NodeRegistry;
 import imgui.ImGui;
-import imgui.type.ImBoolean;
 import imgui.type.ImInt;
-import imgui.type.ImString;
 
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public final class AiAssistantPanel {
 
-    private static final long AI_SESSION_SAVE_DEBOUNCE_MS = 800L;
-    private static final int AI_HISTORY_MAX_CHARS_PER_MESSAGE = 1800;
-    private static final int AI_HISTORY_MAX_TOTAL_CHARS = 9000;
-    private static final int AI_LATEST_USER_MESSAGE_MAX_CHARS = 7000;
-    private static final String[] AI_PROVIDER_STRATEGY_OPTIONS = {
-            AiSettingsStore.PROVIDER_AUTO,
-            AiSettingsStore.PROVIDER_OPENAI_COMPAT,
-            AiSettingsStore.PROVIDER_ANTHROPIC
-    };
-
     private final AiAssistantComponent aiAssistantComponent;
-    private final AiRemotePlanningOrchestrator remotePlanningOrchestrator = new AiRemotePlanningOrchestrator();
-    private final Supplier<NodeGraph> nodeGraphSupplier;
-    private final Consumer<String> clipboardCopier;
-
-    private final ImString aiPromptInput = new ImString("", 2048);
-    private final ImBoolean aiUseSelectionContext = new ImBoolean(true);
-    private final ImBoolean aiIncludeGraphContext = new ImBoolean(true);
-    private final ImBoolean aiIncludePlayerWorldContext = new ImBoolean(false);
-    private final ImBoolean aiIncludeSelectedWorldRegionContext = new ImBoolean(false);
-    private final List<AiChatMessage> aiChatMessages;
-    private final ImString aiApiBaseUrl = new ImString("https://api.openai.com/v1", 512);
-    private final ImString aiApiKey = new ImString("", 512);
-    private final ImString aiModel = new ImString("gpt-4.1-mini", 128);
-    private final ImInt aiProviderStrategyIndex = new ImInt(0);
-    private final ImString aiSystemPrompt = new ImString("You are a NodeCraft graph planning assistant.", 2048);
-    private final ImInt aiMaxOutputTokens = new ImInt(2048);
-    private final ImInt aiRequestTimeoutSeconds = new ImInt(60);
-    private final ImInt aiConversationHistoryTurns = new ImInt(6);
-    private final ImBoolean aiShowApiKey = new ImBoolean(false);
-    private final ImBoolean aiRememberApiKey = new ImBoolean(false);
-    private final ImBoolean aiEnableRemotePlanner = new ImBoolean(false);
-    private final ImBoolean aiAutoLayoutBeforeApply = new ImBoolean(true);
-    private final ImBoolean aiPreviewOnlyMode = new ImBoolean(false);
-    private final ImBoolean aiPatchApplyMode = new ImBoolean(true);
-    private final ImBoolean aiPatchRemoveScopedConnections = new ImBoolean(false);
-    private final ImBoolean aiEnterToSend = new ImBoolean(true);
-    private final ImBoolean aiDebugLoggingEnabled = new ImBoolean(false);
-    private final ImBoolean aiIncludePromptPreviewInDebug = new ImBoolean(false);
-    private final Path aiSettingsPath;
-    private String aiLastSubmittedPrompt = "";
-    private String aiLastDetectedProviderLabel = "";
-    private CompletableFuture<AiRemotePlannerService.RemotePlanResult> aiConnectionTestFuture = null;
+    private final AiAssistantUiBindings ui;
+    private final AiAssistantController controller;
     private int lastRenderedChatCount = 0;
-    private int lastAiUndoStepCount = 0;
-    private boolean lastAiApplyWasPatch = false;
-    private String aiPlanStatusMessage = "";
-    private String aiSettingsStatusMessage = "";
-    private String aiPreviewFocusedNodeRef = "";
-    private boolean aiPreviewFocusScrollPending = false;
-    private final TopologyPreviewState aiTopologyPreviewState = new TopologyPreviewState();
-    private int aiRemoteDslRepairAttempts = 0;
-    private int aiRemoteGraphExpansionAttempts = 0;
-    private AiWorldContextSnapshot aiLastWorldContextSnapshot = null;
 
     public AiAssistantPanel(
             AiAssistantComponent aiAssistantComponent,
@@ -98,73 +29,63 @@ public final class AiAssistantPanel {
             Consumer<String> clipboardCopier
     ) {
         this.aiAssistantComponent = aiAssistantComponent;
-        this.nodeGraphSupplier = nodeGraphSupplier;
-        this.clipboardCopier = clipboardCopier;
-        this.aiChatMessages = aiAssistantComponent.getChatMessages();
-        this.aiSettingsPath = resolveAiSettingsPath();
-        this.aiAssistantComponent.initializeSessionStore(aiSettingsPath);
-        loadAiSettingsFromDisk();
-        loadAiSessionStateFromDisk();
+        this.ui = new AiAssistantUiBindings();
+        this.controller = new AiAssistantController(
+                aiAssistantComponent,
+                nodeGraphSupplier,
+                clipboardCopier,
+                ui
+        );
     }
 
     public void onSelectedNodeChanged(INode node) {
-        aiAssistantComponent.handleEvent("nodeSelected", node == null ? null : node.getId());
+        controller.onSelectedNodeChanged(node);
     }
 
     public void flushSessionStateIfDue() {
-        aiAssistantComponent.flushSessionStateIfDue(AI_SESSION_SAVE_DEBOUNCE_MS, AiSessionPlanCodecService::serializePendingPlanToDsl);
+        controller.flushSessionStateIfDue();
     }
 
     public void cleanup() {
-        saveAiSettingsToDisk();
-        saveAiSessionStateToDiskNow();
-        aiAssistantComponent.cleanup();
-        aiChatMessages.clear();
-        aiPromptInput.clear();
-        aiApiKey.clear();
-        aiTopologyPreviewState.reset();
-        lastAiUndoStepCount = 0;
-        lastAiApplyWasPatch = false;
-        aiPlanStatusMessage = "";
-        aiSettingsStatusMessage = "";
+        controller.cleanup();
+        lastRenderedChatCount = 0;
     }
 
     public void render() {
-        pollRemotePlannerResultIfReady();
-        pollConnectionTestResultIfReady();
+        controller.onFrameTick();
 
-        INode selectedNode = getSelectedNode();
+        INode selectedNode = resolveSelectedNodeForRender();
         String selectedNodeDisplayName = selectedNode == null ? "" : selectedNode.getDisplayName();
         String selectedNodeTypeId = selectedNode == null ? "" : selectedNode.getTypeId();
-        String inputLanguageDetected = AiIntentAnalysisService.detectInputLanguage(aiPromptInput.get());
-        String normalizedIntentPreview = AiIntentAnalysisService.buildNormalizedIntentPreview(aiPromptInput.get());
-        boolean plannerBusy = isRemotePlannerBusy();
+        String inputLanguageDetected = AiIntentAnalysisService.detectInputLanguage(ui.aiPromptInput.get());
+        String normalizedIntentPreview = AiIntentAnalysisService.buildNormalizedIntentPreview(ui.aiPromptInput.get());
+        boolean plannerBusy = controller.isRemotePlannerBusy();
         String streamingPreview = aiAssistantComponent.getRemoteStreamingBuffer();
 
         lastRenderedChatCount = AiAssistantMainPanelRenderer.renderMainPanel(
                 new AiAssistantMainPanelRenderer.State(
-                        buildAiSettingsSummary(),
-                        aiSettingsStatusMessage,
-                        hasAiDebugData(),
-                plannerBusy,
-                        aiUseSelectionContext,
-                        aiIncludeGraphContext,
-                        aiIncludePlayerWorldContext,
-                        aiIncludeSelectedWorldRegionContext,
-                        aiPreviewOnlyMode,
-                        aiPatchApplyMode,
-                        aiPatchRemoveScopedConnections,
-                        aiEnterToSend,
+                        controller.settingsSummary(),
+                        controller.settingsStatusMessage(),
+                        controller.hasAiDebugData(),
+                        plannerBusy,
+                        ui.aiUseSelectionContext,
+                        ui.aiIncludeGraphContext,
+                        ui.aiIncludePlayerWorldContext,
+                        ui.aiIncludeSelectedWorldRegionContext,
+                        ui.aiPreviewOnlyMode,
+                        ui.aiPatchApplyMode,
+                        ui.aiPatchRemoveScopedConnections,
+                        ui.aiEnterToSend,
                         inputLanguageDetected,
                         normalizedIntentPreview,
-                streamingPreview,
-                resolveAiRuntimeStageLabel(plannerBusy, streamingPreview),
-                aiPlanStatusMessage,
+                        streamingPreview,
+                        controller.resolveAiRuntimeStageLabel(plannerBusy, streamingPreview),
+                        controller.planStatusMessage(),
                         selectedNodeDisplayName,
                         selectedNodeTypeId,
-                        aiChatMessages,
-                        aiPromptInput,
-                        aiEnableRemotePlanner.get(),
+                        ui.aiChatMessages,
+                        ui.aiPromptInput,
+                        ui.aiEnableRemotePlanner.get(),
                         lastRenderedChatCount
                 ),
                 new AiAssistantMainPanelRenderer.Actions() {
@@ -180,12 +101,12 @@ public final class AiAssistantPanel {
 
                     @Override
                     public void cancelRequest() {
-                        cancelRemotePlannerRequest();
+                        controller.cancelRequest();
                     }
 
                     @Override
                     public void onQuickPrompt(String text) {
-                        setAiPrompt(text);
+                        controller.setPrompt(text);
                     }
 
                     @Override
@@ -195,13 +116,14 @@ public final class AiAssistantPanel {
 
                     @Override
                     public void onSubmitPrompt() {
-                        aiPlanStatusMessage = "Send clicked. Preparing request...";
-                        submitAiPrompt();
+                        controller.setPlanStatusMessage("Send clicked. Preparing request...");
+                        controller.submitPrompt();
                     }
 
                     @Override
                     public void clearConversation() {
-                        clearAiConversation();
+                        controller.clearConversation();
+                        lastRenderedChatCount = 0;
                     }
                 }
         );
@@ -211,110 +133,108 @@ public final class AiAssistantPanel {
     }
 
     private void renderAiSettingsPopup() {
-        int providerPresetIndex = AiProviderModelService.resolveProviderPresetIndex(aiApiBaseUrl.get());
-        String detectedProviderLabel = AiProviderModelService.resolveDetectedProviderLabel(aiApiBaseUrl.get());
-        String[] suggestedModels = AiProviderModelService.resolveSuggestedModels(aiApiBaseUrl.get());
-        maybeAutofillModelByProviderChange(detectedProviderLabel, suggestedModels);
+        int providerPresetIndex = AiProviderModelService.resolveProviderPresetIndex(ui.aiApiBaseUrl.get());
+        String detectedProviderLabel = AiProviderModelService.resolveDetectedProviderLabel(ui.aiApiBaseUrl.get());
+        String[] suggestedModels = AiProviderModelService.resolveSuggestedModels(ui.aiApiBaseUrl.get());
+        controller.maybeAutofillModelByProviderChange(detectedProviderLabel, suggestedModels);
 
         AiAssistantSettingsPopupRenderer.renderSettingsPopup(
                 new AiAssistantSettingsPopupRenderer.State(
-                        aiEnableRemotePlanner,
-                        aiApiBaseUrl,
-                        aiApiKey,
-                        aiModel,
+                        ui.aiEnableRemotePlanner,
+                        ui.aiApiBaseUrl,
+                        ui.aiApiKey,
+                        ui.aiModel,
                         new ImInt(providerPresetIndex),
                         AiProviderModelService.providerPresetLabels(),
                         detectedProviderLabel,
                         suggestedModels,
-                        aiProviderStrategyIndex,
-                        aiSystemPrompt,
-                        aiMaxOutputTokens,
-                        aiRequestTimeoutSeconds,
-                        aiConversationHistoryTurns,
-                        aiShowApiKey,
-                        aiRememberApiKey,
-                        aiAutoLayoutBeforeApply,
-                        aiDebugLoggingEnabled,
-                        aiIncludePromptPreviewInDebug,
-                        aiSettingsPath
+                        ui.aiProviderStrategyIndex,
+                        ui.aiSystemPrompt,
+                        ui.aiMaxOutputTokens,
+                        ui.aiRequestTimeoutSeconds,
+                        ui.aiConversationHistoryTurns,
+                        ui.aiShowApiKey,
+                        ui.aiRememberApiKey,
+                        ui.aiAutoLayoutBeforeApply,
+                        ui.aiDebugLoggingEnabled,
+                        ui.aiIncludePromptPreviewInDebug,
+                        controller.settingsPath()
                 ),
                 new AiAssistantSettingsPopupRenderer.Actions() {
                     @Override
                     public void onProviderPresetSelected(int index) {
-                        applyProviderPreset(index);
+                        controller.applyProviderPreset(index);
                     }
 
                     @Override
                     public void onValidateLocal() {
-                        aiSettingsStatusMessage = validateAiSettings();
+                        controller.setSettingsStatusMessage(controller.validateSettings());
                     }
 
                     @Override
                     public void onTestRemoteConnection() {
-                        testRemoteConnection();
+                        controller.testRemoteConnection();
                     }
 
                     @Override
                     public void onSaveSettings() {
-                        saveAiSettingsToDisk();
+                        controller.saveSettings();
                     }
 
                     @Override
                     public void onReloadSettings() {
-                        loadAiSettingsFromDisk();
-                        aiSettingsStatusMessage = "AI settings reloaded from disk.";
+                        controller.reloadSettings();
+                        controller.setSettingsStatusMessage("AI settings reloaded from disk.");
                     }
                 }
         );
     }
 
     private void renderAiDebugConsolePopup() {
-        String compactDiagnostics = AiDiagnosticsService.buildAiDiagnosticsExportText(aiAssistantComponent, aiPlanStatusMessage, false);
-        String fullDiagnostics = AiDiagnosticsService.buildAiDiagnosticsExportText(aiAssistantComponent, aiPlanStatusMessage, true);
+        String compactDiagnostics = AiDiagnosticsService.buildAiDiagnosticsExportText(
+                aiAssistantComponent, controller.planStatusMessage(), false);
+        String fullDiagnostics = AiDiagnosticsService.buildAiDiagnosticsExportText(
+                aiAssistantComponent, controller.planStatusMessage(), true);
         AiAssistantComponent.RemotePlannerSnapshot remoteSnapshot = aiAssistantComponent.getRemotePlannerSnapshot();
 
         AiAssistantDebugConsoleRenderer.renderDebugConsolePopup(
                 new AiAssistantDebugConsoleRenderer.State(
-                remoteSnapshot.errorCategory(),
-                remoteSnapshot.attempts(),
-                remoteSnapshot.rawResponse(),
-                remoteSnapshot.modelText(),
-                remoteSnapshot.requestSnapshot(),
+                        remoteSnapshot.errorCategory(),
+                        remoteSnapshot.attempts(),
+                        remoteSnapshot.rawResponse(),
+                        remoteSnapshot.modelText(),
+                        remoteSnapshot.requestSnapshot(),
                         compactDiagnostics,
                         fullDiagnostics
                 ),
                 new AiAssistantDebugConsoleRenderer.Actions() {
                     @Override
                     public void renderFailureSummarySection() {
-                AiAssistantComponent.RemotePlannerSnapshot snapshot = aiAssistantComponent.getRemotePlannerSnapshot();
+                        AiAssistantComponent.RemotePlannerSnapshot snapshot = aiAssistantComponent.getRemotePlannerSnapshot();
                         AiAssistantFailurePanelRenderer.renderFailureSummaryCard(
                                 new AiAssistantFailurePanelRenderer.State(
-                        snapshot.errorCategory(),
-                        snapshot.statusCode(),
-                        snapshot.attempts(),
-                        snapshot.errorMessage(),
-                                        aiLastSubmittedPrompt != null && !aiLastSubmittedPrompt.isBlank(),
-                                        isRemotePlannerBusy(),
-                                        aiEnableRemotePlanner.get()
+                                        snapshot.errorCategory(),
+                                        snapshot.statusCode(),
+                                        snapshot.attempts(),
+                                        snapshot.errorMessage(),
+                                        controller.lastSubmittedPrompt() != null && !controller.lastSubmittedPrompt().isBlank(),
+                                        controller.isRemotePlannerBusy(),
+                                        ui.aiEnableRemotePlanner.get()
                                 ),
                                 new AiAssistantFailurePanelRenderer.Actions() {
                                     @Override
                                     public void retryLastRequest() {
-                                        retryLastAiRequest();
+                                        controller.retryLastRequest();
                                     }
 
                                     @Override
                                     public void increaseTimeoutSeconds(int deltaSeconds) {
-                                        increaseAiTimeoutSeconds(deltaSeconds);
+                                        controller.increaseTimeoutSeconds(deltaSeconds);
                                     }
 
                                     @Override
                                     public void togglePlannerMode() {
-                                        aiEnableRemotePlanner.set(!aiEnableRemotePlanner.get());
-                                        saveAiSettingsToDisk();
-                                        aiSettingsStatusMessage = aiEnableRemotePlanner.get()
-                                                ? "Remote planner re-enabled."
-                                                : "Switched to local planner for the next request.";
+                                        controller.toggleRemotePlannerEnabled();
                                     }
 
                                     @Override
@@ -324,8 +244,7 @@ public final class AiAssistantPanel {
 
                                     @Override
                                     public void resaveSettings() {
-                                        saveAiSettingsToDisk();
-                                        aiSettingsStatusMessage = "AI settings saved.";
+                                        controller.resaveSettings();
                                     }
                                 }
                         );
@@ -333,188 +252,47 @@ public final class AiAssistantPanel {
 
                     @Override
                     public void copyRawResponse() {
-                        copyToClipboard(aiAssistantComponent.getLastRemoteRawResponse());
-                        aiPlanStatusMessage = "Raw response copied to clipboard.";
+                        controller.copyToClipboard(aiAssistantComponent.getLastRemoteRawResponse());
+                        controller.setPlanStatusMessage("Raw response copied to clipboard.");
                     }
 
                     @Override
                     public void copyModelText() {
-                        copyToClipboard(aiAssistantComponent.getLastRemoteModelText());
-                        aiPlanStatusMessage = "Model text copied to clipboard.";
+                        controller.copyToClipboard(aiAssistantComponent.getLastRemoteModelText());
+                        controller.setPlanStatusMessage("Model text copied to clipboard.");
                     }
 
                     @Override
                     public void copyRequestSnapshot() {
-                        copyToClipboard(aiAssistantComponent.getLastRemoteRequestSnapshot());
-                        aiPlanStatusMessage = "Request snapshot copied to clipboard.";
+                        controller.copyToClipboard(aiAssistantComponent.getLastRemoteRequestSnapshot());
+                        controller.setPlanStatusMessage("Request snapshot copied to clipboard.");
                     }
 
                     @Override
                     public void copyCompactExport() {
-                        copyToClipboard(compactDiagnostics);
-                        aiPlanStatusMessage = "Compact diagnostics exported to clipboard.";
+                        controller.copyToClipboard(compactDiagnostics);
+                        controller.setPlanStatusMessage("Compact diagnostics exported to clipboard.");
                     }
 
                     @Override
                     public void copyFullExport() {
-                        copyToClipboard(fullDiagnostics);
-                        aiPlanStatusMessage = "Full diagnostics exported to clipboard.";
+                        controller.copyToClipboard(fullDiagnostics);
+                        controller.setPlanStatusMessage("Full diagnostics exported to clipboard.");
                     }
                 }
         );
     }
 
-    private void copyToClipboard(String text) {
-        clipboardCopier.accept(text);
-    }
-
-    private boolean hasAiDebugData() {
-        return AiDiagnosticsService.hasAiDebugData(aiAssistantComponent);
-    }
-
-    private void increaseAiTimeoutSeconds(int deltaSeconds) {
-        int current = aiRequestTimeoutSeconds.get();
-        int updated = Math.max(5, Math.min(600, current + deltaSeconds));
-        aiRequestTimeoutSeconds.set(updated);
-        saveAiSettingsToDisk();
-        aiSettingsStatusMessage = "AI timeout increased to " + updated + " seconds.";
-    }
-
-    private String validateAiSettings() {
-        return AiSettingsStore.validate(collectAiSettingsData());
-    }
-
-    private String buildAiSettingsSummary() {
-        return AiSettingsStore.buildSummary(collectAiSettingsData());
-    }
-
-    private Path resolveAiSettingsPath() {
-        return AiSettingsStore.resolveSettingsPath();
-    }
-
-    private void loadAiSettingsFromDisk() {
-        AiSettingsStore.LoadResult result = AiSettingsStore.load(aiSettingsPath);
-        applyAiSettingsData(result.data());
-        aiSettingsStatusMessage = result.statusMessage();
-    }
-
-    private void saveAiSettingsToDisk() {
-        aiSettingsStatusMessage = AiSettingsStore.save(aiSettingsPath, collectAiSettingsData());
-    }
-
-    private void loadAiSessionStateFromDisk() {
-        String status = aiAssistantComponent.loadSessionState(AiSessionPlanCodecService::deserializePendingPlanFromDsl);
-        if (status != null && !status.isBlank()) {
-            aiSettingsStatusMessage = status;
-        }
-    }
-
-    private void saveAiSessionStateToDisk() {
-        aiAssistantComponent.queueSessionStateSave(AI_SESSION_SAVE_DEBOUNCE_MS);
-    }
-
-    private void saveAiSessionStateToDiskNow() {
-        aiAssistantComponent.saveSessionStateNow(AiSessionPlanCodecService::serializePendingPlanToDsl);
-    }
-
-    private void addAiChatMessage(String role, String content) {
-        if (content == null || content.isBlank()) {
-            return;
-        }
-        aiAssistantComponent.addChatMessage(role == null ? "assistant" : role, content, System.currentTimeMillis());
-        saveAiSessionStateToDisk();
-    }
-
-    private void clearAiConversation() {
-        if (isRemotePlannerBusy()) {
-            aiPlanStatusMessage = "Cannot clear chat while AI is generating.";
-            return;
-        }
-
-        aiAssistantComponent.clearConversationState();
-        aiPromptInput.clear();
-        aiTopologyPreviewState.reset();
-        aiPreviewFocusedNodeRef = "";
-        aiPreviewFocusScrollPending = false;
-        lastRenderedChatCount = 0;
-        aiRemoteDslRepairAttempts = 0;
-        aiRemoteGraphExpansionAttempts = 0;
-        aiPlanStatusMessage = "Chat cleared.";
-        saveAiSessionStateToDiskNow();
-    }
-
-    private void setPendingAiPlan(AiGraphPlan plan) {
-        aiAssistantComponent.setPendingPlan(plan);
-        saveAiSessionStateToDisk();
-    }
-
-    private AiGraphPlan getPendingAiPlan() {
-        return aiAssistantComponent.getPendingPlan();
-    }
-
-    private AiSettingsStore.AiSettingsData collectAiSettingsData() {
-        return new AiSettingsStore.AiSettingsData(
-                aiApiBaseUrl.get(),
-                aiApiKey.get(),
-                aiModel.get(),
-                AiProviderModelService.providerStrategyFromIndex(aiProviderStrategyIndex.get(), AI_PROVIDER_STRATEGY_OPTIONS),
-                aiSystemPrompt.get(),
-                aiMaxOutputTokens.get(),
-                aiRequestTimeoutSeconds.get(),
-                aiConversationHistoryTurns.get(),
-                aiShowApiKey.get(),
-                aiRememberApiKey.get(),
-                aiEnableRemotePlanner.get(),
-                aiAutoLayoutBeforeApply.get(),
-                aiIncludeGraphContext.get(),
-                aiIncludePlayerWorldContext.get(),
-                aiIncludeSelectedWorldRegionContext.get(),
-                aiPreviewOnlyMode.get(),
-                aiPatchApplyMode.get(),
-                aiPatchRemoveScopedConnections.get(),
-                aiEnterToSend.get(),
-                aiDebugLoggingEnabled.get(),
-                aiIncludePromptPreviewInDebug.get()
-        );
-    }
-
-    private void applyAiSettingsData(AiSettingsStore.AiSettingsData data) {
-        if (data == null) {
-            return;
-        }
-        aiApiBaseUrl.set(data.apiBaseUrl());
-        aiApiKey.set(data.apiKey());
-        aiModel.set(data.model());
-        aiProviderStrategyIndex.set(AiProviderModelService.indexFromProviderStrategy(data.providerStrategy(), AI_PROVIDER_STRATEGY_OPTIONS));
-        aiSystemPrompt.set(data.systemPrompt());
-        aiMaxOutputTokens.set(data.maxOutputTokens());
-        aiRequestTimeoutSeconds.set(data.timeoutSeconds());
-        aiConversationHistoryTurns.set(data.conversationHistoryTurns());
-        aiShowApiKey.set(data.showApiKey());
-        aiRememberApiKey.set(data.rememberApiKey());
-        aiEnableRemotePlanner.set(data.enableRemotePlanner());
-        aiAutoLayoutBeforeApply.set(data.autoLayoutBeforeApply());
-        aiIncludeGraphContext.set(data.includeGraphContext());
-        aiIncludePlayerWorldContext.set(data.includePlayerWorldContext());
-        aiIncludeSelectedWorldRegionContext.set(data.includeSelectedWorldRegionContext());
-        aiPreviewOnlyMode.set(data.previewOnlyMode());
-        aiPatchApplyMode.set(data.patchApplyMode());
-        aiPatchRemoveScopedConnections.set(data.patchRemoveScopedConnections());
-        aiEnterToSend.set(data.enterToSend());
-        aiDebugLoggingEnabled.set(data.debugLoggingEnabled());
-        aiIncludePromptPreviewInDebug.set(data.includePromptPreviewInDebug());
-    }
-
     private void renderAiPlanPreviewSection() {
-        AiGraphPlan plan = getPendingAiPlan();
+        AiGraphPlan plan = controller.pendingPlan();
         boolean hasPlan = plan != null;
-        boolean plannerBusy = isRemotePlannerBusy();
+        boolean plannerBusy = controller.isRemotePlannerBusy();
 
-        AiGraphDiffService.GraphDiffSummary heuristicDiff = hasPlan ? buildGraphDiffSummary(plan) : null;
-        AiGraphDiffService.MappedDiffSummary mappedDiff = hasPlan ? buildMappedDiffSummary(plan) : null;
+        AiGraphDiffService.GraphDiffSummary heuristicDiff = hasPlan ? controller.buildGraphDiffSummary(plan) : null;
+        AiGraphDiffService.MappedDiffSummary mappedDiff = hasPlan ? controller.buildMappedDiffSummary(plan) : null;
         boolean canApply = hasPlan && plan.isValid() && !plan.nodes().isEmpty() && !plannerBusy;
-        String applyModeHint = resolveApplyModeHint();
-        String undoUnavailableReason = resolveUndoUnavailableReason();
+        String applyModeHint = controller.resolveApplyModeHint();
+        String undoUnavailableReason = controller.resolveUndoUnavailableReason();
         if (plannerBusy && undoUnavailableReason.isBlank()) {
             undoUnavailableReason = "AI is generating a plan. Wait for completion before undo.";
         }
@@ -525,1853 +303,62 @@ public final class AiAssistantPanel {
                         hasPlan,
                         hasPlan ? plan.summary() : "",
                         applyModeHint,
-                        aiPreviewFocusedNodeRef,
-                        aiPreviewFocusScrollPending,
+                        controller.previewFocusedNodeRef(),
+                        controller.previewFocusScrollPending(),
                         hasPlan ? plan.nodes().size() : 0,
                         hasPlan ? plan.connections().size() : 0,
                         hasPlan ? plan.validationErrors() : List.of(),
-                        hasPlan ? buildPlannedNodePreviewLines(plan) : List.of(),
-                        hasPlan ? buildPlannedConnectionPreviewLines(plan) : List.of(),
+                        hasPlan ? controller.buildPlannedNodePreviewLines(plan) : List.of(),
+                        hasPlan ? controller.buildPlannedConnectionPreviewLines(plan) : List.of(),
                         hasPlan ? plan.nodes() : List.of(),
                         hasPlan ? plan.connections() : List.of(),
-                        aiTopologyPreviewState,
+                        ui.aiTopologyPreviewState,
                         heuristicDiff,
                         mappedDiff,
                         canApply,
                         canUndoLastAiApply,
                         undoUnavailableReason,
-                        aiPlanStatusMessage
+                        controller.planStatusMessage()
                 ),
                 new AiAssistantPlanPreviewRenderer.Actions() {
                     @Override
                     public void applyPlan() {
-                        if (aiPreviewOnlyMode.get()) {
-                            runDryRunForPendingPlan();
+                        if (ui.aiPreviewOnlyMode.get()) {
+                            controller.dryRunPendingPlan();
                         } else {
-                            applyPendingAiPlan();
+                            controller.applyPendingPlan();
                         }
                     }
 
                     @Override
                     public void dryRunReport() {
-                        runDryRunForPendingPlan();
+                        controller.dryRunPendingPlan();
                     }
 
                     @Override
                     public void saveAsTemplate() {
-                        savePendingPlanAsTemplate();
+                        controller.savePendingPlanAsTemplate();
                     }
 
                     @Override
                     public void undoLastApply() {
-                        undoLastAiApply();
+                        controller.undoLastApply();
                     }
 
                     @Override
                     public void onTopologyNodeSelected(String nodeRef) {
-                        if (nodeRef == null || nodeRef.isBlank()) {
-                            return;
-                        }
-                        aiPreviewFocusedNodeRef = nodeRef;
-                        aiPreviewFocusScrollPending = true;
-                        aiPlanStatusMessage = "Preview focus: node " + nodeRef;
+                        controller.focusPreviewNode(nodeRef);
                     }
 
                     @Override
                     public void onTopologyFocusScrollConsumed() {
-                        aiPreviewFocusScrollPending = false;
+                        controller.consumePreviewFocusScroll();
                     }
                 }
         );
     }
 
-    private String resolveUndoUnavailableReason() {
-        if (lastAiUndoStepCount <= 0) {
-            return "No recent AI apply to undo.";
-        }
-
-        GraphApplyTarget applyTarget = resolveGraphApplyTarget();
-        if (applyTarget == null) {
-            return "Editor history is unavailable.";
-        }
-
-        GraphApplyHistoryView history = applyTarget.getApplyHistoryView();
-        if (lastAiApplyWasPatch) {
-            if (!history.isUndoTopAiPatch()) {
-                return "Latest history action is no longer this AI patch apply.";
-            }
-            return "";
-        }
-
-        if (!history.canUndo()) {
-            return "Undo stack is empty.";
-        }
-
-        return "";
-    }
-
-    private String resolveApplyModeHint() {
-        if (aiPreviewOnlyMode.get()) {
-            return "Apply mode: Preview only (dry-run report, no graph mutation).";
-        }
-
-        if (!aiPatchApplyMode.get()) {
-            return "Apply mode: Exact replace/apply.";
-        }
-
-        UserIntent intent = AiIntentAnalysisService.classifyIntent(aiLastSubmittedPrompt);
-        if (intent == UserIntent.MODIFY_PARAM) {
-            return "Apply mode: Patch + parameter merge (partial params keep existing fields).";
-        }
-        return "Apply mode: Patch + replace node state.";
-    }
-
-    private String resolveAiRuntimeStageLabel(boolean plannerBusy, String streamingPreview) {
-        if (plannerBusy) {
-            if (streamingPreview != null && !streamingPreview.isBlank()) {
-                return "Streaming";
-            }
-            return "Preparing";
-        }
-
-        String status = aiPlanStatusMessage == null ? "" : aiPlanStatusMessage.trim();
-        if (status.isBlank()) {
-            return "Idle";
-        }
-
-        String normalized = status.toLowerCase(Locale.ROOT);
-        if (normalized.contains("failed")
-                || normalized.contains("error")
-                || normalized.contains("aborted")
-                || normalized.contains("unavailable")
-                || normalized.contains("cannot")
-                || normalized.contains("incomplete")) {
-            return "Failed";
-        }
-        if (normalized.contains("submitted")
-                || normalized.contains("processing")
-                || normalized.contains("preparing")
-                || normalized.contains("thinking")) {
-            return "Preparing";
-        }
-        if (normalized.contains("validated")
-                || normalized.contains("applied")
-                || normalized.contains("completed")
-                || normalized.contains("saved")) {
-            return "Parsed";
-        }
-
-        return getPendingAiPlan() == null ? "Idle" : "Parsed";
-    }
-
-    private List<String> buildPlannedNodePreviewLines(AiGraphPlan plan) {
-        if (plan == null || plan.nodes().isEmpty()) {
-            return List.of();
-        }
-
-        List<String> lines = new ArrayList<>(plan.nodes().size());
-        for (AiPlanNode node : plan.nodes()) {
-            lines.add(node.ref() + " -> " + node.typeId()
-                    + "  (" + String.format(Locale.ROOT, "%.0f", node.offsetX())
-                    + ", " + String.format(Locale.ROOT, "%.0f", node.offsetY()) + ")");
-        }
-        return lines;
-    }
-
-    private List<String> buildPlannedConnectionPreviewLines(AiGraphPlan plan) {
-        if (plan == null || plan.connections().isEmpty()) {
-            return List.of();
-        }
-
-        List<String> lines = new ArrayList<>(plan.connections().size());
-        for (AiPlanConnection connection : plan.connections()) {
-            lines.add(connection.sourceRef() + "." + connection.sourcePortId()
-                    + " -> " + connection.targetRef() + "." + connection.targetPortId());
-        }
-        return lines;
-    }
-
-    private void runDryRunForPendingPlan() {
-        AiGraphPlan pendingAiPlan = getPendingAiPlan();
-        if (pendingAiPlan == null) {
-            aiPlanStatusMessage = "Dry run aborted: no plan available.";
-            return;
-        }
-        if (!pendingAiPlan.isValid()) {
-            aiPlanStatusMessage = "Dry run aborted: plan has validation errors.";
-            return;
-        }
-
-        AiGraphDiffService.GraphDiffSummary heuristic = buildGraphDiffSummary(pendingAiPlan);
-        AiGraphDiffService.MappedDiffSummary mapped = buildMappedDiffSummary(pendingAiPlan);
-
-        String reportText = AiPlanDryRunReportService.buildDryRunReport(
-                pendingAiPlan.nodes().size(),
-                pendingAiPlan.connections().size(),
-                heuristic,
-                mapped
-        );
-        aiPlanStatusMessage = reportText;
-        addAiChatMessage("assistant", reportText);
-    }
-
-    private void savePendingPlanAsTemplate() {
-        AiGraphPlan pendingAiPlan = getPendingAiPlan();
-        if (pendingAiPlan == null) {
-            aiPlanStatusMessage = "Save template skipped: no pending plan available.";
-            return;
-        }
-
-        try {
-            String dslJson = AiPlanDslWorkflowService.toDslJson(toServiceGraphPlanForHistory(pendingAiPlan));
-            String suggestedName = buildTemplateFileStem(pendingAiPlan.summary());
-            Path savedPath = AiTemplateLibrary.saveTemplate(suggestedName, dslJson);
-            aiPlanStatusMessage = "Template saved: " + savedPath.getFileName();
-            addAiChatMessage("assistant", "Template saved to " + toDisplayPath(savedPath));
-        } catch (Exception e) {
-            aiPlanStatusMessage = "Save template failed: " + e.getMessage();
-            NodeCraft.LOGGER.warn("[AI_TEMPLATE] Failed to save template", e);
-        }
-    }
-
-    private String buildTemplateFileStem(String summary) {
-        String base = summary == null ? "" : summary.trim().toLowerCase(Locale.ROOT)
-                .replaceAll("[^a-z0-9_\\-]+", "_")
-                .replaceAll("_+", "_")
-                .replaceAll("^_+|_+$", "");
-        if (base.isBlank()) {
-            return "template";
-        }
-        return base.length() > 48 ? base.substring(0, 48) : base;
-    }
-
-    private String toDisplayPath(Path path) {
-        if (path == null) {
-            return "(unknown)";
-        }
-        try {
-            Path cwd = Path.of("").toAbsolutePath().normalize();
-            Path normalized = path.toAbsolutePath().normalize();
-            if (normalized.startsWith(cwd)) {
-                return cwd.relativize(normalized).toString().replace('\\', '/');
-            }
-            return normalized.toString().replace('\\', '/');
-        } catch (Exception ignored) {
-            return path.toString().replace('\\', '/');
-        }
-    }
-
-    private AiGraphDiffService.GraphDiffSummary buildGraphDiffSummary(AiGraphPlan plan) {
-        List<AiPlanNode> planNodes = safePlanNodes(plan);
-        List<AiPlanConnection> planConnections = safePlanConnections(plan);
-        return AiGraphDiffAdapterService.buildGraphDiffSummary(
-                toDiffPlanNodes(planNodes),
-                toDiffPlanConnections(planConnections),
-                getNodeGraph()
-        );
-    }
-
-    private AiGraphDiffService.MappedDiffSummary buildMappedDiffSummary(AiGraphPlan plan) {
-        List<AiPlanNode> planNodes = safePlanNodes(plan);
-        List<AiPlanConnection> planConnections = safePlanConnections(plan);
-        return AiGraphDiffAdapterService.buildMappedDiffSummary(
-                toDiffPlanNodes(planNodes),
-                toDiffPlanConnections(planConnections),
-                getNodeGraph()
-        );
-    }
-
-    private void setAiPrompt(String text) {
-        if (text == null) {
-            aiPromptInput.clear();
-            return;
-        }
-        aiPromptInput.set(text);
-    }
-
-    private void submitAiPrompt() {
-        if (isRemotePlannerBusy()) {
-            cancelRemotePlannerRequest();
-            aiPlanStatusMessage = "Previous remote request canceled. Sending the latest prompt...";
-            NodeCraft.LOGGER.info("[AI_SEND] Busy request canceled before submitting latest prompt.");
-        }
-
-        String prompt = aiPromptInput.get();
-        int promptLength = prompt == null ? 0 : prompt.trim().length();
-        aiPlanStatusMessage = "Submitting prompt (chars=" + promptLength + ")...";
-        NodeCraft.LOGGER.info("[AI_SEND] Submit clicked. promptLength={}, remoteEnabled={}", promptLength, aiEnableRemotePlanner.get());
-        if (prompt == null || prompt.isBlank()) {
-            aiPlanStatusMessage = "Prompt is empty. Please enter a request.";
-            NodeCraft.LOGGER.info("[AI_SEND] Submission ignored because prompt is empty.");
-            return;
-        }
-
-        submitAiPromptWithText(prompt.trim());
-        aiPromptInput.clear();
-    }
-
-    private void submitAiPromptWithText(String trimmedPrompt) {
-        try {
-            aiLastSubmittedPrompt = trimmedPrompt;
-            addAiChatMessage("user", trimmedPrompt);
-            aiPlanStatusMessage = "Processing prompt...";
-            NodeCraft.LOGGER.info("[AI_SEND] Processing prompt. chars={}, remoteEnabled={}",
-                    trimmedPrompt.length(), aiEnableRemotePlanner.get());
-
-            if (aiEnableRemotePlanner.get()) {
-                startRemotePlannerRequest(trimmedPrompt);
-                return;
-            }
-
-            String dslJson = AiPlanDslWorkflowService.toDslJson(
-                    AiPlanDslWorkflowService.buildMockGraphPlan(trimmedPrompt)
-            );
-            applyDslResponse(trimmedPrompt, dslJson, "local-template");
-        } catch (Exception e) {
-            String error = "Failed to submit prompt: " + e.getMessage();
-            aiPlanStatusMessage = error;
-            addAiChatMessage("assistant", error);
-            NodeCraft.LOGGER.error("[AI_SEND] Submit failed.", e);
-        }
-    }
-
-    private void retryLastAiRequest() {
-        if (aiLastSubmittedPrompt == null || aiLastSubmittedPrompt.isBlank()) {
-            aiPlanStatusMessage = "No previous prompt is available to retry.";
-            return;
-        }
-
-        if (!aiEnableRemotePlanner.get()) {
-            aiPlanStatusMessage = "Retry requires remote planner to be enabled.";
-            return;
-        }
-
-        if (isRemotePlannerBusy()) {
-            aiPlanStatusMessage = "Remote planner is already running.";
-            return;
-        }
-
-        aiPlanStatusMessage = "Retrying last request...";
-        startRemotePlannerRequest(aiLastSubmittedPrompt);
-    }
-
-    private void startRemotePlannerRequest(String userPrompt) {
-        if (isRemotePlannerBusy()) {
-            aiPlanStatusMessage = "Remote planner is already running.";
-            return;
-        }
-
-        aiRemoteDslRepairAttempts = 0;
-        aiRemoteGraphExpansionAttempts = 0;
-
-        INode selectedNode = getSelectedNode();
-        NodeGraph graph = getNodeGraph();
-        AiWorldContextSnapshot worldContext = null;
-        if (aiIncludePlayerWorldContext.get() || aiIncludeSelectedWorldRegionContext.get()) {
-            worldContext = AiWorldContextService.capture(
-                    graph,
-                    selectedNode,
-                    aiIncludePlayerWorldContext.get(),
-                    aiIncludeSelectedWorldRegionContext.get()
-            );
-        }
-        aiLastWorldContextSnapshot = worldContext;
-
-        String validation = validateAiSettings();
-        if (validation.startsWith("Validation failed")) {
-            aiPlanStatusMessage = validation;
-            addAiChatMessage("assistant", validation);
-            return;
-        }
-
-        String userPromptPayload = AiPromptBuilder.buildUserPrompt(
-                userPrompt,
-                AiPromptContextService.buildSelectionContextSummary(
-                        aiUseSelectionContext.get(),
-                        aiIncludeGraphContext.get(),
-                        selectedNode,
-                        resolveSelectedNodePosition(),
-                        graph
-                ),
-                worldContext
-        );
-        List<AiRemotePlannerService.ConversationMessage> conversationHistory =
-                buildConversationHistory(userPrompt, userPromptPayload);
-        AiRemotePlanningOrchestrator.PreparedRequest preparedRequest = remotePlanningOrchestrator.prepareInitialRequest(
-                collectRemoteRequestSettings(),
-                userPrompt,
-                userPromptPayload,
-                looksLikeComplexGenerationPrompt(userPrompt)
-        );
-
-        NodeCraft.LOGGER.info("[AI_SEND] Intent classified. intent={}, promptChars={}, promptFingerprint={}",
-                preparedRequest.userIntent(),
-                userPrompt == null ? 0 : userPrompt.length(),
-                preparedRequest.promptFingerprint());
-        logAiDebug("[AI_SEND] Prompt preview: {}", remotePlanningOrchestrator.sanitizeUserPromptForSnapshot(userPrompt));
-        NodeCraft.LOGGER.info("[AI_SEND] Schema context selected. selectedSchemas={}, totalSchemas={}, limit={}",
-                preparedRequest.selectedSchemaCount(),
-                preparedRequest.totalSchemaCount(),
-                preparedRequest.schemaLimit());
-
-        AiRemotePlannerService.PlannerConfig config = preparedRequest.config();
-        boolean submitted = aiAssistantComponent.submitRemotePlannerRequest(
-                userPrompt,
-                config,
-                conversationHistory,
-                preparedRequest.requestSnapshot()
-        );
-        if (submitted) {
-            NodeCraft.LOGGER.info(
-                    "[AI_SEND] Remote planner submitted. provider={}, baseUrl={}, model={}, strategy={}, timeoutSeconds={}, maxOutputTokens={}, schemas={}, historyMessages={}, promptFingerprint={}",
-                    AiProviderModelService.resolveDetectedProviderLabel(config.apiBaseUrl()),
-                    config.apiBaseUrl(),
-                    config.model(),
-                    config.providerStrategy(),
-                    config.timeoutSeconds(),
-                    config.maxOutputTokens(),
-                    preparedRequest.selectedSchemaCount(),
-                    conversationHistory.size(),
-                    preparedRequest.promptFingerprint()
-            );
-            aiPlanStatusMessage = "Remote planner request submitted...";
-            addAiChatMessage("assistant", "Remote planner request submitted. Streaming output will appear while generating.");
-            return;
-        }
-
-        NodeCraft.LOGGER.warn("[AI_SEND] Remote planner submit rejected because another request is running.");
-        aiPlanStatusMessage = "Remote planner is already running. Please wait for completion or cancel the current request.";
-        addAiChatMessage("assistant", aiPlanStatusMessage);
-    }
-
-    private void testRemoteConnection() {
-        String validation = validateAiSettings();
-        if (validation.startsWith("Validation failed")) {
-            aiSettingsStatusMessage = validation;
-            return;
-        }
-
-        if (aiConnectionTestFuture != null && !aiConnectionTestFuture.isDone()) {
-            aiSettingsStatusMessage = "Connection test is already running...";
-            return;
-        }
-
-        AiRemotePlannerService.PlannerConfig config = new AiRemotePlannerService.PlannerConfig(
-                aiApiBaseUrl.get(),
-                resolveEffectiveApiKey(),
-                aiModel.get(),
-                AiProviderModelService.providerStrategyFromIndex(aiProviderStrategyIndex.get(), AI_PROVIDER_STRATEGY_OPTIONS),
-                aiSystemPrompt.get(),
-                aiMaxOutputTokens.get(),
-                aiRequestTimeoutSeconds.get()
-        );
-        aiSettingsStatusMessage = "Testing remote API connection...";
-        aiConnectionTestFuture = aiAssistantComponent.testRemoteConnectionAsync(config);
-    }
-
-    private void pollConnectionTestResultIfReady() {
-        if (aiConnectionTestFuture == null || !aiConnectionTestFuture.isDone()) {
-            return;
-        }
-
-        try {
-            AiRemotePlannerService.RemotePlanResult result = aiConnectionTestFuture.join();
-            if (result.success()) {
-                aiSettingsStatusMessage = "Remote API connection successful (HTTP " + result.statusCode() + ").";
-            } else {
-                aiSettingsStatusMessage = "Remote API connection failed: " + formatRemoteErrorMessage(result);
-            }
-        } catch (Exception e) {
-            aiSettingsStatusMessage = "Remote API connection failed: " + e.getMessage();
-        } finally {
-            aiConnectionTestFuture = null;
-        }
-    }
-
-    private List<AiRemotePlannerService.ConversationMessage> buildConversationHistory(
-            String newUserPrompt,
-            String userPromptPayload
-    ) {
-        List<AiChatMessage> recent = getRecentPlanningMessages(resolveConversationHistoryLimit(), newUserPrompt);
-        List<AiConversationHistoryService.ChatLine> historyLines = new ArrayList<>(recent.size());
-        for (AiChatMessage message : recent) {
-            historyLines.add(new AiConversationHistoryService.ChatLine(
-                    message.role(),
-                    message.content(),
-                    message.timestampMs()
-            ));
-        }
-
-        List<AiRemotePlannerService.ConversationMessage> history = AiConversationHistoryService.toConversationMessages(
-                historyLines,
-                AI_HISTORY_MAX_CHARS_PER_MESSAGE,
-                AI_HISTORY_MAX_TOTAL_CHARS
-        );
-
-        String latestUserMessage = userPromptPayload;
-        AiGraphPlan pendingAiPlan = getPendingAiPlan();
-        if (pendingAiPlan != null) {
-            String currentPlanJson = AiPlanDslWorkflowService.toDslJsonCompact(toServiceGraphPlanForHistory(pendingAiPlan));
-            latestUserMessage = "Current plan in effect:\n```json\n"
-                    + currentPlanJson
-                    + "\n```\n\n"
-                    + "User follow-up:\n"
-                    + userPromptPayload;
-        }
-
-        latestUserMessage = AiConversationHistoryService.compactMessage(
-                latestUserMessage,
-                AI_LATEST_USER_MESSAGE_MAX_CHARS
-        );
-
-        history.add(new AiRemotePlannerService.ConversationMessage("user", latestUserMessage));
-        return history;
-    }
-
-    private int resolveConversationHistoryLimit() {
-        return Math.max(1, Math.min(20, aiConversationHistoryTurns.get()));
-    }
-
-    private boolean looksLikeComplexGenerationPrompt(String prompt) {
-        String text = prompt == null ? "" : prompt.toLowerCase(Locale.ROOT);
-        return containsAny(text,
-                "教堂", "建筑", "城堡", "房子", "结构", "生成", "建造",
-                "cathedral", "church", "building", "castle", "house", "structure", "generate", "build",
-                "gothic", "哥特");
-    }
-
-    private List<AiChatMessage> getRecentPlanningMessages(int limit, String latestUserPrompt) {
-        if (aiChatMessages.isEmpty() || limit <= 0) {
-            return List.of();
-        }
-
-        List<AiConversationHistoryService.ChatLine> allLines = new ArrayList<>(aiChatMessages.size());
-        for (AiChatMessage message : aiChatMessages) {
-            allLines.add(new AiConversationHistoryService.ChatLine(
-                    message.role(),
-                    message.content(),
-                    message.timestampMs()
-            ));
-        }
-
-        List<AiConversationHistoryService.ChatLine> selected = AiConversationHistoryService.selectRecentPlanningMessages(
-                allLines,
-                latestUserPrompt,
-                limit
-        );
-
-        List<AiChatMessage> recent = new ArrayList<>(selected.size());
-        for (AiConversationHistoryService.ChatLine line : selected) {
-            recent.add(new AiChatMessage(line.role(), line.content(), line.timestampMs()));
-        }
-        return recent;
-    }
-
-    private void pollRemotePlannerResultIfReady() {
-        AiAssistantComponent.RemotePollResult pollResult = aiAssistantComponent.pollRemotePlannerResultIfReady();
-        if (pollResult == null) {
-            return;
-        }
-
-        if (pollResult.hasException()) {
-            String error = "Remote planner failed: " + pollResult.exceptionMessage();
-            NodeCraft.LOGGER.warn("[AI_SEND] Remote planner completed with exception. messageChars={}",
-                    pollResult.exceptionMessage() == null ? 0 : pollResult.exceptionMessage().length());
-            logAiDebug("[AI_SEND] Remote planner exception detail: {}", pollResult.exceptionMessage());
-            aiPlanStatusMessage = error;
-            addAiChatMessage("assistant", error);
-            return;
-        }
-
-        String prompt = pollResult.prompt();
-        AiRemotePlannerService.RemotePlanResult result = pollResult.result();
-        if (result == null) {
-            String error = "Remote planner failed: unknown error";
-            NodeCraft.LOGGER.warn("[AI_SEND] Remote planner completed with null result.");
-            aiPlanStatusMessage = error;
-            addAiChatMessage("assistant", error);
-            return;
-        }
-
-        if (!result.success()) {
-            String error = formatRemoteErrorMessage(result);
-            NodeCraft.LOGGER.warn(
-                    "[AI_SEND] Remote planner failed. category={}, statusCode={}, attempts={}, detailChars={}",
-                    result.errorCategory(),
-                    result.statusCode(),
-                    result.attempts(),
-                    result.errorMessage() == null ? 0 : result.errorMessage().length()
-            );
-            logAiDebug("[AI_SEND] Remote planner failure detail: {}", result.errorMessage());
-            aiPlanStatusMessage = error;
-            addAiChatMessage("assistant", error);
-            setPendingAiPlan(null);
-            return;
-        }
-
-        NodeCraft.LOGGER.info(
-                "[AI_SEND] Remote planner succeeded. statusCode={}, attempts={}, structuredPayload={}, modelContentChars={}",
-                result.statusCode(),
-                result.attempts(),
-                result.structuredPayload(),
-                result.modelContent() == null ? 0 : result.modelContent().length()
-        );
-        applyDslResponse(prompt, result.modelContent(), result.structuredPayload() ? "remote-tool" : "remote");
-    }
-
-    private void applyDslResponse(String prompt, String dslOrModelResponse, String source) {
-        boolean isStructured = "remote-tool".equals(source);
-        AiGraphDslSupport.ParseValidationResult parsed = isStructured
-                ? AiGraphDslSupport.parseStructured(dslOrModelResponse, NodeRegistry.getInstance())
-                : AiGraphDslSupport.parseAndValidate(dslOrModelResponse, NodeRegistry.getInstance());
-        NodeCraft.LOGGER.info("[AI_SEND] DSL parse result. source={}, success={}, errors={}, warnings={}",
-                source,
-                parsed.isSuccess(),
-                parsed.errors() == null ? 0 : parsed.errors().size(),
-                parsed.warnings() == null ? 0 : parsed.warnings().size());
-
-        if (!parsed.isSuccess() || parsed.graph() == null) {
-            String errorMessage = (parsed.errors() != null && !parsed.errors().isEmpty())
-                    ? "Plan JSON validation failed: " + String.join("; ", parsed.errors())
-                    : "Plan validation failed (no error details available).";
-            addAiChatMessage("assistant", errorMessage);
-            aiPlanStatusMessage = errorMessage;
-            NodeCraft.LOGGER.warn("[AI_SEND] DSL parse failed. source={}, errors={}", source, parsed.errors());
-            if ("remote".equals(source) || "remote-tool".equals(source)) {
-                if (tryStartRemoteDslRepair(prompt, dslOrModelResponse, parsed.errors())) {
-                    return;
-                }
-                setPendingAiPlan(null);
-                aiPlanStatusMessage = errorMessage + " No fallback plan was generated; fix the remote output or switch to local mode explicitly.";
-                addAiChatMessage("assistant", aiPlanStatusMessage);
-            }
-            return;
-        }
-
-        aiRemoteDslRepairAttempts = 0;
-
-        AiGraphPlanDslAdapterService.GraphPlan enrichedPlan = enrichPlanWithIntentDefaults(
-            prompt,
-            AiPlanDslWorkflowService.fromDsl(parsed.graph())
-        );
-
-        if (shouldRequestConnectedGraphExpansion(prompt, enrichedPlan)
-                && tryStartRemoteGraphExpansion(prompt, enrichedPlan, dslOrModelResponse)) {
-            return;
-        }
-
-        aiRemoteGraphExpansionAttempts = 0;
-        setPendingAiPlan(fromServiceGraphPlan(enrichedPlan));
-        aiPreviewFocusedNodeRef = "";
-        aiPreviewFocusScrollPending = false;
-        AiGraphPlan pendingAiPlan = getPendingAiPlan();
-        String warningSuffix = formatValidationWarningSuffix(parsed.warnings());
-        UserIntent intent = AiIntentAnalysisService.classifyIntent(prompt);
-        boolean shouldAutoApplyPlacement = intent != UserIntent.MODIFY_PARAM && intent != UserIntent.RESTRUCTURE && intent != UserIntent.EXPLAIN && shouldAutoApplyPlacementPlan(prompt, pendingAiPlan);
-        boolean autoAppliedPlacement = false;
-        if (shouldAutoApplyPlacement) {
-            autoAppliedPlacement = applyPlacementPlan(pendingAiPlan);
-        }
-        NodeCraft.LOGGER.info("[AI_SEND] Plan parsed. source={}, nodes={}, connections={}, nodeTypes={}, shouldAutoApplyPlacement={}, autoAppliedPlacement={}",
-            source,
-            pendingAiPlan == null || pendingAiPlan.nodes() == null ? 0 : pendingAiPlan.nodes().size(),
-            pendingAiPlan == null || pendingAiPlan.connections() == null ? 0 : pendingAiPlan.connections().size(),
-            summarizePlanNodeTypes(pendingAiPlan),
-            shouldAutoApplyPlacement,
-            autoAppliedPlacement);
-        if (pendingAiPlan != null) {
-            int nodeCount = pendingAiPlan.nodes() == null ? 0 : pendingAiPlan.nodes().size();
-            int connectionCount = pendingAiPlan.connections() == null ? 0 : pendingAiPlan.connections().size();
-            addAiChatMessage(
-                    "assistant",
-                    AiPromptContextService.buildAiPlanReply(
-                            prompt,
-                            source,
-                            aiUseSelectionContext.get(),
-                            getSelectedNode(),
-                            nodeCount,
-                            connectionCount,
-                            pendingAiPlan.isValid(),
-                            pendingAiPlan.validationErrors()
-                    ) + warningSuffix
-            );
-        }
-        if (!shouldAutoApplyPlacement) {
-            aiPlanStatusMessage = "Plan JSON validated (" + source + "). Review and click Apply Plan." + warningSuffix;
-        } else if (!autoAppliedPlacement) {
-            if (!warningSuffix.isBlank()) {
-                aiPlanStatusMessage = aiPlanStatusMessage + warningSuffix;
-            }
-        } else if (!warningSuffix.isBlank()) {
-            aiPlanStatusMessage = aiPlanStatusMessage + warningSuffix;
-        }
-    }
-
-    private boolean tryStartRemoteDslRepair(String originalPrompt, String invalidDslOrModelResponse, List<String> parseErrors) {
-        if (aiRemoteDslRepairAttempts >= remotePlanningOrchestrator.maxDslRepairAttempts()) {
-            return false;
-        }
-        if (!aiEnableRemotePlanner.get()) {
-            return false;
-        }
-        if (isRemotePlannerBusy()) {
-            return false;
-        }
-
-        String validation = validateAiSettings();
-        if (validation.startsWith("Validation failed")) {
-            aiPlanStatusMessage = validation;
-            addAiChatMessage("assistant", validation);
-            return false;
-        }
-
-        AiRemotePlanningOrchestrator.PreparedRetryRequest preparedRequest =
-                remotePlanningOrchestrator.prepareDslRepairRequest(
-                        collectRemoteRequestSettings(),
-                        originalPrompt,
-                        invalidDslOrModelResponse,
-                        parseErrors,
-                        aiRemoteDslRepairAttempts,
-                        AiPromptBuilder.serializeWorldContext(aiLastWorldContextSnapshot)
-                );
-        boolean submitted = aiAssistantComponent.submitRemotePlannerRequest(
-                originalPrompt,
-                preparedRequest.config(),
-                preparedRequest.conversation(),
-                preparedRequest.requestSnapshot()
-        );
-        if (!submitted) {
-            return false;
-        }
-
-        aiRemoteDslRepairAttempts = preparedRequest.nextAttempt();
-        aiPlanStatusMessage = "Remote DSL validation failed. Running schema/type repair retry "
-            + preparedRequest.nextAttempt() + " / " + preparedRequest.maxAttempts() + "...";
-        addAiChatMessage("assistant", aiPlanStatusMessage);
-        NodeCraft.LOGGER.info("[AI_SEND] Started remote DSL repair retry {}/{}. errors={}",
-                preparedRequest.nextAttempt(),
-                preparedRequest.maxAttempts(),
-                preparedRequest.diagnosticText());
-        NodeCraft.LOGGER.info("[AI_SEND] Repair schema context selected. selectedSchemas={}, totalSchemas={}, limit={}",
-                preparedRequest.selectedSchemaCount(),
-                preparedRequest.totalSchemaCount(),
-                preparedRequest.schemaLimit());
-        return true;
-    }
-
-    private boolean shouldRequestConnectedGraphExpansion(
-            String prompt,
-            AiGraphPlanDslAdapterService.GraphPlan plan
-    ) {
-        return remotePlanningOrchestrator.shouldRequestConnectedGraphExpansion(
-                prompt,
-                plan,
-                aiRemoteGraphExpansionAttempts,
-                looksLikeComplexGenerationPrompt(prompt)
-        );
-    }
-
-    private boolean isPlacementOnlyCanvasPrompt(String prompt) {
-        String text = prompt == null ? "" : prompt.toLowerCase(Locale.ROOT);
-        return containsAny(text,
-                "画布", "节点放到", "放置节点", "添加节点", "canvas", "place node", "add node")
-                && !looksLikeComplexGenerationPrompt(text);
-    }
-
-    private boolean tryStartRemoteGraphExpansion(
-            String originalPrompt,
-            AiGraphPlanDslAdapterService.GraphPlan underspecifiedPlan,
-            String originalModelPayload
-    ) {
-        if (aiRemoteGraphExpansionAttempts >= remotePlanningOrchestrator.maxGraphExpansionAttempts()) {
-            return false;
-        }
-        if (!aiEnableRemotePlanner.get() || isRemotePlannerBusy()) {
-            return false;
-        }
-
-        String validation = validateAiSettings();
-        if (validation.startsWith("Validation failed")) {
-            aiPlanStatusMessage = validation;
-            addAiChatMessage("assistant", validation);
-            return false;
-        }
-
-        AiRemotePlanningOrchestrator.PreparedRetryRequest preparedRequest =
-                remotePlanningOrchestrator.prepareGraphExpansionRequest(
-                        collectRemoteRequestSettings(),
-                        originalPrompt,
-                        underspecifiedPlan,
-                        originalModelPayload,
-                        aiRemoteGraphExpansionAttempts,
-                        AiPromptBuilder.serializeWorldContext(aiLastWorldContextSnapshot)
-                );
-        boolean submitted = aiAssistantComponent.submitRemotePlannerRequest(
-                originalPrompt,
-                preparedRequest.config(),
-                preparedRequest.conversation(),
-                preparedRequest.requestSnapshot()
-        );
-        if (!submitted) {
-            return false;
-        }
-
-        aiRemoteGraphExpansionAttempts = preparedRequest.nextAttempt();
-        aiPlanStatusMessage = "Remote plan was valid but not connected. Requesting connected graph expansion...";
-        addAiChatMessage("assistant", aiPlanStatusMessage);
-        NodeCraft.LOGGER.info(
-                "[AI_SEND] Started connected graph expansion retry {}/{}. currentNodes={}, currentConnections={}, selectedSchemas={}, totalSchemas={}",
-                preparedRequest.nextAttempt(),
-                preparedRequest.maxAttempts(),
-                underspecifiedPlan == null || underspecifiedPlan.nodes() == null ? 0 : underspecifiedPlan.nodes().size(),
-                underspecifiedPlan == null || underspecifiedPlan.connections() == null ? 0 : underspecifiedPlan.connections().size(),
-                preparedRequest.selectedSchemaCount(),
-                preparedRequest.totalSchemaCount()
-        );
-        return true;
-    }
-
-    private boolean shouldAutoApplyPlacementPlan(String prompt, AiGraphPlan plan) {
-        if (aiPreviewOnlyMode.get() || plan == null || !plan.isValid()) {
-            return false;
-        }
-        if (plan.nodes() == null || plan.connections() == null) {
-            return false;
-        }
-        if (plan.nodes().size() != 1 || !plan.connections().isEmpty()) {
-            return false;
-        }
-
-        AiPlanNode node = plan.nodes().getFirst();
-        if (node == null || node.typeId() == null || node.typeId().isBlank()) {
-            return false;
-        }
-
-        if (AiIntentAnalysisService.classifyIntent(prompt) != UserIntent.GENERATE_NEW) {
-            return false;
-        }
-
-        String nodeType = node.typeId().toLowerCase(Locale.ROOT);
-        if (nodeType.startsWith("world.selection.")) {
-            return true;
-        }
-        if (nodeType.startsWith("input.type_selectors.")) {
-            return true;
-        }
-
-        boolean placementLikeNodeType = nodeType.startsWith("world.")
-                || nodeType.contains("selection")
-                || nodeType.contains("selector")
-                || nodeType.contains("placement")
-                || nodeType.contains("region");
-        if (!placementLikeNodeType) {
-            return false;
-        }
-
-        String normalizedPrompt = prompt == null ? "" : prompt.toLowerCase(Locale.ROOT);
-        boolean hasPlacementAction = containsAny(normalizedPrompt,
-                "place", "add", "insert", "spawn", "set",
-                "放置", "添加", "插入", "生成", "摆放", "设置");
-        boolean hasPlacementTarget = containsAny(normalizedPrompt,
-                "block", "blocks", "selection", "selector", "region",
-                "方块", "选区", "选择器", "区域", "地形");
-        return hasPlacementAction && hasPlacementTarget;
-    }
-
-    private boolean containsAny(String text, String... keywords) {
-        if (text == null || text.isBlank() || keywords == null) {
-            return false;
-        }
-        for (String keyword : keywords) {
-            if (keyword != null && !keyword.isBlank() && text.contains(keyword)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private boolean applyPlacementPlan(AiGraphPlan pendingAiPlan) {
-        if (pendingAiPlan == null || !pendingAiPlan.isValid() || pendingAiPlan.nodes() == null || pendingAiPlan.nodes().isEmpty()) {
-            NodeCraft.LOGGER.info("[AI_SEND] Placement auto-apply skipped: invalid or empty pending plan.");
-            return false;
-        }
-
-        GraphApplyTarget applyTarget = resolveGraphApplyTarget();
-        if (applyTarget == null) {
-            aiPlanStatusMessage = "Placement apply failed: editor is unavailable.";
-            NodeCraft.LOGGER.warn("[AI_SEND] Placement auto-apply failed: editor unavailable.");
-            return false;
-        }
-
-        float[] anchor = resolveAiPlanAnchorPosition(applyTarget);
-        NodeCraft.LOGGER.info("[AI_SEND] Placement auto-apply start. nodes={}, anchor=({}, {})",
-                pendingAiPlan.nodes().size(), anchor[0], anchor[1]);
-        List<AiPlanApplyCoordinatorService.PlanNode> applyNodes = new ArrayList<>(pendingAiPlan.nodes().size());
-        for (AiPlanNode node : pendingAiPlan.nodes()) {
-            applyNodes.add(new AiPlanApplyCoordinatorService.PlanNode(
-                    node.ref(),
-                    node.typeId(),
-                    node.offsetX(),
-                    node.offsetY(),
-                    node.nodeState()
-            ));
-        }
-
-        AiPlanApplyCoordinatorService.ApplyResult result = AiPlanApplyCoordinatorService.applyExact(
-                applyTarget,
-                applyNodes,
-                List.of(),
-                anchor
-        );
-
-        if (result.success()) {
-            lastAiUndoStepCount = result.undoSteps();
-            lastAiApplyWasPatch = false;
-            aiPlanStatusMessage = result.statusMessage() + " (placement auto-applied)";
-            NodeCraft.LOGGER.info("[AI_SEND] Placement auto-apply success. createdNodes={}, connectedEdges={}, undoSteps={}, status={}",
-                    result.createdNodes(), result.connectedEdges(), result.undoSteps(), result.statusMessage());
-            return true;
-        }
-
-        lastAiUndoStepCount = 0;
-        lastAiApplyWasPatch = false;
-        aiPlanStatusMessage = "Placement auto-apply failed: " + result.statusMessage();
-        NodeCraft.LOGGER.warn("[AI_SEND] Placement auto-apply failed. status={}", result.statusMessage());
-        return false;
-    }
-
-    private String formatValidationWarningSuffix(List<String> warnings) {
-        if (warnings == null || warnings.isEmpty()) {
-            return "";
-        }
-        return " Warning: " + String.join("; ", warnings);
-    }
-
-    private String summarizePlanNodeTypes(AiGraphPlan plan) {
-        if (plan == null || plan.nodes() == null || plan.nodes().isEmpty()) {
-            return "[]";
-        }
-        List<String> types = new ArrayList<>();
-        for (AiPlanNode node : plan.nodes()) {
-            if (node == null || node.typeId() == null || node.typeId().isBlank()) {
-                continue;
-            }
-            types.add(node.ref() + ":" + node.typeId());
-            if (types.size() >= 12) {
-                types.add("...");
-                break;
-            }
-        }
-        return types.toString();
-    }
-
-    private record PortMeta(String id, NodeDataType dataType, boolean required) {
-    }
-
-    private record NodeMeta(
-            String ref,
-            String typeId,
-            String category,
-            float x,
-            List<PortMeta> inputs,
-            List<PortMeta> outputs
-    ) {
-    }
-
-    private AiGraphPlanDslAdapterService.GraphPlan enrichPlanWithIntentDefaults(
-            String prompt,
-            AiGraphPlanDslAdapterService.GraphPlan plan
-    ) {
-        if (plan == null || plan.nodes() == null || plan.nodes().isEmpty()) {
-            return plan;
-        }
-
-        List<AiGraphPlanDslAdapterService.PlanNode> normalizedNodes = applyDefaultNodeParams(plan.nodes());
-        List<AiGraphPlanDslAdapterService.PlanConnection> normalizedConnections =
-                plan.connections() == null ? new ArrayList<>() : new ArrayList<>(plan.connections());
-
-        int beforeConnectionCount = normalizedConnections.size();
-        UserIntent intent = AiIntentAnalysisService.classifyIntent(prompt);
-        if (intent == UserIntent.GENERATE_NEW && normalizedNodes.size() > 1 && normalizedConnections.isEmpty()) {
-            List<AiGraphPlanDslAdapterService.PlanConnection> inferredConnections = buildAutoConnections(normalizedNodes);
-            normalizedConnections.addAll(filterValidInferredConnections(
-                    plan.summary(),
-                    normalizedNodes,
-                    normalizedConnections,
-                    inferredConnections
-            ));
-        }
-
-        int addedConnections = normalizedConnections.size() - beforeConnectionCount;
-        if (addedConnections > 0) {
-            NodeCraft.LOGGER.info(
-                    "[AI_SEND] Plan enrichment added {} inferred connections for intent={}.",
-                    addedConnections,
-                    intent
-            );
-        }
-
-        return new AiGraphPlanDslAdapterService.GraphPlan(
-                plan.summary(),
-                normalizedNodes,
-                normalizedConnections,
-                plan.validationErrors() == null ? List.of() : plan.validationErrors()
-        );
-    }
-
-    private List<AiGraphPlanDslAdapterService.PlanConnection> filterValidInferredConnections(
-            String summary,
-            List<AiGraphPlanDslAdapterService.PlanNode> nodes,
-            List<AiGraphPlanDslAdapterService.PlanConnection> existingConnections,
-            List<AiGraphPlanDslAdapterService.PlanConnection> inferredConnections
-    ) {
-        if (inferredConnections == null || inferredConnections.isEmpty()) {
-            return List.of();
-        }
-
-        List<AiGraphPlanDslAdapterService.PlanConnection> accepted = new ArrayList<>();
-        List<AiGraphPlanDslAdapterService.PlanConnection> working = new ArrayList<>(
-                existingConnections == null ? List.of() : existingConnections
-        );
-
-        for (AiGraphPlanDslAdapterService.PlanConnection candidate : inferredConnections) {
-            working.add(candidate);
-            AiGraphPlanDslAdapterService.GraphPlan trial = new AiGraphPlanDslAdapterService.GraphPlan(
-                    summary,
-                    nodes,
-                    working,
-                    List.of()
-            );
-            AiGraphDslSupport.ParseValidationResult parsed =
-                    AiGraphDslSupport.parseAndValidate(AiPlanDslWorkflowService.toDslJsonCompact(trial), NodeRegistry.getInstance());
-            if (parsed.isSuccess()) {
-                accepted.add(candidate);
-            } else {
-                working.removeLast();
-                NodeCraft.LOGGER.warn(
-                        "[AI_SEND] Rejected inferred connection {}.{} -> {}.{} because validation failed: {}",
-                        candidate.sourceRef(),
-                        candidate.sourcePortId(),
-                        candidate.targetRef(),
-                        candidate.targetPortId(),
-                        parsed.errors()
-                );
-            }
-        }
-
-        return accepted;
-    }
-
-    private List<AiGraphPlanDslAdapterService.PlanNode> applyDefaultNodeParams(
-            List<AiGraphPlanDslAdapterService.PlanNode> nodes
-    ) {
-        NodeRegistry registry = NodeRegistry.getInstance();
-        Map<String, Map<String, Object>> defaultStateCache = new HashMap<>();
-        List<AiGraphPlanDslAdapterService.PlanNode> result = new ArrayList<>(nodes.size());
-
-        for (AiGraphPlanDslAdapterService.PlanNode node : nodes) {
-            Map<String, Object> existingState = toStateMap(node.nodeState());
-            Map<String, Object> defaultState = defaultStateCache.computeIfAbsent(
-                    node.typeId(),
-                    typeId -> resolveDefaultNodeState(registry, typeId)
-            );
-
-            if (defaultState.isEmpty()) {
-                result.add(node);
-                continue;
-            }
-
-            Map<String, Object> merged = new HashMap<>(defaultState);
-            merged.putAll(existingState);
-
-            result.add(new AiGraphPlanDslAdapterService.PlanNode(
-                    node.ref(),
-                    node.typeId(),
-                    node.offsetX(),
-                    node.offsetY(),
-                    merged
-            ));
-        }
-
-        return result;
-    }
-
-    private Map<String, Object> resolveDefaultNodeState(NodeRegistry registry, String typeId) {
-        if (registry == null || typeId == null || typeId.isBlank()) {
-            return Map.of();
-        }
-        try {
-            return registry.getDefaultNodeState(typeId);
-        } catch (Exception ignored) {
-            return Map.of();
-        }
-    }
-
-    private Map<String, Object> toStateMap(Object state) {
-        if (!(state instanceof Map<?, ?> rawMap) || rawMap.isEmpty()) {
-            return Map.of();
-        }
-        Map<String, Object> normalized = new HashMap<>();
-        for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
-            if (entry.getKey() instanceof String key && !key.isBlank()) {
-                normalized.put(key, entry.getValue());
-            }
-        }
-        return normalized;
-    }
-
-    private List<AiGraphPlanDslAdapterService.PlanConnection> buildAutoConnections(
-            List<AiGraphPlanDslAdapterService.PlanNode> nodes
-    ) {
-        List<AiGraphPlanDslAdapterService.PlanConnection> generated = new ArrayList<>();
-        if (nodes == null || nodes.size() < 2) {
-            return generated;
-        }
-
-        List<NodeMeta> metas = buildNodeMetas(nodes);
-        if (metas.size() < 2) {
-            return generated;
-        }
-
-        Set<String> usedTargetPorts = new HashSet<>();
-        List<NodeMeta> targetOrder = new ArrayList<>(metas);
-        targetOrder.sort(Comparator
-                .comparing((NodeMeta meta) -> !isOutputCategory(meta.category()))
-                .thenComparing(NodeMeta::x));
-
-        for (NodeMeta target : targetOrder) {
-            if (target.inputs() == null || target.inputs().isEmpty()) {
-                continue;
-            }
-            for (PortMeta input : target.inputs()) {
-                if (!input.required()) {
-                    continue;
-                }
-                if (!shouldAutoWireInputPort(input)) {
-                    continue;
-                }
-                String targetKey = target.ref() + "#" + input.id();
-                if (usedTargetPorts.contains(targetKey)) {
-                    continue;
-                }
-
-                NodeMeta source = findBestSourceMeta(metas, target, input);
-                if (source == null) {
-                    continue;
-                }
-
-                PortMeta sourcePort = findBestSourcePort(source, input);
-                if (sourcePort == null) {
-                    continue;
-                }
-
-                generated.add(new AiGraphPlanDslAdapterService.PlanConnection(
-                        source.ref(),
-                        sourcePort.id(),
-                        target.ref(),
-                        input.id()
-                ));
-                usedTargetPorts.add(targetKey);
-            }
-        }
-
-        return generated;
-    }
-
-    private List<NodeMeta> buildNodeMetas(List<AiGraphPlanDslAdapterService.PlanNode> nodes) {
-        NodeRegistry registry = NodeRegistry.getInstance();
-        List<NodeMeta> metas = new ArrayList<>(nodes.size());
-        for (AiGraphPlanDslAdapterService.PlanNode node : nodes) {
-            String category = "";
-            if (registry != null && node.typeId() != null && !node.typeId().isBlank()) {
-                var info = registry.getNodeInfo(node.typeId());
-                if (info != null && info.getCategoryId() != null) {
-                    category = info.getCategoryId();
-                }
-            }
-
-            List<PortMeta> inputs = new ArrayList<>();
-            List<PortMeta> outputs = new ArrayList<>();
-            try {
-                INode instance = registry == null ? null : registry.createNodeInstance(node.typeId());
-                if (instance != null) {
-                    for (IPort input : instance.getInputPorts()) {
-                        inputs.add(new PortMeta(input.getId(), input.getDataType(), input.isRequired()));
-                    }
-                    for (IPort output : instance.getOutputPorts()) {
-                        outputs.add(new PortMeta(output.getId(), output.getDataType(), false));
-                    }
-                }
-            } catch (Exception ignored) {
-                // Keep partial metadata when node instantiation fails.
-            }
-
-            metas.add(new NodeMeta(
-                    node.ref(),
-                    node.typeId(),
-                    category == null ? "" : category,
-                    node.offsetX(),
-                    inputs,
-                    outputs
-            ));
-        }
-        return metas;
-    }
-
-    private NodeMeta findBestSourceMeta(List<NodeMeta> metas, NodeMeta target, PortMeta targetInput) {
-        NodeMeta best = null;
-        int bestScore = Integer.MIN_VALUE;
-        for (NodeMeta candidate : metas) {
-            if (candidate == null || candidate.ref().equals(target.ref())) {
-                continue;
-            }
-            if (isOutputCategory(candidate.category())) {
-                continue;
-            }
-            PortMeta sourcePort = findBestSourcePort(candidate, targetInput);
-            if (sourcePort == null) {
-                continue;
-            }
-
-            int score = 0;
-            if (candidate.x() <= target.x()) {
-                score += 8;
-            }
-            if (isInputCategory(candidate.category())) {
-                score += 10;
-            }
-            if (!isOutputCategory(candidate.category()) && isOutputCategory(target.category())) {
-                score += 6;
-            }
-            if (candidate.typeId() != null && targetInput.id() != null
-                    && candidate.typeId().toLowerCase(Locale.ROOT).contains(targetInput.id().replace("input_", "").toLowerCase(Locale.ROOT))) {
-                score += 3;
-            }
-
-            if (score > bestScore) {
-                bestScore = score;
-                best = candidate;
-            }
-        }
-        return best;
-    }
-
-    private PortMeta findBestSourcePort(NodeMeta source, PortMeta targetInput) {
-        if (source == null || source.outputs() == null || source.outputs().isEmpty() || targetInput == null) {
-            return null;
-        }
-        PortMeta best = null;
-        int bestScore = Integer.MIN_VALUE;
-        for (PortMeta output : source.outputs()) {
-            if (!shouldAutoWireSourcePort(output)) {
-                continue;
-            }
-            if (!isTypeCompatible(output.dataType(), targetInput.dataType())) {
-                continue;
-            }
-            int score = 0;
-            if (output.dataType() == targetInput.dataType()) {
-                score += 20;
-            }
-            if (safeLower(output.id()).contains("output_" + safeLower(targetInput.id()).replace("input_", ""))) {
-                score += 6;
-            }
-            if (score > bestScore) {
-                bestScore = score;
-                best = output;
-            }
-        }
-        return best;
-    }
-
-    private boolean isTypeCompatible(NodeDataType outputType, NodeDataType inputType) {
-        if (outputType == null || inputType == null) {
-            return false;
-        }
-        return NodeDataType.isConnectableTo(outputType, inputType);
-    }
-
-    private boolean shouldAutoWireInputPort(PortMeta input) {
-        if (input == null || !input.required()) {
-            return false;
-        }
-        String inputId = safeLower(input.id());
-        String inputType = input.dataType() == null ? "" : safeLower(input.dataType().getId());
-
-        if (containsAny(inputId,
-                "color", "block_type", "transparency", "trigger", "notify", "status", "message", "progress")) {
-            return false;
-        }
-
-        if (containsAny(inputType,
-                "geometry", "blocks", "curve", "coordinate", "position", "vector", "integer", "float", "double", "number", "bounding_box")) {
-            return true;
-        }
-
-        return containsAny(inputId,
-                "geometry", "blocks", "curve", "coordinate", "position", "vector", "radius", "height", "width", "depth", "size", "count", "value");
-    }
-
-    private boolean shouldAutoWireSourcePort(PortMeta output) {
-        if (output == null) {
-            return false;
-        }
-        String outputId = safeLower(output.id());
-        return !containsAny(outputId,
-                "status", "valid", "notify", "message", "progress", "debug", "log");
-    }
-
-    private boolean isInputCategory(String category) {
-        return safeLower(category).startsWith("input.") || safeLower(category).startsWith("reference.");
-    }
-
-    private boolean isOutputCategory(String category) {
-        return safeLower(category).startsWith("output.");
-    }
-
-    private String safeLower(String text) {
-        return text == null ? "" : text.toLowerCase(Locale.ROOT);
-    }
-
-    private boolean isRemotePlannerBusy() {
-        return aiAssistantComponent.isRemotePlannerBusy();
-    }
-
-    private void cancelRemotePlannerRequest() {
-        aiAssistantComponent.cancelRemotePlannerRequest();
-        NodeCraft.LOGGER.info("[AI_SEND] Remote planner request canceled by user.");
-        aiPlanStatusMessage = "Remote planner request canceled.";
-        addAiChatMessage("assistant", aiPlanStatusMessage);
-    }
-
-    private String formatRemoteErrorMessage(AiRemotePlannerService.RemotePlanResult result) {
-        String category = result.errorCategory();
-        String headline = switch (category) {
-            case "auth" -> "Remote planner auth failed. Please check API key and permissions.";
-            case "rate-limit" -> "Remote planner rate-limited. Please retry shortly or reduce request frequency.";
-            case "timeout" -> "Remote planner timed out. Increase timeout or retry.";
-            case "network" -> "Remote planner network error. Check connectivity and endpoint.";
-            case "server" -> "Remote planner service error. Server returned 5xx.";
-            case "request" -> "Remote planner rejected the request. Check model/base URL/payload.";
-            case "response-format" -> "Remote planner returned an unexpected response format.";
-            case "canceled" -> "Remote planner request canceled.";
-            default -> "Remote planner failed.";
-        };
-
-        String detail = result.errorMessage() == null ? "" : result.errorMessage();
-        String attemptInfo = result.attempts() > 1 ? " (retried " + result.attempts() + " times)" : "";
-        return headline + attemptInfo + (detail.isBlank() ? "" : " Detail: " + detail);
-    }
-
-    private void logAiDebug(String message, Object... args) {
-        if (!aiDebugLoggingEnabled.get()) {
-            return;
-        }
-        NodeCraft.LOGGER.debug(message, args);
-    }
-
-    private String resolveEffectiveApiKey() {
-        return AiSettingsStore.resolveApiKey(collectAiSettingsData());
-    }
-
-    private AiRemotePlanningOrchestrator.RequestSettings collectRemoteRequestSettings() {
-        return new AiRemotePlanningOrchestrator.RequestSettings(
-                aiApiBaseUrl.get(),
-                resolveEffectiveApiKey(),
-                aiModel.get(),
-                AiProviderModelService.providerStrategyFromIndex(aiProviderStrategyIndex.get(), AI_PROVIDER_STRATEGY_OPTIONS),
-                aiSystemPrompt.get(),
-                aiMaxOutputTokens.get(),
-                aiRequestTimeoutSeconds.get(),
-                aiUseSelectionContext.get(),
-                aiDebugLoggingEnabled.get(),
-                aiIncludePromptPreviewInDebug.get()
-        );
-    }
-
-    private void maybeAutofillModelByProviderChange(String detectedProviderLabel, String[] suggestedModels) {
-        if (detectedProviderLabel == null) {
-            detectedProviderLabel = "";
-        }
-        if (suggestedModels == null || suggestedModels.length == 0) {
-            aiLastDetectedProviderLabel = detectedProviderLabel;
-            return;
-        }
-
-        if (detectedProviderLabel.equals(aiLastDetectedProviderLabel)) {
-            return;
-        }
-
-        String currentModel = aiModel.get();
-        boolean shouldAutofill = currentModel == null
-                || currentModel.isBlank()
-            || !AiProviderModelService.isModelInSuggestions(currentModel, suggestedModels);
-
-        if (shouldAutofill) {
-            aiModel.set(suggestedModels[0]);
-            aiSettingsStatusMessage = "Provider changed to " + detectedProviderLabel
-                    + ", model auto-filled: " + suggestedModels[0];
-        }
-
-        aiLastDetectedProviderLabel = detectedProviderLabel;
-    }
-
-    private void applyProviderPreset(int index) {
-        AiProviderModelService.ProviderPreset[] presets = AiProviderModelService.providerPresets();
-        if (presets == null || presets.length == 0) {
-            return;
-        }
-
-        int safeIndex = Math.max(0, Math.min(presets.length - 1, index));
-        AiProviderModelService.ProviderPreset preset = presets[safeIndex];
-        if (preset.baseUrl() != null && !preset.baseUrl().isBlank()) {
-            aiApiBaseUrl.set(preset.baseUrl());
-        }
-        aiProviderStrategyIndex.set(AiProviderModelService.indexFromProviderStrategy(
-                preset.providerStrategy(),
-                AI_PROVIDER_STRATEGY_OPTIONS
-        ));
-
-        String[] models = preset.models();
-        if (models != null && models.length > 0) {
-            String currentModel = aiModel.get();
-            if (currentModel == null
-                    || currentModel.isBlank()
-                    || !AiProviderModelService.isModelInSuggestions(currentModel, models)) {
-                aiModel.set(models[0]);
-            }
-        }
-
-        aiLastDetectedProviderLabel = preset.label();
-        aiSettingsStatusMessage = "Provider preset applied: " + preset.label() + ".";
-    }
-
-    private AiGraphPlanDslAdapterService.GraphPlan toServiceGraphPlanForHistory(AiGraphPlan plan) {
-        if (plan == null) {
-            return new AiGraphPlanDslAdapterService.GraphPlan("", List.of(), List.of(), List.of());
-        }
-
-        List<AiPlanNode> planNodes = safePlanNodes(plan);
-        List<AiPlanConnection> planConnections = safePlanConnections(plan);
-
-        return new AiGraphPlanDslAdapterService.GraphPlan(
-                plan.summary(),
-                toDslAdapterNodes(planNodes),
-                toDslAdapterConnections(planConnections),
-                plan.validationErrors() == null ? List.of() : plan.validationErrors()
-        );
-    }
-
-    private AiGraphPlan fromServiceGraphPlan(AiGraphPlanDslAdapterService.GraphPlan plan) {
-        List<AiPlanNode> nodes = new ArrayList<>();
-        for (AiGraphPlanDslAdapterService.PlanNode node : plan.nodes()) {
-            nodes.add(new AiPlanNode(node.ref(), node.typeId(), node.offsetX(), node.offsetY(), node.nodeState()));
-        }
-
-        List<AiPlanConnection> connections = new ArrayList<>();
-        for (AiGraphPlanDslAdapterService.PlanConnection connection : plan.connections()) {
-            connections.add(new AiPlanConnection(
-                    connection.sourceRef(),
-                    connection.sourcePortId(),
-                    connection.targetRef(),
-                    connection.targetPortId()
-            ));
-        }
-
-        List<String> errors = plan.validationErrors() == null ? List.of() : plan.validationErrors();
-        return new AiGraphPlan(plan.summary(), nodes, connections, errors);
-    }
-
-    private void applyPendingAiPlan() {
-        AiGraphPlan pendingAiPlan = getPendingAiPlan();
-        if (pendingAiPlan == null) {
-            aiPlanStatusMessage = "No plan available.";
-            return;
-        }
-        if (!pendingAiPlan.isValid()) {
-            aiPlanStatusMessage = "Cannot apply: plan has validation errors.";
-            return;
-        }
-
-        GraphApplyTarget applyTarget = resolveGraphApplyTarget();
-        if (applyTarget == null) {
-            aiPlanStatusMessage = "Cannot apply: editor is unavailable.";
-            return;
-        }
-
-        logAiApplyHistoryContext("before-apply", applyTarget, pendingAiPlan, aiPatchApplyMode.get());
-
-        float[] anchor = resolveAiPlanAnchorPosition(applyTarget);
-        List<AiPlanNode> nodesToApply = aiAutoLayoutBeforeApply.get()
-                ? buildAutoLayoutNodes(pendingAiPlan)
-            : safePlanNodes(pendingAiPlan);
-        if (nodesToApply == null) {
-            nodesToApply = List.of();
-        }
-        List<AiPlanConnection> connectionsToApply = safePlanConnections(pendingAiPlan);
-
-        if (aiPatchApplyMode.get()) {
-            applyPendingAiPlanPatch(applyTarget, nodesToApply, anchor);
-            return;
-        }
-
-        List<AiPlanApplyCoordinatorService.PlanNode> applyNodes = toCoordinatorApplyNodes(nodesToApply);
-        List<AiPlanApplyCoordinatorService.PlanConnection> applyConnections = toCoordinatorApplyConnections(connectionsToApply);
-
-        AiPlanApplyCoordinatorService.ApplyResult result = AiPlanApplyCoordinatorService.applyExact(
-                applyTarget,
-                applyNodes,
-                applyConnections,
-                anchor
-        );
-
-        if (result.success()) {
-            lastAiUndoStepCount = result.undoSteps();
-        } else {
-            lastAiUndoStepCount = 0;
-        }
-        lastAiApplyWasPatch = false;
-        logAiApplyHistoryContext("after-apply-exact", applyTarget, pendingAiPlan, false);
-
-        aiPlanStatusMessage = result.statusMessage()
-                + (result.success() && aiAutoLayoutBeforeApply.get() ? " (auto layout enabled)" : "");
-    }
-
-    private void applyPendingAiPlanPatch(GraphApplyTarget applyTarget, List<AiPlanNode> nodesToApply, float[] anchor) {
-        AiGraphPlan pendingAiPlan = getPendingAiPlan();
-        if (pendingAiPlan == null) {
-            aiPlanStatusMessage = "Patch apply failed: no pending plan available.";
-            return;
-        }
-        if (applyTarget == null) {
-            aiPlanStatusMessage = "Patch apply failed: editor is unavailable.";
-            return;
-        }
-        logAiApplyHistoryContext("before-apply-patch", applyTarget, pendingAiPlan, true);
-        NodeGraph graph = getNodeGraph();
-        if (graph == null) {
-            aiPlanStatusMessage = "Patch apply failed: current graph is unavailable.";
-            return;
-        }
-        if (nodesToApply == null) {
-            nodesToApply = List.of();
-        }
-        List<AiPlanConnection> pendingConnections = safePlanConnections(pendingAiPlan);
-
-        List<AiGraphApplyAdapterService.PlanNode> patchNodes = toPatchApplyNodes(nodesToApply);
-        List<AiGraphApplyAdapterService.PlanConnection> patchConnections = toPatchApplyConnections(pendingConnections);
-
-        AiGraphApplyAdapterService.PatchPayload payload =
-                AiGraphApplyAdapterService.toPatchPayload(patchNodes, patchConnections);
-        boolean mergeExistingNodeState = AiIntentAnalysisService.classifyIntent(aiLastSubmittedPrompt) == UserIntent.MODIFY_PARAM || AiIntentAnalysisService.classifyIntent(aiLastSubmittedPrompt) == UserIntent.RESTRUCTURE;
-
-        AiGraphApplyService.ApplyResult result = AiGraphApplyService.applyPatch(
-                applyTarget,
-                graph,
-                payload.nodes(),
-                payload.connections(),
-                anchor,
-                aiPatchRemoveScopedConnections.get(),
-                mergeExistingNodeState
-        );
-        if (result.success()) {
-            // Patch apply records one aggregate AI_PATCH action; undo should be one step.
-            lastAiUndoStepCount = 1;
-            lastAiApplyWasPatch = true;
-        } else {
-            lastAiUndoStepCount = 0;
-            lastAiApplyWasPatch = false;
-        }
-        logAiApplyHistoryContext("after-apply-patch", applyTarget, pendingAiPlan, true);
-        String patchModeDetail = mergeExistingNodeState
-                ? " (parameter merge mode)"
-                : " (state replace mode)";
-        aiPlanStatusMessage = result.statusMessage()
-                + patchModeDetail
-                + (result.success() && aiAutoLayoutBeforeApply.get() ? " (auto layout enabled for new nodes)" : "");
-    }
-
-    private void undoLastAiApply() {
-        String undoUnavailableReason = resolveUndoUnavailableReason();
-        if (!undoUnavailableReason.isBlank()) {
-            aiPlanStatusMessage = "Undo unavailable: " + undoUnavailableReason;
-            if (lastAiApplyWasPatch) {
-                lastAiUndoStepCount = 0;
-                lastAiApplyWasPatch = false;
-            }
-            return;
-        }
-
-        GraphApplyTarget applyTarget = resolveGraphApplyTarget();
-        if (applyTarget == null) {
-            aiPlanStatusMessage = "Undo failed: editor is unavailable.";
-            lastAiUndoStepCount = 0;
-            lastAiApplyWasPatch = false;
-            return;
-        }
-
-        logAiApplyHistoryContext("before-undo-last-ai-apply", applyTarget, getPendingAiPlan(), lastAiApplyWasPatch);
-
-        int expectedUndoSteps = lastAiUndoStepCount;
-        int undone = lastAiApplyWasPatch
-            ? (applyTarget.undo() ? 1 : 0)
-            : AiPlanApplyCoordinatorService.undo(applyTarget, expectedUndoSteps);
-
-        if (undone == expectedUndoSteps) {
-            aiPlanStatusMessage = "Undo completed: " + undone + " / " + expectedUndoSteps + " steps.";
-        } else {
-            aiPlanStatusMessage = "Undo incomplete: " + undone + " / " + expectedUndoSteps
-                    + " steps. History may have changed since apply.";
-        }
-        lastAiUndoStepCount = 0;
-        lastAiApplyWasPatch = false;
-        logAiApplyHistoryContext("after-undo-last-ai-apply", applyTarget, getPendingAiPlan(), false);
-    }
-
-    private GraphApplyTarget resolveGraphApplyTarget() {
-        return GraphApplyTargetResolver.resolve();
-    }
-
-    private void logAiApplyHistoryContext(String phase, GraphApplyTarget applyTarget, AiGraphPlan plan, boolean patchMode) {
-        if (applyTarget == null) {
-            NodeCraft.LOGGER.info("[AI_APPLY_TRACE] phase={}, editorAvailable=false", phase);
-            return;
-        }
-
-        GraphApplyHistoryView history = applyTarget.getApplyHistoryView();
-        int undoStackSize = history.undoStackSize();
-        int redoStackSize = history.redoStackSize();
-        Object topActionType = history.undoTopActionType();
-        boolean topIsAiPatch = history.isUndoTopAiPatch();
-
-        List<AiPlanNode> nodes = safePlanNodes(plan);
-        List<AiPlanConnection> connections = safePlanConnections(plan);
-
-        NodeCraft.LOGGER.info(
-                "[AI_APPLY_TRACE] phase={}, patchMode={}, autoLayout={}, removeScoped={}, pendingNodes={}, pendingConnections={}, lastUndoSteps={}, lastWasPatch={}, canUndo={}, canRedo={}, undoStackSize={}, redoStackSize={}, topAction={}, topIsAiPatch={}",
-                phase,
-                patchMode,
-                aiAutoLayoutBeforeApply.get(),
-                aiPatchRemoveScopedConnections.get(),
-                nodes.size(),
-                connections.size(),
-                lastAiUndoStepCount,
-                lastAiApplyWasPatch,
-                history.canUndo(),
-                history.canRedo(),
-                undoStackSize,
-                redoStackSize,
-                topActionType,
-                topIsAiPatch
-        );
-    }
-
-    private float[] resolveAiPlanAnchorPosition(GraphApplyTarget applyTarget) {
-        if (applyTarget == null) {
-            return new float[]{0.0f, 0.0f};
-        }
-        INode selectedNode = getSelectedNode();
-        if (selectedNode != null) {
-            GraphNodeAnchor selectedPosition = applyTarget.getNodeAnchor(selectedNode.getId());
-            if (selectedPosition != null) {
-                return new float[]{selectedPosition.x() + 280.0f, selectedPosition.y()};
-            }
-        }
-        return new float[]{0.0f, 0.0f};
-    }
-
-    private List<AiPlanNode> buildAutoLayoutNodes(AiGraphPlan plan) {
-        if (plan == null || plan.nodes().isEmpty()) {
-            return List.of();
-        }
-
-        List<AiPlanAutoLayoutService.PlanNode> nodes = new ArrayList<>(plan.nodes().size());
-        for (AiPlanNode node : plan.nodes()) {
-            nodes.add(new AiPlanAutoLayoutService.PlanNode(node.ref(), node.typeId(), node.nodeState()));
-        }
-
-        List<AiPlanAutoLayoutService.PlanConnection> connections = new ArrayList<>(plan.connections().size());
-        for (AiPlanConnection connection : plan.connections()) {
-            connections.add(new AiPlanAutoLayoutService.PlanConnection(
-                    connection.sourceRef(),
-                    connection.targetRef()
-            ));
-        }
-
-        List<AiPlanAutoLayoutService.ArrangedNode> arranged = AiPlanAutoLayoutService.autoLayout(nodes, connections);
-        List<AiPlanNode> result = new ArrayList<>(arranged.size());
-        for (AiPlanAutoLayoutService.ArrangedNode node : arranged) {
-            result.add(new AiPlanNode(node.ref(), node.typeId(), node.offsetX(), node.offsetY(), node.nodeState()));
-        }
-        return result;
-    }
-
-    private List<AiPlanNode> safePlanNodes(AiGraphPlan plan) {
-        return plan == null || plan.nodes() == null ? List.of() : plan.nodes();
-    }
-
-    private List<AiPlanConnection> safePlanConnections(AiGraphPlan plan) {
-        return plan == null || plan.connections() == null ? List.of() : plan.connections();
-    }
-
-    private List<AiGraphDiffAdapterService.PlanNode> toDiffPlanNodes(List<AiPlanNode> nodes) {
-        if (nodes == null || nodes.isEmpty()) {
-            return List.of();
-        }
-        List<AiGraphDiffAdapterService.PlanNode> result = new ArrayList<>(nodes.size());
-        for (AiPlanNode node : nodes) {
-            result.add(new AiGraphDiffAdapterService.PlanNode(node.ref(), node.typeId(), node.nodeState()));
-        }
-        return result;
-    }
-
-    private List<AiGraphDiffAdapterService.PlanConnection> toDiffPlanConnections(List<AiPlanConnection> connections) {
-        if (connections == null || connections.isEmpty()) {
-            return List.of();
-        }
-        List<AiGraphDiffAdapterService.PlanConnection> result = new ArrayList<>(connections.size());
-        for (AiPlanConnection connection : connections) {
-            result.add(new AiGraphDiffAdapterService.PlanConnection(
-                    connection.sourceRef(),
-                    connection.sourcePortId(),
-                    connection.targetRef(),
-                    connection.targetPortId()
-            ));
-        }
-        return result;
-    }
-
-    private List<AiGraphPlanDslAdapterService.PlanNode> toDslAdapterNodes(List<AiPlanNode> nodes) {
-        if (nodes == null || nodes.isEmpty()) {
-            return List.of();
-        }
-        List<AiGraphPlanDslAdapterService.PlanNode> result = new ArrayList<>(nodes.size());
-        for (AiPlanNode node : nodes) {
-            result.add(new AiGraphPlanDslAdapterService.PlanNode(
-                    node.ref(),
-                    node.typeId(),
-                    node.offsetX(),
-                    node.offsetY(),
-                    node.nodeState()
-            ));
-        }
-        return result;
-    }
-
-    private List<AiGraphPlanDslAdapterService.PlanConnection> toDslAdapterConnections(List<AiPlanConnection> connections) {
-        if (connections == null || connections.isEmpty()) {
-            return List.of();
-        }
-        List<AiGraphPlanDslAdapterService.PlanConnection> result = new ArrayList<>(connections.size());
-        for (AiPlanConnection connection : connections) {
-            result.add(new AiGraphPlanDslAdapterService.PlanConnection(
-                    connection.sourceRef(),
-                    connection.sourcePortId(),
-                    connection.targetRef(),
-                    connection.targetPortId()
-            ));
-        }
-        return result;
-    }
-
-    private List<AiPlanApplyCoordinatorService.PlanNode> toCoordinatorApplyNodes(List<AiPlanNode> nodes) {
-        if (nodes == null || nodes.isEmpty()) {
-            return List.of();
-        }
-        List<AiPlanApplyCoordinatorService.PlanNode> result = new ArrayList<>(nodes.size());
-        for (AiPlanNode node : nodes) {
-            result.add(new AiPlanApplyCoordinatorService.PlanNode(
-                    node.ref(),
-                    node.typeId(),
-                    node.offsetX(),
-                    node.offsetY(),
-                    node.nodeState()
-            ));
-        }
-        return result;
-    }
-
-    private List<AiPlanApplyCoordinatorService.PlanConnection> toCoordinatorApplyConnections(List<AiPlanConnection> connections) {
-        if (connections == null || connections.isEmpty()) {
-            return List.of();
-        }
-        List<AiPlanApplyCoordinatorService.PlanConnection> result = new ArrayList<>(connections.size());
-        for (AiPlanConnection connection : connections) {
-            result.add(new AiPlanApplyCoordinatorService.PlanConnection(
-                    connection.sourceRef(),
-                    connection.sourcePortId(),
-                    connection.targetRef(),
-                    connection.targetPortId()
-            ));
-        }
-        return result;
-    }
-
-    private List<AiGraphApplyAdapterService.PlanNode> toPatchApplyNodes(List<AiPlanNode> nodes) {
-        if (nodes == null || nodes.isEmpty()) {
-            return List.of();
-        }
-        List<AiGraphApplyAdapterService.PlanNode> result = new ArrayList<>(nodes.size());
-        for (AiPlanNode node : nodes) {
-            result.add(new AiGraphApplyAdapterService.PlanNode(
-                    node.ref(),
-                    node.typeId(),
-                    node.offsetX(),
-                    node.offsetY(),
-                    node.nodeState()
-            ));
-        }
-        return result;
-    }
-
-    private List<AiGraphApplyAdapterService.PlanConnection> toPatchApplyConnections(List<AiPlanConnection> connections) {
-        if (connections == null || connections.isEmpty()) {
-            return List.of();
-        }
-        List<AiGraphApplyAdapterService.PlanConnection> result = new ArrayList<>(connections.size());
-        for (AiPlanConnection connection : connections) {
-            result.add(new AiGraphApplyAdapterService.PlanConnection(
-                    connection.sourceRef(),
-                    connection.sourcePortId(),
-                    connection.targetRef(),
-                    connection.targetPortId()
-            ));
-        }
-        return result;
-    }
-
-    private NodeGraph getNodeGraph() {
-        return nodeGraphSupplier.get();
-    }
-
-    private GraphNodeAnchor resolveSelectedNodePosition() {
-        INode selectedNode = getSelectedNode();
-        if (selectedNode == null) {
-            return null;
-        }
-
-        GraphApplyTarget applyTarget = resolveGraphApplyTarget();
-        if (applyTarget == null) {
-            return null;
-        }
-
-        return applyTarget.getNodeAnchor(selectedNode.getId());
-    }
-
-    private INode getSelectedNode() {
-        UUID selectedNodeId = aiAssistantComponent.getSelectedNodeId();
-        if (selectedNodeId == null) {
-            return null;
-        }
-
-        NodeGraph graph = getNodeGraph();
-        if (graph == null) {
-            return null;
-        }
-        return graph.getNode(selectedNodeId);
-    }
-
-    private static String nullToEmpty(String value) {
-        return value == null ? "" : value;
+    private INode resolveSelectedNodeForRender() {
+        return controller.selectedNode();
     }
 }

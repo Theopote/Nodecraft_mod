@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-final class TopologyPreviewState {
+public final class TopologyPreviewState {
 
     private String planKey = "";
     private final Map<String, float[]> manualUvByRef = new HashMap<>();
@@ -12,7 +12,7 @@ final class TopologyPreviewState {
     private float dragOffsetX = 0.0f;
     private float dragOffsetY = 0.0f;
 
-    void reset() {
+    public void reset() {
         planKey = "";
         manualUvByRef.clear();
         draggingNodeRef = null;

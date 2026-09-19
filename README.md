@@ -118,6 +118,7 @@ Generated plans are validated before they can be applied. Connection creation us
 - `src/main/resources/assets/nodecraft`: mod assets, language files, models, textures, fonts, and node icons.
 - `docs/development`: current roadmap and phase checklists.
 - `docs/architecture` / `docs/contracts`: design freezes and regression contracts.
+- `docs/architecture/ai-assistant-subsystem.md`: AI as a first-class module (controller / session / planner / validator / apply); panel must not own orchestration.
 - `docs/history`: archived status / fix notes (not current policy).
 - `tools/migration`: canonical preset / id migration entrypoints (see README there).
 - `scripts/`: maintained maintenance scripts (`build_v0_migration_manifest.py`, `canonicalize_presets.py`, …).

@@ -50,7 +50,7 @@ public class AiAssistantComponent implements EditorComponent {
     }
 
     public record AiGraphPlan(String summary, List<AiPlanNode> nodes, List<AiPlanConnection> connections, List<String> validationErrors) {
-        boolean isValid() {
+        public boolean isValid() {
             return validationErrors == null || validationErrors.isEmpty();
         }
     }
