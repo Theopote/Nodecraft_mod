@@ -288,7 +288,7 @@ Long term:
 - Update node library docs after adding nodes:
 
 ```text
-python scripts/generate_node_library_docs.py
+./gradlew generateNodeLibraryDocs
 ```
 
 - Compile after Java changes:
