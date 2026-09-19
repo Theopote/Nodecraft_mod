@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.pattern.linear;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -29,6 +30,7 @@ import java.util.UUID;
  * Repeats a block pattern at each point along a resolved path.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "pattern.linear.along_path",
     displayName = "Along Path",
     description = "Repeats a block pattern at each resolved path point from a line, polyline, curve, or point list",

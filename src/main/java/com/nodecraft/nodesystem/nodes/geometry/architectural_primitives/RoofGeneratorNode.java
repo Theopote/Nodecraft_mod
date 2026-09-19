@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.architectural_primitives;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -22,6 +23,7 @@ import java.util.UUID;
  * Generates configurable roof volumes from a box face footprint.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.architectural_primitives.roof_generator",
     displayName = "Roof Generator",
     description = "Generates configurable roof volumes from a box face footprint",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.reference.vectors;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -14,6 +15,7 @@ import java.util.UUID;
  * Outputs the X, Y, and Z components of a vector.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "reference.vectors.deconstruct_vector",
     displayName = "Deconstruct Vector",
     description = "Outputs the X, Y, and Z components of a vector.",

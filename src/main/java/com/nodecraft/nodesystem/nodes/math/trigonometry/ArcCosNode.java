@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.math.trigonometry;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
@@ -12,6 +13,7 @@ import java.util.UUID;
  * ArcCos Node: Computes the arc cosine of a value (result in radians).
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.trigonometry.acos",
     displayName = "Arccosine (ArcCos)",
     description = "计算输入值的反余弦值（结果以弧度为单位）",

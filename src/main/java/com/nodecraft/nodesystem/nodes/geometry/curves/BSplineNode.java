@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.nodes.geometry.curves.util.CurveMathUtils;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.curves.b_spline",
     displayName = "B-Spline",
     description = "Builds a sampled clamped uniform B-spline from an ordered control point list",

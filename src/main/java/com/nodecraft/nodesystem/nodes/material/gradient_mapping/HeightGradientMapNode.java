@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.gradient_mapping;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -21,6 +22,7 @@ import java.util.UUID;
  * Applies a simple vertical material gradient across a voxelized shape.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "material.gradient_mapping.height_gradient_map",
     displayName = "Height Gradient Map",
     description = "Assigns lower, middle, and upper block types across a shape based on relative height",

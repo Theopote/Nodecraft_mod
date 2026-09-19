@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.curves;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -23,6 +24,7 @@ import java.util.UUID;
  * Creates intermediate sampled curves between two compatible paths.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.curves.tween_curves",
     displayName = "Tween Curves",
     description = "Creates evenly spaced intermediate curves between two curve, polyline, or line inputs",

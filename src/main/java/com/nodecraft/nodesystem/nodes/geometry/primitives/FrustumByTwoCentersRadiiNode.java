@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.primitives;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -18,6 +19,7 @@ import org.joml.Vector3d;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.primitives.frustum_cone",
     displayName = "Frustum By Two Centers Radii",
     description = "Constructs a circular frustum from two parallel face centers and their radii (set top radius to 0 for a cone)",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.fields;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.fields.scalar_sample_points",
     displayName = "Scalar Field Sample Points",
     description = "Samples a scalar field for each query point and outputs a value list.",

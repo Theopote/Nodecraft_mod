@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.transform.basic_transforms;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "transform.basic_transforms.shear",
     displayName = "Shear Point List",
     description = "Applies axial shear deformation to a point list around an origin.",

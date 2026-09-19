@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.transform.basic_transforms;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -17,6 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "transform.basic_transforms.mirror_coordinates",
     displayName = "Mirror Coordinates",
     description = "Mirrors a block coordinate list across a plane and snaps results to the block grid",

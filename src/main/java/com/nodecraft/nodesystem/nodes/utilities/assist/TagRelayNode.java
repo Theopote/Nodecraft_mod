@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.utilities.assist;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -13,6 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "utilities.assist.tag_relay",
     displayName = "Tag Relay",
     description = "Passes a signal through while adding a visual semantic tag.",

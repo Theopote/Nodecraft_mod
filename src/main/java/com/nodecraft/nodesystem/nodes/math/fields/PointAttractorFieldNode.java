@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.fields;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -13,6 +14,7 @@ import org.joml.Vector3d;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.fields.point_attractor_field",
     displayName = "Point Attractor Field",
     description = "Builds a vector field that pulls points toward a center with configurable distance falloff.",

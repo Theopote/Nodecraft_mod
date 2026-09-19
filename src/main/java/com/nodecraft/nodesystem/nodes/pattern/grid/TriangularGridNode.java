@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.pattern.grid;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "pattern.grid.triangle_grid",
     displayName = "Triangular Grid",
     description = "Repeats coordinates on a triangular lattice with alternating row offsets.",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.list_sequence;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -15,6 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.list.map_list",
     displayName = "Map List",
     description = "Applies a scalar operation to each numeric item in a list.",

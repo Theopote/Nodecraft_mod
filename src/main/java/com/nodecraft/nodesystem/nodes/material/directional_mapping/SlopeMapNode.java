@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.directional_mapping;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -18,6 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "material.directional_mapping.slope_map",
     displayName = "Slope Map",
     description = "Assigns flat/slope/steep materials using local height difference per X/Z column.",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.pattern.surface_volume_distribution;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -19,6 +20,7 @@ import java.util.UUID;
  * Populate Region 节点: 在指定区域内随机或均匀生成坐标列表
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "pattern.surface_volume_distribution.populate_region",
     displayName = "Populate Region",
     description = "在指定区域内随机或均匀生成坐标列表",

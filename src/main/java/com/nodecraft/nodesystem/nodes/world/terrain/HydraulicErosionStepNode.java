@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.terrain;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -16,6 +17,7 @@ import org.joml.Vector3d;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "world.terrain.hydraulic_erosion_step",
     displayName = "Hydraulic Erosion Step",
     description = "Applies one hydraulic erosion-deposition step with carrying capacity and optional flow-driven sediment transport.",

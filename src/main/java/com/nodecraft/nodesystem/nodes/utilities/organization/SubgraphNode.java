@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.utilities.organization;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -23,6 +24,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "utilities.organization.subgraph",
     displayName = "Subgraph",
     description = "Executes a referenced subgraph with named input/output mapping.",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.fields;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -11,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.fields.scalar_noise",
     displayName = "Scalar Field Noise",
     description = "Builds a deterministic pseudo-noise scalar field over world space.",

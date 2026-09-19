@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.logic;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -13,6 +14,7 @@ import java.util.UUID;
  * Canonical multi-branch selection node for the v1 logic tree.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.logic.switch",
     displayName = "Switch",
     description = "Selects one of multiple inputs by index, with a default fallback.",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.write;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.WORLD_READ,
     id = "world.write.peek_last_undo",
     displayName = "Peek Last World Write Undo",
     description = "Inspects the latest world.write undo record and outputs affected count and region bounds",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.profiles;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -23,6 +24,7 @@ import java.util.UUID;
  * Computes a 3D convex hull from a moderate point cloud using brute-force facet enumeration.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.profiles.convex_hull_3d_points",
     displayName = "Convex Hull 3D From Points",
     description = "Builds a 3D convex hull (triangle facets) from points; intended for small clouds due to brute-force enumeration; coplanar / collinear inputs yield no facets",

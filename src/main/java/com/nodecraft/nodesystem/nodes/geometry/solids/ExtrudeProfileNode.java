@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.solids;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.solids.extrude",
     displayName = "Extrude Profile",
     description = "Extrudes a polygon profile by a direction vector and emits prism geometry plus side surface strip data",

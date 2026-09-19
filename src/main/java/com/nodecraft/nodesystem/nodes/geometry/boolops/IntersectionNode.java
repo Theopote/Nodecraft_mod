@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.boolops;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -15,6 +16,7 @@ import java.util.UUID;
  * Creates a voxel-evaluated intersection geometry value.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.boolean.intersection",
     displayName = "Intersection",
     description = "Creates a voxel-evaluated intersection geometry value from two geometry inputs",

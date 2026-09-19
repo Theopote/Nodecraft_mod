@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.reference.frames;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -16,6 +17,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "reference.frames.transform_frame",
     displayName = "Transform Frame",
     description = "Applies translation, rotation, and uniform scale to an input frame",

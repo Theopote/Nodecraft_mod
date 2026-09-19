@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.reference.vectors;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -17,6 +18,7 @@ import java.util.UUID;
 import java.util.function.DoubleConsumer;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "reference.vectors.vector",
     displayName = "Vector Input",
     description = "Inputs a 3D vector from panel values or optional X/Y/Z input ports, then outputs the vector and components.",

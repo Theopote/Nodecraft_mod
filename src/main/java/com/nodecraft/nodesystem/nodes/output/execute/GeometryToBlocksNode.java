@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.output.execute;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -23,6 +24,7 @@ import java.util.UUID;
  * Generic geometry voxelizer for any supported GeometryData subtype.
  */
 @NodeInfo(
+    effect = NodeEffect.WORLD_WRITE,
     id = "output.execute.bake_geometry_to_blocks",
     displayName = "Bake Geometry To Blocks",
     description = "Bakes any supported geometry into Minecraft block coordinates for final execution",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.architectural_primitives;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
@@ -19,6 +20,7 @@ import java.util.UUID;
  * Generates a rectangular array of facade panels or cladding boxes on a box face.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.architectural_primitives.facade_panel_array",
     displayName = "Facade Panel Array",
     description = "Generates a rectangular array of facade panels on a box face",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.boolops;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.boolean.sdf_to_geometry",
     displayName = "SDF To Geometry",
     description = "Wraps an SDF into GeometryData with explicit or auto-estimated sampling bounds for block baking",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.solids;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -23,6 +24,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.solids.sweep_two_rails",
     displayName = "Sweep 2 Rails",
     description = "Sweeps a profile between two guide rails with optional scale and rotation controls",

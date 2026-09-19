@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.input.type_selectors;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -11,6 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "input.type_selectors.biome_selector",
     displayName = "Biome Selector",
     description = "Selects a biome id for biome-aware generation workflows.",

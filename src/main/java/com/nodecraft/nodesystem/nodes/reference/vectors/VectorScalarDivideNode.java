@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.reference.vectors;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -14,6 +15,7 @@ import java.util.UUID;
  * Divides a vector by a scalar.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "reference.vectors.vector_scalar_divide",
     displayName = "Vector Scalar Divide",
     description = "Divides a vector by a scalar.",

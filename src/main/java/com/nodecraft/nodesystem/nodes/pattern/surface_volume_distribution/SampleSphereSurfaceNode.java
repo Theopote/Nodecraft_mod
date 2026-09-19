@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.pattern.surface_volume_distribution;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -19,6 +20,7 @@ import java.util.Random;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "pattern.surface_volume_distribution.sample_surface",
     displayName = "Sample Sphere Surface",
     description = "Samples points and normals on a sphere surface for scattering and growth workflows",

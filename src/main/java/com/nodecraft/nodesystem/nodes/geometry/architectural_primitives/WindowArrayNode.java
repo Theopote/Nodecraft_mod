@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.architectural_primitives;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -22,6 +23,7 @@ import java.util.UUID;
  * Generates a rectangular array of inset opening boxes on a box face.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.architectural_primitives.window_array",
     displayName = "Window Array",
     description = "Generates a rectangular array of inset window opening boxes on a box face",

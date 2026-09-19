@@ -14,7 +14,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-class GraphMigrationRegistryTest {
+class SavedGraphNormalizerTest {
 
     private final NodeRegistry registry = NodeRegistry.getInstance();
 
@@ -22,12 +22,12 @@ class GraphMigrationRegistryTest {
     void registerNodes() {
         registry.clear();
         registry.registerNode(new NodeInfo(
-            "test.pass",
-            "Pass",
-            "pass-through test node",
-            "test",
-            0,
-            GraphSerializerTest.PassNode.class
+                "test.pass",
+                "Pass",
+                "pass-through test node",
+                "test",
+                0,
+                GraphSerializerTest.PassNode.class
         ));
     }
 
@@ -37,42 +37,37 @@ class GraphMigrationRegistryTest {
     }
 
     @Test
-    void legacyGraphIsMigratedToCurrentVersion() {
+    void missingCollectionsAreInitializedAndVersionBumped() {
         SavedGraph legacy = new SavedGraph();
         legacy.graphName = "legacy";
-        legacy.formatVersion = GraphFormatVersion.LEGACY_UNSPECIFIED;
+        legacy.formatVersion = 0;
         legacy.nodes = null;
         legacy.connections = null;
         legacy.nodePositions = null;
 
-        SavedNode node = new SavedNode();
-        node.nodeId = UUID.randomUUID().toString();
-        node.typeId = "TEST.PASS";
-        legacy.nodes = java.util.List.of(node);
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(legacy);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertNotNull(migrated.nodes);
-        assertNotNull(migrated.connections);
-        assertNotNull(migrated.nodePositions);
-        assertEquals("test.pass", migrated.nodes.getFirst().typeId);
+        SavedGraph normalized = SavedGraphNormalizer.normalize(legacy);
+        assertEquals(GraphFormatVersion.CURRENT, normalized.formatVersion);
+        assertNotNull(normalized.nodes);
+        assertNotNull(normalized.connections);
+        assertNotNull(normalized.nodePositions);
     }
 
     @Test
-    void migrateToCurrentLeavesFutureVersionsUntouched() {
+    void futureVersionsAreLeftUntouched() {
         SavedGraph future = new SavedGraph();
         future.formatVersion = GraphFormatVersion.CURRENT + 5;
         future.graphName = "future";
 
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(future);
-        assertEquals(GraphFormatVersion.CURRENT + 5, migrated.formatVersion);
-        assertEquals("future", migrated.graphName);
+        SavedGraph normalized = SavedGraphNormalizer.normalize(future);
+        assertEquals(GraphFormatVersion.CURRENT + 5, normalized.formatVersion);
+        assertEquals("future", normalized.graphName);
     }
 
     @Test
-    void loadFromSavedGraphMigratesLegacyPayload() {
+    void loadFromSavedGraphNormalizesLegacyPayload() {
         SavedGraph legacy = new SavedGraph();
         legacy.graphName = "legacy-load";
+        legacy.formatVersion = 0;
         SavedNode node = new SavedNode();
         node.nodeId = UUID.randomUUID().toString();
         node.typeId = "test.pass";

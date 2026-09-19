@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.transform.basic_transforms;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -21,6 +22,7 @@ import java.util.UUID;
  * Reflects a list of 3D positions about a plane (useful for mesh control points and paths).
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "transform.basic_transforms.mirror_vector_list_plane",
     displayName = "Mirror Vector List About Plane",
     description = "Mirrors each point in a list about a plane and outputs Vector3d positions",

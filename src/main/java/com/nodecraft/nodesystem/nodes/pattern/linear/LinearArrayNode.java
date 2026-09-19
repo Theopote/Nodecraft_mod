@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.pattern.linear;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -20,6 +21,7 @@ import java.util.UUID;
  * Linear Array 节点: 将Coordinate列表沿直线方向重复
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "pattern.linear.linear_array",
     displayName = "Linear Array",
     description = "将坐标列表沿直线方向重复排列",

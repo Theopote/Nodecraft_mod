@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.compare;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -13,6 +14,7 @@ import java.util.UUID;
  * Compares whether A is greater than or equal to B.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.compare.greater_than_or_equal",
     displayName = "Greater Than or Equal (>=)",
     description = "Returns true when A is greater than or equal to B.",

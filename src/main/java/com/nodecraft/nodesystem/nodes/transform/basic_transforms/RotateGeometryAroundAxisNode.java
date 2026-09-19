@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.transform.basic_transforms;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -18,6 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "transform.basic_transforms.rotate_geometry_axis",
     displayName = "Rotate Geometry Around Axis",
     description = "Rotates analytic geometry around a center point and arbitrary axis",

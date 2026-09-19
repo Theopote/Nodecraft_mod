@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.utilities.morphology;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -19,6 +20,7 @@ import java.util.UUID;
  * Morphological dilate or erode on a block set using 6- or 26-connected voxel neighborhoods.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "utilities.morphology.block_list_morphology",
     displayName = "Block List Morphology",
     description = "Dilates or erodes a block list using 6- or 26-neighbor morphology iterations (Connectivity property)",

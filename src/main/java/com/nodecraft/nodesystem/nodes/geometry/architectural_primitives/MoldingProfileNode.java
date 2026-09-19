@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.architectural_primitives;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -24,6 +25,7 @@ import java.util.UUID;
  * Generates decorative molding cross-section profiles on a plane or box face.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.architectural_primitives.molding_profile",
     displayName = "Molding Profile",
     description = "Generates decorative molding cross-section profiles",

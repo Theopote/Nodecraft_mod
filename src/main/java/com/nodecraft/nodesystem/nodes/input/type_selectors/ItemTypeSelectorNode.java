@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.input.type_selectors;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -12,6 +13,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "input.type_selectors.item_type_selector",
     displayName = "Item Type Selector",
     description = "Searches and selects a Minecraft item type.",

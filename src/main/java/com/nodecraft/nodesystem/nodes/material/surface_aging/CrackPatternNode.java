@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.surface_aging;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "material.surface_aging.crack_pattern",
     displayName = "Crack Pattern",
     description = "Adds deterministic crack lines by replacing sparse diagonal bands.",

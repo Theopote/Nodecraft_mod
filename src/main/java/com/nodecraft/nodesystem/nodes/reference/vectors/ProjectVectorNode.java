@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.reference.vectors;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -11,6 +12,7 @@ import org.joml.Vector3d;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "reference.vectors.project",
     displayName = "Project Vector onto Vector",
     description = "Projects vector A onto vector B as (A·B / |B|^2)B.",

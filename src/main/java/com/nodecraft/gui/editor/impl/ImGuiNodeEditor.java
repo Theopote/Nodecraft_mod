@@ -17,6 +17,7 @@ import com.nodecraft.gui.editor.base.GraphApplyHistoryView;
 import com.nodecraft.gui.editor.base.GraphApplyTarget;
 import com.nodecraft.gui.editor.base.GraphNodeAnchor;
 import com.nodecraft.gui.editor.base.INodeEditor;
+import com.nodecraft.gui.editor.document.EditorDocumentFactory;
 import com.nodecraft.gui.editor.document.EditorDocumentState;
 import com.nodecraft.gui.editor.interaction.EditorInteractionState;
 import com.nodecraft.gui.editor.integration.ImGuiInputAdapter;
@@ -167,65 +168,12 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     }
 
     /**
-     * 初始化节点编辑器，如果当前图为空，则创建一个默认图并添加一些示例节点。
+     * Initializes the editor with a blank document when no graph is loaded yet.
      */
     @Override
     public void init() {
         if (document.getGraph() == null) {
-            document.setGraph(new NodeGraph("默认节点图"));
-
-            // 添加一些示例节点用于测试和演示
-            try {
-                NodeCraft.LOGGER.info("正在添加示例节点用于测试...");
-
-                String[] testNodeTypes = {
-                        // 基础输入节点（如果存在）
-                        "input.numeric.integer", "input.numeric.float_slider",
-                    "input.basic.boolean_toggle", "input.basic.text_input",
-                        // 数学运算节点
-                        "math.scalar_math.addition", "math.scalar_math.multiplication", "math.scalar_math.division",
-                        "math.scalar_math.subtraction", "math.scalar_math.power", "math.scalar_math.clamp",
-                        // 数学逻辑节点（如果存在）
-                        "math.logic.and", "math.logic.or", "math.logic.not"
-                };
-
-                int addedCount = 0;
-                float startX = 50f;
-                float startY = 50f;
-                float spacingX = 200f; // 节点水平间距
-                float spacingY = 150f; // 节点垂直间距
-
-                // 暂停历史记录，防止这些初始节点被记录
-                history.pauseRecording();
-                try {
-                    for (int i = 0; i < testNodeTypes.length && addedCount < 10; i++) { // 添加最多10个节点
-                        String nodeType = testNodeTypes[i];
-                        try {
-                            float x = startX + (addedCount % 4) * spacingX; // 每行4个节点
-                            float y = startY + ((float) addedCount / 4) * spacingY;
-
-                            INode node = addNode(nodeType, x, y);
-                            if (node != null) {
-                                NodeCraft.LOGGER.info("成功添加示例节点: {} 在位置 ({}, {})", nodeType, x, y);
-                                addedCount++;
-                            }
-                        } catch (Exception e) {
-                            NodeCraft.LOGGER.debug("无法创建节点类型 {}: {}", nodeType, e.getMessage());
-                        }
-                    }
-                } finally {
-                    history.resumeRecording(); // 确保恢复记录
-                }
-
-                if (addedCount > 0) {
-                    NodeCraft.LOGGER.info("成功添加了 {} 个示例节点", addedCount);
-                } else {
-                    NodeCraft.LOGGER.warn("未能添加任何示例节点，请使用右键菜单手动添加节点");
-                }
-
-            } catch (Exception e) {
-                NodeCraft.LOGGER.error("添加示例节点时出错: {}", e.getMessage(), e);
-            }
+            document.resetForNewGraph(EditorDocumentFactory.createEmpty());
         }
     }
 
@@ -1168,8 +1116,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             VariableScopeBridge.clearFallbackScope(graphId);
             SubgraphCallStackBridge.clearFallbackScope(graphId);
         }
-        document.setGraph(graph);
-        document.clearNodePositions();
+        document.resetForNewGraph(graph);
         subgraphEditStack.clear();
         clearSelectedNodes();
         if (history != null) {

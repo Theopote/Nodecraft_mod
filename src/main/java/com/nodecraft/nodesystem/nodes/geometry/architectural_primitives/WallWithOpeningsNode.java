@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.architectural_primitives;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
@@ -19,6 +20,7 @@ import java.util.UUID;
  * Generates a wall slab plus a grid of window or door opening volumes.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.architectural_primitives.wall_with_openings",
     displayName = "Wall With Openings",
     description = "Generates a wall slab with an opening grid",

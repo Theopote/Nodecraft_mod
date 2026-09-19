@@ -2,7 +2,6 @@
   "preset_id": "decorative.fountain_circular",
   "version": "1.0.0",
   "schema_version": "1.0",
-
   "metadata": {
     "name": "Circular Fountain",
     "name_i18n": {
@@ -15,18 +14,21 @@
       "en_US": "An elegant circular fountain with tiered basin and central spout."
     },
     "author": "NodeCraft Team",
-    "tags": ["fountain", "decorative", "water", "circular"],
+    "tags": [
+      "fountain",
+      "decorative",
+      "water",
+      "circular"
+    ],
     "category": "decorative",
     "difficulty": "beginner",
     "estimated_build_time": "3 minutes",
     "estimated_node_count": 10
   },
-
   "thumbnails": {
     "main": "thumbnail.png",
     "previews": []
   },
-
   "parameters": [
     {
       "id": "outer_radius",
@@ -97,140 +99,263 @@
       "group": "Materials"
     }
   ],
-
   "graph": {
     "nodes": [
       {
         "id": "input_pos",
         "type": "input.context.player_position",
-        "position": {"x": 50, "y": 300},
+        "position": {
+          "x": 50,
+          "y": 300
+        },
         "parameters": {}
       },
       {
         "id": "outer_basin",
-        "type": "geometry.primitives.cylinder_by_axis_and_radius",
-        "position": {"x": 250, "y": 200},
+        "type": "geometry.primitives.cylinder",
+        "position": {
+          "x": 250,
+          "y": 200
+        },
         "parameters": {
-          "radius": {"param": "outer_radius"},
-          "height": {"param": "basin_depth"},
-          "axis": {"x": 0, "y": 1, "z": 0}
+          "radius": {
+            "param": "outer_radius"
+          },
+          "height": {
+            "param": "basin_depth"
+          },
+          "axis": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
         }
       },
       {
         "id": "outer_hollow",
-        "type": "geometry.primitives.cylinder_by_axis_and_radius",
-        "position": {"x": 250, "y": 320},
+        "type": "geometry.primitives.cylinder",
+        "position": {
+          "x": 250,
+          "y": 320
+        },
         "parameters": {
-          "radius": {"param": "outer_radius_minus_wall"},
-          "height": {"param": "basin_depth_minus_floor"},
-          "axis": {"x": 0, "y": 1, "z": 0}
+          "radius": {
+            "param": "outer_radius_minus_wall"
+          },
+          "height": {
+            "param": "basin_depth_minus_floor"
+          },
+          "axis": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
         }
       },
       {
         "id": "subtract_outer",
         "type": "geometry.boolean.difference",
-        "position": {"x": 450, "y": 260},
+        "position": {
+          "x": 450,
+          "y": 260
+        },
         "parameters": {}
       },
       {
         "id": "inner_tier",
-        "type": "geometry.primitives.cylinder_by_axis_and_radius",
-        "position": {"x": 250, "y": 450},
+        "type": "geometry.primitives.cylinder",
+        "position": {
+          "x": 250,
+          "y": 450
+        },
         "parameters": {
-          "radius": {"param": "inner_radius"},
-          "height": {"param": "inner_tier_height"},
-          "axis": {"x": 0, "y": 1, "z": 0}
+          "radius": {
+            "param": "inner_radius"
+          },
+          "height": {
+            "param": "inner_tier_height"
+          },
+          "axis": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
         }
       },
       {
         "id": "center_spout",
-        "type": "geometry.primitives.cylinder_by_axis_and_radius",
-        "position": {"x": 250, "y": 570},
+        "type": "geometry.primitives.cylinder",
+        "position": {
+          "x": 250,
+          "y": 570
+        },
         "parameters": {
           "radius": 0.3,
-          "height": {"param": "center_spout_height"},
-          "axis": {"x": 0, "y": 1, "z": 0}
+          "height": {
+            "param": "center_spout_height"
+          },
+          "axis": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
         }
       },
       {
         "id": "union_structure",
-        "type": "geometry.boolean.union_multiple",
-        "position": {"x": 650, "y": 400},
+        "type": "geometry.boolean.union",
+        "position": {
+          "x": 650,
+          "y": 400
+        },
         "parameters": {}
       },
       {
         "id": "assign_materials",
         "type": "material.basic_assignment.assign_block_type",
-        "position": {"x": 850, "y": 400},
+        "position": {
+          "x": 850,
+          "y": 400
+        },
         "parameters": {
-          "block_type": {"param": "basin_material"}
+          "block_type": {
+            "param": "basin_material"
+          }
         }
       },
       {
         "id": "move_to_pos",
-        "type": "transform.basic.move",
-        "position": {"x": 1050, "y": 400},
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 1050,
+          "y": 400
+        },
         "parameters": {}
       },
       {
         "id": "bake",
         "type": "output.execute.bake_geometry_to_blocks",
-        "position": {"x": 1250, "y": 400},
+        "position": {
+          "x": 1250,
+          "y": 400
+        },
         "parameters": {
           "placement_mode": "solid"
         }
       },
       {
         "id": "preview",
-        "type": "output.preview.block_preview",
-        "position": {"x": 1450, "y": 400},
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1450,
+          "y": 400
+        },
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "outer_basin", "port": "geometry"},
-        "to": {"node": "subtract_outer", "port": "a"}
+        "from": {
+          "node": "outer_basin",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "subtract_outer",
+          "port": "input_base"
+        }
       },
       {
-        "from": {"node": "outer_hollow", "port": "geometry"},
-        "to": {"node": "subtract_outer", "port": "b"}
+        "from": {
+          "node": "outer_hollow",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "subtract_outer",
+          "port": "input_cutter"
+        }
       },
       {
-        "from": {"node": "subtract_outer", "port": "result"},
-        "to": {"node": "union_structure", "port": "geometries"}
+        "from": {
+          "node": "subtract_outer",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_structure",
+          "port": "input_geometry_0"
+        }
       },
       {
-        "from": {"node": "inner_tier", "port": "geometry"},
-        "to": {"node": "union_structure", "port": "geometries"}
+        "from": {
+          "node": "inner_tier",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_structure",
+          "port": "input_geometry_1"
+        }
       },
       {
-        "from": {"node": "center_spout", "port": "geometry"},
-        "to": {"node": "union_structure", "port": "geometries"}
+        "from": {
+          "node": "center_spout",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_structure",
+          "port": "input_geometry_2"
+        }
       },
       {
-        "from": {"node": "union_structure", "port": "result"},
-        "to": {"node": "assign_materials", "port": "geometry"}
+        "from": {
+          "node": "union_structure",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "assign_materials",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "assign_materials", "port": "geometry"},
-        "to": {"node": "move_to_pos", "port": "geometry"}
+        "from": {
+          "node": "union_structure",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "input_pos", "port": "position"},
-        "to": {"node": "move_to_pos", "port": "translation"}
+        "from": {
+          "node": "input_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_translation"
+        }
       },
       {
-        "from": {"node": "move_to_pos", "port": "geometry"},
-        "to": {"node": "bake", "port": "geometry"}
+        "from": {
+          "node": "move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "bake",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "bake", "port": "blocks"},
-        "to": {"node": "preview", "port": "blocks"}
+        "from": {
+          "node": "bake",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "preview",
+          "port": "input_blocks"
+        }
       }
     ]
   },
-
   "documentation": {
     "learning_notes": "This preset shows how to create hollow cylindrical structures using boolean difference, then combine multiple tiers with union operations.",
     "tips": [

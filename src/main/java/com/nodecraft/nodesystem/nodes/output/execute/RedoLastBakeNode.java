@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.output.execute;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.bake.BakePlacementService;
@@ -12,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.WORLD_WRITE,
     id = "output.execute.redo_last_bake",
     displayName = "Redo Last Bake",
     description = "Reapplies the most recently undone bake or apply-changes operation",

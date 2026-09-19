@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.geometry.profiles;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -27,6 +28,7 @@ import java.util.UUID;
  * Builds a planar convex hull polygon from 3D points projected into a plane.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.profiles.convex_hull_plane",
     displayName = "Convex Hull 2D On Plane",
     description = "Projects points into a plane, computes their 2D convex hull, and outputs a closed polygon profile",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.pattern.grid;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -21,6 +22,7 @@ import java.util.UUID;
  * Generates evenly spaced facade cells on a box face.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "pattern.grid.facade_grid",
     displayName = "Facade Grid",
     description = "Generates facade cell centers and boundaries on a box face",

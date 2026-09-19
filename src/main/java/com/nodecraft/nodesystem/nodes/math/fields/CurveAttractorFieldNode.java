@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.fields;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.fields.curve_attractor_field",
     displayName = "Curve Attractor Field",
     description = "Builds a vector field that pulls points toward the closest point on a sampled curve.",

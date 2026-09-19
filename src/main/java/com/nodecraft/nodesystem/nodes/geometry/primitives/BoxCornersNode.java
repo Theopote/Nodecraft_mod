@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.primitives;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import net.minecraft.util.math.BlockPos;
@@ -8,6 +9,7 @@ import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.primitives.box_from_corners",
     displayName = "Box by Two Corners",
     description = "Generates an axis-aligned box from two opposite corner points",

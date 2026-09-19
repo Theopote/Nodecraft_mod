@@ -2,7 +2,6 @@
   "preset_id": "architectural.infrastructure.stone_bridge",
   "version": "1.0.0",
   "schema_version": "1.0",
-
   "metadata": {
     "name": "Stone Arch Bridge",
     "name_i18n": {
@@ -15,18 +14,21 @@
       "en_US": "A classic stone bridge with arch supports spanning a gap."
     },
     "author": "NodeCraft Team",
-    "tags": ["bridge", "arch", "stone", "infrastructure"],
+    "tags": [
+      "bridge",
+      "arch",
+      "stone",
+      "infrastructure"
+    ],
     "category": "architectural",
     "difficulty": "intermediate",
     "estimated_build_time": "4 minutes",
     "estimated_node_count": 14
   },
-
   "thumbnails": {
     "main": "thumbnail.png",
     "previews": []
   },
-
   "parameters": [
     {
       "id": "span",
@@ -108,22 +110,33 @@
       "group": "Features"
     }
   ],
-
   "graph": {
     "nodes": [
       {
         "id": "input_pos",
         "type": "input.context.player_position",
-        "position": {"x": 50, "y": 300},
+        "position": {
+          "x": 50,
+          "y": 300
+        },
         "parameters": {}
       },
       {
         "id": "arch_curve",
         "type": "geometry.curves.arc",
-        "position": {"x": 250, "y": 200},
+        "position": {
+          "x": 250,
+          "y": 200
+        },
         "parameters": {
-          "center": {"x": 0, "y": 0, "z": 0},
-          "radius": {"param": "arch_radius_calc"},
+          "center": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "radius": {
+            "param": "arch_radius_calc"
+          },
           "start_angle": 0,
           "end_angle": 180,
           "segments": 32
@@ -131,50 +144,85 @@
       },
       {
         "id": "arch_profile",
-        "type": "geometry.profiles.rectangle",
-        "position": {"x": 250, "y": 350},
+        "type": "geometry.profiles.rectangle_profile",
+        "position": {
+          "x": 250,
+          "y": 350
+        },
         "parameters": {
-          "width": {"param": "arch_thickness"},
-          "height": {"param": "width"}
+          "width": {
+            "param": "arch_thickness"
+          },
+          "height": {
+            "param": "width"
+          }
         }
       },
       {
         "id": "sweep_arch",
         "type": "geometry.solids.sweep",
-        "position": {"x": 450, "y": 275},
+        "position": {
+          "x": 450,
+          "y": 275
+        },
         "parameters": {}
       },
       {
         "id": "deck_box",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 500},
+        "position": {
+          "x": 250,
+          "y": 500
+        },
         "parameters": {
-          "corner": {"x": 0, "y": {"param": "arch_height"}, "z": 0},
+          "corner": {
+            "x": 0,
+            "y": {
+              "param": "arch_height"
+            },
+            "z": 0
+          },
           "size": {
-            "x": {"param": "span"},
-            "y": {"param": "deck_thickness"},
-            "z": {"param": "width"}
+            "x": {
+              "param": "span"
+            },
+            "y": {
+              "param": "deck_thickness"
+            },
+            "z": {
+              "param": "width"
+            }
           }
         }
       },
       {
         "id": "union_structure",
         "type": "geometry.boolean.union",
-        "position": {"x": 650, "y": 350},
+        "position": {
+          "x": 650,
+          "y": 350
+        },
         "parameters": {}
       },
       {
         "id": "railing_left",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 450, "y": 600},
+        "position": {
+          "x": 450,
+          "y": 600
+        },
         "parameters": {
           "corner": {
             "x": 0,
-            "y": {"param": "deck_top"},
+            "y": {
+              "param": "deck_top"
+            },
             "z": -0.5
           },
           "size": {
-            "x": {"param": "span"},
+            "x": {
+              "param": "span"
+            },
             "y": 1,
             "z": 0.2
           }
@@ -183,15 +231,24 @@
       {
         "id": "railing_right",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 450, "y": 700},
+        "position": {
+          "x": 450,
+          "y": 700
+        },
         "parameters": {
           "corner": {
             "x": 0,
-            "y": {"param": "deck_top"},
-            "z": {"param": "width_minus_half"}
+            "y": {
+              "param": "deck_top"
+            },
+            "z": {
+              "param": "width_minus_half"
+            }
           },
           "size": {
-            "x": {"param": "span"},
+            "x": {
+              "param": "span"
+            },
             "y": 1,
             "z": 0.2
           }
@@ -199,106 +256,205 @@
       },
       {
         "id": "union_with_railings",
-        "type": "geometry.boolean.union_multiple",
-        "position": {"x": 850, "y": 500},
+        "type": "geometry.boolean.union",
+        "position": {
+          "x": 850,
+          "y": 500
+        },
         "parameters": {}
       },
       {
         "id": "assign_stone",
         "type": "material.basic_assignment.assign_block_type",
-        "position": {"x": 1050, "y": 400},
+        "position": {
+          "x": 1050,
+          "y": 400
+        },
         "parameters": {
-          "block_type": {"param": "stone_material"}
+          "block_type": {
+            "param": "stone_material"
+          }
         }
       },
       {
         "id": "assign_deck",
-        "type": "material.gradient_mapping.height_gradient",
-        "position": {"x": 1250, "y": 400},
+        "type": "material.gradient_mapping.height_gradient_map",
+        "position": {
+          "x": 1250,
+          "y": 400
+        },
         "parameters": {
           "stops": [
-            {"height": 0, "block": {"param": "stone_material"}},
-            {"height": {"param": "arch_height"}, "block": {"param": "deck_material"}}
+            {
+              "height": 0,
+              "block": {
+                "param": "stone_material"
+              }
+            },
+            {
+              "height": {
+                "param": "arch_height"
+              },
+              "block": {
+                "param": "deck_material"
+              }
+            }
           ]
         }
       },
       {
         "id": "move_to_pos",
-        "type": "transform.basic_transforms.translate",
-        "position": {"x": 1450, "y": 400},
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 1450,
+          "y": 400
+        },
         "parameters": {}
       },
       {
         "id": "bake",
         "type": "output.execute.bake_geometry_to_blocks",
-        "position": {"x": 1650, "y": 400},
+        "position": {
+          "x": 1650,
+          "y": 400
+        },
         "parameters": {
           "placement_mode": "solid"
         }
       },
       {
         "id": "preview",
-        "type": "output.preview.block_preview",
-        "position": {"x": 1850, "y": 400},
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1850,
+          "y": 400
+        },
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "arch_curve", "port": "curve"},
-        "to": {"node": "sweep_arch", "port": "path"}
+        "from": {
+          "node": "arch_curve",
+          "port": "output_curve"
+        },
+        "to": {
+          "node": "sweep_arch",
+          "port": "input_curve"
+        }
       },
       {
-        "from": {"node": "arch_profile", "port": "profile"},
-        "to": {"node": "sweep_arch", "port": "profile"}
+        "from": {
+          "node": "arch_profile",
+          "port": "output_profile"
+        },
+        "to": {
+          "node": "sweep_arch",
+          "port": "input_profile"
+        }
       },
       {
-        "from": {"node": "sweep_arch", "port": "geometry"},
-        "to": {"node": "union_structure", "port": "a"}
+        "from": {
+          "node": "deck_box",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_structure",
+          "port": "input_geometry_1"
+        }
       },
       {
-        "from": {"node": "deck_box", "port": "geometry"},
-        "to": {"node": "union_structure", "port": "b"}
+        "from": {
+          "node": "union_structure",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_with_railings",
+          "port": "input_geometry_0"
+        }
       },
       {
-        "from": {"node": "union_structure", "port": "result"},
-        "to": {"node": "union_with_railings", "port": "geometries"}
+        "from": {
+          "node": "railing_left",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_with_railings",
+          "port": "input_geometry_1"
+        }
       },
       {
-        "from": {"node": "railing_left", "port": "geometry"},
-        "to": {"node": "union_with_railings", "port": "geometries"}
+        "from": {
+          "node": "railing_right",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_with_railings",
+          "port": "input_geometry_2"
+        }
       },
       {
-        "from": {"node": "railing_right", "port": "geometry"},
-        "to": {"node": "union_with_railings", "port": "geometries"}
+        "from": {
+          "node": "union_with_railings",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "assign_stone",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "union_with_railings", "port": "result"},
-        "to": {"node": "assign_stone", "port": "geometry"}
+        "from": {
+          "node": "union_with_railings",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "assign_deck",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "assign_stone", "port": "geometry"},
-        "to": {"node": "assign_deck", "port": "geometry"}
+        "from": {
+          "node": "union_with_railings",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "assign_deck", "port": "geometry"},
-        "to": {"node": "move_to_pos", "port": "geometry"}
+        "from": {
+          "node": "input_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_translation"
+        }
       },
       {
-        "from": {"node": "input_pos", "port": "position"},
-        "to": {"node": "move_to_pos", "port": "translation"}
+        "from": {
+          "node": "move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "bake",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "move_to_pos", "port": "geometry"},
-        "to": {"node": "bake", "port": "geometry"}
-      },
-      {
-        "from": {"node": "bake", "port": "blocks"},
-        "to": {"node": "preview", "port": "blocks"}
+        "from": {
+          "node": "bake",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "preview",
+          "port": "input_blocks"
+        }
       }
     ]
   },
-
   "documentation": {
     "learning_notes": "This preset demonstrates curve sweeping to create an arch, then combining it with deck and railings. The arch is created by sweeping a rectangular profile along a semicircular curve.",
     "tips": [

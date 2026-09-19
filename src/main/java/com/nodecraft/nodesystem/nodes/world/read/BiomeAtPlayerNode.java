@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.world.read;
 
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -13,6 +14,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.WORLD_READ,
     id = "world.read.biome_at_player",
     displayName = "Biome At Player",
     description = "Gets the biome at the player's current position",

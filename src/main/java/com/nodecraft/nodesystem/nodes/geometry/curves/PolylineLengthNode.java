@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.curves;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -15,6 +16,7 @@ import java.util.UUID;
  * Reports total arc length of a polyline or a line segment.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.curves.polyline_length",
     displayName = "Polyline Length",
     description = "Computes the total length of a polyline or line segment",

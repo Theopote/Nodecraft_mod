@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.solids;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.solids.thicken_surface",
     displayName = "Thicken Surface",
     description = "Thickens a surface strip into two offset layers with optional cap strips and a reusable geometry approximation",

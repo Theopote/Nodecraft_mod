@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.input.numeric;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "input.numeric.xy_slider",
     displayName = "XY Slider",
     description = "Provides a two-dimensional slider pad that outputs X and Y values from one draggable handle",

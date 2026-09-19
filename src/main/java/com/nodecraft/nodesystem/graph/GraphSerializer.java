@@ -112,7 +112,7 @@ public class GraphSerializer {
             return GraphLoadResult.empty("Loaded Graph");
         }
 
-        savedGraph = GraphMigrationRegistry.migrateToCurrent(savedGraph);
+        savedGraph = SavedGraphNormalizer.normalize(savedGraph);
 
         String graphName = savedGraph.graphName != null ? savedGraph.graphName : "Loaded Graph";
         NodeGraph graph = new NodeGraph(graphName);

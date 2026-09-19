@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.reference.vectors;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -14,6 +15,7 @@ import java.util.UUID;
  * Computes the cross product of two vectors (A x B).
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "reference.vectors.cross_product",
     displayName = "Cross Product",
     description = "Computes the cross product A x B and its magnitude.",

@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -19,6 +20,12 @@ import java.util.UUID;
 public class PresetInstantiator {
     private static final Logger LOGGER = LoggerFactory.getLogger(PresetInstantiator.class);
 
+    public record LayoutPoint(float x, float y) {
+    }
+
+    public record InstantiateResult(NodeGraph graph, Map<UUID, LayoutPoint> nodePositions) {
+    }
+
     /**
      * Instantiates a preset with the given parameter values.
      *
@@ -27,7 +34,7 @@ public class PresetInstantiator {
      * @return the instantiated node graph
      * @throws PresetInstantiationException if instantiation fails
      */
-    public static NodeGraph instantiate(PresetDefinition preset, Map<String, Object> parameterValues)
+    public static InstantiateResult instantiateWithLayout(PresetDefinition preset, Map<String, Object> parameterValues)
             throws PresetInstantiationException {
 
         LOGGER.debug("Instantiating preset: {}", preset.getPresetId());
@@ -41,59 +48,67 @@ public class PresetInstantiator {
         }
 
         NodeGraph graph = new NodeGraph();
-        Map<String, UUID> nodeIdMapping = new HashMap<>(); // preset node ID -> actual node UUID
+        Map<String, UUID> nodeIdMapping = new HashMap<>();
+        Map<UUID, LayoutPoint> nodePositions = new LinkedHashMap<>();
 
         try {
-            // Step 1: Create all nodes
             for (PresetGraph.PresetNodeDefinition nodeDef : preset.getGraph().getNodes()) {
                 INode node = createNode(nodeDef, resolvedParams);
                 graph.addNode(node);
                 nodeIdMapping.put(nodeDef.getId(), node.getId());
 
-                // Set position if provided
-                if (nodeDef.getPosition() != null && !nodeDef.getPosition().isEmpty()) {
-                    // Position will be handled by the editor
-                    // Store as metadata if needed
+                Map<String, Double> position = nodeDef.getPosition();
+                if (position != null) {
+                    float x = position.getOrDefault("x", 0.0).floatValue();
+                    float y = position.getOrDefault("y", 0.0).floatValue();
+                    nodePositions.put(node.getId(), new LayoutPoint(x, y));
                 }
             }
 
-            // Step 2: Create all connections
             for (PresetGraph.PresetConnectionDefinition connDef : preset.getGraph().getConnections()) {
                 UUID fromNodeId = nodeIdMapping.get(connDef.getFrom().getNode());
                 UUID toNodeId = nodeIdMapping.get(connDef.getTo().getNode());
 
                 if (fromNodeId == null || toNodeId == null) {
                     throw new PresetInstantiationException(
-                        "Connection references unknown node: " + connDef.getFrom().getNode() + " -> " + connDef.getTo().getNode()
+                            "Connection references unknown node: "
+                                    + connDef.getFrom().getNode() + " -> " + connDef.getTo().getNode()
                     );
                 }
 
-                INode fromNode = graph.getNode(fromNodeId);
-                INode toNode = graph.getNode(toNodeId);
-
-                if (fromNode == null || toNode == null) {
-                    throw new PresetInstantiationException("Failed to find nodes for connection");
-                }
-
-                // Find ports and connect
                 String fromPortId = connDef.getFrom().getPort();
                 String toPortId = connDef.getTo().getPort();
 
-                // The actual connection logic depends on your node graph API
-                // This is a placeholder - adjust based on your actual API
                 try {
                     graph.connect(fromNodeId, fromPortId, toNodeId, toPortId);
                 } catch (Exception e) {
-                    LOGGER.warn("Failed to create connection: {} -> {}", fromPortId, toPortId, e);
-                    // Continue - some connections might fail but graph might still be useful
+                    LOGGER.warn(
+                            "Failed to create connection {}.{} -> {}.{} in preset {}: {}",
+                            connDef.getFrom().getNode(),
+                            fromPortId,
+                            connDef.getTo().getNode(),
+                            toPortId,
+                            preset.getPresetId(),
+                            e.getMessage()
+                    );
                 }
             }
 
-            LOGGER.info("Successfully instantiated preset: {} with {} nodes, {} connections",
-                preset.getPresetId(), graph.getNodes().size(), preset.getGraph().getConnections().size());
+            if (graph.getNodes().isEmpty()) {
+                throw new PresetInstantiationException("Preset produced no nodes: " + preset.getPresetId());
+            }
 
-            return graph;
+            LOGGER.info(
+                    "Successfully instantiated preset: {} with {} nodes, {} connections",
+                    preset.getPresetId(),
+                    graph.getNodes().size(),
+                    preset.getGraph().getConnections().size()
+            );
 
+            return new InstantiateResult(graph, Map.copyOf(nodePositions));
+
+        } catch (PresetInstantiationException e) {
+            throw e;
         } catch (Exception e) {
             LOGGER.error("Failed to instantiate preset: {}", preset.getPresetId(), e);
             throw new PresetInstantiationException("Failed to instantiate preset: " + e.getMessage(), e);
@@ -101,14 +116,25 @@ public class PresetInstantiator {
     }
 
     /**
+     * Instantiates a preset with default parameter values and editor layout positions.
+     */
+    public static InstantiateResult instantiateWithLayout(PresetDefinition preset) throws PresetInstantiationException {
+        return instantiateWithLayout(preset, Map.of());
+    }
+
+    /**
+     * Instantiates a preset with the given parameter values.
+     */
+    public static NodeGraph instantiate(PresetDefinition preset, Map<String, Object> parameterValues)
+            throws PresetInstantiationException {
+        return instantiateWithLayout(preset, parameterValues).graph();
+    }
+
+    /**
      * Instantiates a preset with default parameter values.
-     *
-     * @param preset the preset definition
-     * @return the instantiated node graph
-     * @throws PresetInstantiationException if instantiation fails
      */
     public static NodeGraph instantiate(PresetDefinition preset) throws PresetInstantiationException {
-        return instantiate(preset, Map.of());
+        return instantiateWithLayout(preset, Map.of()).graph();
     }
 
     /**

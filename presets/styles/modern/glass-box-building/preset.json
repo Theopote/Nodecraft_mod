@@ -2,7 +2,6 @@
   "preset_id": "styles.modern.glass_box_building",
   "version": "1.0.0",
   "schema_version": "1.0",
-
   "metadata": {
     "name": "Modern Glass Box Building",
     "name_i18n": {
@@ -15,18 +14,21 @@
       "en_US": "A sleek modern building with glass walls and concrete frame, perfect for contemporary city builds."
     },
     "author": "NodeCraft Team",
-    "tags": ["modern", "glass", "contemporary", "urban"],
+    "tags": [
+      "modern",
+      "glass",
+      "contemporary",
+      "urban"
+    ],
     "category": "styles",
     "difficulty": "intermediate",
     "estimated_build_time": "4 minutes",
     "estimated_node_count": 15
   },
-
   "thumbnails": {
     "main": "thumbnail.png",
     "previews": []
   },
-
   "parameters": [
     {
       "id": "width",
@@ -105,206 +107,396 @@
       "group": "Style"
     }
   ],
-
   "graph": {
     "nodes": [
       {
         "id": "input_pos",
         "type": "input.context.player_position",
-        "position": {"x": 50, "y": 300},
+        "position": {
+          "x": 50,
+          "y": 300
+        },
         "parameters": {}
       },
       {
         "id": "building_volume",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 250},
+        "position": {
+          "x": 250,
+          "y": 250
+        },
         "parameters": {
-          "corner": {"x": 0, "y": 0, "z": 0},
+          "corner": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
           "size": {
-            "x": {"param": "width"},
-            "y": {"param": "total_height"},
-            "z": {"param": "length"}
+            "x": {
+              "param": "width"
+            },
+            "y": {
+              "param": "total_height"
+            },
+            "z": {
+              "param": "length"
+            }
           }
         }
       },
       {
         "id": "interior_volume",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 370},
+        "position": {
+          "x": 250,
+          "y": 370
+        },
         "parameters": {
-          "corner": {"x": 0.5, "y": 0, "z": 0.5},
+          "corner": {
+            "x": 0.5,
+            "y": 0,
+            "z": 0.5
+          },
           "size": {
-            "x": {"param": "width_minus_walls"},
-            "y": {"param": "total_height"},
-            "z": {"param": "length_minus_walls"}
+            "x": {
+              "param": "width_minus_walls"
+            },
+            "y": {
+              "param": "total_height"
+            },
+            "z": {
+              "param": "length_minus_walls"
+            }
           }
         }
       },
       {
         "id": "hollow_building",
         "type": "geometry.boolean.difference",
-        "position": {"x": 450, "y": 310},
+        "position": {
+          "x": 450,
+          "y": 310
+        },
         "parameters": {}
       },
       {
         "id": "corner_frame_1",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 520},
+        "position": {
+          "x": 250,
+          "y": 520
+        },
         "parameters": {
-          "corner": {"x": 0, "y": 0, "z": 0},
-          "size": {"x": 1, "y": {"param": "total_height"}, "z": 1}
+          "corner": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "size": {
+            "x": 1,
+            "y": {
+              "param": "total_height"
+            },
+            "z": 1
+          }
         }
       },
       {
         "id": "corner_frame_2",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 620},
+        "position": {
+          "x": 250,
+          "y": 620
+        },
         "parameters": {
           "corner": {
-            "x": {"param": "width_minus_one"},
+            "x": {
+              "param": "width_minus_one"
+            },
             "y": 0,
             "z": 0
           },
-          "size": {"x": 1, "y": {"param": "total_height"}, "z": 1}
+          "size": {
+            "x": 1,
+            "y": {
+              "param": "total_height"
+            },
+            "z": 1
+          }
         }
       },
       {
         "id": "corner_frame_3",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 720},
+        "position": {
+          "x": 250,
+          "y": 720
+        },
         "parameters": {
           "corner": {
             "x": 0,
             "y": 0,
-            "z": {"param": "length_minus_one"}
+            "z": {
+              "param": "length_minus_one"
+            }
           },
-          "size": {"x": 1, "y": {"param": "total_height"}, "z": 1}
+          "size": {
+            "x": 1,
+            "y": {
+              "param": "total_height"
+            },
+            "z": 1
+          }
         }
       },
       {
         "id": "corner_frame_4",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 820},
+        "position": {
+          "x": 250,
+          "y": 820
+        },
         "parameters": {
           "corner": {
-            "x": {"param": "width_minus_one"},
+            "x": {
+              "param": "width_minus_one"
+            },
             "y": 0,
-            "z": {"param": "length_minus_one"}
+            "z": {
+              "param": "length_minus_one"
+            }
           },
-          "size": {"x": 1, "y": {"param": "total_height"}, "z": 1}
+          "size": {
+            "x": 1,
+            "y": {
+              "param": "total_height"
+            },
+            "z": 1
+          }
         }
       },
       {
         "id": "union_frames",
-        "type": "geometry.boolean.union_multiple",
-        "position": {"x": 650, "y": 650},
+        "type": "geometry.boolean.union",
+        "position": {
+          "x": 650,
+          "y": 650
+        },
         "parameters": {}
       },
       {
         "id": "union_all",
         "type": "geometry.boolean.union",
-        "position": {"x": 850, "y": 450},
+        "position": {
+          "x": 850,
+          "y": 450
+        },
         "parameters": {}
       },
       {
         "id": "assign_glass_walls",
         "type": "material.basic_assignment.assign_block_type",
-        "position": {"x": 1050, "y": 450},
+        "position": {
+          "x": 1050,
+          "y": 450
+        },
         "parameters": {
-          "block_type": {"param": "glass_material"}
+          "block_type": {
+            "param": "glass_material"
+          }
         }
       },
       {
         "id": "assign_frame",
-        "type": "material.gradient_mapping.height_gradient",
-        "position": {"x": 1250, "y": 450},
+        "type": "material.gradient_mapping.height_gradient_map",
+        "position": {
+          "x": 1250,
+          "y": 450
+        },
         "parameters": {
           "stops": [
-            {"height": 0, "block": {"param": "frame_material"}}
+            {
+              "height": 0,
+              "block": {
+                "param": "frame_material"
+              }
+            }
           ]
         }
       },
       {
         "id": "move_to_pos",
-        "type": "transform.basic_transforms.translate",
-        "position": {"x": 1450, "y": 450},
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 1450,
+          "y": 450
+        },
         "parameters": {}
       },
       {
         "id": "bake",
         "type": "output.execute.bake_geometry_to_blocks",
-        "position": {"x": 1650, "y": 450},
+        "position": {
+          "x": 1650,
+          "y": 450
+        },
         "parameters": {
           "placement_mode": "shell"
         }
       },
       {
         "id": "preview",
-        "type": "output.preview.block_preview",
-        "position": {"x": 1850, "y": 450},
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1850,
+          "y": 450
+        },
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "building_volume", "port": "geometry"},
-        "to": {"node": "hollow_building", "port": "a"}
+        "from": {
+          "node": "building_volume",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "hollow_building",
+          "port": "input_base"
+        }
       },
       {
-        "from": {"node": "interior_volume", "port": "geometry"},
-        "to": {"node": "hollow_building", "port": "b"}
+        "from": {
+          "node": "interior_volume",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "hollow_building",
+          "port": "input_cutter"
+        }
       },
       {
-        "from": {"node": "corner_frame_1", "port": "geometry"},
-        "to": {"node": "union_frames", "port": "geometries"}
+        "from": {
+          "node": "corner_frame_1",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_frames",
+          "port": "input_geometry_0"
+        }
       },
       {
-        "from": {"node": "corner_frame_2", "port": "geometry"},
-        "to": {"node": "union_frames", "port": "geometries"}
+        "from": {
+          "node": "corner_frame_2",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_frames",
+          "port": "input_geometry_1"
+        }
       },
       {
-        "from": {"node": "corner_frame_3", "port": "geometry"},
-        "to": {"node": "union_frames", "port": "geometries"}
+        "from": {
+          "node": "corner_frame_3",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_frames",
+          "port": "input_geometry_2"
+        }
       },
       {
-        "from": {"node": "corner_frame_4", "port": "geometry"},
-        "to": {"node": "union_frames", "port": "geometries"}
+        "from": {
+          "node": "corner_frame_4",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_frames",
+          "port": "input_geometry_3"
+        }
       },
       {
-        "from": {"node": "hollow_building", "port": "result"},
-        "to": {"node": "union_all", "port": "a"}
+        "from": {
+          "node": "hollow_building",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_all",
+          "port": "input_geometry_0"
+        }
       },
       {
-        "from": {"node": "union_frames", "port": "result"},
-        "to": {"node": "union_all", "port": "b"}
+        "from": {
+          "node": "union_frames",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_all",
+          "port": "input_geometry_1"
+        }
       },
       {
-        "from": {"node": "union_all", "port": "result"},
-        "to": {"node": "assign_glass_walls", "port": "geometry"}
+        "from": {
+          "node": "union_all",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "assign_glass_walls",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "assign_glass_walls", "port": "geometry"},
-        "to": {"node": "assign_frame", "port": "geometry"}
+        "from": {
+          "node": "union_all",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "assign_frame",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "assign_frame", "port": "geometry"},
-        "to": {"node": "move_to_pos", "port": "geometry"}
+        "from": {
+          "node": "union_all",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "input_pos", "port": "position"},
-        "to": {"node": "move_to_pos", "port": "translation"}
+        "from": {
+          "node": "input_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_translation"
+        }
       },
       {
-        "from": {"node": "move_to_pos", "port": "geometry"},
-        "to": {"node": "bake", "port": "geometry"}
+        "from": {
+          "node": "move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "bake",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "bake", "port": "blocks"},
-        "to": {"node": "preview", "port": "blocks"}
+        "from": {
+          "node": "bake",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "preview",
+          "port": "input_blocks"
+        }
       }
     ]
   },
-
   "documentation": {
     "learning_notes": "This preset demonstrates modern architectural design with glass curtain walls and structural frame elements at corners. The building is hollow with glass infill.",
     "tips": [

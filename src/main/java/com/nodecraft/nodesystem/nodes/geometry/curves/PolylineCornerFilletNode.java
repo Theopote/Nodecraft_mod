@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.geometry.curves;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -24,6 +25,7 @@ import java.util.UUID;
  * Replaces interior corners of an open polyline with circular fillets lying in a plane.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.curves.fillet_polyline_corners",
     displayName = "Fillet Polyline Corners",
     description = "Fillets interior corners of an open polyline with circular arcs in the work plane",

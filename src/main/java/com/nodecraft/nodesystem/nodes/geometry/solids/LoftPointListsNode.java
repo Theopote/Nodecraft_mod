@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.solids;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -21,6 +22,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.solids.loft_from_points",
     displayName = "Loft Point Lists",
     description = "Connects two ordered point lists and emits source paths, target paths, and loft rail segments",

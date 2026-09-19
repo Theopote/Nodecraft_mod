@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.reference.vectors;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -14,6 +15,7 @@ import java.util.UUID;
  * Measures the angle between two vectors, optionally signed using a reference axis (plane normal).
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "reference.vectors.angle_between",
     displayName = "Angle Between Vectors",
     description = "Angle between two vectors in radians and degrees; optional reference vector yields a signed angle",

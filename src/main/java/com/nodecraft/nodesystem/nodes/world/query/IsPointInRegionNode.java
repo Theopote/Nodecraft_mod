@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.query;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -13,6 +14,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.WORLD_READ,
     id = "world.query.is_point_in_region",
     displayName = "Point In Region",
     description = "Tests whether the center of a block position lies inside a region.",

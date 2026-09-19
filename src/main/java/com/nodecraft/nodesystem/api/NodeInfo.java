@@ -48,4 +48,10 @@ public @interface NodeInfo {
      * {@link #category()}.
      */
     String icon() default "";
+
+    /**
+     * Declared execution capability for preview side-effect enforcement.
+     * When {@link NodeEffect#UNSPECIFIED}, {@code NodeEffectResolver} infers from {@link #id()}.
+     */
+    NodeEffect effect() default NodeEffect.UNSPECIFIED;
 }

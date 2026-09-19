@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.write;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -10,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.WORLD_WRITE,
     id = "world.write.undo_last_write",
     displayName = "Undo Last World Write",
     description = "Reverts the most recent recorded world.write block placement operation",

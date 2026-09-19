@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.pattern_mapping;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "material.pattern_mapping.brick_pattern_map",
     displayName = "Brick Pattern Map",
     description = "Assigns two materials using a staggered brick-like pattern in X/Z.",

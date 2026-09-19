@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.geometry.profiles;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.profiles.boolean_2d",
     displayName = "Profile Boolean 2D",
     description = "Performs 2D boolean operations (union/intersection/difference) on two polygon profiles in a shared plane",

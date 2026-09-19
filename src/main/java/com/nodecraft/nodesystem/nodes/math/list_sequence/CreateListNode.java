@@ -4,6 +4,7 @@ import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.gui.editor.impl.ZoomHelper;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -24,6 +25,7 @@ import java.util.UUID;
  * Dynamic list builder node with add/remove controls for input ports.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.list.create_list",
     displayName = "Create List",
     description = "Packs multiple input items into a single list.",

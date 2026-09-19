@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.utilities.assist;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
@@ -18,6 +19,7 @@ import java.util.UUID;
  * 汇线节点：将两路输入按优先级汇聚为一路输出，用于简化连线。
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "utilities.assist.signal_merge",
     displayName = "Signal Merge",
     description = "将两路输入按优先级汇聚为一路输出",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.reference.points;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -27,6 +28,7 @@ import java.util.UUID;
  * Finds the closest point from one query point to path, strip, or voxelized geometry inputs.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "reference.points.closest_point_to_object",
     displayName = "Closest Point To Object",
     description = "Finds the nearest point from a query point to a curve, path, surface strip, or voxelized geometry",

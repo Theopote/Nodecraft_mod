@@ -84,7 +84,7 @@
       },
       {
         "id": "move_to_pos",
-        "type": "transform.basic.move",
+        "type": "transform.basic_transforms.move_geometry",
         "position": {"x": 650, "y": 200},
         "parameters": {}
       },
@@ -98,31 +98,31 @@
       },
       {
         "id": "preview",
-        "type": "output.preview.block_preview",
+        "type": "output.preview.preview_blocks",
         "position": {"x": 1050, "y": 200},
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "sphere", "port": "geometry"},
-        "to": {"node": "assign_material", "port": "geometry"}
+        "from": {"node": "sphere", "port": "output_geometry"},
+        "to": {"node": "assign_material", "port": "input_geometry"}
       },
       {
-        "from": {"node": "assign_material", "port": "geometry"},
-        "to": {"node": "move_to_pos", "port": "geometry"}
+        "from": {"node": "sphere", "port": "output_geometry"},
+        "to": {"node": "move_to_pos", "port": "input_geometry"}
       },
       {
-        "from": {"node": "input_pos", "port": "position"},
-        "to": {"node": "move_to_pos", "port": "translation"}
+        "from": {"node": "input_pos", "port": "output_position"},
+        "to": {"node": "move_to_pos", "port": "input_translation"}
       },
       {
-        "from": {"node": "move_to_pos", "port": "geometry"},
-        "to": {"node": "bake", "port": "geometry"}
+        "from": {"node": "move_to_pos", "port": "output_geometry"},
+        "to": {"node": "bake", "port": "input_geometry"}
       },
       {
-        "from": {"node": "bake", "port": "blocks"},
-        "to": {"node": "preview", "port": "blocks"}
+        "from": {"node": "bake", "port": "output_blocks"},
+        "to": {"node": "preview", "port": "input_blocks"}
       }
     ]
   },

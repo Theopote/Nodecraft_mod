@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.scalar_math;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -9,6 +10,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.scalar_math.lerp",
     displayName = "Lerp",
     description = "Linearly interpolates between A and B using parameter T.",

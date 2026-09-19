@@ -10,6 +10,8 @@ import com.nodecraft.gui.ai.AiNodeSchemaExporter;
 
 import com.nodecraft.core.item.ModItems; // 统一通过 ModItems 类管理物品注册
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.preset.BundledPresetLocator;
+import com.nodecraft.nodesystem.preset.BundledPresetLocator;
 import com.nodecraft.nodesystem.preset.PresetRegistry;
 
 import java.nio.file.Path;
@@ -55,8 +57,9 @@ public class NodeCraft implements ModInitializer {
 			PresetRegistry presetRegistry = PresetRegistry.getInstance();
 			Path presetDirectory = Path.of("config", MOD_ID, "presets");
 
-			// Load presets from config directory
+			// Load presets from config directory, then bundled quickstart fallbacks.
 			presetRegistry.loadPresets(presetDirectory);
+			BundledPresetLocator.registerBundledQuickstartPresetsIfAbsent(presetRegistry);
 
 			int presetCount = presetRegistry.getPresetCount();
 			LOGGER.info("预设加载完成。总计: {} 个预设", presetCount);

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.scalar_math;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -10,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.scalar_math.smoothstep",
     displayName = "Smoothstep",
     description = "Computes smooth Hermite interpolation 3t^2 - 2t^3 between edge0 and edge1.",

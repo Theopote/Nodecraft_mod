@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.nodes.geometry.curves.util.CurveMathUtils;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.curves.nurbs",
     displayName = "NURBS Curve",
     description = "Builds a sampled clamped uniform NURBS curve from control points and optional per-point weights",

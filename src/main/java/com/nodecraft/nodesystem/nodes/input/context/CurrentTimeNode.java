@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.input.context;
 
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -15,6 +16,7 @@ import java.util.UUID;
  * Reads the current world time state from the active player context.
  */
 @NodeInfo(
+    effect = NodeEffect.WORLD_READ,
     id = "input.context.current_time",
     displayName = "Current Time",
     description = "Gets the current time and weather state from the active Minecraft world.",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.pattern_mapping;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -19,6 +20,7 @@ import java.util.UUID;
  * Applies a two-material checker pattern using resolved block coordinates.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "material.pattern_mapping.checker_pattern_map",
     displayName = "Checker Pattern Map",
     description = "Assigns alternating block types across a voxelized shape using a checker pattern",

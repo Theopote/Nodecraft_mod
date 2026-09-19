@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.trigonometry;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -10,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.trigonometry.deg_to_rad",
     displayName = "Degrees To Radians",
     description = "将角度从度数转换为弧度",

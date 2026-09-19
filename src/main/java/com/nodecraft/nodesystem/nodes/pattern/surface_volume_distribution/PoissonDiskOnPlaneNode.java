@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.pattern.surface_volume_distribution;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -25,6 +26,7 @@ import java.util.UUID;
  * Poisson-disk style sampling on a plane rectangle in UV space (bridson-like rejection sampling).
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "pattern.surface_volume_distribution.poisson_disk_plane",
     displayName = "Poisson Disk On Plane",
     description = "Samples points on a plane inside a UV rectangle with minimum separation using rejection sampling",

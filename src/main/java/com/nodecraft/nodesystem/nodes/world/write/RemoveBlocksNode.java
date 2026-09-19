@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.write;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -21,6 +22,7 @@ import java.util.UUID;
  * Low-level world edit node that clears blocks at explicit coordinates.
  */
 @NodeInfo(
+    effect = NodeEffect.WORLD_WRITE,
     id = "world.write.remove_blocks",
     displayName = "Clear Blocks",
     description = "Clears blocks at explicit coordinates by replacing them with air",

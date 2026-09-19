@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.solids;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -21,6 +22,7 @@ import java.util.UUID;
  * Projects query points to the closest voxel block center from a voxelized geometry shell or solid.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.solids.shrinkwrap_points_voxel_geometry",
     displayName = "Shrinkwrap Points To Voxel Geometry",
     description = "Voxelizes geometry to blocks, then snaps each query point to the nearest voxel block center (shell when fill is off); distinct from triangle strip shrinkwrap",

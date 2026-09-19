@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.utilities.fileio;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -21,6 +22,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.FILE_IO,
     id = "utilities.fileio.read_image",
     displayName = "Read Image",
     description = "Reads a local image file and outputs dimensions, colors, and grayscale samples",

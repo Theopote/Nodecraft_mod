@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.transform.basic_transforms;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -15,6 +16,7 @@ import java.util.UUID;
  * Offsets one block coordinate by integer X/Y/Z amounts.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "transform.basic_transforms.offset_coordinate",
     displayName = "Offset Coordinate",
     description = "Offsets a single block coordinate by integer X, Y, Z amounts or a rounded vector",

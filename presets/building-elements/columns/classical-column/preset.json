@@ -2,7 +2,6 @@
   "preset_id": "building_elements.columns.classical_column",
   "version": "1.0.0",
   "schema_version": "1.0",
-
   "metadata": {
     "name": "Classical Column",
     "name_i18n": {
@@ -15,18 +14,21 @@
       "en_US": "A classical architectural column with base, shaft, and capital."
     },
     "author": "NodeCraft Team",
-    "tags": ["column", "classical", "pillar", "architectural"],
+    "tags": [
+      "column",
+      "classical",
+      "pillar",
+      "architectural"
+    ],
     "category": "building_elements",
     "difficulty": "beginner",
     "estimated_build_time": "2 minutes",
     "estimated_node_count": 7
   },
-
   "thumbnails": {
     "main": "thumbnail.png",
     "previews": []
   },
-
   "parameters": [
     {
       "id": "height",
@@ -81,116 +83,215 @@
       "group": "Materials"
     }
   ],
-
   "graph": {
     "nodes": [
       {
         "id": "input_pos",
         "type": "input.context.player_position",
-        "position": {"x": 50, "y": 250},
+        "position": {
+          "x": 50,
+          "y": 250
+        },
         "parameters": {}
       },
       {
         "id": "base",
-        "type": "geometry.primitives.cylinder_by_axis_and_radius",
-        "position": {"x": 250, "y": 150},
+        "type": "geometry.primitives.cylinder",
+        "position": {
+          "x": 250,
+          "y": 150
+        },
         "parameters": {
-          "radius": {"param": "base_radius_calc"},
-          "height": {"param": "base_height"},
-          "axis": {"x": 0, "y": 1, "z": 0}
+          "radius": {
+            "param": "base_radius_calc"
+          },
+          "height": {
+            "param": "base_height"
+          },
+          "axis": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
         }
       },
       {
         "id": "shaft",
-        "type": "geometry.primitives.cylinder_by_axis_and_radius",
-        "position": {"x": 250, "y": 250},
+        "type": "geometry.primitives.cylinder",
+        "position": {
+          "x": 250,
+          "y": 250
+        },
         "parameters": {
-          "radius": {"param": "shaft_radius"},
-          "height": {"param": "shaft_height_calc"},
-          "axis": {"x": 0, "y": 1, "z": 0}
+          "radius": {
+            "param": "shaft_radius"
+          },
+          "height": {
+            "param": "shaft_height_calc"
+          },
+          "axis": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
         }
       },
       {
         "id": "capital",
-        "type": "geometry.primitives.cylinder_by_axis_and_radius",
-        "position": {"x": 250, "y": 350},
+        "type": "geometry.primitives.cylinder",
+        "position": {
+          "x": 250,
+          "y": 350
+        },
         "parameters": {
-          "radius": {"param": "capital_radius_calc"},
-          "height": {"param": "capital_height"},
-          "axis": {"x": 0, "y": 1, "z": 0}
+          "radius": {
+            "param": "capital_radius_calc"
+          },
+          "height": {
+            "param": "capital_height"
+          },
+          "axis": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
         }
       },
       {
         "id": "union_column",
-        "type": "geometry.boolean.union_multiple",
-        "position": {"x": 450, "y": 250},
+        "type": "geometry.boolean.union",
+        "position": {
+          "x": 450,
+          "y": 250
+        },
         "parameters": {}
       },
       {
         "id": "assign_material",
         "type": "material.basic_assignment.assign_block_type",
-        "position": {"x": 650, "y": 250},
+        "position": {
+          "x": 650,
+          "y": 250
+        },
         "parameters": {
-          "block_type": {"param": "column_material"}
+          "block_type": {
+            "param": "column_material"
+          }
         }
       },
       {
         "id": "move_to_pos",
-        "type": "transform.basic.move",
-        "position": {"x": 850, "y": 250},
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 850,
+          "y": 250
+        },
         "parameters": {}
       },
       {
         "id": "bake",
         "type": "output.execute.bake_geometry_to_blocks",
-        "position": {"x": 1050, "y": 250},
+        "position": {
+          "x": 1050,
+          "y": 250
+        },
         "parameters": {
           "placement_mode": "solid"
         }
       },
       {
         "id": "preview",
-        "type": "output.preview.block_preview",
-        "position": {"x": 1250, "y": 250},
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1250,
+          "y": 250
+        },
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "base", "port": "geometry"},
-        "to": {"node": "union_column", "port": "geometries"}
+        "from": {
+          "node": "base",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_column",
+          "port": "input_geometry_0"
+        }
       },
       {
-        "from": {"node": "shaft", "port": "geometry"},
-        "to": {"node": "union_column", "port": "geometries"}
+        "from": {
+          "node": "shaft",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_column",
+          "port": "input_geometry_1"
+        }
       },
       {
-        "from": {"node": "capital", "port": "geometry"},
-        "to": {"node": "union_column", "port": "geometries"}
+        "from": {
+          "node": "capital",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_column",
+          "port": "input_geometry_2"
+        }
       },
       {
-        "from": {"node": "union_column", "port": "result"},
-        "to": {"node": "assign_material", "port": "geometry"}
+        "from": {
+          "node": "union_column",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "assign_material",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "assign_material", "port": "geometry"},
-        "to": {"node": "move_to_pos", "port": "geometry"}
+        "from": {
+          "node": "union_column",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "input_pos", "port": "position"},
-        "to": {"node": "move_to_pos", "port": "translation"}
+        "from": {
+          "node": "input_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_translation"
+        }
       },
       {
-        "from": {"node": "move_to_pos", "port": "geometry"},
-        "to": {"node": "bake", "port": "geometry"}
+        "from": {
+          "node": "move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "bake",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "bake", "port": "blocks"},
-        "to": {"node": "preview", "port": "blocks"}
+        "from": {
+          "node": "bake",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "preview",
+          "port": "input_blocks"
+        }
       }
     ]
   },
-
   "documentation": {
     "learning_notes": "This preset demonstrates how to create compound structures by stacking cylindrical elements with different radii to achieve classical column proportions.",
     "tips": [

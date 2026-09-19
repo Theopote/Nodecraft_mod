@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.reference.points;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -18,6 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "reference.points.get_face_edge",
     displayName = "Get Face Edge",
     description = "Gets a single edge from a face by index",

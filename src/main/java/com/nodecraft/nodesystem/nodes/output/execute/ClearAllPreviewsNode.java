@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.output.execute;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -11,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PREVIEW_WRITE,
     id = "output.execute.clear_preview",
     displayName = "Clear Preview",
     description = "Clears all active previews",

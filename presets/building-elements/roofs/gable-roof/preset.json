@@ -2,7 +2,6 @@
   "preset_id": "building_elements.roofs.gable_roof",
   "version": "1.0.0",
   "schema_version": "1.0",
-
   "metadata": {
     "name": "Gable Roof",
     "name_i18n": {
@@ -15,18 +14,21 @@
       "en_US": "A classic gable (pitched) roof with adjustable pitch and overhang."
     },
     "author": "NodeCraft Team",
-    "tags": ["roof", "gable", "pitched", "building-element"],
+    "tags": [
+      "roof",
+      "gable",
+      "pitched",
+      "building-element"
+    ],
     "category": "building_elements",
     "difficulty": "beginner",
     "estimated_build_time": "2 minutes",
     "estimated_node_count": 8
   },
-
   "thumbnails": {
     "main": "thumbnail.png",
     "previews": []
   },
-
   "parameters": [
     {
       "id": "width",
@@ -81,102 +83,178 @@
       "group": "Materials"
     }
   ],
-
   "graph": {
     "nodes": [
       {
         "id": "input_pos",
         "type": "input.context.player_position",
-        "position": {"x": 50, "y": 200},
+        "position": {
+          "x": 50,
+          "y": 200
+        },
         "parameters": {}
       },
       {
         "id": "roof_profile",
         "type": "geometry.profiles.polygon_profile",
-        "position": {"x": 250, "y": 200},
+        "position": {
+          "x": 250,
+          "y": 200
+        },
         "parameters": {
-          "width": {"param": "width_with_overhang"},
-          "height": {"param": "roof_height_calc"}
+          "width": {
+            "param": "width_with_overhang"
+          },
+          "height": {
+            "param": "roof_height_calc"
+          }
         }
       },
       {
         "id": "extrude_roof",
         "type": "geometry.solids.extrude_profile",
-        "position": {"x": 450, "y": 200},
+        "position": {
+          "x": 450,
+          "y": 200
+        },
         "parameters": {
-          "distance": {"param": "length_with_overhang"}
+          "distance": {
+            "param": "length_with_overhang"
+          }
         }
       },
       {
         "id": "orient_roof",
-        "type": "transform.basic_transforms.rotate",
-        "position": {"x": 650, "y": 200},
+        "type": "transform.basic_transforms.rotate_geometry_axis",
+        "position": {
+          "x": 650,
+          "y": 200
+        },
         "parameters": {
-          "axis": {"x": 1, "y": 0, "z": 0},
+          "axis": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
           "angle": 90
         }
       },
       {
         "id": "move_to_pos",
-        "type": "transform.basic_transforms.translate",
-        "position": {"x": 850, "y": 200},
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 850,
+          "y": 200
+        },
         "parameters": {}
       },
       {
         "id": "assign_material",
         "type": "material.basic_assignment.assign_block_type",
-        "position": {"x": 1050, "y": 200},
+        "position": {
+          "x": 1050,
+          "y": 200
+        },
         "parameters": {
-          "block_type": {"param": "roof_material"}
+          "block_type": {
+            "param": "roof_material"
+          }
         }
       },
       {
         "id": "bake",
         "type": "output.execute.bake_geometry_to_blocks",
-        "position": {"x": 1250, "y": 200},
+        "position": {
+          "x": 1250,
+          "y": 200
+        },
         "parameters": {
           "placement_mode": "shell"
         }
       },
       {
         "id": "preview",
-        "type": "output.preview.block_preview",
-        "position": {"x": 1450, "y": 200},
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1450,
+          "y": 200
+        },
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "roof_profile", "port": "profile"},
-        "to": {"node": "extrude_roof", "port": "profile"}
+        "from": {
+          "node": "roof_profile",
+          "port": "output_profile"
+        },
+        "to": {
+          "node": "extrude_roof",
+          "port": "input_profile"
+        }
       },
       {
-        "from": {"node": "extrude_roof", "port": "geometry"},
-        "to": {"node": "orient_roof", "port": "geometry"}
+        "from": {
+          "node": "extrude_roof",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "orient_roof",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "orient_roof", "port": "geometry"},
-        "to": {"node": "move_to_pos", "port": "geometry"}
+        "from": {
+          "node": "orient_roof",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "input_pos", "port": "position"},
-        "to": {"node": "move_to_pos", "port": "translation"}
+        "from": {
+          "node": "input_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_translation"
+        }
       },
       {
-        "from": {"node": "move_to_pos", "port": "geometry"},
-        "to": {"node": "assign_material", "port": "geometry"}
+        "from": {
+          "node": "move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "assign_material",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "assign_material", "port": "geometry"},
-        "to": {"node": "bake", "port": "geometry"}
+        "from": {
+          "node": "move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "bake",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "bake", "port": "blocks"},
-        "to": {"node": "preview", "port": "blocks"}
+        "from": {
+          "node": "bake",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "preview",
+          "port": "input_blocks"
+        }
       }
     ]
   },
-
   "documentation": {
     "learning_notes": "This preset demonstrates profile extrusion and transformation. A triangular profile is extruded along a length, then rotated to create the pitched roof shape.",
     "tips": [

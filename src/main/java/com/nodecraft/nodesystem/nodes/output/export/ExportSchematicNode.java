@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.output.export;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -30,6 +31,7 @@ import java.util.UUID;
  * Exports placements into a stable NodeCraft NBT structure file with palette metadata.
  */
 @NodeInfo(
+    effect = NodeEffect.FILE_IO,
     id = "output.export.export_schematic",
     displayName = "Export Schematic",
     description = "Exports placements to a NodeCraft NBT structure file",

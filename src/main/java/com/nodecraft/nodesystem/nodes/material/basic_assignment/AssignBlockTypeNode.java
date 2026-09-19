@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.basic_assignment;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -20,6 +21,7 @@ import java.util.UUID;
  * Applies a single block type uniformly to a block set or voxelized geometry.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "material.basic_assignment.assign_block_type",
     displayName = "Assign Block Type",
     description = "Assigns a single block type to flat or tree-grouped block positions",

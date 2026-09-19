@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.basic_assignment;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "material.basic_assignment.weighted_palette",
     displayName = "Weighted Block Palette",
     description = "Assigns weighted random block types to flat positions or tree branches.",

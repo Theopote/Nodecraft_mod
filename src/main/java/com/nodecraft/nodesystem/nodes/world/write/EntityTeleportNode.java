@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.write;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -16,6 +17,7 @@ import java.util.UUID;
  * Entity Teleport 节点: 将实体传送到指定坐标
  */
 @NodeInfo(
+    effect = NodeEffect.WORLD_WRITE,
     id = "world.write.entity_teleport",
     displayName = "Teleport Entity",
     description = "传送实体",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.curves;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.curves.rainbow_curve_offset",
     displayName = "Rainbow Curve Offset",
     description = "Generates multiple parallel offset polylines around a space curve using path frames.",

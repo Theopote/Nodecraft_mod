@@ -108,27 +108,27 @@
       },
       {
         "id": "node_preview",
-        "type": "output.preview.block_preview",
+        "type": "output.preview.preview_blocks",
         "position": {"x": 900, "y": 200},
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "node_player_pos", "port": "position"},
-        "to": {"node": "node_box", "port": "center"}
+        "from": {"node": "node_player_pos", "port": "output_position"},
+        "to": {"node": "node_box", "port": "input_center"}
       },
       {
-        "from": {"node": "node_box", "port": "geometry"},
-        "to": {"node": "node_material", "port": "geometry"}
+        "from": {"node": "node_box", "port": "output_geometry"},
+        "to": {"node": "node_material", "port": "input_geometry"}
       },
       {
-        "from": {"node": "node_material", "port": "geometry"},
-        "to": {"node": "node_bake", "port": "geometry"}
+        "from": {"node": "node_box", "port": "output_geometry"},
+        "to": {"node": "node_bake", "port": "input_geometry"}
       },
       {
-        "from": {"node": "node_bake", "port": "blocks"},
-        "to": {"node": "node_preview", "port": "blocks"}
+        "from": {"node": "node_bake", "port": "output_blocks"},
+        "to": {"node": "node_preview", "port": "input_blocks"}
       }
     ]
   },

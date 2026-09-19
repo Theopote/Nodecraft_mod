@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.flow.loop;
 
 import com.nodecraft.nodesystem.api.ExecLoopNode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -17,6 +18,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "flow.loop.for_each",
     displayName = "For Each Loop",
     description = "Expands a list into items. Wire exec_body for per-item side effects; legacy list outputs remain for dataflow graphs.",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.variable;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -13,6 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "variable.set",
     displayName = "Set Variable",
     description = "Stores a value under a user variable name in the execution scope. Connect an output to downstream nodes when write order matters.",

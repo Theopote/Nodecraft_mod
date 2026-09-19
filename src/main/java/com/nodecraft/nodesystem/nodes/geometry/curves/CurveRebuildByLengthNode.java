@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.curves;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -22,6 +23,7 @@ import java.util.UUID;
  * Rebuilds a path into near-uniform arc-length samples from Curve/Polyline/Line inputs.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.curves.rebuild_curve_length",
     displayName = "Curve Rebuild By Length",
     description = "Rebuilds a curve/path to uniform arc-length samples using spacing, or using a total point count (count wins when both are provided)",

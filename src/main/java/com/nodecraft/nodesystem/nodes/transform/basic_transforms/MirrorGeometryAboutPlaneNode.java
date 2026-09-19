@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.transform.basic_transforms;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -16,6 +17,7 @@ import java.util.UUID;
  * Reflects supported {@link GeometryData} primitives about a plane (including composites and boolean wrappers).
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "transform.basic_transforms.mirror_geometry_plane",
     displayName = "Mirror Geometry About Plane",
     description = "Mirrors analytic geometry about a plane (recursive for composites and boolean geometry nodes)",

@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.output.execute;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.bake.BakePlacementService;
@@ -20,6 +21,7 @@ import java.util.UUID;
  * Monitors an async bake task submitted by {@link ApplyChangesNode} or undo/redo nodes.
  */
 @NodeInfo(
+    effect = NodeEffect.UI_EFFECT,
     id = "output.execute.bake_status",
     displayName = "Bake Status",
     description = "Polls BakePlacementService for a task ID and reports state, progress, placed, skipped, and rollback-failed counts.",

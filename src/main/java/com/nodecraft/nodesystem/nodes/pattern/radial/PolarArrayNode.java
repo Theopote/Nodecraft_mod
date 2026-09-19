@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.pattern.radial;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -23,6 +24,7 @@ import java.util.UUID;
  * Polar Array 节点: 将Coordinate列表绕中心点重复旋转
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "pattern.radial.polar_array",
     displayName = "Polar Array",
     description = "将坐标列表绕中心点重复旋转排列",

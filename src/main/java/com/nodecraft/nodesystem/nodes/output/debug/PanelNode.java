@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.output.debug;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.gui.editor.impl.ZoomHelper;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -23,6 +24,7 @@ import java.util.UUID;
  * 提供格式化、自动刷新、换行控制选项和数据预览区域。
  */
 @NodeInfo(
+    effect = NodeEffect.UI_EFFECT,
     id = "output.debug.data_inspector",
     displayName = "Panel",
     description = "显示连接到其输入端口的原始数据（文本形式）",

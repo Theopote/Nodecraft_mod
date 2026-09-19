@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.selection;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -14,6 +15,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.WORLD_READ,
     id = "world.selection.point_to_block_if_grid",
     displayName = "Point To Block If Grid",
     description = "Strict conversion: outputs a block coordinate only when the point is already grid-aligned",

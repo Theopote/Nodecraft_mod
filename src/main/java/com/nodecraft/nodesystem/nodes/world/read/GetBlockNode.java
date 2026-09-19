@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.world.read;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -15,6 +16,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.WORLD_READ,
     id = "world.read.get_block",
     displayName = "Get Block",
     description = "Reads block state, type, light, fluid, and block-entity presence at a block position.",

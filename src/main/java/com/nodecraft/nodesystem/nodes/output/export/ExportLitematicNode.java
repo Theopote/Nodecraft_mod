@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.output.export;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -31,6 +32,7 @@ import java.util.UUID;
  * Exports placements to a single-region Litematic-compatible NBT structure.
  */
 @NodeInfo(
+    effect = NodeEffect.FILE_IO,
     id = "output.export.export_litematic",
     displayName = "Export Litematic",
     description = "Exports placements to a single-region Litematic file",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.reference.points;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -20,6 +21,7 @@ import java.util.UUID;
  * Finds the closest point on a polyline (or line) to a query point, including segment parameterization.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "reference.points.project_to_polyline",
     displayName = "Project Point To Polyline",
     description = "Projects a point onto the closest location on a polyline or line segment",

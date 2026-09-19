@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.boolops;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -17,6 +18,7 @@ import java.util.UUID;
  * Computes an axis-aligned bounding box for any supported geometry object.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.boolean.geometry_bounds",
     displayName = "Geometry Bounds",
     description = "Calculates an axis-aligned bounding box from any supported geometry",

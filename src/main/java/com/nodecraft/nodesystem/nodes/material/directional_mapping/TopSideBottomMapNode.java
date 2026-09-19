@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.directional_mapping;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -21,6 +22,7 @@ import java.util.UUID;
  * Assigns top, side, and bottom block types based on vertical exposure per X/Z column.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "material.directional_mapping.top_side_bottom_map",
     displayName = "Top / Side / Bottom Map",
     description = "Assigns top, side, and bottom block types across a voxelized shape using vertical exposure",

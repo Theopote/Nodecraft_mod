@@ -1,9 +1,8 @@
 package com.nodecraft.nodesystem.contract;
 
-import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
 import com.nodecraft.nodesystem.graph.GraphSerializer;
 import com.nodecraft.nodesystem.graph.NodeGraph;
-import com.nodecraft.nodesystem.io.GraphFormat;
+import com.nodecraft.nodesystem.graph.SavedGraphNormalizer;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import org.junit.jupiter.api.Test;
@@ -12,7 +11,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -22,21 +20,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class GraphFormatVersionContractTest {
 
     @Test
-    @SuppressWarnings("deprecation")
     void currentVersionIdentityIsFrozen() {
-        assertEquals(0, GraphFormatVersion.LEGACY_UNSPECIFIED);
         assertEquals(1, GraphFormatVersion.V1);
         assertEquals(GraphFormatVersion.V1, GraphFormatVersion.CURRENT);
-        assertEquals(GraphFormatVersion.CURRENT, GraphFormat.CURRENT);
-        assertEquals(GraphFormatVersion.LEGACY_UNSPECIFIED, GraphFormat.LEGACY_UNSPECIFIED);
     }
 
     @Test
     void policyHelpersMatchFrozenRules() {
-        assertEquals(0, GraphFormatVersion.normalize(-3));
-        assertTrue(GraphFormatVersion.isLegacy(0));
-        assertTrue(GraphFormatVersion.needsMigration(0));
-        assertFalse(GraphFormatVersion.needsMigration(GraphFormatVersion.CURRENT));
+        assertEquals(GraphFormatVersion.CURRENT, GraphFormatVersion.normalize(-3));
+        assertEquals(GraphFormatVersion.CURRENT, GraphFormatVersion.normalize(0));
+        assertEquals(2, GraphFormatVersion.normalize(2));
         assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
         assertTrue(GraphFormatVersion.isNewerThanCurrent(GraphFormatVersion.CURRENT + 1));
     }
@@ -50,19 +43,18 @@ class GraphFormatVersionContractTest {
     }
 
     @Test
-    void legacyPayloadMigratesToCurrent() {
+    void legacyPayloadIsNormalizedToCurrent() {
         SavedGraph legacy = new SavedGraph();
-        legacy.formatVersion = GraphFormatVersion.LEGACY_UNSPECIFIED;
+        legacy.formatVersion = 0;
         legacy.nodes = null;
         legacy.connections = null;
         legacy.nodePositions = null;
 
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(legacy);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertNotNull(migrated.nodes);
-        assertNotNull(migrated.connections);
-        assertNotNull(migrated.nodePositions);
-        assertFalse(GraphFormatVersion.needsMigration(migrated.formatVersion));
+        SavedGraph normalized = SavedGraphNormalizer.normalize(legacy);
+        assertEquals(GraphFormatVersion.CURRENT, normalized.formatVersion);
+        assertNotNull(normalized.nodes);
+        assertNotNull(normalized.connections);
+        assertNotNull(normalized.nodePositions);
     }
 
     @Test
@@ -73,8 +65,8 @@ class GraphFormatVersionContractTest {
         future.connections = new ArrayList<>();
         future.nodePositions = new HashMap<>();
 
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(future);
-        assertEquals(GraphFormatVersion.CURRENT + 3, migrated.formatVersion);
-        assertTrue(GraphFormatVersion.isNewerThanCurrent(migrated.formatVersion));
+        SavedGraph normalized = SavedGraphNormalizer.normalize(future);
+        assertEquals(GraphFormatVersion.CURRENT + 3, normalized.formatVersion);
+        assertTrue(GraphFormatVersion.isNewerThanCurrent(normalized.formatVersion));
     }
 }

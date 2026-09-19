@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.flow.control;
 
 import com.nodecraft.nodesystem.api.ExecRoutingNode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -14,6 +15,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "flow.control.sequence",
     displayName = "Sequence",
     description = "Replicates a signal across steps. Wire exec_step_N for ordered step-by-step execution; legacy data outputs remain for dataflow graphs.",

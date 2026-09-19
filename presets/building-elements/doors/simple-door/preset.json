@@ -2,7 +2,6 @@
   "preset_id": "building_elements.doors.simple_door",
   "version": "1.0.0",
   "schema_version": "1.0",
-
   "metadata": {
     "name": "Simple Door Frame",
     "name_i18n": {
@@ -15,18 +14,21 @@
       "en_US": "A basic door frame with threshold and lintel."
     },
     "author": "NodeCraft Team",
-    "tags": ["door", "doorway", "entrance", "building-element"],
+    "tags": [
+      "door",
+      "doorway",
+      "entrance",
+      "building-element"
+    ],
     "category": "building_elements",
     "difficulty": "beginner",
     "estimated_build_time": "1 minute",
     "estimated_node_count": 4
   },
-
   "thumbnails": {
     "main": "thumbnail.png",
     "previews": []
   },
-
   "parameters": [
     {
       "id": "width",
@@ -70,81 +72,139 @@
       "group": "Materials"
     }
   ],
-
   "graph": {
     "nodes": [
       {
         "id": "input_pos",
         "type": "input.context.player_position",
-        "position": {"x": 50, "y": 200},
+        "position": {
+          "x": 50,
+          "y": 200
+        },
         "parameters": {}
       },
       {
         "id": "door_opening",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 200},
+        "position": {
+          "x": 250,
+          "y": 200
+        },
         "parameters": {
-          "corner": {"x": 0, "y": 0, "z": 0},
+          "corner": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
           "size": {
-            "x": {"param": "width"},
-            "y": {"param": "height"},
-            "z": {"param": "depth"}
+            "x": {
+              "param": "width"
+            },
+            "y": {
+              "param": "height"
+            },
+            "z": {
+              "param": "depth"
+            }
           }
         }
       },
       {
         "id": "assign_material",
         "type": "material.basic_assignment.assign_block_type",
-        "position": {"x": 450, "y": 200},
+        "position": {
+          "x": 450,
+          "y": 200
+        },
         "parameters": {
-          "block_type": {"param": "frame_material"}
+          "block_type": {
+            "param": "frame_material"
+          }
         }
       },
       {
         "id": "move_to_pos",
-        "type": "transform.basic.move",
-        "position": {"x": 650, "y": 200},
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 650,
+          "y": 200
+        },
         "parameters": {}
       },
       {
         "id": "bake",
         "type": "output.execute.bake_geometry_to_blocks",
-        "position": {"x": 850, "y": 200},
+        "position": {
+          "x": 850,
+          "y": 200
+        },
         "parameters": {
           "placement_mode": "shell"
         }
       },
       {
         "id": "preview",
-        "type": "output.preview.block_preview",
-        "position": {"x": 1050, "y": 200},
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1050,
+          "y": 200
+        },
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "door_opening", "port": "geometry"},
-        "to": {"node": "assign_material", "port": "geometry"}
+        "from": {
+          "node": "door_opening",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "assign_material",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "assign_material", "port": "geometry"},
-        "to": {"node": "move_to_pos", "port": "geometry"}
+        "from": {
+          "node": "door_opening",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "input_pos", "port": "position"},
-        "to": {"node": "move_to_pos", "port": "translation"}
+        "from": {
+          "node": "input_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_translation"
+        }
       },
       {
-        "from": {"node": "move_to_pos", "port": "geometry"},
-        "to": {"node": "bake", "port": "geometry"}
+        "from": {
+          "node": "move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "bake",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "bake", "port": "blocks"},
-        "to": {"node": "preview", "port": "blocks"}
+        "from": {
+          "node": "bake",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "preview",
+          "port": "input_blocks"
+        }
       }
     ]
   },
-
   "documentation": {
     "learning_notes": "This is a minimalist door frame preset. Use it as a cutout in walls or enhance with decorative elements.",
     "tips": [

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.block_state;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -27,6 +28,7 @@ import java.util.UUID;
  * Assigns stair-facing, half, and corner shape state data using local stair neighborhood analysis.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "material.block_state.stair_shape",
     displayName = "Stair Shape",
     description = "Assigns stair facing, half, and inner/outer corner shape states",

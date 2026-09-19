@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.gradient_mapping;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -20,6 +21,7 @@ import java.util.UUID;
  * Applies deterministic 3D value noise to material assignments across placements or voxelized geometry.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "material.gradient_mapping.noise_material",
     displayName = "Noise Material",
     description = "Assigns block types across placements or geometry using deterministic 3D noise bands",

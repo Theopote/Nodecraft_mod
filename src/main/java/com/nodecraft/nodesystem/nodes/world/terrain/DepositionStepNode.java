@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.terrain;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -14,6 +15,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "world.terrain.deposition_step",
     displayName = "Deposition Step",
     description = "Deposits sediment in low-slope and low-energy zones.",

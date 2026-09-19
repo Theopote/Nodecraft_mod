@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.scalar_math;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -12,6 +13,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.scalar_math.remap",
     displayName = "Remap",
     description = "Maps a value from an input range to an output range.",

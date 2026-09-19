@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.utilities.organization;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -17,6 +18,7 @@ import java.util.UUID;
  * 这是一个特殊的节点，主要作用于编辑器UI层面，不参与数据流的处理
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "utilities.organization.group",
     displayName = "Group",
     description = "将选中的节点打包成一个可视化组",

@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.reference.vectors;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -18,6 +19,7 @@ import java.util.UUID;
 import java.util.function.DoubleConsumer;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "reference.vectors.vector2_input",
     displayName = "2D Vector Input",
     description = "Inputs a 2D vector (X/Y or U/V) and outputs vector + components.",

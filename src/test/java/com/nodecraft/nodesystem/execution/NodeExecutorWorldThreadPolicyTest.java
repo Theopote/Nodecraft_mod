@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.nodes.math.logic.IfNode;
 import com.nodecraft.nodesystem.nodes.output.execute.ApplyChangesNode;
 import com.nodecraft.nodesystem.nodes.world.query.GetNeighborBlocksNode;
 import com.nodecraft.nodesystem.nodes.world.read.GetBlockNode;
+import com.nodecraft.nodesystem.nodes.world.write.SetBlockNode;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -19,8 +20,10 @@ class NodeExecutorWorldThreadPolicyTest {
     }
 
     @Test
-    void permanentSideEffectNodesAreDetectedByTypePrefix() {
-        assertTrue(NodeExecutor.isPermanentSideEffectNode(new ApplyChangesNode()));
-        assertFalse(NodeExecutor.isPermanentSideEffectNode(new IfNode()));
+    void previewForbiddenNodesAreDetectedByNodeEffect() {
+        assertTrue(NodeExecutor.isForbiddenInPreviewNode(new ApplyChangesNode()));
+        assertTrue(NodeExecutor.isForbiddenInPreviewNode(new SetBlockNode()));
+        assertFalse(NodeExecutor.isForbiddenInPreviewNode(new IfNode()));
+        assertFalse(NodeExecutor.isForbiddenInPreviewNode(new GetBlockNode()));
     }
 }

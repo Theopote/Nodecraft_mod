@@ -2,7 +2,6 @@
   "preset_id": "decorative.gazebo",
   "version": "1.0.0",
   "schema_version": "1.0",
-
   "metadata": {
     "name": "Garden Gazebo",
     "name_i18n": {
@@ -15,18 +14,21 @@
       "en_US": "An open-air pavilion perfect for gardens and parks."
     },
     "author": "NodeCraft Team",
-    "tags": ["gazebo", "pavilion", "garden", "decorative"],
+    "tags": [
+      "gazebo",
+      "pavilion",
+      "garden",
+      "decorative"
+    ],
     "category": "decorative",
     "difficulty": "intermediate",
     "estimated_build_time": "4 minutes",
     "estimated_node_count": 9
   },
-
   "thumbnails": {
     "main": "thumbnail.png",
     "previews": []
   },
-
   "parameters": [
     {
       "id": "size",
@@ -97,171 +99,315 @@
       "group": "Materials"
     }
   ],
-
   "graph": {
     "nodes": [
       {
         "id": "input_pos",
         "type": "input.context.player_position",
-        "position": {"x": 50, "y": 300},
+        "position": {
+          "x": 50,
+          "y": 300
+        },
         "parameters": {}
       },
       {
         "id": "floor_circle",
-        "type": "geometry.primitives.cylinder_by_axis_and_radius",
-        "position": {"x": 250, "y": 200},
+        "type": "geometry.primitives.cylinder",
+        "position": {
+          "x": 250,
+          "y": 200
+        },
         "parameters": {
-          "radius": {"param": "radius"},
+          "radius": {
+            "param": "radius"
+          },
           "height": 0.5,
-          "axis": {"x": 0, "y": 1, "z": 0}
+          "axis": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
         }
       },
       {
         "id": "column_circle",
-        "type": "geometry.curves.circle",
-        "position": {"x": 250, "y": 350},
+        "type": "geometry.profiles.circle_profile",
+        "position": {
+          "x": 250,
+          "y": 350
+        },
         "parameters": {
-          "radius": {"param": "column_radius"},
-          "segments": {"param": "column_count"}
+          "radius": {
+            "param": "column_radius"
+          },
+          "segments": {
+            "param": "column_count"
+          }
         }
       },
       {
         "id": "column_points",
-        "type": "geometry.curves.divide_curve",
-        "position": {"x": 450, "y": 350},
+        "type": "geometry.curves.divide_curve_to_points",
+        "position": {
+          "x": 450,
+          "y": 350
+        },
         "parameters": {
-          "count": {"param": "column_count"}
+          "count": {
+            "param": "column_count"
+          }
         }
       },
       {
         "id": "single_column",
-        "type": "geometry.primitives.cylinder_by_axis_and_radius",
-        "position": {"x": 450, "y": 500},
+        "type": "geometry.primitives.cylinder",
+        "position": {
+          "x": 450,
+          "y": 500
+        },
         "parameters": {
           "radius": 0.3,
-          "height": {"param": "height"},
-          "axis": {"x": 0, "y": 1, "z": 0}
+          "height": {
+            "param": "height"
+          },
+          "axis": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
         }
       },
       {
         "id": "array_columns",
-        "type": "pattern.instances.place_instances_at_points",
-        "position": {"x": 650, "y": 425},
+        "type": "pattern.linear.instance_on_points",
+        "position": {
+          "x": 650,
+          "y": 425
+        },
         "parameters": {}
       },
       {
         "id": "roof_cone",
         "type": "geometry.primitives.cone",
-        "position": {"x": 250, "y": 650},
+        "position": {
+          "x": 250,
+          "y": 650
+        },
         "parameters": {
-          "base_radius": {"param": "roof_radius"},
-          "height": {"param": "roof_height"},
-          "axis": {"x": 0, "y": 1, "z": 0}
+          "base_radius": {
+            "param": "roof_radius"
+          },
+          "height": {
+            "param": "roof_height"
+          },
+          "axis": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
         }
       },
       {
         "id": "position_roof",
-        "type": "transform.basic.move",
-        "position": {"x": 450, "y": 650},
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 450,
+          "y": 650
+        },
         "parameters": {
           "translation": {
             "x": 0,
-            "y": {"param": "height"},
+            "y": {
+              "param": "height"
+            },
             "z": 0
           }
         }
       },
       {
         "id": "union_all",
-        "type": "geometry.boolean.union_multiple",
-        "position": {"x": 850, "y": 450},
+        "type": "geometry.boolean.union",
+        "position": {
+          "x": 850,
+          "y": 450
+        },
         "parameters": {}
       },
       {
         "id": "assign_materials",
-        "type": "material.gradient_mapping.height_gradient",
-        "position": {"x": 1050, "y": 450},
+        "type": "material.gradient_mapping.height_gradient_map",
+        "position": {
+          "x": 1050,
+          "y": 450
+        },
         "parameters": {
           "stops": [
-            {"height": 0, "block": {"param": "floor_material"}},
-            {"height": 0.5, "block": {"param": "column_material"}},
-            {"height": {"param": "height"}, "block": {"param": "roof_material"}}
+            {
+              "height": 0,
+              "block": {
+                "param": "floor_material"
+              }
+            },
+            {
+              "height": 0.5,
+              "block": {
+                "param": "column_material"
+              }
+            },
+            {
+              "height": {
+                "param": "height"
+              },
+              "block": {
+                "param": "roof_material"
+              }
+            }
           ]
         }
       },
       {
         "id": "move_to_pos",
-        "type": "transform.basic.move",
-        "position": {"x": 1250, "y": 450},
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 1250,
+          "y": 450
+        },
         "parameters": {}
       },
       {
         "id": "bake",
         "type": "output.execute.bake_geometry_to_blocks",
-        "position": {"x": 1450, "y": 450},
+        "position": {
+          "x": 1450,
+          "y": 450
+        },
         "parameters": {
           "placement_mode": "solid"
         }
       },
       {
         "id": "preview",
-        "type": "output.preview.block_preview",
-        "position": {"x": 1650, "y": 450},
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1650,
+          "y": 450
+        },
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "column_circle", "port": "curve"},
-        "to": {"node": "column_points", "port": "curve"}
+        "from": {
+          "node": "column_circle",
+          "port": "output_boundary"
+        },
+        "to": {
+          "node": "column_points",
+          "port": "input_polyline"
+        }
       },
       {
-        "from": {"node": "column_points", "port": "points"},
-        "to": {"node": "array_columns", "port": "points"}
+        "from": {
+          "node": "column_points",
+          "port": "output_points"
+        },
+        "to": {
+          "node": "array_columns",
+          "port": "input_points"
+        }
       },
       {
-        "from": {"node": "single_column", "port": "geometry"},
-        "to": {"node": "array_columns", "port": "geometry"}
+        "from": {
+          "node": "roof_cone",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "position_roof",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "roof_cone", "port": "geometry"},
-        "to": {"node": "position_roof", "port": "geometry"}
+        "from": {
+          "node": "floor_circle",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_all",
+          "port": "input_geometry_0"
+        }
       },
       {
-        "from": {"node": "floor_circle", "port": "geometry"},
-        "to": {"node": "union_all", "port": "geometries"}
+        "from": {
+          "node": "single_column",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_all",
+          "port": "input_geometry_1"
+        }
       },
       {
-        "from": {"node": "array_columns", "port": "instances"},
-        "to": {"node": "union_all", "port": "geometries"}
+        "from": {
+          "node": "position_roof",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_all",
+          "port": "input_geometry_2"
+        }
       },
       {
-        "from": {"node": "position_roof", "port": "geometry"},
-        "to": {"node": "union_all", "port": "geometries"}
+        "from": {
+          "node": "union_all",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "assign_materials",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "union_all", "port": "result"},
-        "to": {"node": "assign_materials", "port": "geometry"}
+        "from": {
+          "node": "union_all",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "assign_materials", "port": "geometry"},
-        "to": {"node": "move_to_pos", "port": "geometry"}
+        "from": {
+          "node": "input_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_translation"
+        }
       },
       {
-        "from": {"node": "input_pos", "port": "position"},
-        "to": {"node": "move_to_pos", "port": "translation"}
+        "from": {
+          "node": "move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "bake",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "move_to_pos", "port": "geometry"},
-        "to": {"node": "bake", "port": "geometry"}
-      },
-      {
-        "from": {"node": "bake", "port": "blocks"},
-        "to": {"node": "preview", "port": "blocks"}
+        "from": {
+          "node": "bake",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "preview",
+          "port": "input_blocks"
+        }
       }
     ]
   },
-
   "documentation": {
     "learning_notes": "This preset demonstrates radial arrays by placing columns in a circle. The circular curve is divided into points where columns are instantiated.",
     "tips": [

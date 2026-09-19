@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.reference.points;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -14,6 +15,7 @@ import java.util.UUID;
  * Extracts X, Y, and Z integer components from a block coordinate.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "reference.points.deconstruct_point",
     displayName = "Deconstruct Coordinate",
     description = "Extracts X, Y, and Z integer components from a block coordinate.",

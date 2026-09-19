@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.pattern.linear;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -15,6 +16,7 @@ import org.joml.Vector3d;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "pattern.linear.staggered_array",
     displayName = "Staggered Array",
     description = "Repeats coordinates in rows and applies an alternating offset for brick-like staggering",

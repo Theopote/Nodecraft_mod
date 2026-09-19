@@ -119,18 +119,21 @@ Do not invent incremental exec semantics in the first vertical slice.
 
 Scheduler should expose: `activeSessionId`, `generation`, `cancelled`, `lastProfile` for the editor HUD.
 
-## Side-effect policy (must land with vertical slice)
+## Side-effect policy (Phase A — landed)
 
-Today `requiresWorldThread` routes `output.execute.*` to the server thread but **does not skip** those nodes during auto-preview. That means Apply/Undo/Bake-class nodes can still run if present in scope.
+Preview mode enforces `@NodeInfo(effect = …)` via `NodeEffect` + `PreviewSideEffectPolicy`:
 
-**Runtime 2.0 preview mode MUST skip permanent side effects:**
+| Allowed in `PREVIEW` | Forbidden in `PREVIEW` |
+|----------------------|-------------------------|
+| `PURE`, `WORLD_READ`, `PREVIEW_WRITE` | `WORLD_WRITE`, `FILE_IO`, `NETWORK`, `UI_EFFECT` |
 
-- Skip (or no-op) typeId prefixes: `output.execute.`
-- Allow preview writers: `output.preview.*` and geometry viewers that use `TrackedPreviewPlacementService` / `PreviewManager`
-- World **reads** (`world.read.*`, `input.context.*`) remain allowed via world-thread
-- World **writes** outside preview services are forbidden in `ExecutionPlan.Mode.PREVIEW`
+- `output.execute.*` bake/apply nodes → `WORLD_WRITE` (skipped)
+- `world.write.*` direct edits → `WORLD_WRITE` (skipped)
+- `output.preview.*` → `PREVIEW_WRITE` (allowed)
+- `world.read.*`, `world.query.*`, `input.context.*` → `WORLD_READ` (allowed)
 
-Enforce in `ExecutionSession` / plan options, not only by convention.
+Enforced in `NodeExecutor.shouldExecuteNode` when `ExecutionPlan.skipOutputExecuteSideEffects` is true.
+Contract: `docs/contracts/preview-side-effects.md`, suite `PreviewSideEffectContractTest`.
 
 ## Cache ownership
 

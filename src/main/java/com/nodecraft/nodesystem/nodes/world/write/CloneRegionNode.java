@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.write;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -22,6 +23,7 @@ import java.util.UUID;
  * Clone Region 节点: 将一个区域的方块克隆到另一个位置
  */
 @NodeInfo(
+    effect = NodeEffect.WORLD_WRITE,
     id = "world.write.clone_region",
     displayName = "Clone Region",
     description = "复制区域到另一个位置",

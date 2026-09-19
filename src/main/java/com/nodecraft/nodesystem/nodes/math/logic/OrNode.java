@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.logic;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -13,6 +14,7 @@ import java.util.UUID;
  * Boolean OR node.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.logic.or",
     displayName = "OR",
     description = "Returns true when either input evaluates to true.",

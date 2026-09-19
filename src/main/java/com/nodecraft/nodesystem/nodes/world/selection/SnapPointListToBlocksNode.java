@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.selection;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -17,6 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.WORLD_READ,
     id = "world.selection.snap_points_to_blocks",
     displayName = "Snap Point List To Blocks",
     description = "Snaps a point list onto the block grid using an explicit snap mode",

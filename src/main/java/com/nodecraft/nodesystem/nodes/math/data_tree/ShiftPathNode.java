@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.data_tree;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -16,6 +17,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.data_tree.shift_path",
     displayName = "Shift Path",
     description = "Moves data tree paths up by removing leading levels or down by adding zero levels",

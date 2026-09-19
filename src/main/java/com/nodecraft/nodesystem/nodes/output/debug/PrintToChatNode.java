@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.output.debug;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -20,6 +21,7 @@ import java.util.UUID;
  * 提供前缀文本输入、复选框控制输出格式。
  */
 @NodeInfo(
+    effect = NodeEffect.UI_EFFECT,
     id = "output.debug.print_to_chat",
     displayName = "Print To Chat",
     description = "将输入数据显示到游戏聊天框",

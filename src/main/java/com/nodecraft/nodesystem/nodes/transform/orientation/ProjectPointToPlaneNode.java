@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.transform.orientation;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -15,6 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "transform.orientation.project_to_plane",
     displayName = "Project Point To Plane",
     description = "Projects a geometric point onto a plane and reports the projection distance",

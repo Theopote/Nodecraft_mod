@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.pattern.linear;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -23,6 +24,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "pattern.linear.path_instances",
     displayName = "Path Instances",
     description = "Generates path instance frames (origin + axes) for oriented placement along a path.",

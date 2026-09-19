@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.utilities.assist;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -21,6 +22,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "utilities.assist.string_format",
     displayName = "String Format",
     description = "Formats strings with placeholders like {0}, {1} from dynamic values.",

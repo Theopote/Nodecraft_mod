@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.variable;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -13,6 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "variable.get",
     displayName = "Get Variable",
     description = "Reads a value by user variable name from the execution scope. Exists means the name exists, even when its stored value is null.",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.curves;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -21,6 +22,7 @@ import java.util.UUID;
  * Resamples a polyline at uniform arc-length spacing or into a fixed number of evenly spaced samples.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.curves.resample_polyline_length",
     displayName = "Resample Polyline By Length",
     description = "Resamples a polyline along its arc length using spacing, or using a total point count (count wins when both are provided)",

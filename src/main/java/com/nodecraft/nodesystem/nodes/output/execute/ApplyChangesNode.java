@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.output.execute;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.bake.BakePlacementService;
@@ -40,6 +41,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * downstream nodes such as {@link BakeStatusNode} that read {@link BakePlacementService#getTaskSnapshots()}.</p>
  */
 @NodeInfo(
+    effect = NodeEffect.WORLD_WRITE,
     id = "output.execute.apply_changes",
     displayName = "Apply Changes",
     description = "Submits explicit placements, placement trees, or voxelized geometry to the world. Async mode queues a single bake task and returns its task ID.",

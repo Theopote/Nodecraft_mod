@@ -74,9 +74,6 @@ public class NativeNodeEditor implements INodeEditor {
 
     @Override
     public void init() {
-        if (nodes.isEmpty()) {
-            createExampleNodes();
-        }
         NodeCraft.LOGGER.info("NativeNodeEditor 已初始化。");
     }
 
@@ -231,13 +228,6 @@ public class NativeNodeEditor implements INodeEditor {
             draggingNode = null; // 停止拖动节点
             isDraggingCanvas = false; // 停止拖动画布
         }
-    }
-
-    private void createExampleNodes() {
-        nodes.add(new EditorNode("input_node", "输入节点", 100, 100, 150, 100));
-        nodes.add(new EditorNode("transform_node", "变换节点", 300, 150, 150, 120));
-        nodes.add(new EditorNode("output_node", "输出节点", 500, 100, 150, 100));
-        NodeCraft.LOGGER.info("NativeEditor: 已创建示例节点。");
     }
 
     private void renderGrid(DrawContext context, int screenWidth, int screenHeight) {

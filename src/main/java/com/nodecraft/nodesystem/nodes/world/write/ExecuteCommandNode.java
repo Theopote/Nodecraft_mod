@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.world.write;
 
 import com.nodecraft.minecraft.command.CommandValidator;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.WORLD_WRITE,
     id = "world.write.execute_command",
     displayName = "Execute Command",
     description = "Executes a Minecraft command on the server",

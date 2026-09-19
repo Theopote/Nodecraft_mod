@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.utilities.fileio;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.FILE_IO,
     id = "utilities.fileio.import_vox",
     displayName = "Import VOX",
     description = "Imports MagicaVoxel .vox files as block coordinates and placements",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.pattern.grid;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "pattern.grid.grid_array_geometry",
     displayName = "Grid Array Geometry",
     description = "Creates rectangular or box arrays of geometry using X, Y, and optional Z directions",

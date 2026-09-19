@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.pattern.grid;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -20,6 +21,7 @@ import java.util.UUID;
  * Grid Array 节点: 在平面或三维网格上重复Coordinate列表
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "pattern.grid.grid_array",
     displayName = "Grid Array",
     description = "在平面或三维网格上重复坐标列表",

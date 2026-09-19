@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.output.preview;
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -45,6 +46,7 @@ import java.util.UUID;
  * 不要在此构造渲染器内部类型或已废弃的 placement DTO 作为跨层协议（v1.1 清单）。
  */
 @NodeInfo(
+    effect = NodeEffect.PREVIEW_WRITE,
     id = "output.preview.geometry_viewer",
     displayName = "Geometry Viewer",
     description = "Previews geometry visually without committing changes to the world.",

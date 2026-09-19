@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.pattern.lsystem;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "pattern.lsystem.expand_string",
     displayName = "L-System Expand String",
     description = "Expands an L-system axiom using production rules for a fixed number of iterations (longest symbol match; probabilities as weights)",

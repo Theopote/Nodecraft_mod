@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.logic;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -13,6 +14,7 @@ import java.util.UUID;
  * Canonical conditional selection node for the v1 logic tree.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.logic.if",
     displayName = "If",
     description = "Chooses between true and false values based on a condition.",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.reference.frames;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -13,6 +14,7 @@ import org.joml.Vector3d;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "reference.frames.frame_along_surface",
     displayName = "Sphere Surface Frame",
     description = "Builds a local tangent frame on a sphere using the nearest surface point and outward normal",

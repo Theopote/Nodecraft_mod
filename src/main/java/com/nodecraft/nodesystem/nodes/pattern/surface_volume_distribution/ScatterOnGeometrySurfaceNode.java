@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.pattern.surface_volume_distribution;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -22,6 +23,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "pattern.surface_volume_distribution.scatter_geometry_surface",
     displayName = "Scatter On Geometry Surface",
     description = "Scatters points on voxelized geometry surfaces with random or blue-noise approximation and spacing fallback controls",

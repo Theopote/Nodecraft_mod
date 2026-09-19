@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.transform.orientation;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "transform.orientation.project_points_to_plane",
     displayName = "Project Points To Plane",
     description = "Projects a list of points or vectors onto a target plane",

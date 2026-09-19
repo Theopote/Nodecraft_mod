@@ -1,0 +1,45 @@
+package com.nodecraft.nodesystem.api;
+
+/**
+ * Declared execution capability of a node — used to enforce preview-mode side-effect policy.
+ * <p>
+ * See {@code docs/contracts/preview-side-effects.md}.
+ */
+public enum NodeEffect {
+
+    /** No external side effects; pure data transformation. */
+    PURE(true),
+
+    /** Reads world or player context without mutation. */
+    WORLD_READ(true),
+
+    /** Writes to tracked preview services only (not permanent world state). */
+    PREVIEW_WRITE(true),
+
+    /** Mutates Minecraft world state (blocks, entities, commands, etc.). */
+    WORLD_WRITE(false),
+
+    /** Reads or writes files on disk. */
+    FILE_IO(false),
+
+    /** Network I/O (reserved for future nodes). */
+    NETWORK(false),
+
+    /** UI, chat, or other editor-facing effects. */
+    UI_EFFECT(false),
+
+    /**
+     * Annotation placeholder — resolved via {@link com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver}.
+     */
+    UNSPECIFIED(true);
+
+    private final boolean allowedInPreview;
+
+    NodeEffect(boolean allowedInPreview) {
+        this.allowedInPreview = allowedInPreview;
+    }
+
+    public boolean isAllowedInPreview() {
+        return allowedInPreview;
+    }
+}

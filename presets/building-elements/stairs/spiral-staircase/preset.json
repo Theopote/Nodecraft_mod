@@ -2,7 +2,6 @@
   "preset_id": "building_elements.stairs.spiral_staircase",
   "version": "1.0.0",
   "schema_version": "1.0",
-
   "metadata": {
     "name": "Spiral Staircase",
     "name_i18n": {
@@ -15,18 +14,21 @@
       "en_US": "A circular spiral staircase with adjustable radius, height, and rotation."
     },
     "author": "NodeCraft Team",
-    "tags": ["stairs", "spiral", "building-element", "circulation"],
+    "tags": [
+      "stairs",
+      "spiral",
+      "building-element",
+      "circulation"
+    ],
     "category": "building_elements",
     "difficulty": "intermediate",
     "estimated_build_time": "3 minutes",
     "estimated_node_count": 12
   },
-
   "thumbnails": {
     "main": "thumbnail.png",
     "previews": []
   },
-
   "parameters": [
     {
       "id": "height",
@@ -78,145 +80,264 @@
       "group": "Materials"
     }
   ],
-
   "graph": {
     "nodes": [
       {
         "id": "input_pos",
         "type": "input.context.player_position",
-        "position": {"x": 50, "y": 200},
+        "position": {
+          "x": 50,
+          "y": 200
+        },
         "parameters": {}
       },
       {
         "id": "helix_curve",
         "type": "geometry.curves.helix",
-        "position": {"x": 250, "y": 200},
+        "position": {
+          "x": 250,
+          "y": 200
+        },
         "parameters": {
-          "base": {"param": "input_pos"},
-          "axis": {"x": 0, "y": 1, "z": 0},
-          "radius": {"param": "radius"},
-          "pitch": {"param": "height"},
-          "turns": {"param": "rotations"},
+          "base": {
+            "param": "input_pos"
+          },
+          "axis": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          },
+          "radius": {
+            "param": "radius"
+          },
+          "pitch": {
+            "param": "height"
+          },
+          "turns": {
+            "param": "rotations"
+          },
           "points_per_turn": 16
         }
       },
       {
         "id": "sample_curve",
         "type": "geometry.curves.divide_curve_to_points",
-        "position": {"x": 450, "y": 200},
+        "position": {
+          "x": 450,
+          "y": 200
+        },
         "parameters": {
-          "count": {"param": "height"}
+          "count": {
+            "param": "height"
+          }
         }
       },
       {
         "id": "center_post",
-        "type": "geometry.primitives.cylinder_by_axis_and_radius",
-        "position": {"x": 250, "y": 350},
+        "type": "geometry.primitives.cylinder",
+        "position": {
+          "x": 250,
+          "y": 350
+        },
         "parameters": {
-          "base": {"param": "input_pos"},
-          "axis": {"x": 0, "y": 1, "z": 0},
+          "base": {
+            "param": "input_pos"
+          },
+          "axis": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          },
           "radius": 0.5,
-          "height": {"param": "height"}
+          "height": {
+            "param": "height"
+          }
         }
       },
       {
         "id": "step_box",
-        "type": "geometry.primitives.box_by_corner_and_size",
-        "position": {"x": 650, "y": 200},
+        "type": "geometry.primitives.box_from_corner_size",
+        "position": {
+          "x": 650,
+          "y": 200
+        },
         "parameters": {
-          "corner": {"x": 0, "y": 0, "z": 0},
-          "size": {"x": 2, "y": 0.5, "z": 1}
+          "corner": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "size": {
+            "x": 2,
+            "y": 0.5,
+            "z": 1
+          }
         }
       },
       {
         "id": "orient_steps",
-        "type": "pattern.instances.orient_instances_to_frames",
-        "position": {"x": 850, "y": 200},
+        "type": "pattern.linear.instance_on_points",
+        "position": {
+          "x": 850,
+          "y": 200
+        },
         "parameters": {}
       },
       {
         "id": "union_steps",
-        "type": "geometry.boolean.union_multiple",
-        "position": {"x": 1050, "y": 200},
+        "type": "geometry.boolean.union",
+        "position": {
+          "x": 1050,
+          "y": 200
+        },
         "parameters": {}
       },
       {
         "id": "union_with_post",
         "type": "geometry.boolean.union",
-        "position": {"x": 1050, "y": 300},
+        "position": {
+          "x": 1050,
+          "y": 300
+        },
         "parameters": {}
       },
       {
         "id": "material_steps",
         "type": "material.basic_assignment.assign_block_type",
-        "position": {"x": 1250, "y": 250},
+        "position": {
+          "x": 1250,
+          "y": 250
+        },
         "parameters": {
-          "block_type": {"param": "step_material"}
+          "block_type": {
+            "param": "step_material"
+          }
         }
       },
       {
         "id": "bake",
         "type": "output.execute.bake_geometry_to_blocks",
-        "position": {"x": 1450, "y": 250},
+        "position": {
+          "x": 1450,
+          "y": 250
+        },
         "parameters": {
           "placement_mode": "solid"
         }
       },
       {
         "id": "preview",
-        "type": "output.preview.block_preview",
-        "position": {"x": 1650, "y": 250},
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1650,
+          "y": 250
+        },
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "input_pos", "port": "position"},
-        "to": {"node": "helix_curve", "port": "base"}
+        "from": {
+          "node": "input_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "helix_curve",
+          "port": "input_center"
+        }
       },
       {
-        "from": {"node": "input_pos", "port": "position"},
-        "to": {"node": "center_post", "port": "base"}
+        "from": {
+          "node": "input_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "center_post",
+          "port": "input_start"
+        }
       },
       {
-        "from": {"node": "helix_curve", "port": "curve"},
-        "to": {"node": "sample_curve", "port": "curve"}
+        "from": {
+          "node": "helix_curve",
+          "port": "output_curve"
+        },
+        "to": {
+          "node": "sample_curve",
+          "port": "input_curve"
+        }
       },
       {
-        "from": {"node": "sample_curve", "port": "points"},
-        "to": {"node": "orient_steps", "port": "origins"}
+        "from": {
+          "node": "sample_curve",
+          "port": "output_points"
+        },
+        "to": {
+          "node": "orient_steps",
+          "port": "input_points"
+        }
       },
       {
-        "from": {"node": "step_box", "port": "geometry"},
-        "to": {"node": "orient_steps", "port": "geometry"}
+        "from": {
+          "node": "step_box",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_steps",
+          "port": "input_geometry_0"
+        }
       },
       {
-        "from": {"node": "orient_steps", "port": "instances"},
-        "to": {"node": "union_steps", "port": "geometries"}
+        "from": {
+          "node": "union_steps",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_with_post",
+          "port": "input_geometry_0"
+        }
       },
       {
-        "from": {"node": "union_steps", "port": "result"},
-        "to": {"node": "union_with_post", "port": "a"}
+        "from": {
+          "node": "center_post",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_with_post",
+          "port": "input_geometry_1"
+        }
       },
       {
-        "from": {"node": "center_post", "port": "geometry"},
-        "to": {"node": "union_with_post", "port": "b"}
+        "from": {
+          "node": "union_with_post",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "material_steps",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "union_with_post", "port": "result"},
-        "to": {"node": "material_steps", "port": "geometry"}
+        "from": {
+          "node": "union_with_post",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "bake",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "material_steps", "port": "geometry"},
-        "to": {"node": "bake", "port": "geometry"}
-      },
-      {
-        "from": {"node": "bake", "port": "blocks"},
-        "to": {"node": "preview", "port": "blocks"}
+        "from": {
+          "node": "bake",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "preview",
+          "port": "input_blocks"
+        }
       }
     ]
   },
-
   "documentation": {
     "learning_notes": "This preset demonstrates helix curve generation, curve sampling, instance orientation, and boolean union. The spiral staircase is created by placing step boxes along a helix curve.",
     "tips": [

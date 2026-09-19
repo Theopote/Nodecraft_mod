@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.data_tree;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.data_tree.entwine",
     displayName = "Entwine",
     description = "Combines up to four trees or lists into source-indexed data tree branches",

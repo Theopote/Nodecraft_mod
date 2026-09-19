@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.reference.planes;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -11,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "reference.planes.block_face_plane",
     displayName = "Box Face To Plane",
     description = "Explicitly converts a box face into its supporting plane and related face frame data",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.gradient_mapping;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "material.gradient_mapping.distance_material",
     displayName = "Distance-Based Material",
     description = "Assigns block types from a palette based on distance to a reference point, plane, curve, or line.",

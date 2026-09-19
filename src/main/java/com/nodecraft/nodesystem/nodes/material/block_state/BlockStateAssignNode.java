@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.block_state;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -20,6 +21,7 @@ import java.util.UUID;
  * Assigns explicit block-state properties to placements while keeping the block type pipeline intact.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "material.block_state.block_state_assign",
     displayName = "Block State Assign",
     description = "Assigns explicit block-state properties to placements or voxelized geometry",

@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.reference.points;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -16,6 +17,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "reference.points.point_from_coordinates",
     displayName = "Coordinate Input",
     description = "Inputs an integer coordinate and outputs Coordinate, Block Pos, X, Y, and Z.",

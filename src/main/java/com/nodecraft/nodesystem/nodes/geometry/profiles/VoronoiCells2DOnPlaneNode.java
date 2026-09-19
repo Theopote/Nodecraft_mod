@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.geometry.profiles;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -36,6 +37,7 @@ import java.util.UUID;
  * Builds clipped 2D Voronoi cells in a plane from 3D sites projected into that plane (JTS).
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.profiles.voronoi_cells_plane",
     displayName = "Voronoi Cells 2D On Plane",
     description = "Projects sites into a plane, builds a clipped planar Voronoi diagram (JTS), and outputs each cell as a polygon profile on the plane",

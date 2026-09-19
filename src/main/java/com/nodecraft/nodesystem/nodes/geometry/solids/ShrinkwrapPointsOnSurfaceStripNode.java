@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.solids;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -17,6 +18,7 @@ import java.util.UUID;
  * Projects query points onto the piecewise-triangle mesh of a {@link SurfaceStripData} strip.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.solids.shrinkwrap_points_surface_strip",
     displayName = "Shrinkwrap Points On Surface Strip",
     description = "Projects each query point to the closest location on the surface strip triangle mesh",

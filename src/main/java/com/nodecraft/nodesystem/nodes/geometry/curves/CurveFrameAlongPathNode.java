@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.curves;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -24,6 +25,7 @@ import java.util.UUID;
  * Samples a path and generates local frames (origin + axes) along it.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.curves.frame_along_path",
     displayName = "Curve Frame Along Path",
     description = "Generates local frames along a curve/path using count or spacing, outputting origins, axes, and planes per sample",

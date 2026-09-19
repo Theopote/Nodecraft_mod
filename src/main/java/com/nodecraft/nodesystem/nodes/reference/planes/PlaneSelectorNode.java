@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.reference.planes;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -16,6 +17,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "reference.planes.world_plane",
     displayName = "World Plane",
     description = "Creates a standard XY, YZ, or XZ world plane with a configurable origin",

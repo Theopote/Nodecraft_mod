@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.basic_assignment;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -20,6 +21,7 @@ import java.util.UUID;
  * Assigns a repeating palette of block ids to placements, coordinates, or voxelized geometry.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "material.basic_assignment.block_palette",
     displayName = "Block Palette",
     description = "Assigns palette block types to flat positions or tree branches",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.terrain;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -18,6 +19,7 @@ import java.util.Random;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "world.terrain.plate_partition_field",
     displayName = "Plate Partition Field",
     description = "Generates pseudo tectonic plate ids and boundary intensity via Voronoi-style partitioning.",

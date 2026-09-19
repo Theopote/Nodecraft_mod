@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.utilities.fileio;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -16,6 +17,7 @@ import java.util.UUID;
  * Samples color and channel values from flattened image pixel data.
  */
 @NodeInfo(
+    effect = NodeEffect.FILE_IO,
     id = "utilities.fileio.image_sampler",
     displayName = "Image Sampler",
     description = "Samples color, channels, and grayscale values from image pixels using UV or pixel coordinates",

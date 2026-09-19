@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.output.execute;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -25,6 +26,7 @@ import java.util.UUID;
  * Merges block placement lists and placement trees into execution-ready outputs.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "output.execute.merge_block_placements",
     displayName = "Merge Block Placements",
     description = "Merges block placement lists and placement trees into execution-ready placements",

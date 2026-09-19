@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.surface_aging;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -19,6 +20,7 @@ import java.util.UUID;
  * Applies a deterministic aged-material replacement over placements or voxelized geometry.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "material.surface_aging.weathering",
     displayName = "Weathering",
     description = "Replaces part of a block set with an aged material using a deterministic weathering ratio",

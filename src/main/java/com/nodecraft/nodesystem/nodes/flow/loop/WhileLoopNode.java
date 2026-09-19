@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.flow.loop;
 
 import com.nodecraft.nodesystem.api.ExecRoutingNode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -19,6 +20,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "flow.loop.while",
     displayName = "While Loop",
     description = "Routes exec flow while condition is true. Wire exec_body for loop body and loop exec back to exec_in; exec_complete fires when condition is false.",

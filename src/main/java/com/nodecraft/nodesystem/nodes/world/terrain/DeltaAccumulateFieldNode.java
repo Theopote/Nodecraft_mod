@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.terrain;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -12,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "world.terrain.delta_accumulate_field",
     displayName = "Delta Accumulate Field",
     description = "Applies or reverts delta fields and accumulates them into a combined terrain delta field.",

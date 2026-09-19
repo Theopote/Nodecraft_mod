@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.input.values;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -24,6 +25,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "input.values.gradient_ramp",
     displayName = "Gradient Ramp",
     description = "Creates and samples a customizable multi-stop gradient ramp with a visual editor",

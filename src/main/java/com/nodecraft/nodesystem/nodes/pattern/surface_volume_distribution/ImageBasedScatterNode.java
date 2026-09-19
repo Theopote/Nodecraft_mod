@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.pattern.surface_volume_distribution;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -27,6 +28,7 @@ import java.util.Random;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "pattern.surface_volume_distribution.image_scatter",
     displayName = "Image-Based Scatter",
     description = "Scatters points using image grayscale density maps on a plane or world XZ.",

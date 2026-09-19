@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.query;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.WORLD_READ,
     id = "world.query.raycast",
     displayName = "Raycast",
     description = "Casts a ray in world space and returns nearest block/entity hit information.",

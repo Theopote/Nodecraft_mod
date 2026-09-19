@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.primitives;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.datatypes.DodecahedronGeometryData;
 import org.joml.Matrix3d;
@@ -9,6 +10,7 @@ import org.joml.Vector3d;
 import java.util.List;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.primitives.dodecahedron",
     displayName = "Dodecahedron By Center Edge",
     description = "Constructs a regular dodecahedron from a center point, edge length, and optional orientation",

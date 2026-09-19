@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.transform.deformations;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -27,6 +28,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "transform.deformations.twist_geometry",
     displayName = "Twist Geometry",
     description = "Applies an axial twist domain deformation to SDF or geometry, outputting a twisted SDF-backed Geometry",

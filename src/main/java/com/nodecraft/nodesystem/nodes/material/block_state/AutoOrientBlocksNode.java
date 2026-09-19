@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.block_state;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -24,6 +25,7 @@ import java.util.UUID;
  * Applies a dominant-axis facing state to placements based on an input direction vector.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "material.block_state.auto_orient_blocks",
     displayName = "Auto Orient Blocks",
     description = "Automatically assigns a facing state from the dominant direction axis",

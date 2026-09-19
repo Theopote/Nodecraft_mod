@@ -2,7 +2,6 @@
   "preset_id": "building_elements.windows.arched_window",
   "version": "1.0.0",
   "schema_version": "1.0",
-
   "metadata": {
     "name": "Arched Window",
     "name_i18n": {
@@ -15,18 +14,21 @@
       "en_US": "A medieval-style arched window with stone frame and glass panes."
     },
     "author": "NodeCraft Team",
-    "tags": ["window", "medieval", "arched", "building-element"],
+    "tags": [
+      "window",
+      "medieval",
+      "arched",
+      "building-element"
+    ],
     "category": "building_elements",
     "difficulty": "beginner",
     "estimated_build_time": "2 minutes",
     "estimated_node_count": 10
   },
-
   "thumbnails": {
     "main": "thumbnail.png",
     "previews": []
   },
-
   "parameters": [
     {
       "id": "width",
@@ -89,30 +91,44 @@
       "group": "Materials"
     }
   ],
-
   "graph": {
     "nodes": [
       {
         "id": "input_pos",
         "type": "input.context.player_position",
-        "position": {"x": 50, "y": 200},
+        "position": {
+          "x": 50,
+          "y": 200
+        },
         "parameters": {}
       },
       {
         "id": "rect_profile",
-        "type": "geometry.profiles.rectangle",
-        "position": {"x": 250, "y": 180},
+        "type": "geometry.profiles.rectangle_profile",
+        "position": {
+          "x": 250,
+          "y": 180
+        },
         "parameters": {
-          "width": {"param": "width"},
-          "height": {"param": "height"}
+          "width": {
+            "param": "width"
+          },
+          "height": {
+            "param": "height"
+          }
         }
       },
       {
         "id": "arc_profile",
-        "type": "geometry.profiles.arc",
-        "position": {"x": 250, "y": 280},
+        "type": "geometry.profiles.sector_profile",
+        "position": {
+          "x": 250,
+          "y": 280
+        },
         "parameters": {
-          "radius": {"param": "arch_radius_calc"},
+          "radius": {
+            "param": "arch_radius_calc"
+          },
           "start_angle": 0,
           "end_angle": 180,
           "segments": 12
@@ -120,109 +136,182 @@
       },
       {
         "id": "union_profiles",
-        "type": "geometry.profiles.union_profiles",
-        "position": {"x": 450, "y": 230},
+        "type": "geometry.profiles.polygon_profile",
+        "position": {
+          "x": 450,
+          "y": 230
+        },
         "parameters": {}
       },
       {
         "id": "extrude_opening",
-        "type": "geometry.solids.extrude",
-        "position": {"x": 650, "y": 230},
+        "type": "geometry.solids.extrude_profile",
+        "position": {
+          "x": 650,
+          "y": 230
+        },
         "parameters": {
-          "distance": {"param": "depth"}
+          "distance": {
+            "param": "depth"
+          }
         }
       },
       {
         "id": "frame_box",
-        "type": "geometry.primitives.box_by_center_and_size",
-        "position": {"x": 250, "y": 400},
+        "type": "geometry.primitives.box",
+        "position": {
+          "x": 250,
+          "y": 400
+        },
         "parameters": {
           "size": {
-            "x": {"param": "frame_width"},
-            "y": {"param": "frame_height"},
-            "z": {"param": "depth"}
+            "x": {
+              "param": "frame_width"
+            },
+            "y": {
+              "param": "frame_height"
+            },
+            "z": {
+              "param": "depth"
+            }
           }
         }
       },
       {
         "id": "subtract_opening",
         "type": "geometry.boolean.difference",
-        "position": {"x": 850, "y": 300},
+        "position": {
+          "x": 850,
+          "y": 300
+        },
         "parameters": {}
       },
       {
         "id": "move_to_pos",
-        "type": "transform.basic_transforms.translate",
-        "position": {"x": 1050, "y": 300},
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 1050,
+          "y": 300
+        },
         "parameters": {}
       },
       {
         "id": "assign_frame",
         "type": "material.basic_assignment.assign_block_type",
-        "position": {"x": 1250, "y": 300},
+        "position": {
+          "x": 1250,
+          "y": 300
+        },
         "parameters": {
-          "block_type": {"param": "frame_material"}
+          "block_type": {
+            "param": "frame_material"
+          }
         }
       },
       {
         "id": "bake",
         "type": "output.execute.bake_geometry_to_blocks",
-        "position": {"x": 1450, "y": 300},
+        "position": {
+          "x": 1450,
+          "y": 300
+        },
         "parameters": {
           "placement_mode": "solid"
         }
       },
       {
         "id": "preview",
-        "type": "output.preview.block_preview",
-        "position": {"x": 1650, "y": 300},
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1650,
+          "y": 300
+        },
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "rect_profile", "port": "profile"},
-        "to": {"node": "union_profiles", "port": "a"}
+        "from": {
+          "node": "rect_profile",
+          "port": "output_profile"
+        },
+        "to": {
+          "node": "extrude_opening",
+          "port": "input_profile"
+        }
       },
       {
-        "from": {"node": "arc_profile", "port": "profile"},
-        "to": {"node": "union_profiles", "port": "b"}
+        "from": {
+          "node": "frame_box",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "subtract_opening",
+          "port": "input_base"
+        }
       },
       {
-        "from": {"node": "union_profiles", "port": "result"},
-        "to": {"node": "extrude_opening", "port": "profile"}
+        "from": {
+          "node": "extrude_opening",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "subtract_opening",
+          "port": "input_cutter"
+        }
       },
       {
-        "from": {"node": "frame_box", "port": "geometry"},
-        "to": {"node": "subtract_opening", "port": "a"}
+        "from": {
+          "node": "subtract_opening",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "extrude_opening", "port": "geometry"},
-        "to": {"node": "subtract_opening", "port": "b"}
+        "from": {
+          "node": "input_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_translation"
+        }
       },
       {
-        "from": {"node": "subtract_opening", "port": "result"},
-        "to": {"node": "move_to_pos", "port": "geometry"}
+        "from": {
+          "node": "move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "assign_frame",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "input_pos", "port": "position"},
-        "to": {"node": "move_to_pos", "port": "translation"}
+        "from": {
+          "node": "move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "bake",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "move_to_pos", "port": "geometry"},
-        "to": {"node": "assign_frame", "port": "geometry"}
-      },
-      {
-        "from": {"node": "assign_frame", "port": "geometry"},
-        "to": {"node": "bake", "port": "geometry"}
-      },
-      {
-        "from": {"node": "bake", "port": "blocks"},
-        "to": {"node": "preview", "port": "blocks"}
+        "from": {
+          "node": "bake",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "preview",
+          "port": "input_blocks"
+        }
       }
     ]
   },
-
   "documentation": {
     "learning_notes": "This preset shows how to create complex window shapes by combining rectangle and arc profiles, then using boolean operations to cut the opening from a frame.",
     "tips": [

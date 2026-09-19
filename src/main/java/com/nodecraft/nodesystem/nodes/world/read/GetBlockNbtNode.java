@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.read;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -14,6 +15,7 @@ import java.lang.reflect.Method;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.WORLD_READ,
     id = "world.read.get_block_nbt",
     displayName = "Get Block NBT",
     description = "Reads full block-entity NBT data at a block position.",

@@ -2,7 +2,6 @@
   "preset_id": "architectural.infrastructure.watchtower",
   "version": "1.0.0",
   "schema_version": "1.0",
-
   "metadata": {
     "name": "Medieval Watchtower",
     "name_i18n": {
@@ -15,18 +14,21 @@
       "en_US": "A defensive watchtower with crenellations and observation deck."
     },
     "author": "NodeCraft Team",
-    "tags": ["tower", "watchtower", "medieval", "defensive"],
+    "tags": [
+      "tower",
+      "watchtower",
+      "medieval",
+      "defensive"
+    ],
     "category": "architectural",
     "difficulty": "intermediate",
     "estimated_build_time": "3 minutes",
     "estimated_node_count": 10
   },
-
   "thumbnails": {
     "main": "thumbnail.png",
     "previews": []
   },
-
   "parameters": [
     {
       "id": "height",
@@ -78,190 +80,343 @@
       "group": "Materials"
     }
   ],
-
   "graph": {
     "nodes": [
       {
         "id": "input_pos",
         "type": "input.context.player_position",
-        "position": {"x": 50, "y": 250},
+        "position": {
+          "x": 50,
+          "y": 250
+        },
         "parameters": {}
       },
       {
         "id": "outer_tower",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 200},
+        "position": {
+          "x": 250,
+          "y": 200
+        },
         "parameters": {
-          "corner": {"x": 0, "y": 0, "z": 0},
+          "corner": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
           "size": {
-            "x": {"param": "base_size"},
-            "y": {"param": "height"},
-            "z": {"param": "base_size"}
+            "x": {
+              "param": "base_size"
+            },
+            "y": {
+              "param": "height"
+            },
+            "z": {
+              "param": "base_size"
+            }
           }
         }
       },
       {
         "id": "inner_tower",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 320},
+        "position": {
+          "x": 250,
+          "y": 320
+        },
         "parameters": {
           "corner": {
-            "x": {"param": "wall_thickness"},
+            "x": {
+              "param": "wall_thickness"
+            },
             "y": 0,
-            "z": {"param": "wall_thickness"}
+            "z": {
+              "param": "wall_thickness"
+            }
           },
           "size": {
-            "x": {"param": "inner_size"},
-            "y": {"param": "height"},
-            "z": {"param": "inner_size"}
+            "x": {
+              "param": "inner_size"
+            },
+            "y": {
+              "param": "height"
+            },
+            "z": {
+              "param": "inner_size"
+            }
           }
         }
       },
       {
         "id": "hollow_tower",
         "type": "geometry.boolean.difference",
-        "position": {"x": 450, "y": 260},
+        "position": {
+          "x": 450,
+          "y": 260
+        },
         "parameters": {}
       },
       {
         "id": "battlement_1",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 460},
+        "position": {
+          "x": 250,
+          "y": 460
+        },
         "parameters": {
           "corner": {
             "x": 0,
-            "y": {"param": "height"},
+            "y": {
+              "param": "height"
+            },
             "z": 0
           },
-          "size": {"x": 2, "y": 2, "z": 2}
+          "size": {
+            "x": 2,
+            "y": 2,
+            "z": 2
+          }
         }
       },
       {
         "id": "battlement_2",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 560},
+        "position": {
+          "x": 250,
+          "y": 560
+        },
         "parameters": {
           "corner": {
-            "x": {"param": "battlement_x2"},
-            "y": {"param": "height"},
+            "x": {
+              "param": "battlement_x2"
+            },
+            "y": {
+              "param": "height"
+            },
             "z": 0
           },
-          "size": {"x": 2, "y": 2, "z": 2}
+          "size": {
+            "x": 2,
+            "y": 2,
+            "z": 2
+          }
         }
       },
       {
         "id": "battlement_3",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 660},
+        "position": {
+          "x": 250,
+          "y": 660
+        },
         "parameters": {
           "corner": {
             "x": 0,
-            "y": {"param": "height"},
-            "z": {"param": "battlement_z2"}
+            "y": {
+              "param": "height"
+            },
+            "z": {
+              "param": "battlement_z2"
+            }
           },
-          "size": {"x": 2, "y": 2, "z": 2}
+          "size": {
+            "x": 2,
+            "y": 2,
+            "z": 2
+          }
         }
       },
       {
         "id": "battlement_4",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 760},
+        "position": {
+          "x": 250,
+          "y": 760
+        },
         "parameters": {
           "corner": {
-            "x": {"param": "battlement_x2"},
-            "y": {"param": "height"},
-            "z": {"param": "battlement_z2"}
+            "x": {
+              "param": "battlement_x2"
+            },
+            "y": {
+              "param": "height"
+            },
+            "z": {
+              "param": "battlement_z2"
+            }
           },
-          "size": {"x": 2, "y": 2, "z": 2}
+          "size": {
+            "x": 2,
+            "y": 2,
+            "z": 2
+          }
         }
       },
       {
         "id": "union_all",
-        "type": "geometry.boolean.union_multiple",
-        "position": {"x": 650, "y": 500},
+        "type": "geometry.boolean.union",
+        "position": {
+          "x": 650,
+          "y": 500
+        },
         "parameters": {}
       },
       {
         "id": "assign_material",
         "type": "material.basic_assignment.assign_block_type",
-        "position": {"x": 850, "y": 500},
+        "position": {
+          "x": 850,
+          "y": 500
+        },
         "parameters": {
-          "block_type": {"param": "tower_material"}
+          "block_type": {
+            "param": "tower_material"
+          }
         }
       },
       {
         "id": "move_to_pos",
-        "type": "transform.basic_transforms.translate",
-        "position": {"x": 1050, "y": 500},
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 1050,
+          "y": 500
+        },
         "parameters": {}
       },
       {
         "id": "bake",
         "type": "output.execute.bake_geometry_to_blocks",
-        "position": {"x": 1250, "y": 500},
+        "position": {
+          "x": 1250,
+          "y": 500
+        },
         "parameters": {
           "placement_mode": "solid"
         }
       },
       {
         "id": "preview",
-        "type": "output.preview.block_preview",
-        "position": {"x": 1450, "y": 500},
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1450,
+          "y": 500
+        },
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "outer_tower", "port": "geometry"},
-        "to": {"node": "hollow_tower", "port": "a"}
+        "from": {
+          "node": "outer_tower",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "hollow_tower",
+          "port": "input_base"
+        }
       },
       {
-        "from": {"node": "inner_tower", "port": "geometry"},
-        "to": {"node": "hollow_tower", "port": "b"}
+        "from": {
+          "node": "inner_tower",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "hollow_tower",
+          "port": "input_cutter"
+        }
       },
       {
-        "from": {"node": "hollow_tower", "port": "result"},
-        "to": {"node": "union_all", "port": "geometries"}
+        "from": {
+          "node": "hollow_tower",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_all",
+          "port": "input_geometry_0"
+        }
       },
       {
-        "from": {"node": "battlement_1", "port": "geometry"},
-        "to": {"node": "union_all", "port": "geometries"}
+        "from": {
+          "node": "battlement_1",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_all",
+          "port": "input_geometry_1"
+        }
       },
       {
-        "from": {"node": "battlement_2", "port": "geometry"},
-        "to": {"node": "union_all", "port": "geometries"}
+        "from": {
+          "node": "battlement_2",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_all",
+          "port": "input_geometry_2"
+        }
       },
       {
-        "from": {"node": "battlement_3", "port": "geometry"},
-        "to": {"node": "union_all", "port": "geometries"}
+        "from": {
+          "node": "battlement_3",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_all",
+          "port": "input_geometry_3"
+        }
       },
       {
-        "from": {"node": "battlement_4", "port": "geometry"},
-        "to": {"node": "union_all", "port": "geometries"}
+        "from": {
+          "node": "union_all",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "assign_material",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "union_all", "port": "result"},
-        "to": {"node": "assign_material", "port": "geometry"}
+        "from": {
+          "node": "union_all",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "assign_material", "port": "geometry"},
-        "to": {"node": "move_to_pos", "port": "geometry"}
+        "from": {
+          "node": "input_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_translation"
+        }
       },
       {
-        "from": {"node": "input_pos", "port": "position"},
-        "to": {"node": "move_to_pos", "port": "translation"}
+        "from": {
+          "node": "move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "bake",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "move_to_pos", "port": "geometry"},
-        "to": {"node": "bake", "port": "geometry"}
-      },
-      {
-        "from": {"node": "bake", "port": "blocks"},
-        "to": {"node": "preview", "port": "blocks"}
+        "from": {
+          "node": "bake",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "preview",
+          "port": "input_blocks"
+        }
       }
     ]
   },
-
   "documentation": {
     "learning_notes": "This preset demonstrates defensive architecture with corner battlements (crenellations) for protection. The hollow interior allows for stairs and storage.",
     "tips": [

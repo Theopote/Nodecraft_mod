@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.gradient_mapping;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "material.gradient_mapping.gradient_ramp_map",
     displayName = "Gradient Ramp Map",
     description = "Assigns block types by height using a custom multi-stop ramp list.",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.primitives;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.datatypes.OctahedronGeometryData;
 import org.joml.Matrix3d;
@@ -9,6 +10,7 @@ import org.joml.Vector3d;
 import java.util.List;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.primitives.octahedron",
     displayName = "Octahedron By Center Size",
     description = "Constructs octahedron geometry from a center point, vertex radius, and optional orientation",

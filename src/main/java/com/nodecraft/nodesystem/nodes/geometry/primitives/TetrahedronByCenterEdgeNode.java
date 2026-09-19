@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.primitives;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.TetrahedronGeometryData;
@@ -11,6 +12,7 @@ import java.util.Map;
 import java.util.List;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.primitives.tetrahedron",
     displayName = "Tetrahedron By Center Edge",
     description = "Constructs tetrahedron geometry from a center point, edge length, and optional orientation",

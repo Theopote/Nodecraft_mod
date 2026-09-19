@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.query;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -17,6 +18,7 @@ import java.util.Locale;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.WORLD_READ,
     id = "world.query.filter_points_by_rule",
     displayName = "Filter Points By Rule",
     description = "Filters point sets by height and optional surface slope rules.",

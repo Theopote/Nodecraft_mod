@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.utilities.assist;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -14,6 +15,7 @@ import java.util.UUID;
  * 节点只做透传，不引入任何业务逻辑。
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "utilities.assist.reroute",
     displayName = "Reroute",
     description = "用于整理连线的中继节点，仅透传输入到输出",

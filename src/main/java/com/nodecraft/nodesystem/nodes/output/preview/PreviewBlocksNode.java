@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.output.preview;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -30,6 +31,7 @@ import java.util.UUID;
  * 不要再把渲染器侧类型（或中间 DTO）当作跨层协议（见 v1.1 类级改造清单）。
  */
 @NodeInfo(
+    effect = NodeEffect.PREVIEW_WRITE,
     id = "output.preview.preview_blocks",
     displayName = "Preview Blocks",
     description = "Previews block coordinates, placements, or placement trees as temporary ghost blocks.",

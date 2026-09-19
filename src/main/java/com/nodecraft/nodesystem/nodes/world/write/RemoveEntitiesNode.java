@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.write;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -14,6 +15,7 @@ import java.util.UUID;
  * Remove Entities 节点: 移除实体。
  */
 @NodeInfo(
+    effect = NodeEffect.WORLD_WRITE,
     id = "world.write.remove_entities",
     displayName = "Remove Entities",
     description = "移除实体",

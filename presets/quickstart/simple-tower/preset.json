@@ -136,39 +136,39 @@
       },
       {
         "id": "node_preview",
-        "type": "output.preview.block_preview",
+        "type": "output.preview.preview_blocks",
         "position": {"x": 1100, "y": 250},
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "node_player_pos", "port": "position"},
-        "to": {"node": "node_cylinder", "port": "base"}
+        "from": {"node": "node_player_pos", "port": "output_position"},
+        "to": {"node": "node_cylinder", "port": "input_start"}
       },
       {
-        "from": {"node": "node_player_pos", "port": "position"},
-        "to": {"node": "node_inner_cylinder", "port": "base"}
+        "from": {"node": "node_player_pos", "port": "output_position"},
+        "to": {"node": "node_inner_cylinder", "port": "input_start"}
       },
       {
-        "from": {"node": "node_cylinder", "port": "geometry"},
-        "to": {"node": "node_hollow", "port": "a"}
+        "from": {"node": "node_cylinder", "port": "output_geometry"},
+        "to": {"node": "node_hollow", "port": "input_base"}
       },
       {
-        "from": {"node": "node_inner_cylinder", "port": "geometry"},
-        "to": {"node": "node_hollow", "port": "b"}
+        "from": {"node": "node_inner_cylinder", "port": "output_geometry"},
+        "to": {"node": "node_hollow", "port": "input_cutter"}
       },
       {
-        "from": {"node": "node_hollow", "port": "result"},
-        "to": {"node": "node_material", "port": "geometry"}
+        "from": {"node": "node_hollow", "port": "output_geometry"},
+        "to": {"node": "node_material", "port": "input_geometry"}
       },
       {
-        "from": {"node": "node_material", "port": "geometry"},
-        "to": {"node": "node_bake", "port": "geometry"}
+        "from": {"node": "node_hollow", "port": "output_geometry"},
+        "to": {"node": "node_bake", "port": "input_geometry"}
       },
       {
-        "from": {"node": "node_bake", "port": "blocks"},
-        "to": {"node": "node_preview", "port": "blocks"}
+        "from": {"node": "node_bake", "port": "output_blocks"},
+        "to": {"node": "node_preview", "port": "input_blocks"}
       }
     ]
   },

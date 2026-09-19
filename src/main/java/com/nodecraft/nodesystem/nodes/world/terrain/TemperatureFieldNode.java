@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.terrain;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -14,6 +15,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "world.terrain.temperature_field",
     displayName = "Temperature Field",
     description = "Builds temperature from latitude bands and elevation lapse-rate cooling.",

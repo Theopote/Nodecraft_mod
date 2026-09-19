@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.curves;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -23,6 +24,7 @@ import java.util.UUID;
  * Evaluates point and frame vectors on a path at a normalized parameter.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.curves.evaluate_curve",
     displayName = "Curve Evaluate",
     description = "Evaluates a curve/path at normalized parameter t and outputs point, tangent, normal, and binormal",

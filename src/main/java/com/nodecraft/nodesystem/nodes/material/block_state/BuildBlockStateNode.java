@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.block_state;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -18,6 +19,7 @@ import java.util.Locale;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "material.block_state.build_block_state",
     displayName = "Build BlockState",
     description = "Builds block-state key/value data from a block id, base state, and dynamic property override",

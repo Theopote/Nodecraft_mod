@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.BlockStateData;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.interaction.IBlockPickerCallback;
@@ -49,6 +50,7 @@ import org.joml.Vector3d;
  * 职责明确：仅负责输出拾取到的方块数据，不直接管理交互模式
  */
 @NodeInfo(
+    effect = NodeEffect.WORLD_READ,
     id = "world.selection.selected_block",
     displayName = "Selected Block",
     description = "获取方块信息，支持交互拾取或坐标输入",

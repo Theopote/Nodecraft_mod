@@ -84,6 +84,44 @@ public class PresetRegistry {
     }
 
     /**
+     * Loads presets from {@code presetDirectory} without replacing ids already registered.
+     */
+    public void loadPresetsIfAbsent(Path presetDirectory) {
+        if (!Files.exists(presetDirectory)) {
+            return;
+        }
+
+        try (Stream<Path> paths = Files.walk(presetDirectory)) {
+            List<Path> presetFiles = paths
+                    .filter(p -> p.getFileName().toString().equals("preset.json"))
+                    .collect(Collectors.toList());
+
+            for (Path presetFile : presetFiles) {
+                try {
+                    PresetDefinition preset = PresetLoader.load(presetFile);
+                    registerPresetIfAbsent(preset);
+                } catch (IOException e) {
+                    LOGGER.error("Failed to load preset from: {}", presetFile, e);
+                }
+            }
+        } catch (IOException e) {
+            LOGGER.error("Failed to scan preset directory {}", presetDirectory, e);
+        } catch (java.io.UncheckedIOException e) {
+            LOGGER.error("Failed to scan preset directory {} (access error)", presetDirectory, e);
+        }
+    }
+
+    private void registerPresetIfAbsent(PresetDefinition preset) {
+        if (preset == null || preset.getPresetId() == null) {
+            return;
+        }
+        if (presets.containsKey(preset.getPresetId())) {
+            return;
+        }
+        registerPreset(preset);
+    }
+
+    /**
      * Registers a preset in the registry.
      *
      * @param preset the preset definition to register

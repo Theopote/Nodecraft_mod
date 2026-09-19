@@ -2,6 +2,7 @@ package com.nodecraft.gui.screens;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Locale;
 import java.util.function.BooleanSupplier;
 
@@ -11,7 +12,12 @@ import com.nodecraft.gui.components.panel.NodeLibraryComponent;
 import com.nodecraft.gui.dialogs.ConfirmationDialog;
 import com.nodecraft.gui.dialogs.FileDialogManager;
 import com.nodecraft.gui.dialogs.MessageDialog;
+import com.nodecraft.gui.components.panel.LeftPanelComponent;
+import com.nodecraft.gui.editor.document.EditorDocumentFactory;
+import com.nodecraft.gui.editor.document.EditorExampleEntry;
+import com.nodecraft.gui.editor.document.EditorExampleLoader;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
+import com.nodecraft.gui.preset.GraphPresetApplier;
 import com.nodecraft.gui.editor.impl.ImGuiNodeHistory;
 import com.nodecraft.gui.editor.impl.ImGuiNodeIO;
 import com.nodecraft.gui.style.MinecraftTheme;
@@ -78,6 +84,14 @@ public class MenuBarRenderer {
                 if (ImGui.menuItem("新建节点图", "Ctrl+N")) {
                     createNewNodeGraph();
                 }
+                if (ImGui.beginMenu("从示例新建")) {
+                    renderQuickstartExampleMenu();
+                    ImGui.endMenu();
+                }
+                if (ImGui.menuItem("打开预设库")) {
+                    openPresetLibrary();
+                }
+                ImGui.separator();
                 if (ImGui.menuItem("打开节点图...", "Ctrl+O")) {
                     openNodeGraph();
                 }
@@ -636,6 +650,54 @@ public class MenuBarRenderer {
         ).show();
     }
     
+    private void renderQuickstartExampleMenu() {
+        List<EditorExampleEntry> examples = EditorExampleLoader.listQuickstartExamples();
+        for (EditorExampleEntry example : examples) {
+            String label = example.displayName() != null ? example.displayName() : example.id();
+            if (ImGui.menuItem(label)) {
+                createNewNodeGraphFromExample(example.id());
+            }
+        }
+        if (examples.isEmpty()) {
+            ImGui.menuItem("暂无 Quickstart 示例", "", false, false);
+        }
+    }
+
+    private void openPresetLibrary() {
+        LeftPanelComponent leftPanel = componentManager.getLeftPanelComponent();
+        if (leftPanel != null) {
+            leftPanel.showPresetLibraryTab();
+            NodeCraft.LOGGER.info("已切换到预设库面板");
+        }
+    }
+
+    private void createNewNodeGraphFromExample(String presetId) {
+        try {
+            CanvasComponent canvas = componentManager.getCanvasComponent();
+            if (canvas == null || !(canvas.getNodeEditor() instanceof ImGuiNodeEditor editor)) {
+                return;
+            }
+            Runnable loadExample = () -> loadQuickstartExampleImpl(editor, presetId);
+            if (editor.hasUnsavedChanges()) {
+                showSaveConfirmationDialog(loadExample);
+            } else {
+                loadExample.run();
+            }
+        } catch (Exception e) {
+            NodeCraft.LOGGER.error("从示例新建节点图失败: {}", e.getMessage(), e);
+        }
+    }
+
+    private void loadQuickstartExampleImpl(ImGuiNodeEditor editor, String presetId) {
+        GraphPresetApplier.ApplyResult result = EditorExampleLoader.loadQuickstartExample(editor, presetId);
+        if (!result.success()) {
+            new MessageDialog("示例加载失败", result.message()).show();
+            return;
+        }
+        lastSavedPath = null;
+        NodeCraft.LOGGER.info("已从示例创建节点图: {}", presetId);
+    }
+
     /**
      * 创建新的节点图（包级可见，供快捷键调用）
      */
@@ -664,10 +726,7 @@ public class MenuBarRenderer {
      * 实际创建新节点图的实现
      */
     private void createNewNodeGraphImpl(ImGuiNodeEditor editor) {
-        // 创建新的空白节点图
-        NodeGraph newGraph = new NodeGraph("新建节点图");
-        editor.setCurrentGraph(newGraph);
-        editor.clearNodePositions();
+        editor.setCurrentGraph(EditorDocumentFactory.createEmpty());
         
         // 重置视图
         editor.setCanvasView(1.0f, 0.0f, 0.0f);

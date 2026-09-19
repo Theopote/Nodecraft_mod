@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.curves;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -23,6 +24,7 @@ import java.util.UUID;
  * Offsets a polyline (or line) within a reference plane using parallel segment offsets and miter joins.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.curves.offset_polyline_plane",
     displayName = "Offset Polyline In Plane",
     description = "Offsets a polyline in a plane using parallel segments and miters (left is CCW in the plane UV basis)",

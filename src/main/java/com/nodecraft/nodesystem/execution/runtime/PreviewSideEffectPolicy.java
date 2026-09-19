@@ -1,32 +1,32 @@
 package com.nodecraft.nodesystem.execution.runtime;
 
 import com.nodecraft.nodesystem.api.INode;
+import com.nodecraft.nodesystem.api.NodeEffect;
 
 /**
- * Preview-mode permanent side-effect policy.
+ * Preview-mode side-effect policy.
  * <p>
  * See {@code docs/contracts/preview-side-effects.md}.
  */
 public final class PreviewSideEffectPolicy {
 
-    /**
-     * Type-id prefix for nodes that perform permanent bake/apply world side effects.
-     */
-    public static final String PERMANENT_SIDE_EFFECT_PREFIX = "output.execute.";
-
     private PreviewSideEffectPolicy() {
     }
 
-    public static boolean isPermanentSideEffectTypeId(String typeId) {
-        return typeId != null && typeId.startsWith(PERMANENT_SIDE_EFFECT_PREFIX);
+    public static NodeEffect resolveEffect(INode node) {
+        return NodeEffectResolver.resolve(node);
     }
 
-    public static boolean isPermanentSideEffectNode(INode node) {
-        return node != null && isPermanentSideEffectTypeId(node.getTypeId());
+    public static boolean isAllowedInPreview(INode node) {
+        return resolveEffect(node).isAllowedInPreview();
+    }
+
+    public static boolean isForbiddenInPreview(INode node) {
+        return !isAllowedInPreview(node);
     }
 
     /**
-     * Whether {@code plan} requires skipping permanent side-effect nodes.
+     * Whether {@code plan} requires skipping preview-forbidden nodes.
      */
     public static boolean shouldSkipPermanentSideEffects(ExecutionPlan plan) {
         return plan != null && plan.skipOutputExecuteSideEffects();
@@ -36,6 +36,6 @@ public final class PreviewSideEffectPolicy {
      * Whether {@code node} must be skipped for the given plan.
      */
     public static boolean shouldSkipNode(ExecutionPlan plan, INode node) {
-        return shouldSkipPermanentSideEffects(plan) && isPermanentSideEffectNode(node);
+        return shouldSkipPermanentSideEffects(plan) && isForbiddenInPreview(node);
     }
 }

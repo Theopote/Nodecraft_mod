@@ -18,6 +18,7 @@ public class LeftPanelComponent implements EditorComponent {
     private boolean visible = true;
     private int activeTabIndex = PresetLibraryPanel.loadPreferredTabIndex();
     private boolean applyInitialTab = true;
+    private int requestedTabIndex = -1;
 
     public LeftPanelComponent(NodeLibraryComponent.NodeSelectCallback selectCallback) {
         this.nodeLibraryComponent = new NodeLibraryComponent(selectCallback);
@@ -27,10 +28,29 @@ public class LeftPanelComponent implements EditorComponent {
         return nodeLibraryComponent;
     }
 
+    public PresetLibraryPanel getPresetLibraryPanel() {
+        return presetLibraryPanel;
+    }
+
+    /**
+     * Switches the left sidebar to the preset library tab on the next render.
+     */
+    public void showPresetLibraryTab() {
+        requestedTabIndex = 1;
+        setVisible(true);
+    }
+
     @Override
     public void render(float x, float y, float width, float height, float paddingX, float paddingY) {
         if (!visible) {
             return;
+        }
+
+        if (requestedTabIndex >= 0) {
+            activeTabIndex = requestedTabIndex;
+            applyInitialTab = true;
+            PresetLibraryPanel.savePreferredTabIndex(activeTabIndex);
+            requestedTabIndex = -1;
         }
 
         if (ImGui.beginTabBar("leftPanelTabs")) {

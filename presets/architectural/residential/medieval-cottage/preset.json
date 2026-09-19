@@ -2,7 +2,6 @@
   "preset_id": "architectural.residential.medieval_cottage",
   "version": "1.0.0",
   "schema_version": "1.0",
-
   "metadata": {
     "name": "Medieval Cottage",
     "name_i18n": {
@@ -15,18 +14,21 @@
       "en_US": "A cozy medieval cottage with timber frame, stone foundation, and pitched roof."
     },
     "author": "NodeCraft Team",
-    "tags": ["cottage", "medieval", "house", "residential"],
+    "tags": [
+      "cottage",
+      "medieval",
+      "house",
+      "residential"
+    ],
     "category": "architectural",
     "difficulty": "intermediate",
     "estimated_build_time": "5 minutes",
     "estimated_node_count": 18
   },
-
   "thumbnails": {
     "main": "thumbnail.png",
     "previews": []
   },
-
   "parameters": [
     {
       "id": "width",
@@ -102,231 +104,429 @@
       "group": "Features"
     }
   ],
-
   "graph": {
     "nodes": [
       {
         "id": "input_pos",
         "type": "input.context.player_position",
-        "position": {"x": 50, "y": 300},
+        "position": {
+          "x": 50,
+          "y": 300
+        },
         "parameters": {}
       },
       {
         "id": "foundation",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 150},
+        "position": {
+          "x": 250,
+          "y": 150
+        },
         "parameters": {
           "size": {
-            "x": {"param": "width"},
+            "x": {
+              "param": "width"
+            },
             "y": 1,
-            "z": {"param": "length"}
+            "z": {
+              "param": "length"
+            }
           }
         }
       },
       {
         "id": "walls_outer",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 250},
+        "position": {
+          "x": 250,
+          "y": 250
+        },
         "parameters": {
           "size": {
-            "x": {"param": "width"},
-            "y": {"param": "wall_height"},
-            "z": {"param": "length"}
+            "x": {
+              "param": "width"
+            },
+            "y": {
+              "param": "wall_height"
+            },
+            "z": {
+              "param": "length"
+            }
           }
         }
       },
       {
         "id": "walls_inner",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 350},
+        "position": {
+          "x": 250,
+          "y": 350
+        },
         "parameters": {
           "size": {
-            "x": {"param": "width_inner"},
-            "y": {"param": "wall_height"},
-            "z": {"param": "length_inner"}
+            "x": {
+              "param": "width_inner"
+            },
+            "y": {
+              "param": "wall_height"
+            },
+            "z": {
+              "param": "length_inner"
+            }
           }
         }
       },
       {
         "id": "hollow_walls",
         "type": "geometry.boolean.difference",
-        "position": {"x": 450, "y": 300},
+        "position": {
+          "x": 450,
+          "y": 300
+        },
         "parameters": {}
       },
       {
         "id": "door_opening",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 500},
+        "position": {
+          "x": 250,
+          "y": 500
+        },
         "parameters": {
           "corner": {
-            "x": {"param": "door_x"},
+            "x": {
+              "param": "door_x"
+            },
             "y": 0,
             "z": 0
           },
-          "size": {"x": 2, "y": 3, "z": 1}
+          "size": {
+            "x": 2,
+            "y": 3,
+            "z": 1
+          }
         }
       },
       {
         "id": "cut_door",
         "type": "geometry.boolean.difference",
-        "position": {"x": 650, "y": 350},
+        "position": {
+          "x": 650,
+          "y": 350
+        },
         "parameters": {}
       },
       {
         "id": "window1",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 600},
+        "position": {
+          "x": 250,
+          "y": 600
+        },
         "parameters": {
           "corner": {
-            "x": {"param": "window1_x"},
+            "x": {
+              "param": "window1_x"
+            },
             "y": 2,
             "z": 0
           },
-          "size": {"x": 2, "y": 2, "z": 1}
+          "size": {
+            "x": 2,
+            "y": 2,
+            "z": 1
+          }
         }
       },
       {
         "id": "cut_windows",
         "type": "geometry.boolean.difference",
-        "position": {"x": 850, "y": 400},
+        "position": {
+          "x": 850,
+          "y": 400
+        },
         "parameters": {}
       },
       {
         "id": "roof_profile",
         "type": "geometry.profiles.polygon_profile",
-        "position": {"x": 250, "y": 750},
+        "position": {
+          "x": 250,
+          "y": 750
+        },
         "parameters": {
-          "width": {"param": "width_plus_overhang"},
-          "height": {"param": "roof_height"}
+          "width": {
+            "param": "width_plus_overhang"
+          },
+          "height": {
+            "param": "roof_height"
+          }
         }
       },
       {
         "id": "extrude_roof",
         "type": "geometry.solids.extrude_profile",
-        "position": {"x": 450, "y": 750},
+        "position": {
+          "x": 450,
+          "y": 750
+        },
         "parameters": {
-          "distance": {"param": "length_plus_overhang"}
+          "distance": {
+            "param": "length_plus_overhang"
+          }
         }
       },
       {
         "id": "position_roof",
-        "type": "transform.basic_transforms.translate",
-        "position": {"x": 650, "y": 750},
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 650,
+          "y": 750
+        },
         "parameters": {
           "translation": {
             "x": 0,
-            "y": {"param": "wall_height"},
+            "y": {
+              "param": "wall_height"
+            },
             "z": 0
           }
         }
       },
       {
         "id": "union_building",
-        "type": "geometry.boolean.union_multiple",
-        "position": {"x": 1050, "y": 450},
+        "type": "geometry.boolean.union",
+        "position": {
+          "x": 1050,
+          "y": 450
+        },
         "parameters": {}
       },
       {
         "id": "assign_foundation",
-        "type": "material.gradient_mapping.height_gradient",
-        "position": {"x": 1250, "y": 450},
+        "type": "material.gradient_mapping.height_gradient_map",
+        "position": {
+          "x": 1250,
+          "y": 450
+        },
         "parameters": {
           "stops": [
-            {"height": 0, "block": {"param": "foundation_material"}},
-            {"height": 1, "block": {"param": "wall_material"}},
-            {"height": {"param": "wall_height"}, "block": {"param": "roof_material"}}
+            {
+              "height": 0,
+              "block": {
+                "param": "foundation_material"
+              }
+            },
+            {
+              "height": 1,
+              "block": {
+                "param": "wall_material"
+              }
+            },
+            {
+              "height": {
+                "param": "wall_height"
+              },
+              "block": {
+                "param": "roof_material"
+              }
+            }
           ]
         }
       },
       {
         "id": "move_to_position",
-        "type": "transform.basic_transforms.translate",
-        "position": {"x": 1450, "y": 450},
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 1450,
+          "y": 450
+        },
         "parameters": {}
       },
       {
         "id": "bake",
         "type": "output.execute.bake_geometry_to_blocks",
-        "position": {"x": 1650, "y": 450},
+        "position": {
+          "x": 1650,
+          "y": 450
+        },
         "parameters": {
           "placement_mode": "solid"
         }
       },
       {
         "id": "preview",
-        "type": "output.preview.block_preview",
-        "position": {"x": 1850, "y": 450},
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1850,
+          "y": 450
+        },
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "walls_outer", "port": "geometry"},
-        "to": {"node": "hollow_walls", "port": "a"}
+        "from": {
+          "node": "walls_outer",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "hollow_walls",
+          "port": "input_base"
+        }
       },
       {
-        "from": {"node": "walls_inner", "port": "geometry"},
-        "to": {"node": "hollow_walls", "port": "b"}
+        "from": {
+          "node": "walls_inner",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "hollow_walls",
+          "port": "input_cutter"
+        }
       },
       {
-        "from": {"node": "hollow_walls", "port": "result"},
-        "to": {"node": "cut_door", "port": "a"}
+        "from": {
+          "node": "hollow_walls",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "cut_door",
+          "port": "input_base"
+        }
       },
       {
-        "from": {"node": "door_opening", "port": "geometry"},
-        "to": {"node": "cut_door", "port": "b"}
+        "from": {
+          "node": "door_opening",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "cut_door",
+          "port": "input_cutter"
+        }
       },
       {
-        "from": {"node": "cut_door", "port": "result"},
-        "to": {"node": "cut_windows", "port": "a"}
+        "from": {
+          "node": "cut_door",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "cut_windows",
+          "port": "input_base"
+        }
       },
       {
-        "from": {"node": "window1", "port": "geometry"},
-        "to": {"node": "cut_windows", "port": "b"}
+        "from": {
+          "node": "window1",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "cut_windows",
+          "port": "input_cutter"
+        }
       },
       {
-        "from": {"node": "roof_profile", "port": "profile"},
-        "to": {"node": "extrude_roof", "port": "profile"}
+        "from": {
+          "node": "roof_profile",
+          "port": "output_profile"
+        },
+        "to": {
+          "node": "extrude_roof",
+          "port": "input_profile"
+        }
       },
       {
-        "from": {"node": "extrude_roof", "port": "geometry"},
-        "to": {"node": "position_roof", "port": "geometry"}
+        "from": {
+          "node": "extrude_roof",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "position_roof",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "foundation", "port": "geometry"},
-        "to": {"node": "union_building", "port": "geometries"}
+        "from": {
+          "node": "foundation",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_building",
+          "port": "input_geometry_0"
+        }
       },
       {
-        "from": {"node": "cut_windows", "port": "result"},
-        "to": {"node": "union_building", "port": "geometries"}
+        "from": {
+          "node": "cut_windows",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_building",
+          "port": "input_geometry_1"
+        }
       },
       {
-        "from": {"node": "position_roof", "port": "geometry"},
-        "to": {"node": "union_building", "port": "geometries"}
+        "from": {
+          "node": "position_roof",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_building",
+          "port": "input_geometry_2"
+        }
       },
       {
-        "from": {"node": "union_building", "port": "result"},
-        "to": {"node": "assign_foundation", "port": "geometry"}
+        "from": {
+          "node": "union_building",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "assign_foundation",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "assign_foundation", "port": "geometry"},
-        "to": {"node": "move_to_position", "port": "geometry"}
+        "from": {
+          "node": "union_building",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "move_to_position",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "input_pos", "port": "position"},
-        "to": {"node": "move_to_position", "port": "translation"}
+        "from": {
+          "node": "input_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "move_to_position",
+          "port": "input_translation"
+        }
       },
       {
-        "from": {"node": "move_to_position", "port": "geometry"},
-        "to": {"node": "bake", "port": "geometry"}
+        "from": {
+          "node": "move_to_position",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "bake",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "bake", "port": "blocks"},
-        "to": {"node": "preview", "port": "blocks"}
+        "from": {
+          "node": "bake",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "preview",
+          "port": "input_blocks"
+        }
       }
     ]
   },
-
   "documentation": {
     "learning_notes": "This preset demonstrates a complete building workflow: foundation, hollow walls with openings, roof generation, and multi-material assignment using height gradients.",
     "tips": [

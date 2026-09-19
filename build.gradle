@@ -100,6 +100,10 @@ processResources {
 	filesMatching("fabric.mod.json") {
 		expand "version": inputs.properties.version
 	}
+
+	from("${project.projectDir}/presets/quickstart") {
+		into "nodecraft/bundled_presets/quickstart"
+	}
 }
 
 tasks.withType(JavaCompile).configureEach {

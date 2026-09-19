@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.flow.control;
 
 import com.nodecraft.nodesystem.api.ExecRoutingNode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -12,6 +13,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "flow.control.branch",
     displayName = "Branch",
     description = "Routes data and exec flow by condition. Wire exec_true/exec_false for branch skipping; legacy data outputs still work in dataflow graphs.",

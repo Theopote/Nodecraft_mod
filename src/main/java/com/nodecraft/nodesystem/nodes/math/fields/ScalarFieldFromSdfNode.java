@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.fields;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -12,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.fields.scalar_from_sdf",
     displayName = "Scalar Field From SDF",
     description = "Wraps a signed distance field as a scalar field using its distance value.",

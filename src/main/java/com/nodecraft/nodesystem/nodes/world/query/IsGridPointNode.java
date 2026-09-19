@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.query;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -17,6 +18,7 @@ import java.util.UUID;
  * Checks whether a geometric point already lies on the integer block grid.
  */
 @NodeInfo(
+    effect = NodeEffect.WORLD_READ,
     id = "world.query.is_grid_point",
     displayName = "Is Grid Point",
     description = "Checks whether a geometric point already lies on the block grid without snapping",

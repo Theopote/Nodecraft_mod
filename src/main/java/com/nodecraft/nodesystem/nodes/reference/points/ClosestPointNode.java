@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.reference.points;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -18,6 +19,7 @@ import java.util.UUID;
  * Finds the closest point in a point collection to a reference point.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "reference.points.closest_point",
     displayName = "Closest Point",
     description = "Finds the closest point in a point collection to a reference point.",

@@ -32,7 +32,7 @@ class ClientNodeExecutionSchedulerTest {
     void previewPlanSkipsOutputExecuteSideEffects() {
         NodeGraph graph = new NodeGraph("preview-skip");
         PassThroughNode source = new PassThroughNode("source", "ok");
-        SideEffectNode sideEffect = new SideEffectNode();
+        SideEffectNode sideEffect = new SideEffectNode("output.execute.test_side_effect");
         graph.addNode(source);
         graph.addNode(sideEffect);
         graph.connect(source.getId(), "out", sideEffect.getId(), "in");
@@ -52,6 +52,31 @@ class ClientNodeExecutionSchedulerTest {
         assertTrue(executor.executeSync());
         assertEquals(0, sideEffect.executionCount(), "output.execute.* must not compute in preview");
         assertEquals("ok", source.getOutput("out"));
+    }
+
+    @Test
+    void previewPlanSkipsWorldWriteSideEffects() {
+        NodeGraph graph = new NodeGraph("preview-skip-world-write");
+        PassThroughNode source = new PassThroughNode("source", "ok");
+        SideEffectNode sideEffect = new SideEffectNode("world.write.test_side_effect");
+        graph.addNode(source);
+        graph.addNode(sideEffect);
+        graph.connect(source.getId(), "out", sideEffect.getId(), "in");
+
+        NodeExecutor executor = new NodeExecutor(
+                graph,
+                null,
+                null,
+                IncrementalExecutionOptions.previewDefaults(),
+                ExecutionRunLimits.defaults(),
+                CancellationToken.none(),
+                true,
+                null,
+                true
+        );
+
+        assertTrue(executor.executeSync());
+        assertEquals(0, sideEffect.executionCount(), "world.write.* must not compute in preview");
     }
 
     @Test
@@ -169,8 +194,8 @@ class ClientNodeExecutionSchedulerTest {
     private static final class SideEffectNode extends BaseNode {
         private final AtomicInteger executions = new AtomicInteger();
 
-        private SideEffectNode() {
-            super(UUID.randomUUID(), "output.execute.test_side_effect");
+        private SideEffectNode(String typeId) {
+            super(UUID.randomUUID(), typeId);
             addInputPort(new BasePort("in", "In", "input", NodeDataType.ANY, this));
             addOutputPort(new BasePort("out", "Out", "output", NodeDataType.ANY, this));
         }

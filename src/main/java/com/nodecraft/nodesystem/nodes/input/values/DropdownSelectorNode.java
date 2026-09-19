@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.input.values;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -15,6 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "input.values.dropdown",
     displayName = "Dropdown Selector",
     description = "Selects one value from user-defined option list and outputs index + text value.",

@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.output.debug;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -22,6 +23,7 @@ import java.util.UUID;
  * 值监视器：面板/“小电视”风格，仅需将任意节点的输出连到输入，即可在面板上查看该输出的数据和类型。
  */
 @NodeInfo(
+    effect = NodeEffect.UI_EFFECT,
     id = "output.debug.value_monitor",
     displayName = "Value Monitor",
     description = "将任意输出连到输入，在面板上查看该输出的数据和类型",

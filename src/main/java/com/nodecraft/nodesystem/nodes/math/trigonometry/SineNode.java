@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.trigonometry;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -10,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.trigonometry.sin",
     displayName = "Sine (Sin)",
     description = "计算角度的正弦值（输入为弧度）",

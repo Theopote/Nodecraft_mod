@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.list_sequence;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -16,6 +17,7 @@ import java.util.UUID;
  * Generates a numeric range from Start to End using Step.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.sequence.range",
     displayName = "Range",
     description = "Generates a numeric sequence from Start to End using Step.",

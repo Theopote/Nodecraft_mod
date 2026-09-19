@@ -2,7 +2,6 @@
   "preset_id": "architectural.residential.simple_house",
   "version": "1.0.0",
   "schema_version": "1.0",
-
   "metadata": {
     "name": "Simple Modern House",
     "name_i18n": {
@@ -15,18 +14,21 @@
       "en_US": "A clean, modern single-story house with flat roof and large windows."
     },
     "author": "NodeCraft Team",
-    "tags": ["house", "modern", "residential", "simple"],
+    "tags": [
+      "house",
+      "modern",
+      "residential",
+      "simple"
+    ],
     "category": "architectural",
     "difficulty": "beginner",
     "estimated_build_time": "3 minutes",
     "estimated_node_count": 8
   },
-
   "thumbnails": {
     "main": "thumbnail.png",
     "previews": []
   },
-
   "parameters": [
     {
       "id": "width",
@@ -86,142 +88,262 @@
       "group": "Materials"
     }
   ],
-
   "graph": {
     "nodes": [
       {
         "id": "input_pos",
         "type": "input.context.player_position",
-        "position": {"x": 50, "y": 250},
+        "position": {
+          "x": 50,
+          "y": 250
+        },
         "parameters": {}
       },
       {
         "id": "outer_box",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 200},
+        "position": {
+          "x": 250,
+          "y": 200
+        },
         "parameters": {
-          "corner": {"x": 0, "y": 0, "z": 0},
+          "corner": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
           "size": {
-            "x": {"param": "width"},
-            "y": {"param": "height"},
-            "z": {"param": "length"}
+            "x": {
+              "param": "width"
+            },
+            "y": {
+              "param": "height"
+            },
+            "z": {
+              "param": "length"
+            }
           }
         }
       },
       {
         "id": "inner_box",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 320},
+        "position": {
+          "x": 250,
+          "y": 320
+        },
         "parameters": {
-          "corner": {"x": 0.5, "y": 0, "z": 0.5},
+          "corner": {
+            "x": 0.5,
+            "y": 0,
+            "z": 0.5
+          },
           "size": {
-            "x": {"param": "width_inner"},
-            "y": {"param": "height"},
-            "z": {"param": "length_inner"}
+            "x": {
+              "param": "width_inner"
+            },
+            "y": {
+              "param": "height"
+            },
+            "z": {
+              "param": "length_inner"
+            }
           }
         }
       },
       {
         "id": "hollow_house",
         "type": "geometry.boolean.difference",
-        "position": {"x": 450, "y": 260},
+        "position": {
+          "x": 450,
+          "y": 260
+        },
         "parameters": {}
       },
       {
         "id": "roof",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 460},
+        "position": {
+          "x": 250,
+          "y": 460
+        },
         "parameters": {
           "corner": {
             "x": 0,
-            "y": {"param": "height"},
+            "y": {
+              "param": "height"
+            },
             "z": 0
           },
           "size": {
-            "x": {"param": "width"},
+            "x": {
+              "param": "width"
+            },
             "y": 0.5,
-            "z": {"param": "length"}
+            "z": {
+              "param": "length"
+            }
           }
         }
       },
       {
         "id": "union_all",
         "type": "geometry.boolean.union",
-        "position": {"x": 650, "y": 350},
+        "position": {
+          "x": 650,
+          "y": 350
+        },
         "parameters": {}
       },
       {
         "id": "assign_material",
-        "type": "material.gradient_mapping.height_gradient",
-        "position": {"x": 850, "y": 350},
+        "type": "material.gradient_mapping.height_gradient_map",
+        "position": {
+          "x": 850,
+          "y": 350
+        },
         "parameters": {
           "stops": [
-            {"height": 0, "block": {"param": "wall_material"}},
-            {"height": {"param": "height"}, "block": {"param": "roof_material"}}
+            {
+              "height": 0,
+              "block": {
+                "param": "wall_material"
+              }
+            },
+            {
+              "height": {
+                "param": "height"
+              },
+              "block": {
+                "param": "roof_material"
+              }
+            }
           ]
         }
       },
       {
         "id": "move_to_pos",
-        "type": "transform.basic.move",
-        "position": {"x": 1050, "y": 350},
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 1050,
+          "y": 350
+        },
         "parameters": {}
       },
       {
         "id": "bake",
         "type": "output.execute.bake_geometry_to_blocks",
-        "position": {"x": 1250, "y": 350},
+        "position": {
+          "x": 1250,
+          "y": 350
+        },
         "parameters": {
           "placement_mode": "shell"
         }
       },
       {
         "id": "preview",
-        "type": "output.preview.block_preview",
-        "position": {"x": 1450, "y": 350},
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1450,
+          "y": 350
+        },
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "outer_box", "port": "geometry"},
-        "to": {"node": "hollow_house", "port": "a"}
+        "from": {
+          "node": "outer_box",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "hollow_house",
+          "port": "input_base"
+        }
       },
       {
-        "from": {"node": "inner_box", "port": "geometry"},
-        "to": {"node": "hollow_house", "port": "b"}
+        "from": {
+          "node": "inner_box",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "hollow_house",
+          "port": "input_cutter"
+        }
       },
       {
-        "from": {"node": "hollow_house", "port": "result"},
-        "to": {"node": "union_all", "port": "a"}
+        "from": {
+          "node": "hollow_house",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_all",
+          "port": "input_geometry_0"
+        }
       },
       {
-        "from": {"node": "roof", "port": "geometry"},
-        "to": {"node": "union_all", "port": "b"}
+        "from": {
+          "node": "roof",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_all",
+          "port": "input_geometry_1"
+        }
       },
       {
-        "from": {"node": "union_all", "port": "result"},
-        "to": {"node": "assign_material", "port": "geometry"}
+        "from": {
+          "node": "union_all",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "assign_material",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "assign_material", "port": "geometry"},
-        "to": {"node": "move_to_pos", "port": "geometry"}
+        "from": {
+          "node": "union_all",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "input_pos", "port": "position"},
-        "to": {"node": "move_to_pos", "port": "translation"}
+        "from": {
+          "node": "input_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_translation"
+        }
       },
       {
-        "from": {"node": "move_to_pos", "port": "geometry"},
-        "to": {"node": "bake", "port": "geometry"}
+        "from": {
+          "node": "move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "bake",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "bake", "port": "blocks"},
-        "to": {"node": "preview", "port": "blocks"}
+        "from": {
+          "node": "bake",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "preview",
+          "port": "input_blocks"
+        }
       }
     ]
   },
-
   "documentation": {
     "learning_notes": "This preset demonstrates modern minimalist architecture with clean lines and a flat roof. Perfect for contemporary city builds.",
     "tips": [

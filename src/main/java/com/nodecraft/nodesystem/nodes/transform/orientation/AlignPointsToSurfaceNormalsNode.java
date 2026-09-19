@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.transform.orientation;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -17,6 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "transform.orientation.align_to_surface",
     displayName = "Align Points To Surface Normals",
     description = "Builds oriented frames per point by aligning local up axis to surface normals.",

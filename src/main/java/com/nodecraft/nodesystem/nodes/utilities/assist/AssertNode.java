@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.utilities.assist;
 
 import com.nodecraft.core.exception.NodeExecutionException;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -15,6 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "utilities.assist.assert",
     displayName = "Assert / Validate",
     description = "Validates a boolean condition and optionally throws to stop execution when it fails.",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.transform.orientation;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "transform.orientation.project_curve_to_plane",
     displayName = "Project Curve To Plane",
     description = "Projects a curve, polyline, or line onto a target plane",

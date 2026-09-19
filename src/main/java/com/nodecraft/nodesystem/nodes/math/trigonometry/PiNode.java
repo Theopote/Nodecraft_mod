@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.math.trigonometry;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
@@ -12,6 +13,7 @@ import java.util.UUID;
  * Pi Node: Outputs the constant value of Pi.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.trigonometry.pi",
     displayName = "Pi",
     description = "输出数学常数π的值",

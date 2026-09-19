@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.utilities.organization;
 
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -11,6 +12,7 @@ import java.util.UUID;
  * 此节点不处理任何数据，仅提供UI级别的注释功能
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "utilities.organization.comment",
     displayName = "Comment",
     description = "在画布上添加文本注释",

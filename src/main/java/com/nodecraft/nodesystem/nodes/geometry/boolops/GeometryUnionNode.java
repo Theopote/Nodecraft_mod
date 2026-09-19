@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.boolops;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -21,6 +22,7 @@ import java.util.UUID;
  * This is a structural geometry union used by the v1 modeling pipeline.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.boolean.union",
     displayName = "Combine Geometry",
     description = "Merges multiple geometry inputs into one composite value (voxel union when baked; not SDF smooth union)",

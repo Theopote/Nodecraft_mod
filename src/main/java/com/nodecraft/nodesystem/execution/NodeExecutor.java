@@ -676,7 +676,7 @@ public class NodeExecutor {
             NodeExecutionCache executionCache,
             boolean execFrontierVisit
     ) {
-        if (skipOutputExecuteSideEffects && PreviewSideEffectPolicy.isPermanentSideEffectNode(node)) {
+        if (skipOutputExecuteSideEffects && PreviewSideEffectPolicy.isForbiddenInPreview(node)) {
             return false;
         }
         if (executionScopeNodeIds == null || executionScopeNodeIds.isEmpty()) {
@@ -785,12 +785,12 @@ public class NodeExecutor {
     }
 
     /**
-     * Permanent bake/apply side effects that must not run during auto-preview.
+     * Whether the node must not run during auto-preview.
      *
      * @see PreviewSideEffectPolicy
      */
-    public static boolean isPermanentSideEffectNode(INode node) {
-        return PreviewSideEffectPolicy.isPermanentSideEffectNode(node);
+    public static boolean isForbiddenInPreviewNode(INode node) {
+        return PreviewSideEffectPolicy.isForbiddenInPreview(node);
     }
 
     private static final class NodeExecutorThreadFactory implements ThreadFactory {

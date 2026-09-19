@@ -2,7 +2,6 @@
   "preset_id": "styles.medieval.castle_keep",
   "version": "1.0.0",
   "schema_version": "1.0",
-
   "metadata": {
     "name": "Castle Keep",
     "name_i18n": {
@@ -15,18 +14,21 @@
       "en_US": "A fortified castle keep with thick walls and corner towers."
     },
     "author": "NodeCraft Team",
-    "tags": ["castle", "keep", "medieval", "fortress"],
+    "tags": [
+      "castle",
+      "keep",
+      "medieval",
+      "fortress"
+    ],
     "category": "styles",
     "difficulty": "advanced",
     "estimated_build_time": "6 minutes",
     "estimated_node_count": 12
   },
-
   "thumbnails": {
     "main": "thumbnail.png",
     "previews": []
   },
-
   "parameters": [
     {
       "id": "size",
@@ -89,205 +91,370 @@
       "group": "Materials"
     }
   ],
-
   "graph": {
     "nodes": [
       {
         "id": "input_pos",
         "type": "input.context.player_position",
-        "position": {"x": 50, "y": 300},
+        "position": {
+          "x": 50,
+          "y": 300
+        },
         "parameters": {}
       },
       {
         "id": "outer_walls",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 200},
+        "position": {
+          "x": 250,
+          "y": 200
+        },
         "parameters": {
-          "corner": {"x": 0, "y": 0, "z": 0},
+          "corner": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
           "size": {
-            "x": {"param": "size"},
-            "y": {"param": "wall_height"},
-            "z": {"param": "size"}
+            "x": {
+              "param": "size"
+            },
+            "y": {
+              "param": "wall_height"
+            },
+            "z": {
+              "param": "size"
+            }
           }
         }
       },
       {
         "id": "inner_space",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 320},
+        "position": {
+          "x": 250,
+          "y": 320
+        },
         "parameters": {
           "corner": {
-            "x": {"param": "wall_thickness"},
+            "x": {
+              "param": "wall_thickness"
+            },
             "y": 0,
-            "z": {"param": "wall_thickness"}
+            "z": {
+              "param": "wall_thickness"
+            }
           },
           "size": {
-            "x": {"param": "inner_size"},
-            "y": {"param": "wall_height"},
-            "z": {"param": "inner_size"}
+            "x": {
+              "param": "inner_size"
+            },
+            "y": {
+              "param": "wall_height"
+            },
+            "z": {
+              "param": "inner_size"
+            }
           }
         }
       },
       {
         "id": "hollow_keep",
         "type": "geometry.boolean.difference",
-        "position": {"x": 450, "y": 260},
+        "position": {
+          "x": 450,
+          "y": 260
+        },
         "parameters": {}
       },
       {
         "id": "tower_1",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 460},
+        "position": {
+          "x": 250,
+          "y": 460
+        },
         "parameters": {
-          "corner": {"x": 0, "y": 0, "z": 0},
+          "corner": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
           "size": {
-            "x": {"param": "tower_size"},
-            "y": {"param": "tower_height"},
-            "z": {"param": "tower_size"}
+            "x": {
+              "param": "tower_size"
+            },
+            "y": {
+              "param": "tower_height"
+            },
+            "z": {
+              "param": "tower_size"
+            }
           }
         }
       },
       {
         "id": "tower_2",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 560},
+        "position": {
+          "x": 250,
+          "y": 560
+        },
         "parameters": {
           "corner": {
-            "x": {"param": "tower_x2"},
+            "x": {
+              "param": "tower_x2"
+            },
             "y": 0,
             "z": 0
           },
           "size": {
-            "x": {"param": "tower_size"},
-            "y": {"param": "tower_height"},
-            "z": {"param": "tower_size"}
+            "x": {
+              "param": "tower_size"
+            },
+            "y": {
+              "param": "tower_height"
+            },
+            "z": {
+              "param": "tower_size"
+            }
           }
         }
       },
       {
         "id": "tower_3",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 660},
+        "position": {
+          "x": 250,
+          "y": 660
+        },
         "parameters": {
           "corner": {
             "x": 0,
             "y": 0,
-            "z": {"param": "tower_z2"}
+            "z": {
+              "param": "tower_z2"
+            }
           },
           "size": {
-            "x": {"param": "tower_size"},
-            "y": {"param": "tower_height"},
-            "z": {"param": "tower_size"}
+            "x": {
+              "param": "tower_size"
+            },
+            "y": {
+              "param": "tower_height"
+            },
+            "z": {
+              "param": "tower_size"
+            }
           }
         }
       },
       {
         "id": "tower_4",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 760},
+        "position": {
+          "x": 250,
+          "y": 760
+        },
         "parameters": {
           "corner": {
-            "x": {"param": "tower_x2"},
+            "x": {
+              "param": "tower_x2"
+            },
             "y": 0,
-            "z": {"param": "tower_z2"}
+            "z": {
+              "param": "tower_z2"
+            }
           },
           "size": {
-            "x": {"param": "tower_size"},
-            "y": {"param": "tower_height"},
-            "z": {"param": "tower_size"}
+            "x": {
+              "param": "tower_size"
+            },
+            "y": {
+              "param": "tower_height"
+            },
+            "z": {
+              "param": "tower_size"
+            }
           }
         }
       },
       {
         "id": "union_all",
-        "type": "geometry.boolean.union_multiple",
-        "position": {"x": 650, "y": 500},
+        "type": "geometry.boolean.union",
+        "position": {
+          "x": 650,
+          "y": 500
+        },
         "parameters": {}
       },
       {
         "id": "assign_material",
-        "type": "material.gradient_mapping.height_gradient",
-        "position": {"x": 850, "y": 500},
+        "type": "material.gradient_mapping.height_gradient_map",
+        "position": {
+          "x": 850,
+          "y": 500
+        },
         "parameters": {
           "stops": [
-            {"height": 0, "block": {"param": "foundation_material"}},
-            {"height": 2, "block": {"param": "stone_material"}}
+            {
+              "height": 0,
+              "block": {
+                "param": "foundation_material"
+              }
+            },
+            {
+              "height": 2,
+              "block": {
+                "param": "stone_material"
+              }
+            }
           ]
         }
       },
       {
         "id": "move_to_pos",
-        "type": "transform.basic_transforms.translate",
-        "position": {"x": 1050, "y": 500},
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 1050,
+          "y": 500
+        },
         "parameters": {}
       },
       {
         "id": "bake",
         "type": "output.execute.bake_geometry_to_blocks",
-        "position": {"x": 1250, "y": 500},
+        "position": {
+          "x": 1250,
+          "y": 500
+        },
         "parameters": {
           "placement_mode": "solid"
         }
       },
       {
         "id": "preview",
-        "type": "output.preview.block_preview",
-        "position": {"x": 1450, "y": 500},
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1450,
+          "y": 500
+        },
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "outer_walls", "port": "geometry"},
-        "to": {"node": "hollow_keep", "port": "a"}
+        "from": {
+          "node": "outer_walls",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "hollow_keep",
+          "port": "input_base"
+        }
       },
       {
-        "from": {"node": "inner_space", "port": "geometry"},
-        "to": {"node": "hollow_keep", "port": "b"}
+        "from": {
+          "node": "inner_space",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "hollow_keep",
+          "port": "input_cutter"
+        }
       },
       {
-        "from": {"node": "hollow_keep", "port": "result"},
-        "to": {"node": "union_all", "port": "geometries"}
+        "from": {
+          "node": "hollow_keep",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_all",
+          "port": "input_geometry_0"
+        }
       },
       {
-        "from": {"node": "tower_1", "port": "geometry"},
-        "to": {"node": "union_all", "port": "geometries"}
+        "from": {
+          "node": "tower_1",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_all",
+          "port": "input_geometry_1"
+        }
       },
       {
-        "from": {"node": "tower_2", "port": "geometry"},
-        "to": {"node": "union_all", "port": "geometries"}
+        "from": {
+          "node": "tower_2",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_all",
+          "port": "input_geometry_2"
+        }
       },
       {
-        "from": {"node": "tower_3", "port": "geometry"},
-        "to": {"node": "union_all", "port": "geometries"}
+        "from": {
+          "node": "tower_3",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "union_all",
+          "port": "input_geometry_3"
+        }
       },
       {
-        "from": {"node": "tower_4", "port": "geometry"},
-        "to": {"node": "union_all", "port": "geometries"}
+        "from": {
+          "node": "union_all",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "assign_material",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "union_all", "port": "result"},
-        "to": {"node": "assign_material", "port": "geometry"}
+        "from": {
+          "node": "union_all",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "assign_material", "port": "geometry"},
-        "to": {"node": "move_to_pos", "port": "geometry"}
+        "from": {
+          "node": "input_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "move_to_pos",
+          "port": "input_translation"
+        }
       },
       {
-        "from": {"node": "input_pos", "port": "position"},
-        "to": {"node": "move_to_pos", "port": "translation"}
+        "from": {
+          "node": "move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "bake",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "move_to_pos", "port": "geometry"},
-        "to": {"node": "bake", "port": "geometry"}
-      },
-      {
-        "from": {"node": "bake", "port": "blocks"},
-        "to": {"node": "preview", "port": "blocks"}
+        "from": {
+          "node": "bake",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "preview",
+          "port": "input_blocks"
+        }
       }
     ]
   },
-
   "documentation": {
     "learning_notes": "This preset demonstrates fortress architecture with thick defensive walls and corner towers. The hollow interior allows for multiple floors and rooms.",
     "tips": [

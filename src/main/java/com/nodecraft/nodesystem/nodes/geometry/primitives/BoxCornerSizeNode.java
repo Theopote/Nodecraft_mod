@@ -1,12 +1,14 @@
 package com.nodecraft.nodesystem.nodes.geometry.primitives;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "geometry.primitives.box_from_corner_size",
     displayName = "Box by Corner + Size",
     description = "Generates a box from one anchor corner and signed X/Y/Z sizes. Negative values grow in the opposite local axis direction.",

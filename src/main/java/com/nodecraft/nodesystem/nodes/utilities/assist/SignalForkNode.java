@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.utilities.assist;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -17,6 +18,7 @@ import java.util.UUID;
  * 分线节点：将一路输入透传到两路输出，用于整理连线布局。
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "utilities.assist.signal_fork",
     displayName = "Signal Fork",
     description = "将一路输入透传到两路输出，便于连线分流",

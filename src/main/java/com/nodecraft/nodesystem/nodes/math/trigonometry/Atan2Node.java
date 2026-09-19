@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.trigonometry;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -9,6 +10,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "math.trigonometry.atan2",
     displayName = "Atan2",
     description = "Computes the signed angle in radians from X and Y using atan2(Y, X).",

@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.pattern.lsystem;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -23,6 +24,7 @@ import java.util.UUID;
  * Interprets a command string with a simple 3D turtle: F/f move, +- yaw, &, ^ pitch, / and \\ roll, [] stack.
  */
 @NodeInfo(
+    effect = NodeEffect.PURE,
     id = "pattern.lsystem.turtle_3d",
     displayName = "L-System Turtle 3D",
     description = "Traces a 3D polyline from L-system commands: F/f forward, +- yaw, & and ^ pitch, / and \\ roll, [] stack (local turns; angle in degrees)",

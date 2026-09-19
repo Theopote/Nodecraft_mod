@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.world.read;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
+    effect = NodeEffect.WORLD_READ,
     id = "world.read.get_blocks_in_region",
     displayName = "Get Blocks In Region",
     description = "Reads block states and coordinates inside a region with scan limits.",

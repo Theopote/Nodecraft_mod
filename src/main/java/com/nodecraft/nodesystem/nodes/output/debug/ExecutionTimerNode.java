@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.output.debug;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.gui.editor.impl.ZoomHelper;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -20,6 +21,7 @@ import java.util.UUID;
  * 显示时间统计、精度控制、自动重置选项。
  */
 @NodeInfo(
+    effect = NodeEffect.UI_EFFECT,
     id = "output.debug.execution_timer",
     displayName = "Execution Timer",
     description = "测量连接到此节点的计算分支所花费的时间",
