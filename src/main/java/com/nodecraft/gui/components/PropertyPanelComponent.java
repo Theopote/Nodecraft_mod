@@ -42,7 +42,7 @@ import com.nodecraft.gui.components.node.NodeConstants;
 import com.nodecraft.gui.components.node.NodeGraphAccess;
 import com.nodecraft.gui.components.node.NodeStatusPresenter;
 import com.nodecraft.gui.components.property.core.PropertyDescriptor;
-import com.nodecraft.gui.components.property.core.PropertyEditorState;
+import com.nodecraft.gui.components.property.core.PropertyEditSession;
 import com.nodecraft.gui.components.property.core.PropertyInspector;
 import com.nodecraft.gui.components.property.core.PropertyRenderer;
 import com.nodecraft.gui.components.property.core.PropertyRendererRegistry;
@@ -65,7 +65,6 @@ import imgui.type.ImInt;
 import imgui.type.ImString;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
@@ -98,24 +97,14 @@ public class PropertyPanelComponent implements EditorComponent {
     private final Object selectionLock = new Object();
     private final AtomicReference<UUID> selectedNodeIdSnapshot = new AtomicReference<>(null);
     private final PropertyInspector propertyInspector = new PropertyInspector();
-    private final PropertyEditorState editorState;
+    private final PropertyEditSession editSession = new PropertyEditSession();
     private final PortDataRenderer portDataRenderer;
-
-    // 临时值存储, Key: nodeId_propertyName
-    private final Map<String, Object> tempValues = new ConcurrentHashMap<>();
-
-    // 用于防止节点计算覆盖用户正在输入的值，并支持精确的超时清理
-    private final Map<String, Long> propertiesBeingEdited = new ConcurrentHashMap<>();
-
-    // 错误计数器：属性名 -> 错误次数 (针对当前 selectedNode 的属性)
-    private final Map<String, Integer> errorCounts = new ConcurrentHashMap<>(); // 每次 selectedNode 切换时重置
 
     private final NodeGraphAccess nodeGraphAccess;
     private final AiAssistantComponent aiAssistantComponent = new AiAssistantComponent();
     private final AiAssistantPanel aiAssistantPanel;
 
     public PropertyPanelComponent() {
-        this.editorState = new PropertyEditorState(tempValues, propertiesBeingEdited, errorCounts);
         this.nodeGraphAccess = new NodeGraphAccess(() -> {
             try {
                 return ImGuiNodeEditor.getInstance().getCurrentGraph();
@@ -185,7 +174,7 @@ public class PropertyPanelComponent implements EditorComponent {
             if (isReadOnly) ImGui.endDisabled();
 
             // 重置该属性的错误计数
-            panel.errorCounts.remove(prop.name);
+            panel.clearPropertyError(prop.name);
         } catch (Throwable e) { // 统一捕获 Throwable
             panel.handlePropertyError(prop, e);
         }
@@ -203,28 +192,22 @@ public class PropertyPanelComponent implements EditorComponent {
         try {
             String currentValue = (String) prop.getter.invoke(node);
             if (currentValue == null) currentValue = "";
+            final String resolvedValue = currentValue;
             boolean isReadOnly = prop.setter == null;
 
-            if (panel.shouldUseColorPickerForStringProperty(prop, currentValue)) {
-                panel.renderStringColorPropertyEditor(node, prop, currentValue, isReadOnly);
-                panel.errorCounts.remove(prop.name);
+            if (panel.shouldUseColorPickerForStringProperty(prop, resolvedValue)) {
+                panel.renderStringColorPropertyEditor(node, prop, resolvedValue, isReadOnly);
+                panel.clearPropertyError(prop.name);
                 return;
             }
 
             String tempKey = panel.getTempValueKey(node, prop.name);
-            ImString imStr;
+            ImString imStr = panel.getOrReplaceTempValue(tempKey, ImString.class, () -> new ImString(resolvedValue, 256));
 
-            if (!panel.tempValues.containsKey(tempKey) || !(panel.tempValues.get(tempKey) instanceof ImString)) {
-                imStr = new ImString(currentValue, 256); // 增加缓冲区大小
-                panel.tempValues.put(tempKey, imStr);
-            } else {
-                imStr = (ImString) panel.tempValues.get(tempKey);
-
-                // 仅当属性未被锁定编辑时，才从节点同步值
-                if (!panel.isPropertyBeingEdited(node, prop.name)) {
-                    if (!imStr.get().equals(currentValue)) {
-                        imStr.set(currentValue);
-                    }
+            // 仅当属性未被锁定编辑时，才从节点同步值
+            if (!panel.isPropertyBeingEdited(node, prop.name)) {
+                if (!imStr.get().equals(resolvedValue)) {
+                    imStr.set(resolvedValue);
                 }
             }
 
@@ -272,7 +255,7 @@ public class PropertyPanelComponent implements EditorComponent {
             }
 
             // 重置该属性的错误计数
-            panel.errorCounts.remove(prop.name);
+            panel.clearPropertyError(prop.name);
         } catch (Throwable e) { // 统一捕获 Throwable
             panel.handlePropertyError(prop, e);
         }
@@ -308,7 +291,7 @@ public class PropertyPanelComponent implements EditorComponent {
             if (isReadOnly) ImGui.endDisabled();
 
             // 重置该属性的错误计数
-            panel.errorCounts.remove(prop.name);
+            panel.clearPropertyError(prop.name);
         } catch (Throwable e) { // 统一捕获 Throwable
             panel.handlePropertyError(prop, e);
         }
@@ -356,7 +339,7 @@ public class PropertyPanelComponent implements EditorComponent {
             if (isReadOnly) ImGui.endDisabled();
 
             // 重置该属性的错误计数
-            panel.errorCounts.remove(prop.name);
+            panel.clearPropertyError(prop.name);
         } catch (Throwable e) { // 统一捕获 Throwable
             panel.handlePropertyError(prop, e);
         }
@@ -376,26 +359,21 @@ public class PropertyPanelComponent implements EditorComponent {
             double currentValue = (double) prop.getter.invoke(node);
 
             String tempKey = panel.getTempValueKey(node, prop.name);
-            ImString textValue;
+            ImString textValue = panel.getOrReplaceTempValue(
+                    tempKey,
+                    ImString.class,
+                    () -> new ImString(String.format("%.12f", currentValue), 64));
 
-            if (!panel.tempValues.containsKey(tempKey) || !(panel.tempValues.get(tempKey) instanceof ImString)) {
-                // 首次创建或不是ImString类型，初始化为当前值
-                textValue = new ImString(String.format("%.12f", currentValue), 64); // 增加缓冲区大小
-                panel.tempValues.put(tempKey, textValue);
-            } else {
-                textValue = (ImString)panel.tempValues.get(tempKey);
-
-                // 仅当属性未被锁定编辑时，才从节点同步值
-                if (!panel.isPropertyBeingEdited(node, prop.name)) {
-                    try {
-                        double currentTextValue = Double.parseDouble(textValue.get());
-                        if (Math.abs(currentTextValue - currentValue) > 1e-12) { // 使用epsilon比较浮点数
-                            textValue.set(String.format("%.12f", currentValue));
-                        }
-                    } catch (NumberFormatException e) {
-                        // 如果当前文本不是有效数字，重置为当前值
+            // 仅当属性未被锁定编辑时，才从节点同步值
+            if (!panel.isPropertyBeingEdited(node, prop.name)) {
+                try {
+                    double currentTextValue = Double.parseDouble(textValue.get());
+                    if (Math.abs(currentTextValue - currentValue) > 1e-12) { // 使用epsilon比较浮点数
                         textValue.set(String.format("%.12f", currentValue));
                     }
+                } catch (NumberFormatException e) {
+                    // 如果当前文本不是有效数字，重置为当前值
+                    textValue.set(String.format("%.12f", currentValue));
                 }
             }
 
@@ -472,7 +450,7 @@ public class PropertyPanelComponent implements EditorComponent {
             }
 
             // 重置该属性的错误计数
-            panel.errorCounts.remove(prop.name);
+            panel.clearPropertyError(prop.name);
         } catch (Throwable e) { // 统一捕获 Throwable
             panel.handlePropertyError(prop, e);
         }
@@ -522,7 +500,7 @@ public class PropertyPanelComponent implements EditorComponent {
             }
 
             // 重置该属性的错误计数
-            panel.errorCounts.remove(prop.name);
+            panel.clearPropertyError(prop.name);
         } catch (Throwable e) { // 统一捕获 Throwable
             panel.handlePropertyError(prop, e);
         }
@@ -620,8 +598,7 @@ public class PropertyPanelComponent implements EditorComponent {
         }
 
         // 累加错误次数
-        int errorCount = errorCounts.getOrDefault(prop.name, 0) + 1;
-        errorCounts.put(prop.name, errorCount);
+        int errorCount = editSession.recordPropertyError(prop.name);
 
         // 如果错误次数超过阈值，标记为禁用
         if (errorCount >= NodeConstants.ERROR_THRESHOLD) { // 使用常量
@@ -831,7 +808,7 @@ public class PropertyPanelComponent implements EditorComponent {
                 ImGui.tableHeadersRow();
 
                 for (PropertyDescriptor prop : props) {
-                    boolean isDisabled = errorCounts.getOrDefault(prop.name, 0) >= NodeConstants.ERROR_THRESHOLD;
+                    boolean isDisabled = editSession.isPropertyDisabled(prop.name, NodeConstants.ERROR_THRESHOLD);
 
                     ImGui.tableNextRow();
                     ImGui.tableSetColumnIndex(0);
@@ -894,14 +871,14 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     private void clearNodeScopedData(INode node) {
-        editorState.clearForNode(node);
+        editSession.clearForNode(node);
     }
 
     /**
      * 清理所有临时值
      */
     private void clearAllTempValues() {
-        editorState.clearAll();
+        editSession.clearAll();
     }
 
     /**
@@ -910,8 +887,6 @@ public class PropertyPanelComponent implements EditorComponent {
      */
     private void clearSelectedNodeData(INode nodeToClear) {
         clearNodeScopedData(nodeToClear);
-        // propertiesBeingEdited 在 clearCurrentNodeTempValues 内部已经处理了
-        // errorCounts 也在 clearCurrentNodeTempValues 内部处理了
     }
 
     public void setSelectedNode(INode node) {
@@ -993,7 +968,7 @@ public class PropertyPanelComponent implements EditorComponent {
      * @param propName 属性名
      */
     public void markPropertyBeingEdited(INode node, String propName) {
-        editorState.markPropertyBeingEdited(node, propName);
+        editSession.markPropertyBeingEdited(node, propName);
     }
 
     /**
@@ -1002,7 +977,7 @@ public class PropertyPanelComponent implements EditorComponent {
      * @param propName 属性名
      */
     public void markPropertyEditingFinished(INode node, String propName) {
-        editorState.markPropertyEditingFinished(node, propName);
+        editSession.markPropertyEditingFinished(node, propName);
         String key = getTempValueKey(node, propName);
         NodeCraft.LOGGER.trace("属性 {} 标记为编辑完成。", key);
     }
@@ -1014,7 +989,7 @@ public class PropertyPanelComponent implements EditorComponent {
      * @return 是否正在被编辑
      */
     public boolean isPropertyBeingEdited(INode node, String propName) {
-        return editorState.isPropertyBeingEdited(node, propName);
+        return editSession.isPropertyBeingEdited(node, propName);
     }
 
     /**
@@ -1022,21 +997,24 @@ public class PropertyPanelComponent implements EditorComponent {
      * 定期调用，移除所有超时的编辑锁
      */
     private void checkAndCleanExpiredEditLocks() {
-        editorState.checkAndCleanExpiredEditLocks();
+        editSession.checkAndCleanExpiredEditLocks();
     }
 
     // 修改为使用节点ID和属性名作为键
     public String getTempValueKey(INode node, String propName) {
-        return editorState.getTempValueKey(node, propName);
+        return editSession.getTempValueKey(node, propName);
     }
 
-    @SuppressWarnings("unchecked")
     public <T> T getOrCreateTempValue(String key, Supplier<T> supplier) {
-        return (T) tempValues.computeIfAbsent(key, k -> supplier.get());
+        return editSession.getOrCreateTempValue(key, supplier);
+    }
+
+    public <T> T getOrReplaceTempValue(String key, Class<T> type, Supplier<T> supplier) {
+        return editSession.getOrReplaceTempValue(key, type, supplier);
     }
 
     public void clearPropertyError(String propName) {
-        errorCounts.remove(propName);
+        editSession.clearPropertyError(propName);
     }
 
     private boolean shouldDisplayProperty(INode node, PropertyDescriptor prop) {
@@ -1186,7 +1164,7 @@ public class PropertyPanelComponent implements EditorComponent {
     private void renderStringColorPropertyEditor(INode node, PropertyDescriptor prop, String currentValue, boolean isReadOnly) throws Throwable {
         String normalized = normalizeHexColor(currentValue);
         String tempKey = getTempValueKey(node, prop.name + "_hex_color");
-        float[] rgb = (float[]) tempValues.computeIfAbsent(tempKey, key -> {
+        float[] rgb = editSession.getOrCreateTempValue(tempKey, () -> {
             Color parsed = Color.fromHex(normalized);
             return new float[]{parsed.getRed(), parsed.getGreen(), parsed.getBlue()};
         });
