@@ -1,6 +1,13 @@
 ﻿# NodeCraft v1.0 Node Alias Plan
 
-This document defines how `NodeRegistry` alias compatibility should be expanded during the NodeCraft v1.0 migration.
+> **Compatibility history / migration seed — not live taxonomy.**  
+> Canonical ids today: code + [`NODE_LIBRARY.md`](./NODE_LIBRARY.md).  
+> Runtime load of old ids: V0→V1 migration (`architecture/graph-format-version.md`).  
+> Docs authority: [`architecture/docs-authority.md`](./architecture/docs-authority.md).
+
+This document defined how node-id alias compatibility should be expanded during the
+NodeCraft v1.0 migration. It still informs the migration manifest generation path; it
+must not be read as the current node library.
 
 It exists to prevent graph-loading regressions while canonical ids are being moved from legacy taxonomy to the v1.0 taxonomy.
 

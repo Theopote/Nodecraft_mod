@@ -11,8 +11,9 @@ from earlier milestones. Prefer the living sources of truth below.
 |-------|----------|
 | Roadmap / phases | [`../development/advancement-0.7-to-0.8.md`](../development/advancement-0.7-to-0.8.md) |
 | Architecture freezes | [`../architecture/`](../architecture/) |
+| **Docs authority (ids / taxonomy)** | [`../architecture/docs-authority.md`](../architecture/docs-authority.md) |
 | Contracts | [`../contracts/`](../contracts/) |
-| Node library catalog | [`../NODE_LIBRARY.md`](../NODE_LIBRARY.md) |
+| Node library catalog | [`../NODE_LIBRARY.md`](../NODE_LIBRARY.md) (generated; prefer over hand-written node lists) |
 | Migration commands | [`../../tools/migration/README.md`](../../tools/migration/README.md) |
 | Contributing | [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md) |
 
@@ -26,5 +27,14 @@ from earlier milestones. Prefer the living sources of truth below.
 
 - Active architecture / contract / advancement docs
 - Generated `NODE_LIBRARY*.md`
-- Living guidelines (`node-id-guidelines`, category guidelines, execution docs)
 - Runnable migration / converter scripts (those live under `tools/migration` + Gradle tasks)
+
+## Demoted living drafts (still under `docs/`, not this folder)
+
+These stay in `docs/` with supersession banners — **design history**, not implementation SoT
+(see [`../architecture/docs-authority.md`](../architecture/docs-authority.md)):
+
+- `node-id-guidelines.md`
+- `nodecraft-v1-category-id-guidelines.md`
+- `NodeCraft-v1.0-节点分类树-定稿.md`
+- `nodecraft-v1-node-alias-plan.md` (migration seed only)

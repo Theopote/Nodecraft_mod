@@ -11,8 +11,7 @@
 | 0.6 | Execution (dataflow + exec frontier) | Done |
 | **0.7** | **Stability** | **PASS (`v0.7-stability`)** |
 | **0.8** | **Interactive Runtime** | **PASS (phases A–I)** |
-| 0.9 | Compatibility / format freeze follow-through | Later |
-| 1.0 | Release | Later |
+| 0.9 | Compatibility / format freeze follow-through | Open — docs authority frozen first |
 
 One-line goal for 0.8:
 
@@ -115,3 +114,17 @@ Suggested optional tag: `v0.8-interactive-runtime` after CI green on this tip.
 
 - Bulk node expansion, full editor rewrite into a new UI framework, graph schema redesign beyond versioned migrations, multiplayer, large AI auto-model features.
 - Staged `ImGuiNodeEditor` ownership breakup **is** an in-goal 0.9 track (see [`../architecture/imgui-node-editor-breakup.md`](../architecture/imgui-node-editor-breakup.md)); not a single-shot rewrite.
+
+---
+
+## 0.9 Compatibility — docs authority (started)
+
+Design: [`../architecture/docs-authority.md`](../architecture/docs-authority.md)
+
+| Work | Status |
+|------|--------|
+| Freeze SoT: current code + generated `NODE_LIBRARY*.md` | PASS |
+| Demote stale taxonomy drafts (`node-id-guidelines`, v1 category tree, alias plan as taxonomy, …) | PASS |
+| Keep legacy ids on migration path only (`visualization.*` / `spatial.*` → …) | Existing (Phase I); follow-through continues |
+
+Further 0.9 work (editor breakup, migration hardening, …) remains open.

@@ -2,6 +2,14 @@
 
 NodeCraft is still under active development. Keep changes focused, verify them locally, and avoid preserving obsolete runtime compatibility unless a migration path requires it.
 
+## Node ids and library docs
+
+Canonical node ids and categories come from `@NodeInfo` in code and the generated
+[`docs/NODE_LIBRARY.md`](docs/NODE_LIBRARY.md) (catalog codegen). Do not treat older
+taxonomy drafts (`node-id-guidelines`, v1 category tree, uploaded “节点库介绍”, etc.) as
+current specs — see [`docs/architecture/docs-authority.md`](docs/architecture/docs-authority.md).
+Legacy ids belong on the graph migration path only.
+
 ## Local Checks
 
 Run a compile check before handing off Java changes:

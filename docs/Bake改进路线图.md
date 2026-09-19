@@ -1,5 +1,10 @@
 # NodeCraft Bake（烘焙）系统改进路线图
 
+> **部分术语已过期。** 文中 `spatial.*` / `visualization.*` 等为重命名前分类；  
+> 当前真源见 [`NODE_LIBRARY.md`](./NODE_LIBRARY.md) 与
+> [`architecture/docs-authority.md`](./architecture/docs-authority.md)
+>（例如 Geometry Viewer → `output.preview.geometry_viewer`）。
+
 本文档基于 Grasshopper/Dynamo 风格工作流的建筑设计建议，描述 NodeCraft 在**体素化预览**与**永久放置**方面的改进规划。
 
 ---

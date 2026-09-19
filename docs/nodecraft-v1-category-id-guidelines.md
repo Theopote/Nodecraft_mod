@@ -1,15 +1,23 @@
 # NodeCraft v1.0 Category ID Guidelines
 
-This document defines the canonical `category id` scheme for the NodeCraft v1.0 node system.
+> **Superseded as implementation SoT.**  
+> Live categories and counts: [`NODE_LIBRARY.md`](./NODE_LIBRARY.md) (generated from catalog).  
+> Authority freeze: [`architecture/docs-authority.md`](./architecture/docs-authority.md).  
+> This file is **design history** for the v1 category scheme — not the registry to edit against.
 
-It is the source of truth for:
+This document defined the canonical `category id` scheme for the NodeCraft v1.0 node system
+during the taxonomy redesign.
+
+It was previously treated as the source of truth for:
 
 - category registration
 - node documentation placement
 - node search grouping
 - future node additions
 
-This document applies to the v1.0 main node system only.
+**Today those roles belong to `@NodeInfo` + `node-catalog.json` → `NODE_LIBRARY*.md`.**
+
+This document applies to the v1.0 main node system only (historical framing).
 
 Excluded domains such as `animation`, `flora`, `nbt`, `inventory`, and experimental nodes are intentionally outside this taxonomy.
 

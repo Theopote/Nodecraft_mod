@@ -1,6 +1,11 @@
 # NodeCraft v1.0 节点分类树定稿
 
-本文档用于定义 NodeCraft v1.0 重构后的主节点系统分类树，作为后续节点迁移、节点命名、注册体系、文档编写与 UI 分类展示的统一依据。
+> **已降级为设计历史，不再作为当前实现规范。**  
+> 当前节点 / 分类真源：仓库代码中的 `@NodeInfo`，以及生成的
+> [`NODE_LIBRARY.md`](./NODE_LIBRARY.md) / [`NODE_LIBRARY.zh-CN.md`](./NODE_LIBRARY.zh-CN.md)。  
+> 权威冻结：[`architecture/docs-authority.md`](./architecture/docs-authority.md)。
+
+本文档用于定义 NodeCraft v1.0 重构后的主节点系统分类树，作为当时节点迁移、节点命名、注册体系、文档编写与 UI 分类展示的统一依据（**历史定稿**）。
 
 本文档聚焦以下目标域：
 

@@ -1,16 +1,24 @@
 # Node ID and Category Guidelines
 
-Last updated: 2026-04-12
+> **Superseded as implementation SoT.**  
+> Current node ids and categories come from **GitHub code** (`@NodeInfo`) and generated
+> [`NODE_LIBRARY.md`](./NODE_LIBRARY.md) / [`NODE_LIBRARY.zh-CN.md`](./NODE_LIBRARY.zh-CN.md).  
+> Authority freeze: [`architecture/docs-authority.md`](./architecture/docs-authority.md).  
+> Keep this file as **design history** for the v1 taxonomy rename (`visualization.*` /
+> `spatial.*` → `output.*` / `geometry.*`, …). Do not use it to decide today’s ids.
+
+Last updated: 2026-04-12 (historical)
 
 ## Scope
 
-This document defines the current rules for:
+This document defined rules for the v1 taxonomy migration era:
 
 - canonical node ids
 - canonical category placement
 - canonical-only registration and persistence behavior
 
 The system no longer keeps removed cold-storage or legacy source trees in active code.
+**Live inventory:** regenerate / read `NODE_LIBRARY.md` — do not treat the lists below as complete.
 
 ## Canonical Taxonomy
 
