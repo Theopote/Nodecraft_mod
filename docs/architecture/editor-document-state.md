@@ -36,11 +36,13 @@ Selection + exclusive gesture mode moved to Phase G (`EditorInteractionState`).
 - Auto-preview uses `document` as `DirtyVersionSource` directly
 - `setCurrentGraph` resets document graph and clears positions via editor orchestration
 
-## Non-goals
+## Non-goals (Phase F slice)
 
 - Multi-document tabs
 - Detaching history into the document
-- Full god-class breakup of `ImGuiNodeEditor`
+
+Full god-class breakup of `ImGuiNodeEditor` is now a staged **0.9** program:
+[`imgui-node-editor-breakup.md`](./imgui-node-editor-breakup.md).
 
 ## Exit gates
 

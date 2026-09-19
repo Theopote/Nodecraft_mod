@@ -231,7 +231,7 @@ public class ImGuiNodeIO {
         }
     }
 
-    static Map<UUID, NodePosition> buildEditorPositions(
+    public static Map<UUID, NodePosition> buildEditorPositions(
             SavedGraph savedGraph,
             Map<String, BaseNode> nodesBySavedId) {
         Map<UUID, NodePosition> positions = new HashMap<>();

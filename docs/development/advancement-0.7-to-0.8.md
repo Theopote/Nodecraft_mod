@@ -113,4 +113,5 @@ Suggested optional tag: `v0.8-interactive-runtime` after CI green on this tip.
 
 ## Explicit non-goals (still)
 
-- Bulk node expansion, full editor rewrite, new UI framework, graph schema redesign beyond versioned migrations, multiplayer, large AI auto-model features.
+- Bulk node expansion, full editor rewrite into a new UI framework, graph schema redesign beyond versioned migrations, multiplayer, large AI auto-model features.
+- Staged `ImGuiNodeEditor` ownership breakup **is** an in-goal 0.9 track (see [`../architecture/imgui-node-editor-breakup.md`](../architecture/imgui-node-editor-breakup.md)); not a single-shot rewrite.

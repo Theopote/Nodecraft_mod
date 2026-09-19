@@ -1,14 +1,11 @@
 package com.nodecraft.gui.editor.impl;
 
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.List;
 import java.util.HashSet;
 import java.util.ArrayList;
-import java.util.ArrayDeque;
-import java.util.Deque;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.dialogs.MessageDialog;
@@ -22,6 +19,10 @@ import com.nodecraft.gui.editor.document.EditorDocumentState;
 import com.nodecraft.gui.editor.interaction.EditorInteractionState;
 import com.nodecraft.gui.editor.integration.ImGuiInputAdapter;
 import com.nodecraft.gui.editor.preview.AutoPreviewController;
+import com.nodecraft.gui.editor.command.NodeCommandService;
+import com.nodecraft.gui.editor.connection.ConnectionEditService;
+import com.nodecraft.gui.editor.subgraph.SubgraphEditService;
+import com.nodecraft.gui.editor.viewport.EditorViewportState;
 import com.nodecraft.gui.recommendation.NodeRecommendationApplyResult;
 import com.nodecraft.gui.recommendation.NodeRecommendationContext;
 import com.nodecraft.gui.recommendation.NodeRecommendationPopupRenderer;
@@ -35,11 +36,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.graph.GraphLoadResult;
 import com.nodecraft.nodesystem.graph.GraphSerializer;
 import com.nodecraft.nodesystem.graph.NodeGraph;
-import com.nodecraft.nodesystem.graph.SubgraphExtractionService;
-import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
-import com.nodecraft.nodesystem.io.SavedNode;
-import com.nodecraft.nodesystem.io.SavedPosition;
 import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphCallStackBridge;
 import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphNode;
 import com.nodecraft.nodesystem.nodes.variable.VariableScopeBridge;
@@ -78,7 +75,10 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     // 编辑器状态
     private boolean isOpen = false;
     private final EditorDocumentState document = new EditorDocumentState();
-    private final Deque<SubgraphEditContext> subgraphEditStack = new ArrayDeque<>();
+    private final EditorViewportState viewport = new EditorViewportState();
+    private final SubgraphEditService subgraphEdits;
+    private final ConnectionEditService connectionEdits;
+    private final NodeCommandService nodeCommands;
     private UUID subgraphRenameNodeId;
     private final ImString subgraphRenameBuffer = new ImString(128);
     private boolean openSubgraphRenamePopup;
@@ -86,12 +86,6 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     private Map<UUID, Map<String, ImVec2>> portScreenPositions = new HashMap<>();
 
     private final EditorInteractionState interactionState = new EditorInteractionState();
-
-    // 画布视图状态变量
-    private float canvasZoom = 1.0f;
-    private float canvasOffsetX = 0;
-    private float canvasOffsetY = 0;
-    private boolean showGrid = true;
 
     // 节点显示模式
     private int nodeDisplayMode = 0; // 0=完整, 1=紧凑, 2=仅图标, 3=仅文本
@@ -128,6 +122,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         this.menus = new ImGuiNodeMenus(this, this.io);
         this.history = new ImGuiNodeHistory(this);
         this.clipboard = new ImGuiNodeClipboard(this);
+        this.subgraphEdits = new SubgraphEditService(new SubgraphHost());
+        this.connectionEdits = new ConnectionEditService(new ConnectionHost());
+        this.nodeCommands = new NodeCommandService(new NodeCommandHost());
         this.recommendationPopup = new NodeRecommendationPopupRenderer(this, NodeRecommendations.get());
         this.autoPreviewController = new AutoPreviewController(
                 document::getGraph,
@@ -135,6 +132,44 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 this::createAutoPreviewExecutionContext
         );
         BaseNode.addDirtyListener(this::handleNodeDirty);
+    }
+
+    private final class SubgraphHost implements SubgraphEditService.Host {
+        @Override public EditorDocumentState document() { return document; }
+        @Override public EditorInteractionState interaction() { return interactionState; }
+        @Override public ImGuiNodeHistory history() { return history; }
+        @Override
+        public INode addNodeWithState(String nodeTypeId, @Nullable UUID oldNodeId, float x, float y, @Nullable Object nodeState) {
+            return ImGuiNodeEditor.this.addNodeWithState(nodeTypeId, oldNodeId, x, y, nodeState);
+        }
+        @Override public void removeNodePosition(UUID nodeId) { ImGuiNodeEditor.this.removeNodePosition(nodeId); }
+        @Override public void removeSelectedNode(UUID nodeId) { ImGuiNodeEditor.this.removeSelectedNode(nodeId); }
+        @Override public void clearSelectedNodes() { ImGuiNodeEditor.this.clearSelectedNodes(); }
+        @Override public void setSelectedNodeId(UUID nodeId) { ImGuiNodeEditor.this.setSelectedNodeId(nodeId); }
+        @Override public void notifyStructureDirty() { markGraphStructureDirty(); }
+        @Override public void showSubgraphLoadNotice(String message) { new MessageDialog("打开子图", message).show(); }
+    }
+
+    private final class ConnectionHost implements ConnectionEditService.Host {
+        @Override public EditorDocumentState document() { return document; }
+        @Override public ImGuiNodeHistory history() { return history; }
+        @Override public void notifyStructureDirty() { markGraphStructureDirty(); }
+        @Override public void notifyConnectionAdded(Map<String, Object> eventData) { notifyEditorComponents("connection_added", eventData); }
+        @Override public INode addNode(String nodeTypeId, float x, float y) { return ImGuiNodeEditor.this.addNode(nodeTypeId, x, y); }
+        @Override public void removeNodePosition(UUID nodeId) { ImGuiNodeEditor.this.removeNodePosition(nodeId); }
+        @Override public void clearSelectedNodes() { ImGuiNodeEditor.this.clearSelectedNodes(); }
+        @Override public void setSelectedNodeId(UUID nodeId) { ImGuiNodeEditor.this.setSelectedNodeId(nodeId); }
+    }
+
+    private final class NodeCommandHost implements NodeCommandService.Host {
+        @Override public EditorDocumentState document() { return document; }
+        @Override public EditorInteractionState interaction() { return interactionState; }
+        @Override public ImGuiNodeHistory history() { return history; }
+        @Override public void notifyStructureDirty() { markGraphStructureDirty(); }
+        @Override public void notifyNodeAdded(Map<String, Object> eventData) { notifyEditorComponents("node_added", eventData); }
+        @Override public void clearSelectedNodes() { ImGuiNodeEditor.this.clearSelectedNodes(); }
+        @Override public void setSelectedNodeId(UUID nodeId) { ImGuiNodeEditor.this.setSelectedNodeId(nodeId); }
+        @Override public boolean deleteSelectedViaClipboard() { return clipboard.deleteSelectedNodes(); }
     }
 
     private void handleNodeDirty(BaseNode node, long dirtyVersion) {
@@ -250,7 +285,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             applyNodeDragMovementBeforeRender();
 
             // 2.05 清理动态端口变化后产生的悬挂连线（端口已不存在）
-            cleanupDanglingConnections();
+            connectionEdits.cleanupDangling();
 
             // 2. 先计算所有节点的尺寸和端口位置
             // 这一步会更新 NodePosition 中的 width/height 字段，并填充 portScreenPositions
@@ -270,7 +305,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                     if (isMouseOverNodeHeader(doubleClickedNodeId, mousePos, canvasPos)) {
                         requestSubgraphRename(doubleClickedNodeId);
                         ImGui.getIO().setWantCaptureMouse(true);
-                    } else if (openSubgraphNode(doubleClickedNodeId)) {
+                    } else if (subgraphEdits.openNode(doubleClickedNodeId)) {
                         ImGui.getIO().setWantCaptureMouse(true);
                         return;
                     }
@@ -316,7 +351,14 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                     && document.getGraph() != null) {
                 // 捕获鼠标，避免被画布层当作空白处双击处理
                 ImGui.getIO().setWantCaptureMouse(true);
-                insertRerouteNodeOnHoveredConnection(mousePos, canvasPos);
+                connectionEdits.insertReroute(
+                        viewport.screenToWorldX(mousePos.x, canvasPos.x),
+                        viewport.screenToWorldY(mousePos.y, canvasPos.y),
+                        interaction.getHoveredConnectionSourceNodeId(),
+                        interaction.getHoveredConnectionSourcePortId(),
+                        interaction.getHoveredConnectionTargetNodeId(),
+                        interaction.getHoveredConnectionTargetPortId()
+                );
             }
 
             // 7. 处理进行中的连接创建（绘制预览线，鼠标释放时完成连接）
@@ -387,9 +429,10 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
             // 11. 渲染连接预览线 (如果正在创建连接)，类型不匹配时显示红色
             if (interaction.isCreatingConnection()) {
-                boolean previewTypeMismatch = computeConnectionPreviewTypeMismatch(document.getGraph(), interaction);
-                renderer.drawConnectionPreview(drawList, interaction.getDragPreviewLineStartPos(), canvasZoom, interaction.isFromOutputPort(), previewTypeMismatch);
-                String previewInvalidReason = getConnectionPreviewInvalidReason(document.getGraph(), interaction);
+                ConnectionEditService.DragPreview dragPreview = toConnectionDragPreview(interaction);
+                boolean previewTypeMismatch = connectionEdits.isPreviewTypeMismatch(document.getGraph(), dragPreview);
+                renderer.drawConnectionPreview(drawList, interaction.getDragPreviewLineStartPos(), viewport.getZoom(), interaction.isFromOutputPort(), previewTypeMismatch);
+                String previewInvalidReason = connectionEdits.previewInvalidReason(document.getGraph(), dragPreview);
                 if (previewInvalidReason != null) {
                     ImGui.setTooltip(previewInvalidReason);
                 }
@@ -450,11 +493,11 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     /** Keeps nested-graph navigation above canvas content without creating a separate top-level window. */
     private void renderSubgraphNavigationOverlay(ImVec2 canvasPos) {
-        if (subgraphEditStack.isEmpty() || canvasPos == null) {
+        if (!subgraphEdits.isEditing() || canvasPos == null) {
             return;
         }
 
-        int depth = subgraphEditStack.size();
+        int depth = subgraphEdits.editDepth();
         String graphName = shortSubgraphName(document.getGraph() != null ? document.getGraph().getName() : null);
         String contextLabel = "SUBGRAPH " + depth + "  /  " + graphName;
         float buttonX = canvasPos.x + 12.0f;
@@ -483,7 +526,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     }
 
     private boolean handleSubgraphNavigationClick(ImVec2 canvasPos, ImVec2 mousePos) {
-        if (subgraphEditStack.isEmpty() || canvasPos == null || mousePos == null) {
+        if (!subgraphEdits.isEditing() || canvasPos == null || mousePos == null) {
             return false;
         }
         float buttonX = canvasPos.x + 12.0f;
@@ -535,7 +578,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         ImGui.sameLine();
         boolean cancel = ImGui.button("Cancel", 120.0f, 0.0f);
         ImGui.spacing();
-        if (submit && renameSubgraphNode(subgraphRenameNodeId, subgraphRenameBuffer.get())) {
+        if (submit && subgraphEdits.rename(subgraphRenameNodeId, subgraphRenameBuffer.get())) {
             subgraphRenameNodeId = null;
             ImGui.closeCurrentPopup();
         } else if (cancel) {
@@ -550,10 +593,10 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         if (position == null || mousePos == null || canvasPos == null) {
             return false;
         }
-        float nodeX = canvasPos.x + position.x * canvasZoom + canvasOffsetX;
-        float nodeY = canvasPos.y + position.y * canvasZoom + canvasOffsetY;
-        float nodeWidth = (position.width > 0.0f ? position.width : 150.0f) * canvasZoom;
-        float headerHeight = (ImGui.getTextLineHeight() + 2.0f * NodeRenderConstants.NODE_VERTICAL_PADDING) * canvasZoom;
+        float nodeX = canvasPos.x + position.x * viewport.getZoom() + viewport.getOffsetX();
+        float nodeY = canvasPos.y + position.y * viewport.getZoom() + viewport.getOffsetY();
+        float nodeWidth = (position.width > 0.0f ? position.width : 150.0f) * viewport.getZoom();
+        float headerHeight = (ImGui.getTextLineHeight() + 2.0f * NodeRenderConstants.NODE_VERTICAL_PADDING) * viewport.getZoom();
         return mousePos.x >= nodeX && mousePos.x <= nodeX + nodeWidth
             && mousePos.y >= nodeY && mousePos.y <= nodeY + headerHeight;
     }
@@ -572,8 +615,8 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             return;
         }
 
-        float deltaX = ImGui.getIO().getMouseDelta().x / canvasZoom;
-        float deltaY = ImGui.getIO().getMouseDelta().y / canvasZoom;
+        float deltaX = ImGui.getIO().getMouseDelta().x / viewport.getZoom();
+        float deltaY = ImGui.getIO().getMouseDelta().y / viewport.getZoom();
 
         if (deltaX == 0 && deltaY == 0) {
             return;
@@ -607,107 +650,18 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         }
     }
 
-    private void cleanupDanglingConnections() {
-        if (document.getGraph() == null) {
-            return;
+    private static ConnectionEditService.DragPreview toConnectionDragPreview(ImGuiNodeInteraction interaction) {
+        if (interaction == null || !interaction.isCreatingConnection()) {
+            return null;
         }
-
-        int removedCount = 0;
-        for (NodeGraph.Connection connection : document.getGraph().getConnections()) {
-            INode sourceNode = connection.sourceNode;
-            INode targetNode = connection.targetNode;
-            if (sourceNode == null || targetNode == null) {
-                document.getGraph().removeConnection(connection);
-                removedCount++;
-                continue;
-            }
-
-            if (!hasPort(sourceNode.getOutputPorts(), connection.sourcePort.getId())
-                    || !hasPort(targetNode.getInputPorts(), connection.targetPort.getId())) {
-                document.getGraph().removeConnection(connection);
-                removedCount++;
-            }
-        }
-
-        if (removedCount > 0) {
-            NodeCraft.LOGGER.info("已清理 {} 条悬挂连线（端口已被动态移除）", removedCount);
-        }
-    }
-
-    private static boolean hasPort(List<IPort> ports, String portId) {
-        if (ports == null || portId == null) {
-            return false;
-        }
-        for (IPort port : ports) {
-            if (port != null && portId.equals(port.getId())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * 计算当前拖拽连接预览线是否应显示为红色。
-     */
-    private boolean computeConnectionPreviewTypeMismatch(NodeGraph graph, ImGuiNodeInteraction interaction) {
-        return getConnectionPreviewInvalidReason(graph, interaction) != null;
-    }
-
-    /**
-     * 在当前悬停连接线上插入中继节点（utilities.assist.reroute）。
-     */
-    private void insertRerouteNodeOnHoveredConnection(ImVec2 mousePos, ImVec2 canvasPos) {
-        UUID sourceNodeId = interaction.getHoveredConnectionSourceNodeId();
-        String sourcePortId = interaction.getHoveredConnectionSourcePortId();
-        UUID targetNodeId = interaction.getHoveredConnectionTargetNodeId();
-        String targetPortId = interaction.getHoveredConnectionTargetPortId();
-
-        if (sourceNodeId == null || sourcePortId == null || targetNodeId == null || targetPortId == null) {
-            return;
-        }
-
-        if (document.getGraph() == null || !document.getGraph().isConnected(sourceNodeId, sourcePortId, targetNodeId, targetPortId)) {
-            return;
-        }
-
-        float worldX = (mousePos.x - canvasPos.x - canvasOffsetX) / canvasZoom;
-        float worldY = (mousePos.y - canvasPos.y - canvasOffsetY) / canvasZoom;
-
-        INode rerouteNode = addNode("utilities.assist.reroute", worldX, worldY);
-        if (rerouteNode == null) {
-            NodeCraft.LOGGER.warn("双击连接线插入中继失败：无法创建中继节点");
-            return;
-        }
-
-        UUID rerouteNodeId = rerouteNode.getId();
-        boolean oldDisconnected = disconnectPorts(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
-        if (!oldDisconnected) {
-            document.getGraph().removeNode(rerouteNodeId);
-            document.getNodePositions().remove(rerouteNodeId);
-            NodeCraft.LOGGER.warn("双击连接线插入中继失败：无法断开原连接");
-            return;
-        }
-
-        boolean firstConnected = connectPorts(sourceNodeId, sourcePortId, rerouteNodeId, "input_signal");
-        boolean secondConnected = connectPorts(rerouteNodeId, "output_signal", targetNodeId, targetPortId);
-
-        if (!firstConnected || !secondConnected) {
-            // 回滚：尽最大努力恢复原连接
-            disconnectPorts(sourceNodeId, sourcePortId, rerouteNodeId, "input_signal");
-            disconnectPorts(rerouteNodeId, "output_signal", targetNodeId, targetPortId);
-            document.getGraph().removeNode(rerouteNodeId);
-            document.getNodePositions().remove(rerouteNodeId);
-            connectPorts(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
-            NodeCraft.LOGGER.warn("双击连接线插入中继失败：连接重建失败，已回滚");
-            return;
-        }
-
-        clearSelectedNodes();
-        setSelectedNodeId(rerouteNodeId);
-        markGraphStructureDirty();
-
-        NodeCraft.LOGGER.info("已在连接线上插入中继节点: {}({}) -> {} -> {}({})",
-                sourceNodeId, sourcePortId, rerouteNodeId, targetNodeId, targetPortId);
+        return new ConnectionEditService.DragPreview(
+                interaction.getSourceNodeId(),
+                interaction.getSourcePortId(),
+                interaction.isFromOutputPort(),
+                interaction.getHoveredNodeId(),
+                interaction.getHoveredPortId(),
+                interaction.isHoveredPortOutput()
+        );
     }
 
     private void renderHoveredPortTooltip(NodeGraph graph, ImGuiNodeInteraction interaction) {
@@ -726,7 +680,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             return;
         }
 
-        IPort hoveredPort = findPort(node, hoveredPortId, interaction.isHoveredPortOutput());
+        IPort hoveredPort = ConnectionEditService.findPort(node, hoveredPortId, interaction.isHoveredPortOutput());
         if (hoveredPort == null) {
             return;
         }
@@ -756,63 +710,6 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         ImGui.setTooltip(tooltip.toString());
     }
 
-    private IPort findPort(INode node, String portId, boolean isOutputPort) {
-        List<IPort> ports = isOutputPort ? node.getOutputPorts() : node.getInputPorts();
-        for (IPort port : ports) {
-            if (port.getId().equals(portId)) {
-                return port;
-            }
-        }
-        return null;
-    }
-
-    private String getConnectionPreviewInvalidReason(NodeGraph graph, ImGuiNodeInteraction interaction) {
-        if (graph == null || !interaction.isCreatingConnection()) return null;
-        UUID sourceNodeId = interaction.getSourceNodeId();
-        String sourcePortId = interaction.getSourcePortId();
-        UUID hoveredNodeId = interaction.getHoveredNodeId();
-        String hoveredPortId = interaction.getHoveredPortId();
-        boolean isFromOutput = interaction.isFromOutputPort();
-        boolean hoveredIsOutput = interaction.isHoveredPortOutput();
-        if (sourceNodeId == null || sourcePortId == null || hoveredNodeId == null || hoveredPortId == null) return null;
-        INode sourceNode = graph.getNode(sourceNodeId);
-        INode hoveredNode = graph.getNode(hoveredNodeId);
-        if (sourceNode == null || hoveredNode == null) return null;
-        IPort sourcePort = null;
-        IPort targetPort = null;
-        if (isFromOutput && !hoveredIsOutput) {
-            for (IPort p : sourceNode.getOutputPorts()) if (p.getId().equals(sourcePortId)) { sourcePort = p; break; }
-            for (IPort p : hoveredNode.getInputPorts()) if (p.getId().equals(hoveredPortId)) { targetPort = p; break; }
-        } else if (!isFromOutput && hoveredIsOutput) {
-            for (IPort p : sourceNode.getInputPorts()) if (p.getId().equals(sourcePortId)) { targetPort = p; break; }
-            for (IPort p : hoveredNode.getOutputPorts()) if (p.getId().equals(hoveredPortId)) { sourcePort = p; break; }
-        } else {
-            return isFromOutput ? "只能连接到输入端" : "只能连接到输出端";
-        }
-        if (sourcePort == null || targetPort == null) return "目标端口不可连接";
-        if (sourcePort.getNode().getId().equals(targetPort.getNode().getId())) {
-            return "不能连接到同一节点";
-        }
-        if (!NodeDataType.isConnectableTo(sourcePort.getDataType(), targetPort.getDataType())) {
-            return String.format("类型不匹配: 输出 %s 无法连接到输入 %s",
-                    sourcePort.getDataType().getDisplayName(),
-                    targetPort.getDataType().getDisplayName());
-        }
-        UUID connectedNodeId = graph.getConnectedOutputNodeId(targetPort.getNode().getId(), targetPort.getId());
-        String connectedPortId = graph.getConnectedOutputPortId(targetPort.getNode().getId(), targetPort.getId());
-        boolean isSameExistingConnection = connectedNodeId != null &&
-                connectedNodeId.equals(sourcePort.getNode().getId()) &&
-                connectedPortId != null &&
-                connectedPortId.equals(sourcePort.getId());
-        if (connectedNodeId != null && !isSameExistingConnection && !targetPort.allowsMultipleIncomingConnections()) {
-            return "该输入端只允许一个输入连接";
-        }
-        if (!graph.canConnect(sourcePort.getNode().getId(), sourcePort.getId(), targetPort.getNode().getId(), targetPort.getId())) {
-            return "该连接无效";
-        }
-        return null;
-    }
-
     /**
      * 处理鼠标右键点击节点或画布背景，打开上下文菜单。
      * @param mouseX 鼠标X屏幕坐标。
@@ -823,125 +720,19 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         menus.handleNodeRightClick(mouseX, mouseY);
     }
 
-    /**
-     * 添加新节点到画布。
-     * 此方法现在是统一入口 `addNodeWithState` 的简化包装。
-     * @param nodeTypeId 节点的类型ID。
-     * @param x 节点的初始世界X坐标。
-     * @param y 节点的初始世界Y坐标。
-     * @return 新创建的节点实例，如果失败则返回null。
-     */
     @Override
     public INode addNode(String nodeTypeId, float x, float y) {
-        // 调用统一的添加方法，不指定UUID和状态，由其生成新UUID并记录历史
-        return addNodeWithState(nodeTypeId, null, x, y, null);
+        return nodeCommands.addNode(nodeTypeId, x, y);
     }
 
-    /**
-     * 根据节点类型ID、指定UUID和初始状态创建并添加一个节点到图中。
-     * 此方法主要用于历史记录的撤销/重做功能，以恢复特定ID和状态的节点。
-     *
-     * @param nodeTypeId 节点的类型ID。
-     * @param oldNodeId 节点的旧UUID（仅用于历史记录内部映射，新创建的节点会有新UUID），如果为null，将自动生成新的UUID。
-     * @param x 节点的初始世界X坐标。
-     * @param y 节点的初始世界Y坐标。
-     * @param nodeState 节点的初始状态数据，将通过 setNodeState 应用。如果为null，则使用节点默认状态。
-     * @return 新创建或恢复的节点实例，如果失败则返回null。
-     */
     @Override
     public INode addNodeWithState(String nodeTypeId, @Nullable UUID oldNodeId, float x, float y, @Nullable Object nodeState) {
-        if (document.getGraph() == null) {
-            NodeCraft.LOGGER.error("无法添加节点: 当前没有节点图");
-            return null;
-        }
-
-        try {
-            NodeRegistry registry = NodeRegistry.getInstance();
-            INode node = registry.createNodeInstance(nodeTypeId); // 创建节点实例，它会生成自己的 UUID
-
-            if (node == null) {
-                NodeCraft.LOGGER.error("无法创建节点: 未找到类型 {}", nodeTypeId);
-                return null;
-            }
-            
-            // 应用节点状态
-            if (nodeState != null) {
-                try {
-                    node.setNodeState(nodeState);
-                } catch (Exception e) {
-                    NodeCraft.LOGGER.warn("添加节点 {} 时恢复状态失败: {}", nodeTypeId, e.getMessage());
-                }
-            }
-
-            document.getGraph().addNode(node); // 将新创建的节点添加到图中
-            document.getNodePositions().put(node.getId(), new NodePosition(x, y));
-
-              markGraphStructureDirty();
-
-            // 只有在历史记录启用时才记录历史，避免在撤销/重做操作中重复记录
-            if (history != null && history.isRecording()) {
-                history.recordAddNode(node, x, y);
-            }
-
-            Map<String, Object> eventData = new HashMap<>();
-            eventData.put("nodeId", node.getId());
-            eventData.put("nodeType", nodeTypeId);
-            eventData.put("x", x);
-            eventData.put("y", y);
-            notifyEditorComponents("node_added", eventData);
-
-            return node;
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("添加节点时出错: {}", e.getMessage(), e);
-            return null;
-        }
+        return nodeCommands.addNodeWithState(nodeTypeId, oldNodeId, x, y, nodeState);
     }
 
-    /**
-     * 连接两个节点的指定端口。
-     * @param sourceNodeId 源节点ID。
-     * @param sourcePortId 源端口ID。
-     * @param targetNodeId 目标节点ID。
-     * @param targetPortId 目标端口ID。
-     * @return true 如果连接成功，否则返回false。
-     */
     @Override
     public boolean connectPorts(UUID sourceNodeId, String sourcePortId, UUID targetNodeId, String targetPortId) {
-        if (document.getGraph() == null) {
-            NodeCraft.LOGGER.error("无法连接端口: 当前没有节点图");
-            return false;
-        }
-
-        try {
-            INode sourceNode = document.getGraph().getNode(sourceNodeId);
-            INode targetNode = document.getGraph().getNode(targetNodeId);
-
-            if (sourceNode == null || targetNode == null) {
-                NodeCraft.LOGGER.error("无法连接端口: 未找在节点");
-                return false;
-            }
-
-            boolean success = document.getGraph().connect(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
-
-            if (success) {
-                  markGraphStructureDirty();
-                // 只有在历史记录启用时才记录历史
-                if (history != null && history.isRecording()) {
-                    history.recordAddConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
-                }
-                Map<String, Object> eventData = new HashMap<>();
-                eventData.put("sourceNodeId", sourceNodeId);
-                eventData.put("sourcePortId", sourcePortId);
-                eventData.put("targetNodeId", targetNodeId);
-                eventData.put("targetPortId", targetPortId);
-                notifyEditorComponents("connection_added", eventData);
-            }
-
-            return success;
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("连接端口时出错: {}", e.getMessage(), e);
-            return false;
-        }
+        return connectionEdits.connect(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
     }
 
     /**
@@ -985,13 +776,13 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
             if (pos != null) {
                 // Calculate node screen coordinates
-                float nodeScreenX = canvasWindowPos.x + pos.x * canvasZoom + canvasOffsetX;
-                float nodeScreenY = canvasWindowPos.y + pos.y * canvasZoom + canvasOffsetY;
+                float nodeScreenX = canvasWindowPos.x + pos.x * viewport.getZoom() + viewport.getOffsetX();
+                float nodeScreenY = canvasWindowPos.y + pos.y * viewport.getZoom() + viewport.getOffsetY();
 
                 // Use NodePosition's stored width/height (unscaled), then apply zoom
                 // Fallback to default if not yet calculated (width/height <= 0)
-                float nodeWidthScaled = pos.width > 0 ? pos.width * canvasZoom : 150 * canvasZoom;
-                float nodeHeightScaled = pos.height > 0 ? pos.height * canvasZoom : 80 * canvasZoom;
+                float nodeWidthScaled = pos.width > 0 ? pos.width * viewport.getZoom() : 150 * viewport.getZoom();
+                float nodeHeightScaled = pos.height > 0 ? pos.height * viewport.getZoom() : 80 * viewport.getZoom();
 
                 // Check if mouse is within node's bounding box
                 if (mouseX >= nodeScreenX && mouseX <= nodeScreenX + nodeWidthScaled &&
@@ -1068,12 +859,12 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     public float screenToWorldX(float screenX) {
         ImVec2 canvasPos = ImGui.getWindowPos();
-        return (screenX - canvasPos.x - canvasOffsetX) / canvasZoom;
+        return viewport.screenToWorldX(screenX, canvasPos.x);
     }
 
     public float screenToWorldY(float screenY) {
         ImVec2 canvasPos = ImGui.getWindowPos();
-        return (screenY - canvasPos.y - canvasOffsetY) / canvasZoom;
+        return viewport.screenToWorldY(screenY, canvasPos.y);
     }
 
     /**
@@ -1117,7 +908,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             SubgraphCallStackBridge.clearFallbackScope(graphId);
         }
         document.resetForNewGraph(graph);
-        subgraphEditStack.clear();
+        subgraphEdits.clearStack();
         clearSelectedNodes();
         if (history != null) {
             history.clear();
@@ -1214,7 +1005,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     @Override
     public float getCanvasZoom() {
-        return canvasZoom;
+        return viewport.getZoom();
     }
 
     @Override
@@ -1224,38 +1015,39 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     @Override
     public void setCanvasZoom(float zoom) {
-        this.canvasZoom = zoom;
+        viewport.setZoom(zoom);
     }
 
     @Override
     public float getCanvasOffsetX() {
-        return canvasOffsetX;
+        return viewport.getOffsetX();
     }
 
     @Override
     public float getCanvasOffsetY() {
-        return canvasOffsetY;
+        return viewport.getOffsetY();
     }
 
     @Override
     public void setCanvasOffset(float x, float y) {
-        this.canvasOffsetX = x;
-        this.canvasOffsetY = y;
+        viewport.setOffset(x, y);
     }
 
     @Override
     public void setCanvasView(float zoom, float offsetX, float offsetY) {
-        this.canvasZoom = zoom;
-        this.canvasOffsetX = offsetX;
-        this.canvasOffsetY = offsetY;
+        viewport.setView(zoom, offsetX, offsetY);
     }
 
     public boolean isShowGrid() {
-        return showGrid;
+        return viewport.isShowGrid();
     }
 
     public void setShowGrid(boolean showGrid) {
-        this.showGrid = showGrid;
+        viewport.setShowGrid(showGrid);
+    }
+
+    public EditorViewportState getViewportState() {
+        return viewport;
     }
 
     @Override
@@ -1342,135 +1134,23 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     @Override
     public boolean deleteSelectedNodes() {
-        boolean result = clipboard.deleteSelectedNodes();
-        if (result) {
-            markGraphStructureDirty();
-        }
-        return result;
+        return nodeCommands.deleteSelected();
     }
 
     public boolean createSubgraphFromSelection() {
-        if (document.getGraph() == null || interactionState.getSelectedNodeIds().isEmpty()) {
-            return false;
-        }
-
-        java.util.Set<UUID> selection = new java.util.LinkedHashSet<>(interactionState.getSelectedNodeIds());
-        String subgraphName = document.getGraph().getName() != null && !document.getGraph().getName().isBlank()
-            ? document.getGraph().getName() + " Selection"
-            : "Extracted Subgraph";
-        boolean wasRecording = history != null && history.isRecording();
-        SavedGraph beforeSnapshot = null;
-
-        try {
-            syncGraphNodePositions(document.getGraph(), document.getNodePositions());
-            if (wasRecording) {
-                beforeSnapshot = toSavedGraphWithPositions(document.getGraph(), document.getNodePositions());
-            }
-            SubgraphExtractionService.ExtractionResult extraction = SubgraphExtractionService.extract(document.getGraph(), selection, subgraphName);
-            String embeddedGraphJson = GraphSerializer.toJson(extraction.savedGraph());
-            Map<String, Object> subgraphState = buildSubgraphNodeState(extraction, subgraphName, embeddedGraphJson);
-            NodePosition wrapperPosition = selectionCenter(selection);
-
-            if (wasRecording) {
-                history.pauseRecording();
-            }
-            try {
-                INode wrapper = addNodeWithState(
-                    "utilities.organization.subgraph",
-                    null,
-                    wrapperPosition.x,
-                    wrapperPosition.y,
-                    subgraphState
-                );
-                if (wrapper == null) {
-                    return false;
-                }
-
-                for (UUID nodeId : new ArrayList<>(selection)) {
-                    if (document.getGraph().removeNode(nodeId)) {
-                        removeNodePosition(nodeId);
-                        removeSelectedNode(nodeId);
-                    }
-                }
-
-                reconnectSubgraphBoundaries(wrapper.getId(), extraction);
-                clearSelectedNodes();
-                setSelectedNodeId(wrapper.getId());
-                markGraphStructureDirty();
-                if (wasRecording) {
-                    SavedGraph afterSnapshot = toSavedGraphWithPositions(document.getGraph(), document.getNodePositions());
-                    history.resumeRecording();
-                    history.recordGraphTransaction("Create Subgraph", beforeSnapshot, afterSnapshot);
-                    history.pauseRecording();
-                }
-                NodeCraft.LOGGER.info(
-                    "Created subgraph '{}' from {} nodes. inputs={}, outputs={}",
-                    subgraphName,
-                    selection.size(),
-                    extraction.inputBindings().size(),
-                    extraction.outputBindings().size()
-                );
-                return true;
-            } finally {
-                if (wasRecording) {
-                    history.resumeRecording();
-                }
-            }
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("Failed to create subgraph from selection: {}", e.getMessage(), e);
-            return false;
-        }
+        return subgraphEdits.createFromSelection();
     }
 
     public boolean openSelectedSubgraph() {
-        if (interactionState.getSelectedNodeIds().size() != 1) {
-            return false;
-        }
-        return openSubgraphNode(interactionState.getSelectedNodeIds().iterator().next());
+        return subgraphEdits.openSelected();
     }
 
     public boolean closeCurrentSubgraph() {
-        if (subgraphEditStack.isEmpty() || document.getGraph() == null) {
-            return false;
-        }
-
-        SubgraphEditContext context = subgraphEditStack.pop();
-        try {
-            syncGraphNodePositions(document.getGraph(), document.getNodePositions());
-            SavedGraph savedGraph = toSavedGraphWithPositions(document.getGraph(), document.getNodePositions());
-            String embeddedGraphJson = GraphSerializer.toJson(savedGraph);
-
-            INode wrapperNode = context.parentGraph().getNode(context.wrapperNodeId());
-            if (wrapperNode instanceof BaseNode wrapperBase) {
-                Map<String, Object> state = copyStateMap(wrapperBase.getNodeState());
-                state.put("embeddedGraphJson", embeddedGraphJson);
-                wrapperBase.setNodeState(state);
-            } else {
-                NodeCraft.LOGGER.warn("Cannot write edited subgraph back because wrapper node is missing: {}", context.wrapperNodeId());
-            }
-
-            document.setGraph(context.parentGraph());
-            document.replaceNodePositions(copyNodePositions(context.parentPositions()));
-            clearSelectedNodes();
-            if (document.getGraph().getNode(context.wrapperNodeId()) != null) {
-                interactionState.getSelectedNodeIds().add(context.wrapperNodeId());
-                setSelectedNodeId(context.wrapperNodeId());
-            }
-            markGraphStructureDirty();
-            SavedGraph parentAfter = toSavedGraphWithPositions(document.getGraph(), document.getNodePositions());
-            history.exitScope();
-            history.recordGraphTransaction("Edit Subgraph", context.parentSnapshotBefore(), parentAfter);
-            NodeCraft.LOGGER.info("Closed subgraph editor and wrote changes back to wrapper {}", context.wrapperNodeId());
-            return true;
-        } catch (Exception e) {
-            subgraphEditStack.push(context);
-            NodeCraft.LOGGER.error("Failed to close subgraph editor: {}", e.getMessage(), e);
-            return false;
-        }
+        return subgraphEdits.closeCurrent();
     }
 
     public boolean isEditingSubgraph() {
-        return !subgraphEditStack.isEmpty();
+        return subgraphEdits.isEditing();
     }
 
     @Override
@@ -1483,7 +1163,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             if (!loadResult.hasLoadedNodes()) {
                 return false;
             }
-            LoadedGraph loadedGraph = toLoadedGraph(snapshot, loadResult);
+            SubgraphEditService.LoadedGraph loadedGraph = SubgraphEditService.toLoadedGraph(snapshot, loadResult);
             document.setGraph(loadedGraph.graph());
             document.replaceNodePositions(loadedGraph.positions());
             clearSelectedNodes();
@@ -1495,482 +1175,12 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         }
     }
 
-    private boolean openSubgraphNode(UUID wrapperNodeId) {
-        if (document.getGraph() == null || wrapperNodeId == null) {
-            return false;
-        }
-        INode wrapperNode = document.getGraph().getNode(wrapperNodeId);
-        if (!isSubgraphNode(wrapperNode)) {
-            return false;
-        }
-
-        String embeddedGraphJson = stateString(wrapperNode instanceof BaseNode baseNode ? baseNode.getNodeState() : null, "embeddedGraphJson");
-        if (embeddedGraphJson == null || embeddedGraphJson.isBlank()) {
-            return false;
-        }
-
-        try {
-            SavedGraph savedGraph = GraphSerializer.fromJson(embeddedGraphJson);
-            GraphLoadResult loadResult = GraphSerializer.loadFromSavedGraph(savedGraph);
-            if (!loadResult.hasLoadedNodes()) {
-                return false;
-            }
-            LoadedGraph loadedGraph = toLoadedGraph(savedGraph, loadResult);
-
-            syncGraphNodePositions(document.getGraph(), document.getNodePositions());
-            SavedGraph parentSnapshotBefore = toSavedGraphWithPositions(document.getGraph(), document.getNodePositions());
-            subgraphEditStack.push(new SubgraphEditContext(
-                document.getGraph(),
-                copyNodePositions(document.getNodePositions()),
-                wrapperNodeId,
-                parentSnapshotBefore
-            ));
-            history.enterScope();
-            document.setGraph(loadedGraph.graph());
-            document.replaceNodePositions(loadedGraph.positions());
-            clearSelectedNodes();
-            markGraphStructureDirty();
-            NodeCraft.LOGGER.info("Opened embedded subgraph from wrapper {}", wrapperNodeId);
-
-            String notice = loadResult.userMessage();
-            if (notice != null && !notice.isBlank()) {
-                new MessageDialog("打开子图", notice).show();
-            }
-            return true;
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("Failed to open embedded subgraph: {}", e.getMessage(), e);
-            return false;
-        }
-    }
-
     public boolean dissolveSelectedSubgraph() {
-        if (document.getGraph() == null || interactionState.getSelectedNodeIds().size() != 1) {
-            return false;
-        }
-
-        UUID wrapperNodeId = interactionState.getSelectedNodeIds().iterator().next();
-        INode wrapperNode = document.getGraph().getNode(wrapperNodeId);
-        if (!isSubgraphNode(wrapperNode)) {
-            return false;
-        }
-
-        String embeddedGraphJson = stateString(wrapperNode instanceof BaseNode baseNode ? baseNode.getNodeState() : null, "embeddedGraphJson");
-        if (embeddedGraphJson == null || embeddedGraphJson.isBlank()) {
-            return false;
-        }
-
-        boolean wasRecording = history != null && history.isRecording();
-        syncGraphNodePositions(document.getGraph(), document.getNodePositions());
-        SavedGraph beforeSnapshot = wasRecording ? toSavedGraphWithPositions(document.getGraph(), document.getNodePositions()) : null;
-
-        try {
-            SavedGraph savedGraph = GraphSerializer.fromJson(embeddedGraphJson);
-            if (savedGraph == null || savedGraph.nodes == null || savedGraph.nodes.isEmpty()) {
-                return false;
-            }
-
-            Map<String, String> graphInputKeys = new HashMap<>();
-            Map<String, String> graphOutputKeys = new HashMap<>();
-            for (SavedNode savedNode : savedGraph.nodes) {
-                if (savedNode == null || savedNode.nodeId == null) {
-                    continue;
-                }
-                if (SubgraphExtractionService.GRAPH_INPUT_TYPE_ID.equals(savedNode.typeId)) {
-                    graphInputKeys.put(savedNode.nodeId, stateString(savedNode.state, "inputName"));
-                } else if (SubgraphExtractionService.GRAPH_OUTPUT_TYPE_ID.equals(savedNode.typeId)) {
-                    graphOutputKeys.put(savedNode.nodeId, stateString(savedNode.state, "outputName"));
-                }
-            }
-
-            Map<String, java.util.List<BoundaryInputTarget>> inputTargets = new HashMap<>();
-            Map<String, java.util.List<BoundaryOutputSource>> outputSources = new HashMap<>();
-            if (savedGraph.connections != null) {
-                for (SavedConnection connection : savedGraph.connections) {
-                    String inputKey = graphInputKeys.get(connection.sourceNodeId);
-                    if (inputKey != null) {
-                        inputTargets.computeIfAbsent(keyToken(inputKey), ignored -> new ArrayList<>())
-                            .add(new BoundaryInputTarget(connection.targetNodeId, connection.targetPortId));
-                    }
-
-                    String outputKey = graphOutputKeys.get(connection.targetNodeId);
-                    if (outputKey != null) {
-                        outputSources.computeIfAbsent(keyToken(outputKey), ignored -> new ArrayList<>())
-                            .add(new BoundaryOutputSource(connection.sourceNodeId, connection.sourcePortId));
-                    }
-                }
-            }
-
-            java.util.List<NodeGraph.Connection> wrapperInputs = new ArrayList<>();
-            java.util.List<NodeGraph.Connection> wrapperOutputs = new ArrayList<>();
-            for (NodeGraph.Connection connection : document.getGraph().getConnections()) {
-                if (connection.targetNode.getId().equals(wrapperNodeId)) {
-                    wrapperInputs.add(connection);
-                } else if (connection.sourceNode.getId().equals(wrapperNodeId)) {
-                    wrapperOutputs.add(connection);
-                }
-            }
-
-            NodePosition wrapperPosition = document.getNodePositions().getOrDefault(wrapperNodeId, new NodePosition(0.0f, 0.0f));
-            NodePosition savedCenter = savedGraphCenter(savedGraph);
-            float offsetX = wrapperPosition.x - savedCenter.x;
-            float offsetY = wrapperPosition.y - savedCenter.y;
-
-            Map<String, UUID> restoredNodeIds = new HashMap<>();
-            int fallbackIndex = 0;
-            for (SavedNode savedNode : savedGraph.nodes) {
-                if (savedNode == null
-                        || savedNode.nodeId == null
-                        || graphInputKeys.containsKey(savedNode.nodeId)
-                        || graphOutputKeys.containsKey(savedNode.nodeId)) {
-                    continue;
-                }
-
-                BaseNode restoredBase = GraphSerializer.tryRestoreNode(savedNode).orElse(null);
-                if (restoredBase == null) {
-                    NodeCraft.LOGGER.warn("Skipping subgraph node during dissolve because it cannot be recreated: {}",
-                        savedNode.typeId);
-                    continue;
-                }
-
-                document.getGraph().addNode(restoredBase);
-                restoredNodeIds.put(savedNode.nodeId, restoredBase.getId());
-
-                SavedPosition savedPosition = savedGraph.nodePositions != null ? savedGraph.nodePositions.get(savedNode.nodeId) : null;
-                float x = savedPosition != null ? savedPosition.x + offsetX : wrapperPosition.x + fallbackIndex * 24.0f;
-                float y = savedPosition != null ? savedPosition.y + offsetY : wrapperPosition.y + fallbackIndex * 18.0f;
-                document.getNodePositions().put(restoredBase.getId(), new NodePosition(x, y));
-                restoredBase.setPosition(x, y);
-                fallbackIndex++;
-            }
-
-            if (restoredNodeIds.isEmpty()) {
-                return false;
-            }
-
-            if (savedGraph.connections != null) {
-                for (SavedConnection connection : savedGraph.connections) {
-                    UUID sourceId = restoredNodeIds.get(connection.sourceNodeId);
-                    UUID targetId = restoredNodeIds.get(connection.targetNodeId);
-                    if (sourceId != null && targetId != null) {
-                        document.getGraph().connect(sourceId, connection.sourcePortId, targetId, connection.targetPortId);
-                    }
-                }
-            }
-
-            document.getGraph().removeNode(wrapperNodeId);
-            removeNodePosition(wrapperNodeId);
-            removeSelectedNode(wrapperNodeId);
-
-            for (NodeGraph.Connection wrapperInput : wrapperInputs) {
-                String inputKey = dynamicKeyFromInputPortId(wrapperInput.targetPort.getId());
-                java.util.List<BoundaryInputTarget> targets = inputTargets.get(inputKey);
-                if (targets == null) {
-                    continue;
-                }
-                for (BoundaryInputTarget target : targets) {
-                    UUID restoredTargetId = restoredNodeIds.get(target.nodeId());
-                    if (restoredTargetId != null) {
-                        document.getGraph().connect(
-                            wrapperInput.sourceNode.getId(),
-                            wrapperInput.sourcePort.getId(),
-                            restoredTargetId,
-                            target.portId()
-                        );
-                    }
-                }
-            }
-
-            for (NodeGraph.Connection wrapperOutput : wrapperOutputs) {
-                String outputKey = dynamicKeyFromOutputPortId(wrapperOutput.sourcePort.getId());
-                java.util.List<BoundaryOutputSource> sources = outputSources.get(outputKey);
-                if (sources == null) {
-                    continue;
-                }
-                for (BoundaryOutputSource source : sources) {
-                    UUID restoredSourceId = restoredNodeIds.get(source.nodeId());
-                    if (restoredSourceId != null) {
-                        document.getGraph().connect(
-                            restoredSourceId,
-                            source.portId(),
-                            wrapperOutput.targetNode.getId(),
-                            wrapperOutput.targetPort.getId()
-                        );
-                    }
-                }
-            }
-
-            clearSelectedNodes();
-            interactionState.getSelectedNodeIds().addAll(restoredNodeIds.values());
-            setSelectedNodeId(restoredNodeIds.values().iterator().next());
-            markGraphStructureDirty();
-            if (wasRecording) {
-                history.recordGraphTransaction(
-                    "Dissolve Subgraph",
-                    beforeSnapshot,
-                    toSavedGraphWithPositions(document.getGraph(), document.getNodePositions())
-                );
-            }
-            NodeCraft.LOGGER.info("Dissolved subgraph node {} into {} nodes", wrapperNodeId, restoredNodeIds.size());
-            return true;
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("Failed to dissolve selected subgraph: {}", e.getMessage(), e);
-            return false;
-        }
-    }
-
-    private Map<String, Object> buildSubgraphNodeState(
-        SubgraphExtractionService.ExtractionResult extraction,
-        String subgraphName,
-        String embeddedGraphJson
-    ) {
-        List<String> inputKeys = extraction.inputKeys();
-        List<String> outputKeys = extraction.outputKeys();
-        String primaryInputKey = inputKeys.isEmpty() ? "in" : inputKeys.getFirst();
-        String primaryOutputKey = outputKeys.isEmpty() ? "out" : outputKeys.getFirst();
-
-        Map<String, Object> state = new LinkedHashMap<>();
-        state.put("displayName", subgraphName);
-        state.put("subgraphRef", keyToken(subgraphName));
-        state.put("inputKey", primaryInputKey);
-        state.put("outputKey", primaryOutputKey);
-        state.put("strictMode", true);
-        state.put("maxCallDepth", 8);
-        state.put("additionalInputKeys", joinAdditionalKeys(inputKeys));
-        state.put("additionalOutputKeys", joinAdditionalKeys(outputKeys));
-        state.put("emitDebugTrace", true);
-        state.put("embeddedGraphJson", embeddedGraphJson);
-        return state;
+        return subgraphEdits.dissolveSelected();
     }
 
     boolean renameSubgraphNode(UUID nodeId, String requestedName) {
-        if (document.getGraph() == null || nodeId == null || requestedName == null) {
-            return false;
-        }
-        String name = requestedName.trim();
-        INode node = document.getGraph().getNode(nodeId);
-        if (!(node instanceof SubgraphNode subgraphNode) || name.isEmpty()) {
-            return false;
-        }
-        if (name.equals(subgraphNode.getDisplayName())) {
-            return true;
-        }
-
-        boolean wasRecording = history != null && history.isRecording();
-        syncGraphNodePositions(document.getGraph(), document.getNodePositions());
-        SavedGraph before = wasRecording ? toSavedGraphWithPositions(document.getGraph(), document.getNodePositions()) : null;
-        Map<String, Object> state = copyStateMap(subgraphNode.getNodeState());
-        state.put("displayName", name);
-        subgraphNode.setNodeState(state);
-        markGraphStructureDirty();
-        if (wasRecording) {
-            history.recordGraphTransaction(
-                "Rename Subgraph",
-                before,
-                toSavedGraphWithPositions(document.getGraph(), document.getNodePositions())
-            );
-        }
-        return true;
-    }
-
-    private void reconnectSubgraphBoundaries(UUID wrapperNodeId, SubgraphExtractionService.ExtractionResult extraction) {
-        for (SubgraphExtractionService.InputBinding binding : extraction.inputBindings()) {
-            document.getGraph().connect(
-                binding.externalSourceNodeId(),
-                binding.externalSourcePortId(),
-                wrapperNodeId,
-                dynamicInputPortId(binding.inputKey())
-            );
-        }
-
-        for (SubgraphExtractionService.OutputBinding binding : extraction.outputBindings()) {
-            document.getGraph().connect(
-                wrapperNodeId,
-                dynamicOutputPortId(binding.outputKey()),
-                binding.externalTargetNodeId(),
-                binding.externalTargetPortId()
-            );
-        }
-    }
-
-    private static SavedGraph toSavedGraphWithPositions(NodeGraph graph, Map<UUID, NodePosition> positions) {
-        SavedGraph savedGraph = GraphSerializer.toSavedGraph(graph);
-        savedGraph.nodePositions = new LinkedHashMap<>();
-        if (positions != null) {
-            for (Map.Entry<UUID, NodePosition> entry : positions.entrySet()) {
-                if (entry.getKey() == null || entry.getValue() == null) {
-                    continue;
-                }
-                savedGraph.nodePositions.put(
-                    entry.getKey().toString(),
-                    new SavedPosition(entry.getValue().x, entry.getValue().y)
-                );
-            }
-        }
-        return savedGraph;
-    }
-
-    private static LoadedGraph toLoadedGraph(SavedGraph savedGraph, GraphLoadResult loadResult) {
-        Map<UUID, NodePosition> positions = ImGuiNodeIO.buildEditorPositions(savedGraph, loadResult.nodesBySavedId());
-        return new LoadedGraph(loadResult.graph(), positions);
-    }
-
-    private static Map<UUID, NodePosition> copyNodePositions(Map<UUID, NodePosition> source) {
-        Map<UUID, NodePosition> copy = new HashMap<>();
-        if (source == null) {
-            return copy;
-        }
-        for (Map.Entry<UUID, NodePosition> entry : source.entrySet()) {
-            if (entry.getKey() != null && entry.getValue() != null) {
-                copy.put(entry.getKey(), entry.getValue().copy());
-            }
-        }
-        return copy;
-    }
-
-    private static Map<String, Object> copyStateMap(Object state) {
-        Map<String, Object> copy = new LinkedHashMap<>();
-        if (state instanceof Map<?, ?> map) {
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                if (entry.getKey() instanceof String key) {
-                    copy.put(key, entry.getValue());
-                }
-            }
-        }
-        return copy;
-    }
-
-    private static void syncGraphNodePositions(NodeGraph graph, Map<UUID, NodePosition> positions) {
-        if (graph == null || positions == null) {
-            return;
-        }
-        for (Map.Entry<UUID, NodePosition> entry : positions.entrySet()) {
-            INode node = graph.getNode(entry.getKey());
-            NodePosition position = entry.getValue();
-            if (node != null && position != null) {
-                node.setPosition(position.x, position.y);
-            }
-        }
-    }
-
-    private NodePosition selectionCenter(java.util.Set<UUID> selection) {
-        float minX = Float.MAX_VALUE;
-        float minY = Float.MAX_VALUE;
-        float maxX = -Float.MAX_VALUE;
-        float maxY = -Float.MAX_VALUE;
-        boolean found = false;
-
-        for (UUID nodeId : selection) {
-            NodePosition position = document.getNodePositions().get(nodeId);
-            if (position == null) {
-                continue;
-            }
-            float width = position.width > 0 ? position.width : 180.0f;
-            float height = position.height > 0 ? position.height : 90.0f;
-            minX = Math.min(minX, position.x);
-            minY = Math.min(minY, position.y);
-            maxX = Math.max(maxX, position.x + width);
-            maxY = Math.max(maxY, position.y + height);
-            found = true;
-        }
-
-        if (!found) {
-            return new NodePosition(0.0f, 0.0f);
-        }
-        return new NodePosition((minX + maxX) / 2.0f - 100.0f, (minY + maxY) / 2.0f - 45.0f);
-    }
-
-    private static boolean isSubgraphNode(INode node) {
-        if (node == null || node.getTypeId() == null) {
-            return false;
-        }
-        String canonicalId = NodeRegistry.getInstance().resolveCanonicalNodeId(node.getTypeId());
-        return "utilities.organization.subgraph".equals(canonicalId);
-    }
-
-    private static String stateString(Object state, String key) {
-        if (!(state instanceof Map<?, ?> map) || key == null) {
-            return null;
-        }
-        Object value = map.get(key);
-        return value instanceof String stringValue ? stringValue : null;
-    }
-
-    private static NodePosition savedGraphCenter(SavedGraph savedGraph) {
-        if (savedGraph == null || savedGraph.nodePositions == null || savedGraph.nodePositions.isEmpty()) {
-            return new NodePosition(0.0f, 0.0f);
-        }
-
-        float minX = Float.MAX_VALUE;
-        float minY = Float.MAX_VALUE;
-        float maxX = -Float.MAX_VALUE;
-        float maxY = -Float.MAX_VALUE;
-        boolean found = false;
-
-        for (Map.Entry<String, SavedPosition> entry : savedGraph.nodePositions.entrySet()) {
-            SavedPosition position = entry.getValue();
-            if (position == null) {
-                continue;
-            }
-            minX = Math.min(minX, position.x);
-            minY = Math.min(minY, position.y);
-            maxX = Math.max(maxX, position.x);
-            maxY = Math.max(maxY, position.y);
-            found = true;
-        }
-
-        return found
-            ? new NodePosition((minX + maxX) / 2.0f, (minY + maxY) / 2.0f)
-            : new NodePosition(0.0f, 0.0f);
-    }
-
-    private static String joinAdditionalKeys(List<String> keys) {
-        if (keys == null || keys.size() <= 1) {
-            return "";
-        }
-        return String.join(",", keys.subList(1, keys.size()));
-    }
-
-    private static String dynamicInputPortId(String key) {
-        return "dynamic_input_key_" + keyToken(key);
-    }
-
-    private static String dynamicOutputPortId(String key) {
-        return "dynamic_output_key_" + keyToken(key);
-    }
-
-    private static String dynamicKeyFromInputPortId(String portId) {
-        String prefix = "dynamic_input_key_";
-        return portId != null && portId.startsWith(prefix) ? portId.substring(prefix.length()) : null;
-    }
-
-    private static String dynamicKeyFromOutputPortId(String portId) {
-        String prefix = "dynamic_output_key_";
-        return portId != null && portId.startsWith(prefix) ? portId.substring(prefix.length()) : null;
-    }
-
-    private static String keyToken(String key) {
-        if (key == null || key.isBlank()) {
-            return "empty";
-        }
-        String normalized = key.trim().replaceAll("[^a-zA-Z0-9_]", "_");
-        return normalized.isEmpty() ? "empty" : normalized;
-    }
-
-    private record BoundaryInputTarget(String nodeId, String portId) {
-    }
-
-    private record BoundaryOutputSource(String nodeId, String portId) {
-    }
-
-    private record LoadedGraph(NodeGraph graph, Map<UUID, NodePosition> positions) {
-    }
-
-    private record SubgraphEditContext(
-        NodeGraph parentGraph,
-        Map<UUID, NodePosition> parentPositions,
-        UUID wrapperNodeId,
-        SavedGraph parentSnapshotBefore
-    ) {
+        return subgraphEdits.rename(nodeId, requestedName);
     }
 
     @Override
@@ -1992,178 +1202,17 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     @Override
     public boolean alignNodes(java.util.Set<UUID> nodeIds, NodeAlignmentAction action) {
-        if (nodeIds == null || nodeIds.size() < 2 || action == null) {
-            return false;
-        }
-
-        List<NodePosition> positions = new java.util.ArrayList<>();
-        for (UUID nodeId : nodeIds) {
-            NodePosition position = document.getNodePositions().get(nodeId);
-            if (position != null) {
-                positions.add(position);
-            }
-        }
-        if (positions.size() < 2) {
-            return false;
-        }
-
-        boolean changed = switch (action) {
-            case ALIGN_LEFT -> alignLeft(positions);
-            case ALIGN_CENTER -> alignCenter(positions);
-            case DISTRIBUTE_HORIZONTAL -> distributeHorizontal(positions);
-        };
-
-        if (changed) {
-            markGraphStructureDirty();
-            NodeCraft.LOGGER.info("Applied node alignment {} to {} nodes", action, positions.size());
-        }
-        return changed;
-    }
-
-    private static boolean alignLeft(List<NodePosition> positions) {
-        float left = Float.MAX_VALUE;
-        for (NodePosition position : positions) {
-            left = Math.min(left, position.x);
-        }
-
-        boolean changed = false;
-        for (NodePosition position : positions) {
-            if (Float.compare(position.x, left) != 0) {
-                position.x = left;
-                changed = true;
-            }
-        }
-        return changed;
-    }
-
-    private static boolean alignCenter(List<NodePosition> positions) {
-        float minCenter = Float.MAX_VALUE;
-        float maxCenter = -Float.MAX_VALUE;
-        for (NodePosition position : positions) {
-            float center = position.x + getSafeWidth(position) / 2.0f;
-            minCenter = Math.min(minCenter, center);
-            maxCenter = Math.max(maxCenter, center);
-        }
-        float targetCenter = (minCenter + maxCenter) / 2.0f;
-
-        boolean changed = false;
-        for (NodePosition position : positions) {
-            float nextX = targetCenter - getSafeWidth(position) / 2.0f;
-            if (Float.compare(position.x, nextX) != 0) {
-                position.x = nextX;
-                changed = true;
-            }
-        }
-        return changed;
-    }
-
-    private static boolean distributeHorizontal(List<NodePosition> positions) {
-        if (positions.size() < 3) {
-            return false;
-        }
-        positions.sort(java.util.Comparator.comparingDouble(position -> position.x + getSafeWidth(position) / 2.0f));
-
-        NodePosition first = positions.getFirst();
-        NodePosition last = positions.getLast();
-        float firstCenter = first.x + getSafeWidth(first) / 2.0f;
-        float lastCenter = last.x + getSafeWidth(last) / 2.0f;
-        float step = (lastCenter - firstCenter) / (positions.size() - 1);
-
-        boolean changed = false;
-        for (int i = 1; i < positions.size() - 1; i++) {
-            NodePosition position = positions.get(i);
-            float targetCenter = firstCenter + step * i;
-            float nextX = targetCenter - getSafeWidth(position) / 2.0f;
-            if (Float.compare(position.x, nextX) != 0) {
-                position.x = nextX;
-                changed = true;
-            }
-        }
-        return changed;
-    }
-
-    private static float getSafeWidth(NodePosition position) {
-        return position.width > 0.0f ? position.width : 150.0f;
+        return nodeCommands.align(nodeIds, action);
     }
 
     @Override
     public boolean disconnectPorts(UUID sourceNodeId, String sourcePortId, UUID targetNodeId, String targetPortId) {
-        if (document.getGraph() == null) return false;
-        try {
-            INode sourceNode = document.getGraph().getNode(sourceNodeId);
-            INode targetNode = document.getGraph().getNode(targetNodeId);
-            if (sourceNode == null || targetNode == null) {
-                NodeCraft.LOGGER.warn("断开连接失败：未找到源节点或目标节点");
-                return false;
-            }
-            if (document.getGraph().isConnected(sourceNodeId, sourcePortId, targetNodeId, targetPortId)) {
-                // 只有在历史记录启用时才记录历史
-                if (history != null && history.isRecording()) {
-                    history.recordRemoveConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
-                }
-                document.getGraph().disconnectPorts(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
-                markGraphStructureDirty();
-                NodeCraft.LOGGER.info("成功断开连接: {}({}) -> {}({})",
-                        sourceNode.getDisplayName(), sourcePortId,
-                        targetNode.getDisplayName(), targetPortId);
-                return true;
-            } else {
-                NodeCraft.LOGGER.warn("断开连接失败：端口未连接");
-                return false;
-            }
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("断开端口连接时出错: {}", e.getMessage(), e);
-            return false;
-        }
+        return connectionEdits.disconnect(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
     }
 
     @Override
     public boolean duplicateSelectedNode() {
-        if (document.getGraph() == null) {
-            NodeCraft.LOGGER.warn("无法复制节点：当前没有节点图");
-            return false;
-        }
-        if (interactionState.getSelectedNodeIds().isEmpty()) {
-            NodeCraft.LOGGER.warn("没有选中的节点可复制");
-            return false;
-        }
-        UUID nodeId = interactionState.getSelectedNodeIds().iterator().next();
-        INode sourceNode = document.getGraph().getNode(nodeId);
-        if (sourceNode == null) {
-            NodeCraft.LOGGER.error("复制失败：找不到选中的节点 {}", nodeId);
-            return false;
-        }
-        NodeCraft.LOGGER.info("开始复制节点: {} (ID: {}, 类型: {})",
-                sourceNode.getDisplayName(), nodeId, sourceNode.getTypeId());
-        NodePosition sourcePos = getNodePosition(nodeId);
-        if (sourcePos == null) {
-            NodeCraft.LOGGER.error("复制失败：节点 {} 没有位置信息", nodeId);
-            return false;
-        }
-        NodeCraft.LOGGER.info("源节点位置: ({}, {})", sourcePos.x, sourcePos.y);
-        float offsetX = 30;
-        float offsetY = 0;
-        INode newNode = null;
-        try {
-            // 使用新的 addNodeWithState 方法来创建副本，不指定 UUID，让它生成新的
-            // 复制节点时，将源节点的状态传递给新节点
-            newNode = addNodeWithState(sourceNode.getTypeId(), null, sourcePos.x + offsetX, sourcePos.y + offsetY, sourceNode.getNodeState());
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("复制节点失败: {}", e.getMessage());
-        }
-
-        if (newNode != null) {
-            clearSelectedNodes();
-            setSelectedNodeId(newNode.getId());
-            NodeCraft.LOGGER.info("节点复制成功: {} -> {} (新ID: {})",
-                    sourceNode.getDisplayName(), newNode.getDisplayName(), newNode.getId());
-            markGraphStructureDirty();
-            // 历史记录会在 addNodeWithState 内部统一记录，这里不再手动记录
-            return true;
-        } else {
-            NodeCraft.LOGGER.error("复制节点失败: 无法创建新节点");
-            return false;
-        }
+        return nodeCommands.duplicateSelected();
     }
 
     public void setNodeDisplayMode(int mode) {

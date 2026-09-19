@@ -14,6 +14,7 @@ Related architecture:
 - [`../architecture/editor-document-state.md`](../architecture/editor-document-state.md) — EditorDocumentState split (Phase F)
 - [`../architecture/editor-interaction-mode.md`](../architecture/editor-interaction-mode.md) — EditorInteractionMode (Phase G)
 - [`../architecture/graph-format-version.md`](../architecture/graph-format-version.md) — GraphFormatVersion (Phase I)
+- [`../architecture/imgui-node-editor-breakup.md`](../architecture/imgui-node-editor-breakup.md) — ImGuiNodeEditor breakup (0.9 / Phase J+)
 
 Contracts:
 

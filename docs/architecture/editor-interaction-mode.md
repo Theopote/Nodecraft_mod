@@ -36,7 +36,8 @@ ImGuiNodeEditor
 
 - Rewriting all gesture handlers
 - World-picking `NodeEditorInteractionManager` (Minecraft interaction, separate)
-- Subgraph stack / canvas zoom ownership
+- Subgraph stack (see breakup Phase later)
+- Canvas zoom ownership — moved to Phase J [`imgui-node-editor-breakup.md`](./imgui-node-editor-breakup.md)
 - Full input command bus
 
 ## Exit gates
