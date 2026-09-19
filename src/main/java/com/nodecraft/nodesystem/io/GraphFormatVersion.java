@@ -5,6 +5,12 @@ package com.nodecraft.nodesystem.io;
  */
 public final class GraphFormatVersion {
 
+    /** Pre-versioning payloads and explicit V0 graphs. */
+    public static final int V0 = 0;
+    /** @deprecated Use {@link #V0}. */
+    @Deprecated
+    public static final int LEGACY_UNSPECIFIED = V0;
+
     public static final int V1 = 1;
 
     /** Version written by current builds. */
@@ -14,7 +20,15 @@ public final class GraphFormatVersion {
     }
 
     public static int normalize(int formatVersion) {
-        return formatVersion <= 0 ? CURRENT : formatVersion;
+        return formatVersion <= 0 ? V0 : formatVersion;
+    }
+
+    public static boolean needsMigration(int formatVersion) {
+        return normalize(formatVersion) < CURRENT;
+    }
+
+    public static boolean isLegacy(int formatVersion) {
+        return normalize(formatVersion) <= V0;
     }
 
     public static boolean isNewerThanCurrent(int formatVersion) {

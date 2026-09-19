@@ -1,0 +1,37 @@
+{
+  "formatVersion": 0,
+  "graphName": "Legacy World Write",
+  "nodes": [
+    {
+      "nodeId": "block_input",
+      "typeId": "inputs.selectors.block_type_selector"
+    },
+    {
+      "nodeId": "pos_input",
+      "typeId": "inputs.minecraft.player_position"
+    },
+    {
+      "nodeId": "set_block",
+      "typeId": "world.modification.set_block"
+    }
+  ],
+  "connections": [
+    {
+      "sourceNodeId": "block_input",
+      "sourcePortId": "block_type",
+      "targetNodeId": "set_block",
+      "targetPortId": "block"
+    },
+    {
+      "sourceNodeId": "pos_input",
+      "sourcePortId": "position",
+      "targetNodeId": "set_block",
+      "targetPortId": "position"
+    }
+  ],
+  "nodePositions": {
+    "block_input": {"x": 100.0, "y": 100.0},
+    "pos_input": {"x": 100.0, "y": 220.0},
+    "set_block": {"x": 320.0, "y": 160.0}
+  }
+}

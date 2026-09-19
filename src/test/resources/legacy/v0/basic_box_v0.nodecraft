@@ -1,0 +1,37 @@
+{
+  "formatVersion": 0,
+  "graphName": "Legacy Basic Box",
+  "nodes": [
+    {
+      "nodeId": "node_player_pos",
+      "typeId": "inputs.minecraft.player_position"
+    },
+    {
+      "nodeId": "node_box",
+      "typeId": "spatial.construct.box_center_size"
+    },
+    {
+      "nodeId": "node_preview",
+      "typeId": "visualization.preview.preview_blocks"
+    }
+  ],
+  "connections": [
+    {
+      "sourceNodeId": "node_player_pos",
+      "sourcePortId": "position",
+      "targetNodeId": "node_box",
+      "targetPortId": "center"
+    },
+    {
+      "sourceNodeId": "node_box",
+      "sourcePortId": "geometry",
+      "targetNodeId": "node_preview",
+      "targetPortId": "blocks"
+    }
+  ],
+  "nodePositions": {
+    "node_player_pos": {"x": 100.0, "y": 200.0},
+    "node_box": {"x": 300.0, "y": 200.0},
+    "node_preview": {"x": 500.0, "y": 200.0}
+  }
+}

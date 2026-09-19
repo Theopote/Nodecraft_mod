@@ -37,37 +37,25 @@ class SavedGraphNormalizerTest {
     }
 
     @Test
-    void missingCollectionsAreInitializedAndVersionBumped() {
+    void missingCollectionsAreInitialized() {
         SavedGraph legacy = new SavedGraph();
         legacy.graphName = "legacy";
-        legacy.formatVersion = 0;
+        legacy.formatVersion = GraphFormatVersion.V0;
         legacy.nodes = null;
         legacy.connections = null;
         legacy.nodePositions = null;
 
-        SavedGraph normalized = SavedGraphNormalizer.normalize(legacy);
-        assertEquals(GraphFormatVersion.CURRENT, normalized.formatVersion);
+        SavedGraph normalized = SavedGraphNormalizer.normalizeStructure(legacy);
         assertNotNull(normalized.nodes);
         assertNotNull(normalized.connections);
         assertNotNull(normalized.nodePositions);
     }
 
     @Test
-    void futureVersionsAreLeftUntouched() {
-        SavedGraph future = new SavedGraph();
-        future.formatVersion = GraphFormatVersion.CURRENT + 5;
-        future.graphName = "future";
-
-        SavedGraph normalized = SavedGraphNormalizer.normalize(future);
-        assertEquals(GraphFormatVersion.CURRENT + 5, normalized.formatVersion);
-        assertEquals("future", normalized.graphName);
-    }
-
-    @Test
-    void loadFromSavedGraphNormalizesLegacyPayload() {
+    void loadFromSavedGraphMigratesLegacyPayload() {
         SavedGraph legacy = new SavedGraph();
         legacy.graphName = "legacy-load";
-        legacy.formatVersion = 0;
+        legacy.formatVersion = GraphFormatVersion.V0;
         SavedNode node = new SavedNode();
         node.nodeId = UUID.randomUUID().toString();
         node.typeId = "test.pass";

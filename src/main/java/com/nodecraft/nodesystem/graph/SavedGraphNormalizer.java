@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
- * Normalizes loaded {@link SavedGraph} payloads to the current on-disk shape.
+ * Normalizes loaded {@link SavedGraph} payloads to a safe in-memory shape before migration.
  */
 public final class SavedGraphNormalizer {
 
@@ -18,7 +18,15 @@ public final class SavedGraphNormalizer {
     private SavedGraphNormalizer() {
     }
 
+    /**
+     * @deprecated Use {@link GraphMigrationRegistry#migrateToCurrent(SavedGraph)} for load paths.
+     */
+    @Deprecated
     public static SavedGraph normalize(SavedGraph graph) {
+        return GraphMigrationRegistry.migrateToCurrent(graph);
+    }
+
+    static SavedGraph normalizeStructure(SavedGraph graph) {
         if (graph == null) {
             return null;
         }
@@ -29,8 +37,6 @@ public final class SavedGraphNormalizer {
                     graph.formatVersion,
                     GraphFormatVersion.CURRENT
             );
-        } else if (graph.formatVersion <= 0) {
-            graph.formatVersion = GraphFormatVersion.CURRENT;
         }
 
         if (graph.nodes == null) {
