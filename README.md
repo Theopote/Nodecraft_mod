@@ -86,23 +86,25 @@ Environment variables checked for API keys:
 ### Remote AI key safety
 
 Remote planning runs inside the Minecraft client process. When remote planning is enabled,
-NodeCraft reads the API key from the settings panel or from one of the environment variables
-above, then sends it to the configured API endpoint as the provider's authentication header.
+NodeCraft may send an API key from the settings panel or from one of the environment variables
+above to the configured API endpoint as the provider's authentication header.
 
-Recommended default: run a local proxy service that holds the provider API key and point
-NodeCraft's API base URL at that local proxy instead of entering the provider key in the client.
-The proxy can enforce its own authentication, rate limits, model allowlist, logging policy, and
-request filtering while keeping the provider key out of the Minecraft process.
+**1.0 primary path (frozen):** run a local proxy that holds the provider API key and point
+NodeCraft's API base URL at that local proxy. Leave the client API key empty unless the proxy
+needs a local token. The proxy can enforce its own authentication, rate limits, model allowlist,
+logging policy, and request filtering while keeping the provider key out of the Minecraft process.
 
-If you do not use a proxy, prefer environment variables. Environment variables avoid storing the
+**Secondary:** environment variables when calling a provider directly. Env vars avoid storing the
 key in NodeCraft's settings file; they do not encrypt the key or isolate it from the running
 client process.
 
 Use remote planning only in trusted private environments. Any local tool, injected code,
 untrusted mod, debugger, or JVM heap dump with access to the Minecraft process may be able to
 recover the effective API key while it is in use. API keys entered in the settings panel are not
-saved by default. If "Remember API key on disk" is explicitly enabled, the key is stored as plain
-text in the Minecraft game directory under `nodecraft/config/ai_settings.json`.
+saved by default. If "Remember API key on disk (dev only)" is explicitly enabled, the key is
+stored as plain text in the Minecraft game directory under `nodecraft/config/ai_settings.json`.
+OS credential stores are intentionally not the 1.0 primary path for this client — they still
+load the provider key into the shared-mod JVM.
 
 AI request logs avoid prompt previews by default. The debug console and debug logging can include
 additional request metadata, but prompt previews are only included when the explicit debug prompt

@@ -192,9 +192,11 @@ public final class AiSettingsStore {
         if (isBlank(data.apiBaseUrl())) {
             return "Validation failed: API Base URL is required when remote planner is enabled.";
         }
-        if (isBlank(resolveApiKey(data))) {
-            return "Validation failed: API Key is required when remote planner is enabled. Set it in settings or via "
-                    + API_KEY_ENV + ", " + OPENAI_API_KEY_ENV + ", or " + ANTHROPIC_API_KEY_ENV + ".";
+        if (isBlank(resolveApiKey(data)) && !AiCredentialPolicy.looksLikeLocalProxy(data.apiBaseUrl())) {
+            return "Validation failed: API Key is required when remote planner is enabled (unless API Base URL "
+                    + "points at a local proxy). Set a key in settings or via "
+                    + API_KEY_ENV + ", " + OPENAI_API_KEY_ENV + ", or " + ANTHROPIC_API_KEY_ENV
+                    + ". 1.0 preferred path: local proxy holding the provider key.";
         }
         if (isBlank(data.model())) {
             return "Validation failed: Model is required when remote planner is enabled.";
@@ -221,9 +223,7 @@ public final class AiSettingsStore {
         String plannerMode = data.enableRemotePlanner() ? "Planner: Remote" : "Planner: Local";
         String modelName = isBlank(data.model()) ? "(no model)" : data.model();
         String provider = sanitizeProviderStrategy(data.providerStrategy());
-        String keyStatus = isBlank(data.apiKey())
-                ? (isBlank(resolveApiKey(data)) ? "API Key: missing" : "API Key: env")
-                : (data.rememberApiKey() ? "API Key: saved" : "API Key: session");
+        String keyStatus = AiCredentialPolicy.keyStatusLabel(data);
         String layoutMode = data.autoLayoutBeforeApply() ? "Layout: Auto" : "Layout: Plan";
         return plannerMode + " | Provider: " + provider + " | Model: " + modelName + " | MaxTokens: "
             + clampMaxOutputTokens(data.maxOutputTokens()) + " | " + keyStatus + " | " + layoutMode;

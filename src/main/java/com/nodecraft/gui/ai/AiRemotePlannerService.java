@@ -158,8 +158,14 @@ public class AiRemotePlannerService {
         if (isBlank(config.apiBaseUrl())) {
             return RemotePlanResult.fail("API base URL is empty.", -1, "", "config", 1);
         }
-        if (isBlank(config.apiKey())) {
-            return RemotePlanResult.fail("API key is empty.", -1, "", "config", 1);
+        if (isBlank(config.apiKey()) && !AiCredentialPolicy.looksLikeLocalProxy(config.apiBaseUrl())) {
+            return RemotePlanResult.fail(
+                    "API key is empty. Point API Base URL at a local proxy, or set a key / env var.",
+                    -1,
+                    "",
+                    "config",
+                    1
+            );
         }
         if (isBlank(config.model())) {
             return RemotePlanResult.fail("Model is empty.", -1, "", "config", 1);
@@ -231,13 +237,14 @@ public class AiRemotePlannerService {
 
         JsonObject body = getJsonObject(config);
 
-        HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(endpoint))
                 .timeout(Duration.ofSeconds(timeoutSeconds))
                 .header("Content-Type", "application/json")
-                .header("x-api-key", config.apiKey())
-                .header("anthropic-version", "2023-06-01")
-                .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
-                .build();
+                .header("anthropic-version", "2023-06-01");
+        if (!isBlank(config.apiKey())) {
+            builder.header("x-api-key", config.apiKey());
+        }
+        HttpRequest request = builder.POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
 
         return client.send(request, HttpResponse.BodyHandlers.ofString());
     }
@@ -332,8 +339,14 @@ public class AiRemotePlannerService {
         if (isBlank(config.apiBaseUrl())) {
             return RemotePlanResult.fail("API base URL is empty.", -1, "", "config", attempt);
         }
-        if (isBlank(config.apiKey())) {
-            return RemotePlanResult.fail("API key is empty.", -1, "", "config", attempt);
+        if (isBlank(config.apiKey()) && !AiCredentialPolicy.looksLikeLocalProxy(config.apiBaseUrl())) {
+            return RemotePlanResult.fail(
+                    "API key is empty. Point API Base URL at a local proxy, or set a key / env var.",
+                    -1,
+                    "",
+                    "config",
+                    attempt
+            );
         }
         if (isBlank(config.model())) {
             return RemotePlanResult.fail("Model is empty.", -1, "", "config", attempt);
@@ -539,12 +552,13 @@ public class AiRemotePlannerService {
             JsonObject body,
             int timeoutSeconds
     ) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(endpoint))
                 .timeout(Duration.ofSeconds(timeoutSeconds))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + apiKey)
-                .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
-                .build();
+                .header("Content-Type", "application/json");
+        if (!isBlank(apiKey)) {
+            builder.header("Authorization", "Bearer " + apiKey);
+        }
+        HttpRequest request = builder.POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
         return client.send(request, HttpResponse.BodyHandlers.ofString());
     }
 
@@ -555,13 +569,14 @@ public class AiRemotePlannerService {
                 JsonObject body,
                 int timeoutSeconds
             ) throws IOException, InterruptedException {
-            HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
+            HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(endpoint))
                 .timeout(Duration.ofSeconds(timeoutSeconds))
                 .header("Content-Type", "application/json")
-                .header("Accept", "text/event-stream")
-                .header("Authorization", "Bearer " + apiKey)
-                .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
-                .build();
+                .header("Accept", "text/event-stream");
+            if (!isBlank(apiKey)) {
+                builder.header("Authorization", "Bearer " + apiKey);
+            }
+            HttpRequest request = builder.POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
             return client.send(request, HttpResponse.BodyHandlers.ofLines());
             }
 
@@ -673,14 +688,15 @@ public class AiRemotePlannerService {
         }
         body.add("messages", messages);
 
-        HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(endpoint))
                 .timeout(Duration.ofSeconds(timeoutSeconds))
                 .header("Content-Type", "application/json")
                 .header("Accept", "text/event-stream")
-                .header("x-api-key", config.apiKey())
-                .header("anthropic-version", "2023-06-01")
-                .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
-                .build();
+                .header("anthropic-version", "2023-06-01");
+        if (!isBlank(config.apiKey())) {
+            builder.header("x-api-key", config.apiKey());
+        }
+        HttpRequest request = builder.POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
 
         HttpResponse<java.util.stream.Stream<String>> response = client.send(request, HttpResponse.BodyHandlers.ofLines());
         StringBuilder rawResponse = new StringBuilder();

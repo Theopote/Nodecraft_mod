@@ -6,6 +6,7 @@ import imgui.type.ImBoolean;
 import imgui.type.ImInt;
 import imgui.type.ImString;
 
+import com.nodecraft.gui.ai.AiCredentialPolicy;
 import com.nodecraft.gui.ai.AiSettingsStore;
 
 import java.nio.file.Path;
@@ -81,21 +82,26 @@ final class AiAssistantSettingsPopupRenderer {
         ImGui.inputText("##ai_api_base_url", state.apiBaseUrl());
         ImGui.popItemWidth();
 
+        ImGui.textDisabled(AiCredentialPolicy.primaryPathSummary());
+
         ImGui.text("API Key");
         int keyFlags = state.showApiKey().get() ? ImGuiInputTextFlags.None : ImGuiInputTextFlags.Password;
         ImGui.pushItemWidth(wideFieldWidth);
         ImGui.inputText("##ai_api_key", state.apiKey(), keyFlags);
         ImGui.popItemWidth();
         ImGui.checkbox("Show API key", state.showApiKey());
-        ImGui.checkbox("Remember API key on disk", state.rememberApiKey());
-        ImGui.textDisabled("Leave empty to use env: " + AiSettingsStore.API_KEY_ENV
-                + ", " + AiSettingsStore.OPENAI_API_KEY_ENV
-                + ", or " + AiSettingsStore.ANTHROPIC_API_KEY_ENV + ".");
+        ImGui.checkbox("Remember API key on disk (dev only)", state.rememberApiKey());
+        ImGui.textDisabled("1.0: point Base URL at a local proxy and leave the key empty. Else env: "
+                + AiSettingsStore.API_KEY_ENV + ", "
+                + AiSettingsStore.OPENAI_API_KEY_ENV + ", or "
+                + AiSettingsStore.ANTHROPIC_API_KEY_ENV + ".");
         if (state.rememberApiKey().get() && state.apiKey().get() != null && !state.apiKey().get().isBlank()) {
-            ImGui.textColored(0.95f, 0.72f, 0.22f, 1.0f,
-                    "Remembered API keys are stored as plain text in this config file.");
+            ImGui.textColored(0.95f, 0.72f, 0.22f, 1.0f, AiCredentialPolicy.diskPersistWarning());
+        } else if (AiCredentialPolicy.looksLikeLocalProxy(state.apiBaseUrl().get())
+                && (state.apiKey().get() == null || state.apiKey().get().isBlank())) {
+            ImGui.textDisabled("Local proxy mode: provider key stays out of this Minecraft process.");
         } else {
-            ImGui.textDisabled("By default, API keys stay in memory for this session only.");
+            ImGui.textDisabled("By default, pasted API keys stay in memory for this session only.");
         }
 
         ImGui.text("Model");
@@ -189,7 +195,8 @@ final class AiAssistantSettingsPopupRenderer {
         if (ImGui.treeNode("Storage")) {
             ImGui.textDisabled("Config file: " + state.settingsPath().toAbsolutePath());
             ImGui.textDisabled("Settings are persisted to disk and loaded on startup.");
-            ImGui.textDisabled("API keys are excluded unless Remember API key on disk is enabled.");
+            ImGui.textDisabled("API keys are excluded unless Remember API key on disk (dev only) is enabled.");
+            ImGui.textDisabled(AiCredentialPolicy.primaryPathSummary());
             ImGui.treePop();
         }
 

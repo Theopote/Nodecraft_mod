@@ -39,7 +39,8 @@ public final class AiAssistantController {
     private static final int AI_LATEST_USER_MESSAGE_MAX_CHARS = 7000;
 
     private final AiAssistantComponent aiAssistantComponent;
-    private final AiRemotePlanningOrchestrator remotePlanningOrchestrator = new AiRemotePlanningOrchestrator();
+    private final AiPlannerService plannerService = new AiPlannerService();
+    private final AiPlanValidator planValidator = new AiPlanValidator();
     private final Supplier<NodeGraph> nodeGraphSupplier;
     private final Consumer<String> clipboardCopier;
     private final AiAssistantUiBindings ui;
@@ -420,12 +421,9 @@ public final class AiAssistantController {
 
     public void dryRunPendingPlan() {
         AiGraphPlan pendingAiPlan = pendingPlan();
-        if (pendingAiPlan == null) {
-            session.setPlanStatusMessage("Dry run aborted: no plan available.");
-            return;
-        }
-        if (!pendingAiPlan.isValid()) {
-            session.setPlanStatusMessage("Dry run aborted: plan has validation errors.");
+        AiPlanValidator.GateResult gate = planValidator.checkBeforeDryRun(pendingAiPlan);
+        if (!gate.allowed()) {
+            session.setPlanStatusMessage(gate.rejectionMessage());
             return;
         }
 
@@ -550,10 +548,8 @@ public final class AiAssistantController {
                 return;
             }
 
-            String dslJson = AiPlanDslWorkflowService.toDslJson(
-                    AiPlanDslWorkflowService.buildMockGraphPlan(trimmedPrompt)
-            );
-            applyDslResponse(trimmedPrompt, dslJson, "local-template");
+            AiPlannerService.LocalPlanPayload localPlan = plannerService.planLocal(trimmedPrompt);
+            applyDslResponse(trimmedPrompt, localPlan.dslJson(), localPlan.source());
         } catch (Exception e) {
             String error = "Failed to submit prompt: " + e.getMessage();
             session.setPlanStatusMessage(error);
@@ -623,7 +619,7 @@ public final class AiAssistantController {
         );
         List<AiRemotePlannerService.ConversationMessage> conversationHistory =
                 buildConversationHistory(userPrompt, userPromptPayload);
-        AiRemotePlanningOrchestrator.PreparedRequest preparedRequest = remotePlanningOrchestrator.prepareInitialRequest(
+        AiRemotePlanningOrchestrator.PreparedRequest preparedRequest = plannerService.prepareInitialRemoteRequest(
                 collectRemoteRequestSettings(),
                 userPrompt,
                 userPromptPayload,
@@ -634,7 +630,7 @@ public final class AiAssistantController {
                 preparedRequest.userIntent(),
                 userPrompt == null ? 0 : userPrompt.length(),
                 preparedRequest.promptFingerprint());
-        logAiDebug("[AI_SEND] Prompt preview: {}", remotePlanningOrchestrator.sanitizeUserPromptForSnapshot(userPrompt));
+        logAiDebug("[AI_SEND] Prompt preview: {}", plannerService.sanitizeUserPromptForSnapshot(userPrompt));
         NodeCraft.LOGGER.info("[AI_SEND] Schema context selected. selectedSchemas={}, totalSchemas={}, limit={}",
                 preparedRequest.selectedSchemaCount(),
                 preparedRequest.totalSchemaCount(),
@@ -847,9 +843,8 @@ public final class AiAssistantController {
 
     private void applyDslResponse(String prompt, String dslOrModelResponse, String source) {
         boolean isStructured = "remote-tool".equals(source);
-        AiGraphDslSupport.ParseValidationResult parsed = isStructured
-                ? AiGraphDslSupport.parseStructured(dslOrModelResponse, NodeRegistry.getInstance())
-                : AiGraphDslSupport.parseAndValidate(dslOrModelResponse, NodeRegistry.getInstance());
+        AiGraphDslSupport.ParseValidationResult parsed =
+                planValidator.parseModelResponse(dslOrModelResponse, isStructured);
         NodeCraft.LOGGER.info("[AI_SEND] DSL parse result. source={}, success={}, errors={}, warnings={}",
                 source,
                 parsed.isSuccess(),
@@ -934,7 +929,7 @@ public final class AiAssistantController {
     }
 
     private boolean tryStartRemoteDslRepair(String originalPrompt, String invalidDslOrModelResponse, List<String> parseErrors) {
-        if (session.dslRepairAttempts() >= remotePlanningOrchestrator.maxDslRepairAttempts()) {
+        if (session.dslRepairAttempts() >= plannerService.maxDslRepairAttempts()) {
             return false;
         }
         if (!ui.aiEnableRemotePlanner.get()) {
@@ -952,7 +947,7 @@ public final class AiAssistantController {
         }
 
         AiRemotePlanningOrchestrator.PreparedRetryRequest preparedRequest =
-                remotePlanningOrchestrator.prepareDslRepairRequest(
+                plannerService.prepareDslRepairRequest(
                         collectRemoteRequestSettings(),
                         originalPrompt,
                         invalidDslOrModelResponse,
@@ -989,7 +984,7 @@ public final class AiAssistantController {
             String prompt,
             AiGraphPlanDslAdapterService.GraphPlan plan
     ) {
-        return remotePlanningOrchestrator.shouldRequestConnectedGraphExpansion(
+        return plannerService.shouldRequestConnectedGraphExpansion(
                 prompt,
                 plan,
                 session.graphExpansionAttempts(),
@@ -1009,7 +1004,7 @@ public final class AiAssistantController {
             AiGraphPlanDslAdapterService.GraphPlan underspecifiedPlan,
             String originalModelPayload
     ) {
-        if (session.graphExpansionAttempts() >= remotePlanningOrchestrator.maxGraphExpansionAttempts()) {
+        if (session.graphExpansionAttempts() >= plannerService.maxGraphExpansionAttempts()) {
             return false;
         }
         if (!ui.aiEnableRemotePlanner.get() || isRemotePlannerBusy()) {
@@ -1024,7 +1019,7 @@ public final class AiAssistantController {
         }
 
         AiRemotePlanningOrchestrator.PreparedRetryRequest preparedRequest =
-                remotePlanningOrchestrator.prepareGraphExpansionRequest(
+                plannerService.prepareGraphExpansionRequest(
                         collectRemoteRequestSettings(),
                         originalPrompt,
                         underspecifiedPlan,
@@ -1267,7 +1262,7 @@ public final class AiAssistantController {
                     List.of()
             );
             AiGraphDslSupport.ParseValidationResult parsed =
-                    AiGraphDslSupport.parseAndValidate(AiPlanDslWorkflowService.toDslJsonCompact(trial), NodeRegistry.getInstance());
+                    planValidator.parseAndValidateJson(AiPlanDslWorkflowService.toDslJsonCompact(trial));
             if (parsed.isSuccess()) {
                 accepted.add(candidate);
             } else {
@@ -1708,12 +1703,9 @@ public final class AiAssistantController {
 
     public void applyPendingPlan() {
         AiGraphPlan pendingAiPlan = pendingPlan();
-        if (pendingAiPlan == null) {
-            session.setPlanStatusMessage("No plan available.");
-            return;
-        }
-        if (!pendingAiPlan.isValid()) {
-            session.setPlanStatusMessage("Cannot apply: plan has validation errors.");
+        AiPlanValidator.GateResult gate = planValidator.checkBeforeApply(pendingAiPlan);
+        if (!gate.allowed()) {
+            session.setPlanStatusMessage(gate.rejectionMessage());
             return;
         }
 

@@ -46,6 +46,38 @@ class AiSettingsStoreTest {
         assertTrue(loaded.data().rememberApiKey());
     }
 
+    @Test
+    void validateAllowsEmptyKeyWhenBaseUrlIsLocalProxy() {
+        AiSettingsStore.AiSettingsData proxy = settingsWithApiKey("", false);
+        proxy = new AiSettingsStore.AiSettingsData(
+                "http://localhost:8080/v1",
+                "",
+                proxy.model(),
+                proxy.providerStrategy(),
+                proxy.systemPrompt(),
+                proxy.maxOutputTokens(),
+                proxy.timeoutSeconds(),
+                proxy.conversationHistoryTurns(),
+                proxy.showApiKey(),
+                false,
+                true,
+                proxy.autoLayoutBeforeApply(),
+                proxy.includeGraphContext(),
+                proxy.includePlayerWorldContext(),
+                proxy.includeSelectedWorldRegionContext(),
+                proxy.previewOnlyMode(),
+                proxy.patchApplyMode(),
+                proxy.patchRemoveScopedConnections(),
+                proxy.enterToSend(),
+                proxy.debugLoggingEnabled(),
+                proxy.includePromptPreviewInDebug()
+        );
+
+        String validation = AiSettingsStore.validate(proxy);
+        assertFalse(validation.startsWith("Validation failed"));
+        assertTrue(AiSettingsStore.buildSummary(proxy).contains("API Key: proxy"));
+    }
+
     private static AiSettingsStore.AiSettingsData settingsWithApiKey(String apiKey, boolean rememberApiKey) {
         AiSettingsStore.AiSettingsData defaults = AiSettingsStore.defaults();
         return new AiSettingsStore.AiSettingsData(
