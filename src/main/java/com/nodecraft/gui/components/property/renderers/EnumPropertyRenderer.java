@@ -4,6 +4,7 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.components.PropertyPanelComponent;
 import com.nodecraft.gui.components.property.core.PropertyDescriptor;
 import com.nodecraft.gui.components.property.core.PropertyRenderer;
+import com.nodecraft.gui.components.property.support.EnumPropertyLabels;
 import com.nodecraft.nodesystem.api.INode;
 import imgui.ImGui;
 import imgui.type.ImInt;
@@ -28,7 +29,7 @@ public final class EnumPropertyRenderer {
             }
 
             Enum<?>[] values = currentValue.getDeclaringClass().getEnumConstants();
-            String[] names = panel.buildEnumDisplayNames(node, prop, values);
+            String[] names = EnumPropertyLabels.buildDisplayNames(node, prop, values);
 
             int currentIndex = currentValue.ordinal();
             ImInt selectedIndex = new ImInt(currentIndex);
@@ -58,7 +59,7 @@ public final class EnumPropertyRenderer {
             }
 
             if (ImGui.isItemHovered()) {
-                ImGui.setTooltip(panel.buildEnumTooltip(node, prop, values, names, selectedIndex.get()));
+                ImGui.setTooltip(EnumPropertyLabels.buildTooltip(node, prop, values, names, selectedIndex.get()));
             }
 
             panel.clearPropertyError(prop.name);

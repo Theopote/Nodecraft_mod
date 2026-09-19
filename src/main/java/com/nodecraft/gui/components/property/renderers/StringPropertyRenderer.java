@@ -4,6 +4,8 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.components.PropertyPanelComponent;
 import com.nodecraft.gui.components.property.core.PropertyDescriptor;
 import com.nodecraft.gui.components.property.core.PropertyRenderer;
+import com.nodecraft.gui.components.property.support.GeometryViewerPropertySupport;
+import com.nodecraft.gui.components.property.support.StringColorPropertyEditor;
 import com.nodecraft.nodesystem.api.INode;
 import imgui.ImGui;
 import imgui.flag.ImGuiInputTextFlags;
@@ -29,8 +31,8 @@ public final class StringPropertyRenderer {
             final String resolvedValue = currentValue;
             boolean isReadOnly = prop.setter == null;
 
-            if (panel.shouldUseColorPickerForStringProperty(prop, resolvedValue)) {
-                panel.renderStringColorPropertyEditor(node, prop, resolvedValue, isReadOnly);
+            if (StringColorPropertyEditor.shouldUseColorPicker(prop, resolvedValue)) {
+                StringColorPropertyEditor.render(panel, node, prop, resolvedValue, isReadOnly);
                 panel.clearPropertyError(prop.name);
                 return;
             }
@@ -75,8 +77,8 @@ public final class StringPropertyRenderer {
                 panel.markPropertyEditingFinished(node, prop.name);
             }
 
-            if (panel.isGeometryViewerBlockType(node, prop)) {
-                panel.renderGeometryViewerBlockTypeHint(imStr.get());
+            if (GeometryViewerPropertySupport.isBlockType(node, prop)) {
+                GeometryViewerPropertySupport.renderBlockTypeHint(imStr.get());
             }
 
             panel.clearPropertyError(prop.name);

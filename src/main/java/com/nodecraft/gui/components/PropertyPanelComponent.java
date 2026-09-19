@@ -30,7 +30,6 @@ import com.nodecraft.nodesystem.datatypes.TorusGeometryData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.graph.NodeGraph;
-import com.nodecraft.nodesystem.nodes.output.preview.GeometryViewerNode;
 import com.nodecraft.nodesystem.util.Vec3; // 确保 Vec3 可用
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.Color;
@@ -49,6 +48,7 @@ import com.nodecraft.gui.components.property.core.PropertyRenderer;
 import com.nodecraft.gui.components.property.core.PropertyRendererRegistry;
 import com.nodecraft.gui.components.property.core.PropertySectionOrganizer;
 import com.nodecraft.gui.components.property.renderers.*;
+import com.nodecraft.gui.components.property.support.GeometryViewerPropertySupport;
 import com.nodecraft.gui.components.port.PortDataRenderer;
 import com.nodecraft.gui.components.port.PortTableRenderer;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
@@ -68,8 +68,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
 import org.joml.Vector3d;
 
 public class PropertyPanelComponent implements EditorComponent {
@@ -415,7 +413,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
         List<PropertyDescriptor> properties = getPropertiesForNode(selectedNode.getClass()).stream()
                 .filter(prop -> !HIDDEN_NODE_PROPERTIES.contains(prop.name))
-                .filter(prop -> shouldDisplayProperty(selectedNode, prop))
+                .filter(prop -> GeometryViewerPropertySupport.shouldDisplayProperty(selectedNode, prop))
                 .toList();
         if (properties.isEmpty()) {
             ImGui.textDisabled("No editable properties");
@@ -658,215 +656,6 @@ public class PropertyPanelComponent implements EditorComponent {
 
     public void clearPropertyError(String propName) {
         editSession.clearPropertyError(propName);
-    }
-
-    private boolean shouldDisplayProperty(INode node, PropertyDescriptor prop) {
-        if (node instanceof GeometryViewerNode geometryViewerNode) {
-            boolean isGhostBackend = geometryViewerNode.getPreviewBackend() == com.nodecraft.nodesystem.preview.PreviewBackend.GHOST;
-            GeometryViewerNode.GhostRenderMode mode = geometryViewerNode.getGhostRenderMode();
-
-            if (!isGhostBackend && (
-                "previewColor".equals(prop.name)
-                    || "transparency".equals(prop.name)
-                    || "showOutline".equals(prop.name)
-                    || "ghostOutlineColor".equals(prop.name)
-                    || "ghostRenderMode".equals(prop.name)
-            )) {
-                return false;
-            }
-
-            if ("ghostRenderMode".equals(prop.name)) {
-                return isGhostBackend;
-            }
-            if ("previewColor".equals(prop.name)) {
-                return isGhostBackend && mode != GeometryViewerNode.GhostRenderMode.BLOCK_COLOR;
-            }
-            if ("transparency".equals(prop.name)) {
-                return isGhostBackend;
-            }
-            if ("showOutline".equals(prop.name)) {
-                return isGhostBackend && mode == GeometryViewerNode.GhostRenderMode.SOLID_COLOR;
-            }
-            if ("ghostOutlineColor".equals(prop.name)) {
-                return isGhostBackend
-                    && mode == GeometryViewerNode.GhostRenderMode.SOLID_COLOR;
-            }
-        }
-        return true;
-    }
-
-    public boolean isGeometryViewerTransparency(INode node, PropertyDescriptor prop) {
-        return node instanceof GeometryViewerNode && "transparency".equals(prop.name);
-    }
-
-    public boolean isGeometryViewerBlockType(INode node, PropertyDescriptor prop) {
-        return node instanceof GeometryViewerNode && "blockType".equals(prop.name);
-    }
-
-    public void renderGeometryViewerBlockTypeHint(String rawValue) {
-        String value = rawValue != null ? rawValue.trim() : "";
-        ImGui.sameLine();
-        if (value.isEmpty()) {
-            ImGui.textColored(0.95f, 0.8f, 0.35f, 1.0f, "Empty (fallback: minecraft:stone)");
-            return;
-        }
-
-        boolean valid = isValidBlockTypeId(value);
-        if (valid) {
-            ImGui.textColored(0.35f, 0.85f, 0.45f, 1.0f, "Valid");
-        } else {
-            ImGui.textColored(0.95f, 0.4f, 0.4f, 1.0f, "Invalid block id");
-            if (ImGui.isItemHovered()) {
-                ImGui.setTooltip("Use namespace:path, e.g. minecraft:stone");
-            }
-        }
-    }
-
-    private boolean isValidBlockTypeId(String value) {
-        try {
-            Identifier id = Identifier.of(value);
-            return Registries.BLOCK.containsId(id);
-        } catch (Exception ignored) {
-            return false;
-        }
-    }
-
-    public String[] buildEnumDisplayNames(INode node, PropertyDescriptor prop, Enum<?>[] values) {
-        String[] labels = new String[values.length];
-        for (int i = 0; i < values.length; i++) {
-            labels[i] = buildEnumDisplayName(node, prop, values[i]);
-        }
-        return labels;
-    }
-
-    private String buildEnumDisplayName(INode node, PropertyDescriptor prop, Enum<?> value) {
-        if (node instanceof GeometryViewerNode && "ghostRenderMode".equals(prop.name)) {
-            return switch (value.name()) {
-                case "BLOCK_COLOR" -> "Block Color";
-                case "SOLID_COLOR" -> "Solid Color";
-                case "WIREFRAME" -> "Wireframe";
-                default -> humanizeEnumName(value.name());
-            };
-        }
-        return humanizeEnumName(value.name());
-    }
-
-    private String humanizeEnumName(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return "";
-        }
-        String[] parts = raw.toLowerCase(Locale.ROOT).split("_");
-        StringBuilder out = new StringBuilder();
-        for (String part : parts) {
-            if (part.isEmpty()) {
-                continue;
-            }
-            if (!out.isEmpty()) {
-                out.append(' ');
-            }
-            out.append(Character.toUpperCase(part.charAt(0)));
-            if (part.length() > 1) {
-                out.append(part.substring(1));
-            }
-        }
-        return out.toString();
-    }
-
-    public String buildEnumTooltip(INode node, PropertyDescriptor prop, Enum<?>[] values, String[] names, int selectedIndex) {
-        if (node instanceof GeometryViewerNode && "ghostRenderMode".equals(prop.name)) {
-            String current = (selectedIndex >= 0 && selectedIndex < names.length) ? names[selectedIndex] : "";
-            return "Current: " + current + "\n"
-                + "- Block Color: use block palette-derived color\n"
-                + "- Solid Color: use Preview Color fill (+ optional Outline)\n"
-                + "- Wireframe: render edges only";
-        }
-
-        StringBuilder tooltip = new StringBuilder("可用值:\n");
-        for (String name : names) {
-            tooltip.append("- ").append(name).append("\n");
-        }
-        return tooltip.toString();
-    }
-
-    public boolean shouldUseColorPickerForStringProperty(PropertyDescriptor prop, String value) {
-        if (prop == null) {
-            return false;
-        }
-        String name = prop.name != null ? prop.name.toLowerCase(Locale.ROOT) : "";
-        String displayName = prop.displayName != null ? prop.displayName.toLowerCase(Locale.ROOT) : "";
-        boolean colorNamed = name.contains("color") || displayName.contains("color");
-        if (isHexColorString(value)) {
-            return true;
-        }
-        if (!colorNamed) {
-            return false;
-        }
-        return value == null || value.isBlank();
-    }
-
-    public void renderStringColorPropertyEditor(INode node, PropertyDescriptor prop, String currentValue, boolean isReadOnly) throws Throwable {
-        String normalized = normalizeHexColor(currentValue);
-        String tempKey = getTempValueKey(node, prop.name + "_hex_color");
-        float[] rgb = editSession.getOrCreateTempValue(tempKey, () -> {
-            Color parsed = Color.fromHex(normalized);
-            return new float[]{parsed.getRed(), parsed.getGreen(), parsed.getBlue()};
-        });
-
-        if (!isPropertyBeingEdited(node, prop.name)) {
-            Color parsed = Color.fromHex(normalized);
-            rgb[0] = parsed.getRed();
-            rgb[1] = parsed.getGreen();
-            rgb[2] = parsed.getBlue();
-        }
-
-        if (isReadOnly) {
-            ImGui.beginDisabled();
-        }
-
-        boolean colorChanged = ImGui.colorEdit3("##" + prop.name + "_picker", rgb);
-        if (ImGui.isItemActive()) {
-            markPropertyBeingEdited(node, prop.name);
-        }
-        if (ImGui.isItemDeactivated()) {
-            markPropertyEditingFinished(node, prop.name);
-        }
-
-        if (isReadOnly) {
-            ImGui.endDisabled();
-        }
-
-        if (!isReadOnly && colorChanged) {
-            String newHex = toHexColor(rgb);
-            if (!newHex.equalsIgnoreCase(normalized)) {
-                applyPropertyValue(node, prop, newHex);
-                NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), newHex);
-            }
-        }
-    }
-
-    private static boolean isHexColorString(String value) {
-        if (value == null) {
-            return false;
-        }
-        String trimmed = value.trim();
-        if (!trimmed.startsWith("#")) {
-            return false;
-        }
-        return trimmed.matches("^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$");
-    }
-
-    private static String normalizeHexColor(String value) {
-        if (isHexColorString(value)) {
-            return value.trim();
-        }
-        return "#000000";
-    }
-
-    private static String toHexColor(float[] rgb) {
-        int r = Math.max(0, Math.min(255, Math.round(rgb[0] * 255.0f)));
-        int g = Math.max(0, Math.min(255, Math.round(rgb[1] * 255.0f)));
-        int b = Math.max(0, Math.min(255, Math.round(rgb[2] * 255.0f)));
-        return String.format("#%02X%02X%02X", r, g, b);
     }
 
     private List<PropertyDescriptor> getPropertiesForNode(Class<?> nodeClass) {

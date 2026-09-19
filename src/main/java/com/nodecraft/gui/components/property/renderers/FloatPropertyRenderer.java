@@ -4,6 +4,7 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.components.PropertyPanelComponent;
 import com.nodecraft.gui.components.property.core.PropertyDescriptor;
 import com.nodecraft.gui.components.property.core.PropertyRenderer;
+import com.nodecraft.gui.components.property.support.GeometryViewerPropertySupport;
 import com.nodecraft.nodesystem.api.INode;
 import imgui.ImGui;
 
@@ -25,7 +26,7 @@ public final class FloatPropertyRenderer {
             float currentValue = (float) prop.getter.invoke(node);
             float[] valArr = {currentValue};
             boolean isReadOnly = prop.setter == null;
-            boolean isGeometryTransparency = panel.isGeometryViewerTransparency(node, prop);
+            boolean isGeometryTransparency = GeometryViewerPropertySupport.isTransparency(node, prop);
 
             if (isReadOnly) {
                 ImGui.beginDisabled();

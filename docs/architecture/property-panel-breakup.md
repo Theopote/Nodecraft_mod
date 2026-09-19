@@ -11,7 +11,9 @@ PropertyPanelComponent                 (layout / tabs / selection wiring)
 ├─ PropertyEditSession                 ✓ temp widgets / edit locks / error counts (Phase 1)
 ├─ PropertyEditorRegistry              ✓ primitive editors (Phase 2)
 ├─ PropertyRendererRegistry            ✓ complex-type renderers already extracted
-└─ NodeActionPanel                     ✓ ResettableNode reset path (Phase 3)
+├─ NodeActionPanel                     ✓ ResettableNode + common Reset/Delete (Phase 3)
+├─ NodeActionProviderRegistry          ✓ assist / apply chrome providers (Phase 4)
+└─ property.support                    ✓ GeometryViewer / color / enum labels (Phase 5)
 ```
 
 ## Phase 2 — Primitive PropertyEditorRegistry
@@ -23,7 +25,7 @@ enum renderer used as fallback for `type.isEnum()`.
 `FloatPropertyRenderer`, `DoublePropertyRenderer`, `EnumPropertyRenderer`,
 `PropertyEditorRegistry.registerPrimitives()`.
 
-**Panel:** still hosts GeometryViewer / color-string / enum-label helpers used by those editors.
+**Panel:** still hosts layout / selection; GeometryViewer / color / enum helpers live in `property.support`.
 
 ## Phase 3 — ResettableNode + drop Custom UI reflection (done)
 
@@ -37,11 +39,32 @@ enum renderer used as fallback for `type.isEnum()`.
 **Note:** no production nodes implement `ResettableNode` yet — the interface is opt-in.
 Custom UI nodes already extend `BaseCustomUINode` / implement `ICustomUINode`.
 
+## Phase 4 — NodeActionProvider (done)
+
+**Owns:** node-specific action chrome above properties and in the action strip.
+
+**Files:**
+- `NodeActionProvider`, `NodeActionProviderRegistry`, `NodeActionGraphSupport`
+- `actions/SignalForkActionProvider`, `SignalMergeActionProvider`,
+  `TagRelayActionProvider`, `ApplyChangesActionProvider`
+
+**Panel:** `NodeActionPanel` only orchestrates providers + universal Reset/Delete.
+
+## Phase 5 — GeometryViewer / color helpers off panel (done)
+
+**Owns:** GeometryViewer visibility + chrome, hex-string color picker, enum display labels.
+
+**Files:**
+- `property.support.GeometryViewerPropertySupport`
+- `property.support.StringColorPropertyEditor`
+- `property.support.EnumPropertyLabels`
+
+**Panel:** filters via `GeometryViewerPropertySupport.shouldDisplayProperty`;
+primitive renderers call support classes directly.
+
 ## Later phases (order)
 
-1. Optional `NodeActionProvider` for assist-node action chrome
-2. Optional `PropertyInspectorModel` for selection + category shell
-3. Optional: move GeometryViewer/color helpers off the panel
+1. Optional `PropertyInspectorModel` for selection + category shell
 
 ## Exit gates — Phase 1
 
@@ -60,3 +83,14 @@ Custom UI nodes already extend `BaseCustomUINode` / implement `ICustomUINode`.
 1. Reset path uses `ResettableNode`, not reflection
 2. Custom UI path uses `ICustomUINode` only (no reflection fallback)
 3. `ResettableNodeContractTest` green; project compiles
+
+## Exit gates — Phase 4
+
+1. Assist / ApplyChanges chrome lives in `NodeActionProvider` implementations
+2. `NodeActionPanel` no longer hardcodes fork/merge/tag/apply render bodies
+3. `NodeActionProviderRegistryTest` green; project compiles
+
+## Exit gates — Phase 5
+
+1. GeometryViewer / color / enum label helpers are not methods on `PropertyPanelComponent`
+2. `PropertySupportHelpersTest` green; project compiles
