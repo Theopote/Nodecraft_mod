@@ -1,15 +1,14 @@
 package com.nodecraft.gui.ai;
 
+import com.nodecraft.gui.layout.GraphNodeAutoLayout;
 import org.jspecify.annotations.NonNull;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 
+/**
+ * AI-facing wrapper around {@link GraphNodeAutoLayout}.
+ */
 public final class AiPlanAutoLayoutService {
 
     private AiPlanAutoLayoutService() {
@@ -29,83 +28,57 @@ public final class AiPlanAutoLayoutService {
             return List.of();
         }
 
-        Map<String, PlanNode> nodeByRef = new LinkedHashMap<>();
-        Map<String, Integer> indegree = new HashMap<>();
-        Map<String, Integer> depth = new HashMap<>();
-        Map<String, List<String>> edges = new HashMap<>();
-
+        List<GraphNodeAutoLayout.NodeRef> refs = new ArrayList<>(nodes.size());
         for (PlanNode node : nodes) {
-            nodeByRef.put(node.ref(), node);
-            indegree.put(node.ref(), 0);
-            depth.put(node.ref(), 0);
-            edges.put(node.ref(), new ArrayList<>());
+            if (node != null && node.ref() != null) {
+                refs.add(new GraphNodeAutoLayout.NodeRef(node.ref()));
+            }
         }
 
+        List<GraphNodeAutoLayout.Edge> edges = new ArrayList<>();
         if (connections != null) {
             for (PlanConnection connection : connections) {
-                if (!nodeByRef.containsKey(connection.sourceRef()) || !nodeByRef.containsKey(connection.targetRef())) {
-                    continue;
-                }
-                edges.get(connection.sourceRef()).add(connection.targetRef());
-                indegree.put(connection.targetRef(), indegree.get(connection.targetRef()) + 1);
-            }
-        }
-
-        ArrayDeque<String> queue = new ArrayDeque<>();
-        for (PlanNode node : nodes) {
-            if (indegree.get(node.ref()) == 0) {
-                queue.add(node.ref());
-            }
-        }
-
-        while (!queue.isEmpty()) {
-            String current = queue.poll();
-            int currentDepth = depth.getOrDefault(current, 0);
-            for (String next : edges.getOrDefault(current, List.of())) {
-                depth.put(next, Math.max(depth.getOrDefault(next, 0), currentDepth + 1));
-                int nextIn = indegree.getOrDefault(next, 0) - 1;
-                indegree.put(next, nextIn);
-                if (nextIn == 0) {
-                    queue.add(next);
+                if (connection != null) {
+                    edges.add(new GraphNodeAutoLayout.Edge(connection.sourceRef(), connection.targetRef()));
                 }
             }
         }
 
-        Map<Integer, List<PlanNode>> layerMap = new TreeMap<>();
-        for (PlanNode node : nodes) {
-            int layer = Math.max(0, depth.getOrDefault(node.ref(), 0));
-            layerMap.computeIfAbsent(layer, ignored -> new ArrayList<>()).add(node);
-        }
-
-        return toArrangedNodes(layerMap);
+        List<GraphNodeAutoLayout.Arranged> arranged = GraphNodeAutoLayout.autoLayout(refs, edges);
+        return toArrangedNodes(nodes, arranged);
     }
 
-    private static @NonNull List<ArrangedNode> toArrangedNodes(Map<Integer, List<PlanNode>> layerMap) {
-        float layerSpacingX = 320.0f;
-        float baseLayerSpacingY = 180.0f;
-        List<ArrangedNode> arranged = new ArrayList<>();
-
-        for (Map.Entry<Integer, List<PlanNode>> layerEntry : layerMap.entrySet()) {
-            int layer = layerEntry.getKey();
-            List<PlanNode> layerNodes = layerEntry.getValue();
-            float effectiveSpacingY = resolveLayerSpacingY(baseLayerSpacingY, layerNodes.size());
-            for (int i = 0; i < layerNodes.size(); i++) {
-                PlanNode node = layerNodes.get(i);
-                float x = layer * layerSpacingX;
-                float y = (i - (layerNodes.size() - 1) / 2.0f) * effectiveSpacingY;
-                arranged.add(new ArrangedNode(node.ref(), node.typeId(), x, y, node.nodeState()));
+    private static @NonNull List<ArrangedNode> toArrangedNodes(
+            List<PlanNode> nodes,
+            List<GraphNodeAutoLayout.Arranged> arranged
+    ) {
+        MapByRef lookup = MapByRef.from(nodes);
+        List<ArrangedNode> result = new ArrayList<>(arranged.size());
+        for (GraphNodeAutoLayout.Arranged item : arranged) {
+            PlanNode node = lookup.get(item.ref());
+            if (node == null) {
+                continue;
             }
+            result.add(new ArrangedNode(node.ref(), node.typeId(), item.offsetX(), item.offsetY(), node.nodeState()));
         }
-
-        return arranged;
+        return result;
     }
 
-    private static float resolveLayerSpacingY(float baseSpacing, int layerNodeCount) {
-        if (layerNodeCount <= 4) {
-            return baseSpacing;
+    private static final class MapByRef {
+        private final java.util.Map<String, PlanNode> byRef = new java.util.LinkedHashMap<>();
+
+        static MapByRef from(List<PlanNode> nodes) {
+            MapByRef map = new MapByRef();
+            for (PlanNode node : nodes) {
+                if (node != null && node.ref() != null) {
+                    map.byRef.putIfAbsent(node.ref(), node);
+                }
+            }
+            return map;
         }
 
-        float denseSpacing = 220.0f + (layerNodeCount - 5) * 12.0f;
-        return Math.max(baseSpacing, Math.min(320.0f, denseSpacing));
+        PlanNode get(String ref) {
+            return byRef.get(ref);
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.nodecraft.gui.preset;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
+import com.nodecraft.gui.layout.GraphNodeAutoLayout;
 import com.nodecraft.nodesystem.api.INode;
 
 import java.util.ArrayList;
@@ -14,9 +15,8 @@ import java.util.UUID;
 
 public final class GraphPresetApplier {
 
-    private static final float MIN_NODE_HORIZONTAL_GAP = 260.0f;
-    private static final float MIN_NODE_VERTICAL_GAP = 130.0f;
-    private static final int MAX_LAYOUT_ADJUSTMENTS_PER_NODE = 64;
+    private GraphPresetApplier() {
+    }
 
     public record ApplyResult(boolean success, String message, List<UUID> createdNodeIds) {
         public static ApplyResult failure(String message) {
@@ -26,9 +26,6 @@ public final class GraphPresetApplier {
         public static ApplyResult success(String message, List<UUID> createdNodeIds) {
             return new ApplyResult(true, message, List.copyOf(createdNodeIds));
         }
-    }
-
-    private GraphPresetApplier() {
     }
 
     public static ApplyResult apply(GraphPresetRules.GraphPresetDefinition preset, float originX, float originY) {
@@ -52,7 +49,7 @@ public final class GraphPresetApplier {
 
         Map<String, UUID> refToNodeId = new HashMap<>();
         List<UUID> createdNodeIds = new ArrayList<>();
-        Map<String, LayoutPosition> layoutPositions = resolveLayoutPositions(preset.nodes);
+        Map<String, LayoutPosition> layoutPositions = resolveLayoutPositions(preset);
 
         for (GraphPresetRules.PresetNode presetNode : preset.nodes) {
             if (presetNode == null || presetNode.ref == null || presetNode.typeId == null) {
@@ -126,51 +123,45 @@ public final class GraphPresetApplier {
         }
     }
 
-    private static Map<String, LayoutPosition> resolveLayoutPositions(List<GraphPresetRules.PresetNode> presetNodes) {
-        Map<String, LayoutPosition> positionsByRef = new HashMap<>();
-        List<LayoutPosition> placedPositions = new ArrayList<>();
+    /**
+     * Connection-aware layered layout so dropped presets do not stack on top of each other
+     * and keep left-to-right flow with fewer edge crossings.
+     */
+    static Map<String, LayoutPosition> resolveLayoutPositions(GraphPresetRules.GraphPresetDefinition preset) {
+        List<GraphNodeAutoLayout.NodeRef> refs = new ArrayList<>();
+        for (GraphPresetRules.PresetNode presetNode : preset.nodes) {
+            if (presetNode != null && presetNode.ref != null && !presetNode.ref.isBlank()) {
+                refs.add(new GraphNodeAutoLayout.NodeRef(presetNode.ref));
+            }
+        }
 
-        for (GraphPresetRules.PresetNode presetNode : presetNodes) {
+        List<GraphNodeAutoLayout.Edge> edges = new ArrayList<>();
+        if (preset.connections != null) {
+            for (GraphPresetRules.PresetConnection connection : preset.connections) {
+                if (connection != null
+                        && connection.fromRef != null
+                        && connection.toRef != null) {
+                    edges.add(new GraphNodeAutoLayout.Edge(connection.fromRef, connection.toRef));
+                }
+            }
+        }
+
+        List<GraphNodeAutoLayout.Arranged> arranged = GraphNodeAutoLayout.autoLayout(refs, edges);
+        Map<String, LayoutPosition> positionsByRef = new HashMap<>();
+        for (GraphNodeAutoLayout.Arranged item : arranged) {
+            positionsByRef.put(item.ref(), new LayoutPosition(item.offsetX(), item.offsetY()));
+        }
+
+        // Any node missing from the arranged set (should be rare) keeps authored coords.
+        for (GraphPresetRules.PresetNode presetNode : preset.nodes) {
             if (presetNode == null || presetNode.ref == null) {
                 continue;
             }
-
-            float x = presetNode.x;
-            float y = presetNode.y;
-            int attempts = 0;
-            while (overlapsPlacedNode(x, y, placedPositions) && attempts < MAX_LAYOUT_ADJUSTMENTS_PER_NODE) {
-                y += MIN_NODE_VERTICAL_GAP;
-                attempts++;
-            }
-
-            if (attempts >= MAX_LAYOUT_ADJUSTMENTS_PER_NODE && overlapsPlacedNode(x, y, placedPositions)) {
-                x += MIN_NODE_HORIZONTAL_GAP;
-                y = presetNode.y;
-                attempts = 0;
-                while (overlapsPlacedNode(x, y, placedPositions) && attempts < MAX_LAYOUT_ADJUSTMENTS_PER_NODE) {
-                    y += MIN_NODE_VERTICAL_GAP;
-                    attempts++;
-                }
-            }
-
-            LayoutPosition position = new LayoutPosition(x, y);
-            positionsByRef.put(presetNode.ref, position);
-            placedPositions.add(position);
+            positionsByRef.putIfAbsent(presetNode.ref, new LayoutPosition(presetNode.x, presetNode.y));
         }
-
         return positionsByRef;
     }
 
-    private static boolean overlapsPlacedNode(float x, float y, List<LayoutPosition> placedPositions) {
-        for (LayoutPosition placed : placedPositions) {
-            if (Math.abs(x - placed.x) < MIN_NODE_HORIZONTAL_GAP
-                    && Math.abs(y - placed.y) < MIN_NODE_VERTICAL_GAP) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private record LayoutPosition(float x, float y) {
+    record LayoutPosition(float x, float y) {
     }
 }
