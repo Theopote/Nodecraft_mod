@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
@@ -43,7 +44,7 @@ public class DeconstructHemisphereNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_HEMISPHERE_ID, "Hemisphere", "Hemisphere geometry to deconstruct", NodeDataType.HEMISPHERE_GEOMETRY, this));
 
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Sphere center", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Sphere center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_AXIS_ID, "Axis", "Unit axis into the dome", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_RADIUS_ID, "Radius", "Sphere radius", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_CURVED_AREA_ID, "Curved Area", "Spherical cap area (2πR²)", NodeDataType.DOUBLE, this));
@@ -79,7 +80,7 @@ public class DeconstructHemisphereNode extends BaseNode {
         RegionData region = GeometryVoxelizer.createBoundingRegion(hemisphere);
         BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
 
-        outputValues.put(OUTPUT_CENTER_ID, center);
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(OUTPUT_AXIS_ID, axis);
         outputValues.put(OUTPUT_RADIUS_ID, r);
         outputValues.put(OUTPUT_CURVED_AREA_ID, curved);

@@ -7,6 +7,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.OctahedronGeometryData;
+import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
@@ -43,9 +45,9 @@ public class DeconstructOctahedronNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_OCTAHEDRON_ID, "Octahedron", "Octahedron geometry to deconstruct", NodeDataType.OCTAHEDRON_GEOMETRY, this));
 
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Octahedron center", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Octahedron center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_SIZE_ID, "Size", "Distance from center to vertices", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_VERTICES_ID, "Vertices", "Resolved octahedron vertices", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VERTICES_ID, "Vertices", "Resolved octahedron vertices", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_AREA_ID, "Surface Area", "Regular octahedron surface area", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Regular octahedron volume", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
@@ -74,9 +76,9 @@ public class DeconstructOctahedronNode extends BaseNode {
         RegionData region = GeometryVoxelizer.createBoundingRegion(octahedron);
         BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
 
-        outputValues.put(OUTPUT_CENTER_ID, octahedron.getCenter());
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(octahedron.getCenter()));
         outputValues.put(OUTPUT_SIZE_ID, size);
-        outputValues.put(OUTPUT_VERTICES_ID, octahedron.getVertices());
+        outputValues.put(OUTPUT_VERTICES_ID, SpatialValueResolver.toPointDataList(octahedron.getVertices()));
         outputValues.put(OUTPUT_SURFACE_AREA_ID, surfaceArea);
         outputValues.put(OUTPUT_VOLUME_ID, volume);
         outputValues.put(OUTPUT_REGION_ID, region);

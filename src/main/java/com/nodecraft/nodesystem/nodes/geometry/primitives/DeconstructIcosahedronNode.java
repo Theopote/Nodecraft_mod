@@ -7,6 +7,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.IcosahedronGeometryData;
+import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
@@ -44,10 +46,10 @@ public class DeconstructIcosahedronNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_ICOSAHEDRON_ID, "Icosahedron", "Icosahedron geometry to deconstruct", NodeDataType.ICOSAHEDRON_GEOMETRY, this));
 
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Icosahedron center", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Icosahedron center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_EDGE_LENGTH_ID, "Edge Length", "Edge length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_CIRCUMRADIUS_ID, "Circumradius", "Circumscribed sphere radius", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_VERTICES_ID, "Vertices", "World-space vertices", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VERTICES_ID, "Vertices", "World-space vertices", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_AREA_ID, "Surface Area", "Total surface area", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Interior volume", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
@@ -75,10 +77,10 @@ public class DeconstructIcosahedronNode extends BaseNode {
         RegionData region = GeometryVoxelizer.createBoundingRegion(icosa);
         BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
 
-        outputValues.put(OUTPUT_CENTER_ID, icosa.getCenter());
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(icosa.getCenter()));
         outputValues.put(OUTPUT_EDGE_LENGTH_ID, a);
         outputValues.put(OUTPUT_CIRCUMRADIUS_ID, icosa.getCircumradius());
-        outputValues.put(OUTPUT_VERTICES_ID, icosa.getVertices());
+        outputValues.put(OUTPUT_VERTICES_ID, SpatialValueResolver.toPointDataList(icosa.getVertices()));
         outputValues.put(OUTPUT_SURFACE_AREA_ID, surface);
         outputValues.put(OUTPUT_VOLUME_ID, volume);
         outputValues.put(OUTPUT_REGION_ID, region);

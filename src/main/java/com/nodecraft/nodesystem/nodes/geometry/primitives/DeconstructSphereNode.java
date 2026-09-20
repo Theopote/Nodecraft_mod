@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
@@ -41,7 +42,7 @@ public class DeconstructSphereNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_SPHERE_ID, "Sphere", "Sphere geometry to deconstruct", NodeDataType.SPHERE, this));
 
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Sphere center", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Sphere center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_RADIUS_ID, "Radius", "Sphere radius", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_DIAMETER_ID, "Diameter", "Sphere diameter", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_AREA_ID, "Surface Area", "Analytical sphere surface area", NodeDataType.DOUBLE, this));
@@ -79,7 +80,7 @@ public class DeconstructSphereNode extends BaseNode {
         RegionData region = GeometryVoxelizer.createBoundingRegion(sphere);
         BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
 
-        outputValues.put(OUTPUT_CENTER_ID, center);
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(OUTPUT_RADIUS_ID, radius);
         outputValues.put(OUTPUT_DIAMETER_ID, diameter);
         outputValues.put(OUTPUT_SURFACE_AREA_ID, surfaceArea);

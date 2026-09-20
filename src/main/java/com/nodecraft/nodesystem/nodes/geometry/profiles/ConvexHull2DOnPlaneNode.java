@@ -8,16 +8,14 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.BlockPos;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -48,10 +46,10 @@ public class ConvexHull2DOnPlaneNode extends BaseNode {
         super(UUID.randomUUID(), "geometry.profiles.convex_hull_plane");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points",
-            "Point cloud (list or single Point / Vector / BlockPos)",
-            NodeDataType.ANY, this));
+            "Point cloud to hull",
+            NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane",
-            "Plane used for projection and polygon embedding",
+            "Plane used for projection and polygon embedding. Defaults to XZ (horizontal)",
             NodeDataType.PLANE, this));
 
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile",
@@ -77,13 +75,9 @@ public class ConvexHull2DOnPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object planeObj = inputValues.get(INPUT_PLANE_ID);
-        if (!(planeObj instanceof PlaneData plane)) {
-            writeInvalid();
-            return;
-        }
+        PlaneData plane = ProfilePlaneUtils.resolvePlane(inputValues.get(INPUT_PLANE_ID));
 
-        List<Vector3d> world = collectPoints(inputValues.get(INPUT_POINTS_ID));
+        List<Vector3d> world = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
         if (world.size() < 3) {
             writeInvalid();
             return;
@@ -121,37 +115,6 @@ public class ConvexHull2DOnPlaneNode extends BaseNode {
         outputValues.put(OUTPUT_PROFILE_ID, null);
         outputValues.put(OUTPUT_BOUNDARY_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private static List<Vector3d> collectPoints(Object value) {
-        List<Vector3d> out = new ArrayList<>();
-        if (value instanceof Collection<?> collection) {
-            for (Object entry : collection) {
-                Vector3d p = resolvePoint(entry);
-                if (p != null) {
-                    out.add(p);
-                }
-            }
-        } else {
-            Vector3d p = resolvePoint(value);
-            if (p != null) {
-                out.add(p);
-            }
-        }
-        return out;
-    }
-
-    private static Vector3d resolvePoint(Object value) {
-        if (value instanceof PointData pd) {
-            return new Vector3d(pd.getPosition());
-        }
-        if (value instanceof Vector3d v) {
-            return new Vector3d(v);
-        }
-        if (value instanceof BlockPos bp) {
-            return new Vector3d(bp.getX(), bp.getY(), bp.getZ());
-        }
-        return null;
     }
 
     /**

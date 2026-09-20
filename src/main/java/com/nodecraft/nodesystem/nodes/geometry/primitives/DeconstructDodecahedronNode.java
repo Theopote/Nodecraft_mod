@@ -7,6 +7,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.DodecahedronGeometryData;
+import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
@@ -44,10 +46,10 @@ public class DeconstructDodecahedronNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_DODECAHEDRON_ID, "Dodecahedron", "Dodecahedron geometry to deconstruct", NodeDataType.DODECAHEDRON_GEOMETRY, this));
 
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Dodecahedron center", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Dodecahedron center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_EDGE_LENGTH_ID, "Edge Length", "Edge length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_CIRCUMRADIUS_ID, "Circumradius", "Circumscribed sphere radius", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_VERTICES_ID, "Vertices", "World-space vertices", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VERTICES_ID, "Vertices", "World-space vertices", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_AREA_ID, "Surface Area", "Total surface area", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Interior volume", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
@@ -75,10 +77,10 @@ public class DeconstructDodecahedronNode extends BaseNode {
         RegionData region = GeometryVoxelizer.createBoundingRegion(dodeca);
         BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
 
-        outputValues.put(OUTPUT_CENTER_ID, dodeca.getCenter());
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(dodeca.getCenter()));
         outputValues.put(OUTPUT_EDGE_LENGTH_ID, a);
         outputValues.put(OUTPUT_CIRCUMRADIUS_ID, dodeca.getCircumradius());
-        outputValues.put(OUTPUT_VERTICES_ID, dodeca.getVertices());
+        outputValues.put(OUTPUT_VERTICES_ID, SpatialValueResolver.toPointDataList(dodeca.getVertices()));
         outputValues.put(OUTPUT_SURFACE_AREA_ID, surface);
         outputValues.put(OUTPUT_VOLUME_ID, volume);
         outputValues.put(OUTPUT_REGION_ID, region);

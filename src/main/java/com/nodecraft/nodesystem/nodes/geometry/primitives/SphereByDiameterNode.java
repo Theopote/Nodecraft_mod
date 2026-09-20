@@ -6,13 +6,10 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
-import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
-import com.nodecraft.nodesystem.util.Coordinate;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -43,12 +40,12 @@ public class SphereByDiameterNode extends BaseNode {
     public SphereByDiameterNode() {
         super(UUID.randomUUID(), "geometry.primitives.sphere_from_diameter");
 
-        addInputPort(new BasePort(INPUT_START_ID, "Point A", "First diameter endpoint", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_END_ID, "Point B", "Second diameter endpoint", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_START_ID, "Point A", "First diameter endpoint", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_END_ID, "Point B", "Second diameter endpoint", NodeDataType.POINT, this));
 
         addOutputPort(new BasePort(OUTPUT_SPHERE_ID, "Sphere", "Constructed sphere geometry", NodeDataType.SPHERE, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved sphere center", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved sphere center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_RADIUS_ID, "Radius", "Resolved radius", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_DIAMETER_ID, "Diameter", "Diameter length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_DIAMETER_LINE_ID, "Diameter Line", "Line segment between both diameter endpoints", NodeDataType.LINE, this));
@@ -106,7 +103,7 @@ public class SphereByDiameterNode extends BaseNode {
 
         outputValues.put(OUTPUT_SPHERE_ID, sphere);
         outputValues.put(OUTPUT_GEOMETRY_ID, sphere);
-        outputValues.put(OUTPUT_CENTER_ID, center);
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(OUTPUT_RADIUS_ID, radius);
         outputValues.put(OUTPUT_DIAMETER_ID, diameter);
         outputValues.put(OUTPUT_DIAMETER_LINE_ID, diameterLine);
@@ -124,9 +121,6 @@ public class SphereByDiameterNode extends BaseNode {
     }
 
     private Vector3d resolvePoint(Object value) {
-        if (value instanceof PlaneData planeData) {
-            return planeData.getPoint();
-        }
         return SpatialValueResolver.resolveVector3d(value);
     }
 

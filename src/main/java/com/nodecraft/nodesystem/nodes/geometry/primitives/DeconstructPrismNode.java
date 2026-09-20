@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -43,8 +44,8 @@ public class DeconstructPrismNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_PRISM_ID, "Prism", "Prism geometry to deconstruct", NodeDataType.PRISM_GEOMETRY, this));
 
-        addOutputPort(new BasePort(OUTPUT_BASE_POINTS_ID, "Base Points", "Base polygon points", NodeDataType.VECTOR_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_TOP_POINTS_ID, "Top Points", "Top polygon points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_BASE_POINTS_ID, "Base Points", "Base polygon points", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_TOP_POINTS_ID, "Top Points", "Top polygon points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_EXTRUSION_VECTOR_ID, "Extrusion Vector", "Prism extrusion vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_HEIGHT_ID, "Height", "Prism extrusion length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SIDE_COUNT_ID, "Side Count", "Number of prism side faces", NodeDataType.INTEGER, this));
@@ -75,8 +76,8 @@ public class DeconstructPrismNode extends BaseNode {
         RegionData region = GeometryVoxelizer.createBoundingRegion(prism);
         BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
 
-        outputValues.put(OUTPUT_BASE_POINTS_ID, basePoints);
-        outputValues.put(OUTPUT_TOP_POINTS_ID, topPoints);
+        outputValues.put(OUTPUT_BASE_POINTS_ID, SpatialValueResolver.toPointDataList(basePoints));
+        outputValues.put(OUTPUT_TOP_POINTS_ID, SpatialValueResolver.toPointDataList(topPoints));
         outputValues.put(OUTPUT_EXTRUSION_VECTOR_ID, extrusionVector);
         outputValues.put(OUTPUT_HEIGHT_ID, height);
         outputValues.put(OUTPUT_SIDE_COUNT_ID, sideCount);

@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
@@ -45,8 +46,8 @@ public class DeconstructConeNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_CONE_ID, "Cone", "Cone geometry to deconstruct", NodeDataType.CONE_GEOMETRY, this));
 
-        addOutputPort(new BasePort(OUTPUT_BASE_CENTER_ID, "Base Center", "Cone base center", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_APEX_ID, "Apex", "Cone apex point", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_BASE_CENTER_ID, "Base Center", "Cone base center", NodeDataType.POINT, this));
+        addOutputPort(new BasePort(OUTPUT_APEX_ID, "Apex", "Cone apex point", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_AXIS_VECTOR_ID, "Axis Vector", "Cone axis vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_HEIGHT_ID, "Height", "Cone height", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_RADIUS_ID, "Base Radius", "Cone base radius", NodeDataType.DOUBLE, this));
@@ -85,8 +86,8 @@ public class DeconstructConeNode extends BaseNode {
         RegionData region = GeometryVoxelizer.createBoundingRegion(cone);
         BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
 
-        outputValues.put(OUTPUT_BASE_CENTER_ID, baseCenter);
-        outputValues.put(OUTPUT_APEX_ID, apex);
+        outputValues.put(OUTPUT_BASE_CENTER_ID, new PointData(baseCenter));
+        outputValues.put(OUTPUT_APEX_ID, new PointData(apex));
         outputValues.put(OUTPUT_AXIS_VECTOR_ID, axisVector);
         outputValues.put(OUTPUT_HEIGHT_ID, height);
         outputValues.put(OUTPUT_RADIUS_ID, radius);

@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
@@ -41,7 +42,7 @@ public class DeconstructEllipsoidNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_ELLIPSOID_ID, "Ellipsoid", "Ellipsoid geometry to deconstruct", NodeDataType.ELLIPSOID_GEOMETRY, this));
 
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Ellipsoid center", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Ellipsoid center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_RADII_ID, "Radii", "Ellipsoid radii vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_DIAMETERS_ID, "Diameters", "Ellipsoid diameters vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Ellipsoid volume", NodeDataType.DOUBLE, this));
@@ -72,7 +73,7 @@ public class DeconstructEllipsoidNode extends BaseNode {
         RegionData region = GeometryVoxelizer.createBoundingRegion(ellipsoid);
         BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
 
-        outputValues.put(OUTPUT_CENTER_ID, center);
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(OUTPUT_RADII_ID, radii);
         outputValues.put(OUTPUT_DIAMETERS_ID, diameters);
         outputValues.put(OUTPUT_VOLUME_ID, volume);

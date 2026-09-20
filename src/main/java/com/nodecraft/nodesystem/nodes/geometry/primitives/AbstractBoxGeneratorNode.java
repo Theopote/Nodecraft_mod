@@ -140,6 +140,62 @@ public abstract class AbstractBoxGeneratorNode extends BaseNode {
         return new BoxDefinition(region, centerVector, halfExtents, orientationMatrix, rotated);
     }
 
+    protected BoxDefinition createContinuousAxisAlignedDefinition(Vector3d cornerA, Vector3d cornerB) {
+        double minX = Math.min(cornerA.x, cornerB.x);
+        double minY = Math.min(cornerA.y, cornerB.y);
+        double minZ = Math.min(cornerA.z, cornerB.z);
+        double maxX = Math.max(cornerA.x, cornerB.x);
+        double maxY = Math.max(cornerA.y, cornerB.y);
+        double maxZ = Math.max(cornerA.z, cornerB.z);
+        double extentX = maxX - minX;
+        double extentY = maxY - minY;
+        double extentZ = maxZ - minZ;
+        if (extentX <= 0.0d || extentY <= 0.0d || extentZ <= 0.0d) {
+            return null;
+        }
+
+        Vector3d center = new Vector3d((minX + maxX) * 0.5d, (minY + maxY) * 0.5d, (minZ + maxZ) * 0.5d);
+        Vector3d halfExtents = new Vector3d(extentX * 0.5d, extentY * 0.5d, extentZ * 0.5d);
+        BlockPos minCorner = BlockPos.ofFloored(minX, minY, minZ);
+        BlockPos maxCorner = BlockPos.ofFloored(maxX, maxY, maxZ);
+        RegionData region = new RegionData(minCorner, maxCorner);
+        return new BoxDefinition(region, center, halfExtents, new Matrix3d().identity(), false);
+    }
+
+    protected BoxDefinition createContinuousCornerAndSizeDefinition(
+        Vector3d corner,
+        double sizeX,
+        double sizeY,
+        double sizeZ,
+        Object planeObj,
+        double rotationX,
+        double rotationY,
+        double rotationZ
+    ) {
+        if (!Double.isFinite(sizeX) || !Double.isFinite(sizeY) || !Double.isFinite(sizeZ)
+                || sizeX == 0.0d || sizeY == 0.0d || sizeZ == 0.0d) {
+            return null;
+        }
+
+        Matrix3d orientationMatrix = createOrientationMatrix(planeObj, rotationX, rotationY, rotationZ);
+        Vector3d startOffset = new Vector3d(0, 0, 0);
+        Vector3d endOffset = new Vector3d(sizeX, sizeY, sizeZ);
+        orientationMatrix.transform(startOffset);
+        orientationMatrix.transform(endOffset);
+        Vector3d cornerVector = new Vector3d(corner);
+        Vector3d startCorner = new Vector3d(cornerVector).add(startOffset);
+        Vector3d endCorner = new Vector3d(cornerVector).add(endOffset);
+        Vector3d center = new Vector3d(startCorner).add(endCorner).mul(0.5d);
+        Vector3d halfExtents = new Vector3d(
+            Math.abs(sizeX) / 2.0d,
+            Math.abs(sizeY) / 2.0d,
+            Math.abs(sizeZ) / 2.0d
+        );
+        RegionData region = BoxBlockGenerator.createOrientedBoundingRegion(center, halfExtents, orientationMatrix);
+        boolean rotated = hasRotation(rotationX, rotationY, rotationZ) || planeObj instanceof PlaneData;
+        return new BoxDefinition(region, center, halfExtents, orientationMatrix, rotated);
+    }
+
     protected BoxDefinition createAxisAlignedDefinition(BlockPos minCorner, BlockPos maxCorner) {
         RegionData region = new RegionData(minCorner, maxCorner);
         Vector3d center = new Vector3d(

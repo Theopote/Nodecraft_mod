@@ -263,6 +263,12 @@ P1/P2 applied to Sphere, Cylinder, Cone, Torus, Box (center+size), Rectangle/Cir
 typed spatial ports, `POINT_LIST`, XZ defaults, plane-origin center fallback, property defaults,
 continuous Box geometry (Blocks/Region legacy).
 
+**Profiles family rollout (`geometry.profiles.*`) — done (2026-09-21):** Batch-2 language rules
+applied to all remaining profile generators and utilities under `geometry.profiles` (OnPlane shapes,
+Polygon By Points, deconstruct/resample, convex hull, Voronoi). Center inputs are `POINT`; location
+outputs are `POINT` / `POINT_LIST`; default plane is XZ via `ProfilePlaneUtils`; direction/axis
+ports remain `VECTOR`.
+
 ---
 
 ## Checklist for new nodes

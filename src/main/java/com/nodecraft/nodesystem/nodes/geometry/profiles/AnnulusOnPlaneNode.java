@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.geometry.profiles;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
@@ -13,7 +14,9 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
@@ -40,17 +43,26 @@ public class AnnulusOnPlaneNode extends BaseNode {
     private static final String OUTPUT_INNER_BOUNDARY_ID = "output_inner_boundary";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
+    @NodeProperty(displayName = "Inner Radius", category = "Size", order = 1)
+    private double innerRadius = 2.0d;
+
+    @NodeProperty(displayName = "Outer Radius", category = "Size", order = 2)
+    private double outerRadius = 5.0d;
+
+    @NodeProperty(displayName = "Segments", category = "Resolution", order = 3)
+    private int segments = 32;
+
     public AnnulusOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.annulus_profile");
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Annulus center point", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_INNER_RADIUS_ID, "Inner Radius", "Inner ring radius", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_OUTER_RADIUS_ID, "Outer Radius", "Outer ring radius", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Boundary segment count", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XY plane", NodeDataType.PLANE, this));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this));
         addInputPort(new BasePort(INPUT_AXIS_ID, "Start Direction", "Optional in-plane zero-angle direction", NodeDataType.VECTOR, this));
 
-        addOutputPort(new BasePort(OUTPUT_OUTER_POINTS_ID, "Outer Points", "Closed outer ring points", NodeDataType.VECTOR_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_INNER_POINTS_ID, "Inner Points", "Closed inner ring points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_OUTER_POINTS_ID, "Outer Points", "Closed outer ring points", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_INNER_POINTS_ID, "Inner Points", "Closed inner ring points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_OUTER_PROFILE_ID, "Outer Profile", "Outer ring profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_INNER_PROFILE_ID, "Inner Profile", "Inner ring profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_OUTER_BOUNDARY_ID, "Outer Boundary", "Closed outer ring boundary", NodeDataType.POLYLINE, this));
@@ -65,20 +77,13 @@ public class AnnulusOnPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d center = ProfilePlaneUtils.resolvePoint(inputValues.get(INPUT_CENTER_ID));
-        Object innerObj = inputValues.get(INPUT_INNER_RADIUS_ID);
-        Object outerObj = inputValues.get(INPUT_OUTER_RADIUS_ID);
-        Object segmentsObj = inputValues.get(INPUT_SEGMENTS_ID);
-        PlaneData plane = inputValues.get(INPUT_PLANE_ID) instanceof PlaneData p ? p : PlaneData.XY_PLANE;
+        PlaneData plane = ProfilePlaneUtils.resolvePlane(inputValues.get(INPUT_PLANE_ID));
+        Vector3d center = ProfilePlaneUtils.resolveCenter(inputValues.get(INPUT_CENTER_ID), plane);
+        double inner = resolveDouble(inputValues.get(INPUT_INNER_RADIUS_ID), innerRadius);
+        double outer = resolveDouble(inputValues.get(INPUT_OUTER_RADIUS_ID), outerRadius);
+        int resolvedSegments = resolveSegments();
         Vector3d preferred = inputValues.get(INPUT_AXIS_ID) instanceof Vector3d v ? new Vector3d(v) : null;
 
-        if (center == null || !(innerObj instanceof Number inN) || !(outerObj instanceof Number outN) || !(segmentsObj instanceof Number segN)) {
-            writeInvalid();
-            return;
-        }
-        double inner = inN.doubleValue();
-        double outer = outN.doubleValue();
-        int segments = GenerationLimits.clampSegments(3, segN.intValue());
         if (!Double.isFinite(inner) || !Double.isFinite(outer) || inner <= 0.0d || outer <= 0.0d || inner >= outer) {
             writeInvalid();
             return;
@@ -90,12 +95,12 @@ public class AnnulusOnPlaneNode extends BaseNode {
             return;
         }
 
-        List<Vector3d> outerPts = buildRing(center, basis, outer, segments, false);
-        List<Vector3d> innerPts = buildRing(center, basis, inner, segments, true);
+        List<Vector3d> outerPts = buildRing(center, basis, outer, resolvedSegments, false);
+        List<Vector3d> innerPts = buildRing(center, basis, inner, resolvedSegments, true);
         PlaneData resolvedPlane = new PlaneData(center, basis.normal());
 
-        outputValues.put(OUTPUT_OUTER_POINTS_ID, List.copyOf(outerPts));
-        outputValues.put(OUTPUT_INNER_POINTS_ID, List.copyOf(innerPts));
+        outputValues.put(OUTPUT_OUTER_POINTS_ID, ProfilePlaneUtils.toPointList(outerPts));
+        outputValues.put(OUTPUT_INNER_POINTS_ID, ProfilePlaneUtils.toPointList(innerPts));
         outputValues.put(OUTPUT_OUTER_PROFILE_ID, new PolygonProfileData(outerPts, resolvedPlane));
         outputValues.put(OUTPUT_INNER_PROFILE_ID, new PolygonProfileData(innerPts, resolvedPlane));
         outputValues.put(OUTPUT_OUTER_BOUNDARY_ID, ProfilePlaneUtils.toPolyline(outerPts));
@@ -103,15 +108,28 @@ public class AnnulusOnPlaneNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
-    private List<Vector3d> buildRing(Vector3d center, ProfilePlaneUtils.Basis basis, double radius, int segments, boolean clockwise) {
-        List<Vector3d> points = new ArrayList<>(segments + 1);
-        double step = (Math.PI * 2.0d) / segments;
-        for (int i = 0; i < segments; i++) {
-            int index = clockwise ? (segments - i) : i;
+    private int resolveSegments() {
+        Object segmentsObj = inputValues.get(INPUT_SEGMENTS_ID);
+        int raw = segmentsObj instanceof Number number ? number.intValue() : segments;
+        return GenerationLimits.clampSegments(3, raw);
+    }
+
+    private static double resolveDouble(@Nullable Object value, double fallback) {
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        return fallback;
+    }
+
+    private List<Vector3d> buildRing(Vector3d center, ProfilePlaneUtils.Basis basis, double ringRadius, int segmentCount, boolean clockwise) {
+        List<Vector3d> points = new ArrayList<>(segmentCount + 1);
+        double step = (Math.PI * 2.0d) / segmentCount;
+        for (int i = 0; i < segmentCount; i++) {
+            int index = clockwise ? (segmentCount - i) : i;
             double a = step * index;
             points.add(new Vector3d(center)
-                .add(new Vector3d(basis.xAxis()).mul(Math.cos(a) * radius))
-                .add(new Vector3d(basis.yAxis()).mul(Math.sin(a) * radius)));
+                .add(new Vector3d(basis.xAxis()).mul(Math.cos(a) * ringRadius))
+                .add(new Vector3d(basis.yAxis()).mul(Math.sin(a) * ringRadius)));
         }
         points.add(new Vector3d(points.get(0)));
         return points;
@@ -125,5 +143,24 @@ public class AnnulusOnPlaneNode extends BaseNode {
         outputValues.put(OUTPUT_OUTER_BOUNDARY_ID, null);
         outputValues.put(OUTPUT_INNER_BOUNDARY_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
+    }
+
+    @Override
+    public Object getNodeState() {
+        Map<String, Object> state = new HashMap<>();
+        state.put("innerRadius", innerRadius);
+        state.put("outerRadius", outerRadius);
+        state.put("segments", segments);
+        return state;
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (!(state instanceof Map<?, ?> map)) {
+            return;
+        }
+        if (map.get("innerRadius") instanceof Number n) innerRadius = n.doubleValue();
+        if (map.get("outerRadius") instanceof Number n) outerRadius = n.doubleValue();
+        if (map.get("segments") instanceof Number n) segments = n.intValue();
     }
 }

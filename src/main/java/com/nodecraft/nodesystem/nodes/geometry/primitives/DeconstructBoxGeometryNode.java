@@ -7,7 +7,9 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -44,10 +46,10 @@ public class DeconstructBoxGeometryNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "The box geometry to deconstruct", NodeDataType.BOX_GEOMETRY, this));
 
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Box center", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Box center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_HALF_EXTENTS_ID, "Half Extents", "Half size along local X/Y/Z", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_IS_ORIENTED_ID, "Is Oriented", "Whether the box uses an oriented basis", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_CORNERS_ID, "Corners", "Ordered list of the 8 box corners", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_CORNERS_ID, "Corners", "Ordered list of the 8 box corners", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_CORNER_NAMES_ID, "Corner Names", "Names that correspond to the ordered corner list", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_FACES_ID, "Faces", "Ordered list of the 6 box faces", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_FACE_NAMES_ID, "Face Names", "Names that correspond to the ordered face list", NodeDataType.LIST, this));
@@ -92,10 +94,10 @@ public class DeconstructBoxGeometryNode extends BaseNode {
         List<Vector3d> corners = geometry.getCorners();
         List<BoxFaceData> faces = geometry.getFaces();
 
-        outputValues.put(OUTPUT_CENTER_ID, geometry.getCenter());
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(geometry.getCenter()));
         outputValues.put(OUTPUT_HALF_EXTENTS_ID, geometry.getHalfExtents());
         outputValues.put(OUTPUT_IS_ORIENTED_ID, geometry.isOriented());
-        outputValues.put(OUTPUT_CORNERS_ID, corners);
+        outputValues.put(OUTPUT_CORNERS_ID, SpatialValueResolver.toPointDataList(corners));
         outputValues.put(OUTPUT_CORNER_NAMES_ID, geometry.getCornerNames());
         outputValues.put(OUTPUT_FACES_ID, faces);
         outputValues.put(OUTPUT_FACE_NAMES_ID, geometry.getFaceNames());

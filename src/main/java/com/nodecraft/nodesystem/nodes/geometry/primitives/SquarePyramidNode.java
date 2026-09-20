@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.geometry.primitives;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
@@ -10,13 +11,14 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SquarePyramidGeometryData;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Coordinate;
-import net.minecraft.util.math.BlockPos;
+import com.nodecraft.nodesystem.util.Vector3;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
@@ -43,18 +45,31 @@ public class SquarePyramidNode extends BaseNode {
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
+    @NodeProperty(displayName = "Base Center X", category = "Center", order = 1)
+    private double centerX = 0.0d;
+    @NodeProperty(displayName = "Base Center Y", category = "Center", order = 2)
+    private double centerY = 0.0d;
+    @NodeProperty(displayName = "Base Center Z", category = "Center", order = 3)
+    private double centerZ = 0.0d;
+
+    @NodeProperty(displayName = "Base Size", category = "Size", order = 10)
+    private double baseSize = 5.0d;
+
+    @NodeProperty(displayName = "Height", category = "Size", order = 11)
+    private double height = 5.0d;
+
     public SquarePyramidNode() {
         super(UUID.randomUUID(), "geometry.primitives.square_pyramid");
 
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Base Center", "Center point of the square base", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Base Center", "Center point of the square base", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_BASE_SIZE_ID, "Base Size", "Length of each base edge", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Distance from base plane to apex", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Construction plane for the square base", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_X_AXIS_ID, "X Axis", "Optional in-plane axis to rotate the square base", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_X_AXIS_ID, "X Axis", "Optional in-plane axis to rotate the square base", NodeDataType.VECTOR, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Square pyramid geometry", NodeDataType.GEOMETRY, this));
-        addOutputPort(new BasePort(OUTPUT_APEX_ID, "Apex", "Apex point above the base plane", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_BASE_POINTS_ID, "Base Points", "Four square base corners", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_APEX_ID, "Apex", "Apex point above the base plane", NodeDataType.POINT, this));
+        addOutputPort(new BasePort(OUTPUT_BASE_POINTS_ID, "Base Points", "Four square base corners", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BASE_SIZE_ID, "Base Size", "Resolved base size", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_HEIGHT_ID, "Height", "Resolved height", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved base plane", NodeDataType.PLANE, this));
@@ -68,19 +83,19 @@ public class SquarePyramidNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d center = resolvePoint(inputValues.get(INPUT_CENTER_ID));
-        Object baseSizeObj = inputValues.get(INPUT_BASE_SIZE_ID);
-        Object heightObj = inputValues.get(INPUT_HEIGHT_ID);
-        PlaneData plane = inputValues.get(INPUT_PLANE_ID) instanceof PlaneData p ? p : PlaneData.XY_PLANE;
-        Vector3d preferredXAxis = resolvePoint(inputValues.get(INPUT_X_AXIS_ID));
+        Vector3d center = resolveCenter();
+        double resolvedBaseSize = resolveDouble(inputValues.get(INPUT_BASE_SIZE_ID), baseSize);
+        double resolvedHeight = resolveDouble(inputValues.get(INPUT_HEIGHT_ID), height);
+        PlaneData plane = inputValues.get(INPUT_PLANE_ID) instanceof PlaneData p ? p : PlaneData.XZ_PLANE;
+        Vector3d preferredXAxis = resolveDirection(inputValues.get(INPUT_X_AXIS_ID));
 
-        if (center == null || !(baseSizeObj instanceof Number baseSizeNumber) || !(heightObj instanceof Number heightNumber)) {
+        if (center == null) {
             writeEmptyOutputs();
             return;
         }
 
-        double baseSize = baseSizeNumber.doubleValue();
-        double height = heightNumber.doubleValue();
+        double baseSize = resolvedBaseSize;
+        double height = resolvedHeight;
         if (!Double.isFinite(baseSize) || !Double.isFinite(height) || baseSize <= 0.0d || height <= 0.0d) {
             writeEmptyOutputs();
             return;
@@ -103,8 +118,8 @@ public class SquarePyramidNode extends BaseNode {
         );
 
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
-        outputValues.put(OUTPUT_APEX_ID, geometry.getApex());
-        outputValues.put(OUTPUT_BASE_POINTS_ID, geometry.getBaseVertices());
+        outputValues.put(OUTPUT_APEX_ID, new PointData(geometry.getApex()));
+        outputValues.put(OUTPUT_BASE_POINTS_ID, SpatialValueResolver.toPointDataList(geometry.getBaseVertices()));
         outputValues.put(OUTPUT_BASE_SIZE_ID, baseSize);
         outputValues.put(OUTPUT_HEIGHT_ID, height);
         outputValues.put(OUTPUT_PLANE_ID, resolvedPlane);
@@ -157,8 +172,52 @@ public class SquarePyramidNode extends BaseNode {
         return reference.sub(new Vector3d(normal).mul(reference.dot(normal)));
     }
 
-    private Vector3d resolvePoint(Object value) {
-        return SpatialValueResolver.resolveVector3d(value);
+    private @Nullable Vector3d resolveDirection(@Nullable Object value) {
+        if (value instanceof Vector3d vector) {
+            return new Vector3d(vector);
+        }
+        if (value instanceof Vector3 vector) {
+            return new Vector3d(vector.getX(), vector.getY(), vector.getZ());
+        }
+        if (value instanceof Vec3d vector) {
+            return new Vector3d(vector.x, vector.y, vector.z);
+        }
+        return null;
+    }
+
+    private Vector3d resolveCenter() {
+        Vector3d fromPort = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_CENTER_ID));
+        return fromPort != null ? fromPort : new Vector3d(centerX, centerY, centerZ);
+    }
+
+    private static double resolveDouble(@Nullable Object value, double fallback) {
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        return fallback;
+    }
+
+    @Override
+    public Object getNodeState() {
+        Map<String, Object> state = new HashMap<>();
+        state.put("centerX", centerX);
+        state.put("centerY", centerY);
+        state.put("centerZ", centerZ);
+        state.put("baseSize", baseSize);
+        state.put("height", height);
+        return state;
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (!(state instanceof Map<?, ?> map)) {
+            return;
+        }
+        if (map.get("centerX") instanceof Number n) centerX = n.doubleValue();
+        if (map.get("centerY") instanceof Number n) centerY = n.doubleValue();
+        if (map.get("centerZ") instanceof Number n) centerZ = n.doubleValue();
+        if (map.get("baseSize") instanceof Number n) baseSize = n.doubleValue();
+        if (map.get("height") instanceof Number n) height = n.doubleValue();
     }
 
     private record Basis(Vector3d xAxis, Vector3d yAxis, Vector3d normal) { }

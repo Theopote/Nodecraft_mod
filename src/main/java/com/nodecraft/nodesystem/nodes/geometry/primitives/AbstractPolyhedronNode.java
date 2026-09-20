@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PolyhedronOrientationUtil;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
@@ -27,15 +28,24 @@ public abstract class AbstractPolyhedronNode<T extends GeometryData> extends Bas
     protected static final String OUTPUT_VERTICES_ID = "output_vertices";
     protected static final String OUTPUT_VALID_ID = "output_valid";
 
-    @NodeProperty(displayName = "Rotation X (deg)", category = "Orientation", order = 1,
+    @NodeProperty(displayName = "Center X", category = "Center", order = 0)
+    protected double centerX = 0.0d;
+
+    @NodeProperty(displayName = "Center Y", category = "Center", order = 1)
+    protected double centerY = 0.0d;
+
+    @NodeProperty(displayName = "Center Z", category = "Center", order = 2)
+    protected double centerZ = 0.0d;
+
+    @NodeProperty(displayName = "Rotation X (deg)", category = "Orientation", order = 10,
         description = "Euler rotation about X in degrees when orientation port is not connected")
     protected double rotationXDeg = 0.0d;
 
-    @NodeProperty(displayName = "Rotation Y (deg)", category = "Orientation", order = 2,
+    @NodeProperty(displayName = "Rotation Y (deg)", category = "Orientation", order = 11,
         description = "Euler rotation about Y in degrees when orientation port is not connected")
     protected double rotationYDeg = 0.0d;
 
-    @NodeProperty(displayName = "Rotation Z (deg)", category = "Orientation", order = 3,
+    @NodeProperty(displayName = "Rotation Z (deg)", category = "Orientation", order = 12,
         description = "Euler rotation about Z in degrees when orientation port is not connected")
     protected double rotationZDeg = 0.0d;
 
@@ -61,21 +71,21 @@ public abstract class AbstractPolyhedronNode<T extends GeometryData> extends Bas
         this.outputPrimaryId = outputPrimaryId;
         this.outputSizeId = outputSizeId;
 
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Polyhedron center point", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Polyhedron center point", NodeDataType.POINT, this));
         addInputPort(new BasePort(inputSizeId, inputSizeName, inputSizeDescription, NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_ORIENTATION_ID, "Orientation", "Optional rotation matrix (local -> world)", NodeDataType.ANY, this));
 
         addOutputPort(new BasePort(outputPrimaryId, outputPrimaryName, outputPrimaryDescription, outputPrimaryType, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved center", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(outputSizeId, outputSizeName, outputSizeDescription, NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_VERTICES_ID, "Vertices", "World-space vertices", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VERTICES_ID, "Vertices", "World-space vertices", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when geometry could be constructed", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d center = resolvePoint(inputValues.get(INPUT_CENTER_ID));
+        Vector3d center = resolveCenter(inputValues.get(INPUT_CENTER_ID));
         Object sizeObj = inputValues.get(inputSizeId);
         if (center == null || !(sizeObj instanceof Number sizeNumber)) {
             writeEmptyOutputs();
@@ -98,9 +108,9 @@ public abstract class AbstractPolyhedronNode<T extends GeometryData> extends Bas
         T geometry = createGeometry(center, size, orientation);
         outputValues.put(outputPrimaryId, geometry);
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
-        outputValues.put(OUTPUT_CENTER_ID, center);
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(outputSizeId, size);
-        outputValues.put(OUTPUT_VERTICES_ID, extractVertices(geometry));
+        outputValues.put(OUTPUT_VERTICES_ID, SpatialValueResolver.toPointDataList(extractVertices(geometry)));
         writeAdditionalOutputs(geometry, size);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
@@ -108,6 +118,9 @@ public abstract class AbstractPolyhedronNode<T extends GeometryData> extends Bas
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
+        state.put("centerX", centerX);
+        state.put("centerY", centerY);
+        state.put("centerZ", centerZ);
         state.put("rotationXDeg", rotationXDeg);
         state.put("rotationYDeg", rotationYDeg);
         state.put("rotationZDeg", rotationZDeg);
@@ -118,6 +131,15 @@ public abstract class AbstractPolyhedronNode<T extends GeometryData> extends Bas
     public void setNodeState(Object state) {
         if (!(state instanceof Map<?, ?> map)) {
             return;
+        }
+        if (map.get("centerX") instanceof Number n) {
+            centerX = n.doubleValue();
+        }
+        if (map.get("centerY") instanceof Number n) {
+            centerY = n.doubleValue();
+        }
+        if (map.get("centerZ") instanceof Number n) {
+            centerZ = n.doubleValue();
         }
         if (map.get("rotationXDeg") instanceof Number n) {
             rotationXDeg = n.doubleValue();
@@ -140,8 +162,9 @@ public abstract class AbstractPolyhedronNode<T extends GeometryData> extends Bas
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
-    protected Vector3d resolvePoint(Object value) {
-        return SpatialValueResolver.resolveVector3d(value);
+    protected Vector3d resolveCenter(Object value) {
+        Vector3d fromPort = SpatialValueResolver.resolveVector3d(value);
+        return fromPort != null ? fromPort : new Vector3d(centerX, centerY, centerZ);
     }
 
     protected abstract T createGeometry(Vector3d center, double size, Matrix3d orientation);

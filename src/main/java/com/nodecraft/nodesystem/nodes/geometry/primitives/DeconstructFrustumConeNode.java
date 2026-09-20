@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
@@ -48,8 +49,8 @@ public class DeconstructFrustumConeNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_FRUSTUM_ID, "Frustum", "Frustum cone geometry to deconstruct", NodeDataType.FRUSTUM_CONE_GEOMETRY, this));
 
-        addOutputPort(new BasePort(OUTPUT_BASE_CENTER_ID, "Base Center", "Base face center", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_TOP_CENTER_ID, "Top Center", "Top face center", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_BASE_CENTER_ID, "Base Center", "Base face center", NodeDataType.POINT, this));
+        addOutputPort(new BasePort(OUTPUT_TOP_CENTER_ID, "Top Center", "Top face center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_AXIS_VECTOR_ID, "Axis Vector", "Axis from base to top", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_HEIGHT_ID, "Height", "Distance between face centers", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_BASE_RADIUS_ID, "Base Radius", "Base face radius", NodeDataType.DOUBLE, this));
@@ -96,8 +97,8 @@ public class DeconstructFrustumConeNode extends BaseNode {
         RegionData region = GeometryVoxelizer.createBoundingRegion(frustum);
         BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
 
-        outputValues.put(OUTPUT_BASE_CENTER_ID, baseCenter);
-        outputValues.put(OUTPUT_TOP_CENTER_ID, topCenter);
+        outputValues.put(OUTPUT_BASE_CENTER_ID, new PointData(baseCenter));
+        outputValues.put(OUTPUT_TOP_CENTER_ID, new PointData(topCenter));
         outputValues.put(OUTPUT_AXIS_VECTOR_ID, axisVector);
         outputValues.put(OUTPUT_HEIGHT_ID, height);
         outputValues.put(OUTPUT_BASE_RADIUS_ID, rb);

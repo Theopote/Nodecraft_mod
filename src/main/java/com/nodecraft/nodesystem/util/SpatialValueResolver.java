@@ -6,9 +6,17 @@ import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 /**
  * Normalizes common spatial value representations into JOML vectors so geometry nodes can
  * consistently consume world positions, centers, and point-like values.
+ * <p>
+ * Graph language uses {@code POINT} / {@code POINT_LIST}; internal algorithms typically consume
+ * {@link Vector3d}. Prefer {@link #resolvePointList(Object)} at list-input boundaries so
+ * {@link PointData} and legacy {@link Vector3d} entries both work.
  */
 public final class SpatialValueResolver {
     private SpatialValueResolver() {
@@ -34,6 +42,42 @@ public final class SpatialValueResolver {
             return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
         }
         return null;
+    }
+
+    /**
+     * Resolves a collection of point-like entries into continuous locations for algorithms.
+     * Accepts {@link PointData}, {@link Vector3d}, legacy position/vector wrappers, and
+     * {@link BlockPos} (integer corner as continuous xyz). Unknown entries are skipped.
+     */
+    public static List<Vector3d> resolvePointList(@Nullable Object value) {
+        if (!(value instanceof Collection<?> collection)) {
+            return List.of();
+        }
+        List<Vector3d> points = new ArrayList<>(collection.size());
+        for (Object entry : collection) {
+            Vector3d resolved = resolveVector3d(entry);
+            if (resolved != null
+                    && Double.isFinite(resolved.x)
+                    && Double.isFinite(resolved.y)
+                    && Double.isFinite(resolved.z)) {
+                points.add(resolved);
+            }
+        }
+        return points;
+    }
+
+    /** Converts continuous locations to graph-facing {@link PointData} values. */
+    public static List<PointData> toPointDataList(Collection<Vector3d> points) {
+        if (points == null || points.isEmpty()) {
+            return List.of();
+        }
+        List<PointData> out = new ArrayList<>(points.size());
+        for (Vector3d point : points) {
+            if (point != null) {
+                out.add(new PointData(point));
+            }
+        }
+        return List.copyOf(out);
     }
 
     public static @Nullable BlockPos resolveBlockPos(@Nullable Object value) {

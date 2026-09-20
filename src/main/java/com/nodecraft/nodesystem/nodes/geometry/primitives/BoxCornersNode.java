@@ -4,8 +4,6 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
-import net.minecraft.util.math.BlockPos;
-import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
 @NodeInfo(
@@ -24,8 +22,8 @@ public class BoxCornersNode extends AbstractBoxGeneratorNode {
     public BoxCornersNode() {
         super("geometry.primitives.box_from_corners");
 
-        addInputPort(new BasePort(INPUT_CORNER_A_ID, "Corner A", "First corner of the box", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_CORNER_B_ID, "Corner B", "Opposite corner of the box. The result stays axis-aligned.", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_CORNER_A_ID, "Corner A", "First corner of the box", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_CORNER_B_ID, "Corner B", "Opposite corner of the box. The result stays axis-aligned.", NodeDataType.POINT, this));
     }
 
     @Override
@@ -49,18 +47,6 @@ public class BoxCornersNode extends AbstractBoxGeneratorNode {
             return null;
         }
 
-        BlockPos a = BlockPos.ofFloored(cornerA.x, cornerA.y, cornerA.z);
-        BlockPos b = BlockPos.ofFloored(cornerB.x, cornerB.y, cornerB.z);
-        BlockPos minCorner = new BlockPos(
-            Math.min(a.getX(), b.getX()),
-            Math.min(a.getY(), b.getY()),
-            Math.min(a.getZ(), b.getZ())
-        );
-        BlockPos maxCorner = new BlockPos(
-            Math.max(a.getX(), b.getX()),
-            Math.max(a.getY(), b.getY()),
-            Math.max(a.getZ(), b.getZ())
-        );
-        return createAxisAlignedDefinition(minCorner, maxCorner);
+        return createContinuousAxisAlignedDefinition(cornerA, cornerB);
     }
 }

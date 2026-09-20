@@ -10,12 +10,9 @@ import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
 import com.nodecraft.nodesystem.datatypes.LineData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -46,8 +43,8 @@ public class CapsuleByAxisRadiusNode extends BaseNode {
 
     public CapsuleByAxisRadiusNode() {
         super(UUID.randomUUID(), "geometry.primitives.capsule");
-        addInputPort(new BasePort(INPUT_START_ID, "Start", "Capsule axis start", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_END_ID, "End", "Capsule axis end", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_START_ID, "Start", "Capsule axis start", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_END_ID, "End", "Capsule axis end", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Capsule radius", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified capsule geometry", NodeDataType.GEOMETRY, this));

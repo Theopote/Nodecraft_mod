@@ -43,8 +43,8 @@ public class FrustumByTwoCentersRadiiNode extends BaseNode {
     public FrustumByTwoCentersRadiiNode() {
         super(UUID.randomUUID(), "geometry.primitives.frustum_cone");
 
-        addInputPort(new BasePort(INPUT_BASE_CENTER_ID, "Base Center", "Center of the base circular face", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_TOP_CENTER_ID, "Top Center", "Center of the top circular face", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_BASE_CENTER_ID, "Base Center", "Center of the base circular face", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_TOP_CENTER_ID, "Top Center", "Center of the top circular face", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_BASE_RADIUS_ID, "Base Radius", "Radius at the base face", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_TOP_RADIUS_ID, "Top Radius", "Radius at the top face (0 for a sharp cone)", NodeDataType.DOUBLE, this));
 

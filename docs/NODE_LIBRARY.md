@@ -198,18 +198,18 @@
 | Voronoi Cells 2D On Plane | `geometry.profiles.voronoi_cells_plane` | Projects sites into a plane, builds a clipped planar Voronoi diagram (JTS), and outputs each cell as a polygon profile on the plane | `VoronoiCells2DOnPlaneNode` |
 | Convex Hull 3D From Points | `geometry.profiles.convex_hull_3d_points` | Builds a 3D convex hull (triangle facets) from points; intended for small clouds due to brute-force enumeration; coplanar / collinear inputs yield no facets | `ConvexHull3DFromPointsNode` |
 | Circle On Plane | `geometry.profiles.circle_profile` | Constructs a circular profile from radius and an optional center/plane (defaults to XZ) | `CircleOnPlaneNode` |
-| Ellipse On Plane | `geometry.profiles.ellipse_profile` | Constructs an ellipse profile from center, major/minor radii, plane, and segment count | `EllipseOnPlaneNode` |
+| Ellipse On Plane | `geometry.profiles.ellipse_profile` | Constructs an ellipse profile from center, major/minor radii, plane, and segment count (defaults to XZ) | `EllipseOnPlaneNode` |
 | Sector On Plane | `geometry.profiles.sector_profile` | Constructs a circular sector profile from center, radius, start/end angles, and plane | `SectorOnPlaneNode` |
 | Annulus On Plane | `geometry.profiles.annulus_profile` | Constructs annulus boundaries from center, inner/outer radii, plane, and segment count | `AnnulusOnPlaneNode` |
-| Rounded Rectangle On Plane | `geometry.profiles.rounded_rectangle_profile` | Constructs a rounded-rectangle profile from center, width, height, corner radius, and plane | `RoundedRectangleOnPlaneNode` |
-| Star Polygon On Plane | `geometry.profiles.star_polygon_profile` | Constructs a star polygon profile from center, inner/outer radii, point count, and plane | `StarPolygonOnPlaneNode` |
-| SemiCircle On Plane | `geometry.profiles.semicircle_profile` | Constructs a semicircle profile from center, radius, plane, and segment count | `SemiCircleOnPlaneNode` |
-| Rhombus On Plane | `geometry.profiles.rhombus_profile` | Constructs a rhombus profile from center, horizontal diagonal, vertical diagonal, and plane | `RhombusOnPlaneNode` |
+| Rounded Rectangle On Plane | `geometry.profiles.rounded_rectangle_profile` | Constructs a rounded-rectangle profile from center, width, height, corner radius, and plane (defaults to XZ) | `RoundedRectangleOnPlaneNode` |
+| Star Polygon On Plane | `geometry.profiles.star_polygon_profile` | Constructs a star polygon profile from center, inner/outer radii, point count, and plane (defaults to XZ) | `StarPolygonOnPlaneNode` |
+| SemiCircle On Plane | `geometry.profiles.semicircle_profile` | Constructs a semicircle profile from center, radius, plane, and segment count (defaults to XZ) | `SemiCircleOnPlaneNode` |
+| Rhombus On Plane | `geometry.profiles.rhombus_profile` | Constructs a rhombus profile from center, horizontal diagonal, vertical diagonal, and plane (defaults to XZ) | `RhombusOnPlaneNode` |
 | Capsule On Plane | `geometry.profiles.capsule_profile` | Constructs a capsule (stadium) profile from center, length, radius, and plane | `CapsuleOnPlaneNode` |
-| Heart On Plane | `geometry.profiles.heart_profile` | Constructs a heart profile from center, width, height, plane, and segment count | `HeartOnPlaneNode` |
-| Annular Sector On Plane | `geometry.profiles.annular_sector_profile` | Constructs an annular sector boundary from center, inner/outer radii, angle range, and plane | `AnnularSectorOnPlaneNode` |
+| Heart On Plane | `geometry.profiles.heart_profile` | Constructs a heart profile from center, width, height, plane, and segment count (defaults to XZ) | `HeartOnPlaneNode` |
+| Annular Sector On Plane | `geometry.profiles.annular_sector_profile` | Constructs an annular sector boundary from center, inner/outer radii, angle range, and plane (defaults to XZ) | `AnnularSectorOnPlaneNode` |
 | Cross On Plane | `geometry.profiles.cross_profile` | Constructs a plus-shaped cross profile from arm length, arm width, center, and plane | `CrossOnPlaneNode` |
-| Gear On Plane | `geometry.profiles.gear_profile` | Constructs a gear-like profile from center, tooth count, root/tip radii, and plane | `GearOnPlaneNode` |
+| Gear On Plane | `geometry.profiles.gear_profile` | Constructs a gear-like profile from center, tooth count, root/tip radii, and plane (defaults to XZ) | `GearOnPlaneNode` |
 | Profile Offset In Plane | `geometry.profiles.offset_profile_plane` | Offsets a polygon profile in its plane by signed distance using 2D buffer logic | `ProfileOffsetInPlaneNode` |
 | Profile Boolean 2D | `geometry.profiles.boolean_2d` | Performs 2D boolean operations (union/intersection/difference) on two polygon profiles in a shared plane | `ProfileBoolean2DNode` |
 | Profile Triangulate 2D | `geometry.profiles.triangulate_2d` | Triangulates a planar polygon profile into triangle profiles using ear clipping | `ProfileTriangulate2DNode` |

@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
@@ -41,10 +42,10 @@ public class DeconstructPolygonProfileNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_PROFILE_ID, "Profile", "Polygon profile to deconstruct", NodeDataType.POLYGON_PROFILE, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed polygon points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed polygon points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed polygon boundary", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Polygon plane", NodeDataType.PLANE, this));
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Average polygon center", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Average polygon center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_EDGE_COUNT_ID, "Edges", "Number of polygon edges", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_PERIMETER_ID, "Perimeter", "Boundary length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_AREA_ID, "Area", "Polygon area on its plane", NodeDataType.DOUBLE, this));
@@ -67,10 +68,10 @@ public class DeconstructPolygonProfileNode extends BaseNode {
 
         PlaneData plane = profile.getPlane();
 
-        outputValues.put(OUTPUT_POINTS_ID, profile.getClosedPoints());
+        outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(profile.getClosedPoints()));
         outputValues.put(OUTPUT_BOUNDARY_ID, profile.getBoundary());
         outputValues.put(OUTPUT_PLANE_ID, plane);
-        outputValues.put(OUTPUT_CENTER_ID, profile.getCenter());
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(profile.getCenter()));
         outputValues.put(OUTPUT_EDGE_COUNT_ID, profile.getEdgeCount());
         outputValues.put(OUTPUT_PERIMETER_ID, profile.getBoundary().getLength());
         outputValues.put(OUTPUT_AREA_ID, computeArea(profile));

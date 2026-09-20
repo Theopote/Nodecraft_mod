@@ -42,7 +42,7 @@ public class ResamplePolygonProfileNode extends BaseNode {
         addInputPort(new BasePort(INPUT_EDGE_COUNT_ID, "Edge Count", "Target edge count after resampling", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Resampled polygon profile", NodeDataType.POLYGON_PROFILE, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed resampled polygon points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed resampled polygon points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Resampled polygon boundary", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_EDGE_COUNT_ID, "Edge Count", "Resolved target edge count", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid polygon profile and target count were provided", NodeDataType.BOOLEAN, this));
@@ -88,7 +88,7 @@ public class ResamplePolygonProfileNode extends BaseNode {
         PolygonProfileData resampledProfile = new PolygonProfileData(closedResampledPoints, profile.getPlane());
 
         outputValues.put(OUTPUT_PROFILE_ID, resampledProfile);
-        outputValues.put(OUTPUT_POINTS_ID, resampledProfile.getClosedPoints());
+        outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(closedResampledPoints));
         outputValues.put(OUTPUT_BOUNDARY_ID, resampledProfile.getBoundary());
         outputValues.put(OUTPUT_EDGE_COUNT_ID, targetEdgeCount);
         outputValues.put(OUTPUT_VALID_ID, true);

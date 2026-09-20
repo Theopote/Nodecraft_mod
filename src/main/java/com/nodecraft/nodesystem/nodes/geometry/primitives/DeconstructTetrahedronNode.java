@@ -7,7 +7,9 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.TetrahedronGeometryData;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import org.jetbrains.annotations.Nullable;
@@ -44,10 +46,10 @@ public class DeconstructTetrahedronNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_TETRAHEDRON_ID, "Tetrahedron", "Tetrahedron geometry to deconstruct", NodeDataType.TETRAHEDRON_GEOMETRY, this));
 
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Tetrahedron center", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Tetrahedron center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_EDGE_ID, "Edge Length", "Resolved edge length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_CIRCUMRADIUS_ID, "Circumradius", "Distance from center to vertices", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_VERTICES_ID, "Vertices", "Resolved tetrahedron vertices", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VERTICES_ID, "Vertices", "Resolved tetrahedron vertices", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_AREA_ID, "Surface Area", "Regular tetrahedron surface area", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Regular tetrahedron volume", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
@@ -75,10 +77,10 @@ public class DeconstructTetrahedronNode extends BaseNode {
         RegionData region = GeometryVoxelizer.createBoundingRegion(tetrahedron);
         BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
 
-        outputValues.put(OUTPUT_CENTER_ID, tetrahedron.getCenter());
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(tetrahedron.getCenter()));
         outputValues.put(OUTPUT_EDGE_ID, edgeLength);
         outputValues.put(OUTPUT_CIRCUMRADIUS_ID, tetrahedron.getCircumradius());
-        outputValues.put(OUTPUT_VERTICES_ID, tetrahedron.getVertices());
+        outputValues.put(OUTPUT_VERTICES_ID, SpatialValueResolver.toPointDataList(tetrahedron.getVertices()));
         outputValues.put(OUTPUT_SURFACE_AREA_ID, surfaceArea);
         outputValues.put(OUTPUT_VOLUME_ID, volume);
         outputValues.put(OUTPUT_REGION_ID, region);

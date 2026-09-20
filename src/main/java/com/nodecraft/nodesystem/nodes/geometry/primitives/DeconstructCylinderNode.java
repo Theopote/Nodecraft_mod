@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -49,8 +50,8 @@ public class DeconstructCylinderNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_CYLINDER_ID, "Cylinder", "Cylinder geometry to deconstruct", NodeDataType.CYLINDER_GEOMETRY, this));
 
-        addOutputPort(new BasePort(OUTPUT_START_ID, "Start", "Cylinder axis start point", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_END_ID, "End", "Cylinder axis end point", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_START_ID, "Start", "Cylinder axis start point", NodeDataType.POINT, this));
+        addOutputPort(new BasePort(OUTPUT_END_ID, "End", "Cylinder axis end point", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_AXIS_LINE_ID, "Axis Line", "Cylinder axis line", NodeDataType.LINE, this));
         addOutputPort(new BasePort(OUTPUT_AXIS_VECTOR_ID, "Axis Vector", "Cylinder axis vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_HEIGHT_ID, "Height", "Cylinder axis length", NodeDataType.DOUBLE, this));
@@ -95,8 +96,8 @@ public class DeconstructCylinderNode extends BaseNode {
         RegionData region = GeometryVoxelizer.createBoundingRegion(cylinder);
         BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
 
-        outputValues.put(OUTPUT_START_ID, start);
-        outputValues.put(OUTPUT_END_ID, end);
+        outputValues.put(OUTPUT_START_ID, new PointData(start));
+        outputValues.put(OUTPUT_END_ID, new PointData(end));
         outputValues.put(OUTPUT_AXIS_LINE_ID, axisLine);
         outputValues.put(OUTPUT_AXIS_VECTOR_ID, axisVector);
         outputValues.put(OUTPUT_HEIGHT_ID, height);
