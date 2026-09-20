@@ -21,6 +21,10 @@ per-node unit tests as the library grows past ~500 nodes.
 | Runtime typeId | `INode.getTypeId()` equals registry id (case-insensitive) |
 | Category present | `@NodeInfo.category` and registry category are non-blank |
 | Port IDs unique | Within one instantiable node, all input+output port ids are unique and non-blank |
+
+Port **naming** conventions (e.g. `output_value`, `input_x`) are design policy in
+[`../nodecraft-v1-node-language.md`](../nodecraft-v1-node-language.md); this suite only
+enforces uniqueness today.
 | Catalog ⊆ registry | Every `GeneratedNodeCatalog.IDS` entry is present in `NodeRegistry` after init |
 
 ## Environment split

@@ -10,6 +10,11 @@ taxonomy drafts (`node-id-guidelines`, v1 category tree, uploaded “节点库�
 current specs — see [`docs/architecture/docs-authority.md`](docs/architecture/docs-authority.md).
 Legacy ids belong on the graph migration path only.
 
+When adding or remodeling nodes, follow the V1 language freeze:
+[`docs/nodecraft-v1-node-language.md`](docs/nodecraft-v1-node-language.md)
+(continuous scalars as `DOUBLE`, stable port ids, degrees for angles,
+Point / Vector / Block Position, property fallback + port override).
+
 ## Local Checks
 
 Run a compile check before handing off Java changes:

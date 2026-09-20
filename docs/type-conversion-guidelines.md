@@ -2,6 +2,10 @@
 
 This document defines how type relationships work in the v1 node system.
 
+Player-facing spatial concepts, numeric defaults, port-id conventions, and angle
+units are frozen in [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
+This file owns **connectability policy** only.
+
 ## Rules
 
 1. Port-level compatibility only allows `implicit-safe` relationships.

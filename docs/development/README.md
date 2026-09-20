@@ -9,6 +9,8 @@ Current advancement source of truth:
 Related architecture:
 
 - [`../architecture/docs-authority.md`](../architecture/docs-authority.md) — Docs SoT: code + `NODE_LIBRARY` (0.9 Compatibility)
+- [`../nodecraft-v1-node-language.md`](../nodecraft-v1-node-language.md) — V1 node language freeze (DOUBLE / port ids / degrees / Point·Vector·BlockPos / override)
+- [`../type-conversion-guidelines.md`](../type-conversion-guidelines.md) — Port connectability vs explicit conversion
 - [`../architecture/execution-runtime-2.0.md`](../architecture/execution-runtime-2.0.md) — Runtime 2.0 design freeze
 - [`../architecture/node-catalog.md`](../architecture/node-catalog.md) — Build-time NodeCatalog (Phase C)
 - [`../architecture/node-library-display-cache.md`](../architecture/node-library-display-cache.md) — Library icon/display caches (Phase E)

@@ -30,7 +30,15 @@ Supporting SoT for registration / inventory:
 - `docs/architecture/node-catalog.md` — catalog codegen pipeline
 - `build/generated/nodeCatalog/node-catalog.json` — shared inventory artifact
 
-If a prose doc disagrees with code or `NODE_LIBRARY.md`, **the code / library win**.
+Design freeze for **graph language** (port ids, numeric/angle/spatial semantics,
+property↔port override) — not inventory:
+
+- [`docs/nodecraft-v1-node-language.md`](../nodecraft-v1-node-language.md)
+- [`docs/type-conversion-guidelines.md`](../type-conversion-guidelines.md)
+
+If a prose doc disagrees with code or `NODE_LIBRARY.md` on **what exists today**,
+**the code / library win**. If code disagrees with the language freeze on **how new
+nodes should speak**, treat the code as remediation debt — do not copy the gap.
 
 ## Historical / design-reference only
 
@@ -67,7 +75,8 @@ File migration owns legacy ids (see `docs/architecture/graph-format-version.md`)
 1. Need a node id? → search `NODE_LIBRARY.md` or `@NodeInfo` / catalog JSON.
 2. Need rename history? → migration manifest / alias plan (history).
 3. Need product taxonomy intent? → historical category docs OK as background only.
-4. Never “fix” current code to match an old uploaded doc without verifying catalog.
+4. Need port / type / angle / spatial language rules? → `nodecraft-v1-node-language.md`.
+5. Never “fix” current code to match an old uploaded doc without verifying catalog.
 
 ## Exit
 
