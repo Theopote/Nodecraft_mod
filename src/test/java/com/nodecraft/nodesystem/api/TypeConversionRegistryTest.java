@@ -64,6 +64,12 @@ class TypeConversionRegistryTest {
     }
 
     @Test
+    void vectorAndPositionConnectImplicitlyToPointInputs() {
+        assertTrue(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.VECTOR, NodeDataType.POINT));
+        assertTrue(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.POSITION, NodeDataType.POINT));
+    }
+
+    @Test
     void geometryToBlockListRequiresExplicitConversion() {
         assertEquals(TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
             TypeConversionRegistry.classify(NodeDataType.GEOMETRY, NodeDataType.BLOCK_LIST));

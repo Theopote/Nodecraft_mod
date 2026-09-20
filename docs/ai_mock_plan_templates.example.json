@@ -5,7 +5,7 @@
       "nodes": [
         {
           "ref": "center",
-          "typeId": "reference.points.point_from_coordinates",
+          "typeId": "reference.points.block_position",
           "offsetX": -520.0,
           "offsetY": -120.0,
           "nodeState": {

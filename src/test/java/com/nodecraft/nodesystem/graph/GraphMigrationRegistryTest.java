@@ -96,6 +96,22 @@ class GraphMigrationRegistryTest {
     }
 
     @Test
+    void v2CoordinateInputTypeMigratesToBlockPosition() {
+        SavedGraph v2 = new SavedGraph();
+        v2.formatVersion = GraphFormatVersion.V2;
+        SavedNode coordinate = new SavedNode();
+        coordinate.nodeId = "coord";
+        coordinate.typeId = "reference.points.point_from_coordinates";
+        v2.nodes = List.of(coordinate);
+        v2.connections = List.of();
+        v2.nodePositions = java.util.Map.of();
+
+        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v2);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
+        assertEquals("reference.points.block_position", migrated.nodes.getFirst().typeId);
+    }
+
+    @Test
     void futureVersionsAreLeftUntouched() {
         SavedGraph future = new SavedGraph();
         future.formatVersion = GraphFormatVersion.CURRENT + 5;

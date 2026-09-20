@@ -15,40 +15,52 @@ import org.jetbrains.annotations.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.IntConsumer;
 
+/**
+ * Integer block-grid position input with optional X/Y/Z port overrides.
+ * <p>
+ * Player-facing spatial language: this is a <strong>Block Position</strong> source,
+ * not a continuous geometric Point (see {@code docs/nodecraft-v1-node-language.md}).
+ */
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "reference.points.point_from_coordinates",
-    displayName = "Coordinate Input",
-    description = "Inputs an integer coordinate and outputs Coordinate, Block Pos, X, Y, and Z.",
+    id = "reference.points.block_position",
+    displayName = "Block Position Input",
+    description = "Inputs an integer block position from panel values or optional X/Y/Z ports.",
     category = "reference.points",
     order = 0
 )
 public class CoordinateInputNode extends BaseCustomUINode {
 
-    private static final String OUTPUT_COORDINATE_ID = "output_coordinate";
+    private static final String INPUT_X_ID = "input_x";
+    private static final String INPUT_Y_ID = "input_y";
+    private static final String INPUT_Z_ID = "input_z";
+
     private static final String OUTPUT_BLOCK_POS_ID = "output_block_pos";
+    /** Legacy alias of block position; kept for graph compatibility. */
+    private static final String OUTPUT_COORDINATE_ID = "output_coordinate";
     private static final String OUTPUT_X_ID = "output_x";
     private static final String OUTPUT_Y_ID = "output_y";
     private static final String OUTPUT_Z_ID = "output_z";
 
-    @NodeProperty(displayName = "X", category = "Components", order = 1, description = "X coordinate")
+    @NodeProperty(displayName = "X", category = "Components", order = 1, description = "X block coordinate")
     private int x = 0;
 
-    @NodeProperty(displayName = "Y", category = "Components", order = 2, description = "Y coordinate")
+    @NodeProperty(displayName = "Y", category = "Components", order = 2, description = "Y block coordinate")
     private int y = 0;
 
-    @NodeProperty(displayName = "Z", category = "Components", order = 3, description = "Z coordinate")
+    @NodeProperty(displayName = "Z", category = "Components", order = 3, description = "Z block coordinate")
     private int z = 0;
 
-    @NodeProperty(displayName = "Show Label", category = "UI Settings", order = 10,
-        description = "Whether to show the current coordinate summary")
-    private boolean showLabel = true;
-
     public CoordinateInputNode() {
-        super(UUID.randomUUID(), "reference.points.point_from_coordinates");
-        addOutputPort(new BasePort(OUTPUT_COORDINATE_ID, "Coordinate", "Integer coordinate", NodeDataType.COORDINATE, this));
+        super(UUID.randomUUID(), "reference.points.block_position");
+        addInputPort(new BasePort(INPUT_X_ID, "X", "Optional X override", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_Y_ID, "Y", "Optional Y override", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_Z_ID, "Z", "Optional Z override", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_BLOCK_POS_ID, "Block Pos", "Block position", NodeDataType.BLOCK_POS, this));
+        addOutputPort(new BasePort(OUTPUT_COORDINATE_ID, "Coordinate",
+            "Legacy alias of Block Pos (same value)", NodeDataType.COORDINATE, this));
         addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X coordinate", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y coordinate", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z coordinate", NodeDataType.INTEGER, this));
@@ -57,7 +69,7 @@ public class CoordinateInputNode extends BaseCustomUINode {
 
     @Override
     public String getDescription() {
-        return "Inputs an integer coordinate and outputs Coordinate, Block Pos, X, Y, and Z.";
+        return "Inputs an integer block position from panel values or optional X/Y/Z ports.";
     }
 
     @Override
@@ -89,18 +101,21 @@ public class CoordinateInputNode extends BaseCustomUINode {
 
             l.addVerticalSpacing(getMediumPadding());
 
-            changed |= renderComponentInput("X", x, this::setX, availableWidth, baseCursorX, edgeMargin);
+            changed |= renderComponentInput("X", INPUT_X_ID, getResolvedX(), this::setX,
+                availableWidth, baseCursorX, edgeMargin);
             l.addVerticalSpacing(getSmallPadding());
-            changed |= renderComponentInput("Y", y, this::setY, availableWidth, baseCursorX, edgeMargin);
+            changed |= renderComponentInput("Y", INPUT_Y_ID, getResolvedY(), this::setY,
+                availableWidth, baseCursorX, edgeMargin);
             l.addVerticalSpacing(getSmallPadding());
-            changed |= renderComponentInput("Z", z, this::setZ, availableWidth, baseCursorX, edgeMargin);
+            changed |= renderComponentInput("Z", INPUT_Z_ID, getResolvedZ(), this::setZ,
+                availableWidth, baseCursorX, edgeMargin);
 
             l.addVerticalSpacing(getSmallPadding());
             return changed;
         });
     }
 
-    private boolean renderComponentInput(String label, int currentValue, java.util.function.IntConsumer setter,
+    private boolean renderComponentInput(String label, String inputPortId, int currentValue, IntConsumer setter,
                                          float availableWidth, float baseCursorX, float edgeMargin) {
         float labelWidth = ImGui.calcTextSize(label).x;
         float spacing = ImGui.getStyle().getItemSpacingX();
@@ -111,22 +126,60 @@ public class CoordinateInputNode extends BaseCustomUINode {
         ImGui.sameLine();
         ImGui.pushItemWidth(inputWidth);
         ImInt valueInput = new ImInt(currentValue);
+        boolean hasOverride = isInputConnected(inputPortId);
+        if (hasOverride) {
+            ImGui.beginDisabled();
+        }
         boolean changed = ImGui.inputInt("##" + label.toLowerCase(), valueInput, 1, 10);
+        if (hasOverride) {
+            ImGui.endDisabled();
+            if (ImGui.isItemHovered()) {
+                ImGui.setTooltip(label + " is driven by an input connection.");
+            }
+        }
         ImGui.popItemWidth();
-        if (changed) {
+        if (changed && !hasOverride) {
             setter.accept(valueInput.get());
         }
         return changed;
     }
 
     private void updateOutput() {
-        BlockPos blockPos = new BlockPos(x, y, z);
-        outputValues.put(OUTPUT_COORDINATE_ID, blockPos);
+        int resolvedX = getResolvedX();
+        int resolvedY = getResolvedY();
+        int resolvedZ = getResolvedZ();
+        BlockPos blockPos = new BlockPos(resolvedX, resolvedY, resolvedZ);
         outputValues.put(OUTPUT_BLOCK_POS_ID, blockPos);
-        outputValues.put(OUTPUT_X_ID, x);
-        outputValues.put(OUTPUT_Y_ID, y);
-        outputValues.put(OUTPUT_Z_ID, z);
+        outputValues.put(OUTPUT_COORDINATE_ID, blockPos);
+        outputValues.put(OUTPUT_X_ID, resolvedX);
+        outputValues.put(OUTPUT_Y_ID, resolvedY);
+        outputValues.put(OUTPUT_Z_ID, resolvedZ);
         syncOutputPorts();
+    }
+
+    private int getResolvedX() {
+        return resolveComponent(INPUT_X_ID, x);
+    }
+
+    private int getResolvedY() {
+        return resolveComponent(INPUT_Y_ID, y);
+    }
+
+    private int getResolvedZ() {
+        return resolveComponent(INPUT_Z_ID, z);
+    }
+
+    private int resolveComponent(String inputPortId, int fallback) {
+        Object value = inputValues.get(inputPortId);
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        return fallback;
+    }
+
+    private boolean isInputConnected(String inputPortId) {
+        return inputPorts.stream()
+            .anyMatch(port -> inputPortId.equals(port.getId()) && port.isConnected());
     }
 
     public int getX() {
@@ -165,25 +218,12 @@ public class CoordinateInputNode extends BaseCustomUINode {
         }
     }
 
-    public boolean isShowLabel() {
-        return showLabel;
-    }
-
-    public void setShowLabel(boolean showLabel) {
-        if (this.showLabel != showLabel) {
-            this.showLabel = showLabel;
-            invalidateCache();
-            markDirty();
-        }
-    }
-
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
         state.put("x", x);
         state.put("y", y);
         state.put("z", z);
-        state.put("showLabel", showLabel);
         return state;
     }
 
@@ -198,9 +238,6 @@ public class CoordinateInputNode extends BaseCustomUINode {
             }
             if (map.get("z") instanceof Number number) {
                 this.z = number.intValue();
-            }
-            if (map.get("showLabel") instanceof Boolean show) {
-                this.showLabel = show;
             }
             updateOutput();
             invalidateCache();

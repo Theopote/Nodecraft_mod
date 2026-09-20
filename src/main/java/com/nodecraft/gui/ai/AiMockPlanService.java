@@ -142,7 +142,7 @@ public final class AiMockPlanService {
     }
 
     private static void buildMobiusTemplate(ParsedParameters params, List<MockNode> nodes, List<MockConnection> connections) {
-        nodes.add(new MockNode("center", "reference.points.point_from_coordinates", -720.0f, -180.0f,
+        nodes.add(new MockNode("center", "reference.points.block_position", -720.0f, -180.0f,
             createNodeState("x", 0, "y", 80, "z", 0, "showLabel", true)));
         nodes.add(new MockNode("axis", "reference.vectors.vector", -720.0f, 120.0f,
             createNodeState("x", 0.0d, "y", 1.0d, "z", 0.0d, "showLabel", true, "precision", 2)));
@@ -187,7 +187,7 @@ public final class AiMockPlanService {
     }
 
     private static void buildSphereTemplate(ParsedParameters params, List<MockNode> nodes, List<MockConnection> connections) {
-        nodes.add(new MockNode("center", "reference.points.point_from_coordinates", -520.0f, -120.0f,
+        nodes.add(new MockNode("center", "reference.points.block_position", -520.0f, -120.0f,
             createNodeState("x", 0, "y", 80, "z", 0, "showLabel", true)));
         nodes.add(new MockNode("radius", "input.numeric.float", -520.0f, 40.0f,
             createNodeState("value", (float) params.radius(), "min", 1.0f, "max", 2048.0f, "precision", 2)));
@@ -211,7 +211,7 @@ public final class AiMockPlanService {
         int sizeY = clampInt((int) Math.round(params.height()), 4, 256);
         int sizeZ = clampInt((int) Math.round(Math.max(params.radius() * 1.8d, params.width() * 4.0d)), 4, 256);
 
-        nodes.add(new MockNode("center", "reference.points.point_from_coordinates", -660.0f, -120.0f,
+        nodes.add(new MockNode("center", "reference.points.block_position", -660.0f, -120.0f,
             createNodeState("x", 0, "y", 72, "z", 0, "showLabel", true)));
         nodes.add(new MockNode("size_x", "input.numeric.integer", -660.0f, 60.0f,
             createNodeState("value", sizeX, "min", 1, "max", 1024, "step", 1)));
@@ -240,7 +240,7 @@ public final class AiMockPlanService {
         int segmentsPerTurn = clampInt((int) Math.round(Math.max(12.0d, params.width() * 8.0d)), 12, 96);
         float seedRadius = (float) Math.max(0.6d, Math.min(2.0d, params.thickness() * 0.8d));
 
-        nodes.add(new MockNode("center", "reference.points.point_from_coordinates", -1000.0f, -180.0f,
+        nodes.add(new MockNode("center", "reference.points.block_position", -1000.0f, -180.0f,
             createNodeState("x", 0, "y", 72, "z", 0, "showLabel", true)));
         nodes.add(new MockNode("axis", "reference.vectors.vector", -1000.0f, 40.0f,
             createNodeState("x", 0.0d, "y", 1.0d, "z", 0.0d, "showLabel", false, "precision", 2)));
@@ -294,9 +294,9 @@ public final class AiMockPlanService {
         int topY = baseY + clampInt((int) Math.round(params.height()), 8, 192);
         float radius = (float) Math.max(1.0d, Math.min(64.0d, params.radius() * 0.35d));
 
-        nodes.add(new MockNode("tower_bottom", "reference.points.point_from_coordinates", -640.0f, -80.0f,
+        nodes.add(new MockNode("tower_bottom", "reference.points.block_position", -640.0f, -80.0f,
             createNodeState("x", 0, "y", baseY, "z", 0, "showLabel", true)));
-        nodes.add(new MockNode("tower_top", "reference.points.point_from_coordinates", -640.0f, 120.0f,
+        nodes.add(new MockNode("tower_top", "reference.points.block_position", -640.0f, 120.0f,
             createNodeState("x", 0, "y", topY, "z", 0, "showLabel", true)));
         nodes.add(new MockNode("tower_radius", "input.numeric.float", -640.0f, 300.0f,
             createNodeState("value", radius, "min", 1.0f, "max", 128.0f, "precision", 2)));
@@ -320,7 +320,7 @@ public final class AiMockPlanService {
         int segments = clampInt((int) Math.round(Math.max(16.0d, params.width() * 10.0d)), 16, 120);
         float seedRadius = (float) Math.max(0.8d, Math.min(3.0d, params.thickness()));
 
-        nodes.add(new MockNode("arch_center", "reference.points.point_from_coordinates", -980.0f, -160.0f,
+        nodes.add(new MockNode("arch_center", "reference.points.block_position", -980.0f, -160.0f,
             createNodeState("x", 0, "y", 72, "z", 0, "showLabel", true)));
         nodes.add(new MockNode("arch_normal", "reference.vectors.vector", -980.0f, 20.0f,
             createNodeState("x", 0.0d, "y", 0.0d, "z", 1.0d, "showLabel", false, "precision", 2)));
@@ -374,7 +374,7 @@ public final class AiMockPlanService {
         float majorRadius = (float) Math.max(6.0d, params.radius());
         float minorRadius = (float) Math.max(1.2d, Math.min(8.0d, params.width() * 0.6d));
 
-        nodes.add(new MockNode("center", "reference.points.point_from_coordinates", -700.0f, -120.0f,
+        nodes.add(new MockNode("center", "reference.points.block_position", -700.0f, -120.0f,
             createNodeState("x", 0, "y", 72, "z", 0, "showLabel", true)));
         nodes.add(new MockNode("axis", "reference.vectors.vector", -700.0f, 60.0f,
             createNodeState("x", 0.0d, "y", 1.0d, "z", 0.0d, "showLabel", false, "precision", 2)));
@@ -407,11 +407,11 @@ public final class AiMockPlanService {
         int thickness = clampInt((int) Math.round(Math.max(2.0d, params.thickness() * 2.0d)), 1, 16);
         int gap = clampInt((int) Math.round(Math.max(4.0d, params.height() * 0.25d)), 3, 48);
 
-        nodes.add(new MockNode("level0_center", "reference.points.point_from_coordinates", -1120.0f, -180.0f,
+        nodes.add(new MockNode("level0_center", "reference.points.block_position", -1120.0f, -180.0f,
             createNodeState("x", 0, "y", 70, "z", 0, "showLabel", true)));
-        nodes.add(new MockNode("level1_center", "reference.points.point_from_coordinates", -1120.0f, 0.0f,
+        nodes.add(new MockNode("level1_center", "reference.points.block_position", -1120.0f, 0.0f,
             createNodeState("x", 0, "y", 70 + gap, "z", 0, "showLabel", false)));
-        nodes.add(new MockNode("level2_center", "reference.points.point_from_coordinates", -1120.0f, 180.0f,
+        nodes.add(new MockNode("level2_center", "reference.points.block_position", -1120.0f, 180.0f,
             createNodeState("x", 0, "y", 70 + gap * 2, "z", 0, "showLabel", false)));
 
         nodes.add(new MockNode("sx0", "input.numeric.integer", -900.0f, -230.0f,

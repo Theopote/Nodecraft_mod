@@ -14,7 +14,7 @@ import java.util.Map;
  * Applies incremental migrations to {@link SavedGraph} payloads loaded from disk or embedded JSON.
  * <p>
  * V0→V1 migration data lives in {@code nodecraft/migration/v0-to-v1.json}; runtime registries stay
- * canonical-only. V1→V2 applies Batch A port-id remaps inline.
+ * canonical-only. Later steps apply Batch A/B remaps inline.
  */
 public final class GraphMigrationRegistry {
 
@@ -23,6 +23,9 @@ public final class GraphMigrationRegistry {
     private static final String INTEGER_SLIDER_TYPE = "input.numeric.integer_slider";
     private static final String LEGACY_INTEGER_SLIDER_VALUE_PORT = "value";
     private static final String INTEGER_SLIDER_OUTPUT_VALUE_PORT = "output_value";
+
+    private static final String LEGACY_COORDINATE_INPUT_TYPE = "reference.points.point_from_coordinates";
+    private static final String BLOCK_POSITION_INPUT_TYPE = "reference.points.block_position";
 
     private GraphMigrationRegistry() {
     }
@@ -55,6 +58,7 @@ public final class GraphMigrationRegistry {
         return switch (fromVersion) {
             case GraphFormatVersion.V0 -> migrateV0ToV1(graph);
             case GraphFormatVersion.V1 -> migrateV1ToV2(graph);
+            case GraphFormatVersion.V2 -> migrateV2ToV3(graph);
             default -> graph;
         };
     }
@@ -95,6 +99,25 @@ public final class GraphMigrationRegistry {
                         INTEGER_SLIDER_OUTPUT_VALUE_PORT
                 );
                 connection.sourcePortId = INTEGER_SLIDER_OUTPUT_VALUE_PORT;
+            }
+        }
+        return graph;
+    }
+
+    /**
+     * Batch B: rename Coordinate Input type id to Block Position Input.
+     */
+    private static SavedGraph migrateV2ToV3(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return graph;
+        }
+        for (SavedNode node : graph.nodes) {
+            if (node == null || node.typeId == null) {
+                continue;
+            }
+            if (LEGACY_COORDINATE_INPUT_TYPE.equalsIgnoreCase(node.typeId)) {
+                LOGGER.debug("Migrated node type: {} -> {}", node.typeId, BLOCK_POSITION_INPUT_TYPE);
+                node.typeId = BLOCK_POSITION_INPUT_TYPE;
             }
         }
         return graph;

@@ -43,6 +43,10 @@ public final class TypeConversionRegistry {
             return ConversionPolicy.IMPLICIT_SAFE;
         }
 
+        if (isVectorToPointCompatible(output, input)) {
+            return ConversionPolicy.IMPLICIT_SAFE;
+        }
+
         if (isNumericType(output) && isNumericType(input)) {
             return ConversionPolicy.IMPLICIT_SAFE;
         }
@@ -178,6 +182,14 @@ public final class TypeConversionRegistry {
     private static boolean isCoordinateToPositionCompatible(NodeDataType outputType, NodeDataType inputType) {
         return isCoordinateAlias(outputType)
                 && (inputType == NodeDataType.POINT || isVectorAlias(inputType));
+    }
+
+    /**
+     * Continuous vector-like values may drive Point inputs (e.g. World Plane Origin)
+     * without a separate conversion node.
+     */
+    private static boolean isVectorToPointCompatible(NodeDataType outputType, NodeDataType inputType) {
+        return isVectorAlias(outputType) && inputType == NodeDataType.POINT;
     }
 
     private static boolean isCoordinateListAlias(NodeDataType type) {

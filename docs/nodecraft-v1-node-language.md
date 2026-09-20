@@ -164,8 +164,8 @@ These violated the freeze at audit time. Batch A items below are remediated in c
 | Float Input outputs `FLOAT`; Float Slider outputs `DOUBLE` | §1 | Fixed (both `DOUBLE`) |
 | Integer Slider port id `value` vs peers’ `output_value` | §2 | Fixed + V1→V2 migration |
 | Angle Slider unit property converts to radians while port stays `DOUBLE` | §3 | Fixed (degrees only) |
-| Coordinate Input: int xyz, dual Coordinate/Block Pos, no `input_x/y/z` | §4, §5 | Open (Batch B) |
-| World Plane Origin typed as `ANY` | Supporting norm | Open (Batch B) |
+| Coordinate Input: int xyz, dual Coordinate/Block Pos, no `input_x/y/z` | §4, §5 | Fixed → Block Position Input + overrides |
+| World Plane Origin typed as `ANY` | Supporting norm | Fixed → `POINT` (+ vector/block drivers) |
 | Selected Block: pick silently overrides connected X/Y/Z | §5 | Open (Batch C) |
 | Float / Integer slider dead UI properties | Dead properties | Fixed |
 
@@ -182,10 +182,10 @@ Document first; code follows this order unless a dependency forces otherwise.
 3. Remove dead slider UI properties (`showMinMaxLabels` / `showSettingsPanel` / `showRangeInfo` / unused Float Input range+label flags).
 4. Angle Slider: degrees-only graph output; unit switch removed (legacy `unit` state ignored). Use `math.trigonometry.deg_to_rad` when radians are required.
 
-### Batch B — language alignment
+### Batch B — language alignment — **done (2026-09-21)**
 
-5. Reposition Coordinate Input as Block Position Input; add `input_x/y/z` override like Vector Input.
-6. World Plane Origin: `ANY` → `POINT` (conversions carry other spatial types).
+5. Coordinate Input → **Block Position Input** (`reference.points.block_position`); `input_x/y/z` INTEGER overrides like Vector Input; graph format **V2→V3** type rename.
+6. World Plane Origin: `ANY` → `POINT`; keep continuous origin for the plane; `VECTOR`/`POSITION` → `POINT` implicit; Block Pos already drives Point via existing compatibility.
 
 ### Batch C — composition semantics
 

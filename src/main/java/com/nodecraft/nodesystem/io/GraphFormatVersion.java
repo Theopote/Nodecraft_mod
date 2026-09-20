@@ -19,8 +19,14 @@ public final class GraphFormatVersion {
      */
     public static final int V2 = 2;
 
+    /**
+     * Batch B language remediation: Coordinate Input → Block Position Input
+     * ({@code reference.points.point_from_coordinates} → {@code reference.points.block_position}).
+     */
+    public static final int V3 = 3;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V2;
+    public static final int CURRENT = V3;
 
     private GraphFormatVersion() {
     }

@@ -615,7 +615,7 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| World Plane | `reference.planes.world_plane` | Creates a standard XY, YZ, or XZ world plane with a configurable origin | `PlaneSelectorNode` |
+| World Plane | `reference.planes.world_plane` | Creates a standard XY, YZ, or XZ world plane with a Point-compatible origin | `PlaneSelectorNode` |
 | Construct Plane | `reference.planes.construct_plane` | Constructs a plane from an origin point and a normal vector | `ConstructPlaneNode` |
 | Construct Plane From Points | `reference.planes.plane_from_points` | Constructs a plane from three non-collinear points | `ConstructPlaneFromPointsNode` |
 | Distance Point To Plane | `reference.planes.distance_point_to_plane` | Measures the absolute and signed distance from a geometric point to a plane | `DistancePointToPlaneNode` |
@@ -626,7 +626,7 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Coordinate Input | `reference.points.point_from_coordinates` | Inputs an integer coordinate and outputs Coordinate, Block Pos, X, Y, and Z. | `CoordinateInputNode` |
+| Block Position Input | `reference.points.block_position` | Inputs an integer block position from panel values or optional X/Y/Z ports. | `CoordinateInputNode` |
 | Construct Coordinate | `reference.points.construct_coordinate` | Constructs a block coordinate from X, Y, and Z integer components. | `ConstructCoordinateNode` |
 | Block To Point | `reference.points.point_from_block` | Explicitly converts a block coordinate into a geometric point, with optional block-center offset | `BlockToPointNode` |
 | Point Along Vector | `reference.points.point_along_vector` | Creates a new point by moving a start point along a direction vector by a distance | `PointAlongVectorNode` |

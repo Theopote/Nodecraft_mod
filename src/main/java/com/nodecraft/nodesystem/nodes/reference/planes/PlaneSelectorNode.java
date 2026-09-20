@@ -20,7 +20,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "reference.planes.world_plane",
     displayName = "World Plane",
-    description = "Creates a standard XY, YZ, or XZ world plane with a configurable origin",
+    description = "Creates a standard XY, YZ, or XZ world plane with a Point-compatible origin",
     category = "reference.planes",
     order = 0
 )
@@ -74,27 +74,27 @@ public class PlaneSelectorNode extends BaseNode {
         super(UUID.randomUUID(), "reference.planes.world_plane");
 
         addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin",
-            "Optional origin for the selected world plane. Supports Point, Vector, Position, or Block Coordinate.",
-            NodeDataType.ANY, this));
+            "Optional plane origin (Point). Block Pos / Vector / Position connect via type conversion.",
+            NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane",
             "Constructed plane data", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_ORIGIN_ID, "Origin",
-            "Plane origin as a block position", NodeDataType.BLOCK_POS, this));
+            "Plane origin snapped to block grid", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_ORIGIN_VECTOR_ID, "Origin Vector",
-            "Plane origin as a vector", NodeDataType.VECTOR, this));
+            "Plane origin as a continuous vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_NORMAL_ID, "Normal",
             "Plane normal vector", NodeDataType.VECTOR, this));
     }
 
     @Override
     public String getDescription() {
-        return "Creates a standard XY, YZ, or XZ world plane with a configurable origin";
+        return "Creates a standard XY, YZ, or XZ world plane with a Point-compatible origin";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        BlockPos origin = resolveOrigin(inputValues.get(INPUT_ORIGIN_ID));
-        Vector3d originVector = new Vector3d(origin.getX(), origin.getY(), origin.getZ());
+        Vector3d originVector = resolveOriginVector(inputValues.get(INPUT_ORIGIN_ID));
+        BlockPos originBlock = PlaneUtils.toBlockPos(originVector, new BlockPos(originX, originY, originZ));
         Vector3d normal = resolveNormal();
         PlaneData plane = new PlaneData(
             new Vector3d(originVector),
@@ -102,17 +102,17 @@ public class PlaneSelectorNode extends BaseNode {
         );
 
         outputValues.put(OUTPUT_PLANE_ID, plane);
-        outputValues.put(OUTPUT_ORIGIN_ID, origin);
+        outputValues.put(OUTPUT_ORIGIN_ID, originBlock);
         outputValues.put(OUTPUT_ORIGIN_VECTOR_ID, originVector);
         outputValues.put(OUTPUT_NORMAL_ID, normal);
     }
 
-    private BlockPos resolveOrigin(Object originObj) {
-        BlockPos fallback = new BlockPos(originX, originY, originZ);
-        if (originObj instanceof BlockPos blockPos) {
-            return blockPos.toImmutable();
+    private Vector3d resolveOriginVector(Object originObj) {
+        Vector3d fromInput = PlaneUtils.resolvePoint(originObj);
+        if (PlaneUtils.isFinite(fromInput)) {
+            return fromInput;
         }
-        return PlaneUtils.toBlockPos(PlaneUtils.resolvePoint(originObj), fallback);
+        return new Vector3d(originX, originY, originZ);
     }
 
     private Vector3d resolveNormal() {

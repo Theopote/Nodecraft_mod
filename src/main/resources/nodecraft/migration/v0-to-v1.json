@@ -6,7 +6,7 @@
     "inputs.basic.angle_slider": "input.numeric.angle",
     "inputs.basic.boolean_toggle": "input.basic.boolean_toggle",
     "inputs.basic.circular_angle": "input.numeric.angle_picker",
-    "inputs.basic.coordinate_input": "reference.points.point_from_coordinates",
+    "inputs.basic.coordinate_input": "reference.points.block_position",
     "inputs.basic.float_input": "input.numeric.float",
     "inputs.basic.float_slider": "input.numeric.float_slider",
     "inputs.basic.integer_input": "input.numeric.integer",
