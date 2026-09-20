@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.profiles;
 
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
@@ -14,8 +15,40 @@ final class ProfilePlaneUtils {
     private ProfilePlaneUtils() {
     }
 
+    /** Minecraft-first default: horizontal ground plane. */
+    static final PlaneData DEFAULT_PLANE = PlaneData.XZ_PLANE;
+
     static @Nullable Vector3d resolvePoint(@Nullable Object value) {
         return SpatialValueResolver.resolveVector3d(value);
+    }
+
+    /**
+     * Center override if connected; otherwise plane origin; otherwise world origin.
+     */
+    static Vector3d resolveCenter(@Nullable Object centerValue, PlaneData plane) {
+        Vector3d fromPort = resolvePoint(centerValue);
+        if (fromPort != null) {
+            return fromPort;
+        }
+        if (plane != null) {
+            Vector3d origin = plane.getPoint();
+            if (origin != null) {
+                return new Vector3d(origin);
+            }
+        }
+        return new Vector3d(0.0d, 0.0d, 0.0d);
+    }
+
+    static PlaneData resolvePlane(@Nullable Object planeValue) {
+        return planeValue instanceof PlaneData plane ? plane : DEFAULT_PLANE;
+    }
+
+    static List<PointData> toPointList(List<Vector3d> points) {
+        List<PointData> out = new ArrayList<>(points.size());
+        for (Vector3d point : points) {
+            out.add(new PointData(point));
+        }
+        return List.copyOf(out);
     }
 
     static @Nullable Basis createBasis(PlaneData plane, @Nullable Vector3d preferredXAxis) {

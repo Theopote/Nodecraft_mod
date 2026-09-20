@@ -20,6 +20,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,7 +59,7 @@ public abstract class AbstractBoxGeneratorNode extends BaseNode {
         BlockPos minCorner = null;
         BlockPos maxCorner = null;
         BoxGeometryData geometry = definition != null ? definition.toGeometryData() : null;
-        List<Vector3d> corners = geometry != null ? geometry.getCorners() : List.of();
+        List<PointData> corners = geometry != null ? toPointList(geometry.getCorners()) : List.of();
         List<BoxFaceData> faces = geometry != null ? geometry.getFaces() : List.of();
 
         if (region != null && region.isComplete()) {
@@ -81,18 +82,62 @@ public abstract class AbstractBoxGeneratorNode extends BaseNode {
         outputValues.put(OUTPUT_FACES_ID, faces);
     }
 
+    private static List<PointData> toPointList(List<Vector3d> vectors) {
+        List<PointData> points = new ArrayList<>(vectors.size());
+        for (Vector3d vector : vectors) {
+            points.add(new PointData(vector));
+        }
+        return List.copyOf(points);
+    }
+
     protected abstract BoxDefinition resolveBoxDefinition();
 
     protected void addCommonOutputs() {
-        addOutputPort(new BasePort(OUTPUT_BOX_BLOCKS_ID, "Blocks", "Voxelized blocks generated from the box", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Axis-aligned bounding region of the box result", NodeDataType.REGION, this));
+        addOutputPort(new BasePort(OUTPUT_BOX_BLOCKS_ID, "Blocks",
+                "Legacy convenience: voxelized blocks from this box. Prefer Geometry → Voxelize for new graphs.",
+                NodeDataType.BLOCK_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region",
+                "Legacy convenience: axis-aligned bounding region of the box. Prefer Geometry → Voxelize for new graphs.",
+                NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_MIN_CORNER_ID, "Min Corner", "Minimum corner of the bounding region", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_MAX_CORNER_ID, "Max Corner", "Maximum corner of the bounding region", NodeDataType.BLOCK_POS, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of generated blocks", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output for downstream geometry nodes", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
+                "Legacy convenience: number of generated blocks", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Canonical continuous box geometry", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_BOX_GEOMETRY_ID, "Box Geometry", "Resolved box geometry for analysis and editing", NodeDataType.BOX_GEOMETRY, this));
-        addOutputPort(new BasePort(OUTPUT_CORNERS_ID, "Corners", "Ordered list of the 8 box corners. Use Get Box Corner to access one by index 0-7.", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_CORNERS_ID, "Corners",
+                "Ordered list of the 8 box corner points. Use Get Box Corner to access one by index 0-7.",
+                NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_FACES_ID, "Faces", "Ordered list of the 6 box faces. Use Get Box Face to access one by index 0-5.", NodeDataType.LIST, this));
+    }
+
+    protected BoxDefinition createContinuousCenterDefinition(
+        Vector3d center,
+        double sizeX,
+        double sizeY,
+        double sizeZ,
+        Object planeObj,
+        double rotationX,
+        double rotationY,
+        double rotationZ
+    ) {
+        double resolvedX = Math.abs(sizeX);
+        double resolvedY = Math.abs(sizeY);
+        double resolvedZ = Math.abs(sizeZ);
+        if (!Double.isFinite(resolvedX) || !Double.isFinite(resolvedY) || !Double.isFinite(resolvedZ)
+                || resolvedX <= 0.0d || resolvedY <= 0.0d || resolvedZ <= 0.0d) {
+            return null;
+        }
+
+        Vector3d centerVector = new Vector3d(center);
+        Vector3d halfExtents = new Vector3d(resolvedX * 0.5d, resolvedY * 0.5d, resolvedZ * 0.5d);
+
+        Matrix3d orientationMatrix = createOrientationMatrix(planeObj, rotationX, rotationY, rotationZ);
+        boolean rotated = hasRotation(rotationX, rotationY, rotationZ) || planeObj instanceof PlaneData;
+
+        // Floor only when deriving Region/Blocks; geometry stays continuous.
+        RegionData region = BoxBlockGenerator.createOrientedBoundingRegion(centerVector, halfExtents, orientationMatrix);
+        return new BoxDefinition(region, centerVector, halfExtents, orientationMatrix, rotated);
     }
 
     protected BoxDefinition createAxisAlignedDefinition(BlockPos minCorner, BlockPos maxCorner) {

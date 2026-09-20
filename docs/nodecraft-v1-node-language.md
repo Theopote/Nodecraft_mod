@@ -219,6 +219,52 @@ tests. Do not add graph migrations solely to preserve abandoned on-disk semantic
 
 ---
 
+## Geometry language (Batch 2 sample freeze)
+
+Applies to `geometry.primitives.*` and `geometry.profiles.*` (sample set first, then roll out).
+
+### Spatial port roles (no `ANY`)
+
+| Role | Type |
+|------|------|
+| Center / Start / End / Apex / Corner | `POINT` |
+| Axis / Direction / Normal / X Axis | `VECTOR` |
+| Block grid | `BLOCK_POS` |
+| Ordered locations (corners, samples) | `POINT_LIST` |
+
+Do **not** type locations as `VECTOR` / `VECTOR_LIST`.
+
+### Defaults (Minecraft-first)
+
+- Unspecified construction plane → **`XZ`** (horizontal ground), same as World Plane.
+- Profile: connected `Center` wins; else use **Plane origin**; else world origin on XZ.
+- Continuous size params use property fallback + port override (e.g. Sphere radius `5`).
+
+### Geometry ≠ Blocks
+
+```
+POINT / params  →  GEOMETRY / PROFILE
+GEOMETRY        →  Voxelize  →  Block placements  →  Preview / Bake
+```
+
+`geometry.*` nodes must not treat voxelization as the canonical result. Convenience
+`Blocks` / `Region` / `Count` on Box may remain as **legacy** outputs while presets migrate.
+
+### Canonical chain
+
+```
+BLOCK_POS → Block To Point → POINT → PROFILE / PRIMITIVE → GEOMETRY
+  → TRANSFORM → PATTERN → VOXELIZE → BLOCK PLACEMENTS → PREVIEW / BAKE
+```
+
+### Batch E — Geometry sample remediation (8 nodes) — **done (2026-09-21)**
+
+P1/P2 applied to Sphere, Cylinder, Cone, Torus, Box (center+size), Rectangle/Circle/Polygon profiles:
+typed spatial ports, `POINT_LIST`, XZ defaults, plane-origin center fallback, property defaults,
+continuous Box geometry (Blocks/Region legacy).
+
+---
+
 ## Checklist for new nodes
 
 Before merging a new or remodeled node:
@@ -227,6 +273,8 @@ Before merging a new or remodeled node:
 - [ ] Port ids match the table in §2 (or an existing domain convention already frozen for that family).
 - [ ] Angle ports document and emit **degrees**.
 - [ ] Spatial ports use Point / Vector / Block Position intentionally; no new Coordinate/Position-first API.
+- [ ] Geometry centers/locations are `POINT` / `POINT_LIST`; directions are `VECTOR`; no spatial `ANY`.
+- [ ] Building profiles/primitives default plane to **XZ** when unspecified.
 - [ ] Optional drives use property fallback + connection override with clear UI.
 - [ ] No `@NodeProperty` that cannot affect the node.
 - [ ] Presets / migrations updated if port ids or types change.

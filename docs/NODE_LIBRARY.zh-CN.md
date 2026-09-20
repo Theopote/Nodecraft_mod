@@ -155,7 +155,7 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Box by Center + Size | `geometry.primitives.box` | Generates a box from a center point and explicit X/Y/Z sizes | `BoxCenterSizeNode` |
+| Box by Center + Size | `geometry.primitives.box` | Constructs continuous box geometry from a center point and X/Y/Z sizes. Blocks/Region remain legacy convenience outputs. | `BoxCenterSizeNode` |
 | Box by Corner + Size | `geometry.primitives.box_from_corner_size` | Generates a box from one anchor corner and signed X/Y/Z sizes. Negative values grow in the opposite local axis direction. | `BoxCornerSizeNode` |
 | Box by Two Corners | `geometry.primitives.box_from_corners` | Generates an axis-aligned box from two opposite corner points | `BoxCornersNode` |
 | Sphere By Center Radius | `geometry.primitives.sphere` | Constructs sphere geometry from a center point and radius | `SphereByCenterRadiusNode` |
@@ -189,15 +189,15 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Rectangle On Plane | `geometry.profiles.rectangle_profile` | Constructs a planar rectangle from a center point, width, height, and plane | `RectangleOnPlaneNode` |
-| Regular Polygon On Plane | `geometry.profiles.polygon_profile` | Constructs a regular polygon from a center point, radius, side count, and plane | `RegularPolygonOnPlaneNode` |
+| Rectangle On Plane | `geometry.profiles.rectangle_profile` | Constructs a planar rectangle from width, height, and an optional center/plane (defaults to XZ) | `RectangleOnPlaneNode` |
+| Regular Polygon On Plane | `geometry.profiles.polygon_profile` | Constructs a regular polygon from radius, sides, and an optional center/plane (defaults to XZ) | `RegularPolygonOnPlaneNode` |
 | Polygon By Points | `geometry.profiles.custom_profile` | Constructs a planar polygon profile from an ordered point list | `PolygonByPointsNode` |
 | Resample Polygon Profile | `geometry.profiles.resample_profile` | Resamples a polygon profile to a target edge count using perimeter-distance sampling | `ResamplePolygonProfileNode` |
 | Deconstruct Polygon Profile | `geometry.profiles.deconstruct_profile` | Extracts points, boundary, plane, center, perimeter, and area from a polygon profile | `DeconstructPolygonProfileNode` |
 | Convex Hull 2D On Plane | `geometry.profiles.convex_hull_plane` | Projects points into a plane, computes their 2D convex hull, and outputs a closed polygon profile | `ConvexHull2DOnPlaneNode` |
 | Voronoi Cells 2D On Plane | `geometry.profiles.voronoi_cells_plane` | Projects sites into a plane, builds a clipped planar Voronoi diagram (JTS), and outputs each cell as a polygon profile on the plane | `VoronoiCells2DOnPlaneNode` |
 | Convex Hull 3D From Points | `geometry.profiles.convex_hull_3d_points` | Builds a 3D convex hull (triangle facets) from points; intended for small clouds due to brute-force enumeration; coplanar / collinear inputs yield no facets | `ConvexHull3DFromPointsNode` |
-| Circle On Plane | `geometry.profiles.circle_profile` | Constructs a circular profile from center, radius, plane, and segment count | `CircleOnPlaneNode` |
+| Circle On Plane | `geometry.profiles.circle_profile` | Constructs a circular profile from radius and an optional center/plane (defaults to XZ) | `CircleOnPlaneNode` |
 | Ellipse On Plane | `geometry.profiles.ellipse_profile` | Constructs an ellipse profile from center, major/minor radii, plane, and segment count | `EllipseOnPlaneNode` |
 | Sector On Plane | `geometry.profiles.sector_profile` | Constructs a circular sector profile from center, radius, start/end angles, and plane | `SectorOnPlaneNode` |
 | Annulus On Plane | `geometry.profiles.annulus_profile` | Constructs annulus boundaries from center, inner/outer radii, plane, and segment count | `AnnulusOnPlaneNode` |

@@ -8,6 +8,7 @@ public enum ListElementKind {
     NONE,
     UNCONSTRAINED,
     BLOCK_POS,
+    POINT,
     VECTOR,
     REGION,
     BLOCK_INFO,

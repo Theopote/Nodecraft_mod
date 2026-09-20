@@ -112,6 +112,8 @@ public enum NodeDataType {
     BLOCK_INFO_LIST("block_info_list", "Block Info List", java.util.List.class, ListElementKind.BLOCK_INFO),
     BLOCK_PLACEMENT_LIST("block_placement_list", "Block Placement List", java.util.List.class, ListElementKind.BLOCK_PLACEMENT),
     VECTOR_LIST("vector_list", "Vector List", java.util.List.class, ListElementKind.VECTOR),
+    /** Ordered continuous locations (corners, polyline samples, profile vertices). */
+    POINT_LIST("point_list", "Point List", java.util.List.class, ListElementKind.POINT),
     REGION_LIST("region_list", "Region List", java.util.List.class, ListElementKind.REGION),
     PLANT_STRUCTURE_LIST("plant_structure_list", "Plant Structure List", java.util.List.class, ListElementKind.PLANT_STRUCTURE);
 
