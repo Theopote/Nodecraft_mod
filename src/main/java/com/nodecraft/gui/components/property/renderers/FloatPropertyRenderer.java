@@ -4,6 +4,7 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.components.PropertyPanelComponent;
 import com.nodecraft.gui.components.property.core.PropertyDescriptor;
 import com.nodecraft.gui.components.property.core.PropertyRenderer;
+import com.nodecraft.gui.components.property.core.PropertyValueFormatters;
 import com.nodecraft.gui.components.property.support.GeometryViewerPropertySupport;
 import com.nodecraft.nodesystem.api.INode;
 import imgui.ImGui;
@@ -32,8 +33,8 @@ public final class FloatPropertyRenderer {
                 ImGui.beginDisabled();
             }
             boolean changed = isGeometryTransparency
-                    ? ImGui.sliderFloat("##" + prop.name, valArr, 0.0f, 1.0f, "%.2f")
-                    : ImGui.dragFloat("##" + prop.name, valArr, 0.01f);
+                    ? ImGui.sliderFloat("##" + prop.name, valArr, 0.0f, 1.0f, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT)
+                    : ImGui.dragFloat("##" + prop.name, valArr, 0.01f, 0.0f, 0.0f, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
             if (changed && !isReadOnly && valArr[0] != currentValue) {
                 panel.applyPropertyValue(node, prop, valArr[0]);
                 NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), valArr[0]);

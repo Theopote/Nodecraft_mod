@@ -31,20 +31,20 @@ public final class Vec3PropertyRenderer {
             }
 
             String tempKey = panel.getTempValueKey(node, prop.name + "_vec3");
-            ImString xStr = panel.getOrCreateTempValue(tempKey + "_x", () -> new ImString(String.format("%.3f", vec.getX()), 64));
-            ImString yStr = panel.getOrCreateTempValue(tempKey + "_y", () -> new ImString(String.format("%.3f", vec.getY()), 64));
-            ImString zStr = panel.getOrCreateTempValue(tempKey + "_z", () -> new ImString(String.format("%.3f", vec.getZ()), 64));
+            ImString xStr = panel.getOrCreateTempValue(tempKey + "_x", () -> new ImString(PropertyValueFormatters.formatDecimal(vec.getX()), 64));
+            ImString yStr = panel.getOrCreateTempValue(tempKey + "_y", () -> new ImString(PropertyValueFormatters.formatDecimal(vec.getY()), 64));
+            ImString zStr = panel.getOrCreateTempValue(tempKey + "_z", () -> new ImString(PropertyValueFormatters.formatDecimal(vec.getZ()), 64));
 
             boolean isReadOnly = prop.setter == null;
 
             if (!panel.isPropertyBeingEdited(node, prop.name + "_x")) {
-                xStr.set(String.format("%.3f", vec.getX()));
+                xStr.set(PropertyValueFormatters.formatDecimal(vec.getX()));
             }
             if (!panel.isPropertyBeingEdited(node, prop.name + "_y")) {
-                yStr.set(String.format("%.3f", vec.getY()));
+                yStr.set(PropertyValueFormatters.formatDecimal(vec.getY()));
             }
             if (!panel.isPropertyBeingEdited(node, prop.name + "_z")) {
-                zStr.set(String.format("%.3f", vec.getZ()));
+                zStr.set(PropertyValueFormatters.formatDecimal(vec.getZ()));
             }
 
             boolean changed = false;

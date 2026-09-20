@@ -4,6 +4,7 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.components.PropertyPanelComponent;
 import com.nodecraft.gui.components.property.core.PropertyDescriptor;
 import com.nodecraft.gui.components.property.core.PropertyRenderer;
+import com.nodecraft.gui.components.property.core.PropertyValueFormatters;
 import com.nodecraft.nodesystem.api.INode;
 import imgui.ImGui;
 import imgui.flag.ImGuiInputTextFlags;
@@ -28,16 +29,16 @@ public final class DoublePropertyRenderer {
             ImString textValue = panel.getOrReplaceTempValue(
                     tempKey,
                     ImString.class,
-                    () -> new ImString(String.format("%.12f", currentValue), 64));
+                    () -> new ImString(PropertyValueFormatters.formatDecimal(currentValue), 64));
 
             if (!panel.isPropertyBeingEdited(node, prop.name)) {
                 try {
                     double currentTextValue = Double.parseDouble(textValue.get());
-                    if (Math.abs(currentTextValue - currentValue) > 1e-12) {
-                        textValue.set(String.format("%.12f", currentValue));
+                    if (PropertyValueFormatters.decimalDisplayDrifted(currentTextValue, currentValue)) {
+                        textValue.set(PropertyValueFormatters.formatDecimal(currentValue));
                     }
                 } catch (NumberFormatException e) {
-                    textValue.set(String.format("%.12f", currentValue));
+                    textValue.set(PropertyValueFormatters.formatDecimal(currentValue));
                 }
             }
 
@@ -62,7 +63,7 @@ public final class DoublePropertyRenderer {
             } else if (wasDeactivated && wasBeingEdited) {
                 try {
                     double newValue = Double.parseDouble(textValue.get());
-                    shouldSave = Math.abs(newValue - currentValue) > 1e-12;
+                    shouldSave = PropertyValueFormatters.decimalDisplayDrifted(newValue, currentValue);
                 } catch (NumberFormatException ignored) {
                     shouldSave = false;
                 }
@@ -71,8 +72,9 @@ public final class DoublePropertyRenderer {
             if (shouldSave && !isReadOnly) {
                 try {
                     double newValue = Double.parseDouble(textValue.get());
-                    if (Math.abs(newValue - currentValue) > 1e-12) {
+                    if (PropertyValueFormatters.decimalDisplayDrifted(newValue, currentValue)) {
                         panel.applyPropertyValue(node, prop, newValue);
+                        textValue.set(PropertyValueFormatters.formatDecimal(newValue));
                         NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), newValue);
                     }
                 } catch (NumberFormatException e) {
@@ -83,17 +85,26 @@ public final class DoublePropertyRenderer {
 
             if (wasDeactivated && wasBeingEdited) {
                 panel.markPropertyEditingFinished(node, prop.name);
+                textValue.set(PropertyValueFormatters.formatDecimal(
+                        (double) prop.getter.invoke(node)));
             }
 
             if (!isReadOnly) {
                 ImGui.sameLine();
                 ImGui.pushItemWidth(ImGui.getContentRegionAvailX() * 0.25f);
                 float[] dragValue = new float[]{0.0f};
-                if (ImGui.dragFloat("##drag_" + prop.name, dragValue, 0.01f, 0.0f, 0.0f, "%.3f")) {
+                if (ImGui.dragFloat(
+                        "##drag_" + prop.name,
+                        dragValue,
+                        0.01f,
+                        0.0f,
+                        0.0f,
+                        PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT
+                )) {
                     try {
                         double baseValue = Double.parseDouble(textValue.get());
                         double newValue = baseValue + dragValue[0];
-                        textValue.set(String.format("%.12f", newValue));
+                        textValue.set(PropertyValueFormatters.formatDecimal(newValue));
                         panel.applyPropertyValue(node, prop, newValue);
                         NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), newValue);
                         dragValue[0] = 0.0f;

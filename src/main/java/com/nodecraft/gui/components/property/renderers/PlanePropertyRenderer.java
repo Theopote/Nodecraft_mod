@@ -53,22 +53,22 @@ public final class PlanePropertyRenderer {
             float[] yValue = {values[1]};
             float[] zValue = {values[2]};
             float[] dValue = {values[3]};
-            changed |= ImGui.dragFloat("Normal X##" + prop.name, xValue, 0.01f);
+            changed |= ImGui.dragFloat("Normal X##" + prop.name, xValue, 0.01f, 0.0f, 0.0f, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
             values[0] = xValue[0];
             if (ImGui.isItemActive()) {
                 panel.markPropertyBeingEdited(node, prop.name);
             }
-            changed |= ImGui.dragFloat("Normal Y##" + prop.name, yValue, 0.01f);
+            changed |= ImGui.dragFloat("Normal Y##" + prop.name, yValue, 0.01f, 0.0f, 0.0f, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
             values[1] = yValue[0];
             if (ImGui.isItemActive()) {
                 panel.markPropertyBeingEdited(node, prop.name);
             }
-            changed |= ImGui.dragFloat("Normal Z##" + prop.name, zValue, 0.01f);
+            changed |= ImGui.dragFloat("Normal Z##" + prop.name, zValue, 0.01f, 0.0f, 0.0f, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
             values[2] = zValue[0];
             if (ImGui.isItemActive()) {
                 panel.markPropertyBeingEdited(node, prop.name);
             }
-            changed |= ImGui.dragFloat("Offset D##" + prop.name, dValue, 0.01f);
+            changed |= ImGui.dragFloat("Offset D##" + prop.name, dValue, 0.01f, 0.0f, 0.0f, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
             values[3] = dValue[0];
             if (ImGui.isItemActive()) {
                 panel.markPropertyBeingEdited(node, prop.name);

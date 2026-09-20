@@ -46,19 +46,19 @@ public final class Vector3dPropertyRenderer {
             float[] yValue = {values[1]};
             float[] zValue = {values[2]};
 
-            changed |= ImGui.dragFloat("X##" + prop.name, xValue, 0.01f);
+            changed |= ImGui.dragFloat("X##" + prop.name, xValue, 0.01f, 0.0f, 0.0f, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
             values[0] = xValue[0];
             if (ImGui.isItemActive()) {
                 panel.markPropertyBeingEdited(node, prop.name);
             }
 
-            changed |= ImGui.dragFloat("Y##" + prop.name, yValue, 0.01f);
+            changed |= ImGui.dragFloat("Y##" + prop.name, yValue, 0.01f, 0.0f, 0.0f, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
             values[1] = yValue[0];
             if (ImGui.isItemActive()) {
                 panel.markPropertyBeingEdited(node, prop.name);
             }
 
-            changed |= ImGui.dragFloat("Z##" + prop.name, zValue, 0.01f);
+            changed |= ImGui.dragFloat("Z##" + prop.name, zValue, 0.01f, 0.0f, 0.0f, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
             values[2] = zValue[0];
             if (ImGui.isItemActive()) {
                 panel.markPropertyBeingEdited(node, prop.name);
