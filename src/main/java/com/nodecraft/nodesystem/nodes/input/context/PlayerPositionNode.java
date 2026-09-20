@@ -6,11 +6,11 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.minecraft.PlayerAccessor;
 import com.nodecraft.nodesystem.util.Vector3;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3d;
 
 import java.util.UUID;
 
@@ -37,10 +37,15 @@ public class PlayerPositionNode extends BaseCustomUINode {
     private static final String OUTPUT_Y_ID = "output_y";
     private static final String OUTPUT_Z_ID = "output_z";
 
+    @SuppressWarnings("deprecation")
     public PlayerPositionNode() {
         super(UUID.randomUUID(), "input.context.player_position");
 
-        addOutputPort(new BasePort(OUTPUT_POSITION_ID, "Position", "The player's continuous world location", NodeDataType.POINT, this));
+        // POSITION is the legacy continuous-location alias: it drives POINT inputs
+        // (World Plane Origin) implicitly, and still aliases to VECTOR for existing
+        // Move Geometry translation presets. New location sources should prefer POINT.
+        addOutputPort(new BasePort(OUTPUT_POSITION_ID, "Position",
+                "The player's continuous world location", NodeDataType.POSITION, this));
         addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X coordinate", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y coordinate", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z coordinate", NodeDataType.DOUBLE, this));
@@ -48,13 +53,13 @@ public class PlayerPositionNode extends BaseCustomUINode {
 
     @Override
     public String getDescription() {
-        return "Gets the player's current world position as a Point.";
+        return "Gets the player's current world position.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         if (context == null) {
-            updateOutputs(new PointData(0.0, 0.0, 0.0));
+            updateOutputs(new Vector3d());
             return;
         }
         updateOutputs(getPlayerPosition(context));
@@ -75,20 +80,20 @@ public class PlayerPositionNode extends BaseCustomUINode {
         return false;
     }
 
-    private PointData getPlayerPosition(ExecutionContext context) {
+    private Vector3d getPlayerPosition(ExecutionContext context) {
         PlayerAccessor playerAccessor = context.getPlayerAccessor();
         if (playerAccessor == null) {
-            return new PointData(0.0, 0.0, 0.0);
+            return new Vector3d();
         }
         Vector3 position = useEyePosition ? playerAccessor.getPlayerEyePosition() : playerAccessor.getPlayerPosition();
-        return new PointData(position.getX(), position.getY(), position.getZ());
+        return new Vector3d(position.getX(), position.getY(), position.getZ());
     }
 
-    private void updateOutputs(PointData position) {
+    private void updateOutputs(Vector3d position) {
         outputValues.put(OUTPUT_POSITION_ID, position);
-        outputValues.put(OUTPUT_X_ID, position.getX());
-        outputValues.put(OUTPUT_Y_ID, position.getY());
-        outputValues.put(OUTPUT_Z_ID, position.getZ());
+        outputValues.put(OUTPUT_X_ID, position.x);
+        outputValues.put(OUTPUT_Y_ID, position.y);
+        outputValues.put(OUTPUT_Z_ID, position.z);
     }
 
     public boolean isUseEyePosition() {

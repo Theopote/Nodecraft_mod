@@ -6,7 +6,11 @@ package com.nodecraft.nodesystem.api;
  * - which connections are safe to allow implicitly at the port layer
  * - which conversions require an explicit conversion node
  * - which type pairs are unsupported
+ * <p>
+ * Legacy {@link NodeDataType#COORDINATE} / {@link NodeDataType#POSITION} aliases are
+ * intentionally still classified here for graph load compatibility.
  */
+@SuppressWarnings("deprecation")
 public final class TypeConversionRegistry {
 
     public record ConversionSuggestion(String nodeId, String displayName) {

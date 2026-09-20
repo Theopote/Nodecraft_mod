@@ -188,9 +188,9 @@ Document first; code follows this order unless a dependency forces otherwise.
 ### Batch B — language alignment — **done (2026-09-21)**
 
 5. Coordinate Input → **Block Position Input** (`reference.points.block_position`); `input_x/y/z` INTEGER overrides like Vector Input; graph format **V2→V3** type rename.
-6. World Plane Origin: `ANY` → `POINT`. Continuous locations use `POINT` (Player Position)
-   or legacy `POSITION → POINT` implicit. `BLOCK_POS → POINT` and `VECTOR → POINT` require
-   explicit conversion so Block Position / Look Direction cannot silently become Origin.
+6. World Plane Origin: `ANY` → `POINT`. Continuous locations use legacy `POSITION → POINT`
+   implicit (Player Position) or identical `POINT`. `BLOCK_POS → POINT` and `VECTOR → POINT`
+   require explicit conversion so Block Position / Look Direction cannot silently become Origin.
 
 ### Batch C — composition semantics — **done (2026-09-21)**
 
