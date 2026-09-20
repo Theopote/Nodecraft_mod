@@ -1,6 +1,7 @@
 package com.nodecraft.gui.screens;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.components.panel.CanvasComponent;
 import com.nodecraft.gui.editor.integration.ImGuiRenderer;
 import com.nodecraft.gui.style.ImGuiStyleScope;
 import com.nodecraft.gui.style.MinecraftTheme;
@@ -98,10 +99,7 @@ public class NodecraftWindowRenderer {
         ImGui.setNextWindowSize(parentScreen.windowWidth, parentScreen.windowHeight, ImGuiCond.Appearing);
         ImGui.setNextWindowCollapsed(false, ImGuiCond.Appearing);
 
-        LayoutRenderer layoutRenderer = parentScreen.getLayoutRenderer();
-        boolean lockWindowMoveForSplitter = layoutRenderer != null
-            && (layoutRenderer.isDraggingSplitter() || layoutRenderer.isHoveringSplitter());
-        int windowFlags = createWindowFlags(viewportsEnabled, lockWindowMoveForSplitter);
+        int windowFlags = getWindowFlags(viewportsEnabled);
 
         String windowTitle = viewportsEnabled
             ? "NodeCraft 编辑器 - 独立窗口模式"
@@ -128,6 +126,18 @@ public class NodecraftWindowRenderer {
         } finally {
             ImGui.end();
         }
+    }
+
+    private int getWindowFlags(boolean viewportsEnabled) {
+        LayoutRenderer layoutRenderer = parentScreen.getLayoutRenderer();
+        boolean lockWindowMoveForSplitter = layoutRenderer != null
+            && (layoutRenderer.isDraggingSplitter() || layoutRenderer.isHoveringSplitter());
+        boolean lockWindowMoveForCanvas = false;
+        if (parentScreen.getComponentManager() != null) {
+            CanvasComponent canvas = parentScreen.getComponentManager().getCanvasComponent();
+            lockWindowMoveForCanvas = canvas != null && canvas.requestsParentWindowNoMove();
+        }
+        return createWindowFlags(viewportsEnabled, lockWindowMoveForSplitter || lockWindowMoveForCanvas);
     }
 
     private int createWindowFlags(boolean viewportsEnabled, boolean lockWindowMove) {

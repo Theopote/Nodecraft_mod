@@ -13,7 +13,9 @@ import com.nodecraft.gui.preset.GraphPresetRules;
 import com.nodecraft.gui.editor.base.INodeEditor;
 import com.nodecraft.gui.editor.impl.ICanvasEditor;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
+import com.nodecraft.gui.editor.impl.ImGuiNodeInteraction;
 import com.nodecraft.gui.editor.impl.NodePosition;
+import com.nodecraft.gui.editor.interaction.EditorInteractionMode;
 import com.nodecraft.gui.editor.session.EditorSession;
 import com.nodecraft.gui.editor.viewport.EditorViewportState;
 import org.jetbrains.annotations.Nullable;
@@ -60,6 +62,13 @@ public class CanvasComponent implements EditorComponent {
     // 拖放状态跟踪 - 用于防止拖放时触发框选
     private static boolean isNodeDragDropActive = false;
     private static boolean isPresetDragDropActive = false;
+
+    /**
+     * Previous-frame signal for the parent NodeCraft window: while the canvas is hovered
+     * or an exclusive canvas gesture is active, the parent must use {@code NoMove} so a
+     * left-drag draws a selection marquee instead of moving the whole editor window.
+     */
+    private boolean requestParentWindowNoMove = false;
     
     // 样式设置 (现在使用常量初始化，但保留字段以便未来可能的动态修改)
     private float[] canvasBackgroundColor = CanvasConstants.DEFAULT_BACKGROUND_COLOR.clone(); 
@@ -344,6 +353,14 @@ public class CanvasComponent implements EditorComponent {
                                   canvasScreenPos.x, canvasScreenPos.y, canvasSize.x, canvasSize.y);
                 NodeCraft.LOGGER.debug("记录画布渲染尺寸: width={}, height={}", lastRenderedCanvasWidth, lastRenderedCanvasHeight);
             }
+
+            // Capture empty-canvas left-drags as an ImGui item so the parent NoTitleBar window
+            // does not treat the canvas as window chrome and start moving. Nodes rendered later
+            // overlap this button via setItemAllowOverlap().
+            ImGui.setCursorPos(0.0f, 0.0f);
+            ImGui.invisibleButton("##canvas_interaction_bg", Math.max(1.0f, canvasSize.x), Math.max(1.0f, canvasSize.y));
+            ImGui.setItemAllowOverlap();
+            ImGui.setCursorPos(0.0f, 0.0f);
             
             // 如果启用网格，先绘制网格（放在节点渲染前，这样网格就会在底层）
             if (showGridFlag()) {
@@ -355,6 +372,7 @@ public class CanvasComponent implements EditorComponent {
             
             // 处理画布交互操作
             handleCanvasInteraction(canvasScreenPos, canvasSize, io);
+            updateParentWindowMoveLock();
             
             // 处理拖放目标，允许从节点库拖放节点到画布
             handleDragDropTarget(canvasScreenPos, canvasSize);
@@ -368,6 +386,31 @@ public class CanvasComponent implements EditorComponent {
         }
     }
     
+    /**
+     * When true, the parent NodeCraft window should include {@code ImGuiWindowFlags.NoMove}
+     * on the next frame so canvas marquee / node / pan gestures are not stolen as window drag.
+     */
+    public boolean requestsParentWindowNoMove() {
+        return requestParentWindowNoMove;
+    }
+
+    private void updateParentWindowMoveLock() {
+        boolean exclusiveGesture = false;
+        if (nodeEditor instanceof ImGuiNodeEditor editor) {
+            ImGuiNodeInteraction interaction = editor.getInteraction();
+            if (interaction != null) {
+                exclusiveGesture = interaction.isBoxSelecting()
+                        || interaction.isDraggingNode()
+                        || interaction.isCreatingConnection()
+                        || interaction.getInteractionState().getMode() == EditorInteractionMode.PANNING_CANVAS;
+            }
+        }
+        // Hovered canvas or mid-gesture: keep parent fixed. Menu bar / side panels remain movable.
+        requestParentWindowNoMove = exclusiveGesture
+                || ImGui.isWindowHovered()
+                || isDraggingCanvas;
+    }
+
     /**
      * 处理画布交互（拖动和缩放）
      */
