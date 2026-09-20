@@ -24,6 +24,7 @@ import com.nodecraft.nodesystem.preview.protocol.PreviewStyle;
 import com.nodecraft.nodesystem.visual.SelectionVisualFeedback;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
+import imgui.type.ImInt;
 import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.UUID;
@@ -58,8 +59,38 @@ import org.joml.Vector3d;
     order = 0
 )
 public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerCallback {
+
+    public enum SourceMode {
+        AUTO("Auto"),
+        PICKED("Picked Block"),
+        COORDINATES("Coordinates");
+
+        private final String label;
+
+        SourceMode(String label) {
+            this.label = label;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+    }
+
+    private enum ActiveSource {
+        NONE,
+        PICKED,
+        COORDINATES
+    }
     
     // --- 节点设置（影响拾取行为） ---
+    @NodeProperty(
+        displayName = "Source Mode",
+        category = "Source",
+        order = 0,
+        description = "Auto prefers complete X/Y/Z connections; otherwise uses a picked block. Explicit modes never silently ignore the other source."
+    )
+    private SourceMode sourceMode = SourceMode.AUTO;
+
     @NodeProperty(
         displayName = "Max Distance",
         category = "Picking",
@@ -84,11 +115,31 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     )
     private boolean showBlockPreview = true;
     
-    // --- 核心数据状态 ---
+    // --- 核心数据状态：拾取与坐标输入分开存储，由 Source Mode 选择谁驱动输出 ---
     private volatile Coordinate pickedBlockPosition = null;
     private volatile String pickedBlockId = "minecraft:air";
     private volatile BlockStateData pickedBlockStateData = null;
     private volatile boolean hasPickedBlock = false;
+
+    private volatile Coordinate inputBlockPosition = null;
+    private volatile String inputBlockId = "minecraft:air";
+    private volatile BlockStateData inputBlockStateData = null;
+    private volatile boolean hasInputBlock = false;
+
+    @NodeProperty(
+        displayName = "Active Source",
+        readOnly = true,
+        category = "Source",
+        order = 1,
+        description = "Which source currently drives this node's outputs."
+    )
+    public String getActiveSourceLabel() {
+        return switch (resolveActiveSource()) {
+            case PICKED -> "Picked Block";
+            case COORDINATES -> "Coordinates";
+            case NONE -> "None";
+        };
+    }
 
     @NodeProperty(
         displayName = "Has Selection",
@@ -98,7 +149,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         description = "Whether this node currently has a selected block."
     )
     public boolean isSelectionActive() {
-        return hasPickedBlock || hasInputCoordinates();
+        return resolveActiveSource() != ActiveSource.NONE;
     }
 
     @NodeProperty(
@@ -109,7 +160,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         description = "Human-readable name of the current block."
     )
     public String getSelectedBlockDisplayName() {
-        return getBlockDisplayName(pickedBlockId);
+        ActiveBlock active = resolveActiveBlock();
+        return getBlockDisplayName(active != null ? active.blockId() : "minecraft:air");
     }
 
     @NodeProperty(
@@ -120,7 +172,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         description = "Identifier of the current block."
     )
     public String getSelectedBlockIdForPanel() {
-        return pickedBlockId;
+        ActiveBlock active = resolveActiveBlock();
+        return active != null ? active.blockId() : "minecraft:air";
     }
 
     @NodeProperty(
@@ -130,15 +183,16 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         order = 13,
         description = "Grid-aligned position of the current block."
     )
-
-    // --- 输入验证状态 ---
     public String getSelectedPositionForPanel() {
-        if (pickedBlockPosition == null) {
+        ActiveBlock active = resolveActiveBlock();
+        if (active == null || active.position() == null) {
             return "";
         }
-        return pickedBlockPosition.getX() + ", " + pickedBlockPosition.getY() + ", " + pickedBlockPosition.getZ();
+        Coordinate position = active.position();
+        return position.getX() + ", " + position.getY() + ", " + position.getZ();
     }
 
+    // --- 输入验证状态 ---
     private volatile String inputValidationError = null;
     private volatile boolean hasInputValidationWarning = false;
     private volatile String inputValidationWarning = null;
@@ -175,13 +229,13 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         
         // 创建输入端口
         addInputPort(new BasePort(INPUT_X_ID, "X", 
-                "方块的X坐标（仅在未拾取方块时可用）", NodeDataType.INTEGER, this));
+                "Block X (used when Source is Coordinates, or Auto with X/Y/Z all connected)", NodeDataType.INTEGER, this));
         
         addInputPort(new BasePort(INPUT_Y_ID, "Y", 
-                "方块的Y坐标（仅在未拾取方块时可用）", NodeDataType.INTEGER, this));
+                "Block Y (used when Source is Coordinates, or Auto with X/Y/Z all connected)", NodeDataType.INTEGER, this));
         
         addInputPort(new BasePort(INPUT_Z_ID, "Z", 
-                "方块的Z坐标（仅在未拾取方块时可用）", NodeDataType.INTEGER, this));
+                "Block Z (used when Source is Coordinates, or Auto with X/Y/Z all connected)", NodeDataType.INTEGER, this));
         
         // 创建输出端口
         // 核心输出端口
@@ -218,7 +272,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     
     @Override
     public String getDescription() {
-        return "获取方块信息，支持交互拾取或坐标输入两种方式。";
+        return "获取方块信息。Source Mode 明确选择交互拾取或坐标输入，避免连线静默失效。";
     }
     
     @Override
@@ -230,22 +284,78 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        // 空检查 - 如果context为null，重置输出
         if (context == null) {
             resetOutputs();
             return;
         }
-        
-        // 更新输入端口的可用性
-        // Keep existing X/Y/Z graph connections intact; picked blocks simply take priority.
-        
-        // 如果没有拾取方块，尝试从输入端口获取坐标
-        if (!hasPickedBlock) {
-            tryProcessInputCoordinates(context);
+
+        ActiveSource active = resolveActiveSource();
+        switch (active) {
+            case COORDINATES -> tryProcessInputCoordinates(context);
+            case PICKED -> {
+                // Pick data already stored; still refresh outputs.
+            }
+            case NONE -> {
+                if (!hasPickedBlock) {
+                    clearInputBlockData();
+                }
+            }
         }
-        
-        // 输出当前方块数据（无论是拾取的还是从输入获取的）
-        updateOutputsWithPickedBlock();
+
+        updateOutputsWithActiveBlock();
+    }
+
+    private ActiveSource resolveActiveSource() {
+        SourceMode mode = sourceMode == null ? SourceMode.AUTO : sourceMode;
+        return switch (mode) {
+            case PICKED -> hasPickedBlock ? ActiveSource.PICKED : ActiveSource.NONE;
+            case COORDINATES -> hasCoordinateInputValues() ? ActiveSource.COORDINATES : ActiveSource.NONE;
+            case AUTO -> {
+                if (hasCompleteCoordinateConnections() && hasCoordinateInputValues()) {
+                    yield ActiveSource.COORDINATES;
+                }
+                if (hasPickedBlock) {
+                    yield ActiveSource.PICKED;
+                }
+                if (hasCoordinateInputValues()) {
+                    yield ActiveSource.COORDINATES;
+                }
+                yield ActiveSource.NONE;
+            }
+        };
+    }
+
+    private record ActiveBlock(Coordinate position, String blockId, BlockStateData state) {
+    }
+
+    private @Nullable ActiveBlock resolveActiveBlock() {
+        return switch (resolveActiveSource()) {
+            case PICKED -> new ActiveBlock(pickedBlockPosition, pickedBlockId, pickedBlockStateData);
+            case COORDINATES -> new ActiveBlock(inputBlockPosition, inputBlockId, inputBlockStateData);
+            case NONE -> null;
+        };
+    }
+
+    private boolean isPortConnected(String portId) {
+        IPort port = getInputPort(portId);
+        return port != null && port.isConnected();
+    }
+
+    private boolean hasCompleteCoordinateConnections() {
+        return isPortConnected(INPUT_X_ID) && isPortConnected(INPUT_Y_ID) && isPortConnected(INPUT_Z_ID);
+    }
+
+    private @Nullable Integer asInteger(@Nullable Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        return null;
+    }
+
+    private boolean hasCoordinateInputValues() {
+        return asInteger(inputValues.get(INPUT_X_ID)) != null
+            && asInteger(inputValues.get(INPUT_Y_ID)) != null
+            && asInteger(inputValues.get(INPUT_Z_ID)) != null;
     }
     
     /**
@@ -276,8 +386,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     }
     
     /**
-     * 尝试从输入端口处理坐标
-     * 仅在未拾取方块时执行
+     * 尝试从输入端口处理坐标（写入 input* 存储，不影响 pick 存储）
      */
     private void tryProcessInputCoordinates(@Nullable ExecutionContext context) {
         if (context == null) {
@@ -288,14 +397,11 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         clearInputValidationState();
         
         try {
-            // 获取输入坐标
-            Object xValue = getInputValue(INPUT_X_ID, 0);
-            Object yValue = getInputValue(INPUT_Y_ID, 0);
-            Object zValue = getInputValue(INPUT_Z_ID, 0);
+            Integer x = asInteger(inputValues.get(INPUT_X_ID));
+            Integer y = asInteger(inputValues.get(INPUT_Y_ID));
+            Integer z = asInteger(inputValues.get(INPUT_Z_ID));
             
-            // 检查是否所有坐标都有值
-            if (xValue instanceof Integer x && yValue instanceof Integer y && zValue instanceof Integer z) {
-                // 验证坐标范围
+            if (x != null && y != null && z != null) {
                 ValidationResult<Coordinate> rangeValidation = validateCoordinateRange(x, y, z);
                 if (!rangeValidation.isValid()) {
                     inputValidationError = rangeValidation.getMessage();
@@ -303,19 +409,13 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                     return;
                 }
                 
-                // 创建坐标对象
                 Coordinate inputPosition = new Coordinate(x, y, z);
                 
-                // 验证坐标是否与当前位置不同，避免重复处理
-                if (!inputPosition.equals(pickedBlockPosition)) {
-                    // 从世界中获取该位置的方块信息
+                if (!inputPosition.equals(inputBlockPosition) || !hasInputBlock) {
                     processBlockAtPosition(inputPosition);
                 }
             } else {
-                // 如果坐标不完整，清除当前的输入方块数据（但保留拾取的方块数据）
-                if (pickedBlockPosition != null && !hasPickedBlock) {
-                    clearInputBlockData();
-                }
+                clearInputBlockData();
             }
         } catch (Exception e) {
             inputValidationError = "处理输入坐标时发生异常: " + e.getMessage();
@@ -379,11 +479,11 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 NodeCraft.LOGGER.debug("节点 {} 获取方块状态失败", getId(), e);
             }
             
-            // 更新方块数据（标记为输入数据，不是拾取数据）
-            this.pickedBlockPosition = position;
-            this.pickedBlockId = blockId;
-            this.pickedBlockStateData = blockStateData;
-            // 注意：不设置 hasPickedBlock = true，因为这是输入数据
+            // 更新方块数据（坐标输入存储，不影响拾取存储）
+            this.inputBlockPosition = position;
+            this.inputBlockId = blockId;
+            this.inputBlockStateData = blockStateData;
+            this.hasInputBlock = true;
             
             // 实时验证方块状态一致性
             ValidationResult<BlockValidationData> blockValidation = validatePickedBlock(position, blockId, blockStateData);
@@ -402,7 +502,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 position,
                 SelectionVisualFeedback.SelectionState.SELECTED
             );
-            updateOutputsWithPickedBlock();
+            updateOutputsWithActiveBlock();
             
             NodeCraft.LOGGER.debug("节点 {} 从输入坐标获取方块: {} at {}", getId(), blockId, position);
             
@@ -413,23 +513,20 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     }
     
     /**
-     * 清除输入方块数据
-     * 仅清除通过输入坐标获取的数据，不影响拾取的数据
+     * 清除输入方块数据（不影响拾取存储）
      */
     private void clearInputBlockData() {
-        if (!hasPickedBlock) {
-            this.pickedBlockPosition = null;
-            this.pickedBlockId = "minecraft:air";
-            this.pickedBlockStateData = null;
-            
-            // 隐藏方块预览
-            clearBlockPreview();
+        this.inputBlockPosition = null;
+        this.inputBlockId = "minecraft:air";
+        this.inputBlockStateData = null;
+        this.hasInputBlock = false;
 
-            // 同步清理输入坐标驱动的方块高亮。
+        if (resolveActiveSource() != ActiveSource.PICKED) {
+            clearBlockPreview();
             SelectionVisualFeedback.getInstance().clearFeedback(getId().toString());
-            
-            NodeCraft.LOGGER.debug("节点 {} 清除输入方块数据", getId());
         }
+
+        NodeCraft.LOGGER.debug("节点 {} 清除输入方块数据", getId());
     }
     
     /**
@@ -466,19 +563,10 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     }
     
     /**
-     * 检查是否有输入坐标
-     * @return 如果有完整的输入坐标返回true
+     * 检查是否有完整坐标输入值（不因拾取状态而失效）
      */
     private boolean hasInputCoordinates() {
-        if (hasPickedBlock) {
-            return false; // 如果已拾取方块，输入坐标无效
-        }
-        
-        Object xValue = getInputValue(INPUT_X_ID, null);
-        Object yValue = getInputValue(INPUT_Y_ID, null);
-        Object zValue = getInputValue(INPUT_Z_ID, null);
-        
-        return xValue instanceof Integer && yValue instanceof Integer && zValue instanceof Integer;
+        return hasCoordinateInputValues();
     }
     
     /**
@@ -522,51 +610,33 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         return ValidationResult.success(new Coordinate(x, y, z));
     }
     
-    private void updateOutputsWithPickedBlock() {
-        // 基础输出
-        outputValues.put(OUTPUT_BLOCK_ID, pickedBlockId);
-        
-        // 获取方块名称
-        String blockName = getBlockDisplayName(pickedBlockId);
-        outputValues.put(OUTPUT_BLOCK_NAME, blockName);
-        
-        // 位置相关输出
-        if (pickedBlockPosition != null) {
-            // 主要位置输出
-            outputValues.put(OUTPUT_POSITION, pickedBlockPosition);
-            
-            // 方块中心坐标（浮点数）
-            Vector3d center = new Vector3d(
-                pickedBlockPosition.getX() + 0.5,
-                pickedBlockPosition.getY() + 0.5,
-                pickedBlockPosition.getZ() + 0.5
-            );
-            outputValues.put(OUTPUT_CENTER, center);
-            
-            // 坐标分量
-            outputValues.put(OUTPUT_BLOCK_X_ID, pickedBlockPosition.getX());
-            outputValues.put(OUTPUT_BLOCK_Y_ID, pickedBlockPosition.getY());
-            outputValues.put(OUTPUT_BLOCK_Z_ID, pickedBlockPosition.getZ());
-        } else {
-            Coordinate defaultCoord = new Coordinate(0, 0, 0);
-            Vector3d defaultCenter = new Vector3d(0.5, 0.5, 0.5);
-            
-            outputValues.put(OUTPUT_POSITION, defaultCoord);
-            outputValues.put(OUTPUT_CENTER, defaultCenter);
-            outputValues.put(OUTPUT_BLOCK_X_ID, 0);
-            outputValues.put(OUTPUT_BLOCK_Y_ID, 0);
-            outputValues.put(OUTPUT_BLOCK_Z_ID, 0);
+    private void updateOutputsWithActiveBlock() {
+        ActiveBlock active = resolveActiveBlock();
+        if (active == null || active.position() == null) {
+            resetOutputs();
+            return;
         }
-        
-        // 方块状态数据
-        outputValues.put(OUTPUT_BLOCK_STATE, pickedBlockStateData);
-        
-        // 方块实体检查
-        boolean hasBlockEntity = checkHasBlockEntity(pickedBlockId, pickedBlockPosition);
-        outputValues.put(OUTPUT_HAS_BLOCK_ENTITY, hasBlockEntity);
+
+        String blockId = active.blockId() != null ? active.blockId() : "minecraft:air";
+        Coordinate position = active.position();
+        BlockStateData stateData = active.state();
+
+        outputValues.put(OUTPUT_BLOCK_ID, blockId);
+        outputValues.put(OUTPUT_BLOCK_NAME, getBlockDisplayName(blockId));
+        outputValues.put(OUTPUT_POSITION, position);
+        outputValues.put(OUTPUT_CENTER, new Vector3d(
+            position.getX() + 0.5,
+            position.getY() + 0.5,
+            position.getZ() + 0.5
+        ));
+        outputValues.put(OUTPUT_BLOCK_X_ID, position.getX());
+        outputValues.put(OUTPUT_BLOCK_Y_ID, position.getY());
+        outputValues.put(OUTPUT_BLOCK_Z_ID, position.getZ());
+        outputValues.put(OUTPUT_BLOCK_STATE, stateData);
+        outputValues.put(OUTPUT_HAS_BLOCK_ENTITY, checkHasBlockEntity(blockId, position));
         syncOutputPorts();
     }
-    
+
     private void resetOutputs() {
         outputValues.put(OUTPUT_BLOCK_ID, "minecraft:air");
         outputValues.put(OUTPUT_BLOCK_NAME, "空气");
@@ -815,7 +885,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         this.pickedBlockId = blockId;
         this.pickedBlockStateData = blockStateData;
         this.hasPickedBlock = true;
-        updateOutputsWithPickedBlock();
+        updateOutputsWithActiveBlock();
         
         // 标记节点为脏，触发重新计算
         markDirty();
@@ -865,12 +935,12 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         pickedBlockId = "minecraft:air";
         pickedBlockStateData = null;
         
-        // 清除选择视觉反馈
-        SelectionVisualFeedback.getInstance().clearFeedback(getId().toString());
-        
-        // 隐藏方块预览
-        clearBlockPreview();
-        resetOutputs();
+        // 清除选择视觉反馈（仅当拾取不是当前活动源时，或没有坐标活动源）
+        if (resolveActiveSource() != ActiveSource.COORDINATES) {
+            SelectionVisualFeedback.getInstance().clearFeedback(getId().toString());
+            clearBlockPreview();
+        }
+        updateOutputsWithActiveBlock();
         
         markDirty();
     }
@@ -901,8 +971,13 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 return;
             }
             
-            if (showBlockPreview && hasPickedBlock && pickedBlockPosition != null && pickedBlockId != null) {
-                createBlockPreview();
+            if (showBlockPreview) {
+                ActiveBlock active = resolveActiveBlock();
+                if (active != null && active.position() != null && active.blockId() != null) {
+                    createBlockPreview(active.position(), active.blockId());
+                } else {
+                    clearBlockPreview();
+                }
             } else {
                 clearBlockPreview();
             }
@@ -919,7 +994,14 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     }
     
     private void createBlockPreview() {
-        if (pickedBlockPosition != null && pickedBlockId != null) {
+        ActiveBlock active = resolveActiveBlock();
+        if (active != null) {
+            createBlockPreview(active.position(), active.blockId());
+        }
+    }
+
+    private void createBlockPreview(Coordinate position, String blockId) {
+        if (position != null && blockId != null) {
             try {
                 // 检查世界状态，确保预览可以正常显示
                 ValidationResult<Void> worldValidation = validateWorldState();
@@ -933,10 +1015,10 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 
                 PreviewBlocksPayload payload = new PreviewBlocksPayload(List.of(
                     new PreviewBlock(
-                        pickedBlockPosition.getX(),
-                        pickedBlockPosition.getY(),
-                        pickedBlockPosition.getZ(),
-                        pickedBlockId
+                        position.getX(),
+                        position.getY(),
+                        position.getZ(),
+                        blockId
                     )
                 ));
                 PreviewStyle style = PreviewStyle.forGhostBlocks(1.0f, 1.0f, 1.0f, 0.5f, false, "original", 2.0f, 0.1f, 0);
@@ -946,16 +1028,16 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 
                 if (currentGhostBlockPreviewId != null) {
                     NodeCraft.LOGGER.debug("节点 {} 幽灵方块预览已显示: {} at {}, 预览ID: {}", 
-                        getId(), pickedBlockId, pickedBlockPosition, currentGhostBlockPreviewId);
+                        getId(), blockId, position, currentGhostBlockPreviewId);
                 } else {
                     NodeCraft.LOGGER.warn("节点 {} 幽灵方块预览创建失败: {} at {}", 
-                        getId(), pickedBlockId, pickedBlockPosition);
+                        getId(), blockId, position);
                 }
             } catch (NullPointerException e) {
                 NodeCraft.LOGGER.error("节点 {} 显示方块预览失败: 空指针异常 - PreviewRenderer或方块数据为null", getId(), e);
                 currentGhostBlockPreviewId = null;
             } catch (IllegalArgumentException e) {
-                NodeCraft.LOGGER.error("节点 {} 显示方块预览失败: 参数异常 - 无效的方块ID: {}", getId(), pickedBlockId, e);
+                NodeCraft.LOGGER.error("节点 {} 显示方块预览失败: 参数异常 - 无效的方块ID: {}", getId(), blockId, e);
                 currentGhostBlockPreviewId = null;
             } catch (Exception e) {
                 NodeCraft.LOGGER.error("节点 {} 显示方块预览失败: {} - {}", getId(), 
@@ -993,7 +1075,15 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         float baseHeight = 0f;
 
         baseHeight += smallGap;
-        baseHeight += buttonHeight;
+        baseHeight += buttonHeight; // pick button
+
+        // Source mode combo + active label (+ optional warning)
+        baseHeight += smallGap;
+        baseHeight += ImGui.getFrameHeight();
+        baseHeight += smallGap;
+        baseHeight += 18f;
+        baseHeight += smallGap;
+        baseHeight += 18f;
 
         NodeEditorInteractionManager interactionManager = NodeEditorInteractionManager.getInstance();
         if (interactionManager.isPendingBlockPick(getId().toString())) {
@@ -1010,7 +1100,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             baseHeight += 18f;
         }
 
-        if (hasPickedBlock) {
+        if (hasPickedBlock || hasInputBlock || resolveActiveSource() != ActiveSource.NONE) {
             baseHeight += smallGap;
             baseHeight += buttonHeight;
         }
@@ -1085,6 +1175,38 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             // 添加顶部间距（较小）
             addVerticalSpacing(getSmallPadding(), zoom);
 
+            // Source Mode + Active Source
+            ImGui.setCursorPosX(baseCursorX + edgeMargin);
+            ImGui.textDisabled("Source Mode");
+            ImGui.setCursorPosX(baseCursorX + edgeMargin);
+            ImGui.pushItemWidth(availableWidth);
+            ImInt modeIndex = new ImInt(switch (sourceMode == null ? SourceMode.AUTO : sourceMode) {
+                case AUTO -> 0;
+                case PICKED -> 1;
+                case COORDINATES -> 2;
+            });
+            if (ImGui.combo("##sourceMode", modeIndex, new String[]{"Auto", "Picked Block", "Coordinates"})) {
+                SourceMode next = switch (modeIndex.get()) {
+                    case 1 -> SourceMode.PICKED;
+                    case 2 -> SourceMode.COORDINATES;
+                    default -> SourceMode.AUTO;
+                };
+                setSourceMode(next);
+                changed = true;
+            }
+            ImGui.popItemWidth();
+            addVerticalSpacing(getSmallPadding(), zoom);
+            ImGui.setCursorPosX(baseCursorX + edgeMargin);
+            ImGui.textDisabled("Active:");
+            ImGui.sameLine();
+            ImGui.text(getActiveSourceLabel());
+            if (sourceMode == SourceMode.PICKED && hasCompleteCoordinateConnections()) {
+                ImGui.textColored(0.9f, 0.7f, 0.2f, 1.0f, "X/Y/Z connected but Source=Picked");
+            } else if (sourceMode == SourceMode.COORDINATES && hasPickedBlock) {
+                ImGui.textColored(0.9f, 0.7f, 0.2f, 1.0f, "Pick stored but Source=Coordinates");
+            }
+            addVerticalSpacing(getSmallPadding(), zoom);
+
             // === 1. 主要操作区 ===
             NodeEditorInteractionManager interactionManager = NodeEditorInteractionManager.getInstance();
             boolean isCurrentlyPicking = interactionManager.isPendingBlockPick(getId().toString());
@@ -1093,6 +1215,10 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             float buttonHeight = ImGui.getFrameHeight();
             
             ImGui.setCursorPosX(baseCursorX + edgeMargin);
+            boolean pickDisabled = sourceMode == SourceMode.COORDINATES;
+            if (pickDisabled) {
+                ImGui.beginDisabled();
+            }
             if (ImGui.button(pickButtonText + "##pickBlock", availableWidth, buttonHeight)) {
                 if (isCurrentlyPicking) {
                     // 取消当前拾取
@@ -1114,6 +1240,12 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 }
                 changed = true;
             }
+            if (pickDisabled) {
+                ImGui.endDisabled();
+                if (ImGui.isItemHovered()) {
+                    ImGui.setTooltip("Source Mode is Coordinates — switch to Auto or Picked to pick.");
+                }
+            }
 
             // 拾取状态提示
             if (isCurrentlyPicking) {
@@ -1128,9 +1260,13 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             renderInputValidationErrors(zoom);
 
             // === 2. 状态显示区 ===
-            if (hasPickedBlock || hasInputCoordinates()) {
+            ActiveSource activeSource = resolveActiveSource();
+            ActiveBlock activeBlock = resolveActiveBlock();
+            if (activeSource != ActiveSource.NONE && activeBlock != null) {
                 // 默认展开状态显示区
-                String headerText = hasPickedBlock ? "已选方块信息##info" : "输入坐标方块##info";
+                String headerText = activeSource == ActiveSource.PICKED
+                    ? "已选方块信息##info"
+                    : "输入坐标方块##info";
                 boolean infoExpandedNow = ImGui.collapsingHeader(headerText);
                 infoSectionExpanded = infoExpandedNow;
                 if (infoExpandedNow) {
@@ -1138,41 +1274,37 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                     addVerticalSpacing(getSmallPadding(), zoom);
                     
                     // 显示数据来源
-                    if (hasPickedBlock) {
-                        ImGui.textDisabled("来源:");
-                        ImGui.sameLine();
-                        ImGui.text("交互拾取");
-                    } else {
-                        ImGui.textDisabled("来源:");
-                        ImGui.sameLine();
-                        ImGui.text("输入坐标");
-                    }
+                    ImGui.textDisabled("来源:");
+                    ImGui.sameLine();
+                    ImGui.text(getActiveSourceLabel());
                     
                     // 方块名称和ID（紧凑布局）
-                    String blockName = getBlockDisplayName(pickedBlockId);
+                    String activeBlockId = activeBlock.blockId() != null ? activeBlock.blockId() : "minecraft:air";
+                    String blockName = getBlockDisplayName(activeBlockId);
                     ImGui.textDisabled("名称:");
                     ImGui.sameLine();
                     ImGui.text(blockName);
                     
                     ImGui.textDisabled("ID:");
                     ImGui.sameLine();
-                    ImGui.text(pickedBlockId);
+                    ImGui.text(activeBlockId);
                     
                     // 位置信息（带悬停提示显示中心点）
-                    if (pickedBlockPosition != null) {
+                    Coordinate activePosition = activeBlock.position();
+                    if (activePosition != null) {
                         ImGui.textDisabled("位置:");
                         ImGui.sameLine();
                         ImGui.text(String.format("%d, %d, %d", 
-                            pickedBlockPosition.getX(), 
-                            pickedBlockPosition.getY(), 
-                            pickedBlockPosition.getZ()));
+                            activePosition.getX(), 
+                            activePosition.getY(), 
+                            activePosition.getZ()));
                         
                         // 悬停时显示中心点坐标
                         if (ImGui.isItemHovered()) {
                             Vector3d center = new Vector3d(
-                                pickedBlockPosition.getX() + 0.5,
-                                pickedBlockPosition.getY() + 0.5,
-                                pickedBlockPosition.getZ() + 0.5
+                                activePosition.getX() + 0.5,
+                                activePosition.getY() + 0.5,
+                                activePosition.getZ() + 0.5
                             );
                             ImGui.setTooltip(String.format("中心点: %.2f, %.2f, %.2f", 
                                 center.x, center.y, center.z));
@@ -1180,16 +1312,17 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                     }
                     
                     // 方块状态属性（可展开的树形结构）
-                    if (pickedBlockStateData != null && !pickedBlockStateData.isEmpty()) {
+                    BlockStateData activeState = activeBlock.state();
+                    if (activeState != null && !activeState.isEmpty()) {
                         ImGui.textDisabled("状态:");
                         ImGui.sameLine();
                         
                         // 使用树形节点展示属性列表
-                        String stateLabel = "属性 (" + pickedBlockStateData.size() + ")";
+                        String stateLabel = "属性 (" + activeState.size() + ")";
                         boolean treeExpandedNow = ImGui.treeNode(stateLabel + "##blockState");
                         blockStateTreeExpanded = syncExpandableUiState(blockStateTreeExpanded, treeExpandedNow);
                         if (treeExpandedNow) {
-                            for (Map.Entry<String, String> entry : pickedBlockStateData.entrySet()) {
+                            for (Map.Entry<String, String> entry : activeState.entrySet()) {
                                 ImGui.bulletText(entry.getKey() + ": " + entry.getValue());
                             }
                             ImGui.treePop();
@@ -1197,7 +1330,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                     }
                     
                     // 方块实体信息
-                    boolean hasBlockEntity = checkHasBlockEntity(pickedBlockId, pickedBlockPosition);
+                    boolean hasBlockEntity = checkHasBlockEntity(activeBlockId, activePosition);
                     if (hasBlockEntity) {
                         ImGui.bulletText("包含方块实体");
                     }
@@ -1212,7 +1345,13 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                     ImGui.pushStyleColor(ImGuiCol.ButtonHovered, 0.9f, 0.3f, 0.3f, 1.0f); // 悬停时稍亮
                     ImGui.pushStyleColor(ImGuiCol.ButtonActive, 0.7f, 0.1f, 0.1f, 1.0f); // 按下时稍暗
                     if (ImGui.button("清除选择##clearBlock", availableWidth, buttonHeight)) {
-                        clearPickedBlock();
+                        if (activeSource == ActiveSource.PICKED || hasPickedBlock) {
+                            clearPickedBlock();
+                        }
+                        if (activeSource == ActiveSource.COORDINATES || hasInputBlock) {
+                            clearInputBlockData();
+                        }
+                        updateOutputsWithActiveBlock();
                         changed = true;
                     }
                     ImGui.popStyleColor(3); // 弹出三个颜色样式
@@ -1227,14 +1366,24 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             if (settingsExpandedNow) {
                 addVerticalSpacing(getSmallPadding(), zoom);
                 
-                // 输入端口状态说明
-                if (hasPickedBlock) {
+                // 输入端口 / Source Mode 状态说明
+                ActiveSource activeForHint = resolveActiveSource();
+                if (activeForHint == ActiveSource.PICKED && hasCompleteCoordinateConnections()) {
                     ImGui.pushStyleColor(ImGuiCol.Text, 0.8f, 0.6f, 0.2f, 1.0f); // 橙色
-                    ImGui.text("输入端口已禁用（已拾取方块）");
+                    ImGui.textWrapped("X/Y/Z connected; Active Source is Picked (mode="
+                        + (sourceMode == null ? SourceMode.AUTO : sourceMode).getLabel() + ")");
+                    ImGui.popStyleColor();
+                } else if (activeForHint == ActiveSource.COORDINATES) {
+                    ImGui.pushStyleColor(ImGuiCol.Text, 0.2f, 0.8f, 0.2f, 1.0f); // 绿色
+                    ImGui.textWrapped("Active Source: Coordinates — X/Y/Z drive outputs");
+                    ImGui.popStyleColor();
+                } else if (activeForHint == ActiveSource.PICKED) {
+                    ImGui.pushStyleColor(ImGuiCol.Text, 0.2f, 0.8f, 0.2f, 1.0f);
+                    ImGui.textWrapped("Active Source: Picked Block");
                     ImGui.popStyleColor();
                 } else {
-                    ImGui.pushStyleColor(ImGuiCol.Text, 0.2f, 0.8f, 0.2f, 1.0f); // 绿色
-                    ImGui.text("输入端口可用（X、Y、Z坐标）");
+                    ImGui.pushStyleColor(ImGuiCol.Text, 0.6f, 0.6f, 0.6f, 1.0f);
+                    ImGui.textWrapped("No active source — pick a block or connect X/Y/Z");
                     ImGui.popStyleColor();
                 }
                 addVerticalSpacing(getSmallPadding(), zoom);
@@ -1268,7 +1417,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 addVerticalSpacing(getSmallPadding(), zoom);
             }
 
-            if (hasPickedBlock) {
+            if (hasPickedBlock || hasInputBlock) {
                 addVerticalSpacing(getSmallPadding(), zoom);
                 ImGui.setCursorPosX(baseCursorX + edgeMargin);
                 ImGui.pushStyleColor(ImGuiCol.Button, 0.8f, 0.2f, 0.2f, 1.0f);
@@ -1276,6 +1425,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 ImGui.pushStyleColor(ImGuiCol.ButtonActive, 0.7f, 0.1f, 0.1f, 1.0f);
                 if (ImGui.button("Clear Selection##clearBlock", availableWidth, buttonHeight)) {
                     clearPickedBlock();
+                    clearInputBlockData();
+                    updateOutputsWithActiveBlock();
                     changed = true;
                 }
                 ImGui.popStyleColor(3);
@@ -1364,6 +1515,19 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     public float getMaxDistance() {
         return maxDistance;
     }
+
+    public SourceMode getSourceMode() {
+        return sourceMode == null ? SourceMode.AUTO : sourceMode;
+    }
+
+    public void setSourceMode(SourceMode sourceMode) {
+        SourceMode next = sourceMode == null ? SourceMode.AUTO : sourceMode;
+        if (this.sourceMode != next) {
+            this.sourceMode = next;
+            invalidateCache();
+            markDirty();
+        }
+    }
     
     public void setMaxDistance(float maxDistance) {
         if (maxDistance < 0) maxDistance = 0;
@@ -1404,6 +1568,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         
         try {
             // 直接保存设置为顶级属性，与@NodeProperty机制兼容
+            state.put("sourceMode", (sourceMode == null ? SourceMode.AUTO : sourceMode).name());
             state.put("maxDistance", maxDistance);
             state.put("includeFluids", includeFluids);
             state.put("showBlockPreview", showBlockPreview);
@@ -1477,6 +1642,14 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             Map<String, Object> stateMap = (Map<String, Object>) state;
             
             NodeCraft.LOGGER.debug("节点 {} 开始状态恢复，包含 {} 个属性", getId(), stateMap.size());
+
+            if (stateMap.get("sourceMode") instanceof String modeName) {
+                try {
+                    setSourceMode(SourceMode.valueOf(modeName));
+                } catch (IllegalArgumentException ignored) {
+                    setSourceMode(SourceMode.AUTO);
+                }
+            }
             
             // 恢复设置属性，使用模式匹配（Java 14+）或传统方式
             restoreFloatSetting(stateMap, "maxDistance", this::setMaxDistance, 1.0f, 1000.0f);

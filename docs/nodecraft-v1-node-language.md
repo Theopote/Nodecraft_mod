@@ -166,7 +166,7 @@ These violated the freeze at audit time. Batch A items below are remediated in c
 | Angle Slider unit property converts to radians while port stays `DOUBLE` | §3 | Fixed (degrees only) |
 | Coordinate Input: int xyz, dual Coordinate/Block Pos, no `input_x/y/z` | §4, §5 | Fixed → Block Position Input + overrides |
 | World Plane Origin typed as `ANY` | Supporting norm | Fixed → `POINT` (+ vector/block drivers) |
-| Selected Block: pick silently overrides connected X/Y/Z | §5 | Open (Batch C) |
+| Selected Block: pick silently overrides connected X/Y/Z | §5 | Fixed — Source Mode + Active Source |
 | Float / Integer slider dead UI properties | Dead properties | Fixed |
 
 ---
@@ -187,9 +187,12 @@ Document first; code follows this order unless a dependency forces otherwise.
 5. Coordinate Input → **Block Position Input** (`reference.points.block_position`); `input_x/y/z` INTEGER overrides like Vector Input; graph format **V2→V3** type rename.
 6. World Plane Origin: `ANY` → `POINT`; keep continuous origin for the plane; `VECTOR`/`POSITION` → `POINT` implicit; Block Pos already drives Point via existing compatibility.
 
-### Batch C — composition semantics
+### Batch C — composition semantics — **done (2026-09-21)**
 
-7. Selected Block Source Mode (`Auto` / `Picked` / `Coordinates`) + visible active source.
+7. Selected Block Source Mode (`Auto` / `Picked` / `Coordinates`) + visible **Active Source**.
+   - Auto: complete X/Y/Z connections win over pick; otherwise pick; otherwise coordinate values.
+   - Pick storage and coordinate-input storage are separate — switching mode does not silently discard the other.
+   - UI shows mode combo, active source label, and warnings when the unused source still exists.
 
 ### Deferred (phase 2)
 
