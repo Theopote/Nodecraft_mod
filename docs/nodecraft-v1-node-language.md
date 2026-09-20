@@ -163,7 +163,7 @@ These violated the freeze at audit time. Batch A items below are remediated in c
 |-----|------|--------|
 | Float Input outputs `FLOAT`; Float Slider outputs `DOUBLE` | §1 | Fixed (both `DOUBLE`) |
 | Integer Slider port id `value` vs peers’ `output_value` | §2 | Fixed + V1→V2 migration |
-| Angle Slider unit property converts to radians while port stays `DOUBLE` | §3 | Fixed (degrees only) + V3→V4 radians graph migration |
+| Angle Slider unit property converts to radians while port stays `DOUBLE` | §3 | Fixed (degrees only; legacy `unit` ignored — pre-release, no old-graph preserve) |
 | Coordinate Input: int xyz, dual Coordinate/Block Pos, no `input_x/y/z` | §4, §5 | Fixed → Block Position Input + overrides |
 | World Plane Origin typed as `ANY` | Supporting norm | Fixed → `POINT`; Block→Point explicit; Position→Point implicit; Vector→Point explicit |
 | Selected Block: pick silently overrides connected X/Y/Z | §5 | Fixed — Source Mode + Active Source |
@@ -181,9 +181,9 @@ Document first; code follows this order unless a dependency forces otherwise.
 1. Float Input → `DOUBLE` (fields + port).
 2. Integer Slider `value` → `output_value` + graph format **V1→V2** migration.
 3. Remove dead slider UI properties (`showMinMaxLabels` / `showSettingsPanel` / `showRangeInfo` / unused Float Input range+label flags).
-4. Angle Slider: degrees-only graph output; unit switch removed. Legacy `unit=RADIANS`
-   graphs are rewritten by format **V3→V4** (insert `math.trigonometry.deg_to_rad` on
-   outbound angle wires). Use Degrees To Radians when new graphs need radians.
+4. Angle Slider: degrees-only graph output; unit switch removed. Legacy `unit` state is
+   ignored (pre-release: no radians behavior-preserving migration). Use Degrees To Radians
+   when new graphs need radians.
 
 ### Batch B — language alignment — **done (2026-09-21)**
 
@@ -203,15 +203,19 @@ Document first; code follows this order unless a dependency forces otherwise.
 
 8. `TypeConversionRegistry`: `BLOCK_POS/COORDINATE → POINT` and `VECTOR → POINT` are
    `EXPLICIT_REQUIRED`; `POSITION → POINT` remains implicit.
-9. Graph format **V3→V4**: Angle Slider with legacy `unit=RADIANS` inserts Degrees To Radians.
+9. Angle Slider: degrees-only; ignore legacy `unit` (no old-file radians migration in pre-release).
 10. Selected Block: Position → `BLOCK_POS`, Center → `POINT`.
-11. `COORDINATE` / `POSITION` marked `@Deprecated` on `NodeDataType` (aliases kept for load).
+11. `COORDINATE` / `POSITION` marked `@Deprecated` on `NodeDataType` (aliases kept for in-repo wiring until ports migrate).
+
+**Pre-release compatibility policy:** prefer clean language breaks and update in-repo presets /
+tests. Do not add graph migrations solely to preserve abandoned on-disk semantic variants.
 
 ### Deferred (phase 2)
 
 - Collapse Selected Block advanced outputs behind Block Info / Deconstruct patterns.
-- Broader retirement / removal of `COORDINATE` / `POSITION` enum values after alias coverage is gone.
+- Retire `COORDINATE` / `POSITION` enum values after ports stop using them.
 - Optional editor Convert → Block To Point insert assist.
+- Player Position → canonical `POINT` once Move Geometry placement presets are rewritten.
 
 ---
 

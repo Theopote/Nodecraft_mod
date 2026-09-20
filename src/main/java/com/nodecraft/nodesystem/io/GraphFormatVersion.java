@@ -2,6 +2,9 @@ package com.nodecraft.nodesystem.io;
 
 /**
  * Canonical on-disk / embedded {@link SavedGraph} format version constants.
+ * <p>
+ * NodeCraft is still pre-release: prefer clean format bumps for in-repo assets over
+ * behavior-preserving migrations for abandoned on-disk graphs.
  */
 public final class GraphFormatVersion {
 
@@ -25,14 +28,8 @@ public final class GraphFormatVersion {
      */
     public static final int V3 = 3;
 
-    /**
-     * Spatial / angle semantic cleanup: Angle Slider legacy {@code unit=RADIANS} graphs
-     * insert Degrees To Radians so degrees-only language does not silently change output.
-     */
-    public static final int V4 = 4;
-
     /** Version written by current builds. */
-    public static final int CURRENT = V4;
+    public static final int CURRENT = V3;
 
     private GraphFormatVersion() {
     }

@@ -90,5 +90,6 @@ It does **not**:
 - hide lossy conversions behind port connectability
 
 That boundary is intentional. The graph should remain explicit where semantics matter.
-Graph load migrations (e.g. Angle Slider `unit=RADIANS` → insert Degrees To Radians) are the
-supported place for automatic structural rewrites that preserve old behavior.
+
+Pre-release: when language changes, update in-repo presets/tests rather than adding
+behavior-preserving load migrations for abandoned on-disk variants.

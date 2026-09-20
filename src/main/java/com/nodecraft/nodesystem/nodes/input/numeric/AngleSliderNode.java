@@ -198,8 +198,8 @@ public class AngleSliderNode extends BaseCustomUINode {
     @Override
     public void setNodeState(Object state) {
         if (state instanceof Map<?, ?> map) {
-            // Angle is always stored/emitted in degrees. Legacy unit=RADIANS graphs are rewritten
-            // by GraphMigrationRegistry V3→V4 (insert Degrees To Radians); remaining unit keys are stripped.
+            // Angle is always stored/emitted in degrees. Any legacy "unit" key is ignored
+            // (pre-release: no behavior-preserving radians migration).
             if (map.get("showRangeInputs") instanceof Boolean value) {
                 this.showRangeInputs = value;
             }
