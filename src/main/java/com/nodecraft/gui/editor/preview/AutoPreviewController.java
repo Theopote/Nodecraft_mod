@@ -46,6 +46,8 @@ public final class AutoPreviewController {
     private long lastAutoPreviewDirtyChangeAt = 0L;
     private long lastAutoPreviewExecutionAt = 0L;
     private volatile ExecutionSession autoPreviewSession;
+    /** Most recent successfully submitted preview session (may already be finished). */
+    private volatile ExecutionSession lastSubmittedSession;
     private long graphDirtyEpoch = 0L;
     private final Set<UUID> invalidatedNodeIds = new HashSet<>();
 
@@ -169,6 +171,7 @@ public final class AutoPreviewController {
         }
 
         autoPreviewSession = session;
+        lastSubmittedSession = session;
         NodeCraft.LOGGER.debug(
                 "Auto-preview submit: reason={}, dirtyVersion={}, nodes={}, mode={}, scopeSize={}, session={}",
                 triggerReason,
@@ -212,9 +215,21 @@ public final class AutoPreviewController {
         autoPreviewSession = null;
     }
 
+    /**
+     * In-flight preview session, or {@code null} if none is running / already cleared on completion.
+     */
     @Nullable
     public ExecutionSession activeSession() {
         return autoPreviewSession;
+    }
+
+    /**
+     * Last session this controller successfully submitted. Survives completion so callers can
+     * observe submission without racing the worker thread that clears {@link #activeSession()}.
+     */
+    @Nullable
+    public ExecutionSession lastSubmittedSession() {
+        return lastSubmittedSession;
     }
 
     public ExecFrontierSnapshot activeExecFrontierSnapshot() {

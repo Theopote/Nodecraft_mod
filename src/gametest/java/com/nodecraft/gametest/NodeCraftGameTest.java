@@ -519,7 +519,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         clock.addAndGet(AutoPreviewController.DEBOUNCE_MS + 1L);
         controller.tick();
 
-        ExecutionSession session = controller.activeSession();
+        ExecutionSession session = controller.lastSubmittedSession();
         if (session == null) {
             session = NodeExecutionScheduler.client().activePreview().orElse(null);
         }

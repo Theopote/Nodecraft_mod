@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AutoPreviewControllerTest {
@@ -42,17 +43,7 @@ class AutoPreviewControllerTest {
 
         AutoPreviewController controller = new AutoPreviewController(
                 () -> graph,
-                new AutoPreviewController.DirtyVersionSource() {
-                    @Override
-                    public long getDirtyVersion() {
-                        return dirtyVersion.get();
-                    }
-
-                    @Override
-                    public void markDirty() {
-                        dirtyVersion.incrementAndGet();
-                    }
-                },
+                dirtySource(dirtyVersion),
                 () -> new ExecutionContext(null, null),
                 clock::get,
                 NodeExecutionScheduler.client()
@@ -63,15 +54,13 @@ class AutoPreviewControllerTest {
         assertTrue(controller.invalidatedNodeIdsView().size() >= 1, "dirty node should invalidate a scope");
 
         controller.tick(); // still within debounce window stamped at notify
+        assertNull(controller.lastSubmittedSession(), "must not submit inside debounce window");
+
         clock.addAndGet(AutoPreviewController.DEBOUNCE_MS + 1L);
         controller.tick();
 
-        ExecutionSession session = controller.activeSession();
-        if (session == null) {
-            // Session may already have completed on the shared worker.
-            session = NodeExecutionScheduler.client().activePreview().orElse(null);
-        }
-        assertNotNull(session, "preview session should start after debounce");
+        ExecutionSession session = controller.lastSubmittedSession();
+        assertNotNull(session, "preview session should be submitted after debounce");
         assertTrue(Boolean.TRUE.equals(session.result().get(3, TimeUnit.SECONDS)));
         assertEquals(0, sideEffect.executionCount(), "preview must skip output.execute.*");
     }
@@ -87,17 +76,7 @@ class AutoPreviewControllerTest {
 
         AutoPreviewController controller = new AutoPreviewController(
                 () -> graph,
-                new AutoPreviewController.DirtyVersionSource() {
-                    @Override
-                    public long getDirtyVersion() {
-                        return dirtyVersion.get();
-                    }
-
-                    @Override
-                    public void markDirty() {
-                        dirtyVersion.incrementAndGet();
-                    }
-                },
+                dirtySource(dirtyVersion),
                 () -> new ExecutionContext(null, null),
                 clock::get,
                 NodeExecutionScheduler.client()
@@ -107,12 +86,23 @@ class AutoPreviewControllerTest {
         clock.addAndGet(AutoPreviewController.DEBOUNCE_MS + 1L);
         controller.tick();
 
-        ExecutionSession session = controller.activeSession();
-        if (session == null) {
-            session = NodeExecutionScheduler.client().activePreview().orElse(null);
-        }
-        assertNotNull(session, "session should start when clock already advanced past debounce");
+        ExecutionSession session = controller.lastSubmittedSession();
+        assertNotNull(session, "session should be submitted when clock already advanced past debounce");
         assertTrue(Boolean.TRUE.equals(session.result().get(3, TimeUnit.SECONDS)));
+    }
+
+    private static AutoPreviewController.DirtyVersionSource dirtySource(AtomicLong dirtyVersion) {
+        return new AutoPreviewController.DirtyVersionSource() {
+            @Override
+            public long getDirtyVersion() {
+                return dirtyVersion.get();
+            }
+
+            @Override
+            public void markDirty() {
+                dirtyVersion.incrementAndGet();
+            }
+        };
     }
 
     private static final class PassThroughNode extends BaseNode {
