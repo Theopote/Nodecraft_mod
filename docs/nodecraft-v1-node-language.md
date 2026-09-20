@@ -163,10 +163,11 @@ These violated the freeze at audit time. Batch A items below are remediated in c
 |-----|------|--------|
 | Float Input outputs `FLOAT`; Float Slider outputs `DOUBLE` | §1 | Fixed (both `DOUBLE`) |
 | Integer Slider port id `value` vs peers’ `output_value` | §2 | Fixed + V1→V2 migration |
-| Angle Slider unit property converts to radians while port stays `DOUBLE` | §3 | Fixed (degrees only) |
+| Angle Slider unit property converts to radians while port stays `DOUBLE` | §3 | Fixed (degrees only) + V3→V4 radians graph migration |
 | Coordinate Input: int xyz, dual Coordinate/Block Pos, no `input_x/y/z` | §4, §5 | Fixed → Block Position Input + overrides |
-| World Plane Origin typed as `ANY` | Supporting norm | Fixed → `POINT` (+ vector/block drivers) |
+| World Plane Origin typed as `ANY` | Supporting norm | Fixed → `POINT`; Block→Point explicit; Position→Point implicit; Vector→Point explicit |
 | Selected Block: pick silently overrides connected X/Y/Z | §5 | Fixed — Source Mode + Active Source |
+| Selected Block Position / Center types | §4 | Fixed — `BLOCK_POS` / `POINT` |
 | Float / Integer slider dead UI properties | Dead properties | Fixed |
 
 ---
@@ -180,12 +181,16 @@ Document first; code follows this order unless a dependency forces otherwise.
 1. Float Input → `DOUBLE` (fields + port).
 2. Integer Slider `value` → `output_value` + graph format **V1→V2** migration.
 3. Remove dead slider UI properties (`showMinMaxLabels` / `showSettingsPanel` / `showRangeInfo` / unused Float Input range+label flags).
-4. Angle Slider: degrees-only graph output; unit switch removed (legacy `unit` state ignored). Use `math.trigonometry.deg_to_rad` when radians are required.
+4. Angle Slider: degrees-only graph output; unit switch removed. Legacy `unit=RADIANS`
+   graphs are rewritten by format **V3→V4** (insert `math.trigonometry.deg_to_rad` on
+   outbound angle wires). Use Degrees To Radians when new graphs need radians.
 
 ### Batch B — language alignment — **done (2026-09-21)**
 
 5. Coordinate Input → **Block Position Input** (`reference.points.block_position`); `input_x/y/z` INTEGER overrides like Vector Input; graph format **V2→V3** type rename.
-6. World Plane Origin: `ANY` → `POINT`; keep continuous origin for the plane; `VECTOR`/`POSITION` → `POINT` implicit; Block Pos already drives Point via existing compatibility.
+6. World Plane Origin: `ANY` → `POINT`. Continuous locations use `POINT` (Player Position)
+   or legacy `POSITION → POINT` implicit. `BLOCK_POS → POINT` and `VECTOR → POINT` require
+   explicit conversion so Block Position / Look Direction cannot silently become Origin.
 
 ### Batch C — composition semantics — **done (2026-09-21)**
 
@@ -194,10 +199,19 @@ Document first; code follows this order unless a dependency forces otherwise.
    - Pick storage and coordinate-input storage are separate — switching mode does not silently discard the other.
    - UI shows mode combo, active source label, and warnings when the unused source still exists.
 
+### Batch D — spatial / angle freeze closure — **done (2026-09-21)**
+
+8. `TypeConversionRegistry`: `BLOCK_POS/COORDINATE → POINT` and `VECTOR → POINT` are
+   `EXPLICIT_REQUIRED`; `POSITION → POINT` remains implicit.
+9. Graph format **V3→V4**: Angle Slider with legacy `unit=RADIANS` inserts Degrees To Radians.
+10. Selected Block: Position → `BLOCK_POS`, Center → `POINT`.
+11. `COORDINATE` / `POSITION` marked `@Deprecated` on `NodeDataType` (aliases kept for load).
+
 ### Deferred (phase 2)
 
 - Collapse Selected Block advanced outputs behind Block Info / Deconstruct patterns.
-- Broader retirement of `COORDINATE` / `POSITION` from player-facing surfaces.
+- Broader retirement / removal of `COORDINATE` / `POSITION` enum values after alias coverage is gone.
+- Optional editor Convert → Block To Point insert assist.
 
 ---
 

@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.BlockStateData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -245,11 +246,11 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         addOutputPort(new BasePort(OUTPUT_BLOCK_NAME, "Block Name", 
                 "人类可读的显示名称，如 '橡木楼梯'", NodeDataType.STRING, this));
         
-        addOutputPort(new BasePort(OUTPUT_POSITION, "Position", 
-                "整数坐标，用于定位和网格对齐", NodeDataType.COORDINATE, this));
-        
-        addOutputPort(new BasePort(OUTPUT_CENTER, "Center", 
-                "方块几何中心，用于精确的非网格对齐操作", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_POSITION, "Position",
+                "整数方块坐标，用于定位和网格对齐", NodeDataType.BLOCK_POS, this));
+
+        addOutputPort(new BasePort(OUTPUT_CENTER, "Center",
+                "方块几何中心（连续位置），用于非网格对齐操作", NodeDataType.POINT, this));
         
         addOutputPort(new BasePort(OUTPUT_BLOCK_STATE, "Block State", 
                 "方块的变体属性，如 {\"facing\": \"north\", \"waterlogged\": \"true\"}", NodeDataType.BLOCK_STATE_DATA, this));
@@ -623,8 +624,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
 
         outputValues.put(OUTPUT_BLOCK_ID, blockId);
         outputValues.put(OUTPUT_BLOCK_NAME, getBlockDisplayName(blockId));
-        outputValues.put(OUTPUT_POSITION, position);
-        outputValues.put(OUTPUT_CENTER, new Vector3d(
+        outputValues.put(OUTPUT_POSITION, new BlockPos(position.getX(), position.getY(), position.getZ()));
+        outputValues.put(OUTPUT_CENTER, new PointData(
             position.getX() + 0.5,
             position.getY() + 0.5,
             position.getZ() + 0.5
@@ -640,8 +641,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     private void resetOutputs() {
         outputValues.put(OUTPUT_BLOCK_ID, "minecraft:air");
         outputValues.put(OUTPUT_BLOCK_NAME, "空气");
-        outputValues.put(OUTPUT_POSITION, new Coordinate(0, 0, 0));
-        outputValues.put(OUTPUT_CENTER, new Vector3d(0.5, 0.5, 0.5));
+        outputValues.put(OUTPUT_POSITION, BlockPos.ORIGIN);
+        outputValues.put(OUTPUT_CENTER, new PointData(0.5, 0.5, 0.5));
         outputValues.put(OUTPUT_BLOCK_STATE, null);
         outputValues.put(OUTPUT_HAS_BLOCK_ENTITY, false);
         outputValues.put(OUTPUT_BLOCK_X_ID, 0);

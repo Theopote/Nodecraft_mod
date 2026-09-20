@@ -39,11 +39,9 @@ public final class TypeConversionRegistry {
             return ConversionPolicy.IMPLICIT_SAFE;
         }
 
-        if (isCoordinateToPositionCompatible(output, input)) {
-            return ConversionPolicy.IMPLICIT_SAFE;
-        }
-
-        if (isVectorToPointCompatible(output, input)) {
+        // POSITION is a legacy location alias; it may drive Point inputs.
+        // VECTOR (direction/displacement) must not silently become a Point.
+        if (isPositionToPointCompatible(output, input)) {
             return ConversionPolicy.IMPLICIT_SAFE;
         }
 
@@ -110,6 +108,7 @@ public final class TypeConversionRegistry {
     private static boolean isExplicitConversionPair(NodeDataType outputType, NodeDataType inputType) {
         return isBlockCoordinateToPointConversion(outputType, inputType)
                 || isBlockCoordinateToVectorConversion(outputType, inputType)
+                || isVectorToPointConversion(outputType, inputType)
                 || isPointToBlockCoordinateConversion(outputType, inputType)
                 || isBlockFaceToPlaneConversion(outputType, inputType)
                 || isSurfaceStripToGeometryConversion(outputType, inputType)
@@ -179,17 +178,20 @@ public final class TypeConversionRegistry {
         return type == NodeDataType.VECTOR || type == NodeDataType.POSITION;
     }
 
-    private static boolean isCoordinateToPositionCompatible(NodeDataType outputType, NodeDataType inputType) {
-        return isCoordinateAlias(outputType)
-                && (inputType == NodeDataType.POINT || isVectorAlias(inputType));
+    /**
+     * Legacy {@link NodeDataType#POSITION} means a continuous location, so it may
+     * drive {@link NodeDataType#POINT} inputs implicitly (e.g. World Plane Origin).
+     */
+    private static boolean isPositionToPointCompatible(NodeDataType outputType, NodeDataType inputType) {
+        return outputType == NodeDataType.POSITION && inputType == NodeDataType.POINT;
     }
 
     /**
-     * Continuous vector-like values may drive Point inputs (e.g. World Plane Origin)
-     * without a separate conversion node.
+     * Direction / displacement vectors must not silently become Points.
+     * Prefer an explicit conversion (or a true Point / Position source).
      */
-    private static boolean isVectorToPointCompatible(NodeDataType outputType, NodeDataType inputType) {
-        return isVectorAlias(outputType) && inputType == NodeDataType.POINT;
+    private static boolean isVectorToPointConversion(NodeDataType outputType, NodeDataType inputType) {
+        return outputType == NodeDataType.VECTOR && inputType == NodeDataType.POINT;
     }
 
     private static boolean isCoordinateListAlias(NodeDataType type) {

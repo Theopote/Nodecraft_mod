@@ -30,7 +30,18 @@ public enum NodeDataType {
 
     POINT("point", "Point", PointData.class),
     VECTOR("vector", "Vector", Vector3d.class),
+    /**
+     * Legacy semantic alias of {@link #BLOCK_POS}. Prefer {@code BLOCK_POS} on new ports.
+     * @deprecated Use {@link #BLOCK_POS} for new nodes; kept for graph compatibility.
+     */
+    @Deprecated
     COORDINATE("coordinate", "Coordinate", BlockPos.class),
+    /**
+     * Legacy continuous-location alias. Prefer {@link #POINT} for locations and
+     * {@link #VECTOR} for direction/displacement on new ports.
+     * @deprecated Use {@link #POINT} or {@link #VECTOR} by role; kept for graph compatibility.
+     */
+    @Deprecated
     POSITION("position", "Position", Vector3d.class),
     PLANE("plane", "Plane", PlaneData.class),
     BOUNDING_BOX("bounding_box", "Bounding Box", BoundingBoxData.class),

@@ -6,11 +6,11 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.minecraft.PlayerAccessor;
 import com.nodecraft.nodesystem.util.Vector3;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
 import java.util.UUID;
 
@@ -40,21 +40,21 @@ public class PlayerPositionNode extends BaseCustomUINode {
     public PlayerPositionNode() {
         super(UUID.randomUUID(), "input.context.player_position");
 
-        addOutputPort(new BasePort(OUTPUT_POSITION_ID, "Position", "The player's position vector", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X coordinate", NodeDataType.FLOAT, this));
-        addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y coordinate", NodeDataType.FLOAT, this));
-        addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z coordinate", NodeDataType.FLOAT, this));
+        addOutputPort(new BasePort(OUTPUT_POSITION_ID, "Position", "The player's continuous world location", NodeDataType.POINT, this));
+        addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X coordinate", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y coordinate", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z coordinate", NodeDataType.DOUBLE, this));
     }
 
     @Override
     public String getDescription() {
-        return "Gets the player's current world position.";
+        return "Gets the player's current world position as a Point.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         if (context == null) {
-            updateOutputs(new Vector3d());
+            updateOutputs(new PointData(0.0, 0.0, 0.0));
             return;
         }
         updateOutputs(getPlayerPosition(context));
@@ -75,20 +75,20 @@ public class PlayerPositionNode extends BaseCustomUINode {
         return false;
     }
 
-    private Vector3d getPlayerPosition(ExecutionContext context) {
+    private PointData getPlayerPosition(ExecutionContext context) {
         PlayerAccessor playerAccessor = context.getPlayerAccessor();
         if (playerAccessor == null) {
-            return new Vector3d();
+            return new PointData(0.0, 0.0, 0.0);
         }
         Vector3 position = useEyePosition ? playerAccessor.getPlayerEyePosition() : playerAccessor.getPlayerPosition();
-        return new Vector3d(position.getX(), position.getY(), position.getZ());
+        return new PointData(position.getX(), position.getY(), position.getZ());
     }
 
-    private void updateOutputs(Vector3d position) {
+    private void updateOutputs(PointData position) {
         outputValues.put(OUTPUT_POSITION_ID, position);
-        outputValues.put(OUTPUT_X_ID, (float) position.x);
-        outputValues.put(OUTPUT_Y_ID, (float) position.y);
-        outputValues.put(OUTPUT_Z_ID, (float) position.z);
+        outputValues.put(OUTPUT_X_ID, position.getX());
+        outputValues.put(OUTPUT_Y_ID, position.getY());
+        outputValues.put(OUTPUT_Z_ID, position.getZ());
     }
 
     public boolean isUseEyePosition() {

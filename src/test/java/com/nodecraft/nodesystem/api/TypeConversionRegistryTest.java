@@ -59,14 +59,26 @@ class TypeConversionRegistryTest {
     }
 
     @Test
-    void blockCoordinateToPointIsImplicitBecauseOfCoordinateCompatibility() {
-        assertTrue(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.BLOCK_POS, NodeDataType.POINT));
+    void blockCoordinateToPointRequiresExplicitConversion() {
+        assertEquals(TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
+            TypeConversionRegistry.classify(NodeDataType.BLOCK_POS, NodeDataType.POINT));
+        assertEquals(TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
+            TypeConversionRegistry.classify(NodeDataType.COORDINATE, NodeDataType.POINT));
+        assertFalse(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.BLOCK_POS, NodeDataType.POINT));
+
+        TypeConversionRegistry.ConversionSuggestion suggestion =
+            TypeConversionRegistry.getSuggestedConversion(NodeDataType.BLOCK_POS, NodeDataType.POINT);
+        assertNotNull(suggestion);
+        assertEquals("reference.points.point_from_block", suggestion.nodeId());
+        assertEquals("Block To Point", suggestion.displayName());
     }
 
     @Test
-    void vectorAndPositionConnectImplicitlyToPointInputs() {
-        assertTrue(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.VECTOR, NodeDataType.POINT));
+    void positionConnectsImplicitlyToPointButVectorRequiresExplicitConversion() {
         assertTrue(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.POSITION, NodeDataType.POINT));
+        assertEquals(TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
+            TypeConversionRegistry.classify(NodeDataType.VECTOR, NodeDataType.POINT));
+        assertFalse(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.VECTOR, NodeDataType.POINT));
     }
 
     @Test

@@ -25,8 +25,14 @@ public final class GraphFormatVersion {
      */
     public static final int V3 = 3;
 
+    /**
+     * Spatial / angle semantic cleanup: Angle Slider legacy {@code unit=RADIANS} graphs
+     * insert Degrees To Radians so degrees-only language does not silently change output.
+     */
+    public static final int V4 = 4;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V3;
+    public static final int CURRENT = V4;
 
     private GraphFormatVersion() {
     }

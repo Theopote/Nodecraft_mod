@@ -26,12 +26,11 @@ These are allowed directly at the port layer:
   - `FLOAT`
   - `DOUBLE`
 - semantic aliases:
-  - `COORDINATE <-> BLOCK_POS`
-  - `VECTOR <-> POSITION`
+  - `COORDINATE <-> BLOCK_POS` (legacy alias pair)
+  - `VECTOR <-> POSITION` (legacy alias pair)
   - `COORDINATE_LIST <-> BLOCK_LIST`
-- point-like drivers of `POINT` inputs:
-  - `BLOCK_POS / COORDINATE -> POINT` (via coordinate→position compatibility)
-  - `VECTOR / POSITION -> POINT`
+- location drivers of `POINT` inputs:
+  - `POSITION -> POINT` (legacy continuous-location alias)
 - specific geometry -> `GEOMETRY`
 - generic list family compatibility
 
@@ -41,8 +40,12 @@ These relationships are considered safe because they do not require a user-facin
 
 These must stay as explicit nodes in the graph:
 
+- `BLOCK_POS / COORDINATE -> POINT`
+  - grid cell → continuous location; use **Block To Point** (corner vs center policy)
 - `BLOCK_POS / COORDINATE -> VECTOR / POSITION`
   - corner vs center policy matters when treating a grid cell as a continuous vector
+- `VECTOR -> POINT`
+  - direction / displacement must not silently become a location
 - `POINT -> COORDINATE / BLOCK_POS`
   - grid snap / rounding policy matters
 - `BOX_FACE -> PLANE`
@@ -52,10 +55,13 @@ These must stay as explicit nodes in the graph:
 - `GEOMETRY -> BLOCK_LIST / BLOCK_PLACEMENT_LIST`
   - voxelization / bake policy matters
 
-Note: `BLOCK_POS / COORDINATE -> POINT` is currently classified as **implicit** in
-`TypeConversionRegistry` (coordinate→position compatibility) so Point-typed ports
-such as World Plane Origin remain easy to wire. Prefer explicit Block To Point when
-corner-vs-center policy matters for geometry construction.
+Canonical spatial chain for new graphs:
+
+```
+Block Position  →  Block To Point  →  Point
+Position (legacy) → Point            (implicit)
+Vector            → Point            (explicit — do not wire Look Direction to Origin)
+```
 
 Current canonical explicit conversion nodes:
 
@@ -84,3 +90,5 @@ It does **not**:
 - hide lossy conversions behind port connectability
 
 That boundary is intentional. The graph should remain explicit where semantics matter.
+Graph load migrations (e.g. Angle Slider `unit=RADIANS` → insert Degrees To Radians) are the
+supported place for automatic structural rewrites that preserve old behavior.

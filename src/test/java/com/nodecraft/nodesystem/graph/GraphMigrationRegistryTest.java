@@ -112,6 +112,94 @@ class GraphMigrationRegistryTest {
     }
 
     @Test
+    void v3AngleSliderRadiansInsertsDegreesToRadians() {
+        SavedGraph v3 = new SavedGraph();
+        v3.formatVersion = GraphFormatVersion.V3;
+
+        SavedNode angle = new SavedNode();
+        angle.nodeId = "angle";
+        angle.typeId = "input.numeric.angle";
+        angle.state = new java.util.LinkedHashMap<>(java.util.Map.of(
+                "angle", 90.0,
+                "unit", "RADIANS",
+                "minAngle", 0.0,
+                "maxAngle", 360.0
+        ));
+
+        SavedNode sink = new SavedNode();
+        sink.nodeId = "sink";
+        sink.typeId = "math.scalar_math.addition";
+        v3.nodes = new java.util.ArrayList<>(java.util.List.of(angle, sink));
+
+        SavedConnection connection = new SavedConnection();
+        connection.sourceNodeId = "angle";
+        connection.sourcePortId = "output_angle";
+        connection.targetNodeId = "sink";
+        connection.targetPortId = "input_a";
+        v3.connections = new java.util.ArrayList<>(java.util.List.of(connection));
+        v3.nodePositions = new java.util.HashMap<>(java.util.Map.of(
+                "angle", new com.nodecraft.nodesystem.io.SavedPosition(10.0f, 20.0f)
+        ));
+
+        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v3);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
+        assertEquals(3, migrated.nodes.size());
+
+        SavedNode converter = migrated.nodes.stream()
+                .filter(n -> "math.trigonometry.deg_to_rad".equals(n.typeId))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(converter);
+        assertNotNull(converter.nodeId);
+
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> angleState = (java.util.Map<String, Object>) migrated.nodes.stream()
+                .filter(n -> "angle".equals(n.nodeId))
+                .findFirst()
+                .orElseThrow()
+                .state;
+        assertFalse(angleState.containsKey("unit"));
+        assertEquals(90.0, ((Number) angleState.get("angle")).doubleValue(), 1e-9);
+
+        assertEquals(2, migrated.connections.size());
+        boolean sliderToConverter = migrated.connections.stream().anyMatch(c ->
+                "angle".equals(c.sourceNodeId)
+                        && "output_angle".equals(c.sourcePortId)
+                        && converter.nodeId.equals(c.targetNodeId)
+                        && "input_degrees".equals(c.targetPortId));
+        boolean converterToSink = migrated.connections.stream().anyMatch(c ->
+                converter.nodeId.equals(c.sourceNodeId)
+                        && "output_radians".equals(c.sourcePortId)
+                        && "sink".equals(c.targetNodeId)
+                        && "input_a".equals(c.targetPortId));
+        assertTrue(sliderToConverter);
+        assertTrue(converterToSink);
+        assertTrue(migrated.nodePositions.containsKey(converter.nodeId));
+    }
+
+    @Test
+    void v3AngleSliderDegreesDoesNotInsertConverter() {
+        SavedGraph v3 = new SavedGraph();
+        v3.formatVersion = GraphFormatVersion.V3;
+        SavedNode angle = new SavedNode();
+        angle.nodeId = "angle";
+        angle.typeId = "input.numeric.angle";
+        angle.state = new java.util.LinkedHashMap<>(java.util.Map.of(
+                "angle", 45.0,
+                "unit", "DEGREES"
+        ));
+        v3.nodes = java.util.List.of(angle);
+        v3.connections = java.util.List.of();
+        v3.nodePositions = java.util.Map.of();
+
+        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v3);
+        assertEquals(1, migrated.nodes.size());
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> state = (java.util.Map<String, Object>) migrated.nodes.getFirst().state;
+        assertFalse(state.containsKey("unit"));
+    }
+
+    @Test
     void futureVersionsAreLeftUntouched() {
         SavedGraph future = new SavedGraph();
         future.formatVersion = GraphFormatVersion.CURRENT + 5;
