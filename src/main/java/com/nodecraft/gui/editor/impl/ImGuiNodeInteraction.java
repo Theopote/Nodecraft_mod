@@ -16,6 +16,7 @@ import imgui.ImGui;
 import imgui.ImVec2;
 import imgui.flag.ImGuiMouseButton;
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.editor.interaction.BoxSelectionRules;
 import com.nodecraft.gui.editor.interaction.EditorInteractionMode;
 import com.nodecraft.gui.editor.interaction.EditorInteractionState;
 
@@ -378,6 +379,9 @@ public class ImGuiNodeInteraction {
             return; // 视为点击，不进行框选操作，选择清除由ImGuiNodeEditor控制
         }
 
+        // 左→右：全包含；右→左：相交即可
+        boolean crossingSelect = BoxSelectionRules.isCrossingSelect(boxSelectStart.x, boxSelectEnd.x);
+
         // 检查是否按下Ctrl键（用于增量选择）
         boolean isCtrlPressed = ImGui.getIO().getKeyCtrl();
         if (!isCtrlPressed) {
@@ -397,9 +401,11 @@ public class ImGuiNodeInteraction {
                 float nodeMinY = pos.y;
                 float nodeMaxY = pos.y + pos.height; // 使用 NodePosition 中存储的精确未缩放高度
 
-                // 检查节点边界框是否与框选区域相交
-                if (nodeMaxX >= minX && nodeMinX <= maxX &&
-                        nodeMaxY >= minY && nodeMinY <= maxY) {
+                if (BoxSelectionRules.nodeHitsSelection(
+                        minX, maxX, minY, maxY,
+                        nodeMinX, nodeMaxX, nodeMinY, nodeMaxY,
+                        crossingSelect
+                )) {
                     selectedNodeIds.add(nodeId); // 添加到选中列表
                     // 如果还没有主选中节点，则设置该节点为主选中节点
                     if (editor.getSelectedNodeId() == null) {
@@ -411,7 +417,11 @@ public class ImGuiNodeInteraction {
         }
 
         if (nodesSelected) {
-            NodeCraft.LOGGER.debug("框选完成，选中了 {} 个节点", selectedNodeIds.size());
+            NodeCraft.LOGGER.debug(
+                    "框选完成（{}），选中了 {} 个节点",
+                    crossingSelect ? "右→左/相交" : "左→右/全包",
+                    selectedNodeIds.size()
+            );
         } else {
             NodeCraft.LOGGER.debug("框选未选中任何节点");
         }
