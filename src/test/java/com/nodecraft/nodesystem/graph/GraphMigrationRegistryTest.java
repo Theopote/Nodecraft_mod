@@ -70,6 +70,32 @@ class GraphMigrationRegistryTest {
     }
 
     @Test
+    void v1IntegerSliderValuePortMigratesToOutputValue() {
+        SavedGraph v1 = new SavedGraph();
+        v1.formatVersion = GraphFormatVersion.V1;
+        SavedNode slider = new SavedNode();
+        slider.nodeId = "slider";
+        slider.typeId = "input.numeric.integer_slider";
+        SavedNode sink = new SavedNode();
+        sink.nodeId = "sink";
+        sink.typeId = "math.scalar_math.addition";
+        v1.nodes = List.of(slider, sink);
+
+        SavedConnection connection = new SavedConnection();
+        connection.sourceNodeId = "slider";
+        connection.sourcePortId = "value";
+        connection.targetNodeId = "sink";
+        connection.targetPortId = "input_a";
+        v1.connections = List.of(connection);
+        v1.nodePositions = java.util.Map.of();
+
+        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v1);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
+        assertEquals("output_value", migrated.connections.getFirst().sourcePortId);
+        assertEquals("input_a", migrated.connections.getFirst().targetPortId);
+    }
+
+    @Test
     void futureVersionsAreLeftUntouched() {
         SavedGraph future = new SavedGraph();
         future.formatVersion = GraphFormatVersion.CURRENT + 5;

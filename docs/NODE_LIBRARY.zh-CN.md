@@ -260,7 +260,7 @@
 | Float Input | `input.numeric.float` | 允许用户手动输入浮点数值 | `FloatInputNode` |
 | Integer Slider | `input.numeric.integer_slider` | 输出一个可通过滑动条调节的整数值 | `IntegerSliderNode` |
 | Float Slider | `input.numeric.float_slider` | 输出一个可通过滑动条调节的浮点数。 | `FloatSliderNode` |
-| Angle Slider | `input.numeric.angle` | 输出一个可通过滑动条调节的角度值，支持度和弧度输出。 | `AngleSliderNode` |
+| Angle Slider | `input.numeric.angle` | 输出一个可通过滑动条调节的角度值（度）。需要弧度时使用 Degrees To Radians。 | `AngleSliderNode` |
 | Circular Angle Picker | `input.numeric.angle_picker` | 通过圆形表盘选择角度，同时输出度和弧度。 | `CircularAngleNode` |
 | XY Slider | `input.numeric.xy_slider` | Provides a two-dimensional slider pad that outputs X and Y values from one draggable handle | `XYSliderNode` |
 | Range Input | `input.numeric.range` | Defines a numeric interval and outputs min/max/span plus a range object. | `RangeInputNode` |

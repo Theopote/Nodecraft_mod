@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import imgui.ImGui;
-import imgui.type.ImInt;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -20,50 +19,25 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "input.numeric.angle",
     displayName = "Angle Slider",
-    description = "输出一个可通过滑动条调节的角度值，支持度和弧度输出。",
+    description = "输出一个可通过滑动条调节的角度值（度）。需要弧度时使用 Degrees To Radians。",
     category = "input.numeric",
     order = 4
 )
 public class AngleSliderNode extends BaseCustomUINode {
 
-    public enum AngleUnit {
-        DEGREES("度", "°"),
-        RADIANS("弧度", "rad");
-
-        private final String displayName;
-        private final String symbol;
-
-        AngleUnit(String displayName, String symbol) {
-            this.displayName = displayName;
-            this.symbol = symbol;
-        }
-
-        public String getDisplayName() {
-            return displayName;
-        }
-
-        public String getSymbol() {
-            return symbol;
-        }
-    }
-
     private static final String OUTPUT_ANGLE_ID = "output_angle";
 
     @NodeProperty(displayName = "当前角度", category = "角度", order = 1,
-        description = "当前角度，内部始终按度存储")
+        description = "当前角度（度）")
     private double currentAngle = 0.0;
 
     @NodeProperty(displayName = "最小角度", category = "角度", order = 2,
-        description = "滑动条允许的最小角度")
+        description = "滑动条允许的最小角度（度）")
     private double minAngle = 0.0;
 
     @NodeProperty(displayName = "最大角度", category = "角度", order = 3,
-        description = "滑动条允许的最大角度")
+        description = "滑动条允许的最大角度（度）")
     private double maxAngle = 360.0;
-
-    @NodeProperty(displayName = "输出单位", category = "输出", order = 4,
-        description = "选择输出为度或弧度")
-    private AngleUnit angleUnit = AngleUnit.DEGREES;
 
     @NodeProperty(displayName = "显示范围输入", category = "UI设置", order = 10,
         description = "显示最小角度和最大角度输入")
@@ -71,7 +45,7 @@ public class AngleSliderNode extends BaseCustomUINode {
 
     public AngleSliderNode() {
         super(UUID.randomUUID(), "input.numeric.angle");
-        IPort angleOutput = new BasePort(OUTPUT_ANGLE_ID, "Angle", "当前角度值", NodeDataType.DOUBLE, this);
+        IPort angleOutput = new BasePort(OUTPUT_ANGLE_ID, "Angle", "当前角度（度）", NodeDataType.DOUBLE, this);
         addOutputPort(angleOutput);
         normalizeRange();
         updateOutput();
@@ -79,7 +53,7 @@ public class AngleSliderNode extends BaseCustomUINode {
 
     @Override
     public String getDescription() {
-        return "输出一个可通过滑动条调节的角度值，支持度和弧度输出。";
+        return "输出一个可通过滑动条调节的角度值（度）。需要弧度时使用 Degrees To Radians。";
     }
 
     @Override
@@ -94,8 +68,6 @@ public class AngleSliderNode extends BaseCustomUINode {
             height += ImGui.getFrameHeight();
             height += getMediumPadding();
         }
-        height += ImGui.getFrameHeight();
-        height += getMediumPadding();
         height += ImGui.getFrameHeight();
         height += getMediumPadding();
         return height;
@@ -141,15 +113,6 @@ public class AngleSliderNode extends BaseCustomUINode {
             l.popItemWidth();
             l.addVerticalSpacing(getMediumPadding());
 
-            l.setItemWidth(Math.min(l.toPixels(110.0f), availableWidth) / Math.max(zoom, 0.001f));
-            ImInt unitIndex = new ImInt(angleUnit == AngleUnit.DEGREES ? 0 : 1);
-            if (ImGui.combo("输出单位", unitIndex, new String[]{"度", "弧度"})) {
-                setAngleUnit(unitIndex.get() == 0 ? AngleUnit.DEGREES : AngleUnit.RADIANS);
-                changed = true;
-            }
-            l.popItemWidth();
-            l.addVerticalSpacing(getMediumPadding());
-
             return changed;
         });
     }
@@ -164,8 +127,8 @@ public class AngleSliderNode extends BaseCustomUINode {
     }
 
     private void updateOutput() {
-        double outputValue = angleUnit == AngleUnit.RADIANS ? Math.toRadians(currentAngle) : currentAngle;
-        outputValues.put(OUTPUT_ANGLE_ID, outputValue);
+        // Graph language: angles are always degrees (see docs/nodecraft-v1-node-language.md).
+        outputValues.put(OUTPUT_ANGLE_ID, currentAngle);
         syncOutputPorts();
     }
 
@@ -210,18 +173,6 @@ public class AngleSliderNode extends BaseCustomUINode {
         }
     }
 
-    public AngleUnit getAngleUnit() {
-        return angleUnit;
-    }
-
-    public void setAngleUnit(AngleUnit angleUnit) {
-        if (angleUnit != null && this.angleUnit != angleUnit) {
-            this.angleUnit = angleUnit;
-            updateOutput();
-            markDirty();
-        }
-    }
-
     public boolean isShowRangeInputs() {
         return showRangeInputs;
     }
@@ -238,7 +189,6 @@ public class AngleSliderNode extends BaseCustomUINode {
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
         state.put("angle", currentAngle);
-        state.put("unit", angleUnit.name());
         state.put("showRangeInputs", showRangeInputs);
         state.put("minAngle", minAngle);
         state.put("maxAngle", maxAngle);
@@ -248,13 +198,7 @@ public class AngleSliderNode extends BaseCustomUINode {
     @Override
     public void setNodeState(Object state) {
         if (state instanceof Map<?, ?> map) {
-            if (map.get("unit") instanceof String unitName) {
-                try {
-                    this.angleUnit = AngleUnit.valueOf(unitName);
-                } catch (IllegalArgumentException ignored) {
-                    this.angleUnit = AngleUnit.DEGREES;
-                }
-            }
+            // Legacy "unit" key (DEGREES/RADIANS) is ignored: angle is always stored and emitted in degrees.
             if (map.get("showRangeInputs") instanceof Boolean value) {
                 this.showRangeInputs = value;
             }

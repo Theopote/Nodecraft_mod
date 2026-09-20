@@ -9,7 +9,8 @@ Design freeze for on-disk / embedded `SavedGraph` compatibility.
 | Constant | Value | Meaning |
 |----------|-------|---------|
 | `V0` / `LEGACY_UNSPECIFIED` | `0` | Pre-versioning JSON / omitted field |
-| `V1` / `CURRENT` | `1` | Explicit version + migration manifest |
+| `V1` | `1` | Explicit version + V0→V1 taxonomy migration manifest |
+| `V2` / `CURRENT` | `2` | Batch A language remediation (Integer Slider `value` → `output_value`) |
 
 ## Load policy
 
@@ -37,6 +38,12 @@ It covers:
 - port rename (global + per-node overrides)
 - node state property rename
 - enum value rename (reserved for future rows)
+
+V1→V2 is applied inline in `GraphMigrationRegistry.migrateV1ToV2`:
+
+- `input.numeric.integer_slider` output port `value` → `output_value`
+
+(See [`nodecraft-v1-node-language.md`](../nodecraft-v1-node-language.md) Batch A.)
 
 `NodeRegistry.resolveCanonicalNodeId(...)` remains lowercase normalization only. **Do not** add runtime alias tables there; file migration owns legacy ids.
 

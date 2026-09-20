@@ -264,6 +264,9 @@
     "input.numeric.integer": {
       "value": "output_value"
     },
+    "input.numeric.integer_slider": {
+      "value": "output_value"
+    },
     "world.write.set_block": {
       "position": "input_coordinate",
       "block": "input_block_info"

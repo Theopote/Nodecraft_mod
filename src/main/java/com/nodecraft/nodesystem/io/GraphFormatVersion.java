@@ -13,8 +13,14 @@ public final class GraphFormatVersion {
 
     public static final int V1 = 1;
 
+    /**
+     * Batch A language remediation: Integer Slider {@code value} → {@code output_value},
+     * plus related numeric/angle language fixes that do not require further port remaps.
+     */
+    public static final int V2 = 2;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V1;
+    public static final int CURRENT = V2;
 
     private GraphFormatVersion() {
     }

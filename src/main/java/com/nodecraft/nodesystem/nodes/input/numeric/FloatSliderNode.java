@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import imgui.ImGui;
-import imgui.flag.ImGuiCol;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -44,17 +43,9 @@ public class FloatSliderNode extends BaseCustomUINode {
         description = "界面显示和输入时保留的小数位数")
     private volatile int decimalPlaces = 2;
 
-    @NodeProperty(displayName = "显示范围标签", category = "UI设置", order = 10,
-        description = "在滑动条下方显示最小值和最大值")
-    private volatile boolean showMinMaxLabels = true;
-
     @NodeProperty(displayName = "显示数值输入", category = "UI设置", order = 11,
         description = "在滑动条上方显示当前值输入框")
     private volatile boolean showValueInput = true;
-
-    @NodeProperty(displayName = "显示设置面板", category = "UI设置", order = 12,
-        description = "显示范围与精度设置区域")
-    private volatile boolean showSettingsPanel = false;
 
     private transient volatile String formatString = "%.2f";
 
@@ -78,7 +69,7 @@ public class FloatSliderNode extends BaseCustomUINode {
     }
 
     @Override
-protected float calculateUIHeight() {
+    protected float calculateUIHeight() {
         float height = getMediumPadding();
         if (showValueInput) {
             height += ImGui.getFrameHeight();
@@ -91,15 +82,7 @@ protected float calculateUIHeight() {
 
     @Override
     protected float calculateMinUIWidth() {
-        float minWidth = 176.0f + getContentMargin();
-        if (showMinMaxLabels) {
-            String rangeText = String.format("范围: " + formatString + " ~ " + formatString, minValue, maxValue);
-            minWidth = Math.max(minWidth, 176.0f + getContentMargin());
-        }
-        if (showSettingsPanel) {
-            minWidth = Math.max(minWidth, 176.0f + getContentMargin());
-        }
-        return minWidth;
+        return 176.0f + getContentMargin();
     }
 
     @Override
@@ -111,7 +94,6 @@ protected float calculateUIHeight() {
             float baseCursorX = ImGui.getCursorPosX();
 
             if (showValueInput) {
-                String labelText = "当前值: " + String.format(formatString, currentValue);
                 ImGui.setCursorPosX(baseCursorX + edgeMargin);
                 l.setItemWidth(Math.max(availableWidth / Math.max(zoom, 0.001f), 1.0f));
                 float[] inputValue = {(float) currentValue};
@@ -131,47 +113,6 @@ protected float calculateUIHeight() {
                 changed = true;
             }
             l.popItemWidth();
-
-            if (false) {
-                String rangeText = String.format("范围: " + formatString + " ~ " + formatString, minValue, maxValue);
-                float rangeWidth = ImGui.calcTextSize(rangeText).x;
-                setCenterX(availableWidth, rangeWidth);
-                ImGui.pushStyleColor(ImGuiCol.Text, 0.60f, 0.60f, 0.60f, 1.0f);
-                ImGui.text(rangeText);
-                ImGui.popStyleColor();
-                l.addVerticalSpacing(getSmallPadding());
-            }
-
-            if (false) {
-                ImGui.separator();
-                l.addVerticalSpacing(getSmallPadding());
-
-                float itemWidth = Math.max((availableWidth - l.toPixels(8.0f)) / 2.0f, l.toPixels(72.0f));
-                l.setItemWidth(itemWidth / Math.max(zoom, 0.001f));
-                float[] minInput = {(float) minValue};
-                if (ImGui.dragFloat("最小值", minInput, getDragSpeed(), 0.0f, 0.0f, formatString)) {
-                    setMinValue(minInput[0]);
-                    changed = true;
-                }
-                ImGui.sameLine();
-                float[] maxInput = {(float) maxValue};
-                if (ImGui.dragFloat("最大值", maxInput, getDragSpeed(), 0.0f, 0.0f, formatString)) {
-                    setMaxValue(maxInput[0]);
-                    changed = true;
-                }
-                l.popItemWidth();
-
-                l.addVerticalSpacing(getSmallPadding());
-
-                int[] decimals = {decimalPlaces};
-                l.setItemWidth(Math.min(l.toPixels(120.0f), availableWidth) / Math.max(zoom, 0.001f));
-                if (ImGui.sliderInt("小数位数", decimals, 0, 6)) {
-                    setDecimalPlaces(decimals[0]);
-                    changed = true;
-                }
-                l.popItemWidth();
-            } else {
-            }
 
             return changed;
         });
@@ -266,18 +207,6 @@ protected float calculateUIHeight() {
         }
     }
 
-    public boolean isShowMinMaxLabels() {
-        return showMinMaxLabels;
-    }
-
-    public void setShowMinMaxLabels(boolean showMinMaxLabels) {
-        if (this.showMinMaxLabels != showMinMaxLabels) {
-            this.showMinMaxLabels = showMinMaxLabels;
-            invalidateCache();
-            markDirty();
-        }
-    }
-
     public boolean isShowValueInput() {
         return showValueInput;
     }
@@ -290,18 +219,6 @@ protected float calculateUIHeight() {
         }
     }
 
-    public boolean isShowSettingsPanel() {
-        return showSettingsPanel;
-    }
-
-    public void setShowSettingsPanel(boolean showSettingsPanel) {
-        if (this.showSettingsPanel != showSettingsPanel) {
-            this.showSettingsPanel = showSettingsPanel;
-            invalidateCache();
-            markDirty();
-        }
-    }
-
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
@@ -309,9 +226,7 @@ protected float calculateUIHeight() {
         state.put("minValue", minValue);
         state.put("maxValue", maxValue);
         state.put("decimalPlaces", decimalPlaces);
-        state.put("showMinMaxLabels", showMinMaxLabels);
         state.put("showValueInput", showValueInput);
-        state.put("showSettingsPanel", showSettingsPanel);
         return state;
     }
 
@@ -329,14 +244,8 @@ protected float calculateUIHeight() {
             if (map.get("maxValue") instanceof Number max) {
                 this.maxValue = max.doubleValue();
             }
-            if (map.get("showMinMaxLabels") instanceof Boolean value) {
-                this.showMinMaxLabels = value;
-            }
             if (map.get("showValueInput") instanceof Boolean value) {
                 this.showValueInput = value;
-            }
-            if (map.get("showSettingsPanel") instanceof Boolean value) {
-                this.showSettingsPanel = value;
             }
 
             Object current = map.containsKey("currentValue") ? map.get("currentValue") : map.get("value");

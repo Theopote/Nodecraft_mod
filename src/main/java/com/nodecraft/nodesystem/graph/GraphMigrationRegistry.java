@@ -7,18 +7,22 @@ import com.nodecraft.nodesystem.io.SavedNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Applies incremental migrations to {@link SavedGraph} payloads loaded from disk or embedded JSON.
  * <p>
- * Migration data lives in {@code nodecraft/migration/v0-to-v1.json}; runtime registries stay canonical-only.
+ * V0→V1 migration data lives in {@code nodecraft/migration/v0-to-v1.json}; runtime registries stay
+ * canonical-only. V1→V2 applies Batch A port-id remaps inline.
  */
 public final class GraphMigrationRegistry {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GraphMigrationRegistry.class);
+
+    private static final String INTEGER_SLIDER_TYPE = "input.numeric.integer_slider";
+    private static final String LEGACY_INTEGER_SLIDER_VALUE_PORT = "value";
+    private static final String INTEGER_SLIDER_OUTPUT_VALUE_PORT = "output_value";
 
     private GraphMigrationRegistry() {
     }
@@ -50,6 +54,7 @@ public final class GraphMigrationRegistry {
     private static SavedGraph migrateStep(SavedGraph graph, int fromVersion) {
         return switch (fromVersion) {
             case GraphFormatVersion.V0 -> migrateV0ToV1(graph);
+            case GraphFormatVersion.V1 -> migrateV1ToV2(graph);
             default -> graph;
         };
     }
@@ -59,6 +64,39 @@ public final class GraphMigrationRegistry {
         applyNodeTypeMigration(graph, manifest);
         applyNodeStateMigration(graph, manifest);
         applyPortMigration(graph, manifest);
+        return graph;
+    }
+
+    /**
+     * Batch A: rename Integer Slider output port {@code value} → {@code output_value}.
+     */
+    private static SavedGraph migrateV1ToV2(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase());
+            }
+        }
+
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null || connection.sourcePortId == null) {
+                continue;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            if (INTEGER_SLIDER_TYPE.equals(sourceType)
+                    && LEGACY_INTEGER_SLIDER_VALUE_PORT.equalsIgnoreCase(connection.sourcePortId)) {
+                LOGGER.debug(
+                        "Migrated integer slider port: {} -> {}",
+                        connection.sourcePortId,
+                        INTEGER_SLIDER_OUTPUT_VALUE_PORT
+                );
+                connection.sourcePortId = INTEGER_SLIDER_OUTPUT_VALUE_PORT;
+            }
+        }
         return graph;
     }
 

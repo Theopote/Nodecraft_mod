@@ -157,17 +157,17 @@ Examples that remain correct under this freeze:
 
 ## Known gaps (first-pass sample)
 
-These violate the freeze today and are remediation targets, not templates:
+These violated the freeze at audit time. Batch A items below are remediated in code.
 
-| Gap | Rule |
-|-----|------|
-| Float Input outputs `FLOAT`; Float Slider outputs `DOUBLE` | §1 |
-| Integer Slider port id `value` vs peers’ `output_value` | §2 |
-| Angle Slider unit property converts to radians while port stays `DOUBLE` | §3 |
-| Coordinate Input: int xyz, dual Coordinate/Block Pos, no `input_x/y/z` | §4, §5 |
-| World Plane Origin typed as `ANY` | Supporting norm |
-| Selected Block: pick silently overrides connected X/Y/Z | §5 |
-| Float / Integer slider dead UI properties | Dead properties |
+| Gap | Rule | Status |
+|-----|------|--------|
+| Float Input outputs `FLOAT`; Float Slider outputs `DOUBLE` | §1 | Fixed (both `DOUBLE`) |
+| Integer Slider port id `value` vs peers’ `output_value` | §2 | Fixed + V1→V2 migration |
+| Angle Slider unit property converts to radians while port stays `DOUBLE` | §3 | Fixed (degrees only) |
+| Coordinate Input: int xyz, dual Coordinate/Block Pos, no `input_x/y/z` | §4, §5 | Open (Batch B) |
+| World Plane Origin typed as `ANY` | Supporting norm | Open (Batch B) |
+| Selected Block: pick silently overrides connected X/Y/Z | §5 | Open (Batch C) |
+| Float / Integer slider dead UI properties | Dead properties | Fixed |
 
 ---
 
@@ -175,12 +175,12 @@ These violate the freeze today and are remediation targets, not templates:
 
 Document first; code follows this order unless a dependency forces otherwise.
 
-### Batch A — low risk, high leverage
+### Batch A — low risk, high leverage — **done (2026-09-21)**
 
 1. Float Input → `DOUBLE` (fields + port).
-2. Integer Slider `value` → `output_value` + migration.
-3. Remove or reconnect dead slider UI properties.
-4. Angle Slider: degrees-only graph output; drop hidden unit switch (or display-only).
+2. Integer Slider `value` → `output_value` + graph format **V1→V2** migration.
+3. Remove dead slider UI properties (`showMinMaxLabels` / `showSettingsPanel` / `showRangeInfo` / unused Float Input range+label flags).
+4. Angle Slider: degrees-only graph output; unit switch removed (legacy `unit` state ignored). Use `math.trigonometry.deg_to_rad` when radians are required.
 
 ### Batch B — language alignment
 

@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import imgui.ImGui;
-import imgui.flag.ImGuiCol;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -30,27 +29,19 @@ public class FloatInputNode extends BaseCustomUINode {
 
     @NodeProperty(displayName = "当前值", category = "数值", order = 1,
         description = "当前浮点数值")
-    private float value = 0.0f;
+    private double value = 0.0;
 
     @NodeProperty(displayName = "最小值", category = "范围", order = 2,
         description = "允许输入的最小值")
-    private float minValue = Float.NEGATIVE_INFINITY;
+    private double minValue = Double.NEGATIVE_INFINITY;
 
     @NodeProperty(displayName = "最大值", category = "范围", order = 3,
         description = "允许输入的最大值")
-    private float maxValue = Float.POSITIVE_INFINITY;
+    private double maxValue = Double.POSITIVE_INFINITY;
 
     @NodeProperty(displayName = "精度", category = "精度", order = 4,
         description = "界面显示与输入的保留小数位数")
     private int precision = 2;
-
-    @NodeProperty(displayName = "显示范围", category = "UI设置", order = 10,
-        description = "是否显示范围信息")
-    private boolean showRange = false;
-
-    @NodeProperty(displayName = "显示标签", category = "UI设置", order = 11,
-        description = "是否显示当前值标签")
-    private boolean showLabel = true;
 
     @NodeProperty(displayName = "拖拽速度", category = "UI设置", order = 12,
         description = "拖拽输入时的数值变化速度，设为 0 时自动根据精度计算")
@@ -60,7 +51,7 @@ public class FloatInputNode extends BaseCustomUINode {
 
     public FloatInputNode() {
         super(UUID.randomUUID(), "input.numeric.float");
-        IPort valueOutput = new BasePort(OUTPUT_VALUE_ID, "Value", "当前浮点数值", NodeDataType.FLOAT, this);
+        IPort valueOutput = new BasePort(OUTPUT_VALUE_ID, "Value", "当前浮点数值", NodeDataType.DOUBLE, this);
         addOutputPort(valueOutput);
         refreshPrecisionState();
         updateOutput();
@@ -103,12 +94,19 @@ public class FloatInputNode extends BaseCustomUINode {
             l.pushFramePadding(4.0f, 3.0f);
             l.setItemWidth(inputWidthPx / Math.max(zoom, 0.001f));
 
-            float[] inputValue = {value};
-            boolean hasBounds = !Float.isInfinite(minValue) && !Float.isInfinite(maxValue);
+            float[] inputValue = {(float) value};
+            boolean hasBounds = Double.isFinite(minValue) && Double.isFinite(maxValue);
             float actualDragSpeed = dragSpeed > 0 ? dragSpeed : (float) Math.pow(10, -getSafePrecision());
             boolean dragged;
             if (hasBounds) {
-                dragged = ImGui.dragFloat("##float_drag", inputValue, actualDragSpeed, minValue, maxValue, formatString);
+                dragged = ImGui.dragFloat(
+                    "##float_drag",
+                    inputValue,
+                    actualDragSpeed,
+                    (float) minValue,
+                    (float) maxValue,
+                    formatString
+                );
             } else {
                 dragged = ImGui.dragFloat("##float_drag", inputValue, actualDragSpeed, 0f, 0f, formatString);
             }
@@ -128,28 +126,15 @@ public class FloatInputNode extends BaseCustomUINode {
         return Math.max(0, Math.min(6, precision));
     }
 
-    private String getRangeText() {
-        if (Float.isInfinite(minValue) && Float.isInfinite(maxValue)) {
-            return "范围: 无限制";
-        }
-        if (Float.isInfinite(minValue)) {
-            return "最大值: " + String.format(formatString, maxValue);
-        }
-        if (Float.isInfinite(maxValue)) {
-            return "最小值: " + String.format(formatString, minValue);
-        }
-        return "范围: " + String.format(formatString, minValue) + " ~ " + String.format(formatString, maxValue);
-    }
-
     private void refreshPrecisionState() {
         formatString = "%." + getSafePrecision() + "f";
     }
 
-    public void setValue(float value) {
-        float clampedValue = Math.max(minValue, Math.min(maxValue, value));
-        float multiplier = (float) Math.pow(10, getSafePrecision());
+    public void setValue(double value) {
+        double clampedValue = Math.max(minValue, Math.min(maxValue, value));
+        double multiplier = Math.pow(10, getSafePrecision());
         clampedValue = Math.round(clampedValue * multiplier) / multiplier;
-        if (Float.compare(this.value, clampedValue) != 0) {
+        if (Double.compare(this.value, clampedValue) != 0) {
             this.value = clampedValue;
             updateOutput();
             markDirty();
@@ -161,19 +146,19 @@ public class FloatInputNode extends BaseCustomUINode {
         syncOutputPorts();
     }
 
-    public float getValue() {
+    public double getValue() {
         return value;
     }
 
-    public float getMinValue() {
+    public double getMinValue() {
         return minValue;
     }
 
-    public void setMinValue(float minValue) {
-        if (Float.compare(this.minValue, minValue) != 0) {
+    public void setMinValue(double minValue) {
+        if (Double.compare(this.minValue, minValue) != 0) {
             this.minValue = minValue;
-            if (this.minValue > this.maxValue) {
-                float tmp = this.minValue;
+            if (Double.compare(this.minValue, this.maxValue) > 0) {
+                double tmp = this.minValue;
                 this.minValue = this.maxValue;
                 this.maxValue = tmp;
             }
@@ -183,15 +168,15 @@ public class FloatInputNode extends BaseCustomUINode {
         }
     }
 
-    public float getMaxValue() {
+    public double getMaxValue() {
         return maxValue;
     }
 
-    public void setMaxValue(float maxValue) {
-        if (Float.compare(this.maxValue, maxValue) != 0) {
+    public void setMaxValue(double maxValue) {
+        if (Double.compare(this.maxValue, maxValue) != 0) {
             this.maxValue = maxValue;
-            if (this.minValue > this.maxValue) {
-                float tmp = this.minValue;
+            if (Double.compare(this.minValue, this.maxValue) > 0) {
+                double tmp = this.minValue;
                 this.minValue = this.maxValue;
                 this.maxValue = tmp;
             }
@@ -216,30 +201,6 @@ public class FloatInputNode extends BaseCustomUINode {
         }
     }
 
-    public boolean isShowRange() {
-        return showRange;
-    }
-
-    public void setShowRange(boolean showRange) {
-        if (this.showRange != showRange) {
-            this.showRange = showRange;
-            invalidateCache();
-            markDirty();
-        }
-    }
-
-    public boolean isShowLabel() {
-        return showLabel;
-    }
-
-    public void setShowLabel(boolean showLabel) {
-        if (this.showLabel != showLabel) {
-            this.showLabel = showLabel;
-            invalidateCache();
-            markDirty();
-        }
-    }
-
     public float getDragSpeed() {
         return dragSpeed;
     }
@@ -259,8 +220,6 @@ public class FloatInputNode extends BaseCustomUINode {
         state.put("min", minValue);
         state.put("max", maxValue);
         state.put("precision", precision);
-        state.put("showRange", showRange);
-        state.put("showLabel", showLabel);
         state.put("dragSpeed", dragSpeed);
         return state;
     }
@@ -274,21 +233,15 @@ public class FloatInputNode extends BaseCustomUINode {
             refreshPrecisionState();
 
             if (stateMap.get("min") instanceof Number min) {
-                this.minValue = min.floatValue();
+                this.minValue = min.doubleValue();
             }
             if (stateMap.get("max") instanceof Number max) {
-                this.maxValue = max.floatValue();
+                this.maxValue = max.doubleValue();
             }
-            if (this.minValue > this.maxValue) {
-                float tmp = this.minValue;
+            if (Double.compare(this.minValue, this.maxValue) > 0) {
+                double tmp = this.minValue;
                 this.minValue = this.maxValue;
                 this.maxValue = tmp;
-            }
-            if (stateMap.get("showRange") instanceof Boolean showRange) {
-                this.showRange = showRange;
-            }
-            if (stateMap.get("showLabel") instanceof Boolean showLabel) {
-                this.showLabel = showLabel;
             }
             if (stateMap.get("dragSpeed") instanceof Number speed) {
                 this.dragSpeed = Math.max(0.0f, speed.floatValue());
@@ -296,10 +249,10 @@ public class FloatInputNode extends BaseCustomUINode {
 
             Object valueObj = stateMap.get("value");
             if (valueObj instanceof Number number) {
-                this.value = number.floatValue();
+                this.value = number.doubleValue();
             } else if (valueObj instanceof String str) {
                 try {
-                    this.value = Float.parseFloat(str);
+                    this.value = Double.parseDouble(str);
                 } catch (NumberFormatException ignored) {
                 }
             }
@@ -308,7 +261,7 @@ public class FloatInputNode extends BaseCustomUINode {
             invalidateCache();
             markDirty();
         } else if (state instanceof Number number) {
-            setValue(number.floatValue());
+            setValue(number.doubleValue());
         }
     }
 }

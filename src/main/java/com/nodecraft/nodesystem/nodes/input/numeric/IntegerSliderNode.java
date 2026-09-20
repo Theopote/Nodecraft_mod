@@ -25,7 +25,7 @@ import java.util.UUID;
 )
 public class IntegerSliderNode extends BaseCustomUINode {
 
-    private static final String OUTPUT_ID = "value";
+    private static final String OUTPUT_VALUE_ID = "output_value";
 
     @NodeProperty(displayName = "当前值", category = "数值", order = 1,
         description = "滑动条当前输出的整数值")
@@ -47,17 +47,13 @@ public class IntegerSliderNode extends BaseCustomUINode {
         description = "在滑动条上方显示手动输入框")
     private volatile boolean showValueInput = true;
 
-    @NodeProperty(displayName = "显示范围信息", category = "UI设置", order = 11,
-        description = "在底部显示最小值、最大值和步长")
-    private volatile boolean showRangeInfo = true;
-
     @NodeProperty(displayName = "紧凑模式", category = "UI设置", order = 12,
         description = "隐藏冗余信息，减少节点高度")
     private volatile boolean compact = false;
 
     public IntegerSliderNode() {
         super(UUID.randomUUID(), "input.numeric.integer_slider");
-        addOutputPort(new BasePort(OUTPUT_ID, "Value", "选中的整数值", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALUE_ID, "Value", "选中的整数值", NodeDataType.INTEGER, this));
         normalizeRange();
         updateOutput();
     }
@@ -226,18 +222,6 @@ public class IntegerSliderNode extends BaseCustomUINode {
         }
     }
 
-    public boolean isShowRangeInfo() {
-        return showRangeInfo;
-    }
-
-    public void setShowRangeInfo(boolean showRangeInfo) {
-        if (this.showRangeInfo != showRangeInfo) {
-            this.showRangeInfo = showRangeInfo;
-            invalidateCache();
-            markDirty();
-        }
-    }
-
     public boolean isCompact() {
         return compact;
     }
@@ -258,7 +242,6 @@ public class IntegerSliderNode extends BaseCustomUINode {
         state.put("max", max);
         state.put("step", step);
         state.put("showValueInput", showValueInput);
-        state.put("showRangeInfo", showRangeInfo);
         state.put("compact", compact);
         return state;
     }
@@ -280,9 +263,6 @@ public class IntegerSliderNode extends BaseCustomUINode {
         }
         if (map.get("showValueInput") instanceof Boolean showInput) {
             this.showValueInput = showInput;
-        }
-        if (map.get("showRangeInfo") instanceof Boolean showInfo) {
-            this.showRangeInfo = showInfo;
         }
         if (map.get("compact") instanceof Boolean compactMode) {
             this.compact = compactMode;
@@ -318,7 +298,7 @@ public class IntegerSliderNode extends BaseCustomUINode {
     }
 
     private void updateOutput() {
-        outputValues.put(OUTPUT_ID, value);
+        outputValues.put(OUTPUT_VALUE_ID, value);
         syncOutputPorts();
     }
 }

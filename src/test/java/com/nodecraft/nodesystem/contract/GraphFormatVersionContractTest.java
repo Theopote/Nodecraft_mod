@@ -24,7 +24,8 @@ class GraphFormatVersionContractTest {
     void currentVersionIdentityIsFrozen() {
         assertEquals(0, GraphFormatVersion.V0);
         assertEquals(1, GraphFormatVersion.V1);
-        assertEquals(GraphFormatVersion.V1, GraphFormatVersion.CURRENT);
+        assertEquals(2, GraphFormatVersion.V2);
+        assertEquals(GraphFormatVersion.V2, GraphFormatVersion.CURRENT);
     }
 
     @Test
