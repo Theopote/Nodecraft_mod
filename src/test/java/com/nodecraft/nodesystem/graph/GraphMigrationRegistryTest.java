@@ -180,6 +180,50 @@ class GraphMigrationRegistryTest {
     }
 
     @Test
+    void v4SolidsLanguageMigratesExtrudeAndLatticeIds() {
+        SavedGraph v4 = new SavedGraph();
+        v4.formatVersion = GraphFormatVersion.V4;
+        SavedNode prism = new SavedNode();
+        prism.nodeId = "prism";
+        prism.typeId = "geometry.solids.extrude_profile";
+        SavedNode lattice = new SavedNode();
+        lattice.nodeId = "lat";
+        lattice.typeId = "geometry.solids.surface_strip_to_geometry";
+        SavedNode sink = new SavedNode();
+        sink.nodeId = "sink";
+        sink.typeId = "geometry.boolean.union";
+        v4.nodes = List.of(prism, lattice, sink);
+
+        SavedConnection extrusion = new SavedConnection();
+        extrusion.sourceNodeId = "prism";
+        extrusion.sourcePortId = "output_geometry";
+        extrusion.targetNodeId = "sink";
+        extrusion.targetPortId = "input_geometry_0";
+
+        SavedConnection surface = new SavedConnection();
+        surface.sourceNodeId = "prism";
+        surface.sourcePortId = "output_surface_strip";
+        surface.targetNodeId = "lat";
+        surface.targetPortId = "input_surface_strip";
+
+        SavedConnection direction = new SavedConnection();
+        direction.sourceNodeId = "sink";
+        direction.sourcePortId = "output_geometry";
+        direction.targetNodeId = "prism";
+        direction.targetPortId = "input_extrusion_vector";
+
+        v4.connections = List.of(extrusion, surface, direction);
+        v4.nodePositions = java.util.Map.of();
+
+        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v4);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
+        assertEquals("geometry.solids.extrude", migrated.nodes.get(0).typeId);
+        assertEquals("geometry.solids.surface_strip_to_lattice", migrated.nodes.get(1).typeId);
+        assertEquals("output_side_surface", migrated.connections.get(1).sourcePortId);
+        assertEquals("input_direction", migrated.connections.get(2).targetPortId);
+    }
+
+    @Test
     void futureVersionsAreLeftUntouched() {
         SavedGraph future = new SavedGraph();
         future.formatVersion = GraphFormatVersion.CURRENT + 5;

@@ -218,30 +218,30 @@
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Extrude Profile | `geometry.solids.extrude` | Extrudes a polygon profile by a direction vector and emits prism geometry plus side surface strip data | `ExtrudeProfileNode` |
+| Extrude | `geometry.solids.extrude` | Extrudes a polygon profile by a direction vector into prism geometry (canonical Extrude) | `ExtrudeProfileNode` |
 | Extrude Point List | `geometry.solids.extrude_from_points` | Extrudes an ordered point list by a direction vector and emits source path, top path, and side segments | `ExtrudePointListNode` |
 | Extrude Box Face | `geometry.solids.extrude_box_face` | Extrudes a box face into a new box segment and returns a composite geometry | `ExtrudeBoxFaceNode` |
-| Loft Profiles | `geometry.solids.loft` | Lofts two polygon profiles with matching edge counts into a side surface strip | `LoftProfilesNode` |
+| Loft Surface | `geometry.solids.loft` | Lofts two polygon profiles into a SURFACE_STRIP (surface topology, not a solid). Profiles must share vertex count unless resampled upstream. | `LoftProfilesNode` |
 | Loft Point Lists | `geometry.solids.loft_from_points` | Connects two ordered point lists and emits source paths, target paths, and loft rail segments | `LoftPointListsNode` |
-| Sweep Profile Along Path | `geometry.solids.sweep` | Sweeps a polygon profile along a path with optional scale, rotation, close, and flip controls | `SweepProfileAlongPathNode` |
-| Sweep Point List Along Path | `geometry.solids.sweep_from_points` | Sweeps an ordered point profile along a path with optional scale, rotation, close, and flip controls | `SweepPointListAlongPathNode` |
+| Sweep Surface | `geometry.solids.sweep` | Sweeps a polygon profile along a path into a SURFACE_STRIP (surface topology, not a solid). Use Surface Strip To Lattice for wireframe preview geometry. | `SweepProfileAlongPathNode` |
+| Sweep Surface From Points | `geometry.solids.sweep_from_points` | Sweeps an ordered point profile along a path into a SURFACE_STRIP (surface topology, not a solid) | `SweepPointListAlongPathNode` |
 | Revolve Profile | `geometry.solids.revolve` | Revolves a polygon profile around an axis and emits section profiles plus a side surface strip | `RevolveProfileNode` |
-| Surface Strip To Geometry | `geometry.solids.surface_strip_to_geometry` | Explicitly converts a surface strip into reusable geometry by sampling section edges and rails as cylinders | `SurfaceStripToGeometryNode` |
+| Surface Strip To Lattice | `geometry.solids.surface_strip_to_lattice` | Approximates a surface strip as a cylinder lattice (section edges + rails). Not a filled solid or closed shell. | `SurfaceStripToGeometryNode` |
 | Sweep 2 Rails | `geometry.solids.sweep_two_rails` | Sweeps a profile between two guide rails with optional scale and rotation controls | `SweepTwoRailsNode` |
 | Push/Pull Box Face | `geometry.solids.push_pull_face` | Moves one box face along its normal and outputs a new box geometry | `PushPullBoxFaceNode` |
 | Shell Surface Strip | `geometry.solids.shell` | Builds inner and outer offset shell layers from a surface strip and emits cap strips plus an optional geometry approximation | `ShellNode` |
-| Prism By Profile Vector | `geometry.solids.extrude_profile` | Constructs prism geometry from a polygon profile and an extrusion vector | `PrismByProfileVectorNode` |
 | Thicken Surface | `geometry.solids.thicken_surface` | Thickens a surface strip into two offset layers with optional cap strips and a reusable geometry approximation | `ThickenSurfaceNode` |
 | Contour | `geometry.solids.contour` | Generates parallel section planes and traces voxel contour profiles from geometry at regular spacing. | `ContourNode` |
 | Prism By Base Points Vector | `geometry.solids.extrude_profile_from_points` | Constructs prism geometry from an ordered base polygon and an extrusion vector | `PrismByBasePointsVectorNode` |
 | Section Cut | `geometry.solids.section_cut` | Cuts geometry by one or more planes and traces voxel slice contours as section profiles, boundaries, blocks, and tree-grouped data. | `SectionCutNode` |
 | Deconstruct Surface Strip | `geometry.solids.deconstruct_surface_strip` | Breaks a surface strip into section paths, flattened points, and rail segments | `DeconstructSurfaceStripNode` |
-| Multi-Section Loft | `geometry.solids.loft_multi_section` | Lofts multiple polygon sections into one surface strip with close, flip, seam, and resample options. | `MultiSectionLoftNode` |
+| Multi-Section Loft Surface | `geometry.solids.loft_multi_section` | Lofts multiple polygon sections into one SURFACE_STRIP (surface topology, not a solid) with close, flip, seam, and resample options. | `MultiSectionLoftNode` |
 | Extract Surface Strip Range | `geometry.solids.extract_surface_strip_range` | Extracts a contiguous section range from a surface strip as a smaller surface strip | `ExtractSurfaceStripRangeNode` |
 | Morph Between Profiles | `geometry.solids.morph_profiles` | Interpolates between two compatible polygon profiles using parameter t in [0,1]. | `MorphBetweenProfilesNode` |
 | Offset Surface Strip | `geometry.solids.offset_surface_strip` | Offsets a surface strip by a signed distance and outputs a single offset surface | `OffsetSurfaceStripNode` |
 | Shrinkwrap Points On Surface Strip | `geometry.solids.shrinkwrap_points_surface_strip` | Projects each query point to the closest location on the surface strip triangle mesh | `ShrinkwrapPointsOnSurfaceStripNode` |
 | Shrinkwrap Points To Voxel Geometry | `geometry.solids.shrinkwrap_points_voxel_geometry` | Voxelizes geometry to blocks, then snaps each query point to the nearest voxel block center (shell when fill is off); distinct from triangle strip shrinkwrap | `ShrinkwrapPointsToVoxelGeometryNode` |
+| Prism By Profile Vector | `geometry.solids.extrude_profile` | Legacy/advanced prism construction from profile + extrusion vector. Prefer Extrude (geometry.solids.extrude) for new graphs. | `PrismByProfileVectorNode` |
 
 ## input.context (4)
 

@@ -66,6 +66,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V1 -> migrateV1ToV2(graph);
             case GraphFormatVersion.V2 -> migrateV2ToV3(graph);
             case GraphFormatVersion.V3 -> migrateV3ToV4(graph);
+            case GraphFormatVersion.V4 -> migrateV4ToV5(graph);
             default -> graph;
         };
     }
@@ -223,6 +224,63 @@ public final class GraphMigrationRegistry {
             case "input_curve_b", "input_polyline_b", "input_line_b" -> "input_path_b";
             default -> null;
         };
+    }
+
+    private static final String LEGACY_PRISM_EXTRUDE_TYPE = "geometry.solids.extrude_profile";
+    private static final String EXTRUDE_TYPE = "geometry.solids.extrude";
+    private static final String LEGACY_SURFACE_STRIP_TO_GEOMETRY_TYPE = "geometry.solids.surface_strip_to_geometry";
+    private static final String SURFACE_STRIP_TO_LATTICE_TYPE = "geometry.solids.surface_strip_to_lattice";
+
+    /**
+     * Batch 4: Extrude canonicalization + Surface Strip To Lattice rename.
+     * Prefers player Extrude over legacy Prism By Profile Vector for saved graphs.
+     */
+    private static SavedGraph migrateV4ToV5(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                if (LEGACY_PRISM_EXTRUDE_TYPE.equalsIgnoreCase(node.typeId)) {
+                    LOGGER.debug("Migrated node type: {} -> {}", node.typeId, EXTRUDE_TYPE);
+                    node.typeId = EXTRUDE_TYPE;
+                } else if (LEGACY_SURFACE_STRIP_TO_GEOMETRY_TYPE.equalsIgnoreCase(node.typeId)) {
+                    LOGGER.debug("Migrated node type: {} -> {}", node.typeId, SURFACE_STRIP_TO_LATTICE_TYPE);
+                    node.typeId = SURFACE_STRIP_TO_LATTICE_TYPE;
+                }
+            }
+        }
+
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+
+            if (connection.targetPortId != null
+                    && EXTRUDE_TYPE.equals(targetType)
+                    && "input_extrusion_vector".equalsIgnoreCase(connection.targetPortId)) {
+                connection.targetPortId = "input_direction";
+            }
+            if (connection.sourcePortId != null
+                    && EXTRUDE_TYPE.equals(sourceType)
+                    && "output_surface_strip".equalsIgnoreCase(connection.sourcePortId)) {
+                connection.sourcePortId = "output_side_surface";
+            }
+        }
+        return graph;
     }
 
     private static void applyNodeTypeMigration(SavedGraph graph, GraphMigrationManifest manifest) {

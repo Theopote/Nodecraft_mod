@@ -71,7 +71,8 @@ public class ShellNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_INNER_SURFACE_ID, "Inner Surface", "Inner offset shell surface", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_CAP_SURFACES_ID, "Cap Surfaces", "Start and end cap strips closing the shell", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_ALL_SURFACES_ID, "All Surfaces", "Outer, inner, and cap surface strips", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Cylinder-sampled shell geometry approximation", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Lattice Geometry",
+            "Cylinder-lattice approximation of shell layers (not a filled solid shell)", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding region covering the shell", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_COUNT_ID, "Section Count", "Number of sections in the shell strip", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_COUNT_ID, "Surface Count", "Number of generated shell surfaces", NodeDataType.INTEGER, this));

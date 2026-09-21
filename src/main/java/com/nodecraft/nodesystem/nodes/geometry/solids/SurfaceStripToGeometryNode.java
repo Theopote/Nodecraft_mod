@@ -24,15 +24,15 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "geometry.solids.surface_strip_to_geometry",
-    displayName = "Surface Strip To Geometry",
-    description = "Explicitly converts a surface strip into reusable geometry by sampling section edges and rails as cylinders",
+    id = "geometry.solids.surface_strip_to_lattice",
+    displayName = "Surface Strip To Lattice",
+    description = "Approximates a surface strip as a cylinder lattice (section edges + rails). Not a filled solid or closed shell.",
     category = "geometry.solids",
     order = 7
 )
 public class SurfaceStripToGeometryNode extends BaseNode {
 
-    @NodeProperty(displayName = "Radius", category = "Geometry", order = 1)
+    @NodeProperty(displayName = "Radius", category = "Lattice", order = 1)
     private double radius = 0.35d;
 
     @NodeProperty(displayName = "Mode", category = "Sampling", order = 2)
@@ -51,21 +51,30 @@ public class SurfaceStripToGeometryNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SurfaceStripToGeometryNode() {
-        super(UUID.randomUUID(), "geometry.solids.surface_strip_to_geometry");
+        super(UUID.randomUUID(), "geometry.solids.surface_strip_to_lattice");
 
-        addInputPort(new BasePort(INPUT_SURFACE_STRIP_ID, "Surface Strip", "Surface strip to convert into geometry", NodeDataType.SURFACE_STRIP, this));
-        addInputPort(new BasePort(INPUT_SURFACE_STRIP_TREE_ID, "Surface Strip Tree", "Optional tree of surface strips to convert per branch", NodeDataType.DATA_TREE, this));
+        addInputPort(new BasePort(INPUT_SURFACE_STRIP_ID, "Surface Strip",
+            "Surface strip to approximate as a wireframe lattice", NodeDataType.SURFACE_STRIP, this));
+        addInputPort(new BasePort(INPUT_SURFACE_STRIP_TREE_ID, "Surface Strip Tree",
+            "Optional tree of surface strips to convert per branch", NodeDataType.DATA_TREE, this));
 
-        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry approximation of the surface strip", NodeDataType.GEOMETRY, this));
-        addOutputPort(new BasePort(OUTPUT_GEOMETRY_TREE_ID, "Geometry Tree", "Generated geometry grouped by source surface strip tree branch", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding region of the generated geometry", NodeDataType.REGION, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Generated geometry segment count", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when geometry was generated", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Lattice Geometry",
+            "Cylinder-lattice approximation (edges + rails), not a filled solid", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_TREE_ID, "Lattice Geometry Tree",
+            "Lattice geometry grouped by source surface strip tree branch", NodeDataType.DATA_TREE, this));
+        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding region of the generated lattice", NodeDataType.REGION, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Generated lattice segment count", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when lattice geometry was generated", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Explicitly converts a surface strip into reusable geometry by sampling section edges and rails as cylinders";
+        return "Approximates a surface strip as a cylinder lattice (section edges + rails). Not a filled solid or closed shell.";
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "Surface Strip To Lattice";
     }
 
     @Override

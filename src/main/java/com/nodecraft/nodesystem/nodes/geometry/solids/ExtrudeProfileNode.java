@@ -21,8 +21,8 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.solids.extrude",
-    displayName = "Extrude Profile",
-    description = "Extrudes a polygon profile by a direction vector and emits prism geometry plus side surface strip data",
+    displayName = "Extrude",
+    description = "Extrudes a polygon profile by a direction vector into prism geometry (canonical Extrude)",
     category = "geometry.solids",
     order = 0
 )
@@ -53,14 +53,21 @@ public class ExtrudeProfileNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_TOP_PROFILE_ID, "Top Profile", "Extruded polygon profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_BASE_POINTS_ID, "Base Points", "Closed base polygon points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_TOP_POINTS_ID, "Top Points", "Closed extruded polygon points", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_SIDE_SURFACE_ID, "Side Surface", "Side strip surface between the base and top profiles (surface shell representation)", NodeDataType.SURFACE_STRIP, this));
+        addOutputPort(new BasePort(OUTPUT_SIDE_SURFACE_ID, "Side Surface",
+            "Side strip surface between the base and top profiles (surface shell, not a solid)",
+            NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_HEIGHT_ID, "Height", "Extrusion vector length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid profile and direction were provided", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Extrudes a polygon profile by a direction vector and emits prism geometry plus side surface strip data";
+        return "Extrudes a polygon profile by a direction vector into prism geometry (canonical Extrude)";
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "Extrude";
     }
 
     @Override

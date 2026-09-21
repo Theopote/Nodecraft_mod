@@ -328,7 +328,7 @@ Required aliases:
 - `spatial.construct.rectangle_on_plane` -> `geometry.profiles.rectangle_profile`
 - `spatial.construct.regular_polygon_on_plane` -> `geometry.profiles.polygon_profile`
 - `spatial.construct.polygon_by_points` -> `geometry.profiles.custom_profile`
-- `spatial.construct.prism_by_profile_vector` -> `geometry.solids.extrude_profile`
+- `spatial.construct.prism_by_profile_vector` -> `geometry.solids.extrude`
 - `spatial.construct.prism_by_base_points_vector` -> `geometry.solids.extrude_profile_from_points`
 - `spatial.modeling.extrude_profile` -> `geometry.solids.extrude`
 - `spatial.modeling.extrude_point_list` -> `geometry.solids.extrude_from_points`
@@ -338,7 +338,7 @@ Required aliases:
 - `spatial.modeling.sweep_profile_along_path` -> `geometry.solids.sweep`
 - `spatial.modeling.sweep_point_list_along_path` -> `geometry.solids.sweep_from_points`
 - `spatial.modeling.resample_polygon_profile` -> `geometry.profiles.resample_profile`
-- `spatial.modeling.surface_strip_to_geometry` -> `geometry.solids.surface_strip_to_geometry`
+- `spatial.modeling.surface_strip_to_geometry` -> `geometry.solids.surface_strip_to_lattice`
 - `spatial.modeling.push_pull_box_face` -> `geometry.solids.push_pull_face`
 - `spatial.modeling.twist_point_list` -> `transform.deformations.twist`
 

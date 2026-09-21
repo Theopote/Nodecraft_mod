@@ -265,7 +265,7 @@
       },
       {
         "id": "extrude_roof",
-        "type": "geometry.solids.extrude_profile",
+        "type": "geometry.solids.extrude",
         "position": {
           "x": 450,
           "y": 750

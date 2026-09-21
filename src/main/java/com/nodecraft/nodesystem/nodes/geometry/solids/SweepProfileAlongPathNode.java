@@ -25,8 +25,8 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.solids.sweep",
-    displayName = "Sweep Profile Along Path",
-    description = "Sweeps a polygon profile along a path with optional scale, rotation, close, and flip controls",
+    displayName = "Sweep Surface",
+    description = "Sweeps a polygon profile along a path into a SURFACE_STRIP (surface topology, not a solid). Use Surface Strip To Lattice for wireframe preview geometry.",
     category = "geometry.solids",
     order = 5
 )
@@ -88,14 +88,20 @@ public class SweepProfileAlongPathNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_TREE_ID, "Section Paths Tree", "Section paths keyed by section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_ALL_POINTS_ID, "All Points", "Flattened list of all swept section points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_POINTS_TREE_ID, "Section Points Tree", "Section points keyed by section index", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip", "Reusable strip surface made of swept sections", NodeDataType.SURFACE_STRIP, this));
+        addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip",
+            "Primary output: swept surface topology (not a solid body)", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_COUNT_ID, "Section Count", "Number of swept sections along the spine", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a profile and spine were resolved", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Sweeps a polygon profile along a path with optional scale, rotation, close, and flip controls";
+        return "Sweeps a polygon profile along a path into a SURFACE_STRIP (surface topology, not a solid). Use Surface Strip To Lattice for wireframe preview geometry.";
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "Sweep Surface";
     }
 
     @Override

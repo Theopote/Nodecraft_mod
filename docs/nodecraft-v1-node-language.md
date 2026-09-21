@@ -416,7 +416,20 @@ Arc defaults, Curve Evaluate contract).
 - In-repo presets updated to canonical ids + `input_path`. Remaining intentional `input_line`:
   architectural Railing / Staircase only.
 
-**Next:** none for Batch 3 path language; optional icon/alias polish.
+**Batch 4 P1a — Solids language freeze (2026-09-21):**
+
+- **Extrude** (`geometry.solids.extrude`) is the canonical player Extrude: Profile + Direction →
+  Geometry / Prism / Side Surface.
+- **Prism By Profile Vector** (`geometry.solids.extrude_profile`) kept as legacy/advanced (order 99).
+  Graph format **V5** remaps saved `extrude_profile` → `extrude` (+ `input_extrusion_vector` →
+  `input_direction`, `output_surface_strip` → `output_side_surface`).
+- **Sweep / Loft** emit **SURFACE_STRIP** (surface topology), not solid Geometry. Display names /
+  descriptions state Surface explicitly.
+- **Surface Strip To Lattice** (`geometry.solids.surface_strip_to_lattice`) replaces misleading
+  `surface_strip_to_geometry`; output labeled Lattice Geometry (cylinder edges + rails, not a fill).
+- Contract: `SolidsFamilyContractTest`.
+
+**Next (Batch 4 P1b):** PathFrameUtils parallel transport + Sweep profile-plane local (u,v).
 
 ---
 

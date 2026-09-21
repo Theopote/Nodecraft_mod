@@ -35,8 +35,14 @@ public final class GraphFormatVersion {
      */
     public static final int V4 = 4;
 
+    /**
+     * Batch 4 solids language: Extrude canonical id, Surface Strip To Lattice rename,
+     * and related port remaps for demoted Prism / lattice conversion nodes.
+     */
+    public static final int V5 = 5;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V4;
+    public static final int CURRENT = V5;
 
     private GraphFormatVersion() {
     }

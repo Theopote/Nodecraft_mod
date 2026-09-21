@@ -175,7 +175,7 @@
             },
             {
               "ref": "arch_solid",
-              "typeId": "geometry.solids.surface_strip_to_geometry",
+              "typeId": "geometry.solids.surface_strip_to_lattice",
               "x": 550,
               "y": 275
             },
@@ -567,7 +567,7 @@
             },
             {
               "ref": "extrude_roof",
-              "typeId": "geometry.solids.extrude_profile",
+              "typeId": "geometry.solids.extrude",
               "x": 450,
               "y": 750
             },
@@ -1045,7 +1045,7 @@
             },
             {
               "ref": "extrude_roof",
-              "typeId": "geometry.solids.extrude_profile",
+              "typeId": "geometry.solids.extrude",
               "x": 450,
               "y": 200
             },
@@ -1435,7 +1435,7 @@
             },
             {
               "ref": "extrude_opening",
-              "typeId": "geometry.solids.extrude_profile",
+              "typeId": "geometry.solids.extrude",
               "x": 650,
               "y": 230
             },

@@ -24,8 +24,8 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.solids.loft_multi_section",
-    displayName = "Multi-Section Loft",
-    description = "Lofts multiple polygon sections into one surface strip with close, flip, seam, and resample options.",
+    displayName = "Multi-Section Loft Surface",
+    description = "Lofts multiple polygon sections into one SURFACE_STRIP (surface topology, not a solid) with close, flip, seam, and resample options.",
     category = "geometry.solids",
     order = 11
 )
@@ -87,7 +87,12 @@ public class MultiSectionLoftNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Lofts multiple polygon sections into one surface strip with close, flip, seam, and resample options.";
+        return "Lofts multiple polygon sections into one SURFACE_STRIP (surface topology, not a solid) with close, flip, seam, and resample options.";
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "Multi-Section Loft Surface";
     }
 
     @Override

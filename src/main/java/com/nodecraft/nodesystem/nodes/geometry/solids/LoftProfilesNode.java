@@ -22,8 +22,8 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.solids.loft",
-    displayName = "Loft Profiles",
-    description = "Lofts two polygon profiles with matching edge counts into a side surface strip",
+    displayName = "Loft Surface",
+    description = "Lofts two polygon profiles into a SURFACE_STRIP (surface topology, not a solid). Profiles must share vertex count unless resampled upstream.",
     category = "geometry.solids",
     order = 3
 )
@@ -56,14 +56,21 @@ public class LoftProfilesNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_SECTION_POINTS_TREE_ID, "Section Points Tree", "Source and target section points keyed as {0} and {1}", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_ID, "Rail Segments", "Segments connecting corresponding source and target vertices", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_TREE_ID, "Rail Segments Tree", "Loft rail segments keyed by rail index", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_SIDE_SURFACE_ID, "Side Surface", "Side strip surface between the two profiles", NodeDataType.SURFACE_STRIP, this));
+        addOutputPort(new BasePort(OUTPUT_SIDE_SURFACE_ID, "Side Surface",
+            "Primary output: lofted surface topology between the two profiles (not a solid)",
+            NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of loft rails", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when both profiles are compatible for lofting", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Lofts two polygon profiles with matching edge counts into a side surface strip";
+        return "Lofts two polygon profiles into a SURFACE_STRIP (surface topology, not a solid). Profiles must share vertex count unless resampled upstream.";
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "Loft Surface";
     }
 
     @Override

@@ -145,7 +145,7 @@
       },
       {
         "id": "extrude_opening",
-        "type": "geometry.solids.extrude_profile",
+        "type": "geometry.solids.extrude",
         "position": {
           "x": 650,
           "y": 230

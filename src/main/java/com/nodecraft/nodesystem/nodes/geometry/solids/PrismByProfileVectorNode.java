@@ -22,9 +22,9 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "geometry.solids.extrude_profile",
     displayName = "Prism By Profile Vector",
-    description = "Constructs prism geometry from a polygon profile and an extrusion vector",
+    description = "Legacy/advanced prism construction from profile + extrusion vector. Prefer Extrude (geometry.solids.extrude) for new graphs.",
     category = "geometry.solids",
-    order = 9
+    order = 99
 )
 public class PrismByProfileVectorNode extends BaseNode {
 
@@ -49,7 +49,9 @@ public class PrismByProfileVectorNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_PRISM_ID, "Prism", "Constructed prism geometry", NodeDataType.PRISM_GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));
-        addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip", "Side strip surface between base and top profiles", NodeDataType.SURFACE_STRIP, this));
+        addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip",
+            "Side strip surface between base and top profiles (surface shell, not a solid)",
+            NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_BASE_PROFILE_ID, "Base Profile", "Resolved base polygon profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_TOP_POINTS_ID, "Top Points", "Resolved top polygon points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_TOP_PLANE_ID, "Top Plane", "Plane through the top profile", NodeDataType.PLANE, this));
@@ -60,15 +62,15 @@ public class PrismByProfileVectorNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Constructs prism geometry from a polygon profile and an extrusion vector";
+        return "Legacy/advanced prism construction from profile + extrusion vector. Prefer Extrude (geometry.solids.extrude) for new graphs.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object profileObj = inputValues.get(INPUT_PROFILE_ID);
-        Object extrusionVectorObj = inputValues.get(INPUT_EXTRUSION_VECTOR_ID);
+        Vector3d extrusionVector = SolidNodeUtils.resolveDirection(inputValues.get(INPUT_EXTRUSION_VECTOR_ID));
 
-        if (!(profileObj instanceof PolygonProfileData profile) || !(extrusionVectorObj instanceof Vector3d extrusionVector)) {
+        if (!(profileObj instanceof PolygonProfileData profile) || extrusionVector == null) {
             writeEmptyOutputs();
             return;
         }

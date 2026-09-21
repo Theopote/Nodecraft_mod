@@ -65,7 +65,8 @@ public class ThickenSurfaceNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_BACK_SURFACE_ID, "Back Surface", "Secondary offset surface layer", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_SIDE_CAPS_ID, "Side Caps", "Cap surfaces closing the thickened strip ends", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_ALL_SURFACES_ID, "All Surfaces", "All generated thickened strip surfaces", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Cylinder-sampled approximation of the thickened strip", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Lattice Geometry",
+            "Cylinder-lattice approximation of thickened strip (not a filled solid)", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding region of the thickened strip", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_LAYER_COUNT_ID, "Layer Count", "Generated surface layer count", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_THICKNESS_ID, "Thickness", "Resolved thickening distance", NodeDataType.DOUBLE, this));

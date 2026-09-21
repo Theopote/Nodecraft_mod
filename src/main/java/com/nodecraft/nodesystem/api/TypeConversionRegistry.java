@@ -108,7 +108,7 @@ public final class TypeConversionRegistry {
             return new ConversionSuggestion("reference.planes.block_face_plane", "Box Face To Plane");
         }
         if (isSurfaceStripToGeometryConversion(output, input)) {
-            return new ConversionSuggestion("geometry.solids.surface_strip_to_geometry", "Surface Strip To Geometry");
+            return new ConversionSuggestion("geometry.solids.surface_strip_to_lattice", "Surface Strip To Lattice");
         }
         return null;
     }

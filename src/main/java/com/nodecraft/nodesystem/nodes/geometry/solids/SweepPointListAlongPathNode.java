@@ -25,8 +25,8 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.solids.sweep_from_points",
-    displayName = "Sweep Point List Along Path",
-    description = "Sweeps an ordered point profile along a path with optional scale, rotation, close, and flip controls",
+    displayName = "Sweep Surface From Points",
+    description = "Sweeps an ordered point profile along a path into a SURFACE_STRIP (surface topology, not a solid)",
     category = "geometry.solids",
     order = 6
 )
@@ -88,14 +88,20 @@ public class SweepPointListAlongPathNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_SECTION_POINTS_TREE_ID, "Section Points Tree", "Section points keyed by section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_ID, "Rail Segments", "Line segments connecting corresponding section points", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_TREE_ID, "Rail Segments Tree", "Rail segments grouped by source section index", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip", "Reusable strip surface made of swept sections", NodeDataType.SURFACE_STRIP, this));
+        addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip",
+            "Primary output: swept surface topology (not a solid body)", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_COUNT_ID, "Section Count", "Number of swept sections along the spine", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a profile and spine were resolved", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Sweeps an ordered point profile along a path with optional scale, rotation, close, and flip controls";
+        return "Sweeps an ordered point profile along a path into a SURFACE_STRIP (surface topology, not a solid)";
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "Sweep Surface From Points";
     }
 
     @Override
