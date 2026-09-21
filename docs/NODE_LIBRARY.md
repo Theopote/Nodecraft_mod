@@ -330,14 +330,14 @@
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Top / Side / Bottom Map | `material.directional_mapping.top_side_bottom_map` | Assigns top, side, and bottom block types across a voxelized shape using vertical exposure | `TopSideBottomMapNode` |
-| Slope Map | `material.directional_mapping.slope_map` | Assigns flat/slope/steep materials using local height difference per X/Z column. | `SlopeMapNode` |
+| Top / Side / Bottom Map | `material.directional_mapping.top_side_bottom_map` | Voxel column map: highest / lowest / middle blocks per X/Z column. Remaps blockId only; preserves stateData. Geometry inputs are voxelized first. | `TopSideBottomMapNode` |
+| Slope Map | `material.directional_mapping.slope_map` | Voxel material map: assigns flat/slope/steep by 4-neighbor column height grade. Remaps blockId only; preserves stateData. | `SlopeMapNode` |
 
 ## material.gradient_mapping (5)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Height Gradient Map | `material.gradient_mapping.height_gradient_map` | Assigns lower, middle, and upper block types across a shape based on relative height | `HeightGradientMapNode` |
+| Height Gradient Map | `material.gradient_mapping.height_gradient_map` | Maps voxelized blocks by relative Y height into material bands. Remaps blockId only; preserves stateData. Geometry is voxelized first. | `HeightGradientMapNode` |
 | Noise Material | `material.gradient_mapping.noise_material` | Assigns block types across placements or geometry using deterministic 3D noise bands | `NoiseMaterialNode` |
 | Gradient Ramp Map | `material.gradient_mapping.gradient_ramp_map` | Assigns block types by height using a custom multi-stop ramp list. | `GradientRampMapNode` |
 | Distance-Based Material | `material.gradient_mapping.distance_material` | Assigns block types from a palette based on distance to a reference point, plane, curve, or line. | `DistanceBasedMaterialNode` |
@@ -347,7 +347,7 @@
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Checker Pattern Map | `material.pattern_mapping.checker_pattern_map` | Assigns alternating block types across a voxelized shape using a checker pattern | `CheckerPatternMapNode` |
+| Checker Pattern Map | `material.pattern_mapping.checker_pattern_map` | Assigns alternating block types across voxelized blocks using a checker pattern. Remaps blockId only; preserves stateData. | `CheckerPatternMapNode` |
 | Stripe Pattern Map | `material.pattern_mapping.stripe_pattern_map` | Assigns alternating stripe materials along a selected axis. | `StripePatternMapNode` |
 | Brick Pattern Map | `material.pattern_mapping.brick_pattern_map` | Assigns two materials using a staggered brick-like pattern in X/Z. | `BrickPatternMapNode` |
 | Grid Pattern Map | `material.pattern_mapping.grid_pattern_map` | Assigns frame/fill materials using a regular X/Z grid interval. | `GridPatternMapNode` |

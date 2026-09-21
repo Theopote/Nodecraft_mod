@@ -9,7 +9,7 @@ import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,6 +32,7 @@ public class AssignBlockTypeNode extends BaseNode {
 
     private static final String INPUT_COORDINATES_ID = "input_coordinates";
     private static final String INPUT_BLOCKS_TREE_ID = "input_blocks_tree";
+    private static final String INPUT_PLACEMENTS_ID = "input_placements";
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
     private static final String INPUT_CYLINDER_GEOMETRY_ID = "input_cylinder_geometry";
@@ -51,7 +52,10 @@ public class AssignBlockTypeNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_BLOCKS_TREE_ID, "Blocks Tree", "Optional block positions grouped by branch", NodeDataType.DATA_TREE, this));
-        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified abstract geometry input", NodeDataType.GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_PLACEMENTS_ID, "Block Placements",
+            "Canonical placements to remap (blockId only; stateData preserved)", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry",
+            "Optional geometry — voxelized first when placements/coordinates are empty", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry data to materialize", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to materialize", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
@@ -75,6 +79,7 @@ public class AssignBlockTypeNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object coordsObj = inputValues.get(INPUT_COORDINATES_ID);
         Object blocksTreeObj = inputValues.get(INPUT_BLOCKS_TREE_ID);
+        Object placementsObj = inputValues.get(INPUT_PLACEMENTS_ID);
         Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
         Object boxGeometryObj = inputValues.get(INPUT_BOX_GEOMETRY_ID);
         Object cylinderGeometryObj = inputValues.get(INPUT_CYLINDER_GEOMETRY_ID);
@@ -87,24 +92,30 @@ public class AssignBlockTypeNode extends BaseNode {
             return;
         }
 
-        BlockPosList positions = GeometryVoxelizer.resolveBlocks(
+        List<BlockPlacementData> sources = MaterialMappingSupport.resolveSourcePlacements(
+            placementsObj,
             coordsObj,
             geometryObj,
             boxGeometryObj,
             cylinderGeometryObj,
             sphereGeometryObj,
             torusGeometryObj,
-            true
+            blockType
         );
 
         List<String> blockIds = new ArrayList<>();
         List<BlockPlacementData> placements = new ArrayList<>();
         BlockPosList outputPositions = new BlockPosList();
 
-        for (BlockPos pos : positions) {
+        for (BlockPlacementData source : sources) {
+            BlockPos pos = source.pos();
+            if (pos == null) {
+                continue;
+            }
+            BlockPlacementData remapped = MaterialMappingSupport.remapBlockId(source, blockType);
             outputPositions.add(pos);
             blockIds.add(blockType);
-            placements.add(new BlockPlacementData(pos, blockType));
+            placements.add(remapped);
         }
 
         outputValues.put(OUTPUT_POSITIONS_ID, outputPositions);
@@ -128,7 +139,19 @@ public class AssignBlockTypeNode extends BaseNode {
             List<Object> branchBlockIds = new ArrayList<>();
             List<Object> branchPlacements = new ArrayList<>();
             for (Object item : branch.items()) {
-                if (item instanceof BlockPos pos) {
+                if (item instanceof BlockPlacementData existing) {
+                    BlockPlacementData remapped = MaterialMappingSupport.remapBlockId(existing, blockType);
+                    BlockPos pos = remapped.pos();
+                    if (pos == null) {
+                        continue;
+                    }
+                    outputPositions.add(pos);
+                    blockIds.add(blockType);
+                    placements.add(remapped);
+                    branchPositions.add(pos);
+                    branchBlockIds.add(blockType);
+                    branchPlacements.add(remapped);
+                } else if (item instanceof BlockPos pos) {
                     BlockPlacementData placement = new BlockPlacementData(pos, blockType);
                     outputPositions.add(pos);
                     blockIds.add(blockType);

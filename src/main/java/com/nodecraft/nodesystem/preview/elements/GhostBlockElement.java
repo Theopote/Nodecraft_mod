@@ -6,14 +6,13 @@ import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.nodesystem.preview.protocol.PreviewBlock;
 import com.nodecraft.nodesystem.preview.protocol.PreviewBlocksPayload;
 import com.nodecraft.nodesystem.preview.PreviewRenderer;
-import net.minecraft.block.Block;
+import com.nodecraft.nodesystem.util.BlockStateData;
+import com.nodecraft.nodesystem.util.BlockStateResolver;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
@@ -109,7 +108,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
         }
         List<BlockData> nextBlocks = new ArrayList<>(payload.getBlocks().size());
         for (PreviewBlock b : payload.getBlocks()) {
-            nextBlocks.add(new BlockData(new Vec3d(b.x(), b.y(), b.z()), b.blockId()));
+            nextBlocks.add(new BlockData(new Vec3d(b.x(), b.y(), b.z()), b.blockId(), b.stateData()));
         }
         blocks = nextBlocks;
     }
@@ -228,7 +227,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
                 (int) Math.floor(blockData.position.z)
             );
 
-            BlockState blockState = getBlockState(blockData.blockId);
+            BlockState blockState = getBlockState(blockData);
             if (blockState.isAir()) {
                 continue;
             }
@@ -357,7 +356,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
                 continue;
             }
 
-            BlockState blockState = getBlockState(blockData.blockId);
+            BlockState blockState = getBlockState(blockData);
             if (blockState.isAir()) {
                 continue;
             }
@@ -384,7 +383,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
                     continue;
                 }
 
-                BlockState blockState = getBlockState(blockData.blockId);
+                BlockState blockState = getBlockState(blockData);
                 if (blockState.isAir()) {
                     continue;
                 }
@@ -458,7 +457,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
             }
             
             // 检查方块是否为空气（健壮性优化）
-            BlockState blockState = getBlockState(blockData.blockId);
+            BlockState blockState = getBlockState(blockData);
             if (blockState.isAir()) {
                 continue;
             }
@@ -646,26 +645,15 @@ public class GhostBlockElement extends AbstractPreviewElement {
     }
     
     /**
-     * 根据方块ID获取方块状态
-     * <p>
-     * 健壮性优化：
-     * - 当方块ID无效或解析失败时，返回空气而不是石头
-     * - 避免因无效ID而在预览中产生错误的视觉效果
-     * - 空气方块会被渲染逻辑自动跳过，不会显示任何内容
+     * Resolves preview block state from blockId + optional stateData (same rules as Apply Changes).
      */
-    private BlockState getBlockState(String blockId) {
-        try {
-            Identifier identifier = Identifier.tryParse(blockId);
-            if (identifier == null) {
-                NodeCraft.LOGGER.warn("无效的方块ID格式: {}, 将其视为空气", blockId);
-                return Blocks.AIR.getDefaultState();
-            }
-            Block block = Registries.BLOCK.get(identifier);
-            return block.getDefaultState();
-        } catch (Exception e) {
-            NodeCraft.LOGGER.warn("无法解析方块ID: {}, 将其视为空气", blockId);
-            return Blocks.AIR.getDefaultState();
+    private BlockState getBlockState(BlockData blockData) {
+        BlockState resolved = BlockStateResolver.resolve(blockData.blockId, blockData.stateData);
+        if (resolved != null) {
+            return resolved;
         }
+        NodeCraft.LOGGER.warn("无法解析方块ID: {}, 将其视为空气", blockData.blockId);
+        return Blocks.AIR.getDefaultState();
     }
     
     @Override
@@ -778,16 +766,22 @@ public class GhostBlockElement extends AbstractPreviewElement {
     public static class BlockData {
         public final Vec3d position;
         public final String blockId;
+        public final BlockStateData stateData;
         
         public BlockData(Vec3d position, String blockId) {
+            this(position, blockId, null);
+        }
+
+        public BlockData(Vec3d position, String blockId, BlockStateData stateData) {
             this.position = position;
             this.blockId = blockId;
+            this.stateData = stateData != null && !stateData.isEmpty() ? stateData.copy() : null;
         }
         
         @Override
         public String toString() {
-            return String.format("BlockData{pos=%.1f,%.1f,%.1f, block=%s}", 
-                position.x, position.y, position.z, blockId);
+            return String.format("BlockData{pos=%.1f,%.1f,%.1f, block=%s, state=%s}", 
+                position.x, position.y, position.z, blockId, stateData);
         }
     }
 } 

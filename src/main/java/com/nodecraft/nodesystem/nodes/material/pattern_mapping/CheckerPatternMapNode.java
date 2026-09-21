@@ -8,7 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -17,18 +17,19 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Applies a two-material checker pattern using resolved block coordinates.
+ * Applies a two-material checker pattern. Remaps blockId only; preserves stateData.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "material.pattern_mapping.checker_pattern_map",
     displayName = "Checker Pattern Map",
-    description = "Assigns alternating block types across a voxelized shape using a checker pattern",
+    description = "Assigns alternating block types across voxelized blocks using a checker pattern. Remaps blockId only; preserves stateData.",
     category = "material.pattern_mapping",
     order = 0
 )
 public class CheckerPatternMapNode extends BaseNode {
 
+    private static final String INPUT_PLACEMENTS_ID = "input_placements";
     private static final String INPUT_COORDINATES_ID = "input_coordinates";
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
@@ -45,51 +46,59 @@ public class CheckerPatternMapNode extends BaseNode {
     public CheckerPatternMapNode() {
         super(UUID.randomUUID(), "material.pattern_mapping.checker_pattern_map");
 
-        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list", NodeDataType.BLOCK_LIST, this));
-        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified abstract geometry input", NodeDataType.GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry data to materialize", NodeDataType.BOX_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to materialize", NodeDataType.CYLINDER_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
-        addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry data to materialize", NodeDataType.TORUS_GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_PLACEMENTS_ID, "Block Placements",
+            "Canonical placements to remap (blockId only; stateData preserved)", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list when placements are empty", NodeDataType.BLOCK_LIST, this));
+        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry",
+            "Optional geometry — voxelized first when placements/coordinates are empty", NodeDataType.GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Legacy box geometry (voxelized first)", NodeDataType.BOX_GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Legacy cylinder geometry (voxelized first)", NodeDataType.CYLINDER_GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Legacy sphere geometry (voxelized first)", NodeDataType.SPHERE, this));
+        addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Legacy torus geometry (voxelized first)", NodeDataType.TORUS_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_PRIMARY_ID, "Primary", "Primary block type for alternating cells", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_SECONDARY_ID, "Secondary", "Secondary block type for alternating cells", NodeDataType.BLOCK_TYPE, this));
 
         addOutputPort(new BasePort(OUTPUT_POSITIONS_ID, "Positions", "Resolved block positions", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BLOCK_IDS_ID, "Block IDs", "Block IDs aligned with the positions list", NodeDataType.BLOCK_INFO_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Position and block pairs for baking", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Canonical material payload", NodeDataType.BLOCK_PLACEMENT_LIST, this));
     }
 
     @Override
     public String getDescription() {
-        return "Assigns alternating block types across a voxelized shape using a checker pattern";
+        return "Assigns alternating block types across voxelized blocks using a checker pattern. Remaps blockId only; preserves stateData.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        BlockPosList positions = GeometryVoxelizer.resolveBlocks(
+        String primary = getInputString(INPUT_PRIMARY_ID, "minecraft:stone");
+        String secondary = getInputString(INPUT_SECONDARY_ID, "minecraft:polished_andesite");
+
+        List<BlockPlacementData> sources = MaterialMappingSupport.resolveSourcePlacements(
+            inputValues.get(INPUT_PLACEMENTS_ID),
             inputValues.get(INPUT_COORDINATES_ID),
             inputValues.get(INPUT_GEOMETRY_ID),
             inputValues.get(INPUT_BOX_GEOMETRY_ID),
             inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
             inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
             inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-            true
+            primary
         );
 
-        String primary = getInputString(INPUT_PRIMARY_ID, "minecraft:stone");
-        String secondary = getInputString(INPUT_SECONDARY_ID, "minecraft:polished_andesite");
-
         BlockPosList outputPositions = new BlockPosList();
-        List<String> blockIds = new ArrayList<>();
-        List<BlockPlacementData> placements = new ArrayList<>();
+        List<String> blockIds = new ArrayList<>(sources.size());
+        List<BlockPlacementData> placements = new ArrayList<>(sources.size());
 
-        for (BlockPos pos : positions) {
+        for (BlockPlacementData source : sources) {
+            BlockPos pos = source.pos();
+            if (pos == null) {
+                continue;
+            }
             boolean primaryCell = ((pos.getX() + pos.getY() + pos.getZ()) & 1) == 0;
             String blockId = primaryCell ? primary : secondary;
 
             outputPositions.add(pos);
             blockIds.add(blockId);
-            placements.add(new BlockPlacementData(pos, blockId));
+            placements.add(MaterialMappingSupport.remapBlockId(source, blockId));
         }
 
         outputValues.put(OUTPUT_POSITIONS_ID, outputPositions);

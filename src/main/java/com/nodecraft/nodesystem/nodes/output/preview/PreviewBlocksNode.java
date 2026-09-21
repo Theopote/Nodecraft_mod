@@ -193,6 +193,10 @@ public class PreviewBlocksNode extends BaseCustomUINode {
             sy += y;
             sz += z;
             xh ^= (int) (31L * x + 17L * y + z);
+            xh ^= block.blockId().hashCode();
+            if (block.stateData() != null) {
+                xh ^= block.stateData().hashCode();
+            }
         }
         hash = 31 * hash + Long.hashCode(sx);
         hash = 31 * hash + Long.hashCode(sy);
@@ -245,7 +249,7 @@ public class PreviewBlocksNode extends BaseCustomUINode {
             && placement.blockId() != null
             && !placement.blockId().isBlank()) {
             BlockPos pos = placement.pos();
-            return new PreviewBlock(pos.getX(), pos.getY(), pos.getZ(), placement.blockId());
+            return new PreviewBlock(pos.getX(), pos.getY(), pos.getZ(), placement.blockId(), placement.stateData());
         }
         if (value instanceof Coordinate coordinate) {
             return new PreviewBlock(coordinate.getX(), coordinate.getY(), coordinate.getZ(), effectiveBlockType);

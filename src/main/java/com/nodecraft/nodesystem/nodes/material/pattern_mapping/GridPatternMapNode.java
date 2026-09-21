@@ -9,7 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -38,6 +38,7 @@ public class GridPatternMapNode extends BaseNode {
     @NodeProperty(displayName = "Line Width", category = "Pattern", order = 2)
     private int lineWidth = 1;
 
+    private static final String INPUT_PLACEMENTS_ID = "input_placements";
     private static final String INPUT_COORDINATES_ID = "input_coordinates";
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
@@ -52,8 +53,11 @@ public class GridPatternMapNode extends BaseNode {
 
     public GridPatternMapNode() {
         super(UUID.randomUUID(), "material.pattern_mapping.grid_pattern_map");
-        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list", NodeDataType.BLOCK_LIST, this));
-        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified abstract geometry input", NodeDataType.GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_PLACEMENTS_ID, "Block Placements",
+            "Canonical placements to remap (blockId only; stateData preserved)", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list when placements are empty", NodeDataType.BLOCK_LIST, this));
+        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry",
+            "Optional geometry — voxelized first when placements/coordinates are empty", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry data to materialize", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to materialize", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
@@ -67,26 +71,36 @@ public class GridPatternMapNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        BlockPosList positions = GeometryVoxelizer.resolveBlocks(
-            inputValues.get(INPUT_COORDINATES_ID), inputValues.get(INPUT_GEOMETRY_ID), inputValues.get(INPUT_BOX_GEOMETRY_ID),
-            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID), inputValues.get(INPUT_SPHERE_GEOMETRY_ID), inputValues.get(INPUT_TORUS_GEOMETRY_ID), true
-        );
         String frame = getInputString(INPUT_FRAME_ID, "minecraft:stone_bricks");
         String fill = getInputString(INPUT_FILL_ID, "minecraft:quartz_block");
+        List<BlockPlacementData> sources = MaterialMappingSupport.resolveSourcePlacements(
+            inputValues.get(INPUT_PLACEMENTS_ID),
+            inputValues.get(INPUT_COORDINATES_ID),
+            inputValues.get(INPUT_GEOMETRY_ID),
+            inputValues.get(INPUT_BOX_GEOMETRY_ID),
+            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
+            inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
+            inputValues.get(INPUT_TORUS_GEOMETRY_ID),
+            fill
+        );
         int size = Math.max(1, gridSize);
         int width = Math.max(1, Math.min(size, lineWidth));
 
         BlockPosList outPos = new BlockPosList();
         List<String> ids = new ArrayList<>();
         List<BlockPlacementData> placements = new ArrayList<>();
-        for (BlockPos pos : positions) {
+        for (BlockPlacementData source : sources) {
+            BlockPos pos = source.pos();
+            if (pos == null) {
+                continue;
+            }
             int gx = Math.floorMod(pos.getX(), size);
             int gz = Math.floorMod(pos.getZ(), size);
             boolean onLine = gx < width || gz < width;
             String id = onLine ? frame : fill;
             outPos.add(pos);
             ids.add(id);
-            placements.add(new BlockPlacementData(pos, id));
+            placements.add(MaterialMappingSupport.remapBlockId(source, id));
         }
         outputValues.put(OUTPUT_POSITIONS_ID, outPos);
         outputValues.put(OUTPUT_BLOCK_IDS_ID, ids);

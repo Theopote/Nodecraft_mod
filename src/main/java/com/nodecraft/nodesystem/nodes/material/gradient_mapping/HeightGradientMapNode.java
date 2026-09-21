@@ -9,23 +9,22 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Applies a simple vertical material gradient across a voxelized shape.
+ * Voxel height material map across relative Y bands. Remaps blockId only; preserves stateData.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "material.gradient_mapping.height_gradient_map",
     displayName = "Height Gradient Map",
-    description = "Assigns lower, middle, and upper block types across a shape based on relative height",
+    description = "Maps voxelized blocks by relative Y height into material bands. Remaps blockId only; preserves stateData. Geometry is voxelized first.",
     category = "material.gradient_mapping",
     order = 0
 )
@@ -55,6 +54,7 @@ public class HeightGradientMapNode extends BaseNode {
     )
     private double upperEndRatio = 0.90d;
 
+    private static final String INPUT_PLACEMENTS_ID = "input_placements";
     private static final String INPUT_COORDINATES_ID = "input_coordinates";
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
@@ -72,12 +72,15 @@ public class HeightGradientMapNode extends BaseNode {
 
     public HeightGradientMapNode() {
         super(UUID.randomUUID(), "material.gradient_mapping.height_gradient_map");
-        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list", NodeDataType.BLOCK_LIST, this));
-        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified abstract geometry input", NodeDataType.GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry data to materialize", NodeDataType.BOX_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to materialize", NodeDataType.CYLINDER_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
-        addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry data to materialize", NodeDataType.TORUS_GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_PLACEMENTS_ID, "Block Placements",
+            "Canonical placements to remap (blockId only; stateData preserved)", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list when placements are empty", NodeDataType.BLOCK_LIST, this));
+        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry",
+            "Optional geometry — voxelized first when placements/coordinates are empty", NodeDataType.GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Legacy box geometry (voxelized first)", NodeDataType.BOX_GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Legacy cylinder geometry (voxelized first)", NodeDataType.CYLINDER_GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Legacy sphere geometry (voxelized first)", NodeDataType.SPHERE, this));
+        addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Legacy torus geometry (voxelized first)", NodeDataType.TORUS_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BOTTOM_ID, "Bottom", "Block for the lower third", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_MIDDLE_ID, "Middle", "Block for the middle third", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_TOP_ID, "Top", "Block for the upper band below the peak", NodeDataType.BLOCK_TYPE, this));
@@ -85,40 +88,47 @@ public class HeightGradientMapNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POSITIONS_ID, "Positions", "Resolved block positions", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BLOCK_IDS_ID, "Block IDs", "Block IDs aligned with the positions list", NodeDataType.BLOCK_INFO_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Position and block pairs for baking", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Canonical material payload", NodeDataType.BLOCK_PLACEMENT_LIST, this));
     }
 
     @Override
     public String getDescription() {
-        return "Assigns block types across a shape based on configurable relative height bands";
+        return "Maps voxelized blocks by relative Y height into material bands. Remaps blockId only; preserves stateData.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object coordsObj = inputValues.get(INPUT_COORDINATES_ID);
-        Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
-        Object boxGeometryObj = inputValues.get(INPUT_BOX_GEOMETRY_ID);
-        Object cylinderGeometryObj = inputValues.get(INPUT_CYLINDER_GEOMETRY_ID);
-        Object sphereGeometryObj = inputValues.get(INPUT_SPHERE_GEOMETRY_ID);
-        Object torusGeometryObj = inputValues.get(INPUT_TORUS_GEOMETRY_ID);
-
         String bottom = getInputString(INPUT_BOTTOM_ID, "minecraft:stone");
         String middle = getInputString(INPUT_MIDDLE_ID, "minecraft:dirt");
         String top = getInputString(INPUT_TOP_ID, "minecraft:grass_block");
         String peak = getInputString(INPUT_PEAK_ID, top);
 
-        BlockPosList positions = resolveCoordinates(coordsObj, geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj);
-        List<String> blockIds = new ArrayList<>();
-        List<BlockPlacementData> placements = new ArrayList<>();
+        List<BlockPlacementData> sources = MaterialMappingSupport.resolveSourcePlacements(
+            inputValues.get(INPUT_PLACEMENTS_ID),
+            inputValues.get(INPUT_COORDINATES_ID),
+            inputValues.get(INPUT_GEOMETRY_ID),
+            inputValues.get(INPUT_BOX_GEOMETRY_ID),
+            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
+            inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
+            inputValues.get(INPUT_TORUS_GEOMETRY_ID),
+            bottom
+        );
 
-        if (positions.isEmpty()) {
+        List<String> blockIds = new ArrayList<>(sources.size());
+        List<BlockPlacementData> placements = new ArrayList<>(sources.size());
+
+        if (sources.isEmpty()) {
             publishOutputs(new BlockPosList(), blockIds, placements);
             return;
         }
 
         int minY = Integer.MAX_VALUE;
         int maxY = Integer.MIN_VALUE;
-        for (BlockPos pos : positions) {
+        for (BlockPlacementData placement : sources) {
+            BlockPos pos = placement.pos();
+            if (pos == null) {
+                continue;
+            }
             minY = Math.min(minY, pos.getY());
             maxY = Math.max(maxY, pos.getY());
         }
@@ -130,7 +140,11 @@ public class HeightGradientMapNode extends BaseNode {
 
         BlockPosList outputPositions = new BlockPosList();
         double[] bandEnds = resolveBandEnds();
-        for (BlockPos pos : positions) {
+        for (BlockPlacementData source : sources) {
+            BlockPos pos = source.pos();
+            if (pos == null) {
+                continue;
+            }
             double t = (pos.getY() - minY) / span;
             String blockId;
             if (t < bandEnds[0]) {
@@ -145,7 +159,7 @@ public class HeightGradientMapNode extends BaseNode {
 
             outputPositions.add(pos);
             blockIds.add(blockId);
-            placements.add(new BlockPlacementData(pos, blockId));
+            placements.add(MaterialMappingSupport.remapBlockId(source, blockId));
         }
 
         publishOutputs(outputPositions, blockIds, placements);
@@ -232,22 +246,5 @@ public class HeightGradientMapNode extends BaseNode {
         if (map.get("upperEndRatio") instanceof Number value) {
             this.upperEndRatio = clamp01(value.doubleValue());
         }
-    }
-
-    private BlockPosList resolveCoordinates(Object coordsObj,
-                                            Object geometryObj,
-                                            Object boxGeometryObj,
-                                            Object cylinderGeometryObj,
-                                            Object sphereGeometryObj,
-                                            Object torusGeometryObj) {
-        return GeometryVoxelizer.resolveBlocks(
-            coordsObj,
-            geometryObj,
-            boxGeometryObj,
-            cylinderGeometryObj,
-            sphereGeometryObj,
-            torusGeometryObj,
-            true
-        );
     }
 }

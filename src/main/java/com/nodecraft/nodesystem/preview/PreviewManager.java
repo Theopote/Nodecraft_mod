@@ -19,10 +19,9 @@ import com.nodecraft.nodesystem.preview.protocol.PreviewPointsPayload;
 import com.nodecraft.nodesystem.preview.protocol.PreviewRequest;
 import com.nodecraft.nodesystem.preview.protocol.PreviewStyle;
 import com.nodecraft.nodesystem.preview.protocol.PreviewVectorsPayload;
+import com.nodecraft.nodesystem.util.BlockStateResolver;
 import com.nodecraft.nodesystem.util.Coordinate;
 import net.minecraft.block.BlockState;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -188,7 +187,7 @@ public final class PreviewManager {
                 clearTrackedWorldRequestState(nodeId);
                 return nodeId + ":tracked:cleared";
             }
-            BlockState state = resolveBlockStateForPreview(cells.getFirst().blockId());
+            BlockState state = BlockStateResolver.resolve(cells.getFirst().blockId(), cells.getFirst().stateData());
             if (state == null) {
                 NodeCraft.LOGGER.warn("PreviewManager.showPreview TRACKED_WORLD: invalid block id {}", cells.getFirst().blockId());
                 return null;
@@ -418,20 +417,6 @@ public final class PreviewManager {
         }
         touchNonEmpty(nodeId, "text_labels");
         return RENDERER.upsertPreview(nodeId, "text_labels", labelsPayload, opts);
-    }
-
-    @Nullable
-    private static BlockState resolveBlockStateForPreview(String blockId) {
-        if (blockId == null || blockId.isEmpty()) {
-            return null;
-        }
-        try {
-            Identifier id = Identifier.of(blockId);
-            var block = Registries.BLOCK.get(id);
-            return block.getDefaultState();
-        } catch (Exception e) {
-            return null;
-        }
     }
 
     // Region box

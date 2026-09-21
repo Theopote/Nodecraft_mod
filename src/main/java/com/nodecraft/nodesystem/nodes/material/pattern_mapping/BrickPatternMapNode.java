@@ -10,7 +10,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BrickPatternMapping;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,6 +39,7 @@ public class BrickPatternMapNode extends BaseNode {
     @NodeProperty(displayName = "Course Height", category = "Pattern", order = 2)
     private int courseHeight = 1;
 
+    private static final String INPUT_PLACEMENTS_ID = "input_placements";
     private static final String INPUT_COORDINATES_ID = "input_coordinates";
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
@@ -53,8 +54,11 @@ public class BrickPatternMapNode extends BaseNode {
 
     public BrickPatternMapNode() {
         super(UUID.randomUUID(), "material.pattern_mapping.brick_pattern_map");
-        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list", NodeDataType.BLOCK_LIST, this));
-        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified abstract geometry input", NodeDataType.GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_PLACEMENTS_ID, "Block Placements",
+            "Canonical placements to remap (blockId only; stateData preserved)", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list when placements are empty", NodeDataType.BLOCK_LIST, this));
+        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry",
+            "Optional geometry — voxelized first when placements/coordinates are empty", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry data to materialize", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to materialize", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
@@ -68,23 +72,39 @@ public class BrickPatternMapNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        BlockPosList positions = GeometryVoxelizer.resolveBlocks(
-            inputValues.get(INPUT_COORDINATES_ID), inputValues.get(INPUT_GEOMETRY_ID), inputValues.get(INPUT_BOX_GEOMETRY_ID),
-            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID), inputValues.get(INPUT_SPHERE_GEOMETRY_ID), inputValues.get(INPUT_TORUS_GEOMETRY_ID), true
-        );
         String primary = getInputString(INPUT_PRIMARY_ID, "minecraft:bricks");
         String secondary = getInputString(INPUT_SECONDARY_ID, "minecraft:stone_bricks");
-        BrickPatternMapping.Axis axis = BrickPatternMapping.resolveAxis(positions);
+        List<BlockPlacementData> sources = MaterialMappingSupport.resolveSourcePlacements(
+            inputValues.get(INPUT_PLACEMENTS_ID),
+            inputValues.get(INPUT_COORDINATES_ID),
+            inputValues.get(INPUT_GEOMETRY_ID),
+            inputValues.get(INPUT_BOX_GEOMETRY_ID),
+            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
+            inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
+            inputValues.get(INPUT_TORUS_GEOMETRY_ID),
+            primary
+        );
+        BlockPosList positionProbe = new BlockPosList();
+        for (BlockPlacementData source : sources) {
+            if (source.pos() != null) {
+                positionProbe.add(source.pos());
+            }
+        }
+        BrickPatternMapping.Axis axis = BrickPatternMapping.resolveAxis(positionProbe);
 
         BlockPosList outPos = new BlockPosList();
         List<String> ids = new ArrayList<>();
         List<BlockPlacementData> placements = new ArrayList<>();
-        for (BlockPos pos : positions) {
+        for (BlockPlacementData source : sources) {
+            BlockPos pos = source.pos();
+            if (pos == null) {
+                continue;
+            }
             int brick = BrickPatternMapping.brickIndex(pos, brickLength, courseHeight, axis);
             String id = BrickPatternMapping.isPrimaryBrick(brick) ? primary : secondary;
             outPos.add(pos);
             ids.add(id);
-            placements.add(new BlockPlacementData(pos, id));
+            placements.add(MaterialMappingSupport.remapBlockId(source, id));
         }
         outputValues.put(OUTPUT_POSITIONS_ID, outPos);
         outputValues.put(OUTPUT_BLOCK_IDS_ID, ids);

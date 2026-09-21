@@ -9,7 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -36,6 +36,7 @@ public class GradientRampMapNode extends BaseNode {
         description = "Comma-separated block ids from low to high, e.g. stone,dirt,grass_block,snow_block")
     private String rampBlocks = "minecraft:stone,minecraft:dirt,minecraft:grass_block,minecraft:snow_block";
 
+    private static final String INPUT_PLACEMENTS_ID = "input_placements";
     private static final String INPUT_COORDINATES_ID = "input_coordinates";
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
@@ -48,8 +49,11 @@ public class GradientRampMapNode extends BaseNode {
 
     public GradientRampMapNode() {
         super(UUID.randomUUID(), "material.gradient_mapping.gradient_ramp_map");
-        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list", NodeDataType.BLOCK_LIST, this));
-        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified abstract geometry input", NodeDataType.GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_PLACEMENTS_ID, "Block Placements",
+            "Canonical placements to remap (blockId only; stateData preserved)", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list when placements are empty", NodeDataType.BLOCK_LIST, this));
+        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry",
+            "Optional geometry — voxelized first when placements/coordinates are empty", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry data to materialize", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to materialize", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
@@ -61,14 +65,28 @@ public class GradientRampMapNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        BlockPosList positions = GeometryVoxelizer.resolveBlocks(
-            inputValues.get(INPUT_COORDINATES_ID), inputValues.get(INPUT_GEOMETRY_ID), inputValues.get(INPUT_BOX_GEOMETRY_ID),
-            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID), inputValues.get(INPUT_SPHERE_GEOMETRY_ID), inputValues.get(INPUT_TORUS_GEOMETRY_ID), true
-        );
         List<String> ramp = parseRamp(rampBlocks);
+        String fallback = ramp.isEmpty() ? "minecraft:stone" : ramp.getFirst();
+        List<BlockPlacementData> sources = MaterialMappingSupport.resolveSourcePlacements(
+            inputValues.get(INPUT_PLACEMENTS_ID),
+            inputValues.get(INPUT_COORDINATES_ID),
+            inputValues.get(INPUT_GEOMETRY_ID),
+            inputValues.get(INPUT_BOX_GEOMETRY_ID),
+            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
+            inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
+            inputValues.get(INPUT_TORUS_GEOMETRY_ID),
+            fallback
+        );
+        if (ramp.isEmpty()) {
+            ramp = List.of(fallback);
+        }
         int minY = Integer.MAX_VALUE;
         int maxY = Integer.MIN_VALUE;
-        for (BlockPos pos : positions) {
+        for (BlockPlacementData source : sources) {
+            BlockPos pos = source.pos();
+            if (pos == null) {
+                continue;
+            }
             minY = Math.min(minY, pos.getY());
             maxY = Math.max(maxY, pos.getY());
         }
@@ -77,13 +95,17 @@ public class GradientRampMapNode extends BaseNode {
         BlockPosList outPos = new BlockPosList();
         List<String> ids = new ArrayList<>();
         List<BlockPlacementData> placements = new ArrayList<>();
-        for (BlockPos pos : positions) {
+        for (BlockPlacementData source : sources) {
+            BlockPos pos = source.pos();
+            if (pos == null) {
+                continue;
+            }
             double t = (pos.getY() - minY) / span;
             int idx = Math.min(ramp.size() - 1, Math.max(0, (int) Math.floor(t * ramp.size())));
             String id = ramp.get(idx);
             outPos.add(pos);
             ids.add(id);
-            placements.add(new BlockPlacementData(pos, id));
+            placements.add(MaterialMappingSupport.remapBlockId(source, id));
         }
         outputValues.put(OUTPUT_POSITIONS_ID, outPos);
         outputValues.put(OUTPUT_BLOCK_IDS_ID, ids);

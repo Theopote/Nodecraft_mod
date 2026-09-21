@@ -14,14 +14,11 @@ import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
-import com.nodecraft.nodesystem.util.BlockStateData;
+import com.nodecraft.nodesystem.util.BlockStateResolver;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
 import net.minecraft.block.BlockState;
-import net.minecraft.registry.Registries;
-import net.minecraft.state.property.Property;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -208,7 +205,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 return;
             }
 
-            BlockState targetState = resolveBlockState(blockType);
+            BlockState targetState = BlockStateResolver.resolveDefault(blockType);
             if (targetState == null) {
                 publishOutputs(false, 0, 0, "Invalid block type: " + blockType, "", false);
                 return;
@@ -329,11 +326,10 @@ public class ApplyChangesNode extends BaseCustomUINode {
     private ApplyResult applyPlacementList(ExecutionContext context, List<BlockPlacementData> placements, long deadlineMillis) {
         List<BakeTask.Placement> queuedPlacements = new ArrayList<>(placements.size());
         for (BlockPlacementData placement : placements) {
-            BlockState defaultState = resolveBlockState(placement.blockId());
-            if (defaultState == null) {
+            BlockState state = BlockStateResolver.resolve(placement.blockId(), placement.stateData());
+            if (state == null) {
                 continue;
             }
-            BlockState state = applyBlockStateData(defaultState, placement.stateData());
             queuedPlacements.add(new BakeTask.Placement(placement.pos(), state));
         }
 
@@ -342,31 +338,6 @@ public class ApplyChangesNode extends BaseCustomUINode {
         }
 
         return enqueueAndMaybeAwait(context, queuedPlacements, deadlineMillis);
-    }
-
-    private BlockState applyBlockStateData(BlockState baseState, @Nullable BlockStateData stateData) {
-        if (baseState == null || stateData == null || stateData.isEmpty()) {
-            return baseState;
-        }
-
-        BlockState resolved = baseState;
-        for (Map.Entry<String, String> entry : stateData.entrySet()) {
-            Property<?> property = resolved.getProperties().stream()
-                .filter(candidate -> candidate.getName().equals(entry.getKey()))
-                .findFirst()
-                .orElse(null);
-            if (property == null) {
-                continue;
-            }
-            resolved = applyPropertyValue(resolved, property, entry.getValue());
-        }
-        return resolved;
-    }
-
-    private <T extends Comparable<T>> BlockState applyPropertyValue(BlockState state, Property<T> property, String rawValue) {
-        return property.parse(rawValue)
-            .map(parsed -> state.with(property, parsed))
-            .orElse(state);
     }
 
     private ApplyResult applyUniformBlocks(ExecutionContext context, BlockPosList blocks, BlockState targetState, long deadlineMillis) {
@@ -429,18 +400,6 @@ public class ApplyChangesNode extends BaseCustomUINode {
         BakePlacementService.TaskSnapshot snapshot = service.getTaskSnapshot(taskId);
         int placed = snapshot != null ? snapshot.placedCount() : queuedPlacements.size();
         return new ApplyResult(placed, false, taskId);
-    }
-
-    private BlockState resolveBlockState(String blockId) {
-        if (blockId == null || blockId.isEmpty()) {
-            return null;
-        }
-        try {
-            var block = Registries.BLOCK.get(Identifier.of(blockId));
-            return block != null ? block.getDefaultState() : null;
-        } catch (Exception e) {
-            return null;
-        }
     }
 
     @Override
