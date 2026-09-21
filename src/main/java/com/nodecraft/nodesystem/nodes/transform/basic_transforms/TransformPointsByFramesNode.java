@@ -77,9 +77,9 @@ public class TransformPointsByFramesNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> localPoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_LOCAL_POINTS_ID));
         List<Vector3d> origins = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_ORIGINS_ID));
-        List<Vector3d> xAxes = resolveVectorList(inputValues.get(INPUT_X_AXES_ID));
-        List<Vector3d> yAxes = resolveVectorList(inputValues.get(INPUT_Y_AXES_ID));
-        List<Vector3d> zAxes = resolveVectorList(inputValues.get(INPUT_Z_AXES_ID));
+        List<Vector3d> xAxes = SpatialValueResolver.resolveVectorList(inputValues.get(INPUT_X_AXES_ID));
+        List<Vector3d> yAxes = SpatialValueResolver.resolveVectorList(inputValues.get(INPUT_Y_AXES_ID));
+        List<Vector3d> zAxes = SpatialValueResolver.resolveVectorList(inputValues.get(INPUT_Z_AXES_ID));
         if (localPoints.isEmpty() || origins.isEmpty() || xAxes.isEmpty() || yAxes.isEmpty() || zAxes.isEmpty()) {
             writeInvalid();
             return;
@@ -157,20 +157,6 @@ public class TransformPointsByFramesNode extends BaseNode {
         if (list.isEmpty()) return null;
         if (index < list.size()) return list.get(index);
         return useShortestFrameList ? null : list.get(list.size() - 1);
-    }
-
-    private List<Vector3d> resolveVectorList(Object value) {
-        if (!(value instanceof List<?> raw)) {
-            return List.of();
-        }
-        List<Vector3d> out = new ArrayList<>(raw.size());
-        for (Object entry : raw) {
-            Vector3d vector = SpatialValueResolver.resolveVector3d(entry);
-            if (vector != null && isFinite(vector)) {
-                out.add(vector);
-            }
-        }
-        return out;
     }
 
     private boolean isUsableAxis(Vector3d axis) {

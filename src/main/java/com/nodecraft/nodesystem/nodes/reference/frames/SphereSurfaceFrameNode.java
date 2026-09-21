@@ -5,7 +5,9 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
@@ -26,6 +28,7 @@ public class SphereSurfaceFrameNode extends BaseNode {
     private static final String INPUT_SPHERE_ID = "input_sphere";
     private static final String INPUT_POINT_ID = "input_point";
 
+    private static final String OUTPUT_FRAME_ID = "output_frame";
     private static final String OUTPUT_ORIGIN_ID = "output_origin";
     private static final String OUTPUT_CENTER_ID = "output_center";
     private static final String OUTPUT_NORMAL_ID = "output_normal";
@@ -39,10 +42,11 @@ public class SphereSurfaceFrameNode extends BaseNode {
         super(UUID.randomUUID(), "reference.frames.frame_along_surface");
 
         addInputPort(new BasePort(INPUT_SPHERE_ID, "Sphere", "Sphere geometry to evaluate against", NodeDataType.SPHERE, this));
-        addInputPort(new BasePort(INPUT_POINT_ID, "Point", "Reference point near or on the sphere surface", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_POINT_ID, "Point", "Reference point near or on the sphere surface", NodeDataType.POINT, this));
 
-        addOutputPort(new BasePort(OUTPUT_ORIGIN_ID, "Origin", "Projected surface point used as frame origin", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Sphere center", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_FRAME_ID, "Frame", "Tangent frame on the sphere surface", NodeDataType.FRAME, this));
+        addOutputPort(new BasePort(OUTPUT_ORIGIN_ID, "Origin", "Projected surface point used as frame origin", NodeDataType.POINT, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Sphere center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_NORMAL_ID, "Normal", "Outward sphere normal at the frame origin", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_X_AXIS_ID, "X Axis", "First tangent axis on the sphere surface", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_Y_AXIS_ID, "Y Axis", "Second tangent axis on the sphere surface", NodeDataType.VECTOR, this));
@@ -102,19 +106,22 @@ public class SphereSurfaceFrameNode extends BaseNode {
         }
         yAxis.normalize();
 
+        Vector3d zAxis = new Vector3d(normal);
         PlaneData plane = new PlaneData(origin, normal);
 
-        outputValues.put(OUTPUT_ORIGIN_ID, origin);
-        outputValues.put(OUTPUT_CENTER_ID, center);
+        outputValues.put(OUTPUT_FRAME_ID, new FrameData(origin, xAxis, yAxis, zAxis));
+        outputValues.put(OUTPUT_ORIGIN_ID, new PointData(origin));
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(OUTPUT_NORMAL_ID, normal);
         outputValues.put(OUTPUT_X_AXIS_ID, xAxis);
         outputValues.put(OUTPUT_Y_AXIS_ID, yAxis);
-        outputValues.put(OUTPUT_Z_AXIS_ID, new Vector3d(normal));
+        outputValues.put(OUTPUT_Z_AXIS_ID, zAxis);
         outputValues.put(OUTPUT_PLANE_ID, plane);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private void writeEmptyOutputs() {
+        outputValues.put(OUTPUT_FRAME_ID, null);
         outputValues.put(OUTPUT_ORIGIN_ID, null);
         outputValues.put(OUTPUT_CENTER_ID, null);
         outputValues.put(OUTPUT_NORMAL_ID, null);
@@ -124,5 +131,4 @@ public class SphereSurfaceFrameNode extends BaseNode {
         outputValues.put(OUTPUT_PLANE_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
-
 }

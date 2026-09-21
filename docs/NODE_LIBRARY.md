@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **522**
+- Total nodes: **524**
 - Total categories: **57**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -49,7 +49,7 @@
 | `pattern.radial` | 4 |
 | `pattern.surface_volume_distribution` | 9 |
 | `pattern.voronoi_3d` | 1 |
-| `reference.frames` | 4 |
+| `reference.frames` | 6 |
 | `reference.planes` | 6 |
 | `reference.points` | 18 |
 | `reference.vectors` | 18 |
@@ -620,14 +620,16 @@
 |---|---|---|---|
 | Voronoi 3D Lloyd Relax (Grid) | `pattern.voronoi_3d.lloyd_relax` | Approximate 3D Lloyd relaxation: grid cell centers vote for nearest site; sites move to cell centroids (repeat). Not an exact Voronoi diagram. | `Voronoi3DLloydRelaxNode` |
 
-## reference.frames (4)
+## reference.frames (6)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Face Center Frame | `reference.frames.frame_from_face` | Builds a local frame at the center of a box face using the face plane and boundary directions | `FaceCenterFrameNode` |
 | Sphere Surface Frame | `reference.frames.frame_along_surface` | Builds a local tangent frame on a sphere using the nearest surface point and outward normal | `SphereSurfaceFrameNode` |
-| World Frame | `reference.frames.world_frame` | Outputs the world coordinate frame origin and axis vectors | `WorldFrameNode` |
-| Transform Frame | `reference.frames.transform_frame` | Applies translation, rotation, and uniform scale to an input frame | `TransformFrameNode` |
+| World Frame | `reference.frames.world_frame` | Outputs the world coordinate frame as FRAME plus decomposed origin/axes | `WorldFrameNode` |
+| Transform Frame | `reference.frames.transform_frame` | Applies translation, Euler rotation (degrees), and positive uniform scale to a frame | `TransformFrameNode` |
+| Construct Frame | `reference.frames.construct_frame` | Packs origin point and X/Y/Z axes into a FRAME | `ConstructFrameNode` |
+| Deconstruct Frame | `reference.frames.deconstruct_frame` | Splits a FRAME into origin point, X/Y/Z axes, and plane | `DeconstructFrameNode` |
 
 ## reference.planes (6)
 

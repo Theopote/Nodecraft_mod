@@ -1,10 +1,12 @@
 package com.nodecraft.nodesystem.nodes.reference.frames;
 
-import com.nodecraft.nodesystem.datatypes.PointData;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.joml.Vector3d;
 
+/**
+ * Finite / usable checks for frame construction. Point/vector conversion uses
+ * {@link SpatialValueResolver}.
+ */
 final class FrameUtils {
     static final double EPS = 1.0e-12d;
 
@@ -12,19 +14,11 @@ final class FrameUtils {
     }
 
     static Vector3d resolvePoint(Object value) {
-        if (value instanceof PointData pointData) {
-            return pointData.getPosition();
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof Vec3d vector) {
-            return new Vector3d(vector.x, vector.y, vector.z);
-        }
-        if (value instanceof BlockPos blockPos) {
-            return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
-        }
-        return null;
+        return SpatialValueResolver.resolvePoint(value);
+    }
+
+    static Vector3d resolveVector(Object value) {
+        return SpatialValueResolver.resolveVector(value);
     }
 
     static boolean isFinite(Vector3d vector) {

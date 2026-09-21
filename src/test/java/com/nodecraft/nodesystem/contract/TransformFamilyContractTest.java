@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.DifferenceGeometryData;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
+import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.IntersectionGeometryData;
 import com.nodecraft.nodesystem.datatypes.MirroredSdfData;
@@ -178,6 +179,32 @@ class TransformFamilyContractTest {
         assertEquals(2.0d, out.getRadii().z, 1.0e-9d);
         assertFalse(out.getOrientationMatrix().equals(new Matrix3d().identity(), 1.0e-6d));
         assertTrue(out.isOriented());
+    }
+
+    @Test
+    void alignOutputsTypedPlaneAndFrameLists() {
+        assertPortType("transform.orientation.align_to_surface", "output_planes", false, NodeDataType.PLANE_LIST);
+        assertPortType("transform.orientation.align_to_surface", "output_frames", false, NodeDataType.FRAME_LIST);
+    }
+
+    @Test
+    void frameLanguageIsWiredOnReferenceNodes() {
+        assertEquals(FrameData.class, NodeDataType.FRAME.getJavaClass());
+        assertPortType("reference.frames.world_frame", "output_frame", false, NodeDataType.FRAME);
+        assertPortType("reference.frames.world_frame", "output_origin", false, NodeDataType.POINT);
+        assertPortType("reference.frames.construct_frame", "input_origin", true, NodeDataType.POINT);
+        assertPortType("reference.frames.construct_frame", "output_frame", false, NodeDataType.FRAME);
+        assertPortType("reference.frames.deconstruct_frame", "input_frame", true, NodeDataType.FRAME);
+        assertPortType("reference.frames.transform_frame", "input_frame", true, NodeDataType.FRAME);
+        assertPortType("reference.frames.transform_frame", "input_origin", true, NodeDataType.POINT);
+        assertPortType("reference.frames.frame_from_face", "output_center", false, NodeDataType.POINT);
+        assertPortType("reference.frames.frame_along_surface", "input_point", true, NodeDataType.POINT);
+
+        BaseNode world = assertInstanceOf(BaseNode.class,
+            NodeRegistry.getInstance().createNodeInstance("reference.frames.world_frame"));
+        world.processNode(null);
+        assertInstanceOf(FrameData.class, world.getOutput("output_frame"));
+        assertEquals(Boolean.TRUE, world.getOutput("output_valid"));
     }
 
     private static void assertPortType(String typeId, String portId, boolean input, NodeDataType expected) {

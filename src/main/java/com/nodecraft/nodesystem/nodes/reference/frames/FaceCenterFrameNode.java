@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
+import com.nodecraft.nodesystem.datatypes.FrameData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -25,6 +27,7 @@ public class FaceCenterFrameNode extends BaseNode {
 
     private static final String INPUT_FACE_ID = "input_face";
 
+    private static final String OUTPUT_FRAME_ID = "output_frame";
     private static final String OUTPUT_CENTER_ID = "output_center";
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_X_AXIS_ID = "output_x_axis";
@@ -39,7 +42,8 @@ public class FaceCenterFrameNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_FACE_ID, "Face", "The box face used to build the local frame", NodeDataType.BOX_FACE, this));
 
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Face center point used as frame origin", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_FRAME_ID, "Frame", "Oriented frame at the face center", NodeDataType.FRAME, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Face center point used as frame origin", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Supporting plane of the face", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_X_AXIS_ID, "X Axis", "First in-plane frame axis derived from the face boundary", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_Y_AXIS_ID, "Y Axis", "Second in-plane frame axis derived from the face boundary", NodeDataType.VECTOR, this));
@@ -80,7 +84,8 @@ public class FaceCenterFrameNode extends BaseNode {
 
         zAxis.normalize();
 
-        outputValues.put(OUTPUT_CENTER_ID, center);
+        outputValues.put(OUTPUT_FRAME_ID, new FrameData(center, xAxis, yAxis, zAxis));
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(OUTPUT_PLANE_ID, face.getPlane());
         outputValues.put(OUTPUT_X_AXIS_ID, xAxis);
         outputValues.put(OUTPUT_Y_AXIS_ID, yAxis);
@@ -91,6 +96,7 @@ public class FaceCenterFrameNode extends BaseNode {
     }
 
     private void writeEmptyOutputs() {
+        outputValues.put(OUTPUT_FRAME_ID, null);
         outputValues.put(OUTPUT_CENTER_ID, null);
         outputValues.put(OUTPUT_PLANE_ID, null);
         outputValues.put(OUTPUT_X_AXIS_ID, null);
@@ -100,5 +106,4 @@ public class FaceCenterFrameNode extends BaseNode {
         outputValues.put(OUTPUT_CORNER_INDICES_ID, List.of());
         outputValues.put(OUTPUT_VALID_ID, false);
     }
-
 }

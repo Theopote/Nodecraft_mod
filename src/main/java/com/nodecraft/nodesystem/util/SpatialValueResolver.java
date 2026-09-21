@@ -109,6 +109,27 @@ public final class SpatialValueResolver {
         return List.copyOf(out);
     }
 
+    /**
+     * Resolves a collection of direction/displacement values for {@code VECTOR_LIST} boundaries.
+     * Strict: skips points and block positions.
+     */
+    public static List<Vector3d> resolveVectorList(@Nullable Object value) {
+        if (!(value instanceof Collection<?> collection)) {
+            return List.of();
+        }
+        List<Vector3d> vectors = new ArrayList<>(collection.size());
+        for (Object entry : collection) {
+            Vector3d resolved = resolveVector(entry);
+            if (resolved != null
+                    && Double.isFinite(resolved.x)
+                    && Double.isFinite(resolved.y)
+                    && Double.isFinite(resolved.z)) {
+                vectors.add(resolved);
+            }
+        }
+        return vectors;
+    }
+
     public static @Nullable BlockPos resolveBlockPos(@Nullable Object value) {
         if (value instanceof BlockPos blockPos) {
             return blockPos;

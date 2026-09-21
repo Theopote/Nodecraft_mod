@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
@@ -56,6 +57,7 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
     private static final String OUTPUT_Y_AXES_ID = "output_y_axes";
     private static final String OUTPUT_Z_AXES_ID = "output_z_axes";
     private static final String OUTPUT_PLANES_ID = "output_planes";
+    private static final String OUTPUT_FRAMES_ID = "output_frames";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
@@ -70,7 +72,8 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_X_AXES_ID, "X Axes", "Frame X axes", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_Y_AXES_ID, "Y Axes", "Frame Y axes", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_Z_AXES_ID, "Z Axes", "Frame Z axes", NodeDataType.VECTOR_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_PLANES_ID, "Planes", "Plane list from point + normal", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PLANES_ID, "Planes", "Plane list from point + normal", NodeDataType.PLANE_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Oriented frames (origin + X/Y/Z)", NodeDataType.FRAME_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of aligned frames", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when alignment succeeded", NodeDataType.BOOLEAN, this));
     }
@@ -88,7 +91,7 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> points = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
-        List<Vector3d> normals = resolveNormals(inputValues.get(INPUT_NORMALS_ID));
+        List<Vector3d> normals = SpatialValueResolver.resolveVectorList(inputValues.get(INPUT_NORMALS_ID));
         if (points.isEmpty() || normals.isEmpty()) {
             writeInvalid();
             return;
@@ -100,7 +103,7 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
             return;
         }
 
-        Vector3d forwardHint = resolveVector(inputValues.get(INPUT_FORWARD_HINT_ID));
+        Vector3d forwardHint = SpatialValueResolver.resolveVector(inputValues.get(INPUT_FORWARD_HINT_ID));
         if (!OrientationUtils.isUsableDirection(forwardHint)) {
             forwardHint = new Vector3d(1.0d, 0.0d, 0.0d);
         } else {
@@ -112,6 +115,7 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
         List<Vector3d> yAxes = new ArrayList<>(count);
         List<Vector3d> zAxes = new ArrayList<>(count);
         List<PlaneData> planes = new ArrayList<>(count);
+        List<FrameData> frames = new ArrayList<>(count);
 
         for (int i = 0; i < count; i++) {
             Vector3d p = getByMode(points, i);
@@ -181,6 +185,7 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
             yAxes.add(y);
             zAxes.add(z);
             planes.add(new PlaneData(new Vector3d(p), new Vector3d(up)));
+            frames.add(new FrameData(p, x, y, z));
         }
 
         if (outPoints.isEmpty()) {
@@ -192,6 +197,7 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
         outputValues.put(OUTPUT_Y_AXES_ID, List.copyOf(yAxes));
         outputValues.put(OUTPUT_Z_AXES_ID, List.copyOf(zAxes));
         outputValues.put(OUTPUT_PLANES_ID, List.copyOf(planes));
+        outputValues.put(OUTPUT_FRAMES_ID, List.copyOf(frames));
         outputValues.put(OUTPUT_COUNT_ID, outPoints.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
@@ -202,6 +208,7 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
         outputValues.put(OUTPUT_Y_AXES_ID, List.of());
         outputValues.put(OUTPUT_Z_AXES_ID, List.of());
         outputValues.put(OUTPUT_PLANES_ID, List.of());
+        outputValues.put(OUTPUT_FRAMES_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
@@ -210,25 +217,6 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
         if (list.isEmpty()) return null;
         if (index < list.size()) return list.get(index);
         return useShortestList ? null : list.get(list.size() - 1);
-    }
-
-    private List<Vector3d> resolveNormals(Object value) {
-        if (!(value instanceof List<?> values)) {
-            return List.of();
-        }
-        List<Vector3d> out = new ArrayList<>(values.size());
-        for (Object entry : values) {
-            Vector3d vector = SpatialValueResolver.resolveVector3d(entry);
-            if (OrientationUtils.isFinite(vector)) {
-                out.add(vector);
-            }
-        }
-        return out;
-    }
-
-    private Vector3d resolveVector(Object value) {
-        Vector3d vector = SpatialValueResolver.resolveVector3d(value);
-        return OrientationUtils.isFinite(vector) ? vector : null;
     }
 
     @Override

@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryTransform;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -67,9 +68,10 @@ public class MoveGeometryNode extends BaseNode {
             return;
         }
 
-        Vector3d translation = inputValues.get(INPUT_TRANSLATION_ID) instanceof Vector3d vector
-            ? new Vector3d(vector)
-            : new Vector3d(x, y, z);
+        Vector3d translation = SpatialValueResolver.resolveVector(inputValues.get(INPUT_TRANSLATION_ID));
+        if (translation == null) {
+            translation = new Vector3d(x, y, z);
+        }
         if (!isFinite(translation)) {
             writeResult(null, new Vector3d(), false, "Translation contains NaN or Infinity");
             return;

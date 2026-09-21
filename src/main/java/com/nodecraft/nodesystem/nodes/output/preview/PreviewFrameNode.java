@@ -6,12 +6,13 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.FrameAxesPreviewData;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
-import net.minecraft.util.math.BlockPos;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -30,6 +31,7 @@ import java.util.UUID;
 )
 public class PreviewFrameNode extends BaseNode {
 
+    private static final String INPUT_FRAME_ID = "input_frame";
     private static final String INPUT_ORIGIN_ID = "input_origin";
     private static final String INPUT_PLANE_ID = "input_plane";
     private static final String INPUT_X_AXIS_ID = "input_x_axis";
@@ -54,7 +56,8 @@ public class PreviewFrameNode extends BaseNode {
 
     public PreviewFrameNode() {
         super(UUID.randomUUID(), "output.preview.preview_frame");
-        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Frame origin (position/vector/block position)", NodeDataType.POSITION, this));
+        addInputPort(new BasePort(INPUT_FRAME_ID, "Frame", "Optional packed frame (overrides origin/axes)", NodeDataType.FRAME, this));
+        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Frame origin point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Optional plane used to derive a frame", NodeDataType.PLANE, this));
         addInputPort(new BasePort(INPUT_X_AXIS_ID, "X Axis", "Optional X axis vector", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_Y_AXIS_ID, "Y Axis", "Optional Y axis vector", NodeDataType.VECTOR, this));
@@ -93,7 +96,7 @@ public class PreviewFrameNode extends BaseNode {
                 status = "invalid_frame_data";
             }
         } else {
-            status = "missing_origin: connect Origin(position/vector/block_pos) or Plane";
+            status = "missing_origin: connect Frame, Origin (POINT), or Plane";
         }
 
         outputValues.put(OUTPUT_SUCCESS_ID, success);
@@ -102,11 +105,13 @@ public class PreviewFrameNode extends BaseNode {
     }
 
     private Vec3d resolveOrigin() {
-        if (inputValues.get(INPUT_ORIGIN_ID) instanceof BlockPos pos) {
-            return pos.toCenterPos();
+        if (inputValues.get(INPUT_FRAME_ID) instanceof FrameData frame) {
+            Vector3d point = frame.getOrigin();
+            return new Vec3d(point.x, point.y, point.z);
         }
-        if (inputValues.get(INPUT_ORIGIN_ID) instanceof Vector3d vector) {
-            return new Vec3d(vector.x, vector.y, vector.z);
+        Vector3d resolved = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_ORIGIN_ID));
+        if (resolved != null) {
+            return new Vec3d(resolved.x, resolved.y, resolved.z);
         }
         if (inputValues.get(INPUT_PLANE_ID) instanceof PlaneData plane) {
             Vector3d point = plane.getPoint();
@@ -116,6 +121,16 @@ public class PreviewFrameNode extends BaseNode {
     }
 
     private FrameAxesPreviewData buildFrame(Vec3d origin) {
+        if (inputValues.get(INPUT_FRAME_ID) instanceof FrameData frame) {
+            return new FrameAxesPreviewData(
+                origin,
+                toVec3d(frame.getXAxis()),
+                toVec3d(frame.getYAxis()),
+                toVec3d(frame.getZAxis()),
+                axisLength
+            );
+        }
+
         Vec3d xAxis = resolveAxis(INPUT_X_AXIS_ID);
         Vec3d yAxis = resolveAxis(INPUT_Y_AXIS_ID);
         Vec3d zAxis = resolveAxis(INPUT_Z_AXIS_ID);
@@ -151,10 +166,12 @@ public class PreviewFrameNode extends BaseNode {
     }
 
     private Vec3d resolveAxis(String key) {
-        if (inputValues.get(key) instanceof Vector3d vector) {
-            return new Vec3d(vector.x, vector.y, vector.z);
-        }
-        return null;
+        Vector3d vector = SpatialValueResolver.resolveVector(inputValues.get(key));
+        return vector == null ? null : toVec3d(vector);
+    }
+
+    private static Vec3d toVec3d(Vector3d vector) {
+        return new Vec3d(vector.x, vector.y, vector.z);
     }
 
     private Vec3d buildTangent(Vec3d normal) {

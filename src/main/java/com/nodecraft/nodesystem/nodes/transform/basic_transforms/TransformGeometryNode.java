@@ -14,6 +14,7 @@ import com.nodecraft.nodesystem.preview.gizmo.GizmoOrientation;
 import com.nodecraft.nodesystem.preview.gizmo.GizmoPortConstraints;
 import com.nodecraft.nodesystem.preview.gizmo.GizmoTransformTarget;
 import com.nodecraft.nodesystem.util.GeometryTransform;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -238,8 +239,9 @@ public class TransformGeometryNode extends BaseNode implements GizmoTransformTar
     }
 
     private Vector3d resolveTranslation() {
-        return inputValues.get(INPUT_TRANSLATION_ID) instanceof Vector3d vector
-            ? new Vector3d(vector)
+        Vector3d connected = SpatialValueResolver.resolveVector(inputValues.get(INPUT_TRANSLATION_ID));
+        return connected != null
+            ? connected
             : new Vector3d(translationX, translationY, translationZ);
     }
 

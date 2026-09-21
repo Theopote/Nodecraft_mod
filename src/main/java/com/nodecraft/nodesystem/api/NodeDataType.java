@@ -44,6 +44,8 @@ public enum NodeDataType {
     @Deprecated
     POSITION("position", "Position", Vector3d.class),
     PLANE("plane", "Plane", PlaneData.class),
+    /** Origin + X/Y/Z axes. Distinct from {@link #PLANE} (origin + normal only). */
+    FRAME("frame", "Frame", FrameData.class),
     BOUNDING_BOX("bounding_box", "Bounding Box", BoundingBoxData.class),
     GEOMETRY("geometry", "Geometry", GeometryData.class),
     SDF("sdf", "SDF", SignedDistanceFieldData.class),
@@ -118,6 +120,10 @@ public enum NodeDataType {
     VECTOR_LIST("vector_list", "Vector List", java.util.List.class, ListElementKind.VECTOR),
     /** Ordered continuous locations (corners, polyline samples, profile vertices). */
     POINT_LIST("point_list", "Point List", java.util.List.class, ListElementKind.POINT),
+    /** Ordered planes (align / section / placement layouts). */
+    PLANE_LIST("plane_list", "Plane List", java.util.List.class, ListElementKind.PLANE),
+    /** Ordered frames (align / path / surface placement). */
+    FRAME_LIST("frame_list", "Frame List", java.util.List.class, ListElementKind.FRAME),
     REGION_LIST("region_list", "Region List", java.util.List.class, ListElementKind.REGION),
     PLANT_STRUCTURE_LIST("plant_structure_list", "Plant Structure List", java.util.List.class, ListElementKind.PLANT_STRUCTURE);
 
