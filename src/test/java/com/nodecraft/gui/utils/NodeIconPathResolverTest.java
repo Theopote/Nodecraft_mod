@@ -13,19 +13,19 @@ class NodeIconPathResolverTest {
     @Test
     void candidatesPreferExplicitThenNodeIdThenCategoryThenFallback() {
         List<NodeIconPathResolver.Candidate> candidates = NodeIconPathResolver.candidates(
-                "geometry.boolean.union",
-                "geometry.boolean",
-                "geometry/boolean/custom"
+                "geometry.combine.geometry",
+                "geometry.combine",
+                "geometry/combine/custom"
         );
 
         assertEquals(NodeIconPathResolver.CandidateKind.EXPLICIT, candidates.get(0).kind());
         assertEquals(
-                "textures/icons/nodes/geometry/boolean/custom.svg",
+                "textures/icons/nodes/geometry/combine/custom.svg",
                 candidates.get(0).resourcePath()
         );
         assertEquals(NodeIconPathResolver.CandidateKind.NODE_ID, candidates.get(1).kind());
         assertEquals(
-                "textures/icons/nodes/geometry/boolean/union.svg",
+                "textures/icons/nodes/geometry/combine/geometry.svg",
                 candidates.get(1).resourcePath()
         );
         assertEquals(NodeIconPathResolver.CandidateKind.SUBCATEGORY, candidates.get(2).kind());
@@ -58,9 +58,9 @@ class NodeIconPathResolverTest {
 
     @Test
     void logicalKeyIsStableAndNormalized() {
-        String a = NodeIconPathResolver.logicalKey("Geometry.Boolean.Union", "Geometry.Boolean", " Foo ");
-        String b = NodeIconPathResolver.logicalKey("geometry.boolean.union", "geometry.boolean", "foo");
+        String a = NodeIconPathResolver.logicalKey("Geometry.Combine.Geometry", "Geometry.Combine", " Foo ");
+        String b = NodeIconPathResolver.logicalKey("geometry.combine.geometry", "geometry.combine", "foo");
         assertEquals(a, b);
-        assertTrue(a.contains("geometry.boolean.union"));
+        assertTrue(a.contains("geometry.combine.geometry"));
     }
 }

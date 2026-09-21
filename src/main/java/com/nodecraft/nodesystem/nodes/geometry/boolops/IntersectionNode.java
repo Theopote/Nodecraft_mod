@@ -13,13 +13,13 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 /**
- * Creates a voxel-evaluated intersection geometry value.
+ * Deferred voxel boolean intersection: evaluated on the Minecraft block grid at voxelize/bake time.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.boolean.intersection",
     displayName = "Intersection",
-    description = "Creates a voxel-evaluated intersection geometry value from two geometry inputs",
+    description = "Keeps overlapping voxelized blocks from both geometries when built. Deferred voxel boolean on the Minecraft block grid (not analytic BRep).",
     category = "geometry.boolean",
     order = 4
 )
@@ -37,13 +37,13 @@ public class IntersectionNode extends BaseNode {
         addInputPort(new BasePort(INPUT_LEFT_ID, "Left Geometry", "First geometry operand", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_RIGHT_ID, "Right Geometry", "Second geometry operand", NodeDataType.GEOMETRY, this));
 
-        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Voxel-evaluated intersection geometry", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Deferred voxel intersection geometry", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when both geometry inputs are available", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Creates a voxel-evaluated intersection geometry value from two geometry inputs";
+        return "Keeps overlapping voxelized blocks from both geometries when built. Deferred voxel boolean on the Minecraft block grid (not analytic BRep).";
     }
 
     @Override

@@ -254,7 +254,7 @@
       },
       {
         "id": "union_all",
-        "type": "geometry.boolean.union",
+        "type": "geometry.combine.geometry",
         "position": {
           "x": 650,
           "y": 500

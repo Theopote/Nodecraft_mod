@@ -185,7 +185,7 @@
       },
       {
         "id": "union_steps",
-        "type": "geometry.boolean.union",
+        "type": "geometry.combine.geometry",
         "position": {
           "x": 1050,
           "y": 200
@@ -194,7 +194,7 @@
       },
       {
         "id": "union_with_post",
-        "type": "geometry.boolean.union",
+        "type": "geometry.combine.geometry",
         "position": {
           "x": 1050,
           "y": 300

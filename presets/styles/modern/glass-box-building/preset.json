@@ -277,7 +277,7 @@
       },
       {
         "id": "union_frames",
-        "type": "geometry.boolean.union",
+        "type": "geometry.combine.geometry",
         "position": {
           "x": 650,
           "y": 650
@@ -286,7 +286,7 @@
       },
       {
         "id": "union_all",
-        "type": "geometry.boolean.union",
+        "type": "geometry.combine.geometry",
         "position": {
           "x": 850,
           "y": 450

@@ -18,16 +18,16 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Unions multiple geometry values into one composite geometry object.
- * This is a structural geometry union used by the v1 modeling pipeline.
+ * Structural combine of geometry values into one composite container.
+ * Not an analytic solid-union; voxel bake merges child blocks with set-union.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "geometry.boolean.union",
+    id = "geometry.combine.geometry",
     displayName = "Combine Geometry",
-    description = "Merges multiple geometry inputs into one composite value (voxel union when baked; not SDF smooth union)",
-    category = "geometry.boolean",
-    order = 2
+    description = "Structural grouping of geometries into a composite. Bake/voxelize merges blocks (set union); not an analytic BRep union or SDF smooth union.",
+    category = "geometry.combine",
+    order = 1
 )
 public class GeometryUnionNode extends BaseNode {
 
@@ -46,16 +46,21 @@ public class GeometryUnionNode extends BaseNode {
     private int inputCount = 4;
 
     public GeometryUnionNode() {
-        super(UUID.randomUUID(), "geometry.boolean.union");
+        super(UUID.randomUUID(), "geometry.combine.geometry");
         rebuildInputPorts();
-        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry union result", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry (structural container)", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of geometry inputs that were merged", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when at least one geometry input was resolved", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Merges multiple geometry inputs into one composite value (voxel union when baked; not SDF smooth union)";
+        return "Structural grouping of geometries into a composite. Bake/voxelize merges blocks (set union); not an analytic BRep union or SDF smooth union.";
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "Combine Geometry";
     }
 
     @Override

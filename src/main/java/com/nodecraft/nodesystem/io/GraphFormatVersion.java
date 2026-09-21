@@ -41,8 +41,14 @@ public final class GraphFormatVersion {
      */
     public static final int V5 = 5;
 
+    /**
+     * Batch 5 geometry ops: Combine Geometry canonical id
+     * ({@code geometry.boolean.union} → {@code geometry.combine.geometry}).
+     */
+    public static final int V6 = 6;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V5;
+    public static final int CURRENT = V6;
 
     private GraphFormatVersion() {
     }

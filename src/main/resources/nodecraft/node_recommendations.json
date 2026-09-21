@@ -31,7 +31,7 @@
               "connectPortId": "input_geometry"
             },
             {
-              "nodeId": "geometry.boolean.union",
+              "nodeId": "geometry.combine.geometry",
               "order": 10,
               "reason": "合并多个部件",
               "connectPortId": "input_geometry_0"
@@ -84,7 +84,7 @@
         "geometry": {
           "downstream": [
             "transform.basic_transforms.transform_geometry",
-            "geometry.boolean.union",
+            "geometry.combine.geometry",
             "geometry.boolean.difference",
             "output.preview.geometry_viewer",
             "material.basic_assignment.assign_block_type",
@@ -110,7 +110,7 @@
     "geometry": {
       "downstream": [
         "transform.basic_transforms.transform_geometry",
-        "geometry.boolean.union",
+        "geometry.combine.geometry",
         "output.preview.geometry_viewer",
         "material.basic_assignment.assign_block_type",
         "output.execute.bake_geometry_to_blocks"

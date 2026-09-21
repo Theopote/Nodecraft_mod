@@ -197,7 +197,7 @@
       },
       {
         "id": "union_structure",
-        "type": "geometry.boolean.union",
+        "type": "geometry.combine.geometry",
         "position": {
           "x": 650,
           "y": 350
@@ -256,7 +256,7 @@
       },
       {
         "id": "union_with_railings",
-        "type": "geometry.boolean.union",
+        "type": "geometry.combine.geometry",
         "position": {
           "x": 850,
           "y": 500

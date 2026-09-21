@@ -187,7 +187,7 @@
             },
             {
               "ref": "union_structure",
-              "typeId": "geometry.boolean.union",
+              "typeId": "geometry.combine.geometry",
               "x": 650,
               "y": 350
             },
@@ -205,7 +205,7 @@
             },
             {
               "ref": "union_with_railings",
-              "typeId": "geometry.boolean.union",
+              "typeId": "geometry.combine.geometry",
               "x": 850,
               "y": 500
             },
@@ -383,7 +383,7 @@
             },
             {
               "ref": "union_all",
-              "typeId": "geometry.boolean.union",
+              "typeId": "geometry.combine.geometry",
               "x": 650,
               "y": 500
             },
@@ -413,7 +413,7 @@
             },
             {
               "ref": "union_with_battlement",
-              "typeId": "geometry.boolean.union",
+              "typeId": "geometry.combine.geometry",
               "x": 750,
               "y": 500
             }
@@ -579,7 +579,7 @@
             },
             {
               "ref": "union_building",
-              "typeId": "geometry.boolean.union",
+              "typeId": "geometry.combine.geometry",
               "x": 1050,
               "y": 450
             },
@@ -745,7 +745,7 @@
             },
             {
               "ref": "union_all",
-              "typeId": "geometry.boolean.union",
+              "typeId": "geometry.combine.geometry",
               "x": 650,
               "y": 350
             },
@@ -869,7 +869,7 @@
             },
             {
               "ref": "union_column",
-              "typeId": "geometry.boolean.union",
+              "typeId": "geometry.combine.geometry",
               "x": 450,
               "y": 250
             },
@@ -1169,13 +1169,13 @@
             },
             {
               "ref": "union_steps",
-              "typeId": "geometry.boolean.union",
+              "typeId": "geometry.combine.geometry",
               "x": 1050,
               "y": 200
             },
             {
               "ref": "union_with_post",
-              "typeId": "geometry.boolean.union",
+              "typeId": "geometry.combine.geometry",
               "x": 1050,
               "y": 300
             },
@@ -1311,7 +1311,7 @@
             },
             {
               "ref": "union_steps",
-              "typeId": "geometry.boolean.union",
+              "typeId": "geometry.combine.geometry",
               "x": 850,
               "y": 275
             },
@@ -1665,7 +1665,7 @@
             },
             {
               "ref": "union_structure",
-              "typeId": "geometry.boolean.union",
+              "typeId": "geometry.combine.geometry",
               "x": 650,
               "y": 400
             },
@@ -1813,7 +1813,7 @@
             },
             {
               "ref": "union_all",
-              "typeId": "geometry.boolean.union",
+              "typeId": "geometry.combine.geometry",
               "x": 850,
               "y": 450
             },
@@ -2325,7 +2325,7 @@
             },
             {
               "ref": "union_all",
-              "typeId": "geometry.boolean.union",
+              "typeId": "geometry.combine.geometry",
               "x": 650,
               "y": 400
             },
@@ -2485,7 +2485,7 @@
             },
             {
               "ref": "union_all",
-              "typeId": "geometry.boolean.union",
+              "typeId": "geometry.combine.geometry",
               "x": 650,
               "y": 500
             },
@@ -2515,7 +2515,7 @@
             },
             {
               "ref": "union_with_tower",
-              "typeId": "geometry.boolean.union",
+              "typeId": "geometry.combine.geometry",
               "x": 750,
               "y": 500
             }
@@ -2657,13 +2657,13 @@
             },
             {
               "ref": "union_frames",
-              "typeId": "geometry.boolean.union",
+              "typeId": "geometry.combine.geometry",
               "x": 650,
               "y": 650
             },
             {
               "ref": "union_all",
-              "typeId": "geometry.boolean.union",
+              "typeId": "geometry.combine.geometry",
               "x": 850,
               "y": 450
             },

@@ -237,6 +237,12 @@
       "result": "output_geometry",
       "geometries": "input_geometry_0"
     },
+    "geometry.combine.geometry": {
+      "a": "input_geometry_0",
+      "b": "input_geometry_1",
+      "result": "output_geometry",
+      "geometries": "input_geometry_0"
+    },
     "geometry.primitives.cylinder": {
       "base": "input_start"
     },

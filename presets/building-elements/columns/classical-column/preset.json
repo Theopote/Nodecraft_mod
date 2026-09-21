@@ -159,7 +159,7 @@
       },
       {
         "id": "union_column",
-        "type": "geometry.boolean.union",
+        "type": "geometry.combine.geometry",
         "position": {
           "x": 450,
           "y": 250

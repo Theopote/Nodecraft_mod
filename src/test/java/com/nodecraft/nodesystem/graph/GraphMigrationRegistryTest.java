@@ -219,8 +219,25 @@ class GraphMigrationRegistryTest {
         assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
         assertEquals("geometry.solids.extrude", migrated.nodes.get(0).typeId);
         assertEquals("geometry.solids.surface_strip_to_lattice", migrated.nodes.get(1).typeId);
+        assertEquals("geometry.combine.geometry", migrated.nodes.get(2).typeId);
         assertEquals("output_side_surface", migrated.connections.get(1).sourcePortId);
         assertEquals("input_direction", migrated.connections.get(2).targetPortId);
+    }
+
+    @Test
+    void v5CombineGeometryMigratesBooleanUnionId() {
+        SavedGraph v5 = new SavedGraph();
+        v5.formatVersion = GraphFormatVersion.V5;
+        SavedNode combine = new SavedNode();
+        combine.nodeId = "c";
+        combine.typeId = "geometry.boolean.union";
+        v5.nodes = List.of(combine);
+        v5.connections = List.of();
+        v5.nodePositions = java.util.Map.of();
+
+        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v5);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
+        assertEquals("geometry.combine.geometry", migrated.nodes.getFirst().typeId);
     }
 
     @Test

@@ -14,7 +14,7 @@ Box Center Size (耳堂) ──┼→ Combine Geometry → Assign Block Type →
 Prism … (屋顶)      ──┘
 ```
 
-- **Combine Geometry**（`geometry.boolean.union`）：合并多路几何，烘焙时为**体素并集**。
+- **Combine Geometry**（`geometry.combine.geometry`）：合并多路几何，烘焙时为**体素并集**。
 - 不是 SDF 的 smooth union；有机圆角请走下方 SDF 链。
 
 ### 2. 挖洞 / 开窗（哥特教堂、墙体开口）

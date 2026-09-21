@@ -13,13 +13,13 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 /**
- * Creates a voxel-evaluated difference geometry value.
+ * Deferred voxel boolean difference: evaluated on the Minecraft block grid at voxelize/bake time.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.boolean.difference",
     displayName = "Difference",
-    description = "Creates a voxel-evaluated difference geometry value by subtracting cutter geometry from a base geometry",
+    description = "Subtracts cutter geometry when voxelized/built. Result is evaluated on the Minecraft block grid (deferred voxel boolean, not analytic BRep).",
     category = "geometry.boolean",
     order = 3
 )
@@ -37,13 +37,13 @@ public class DifferenceNode extends BaseNode {
         addInputPort(new BasePort(INPUT_BASE_ID, "Base Geometry", "Geometry to subtract from", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_CUTTER_ID, "Cutter Geometry", "Geometry that will be removed from the base", NodeDataType.GEOMETRY, this));
 
-        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Voxel-evaluated difference geometry", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Deferred voxel difference geometry", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when both base and cutter geometry are available", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Creates a voxel-evaluated difference geometry value by subtracting cutter geometry from a base geometry";
+        return "Subtracts cutter geometry when voxelized/built. Result is evaluated on the Minecraft block grid (deferred voxel boolean, not analytic BRep).";
     }
 
     @Override

@@ -67,6 +67,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V2 -> migrateV2ToV3(graph);
             case GraphFormatVersion.V3 -> migrateV3ToV4(graph);
             case GraphFormatVersion.V4 -> migrateV4ToV5(graph);
+            case GraphFormatVersion.V5 -> migrateV5ToV6(graph);
             default -> graph;
         };
     }
@@ -278,6 +279,29 @@ public final class GraphMigrationRegistry {
                     && EXTRUDE_TYPE.equals(sourceType)
                     && "output_surface_strip".equalsIgnoreCase(connection.sourcePortId)) {
                 connection.sourcePortId = "output_side_surface";
+            }
+        }
+        return graph;
+    }
+
+    private static final String LEGACY_COMBINE_GEOMETRY_TYPE = "geometry.boolean.union";
+    private static final String COMBINE_GEOMETRY_TYPE = "geometry.combine.geometry";
+
+    /**
+     * Batch 5: Combine Geometry is structural compose, not analytic boolean union.
+     * Remap legacy {@code geometry.boolean.union} → {@code geometry.combine.geometry}.
+     */
+    private static SavedGraph migrateV5ToV6(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return graph;
+        }
+        for (SavedNode node : graph.nodes) {
+            if (node == null || node.typeId == null) {
+                continue;
+            }
+            if (LEGACY_COMBINE_GEOMETRY_TYPE.equalsIgnoreCase(node.typeId)) {
+                LOGGER.debug("Migrated node type: {} -> {}", node.typeId, COMBINE_GEOMETRY_TYPE);
+                node.typeId = COMBINE_GEOMETRY_TYPE;
             }
         }
         return graph;

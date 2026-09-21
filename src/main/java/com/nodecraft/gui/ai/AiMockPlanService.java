@@ -436,7 +436,7 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("box1", "geometry.primitives.box", -620.0f, 80.0f, null));
         nodes.add(new MockNode("box2", "geometry.primitives.box", -620.0f, 280.0f, null));
 
-        nodes.add(new MockNode("union", "geometry.boolean.union", -320.0f, 120.0f,
+        nodes.add(new MockNode("union", "geometry.combine.geometry", -320.0f, 120.0f,
             createNodeState("inputCount", 3)));
         nodes.add(new MockNode("bake", "output.execute.bake_geometry_to_blocks", 20.0f, 120.0f,
             createNodeState("fillGeometry", true)));

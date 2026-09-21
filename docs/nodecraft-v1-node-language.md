@@ -454,6 +454,21 @@ Arc defaults, Curve Evaluate contract).
 
 **Next (Batch 4 P3):** fill/solidization path for Sweep/Loft when ready; otherwise leave as surface.
 
+**Batch 5 P1 — Geometry ops: Combine / Voxel Boolean / SDF (2026-09-22):**
+
+Three distinct mechanisms (do not treat as one “Boolean”):
+
+| Layer | Nodes | Behavior |
+|-------|-------|----------|
+| **Combine** | `geometry.combine.geometry` (Combine Geometry) | Structural `CompositeGeometryData`; bake = block set-union. **Not** analytic BRep union. Legacy id `geometry.boolean.union` → V6. |
+| **Voxel Boolean** | Difference / Intersection | Deferred `DifferenceGeometryData` / `IntersectionGeometryData`; evaluated on the Minecraft block grid at voxelize/bake. |
+| **SDF Boolean** | SDF Boolean (+ SDF primitives) | Continuous signed-distance ops (incl. Smooth K). `GEOMETRY` ⇄ `SDF` stays unsupported without explicit SDF To Geometry. |
+
+- **Preview Geometry**: Difference / Intersection are **not** expanded to operands for surface preview. They voxelize and show ghost blocks so Preview ≈ Bake.
+- Contract: `BooleanFamilyContractTest`.
+
+**Next (Batch 5 P2):** Bounds out of boolean category; SDF category split; Difference bounds = base; Auto Seam Alignment; PATH_LIST.
+
 ---
 
 ## Checklist for new nodes

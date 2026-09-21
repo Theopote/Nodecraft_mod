@@ -2,7 +2,7 @@
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
 - **节点总数**：**522**
-- **分类总数**：**54**
+- **分类总数**：**55**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
 ## 分类统计
@@ -12,7 +12,8 @@
 | `flow.control` | 3 |
 | `flow.loop` | 3 |
 | `geometry.architectural_primitives` | 14 |
-| `geometry.boolean` | 18 |
+| `geometry.boolean` | 17 |
+| `geometry.combine` | 1 |
 | `geometry.curves` | 24 |
 | `geometry.primitives` | 29 |
 | `geometry.profiles` | 24 |
@@ -99,15 +100,14 @@
 | Floor Slab With Beams | `geometry.architectural_primitives.floor_slab_with_beams` | Generates a floor slab and a configurable support beam grid | `FloorSlabWithBeamsNode` |
 | Molding Profile | `geometry.architectural_primitives.molding_profile` | Generates decorative molding cross-section profiles | `MoldingProfileNode` |
 
-## geometry.boolean（18）
+## geometry.boolean（17）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Bounding Box | `geometry.boolean.bounding_box` | Calculates an axis-aligned bounding box from a block list or region | `BoundingBoxNode` |
 | Geometry Bounds | `geometry.boolean.geometry_bounds` | Calculates an axis-aligned bounding box from any supported geometry | `GeometryBoundsNode` |
-| Combine Geometry | `geometry.boolean.union` | Merges multiple geometry inputs into one composite value (voxel union when baked; not SDF smooth union) | `GeometryUnionNode` |
-| Difference | `geometry.boolean.difference` | Creates a voxel-evaluated difference geometry value by subtracting cutter geometry from a base geometry | `DifferenceNode` |
-| Intersection | `geometry.boolean.intersection` | Creates a voxel-evaluated intersection geometry value from two geometry inputs | `IntersectionNode` |
+| Difference | `geometry.boolean.difference` | Subtracts cutter geometry when voxelized/built. Result is evaluated on the Minecraft block grid (deferred voxel boolean, not analytic BRep). | `DifferenceNode` |
+| Intersection | `geometry.boolean.intersection` | Keeps overlapping voxelized blocks from both geometries when built. Deferred voxel boolean on the Minecraft block grid (not analytic BRep). | `IntersectionNode` |
 | SDF Sphere | `geometry.boolean.sdf_sphere` | Builds a sphere signed-distance-field primitive from center and radius | `SdfSphereNode` |
 | SDF Box | `geometry.boolean.sdf_box` | Builds an axis-aligned box signed-distance-field primitive from center and half extents | `SdfBoxNode` |
 | SDF Capsule | `geometry.boolean.sdf_capsule` | Builds a capsule signed-distance-field primitive from segment endpoints and radius | `SdfCapsuleNode` |
@@ -121,6 +121,12 @@
 | SDF Transform | `geometry.boolean.sdf_transform` | Applies translation, rotation, and uniform scale to an input SDF | `SdfTransformNode` |
 | SDF Blend Material Mask | `geometry.boolean.sdf_blend_material_mask` | Maps SDF distance values to smooth 0..1 blend weights and inside/outside booleans | `SdfBlendMaterialMaskNode` |
 | SDF Domain Warp | `geometry.boolean.sdf_domain_warp` | Applies coordinate-space noise warping before sampling an input SDF | `SdfDomainWarpNode` |
+
+## geometry.combine（1）
+
+| 节点名称 | 节点 ID | 说明 | 类名 |
+|---|---|---|---|
+| Combine Geometry | `geometry.combine.geometry` | Structural grouping of geometries into a composite. Bake/voxelize merges blocks (set union); not an analytic BRep union or SDF smooth union. | `GeometryUnionNode` |
 
 ## geometry.curves（24）
 
@@ -542,7 +548,7 @@
 | Preview Labels | `output.preview.preview_labels` | Displays a text label at a reference position | `PreviewLabelsNode` |
 | Preview Surface Strip | `output.preview.preview_surface_strip` | Previews a surface strip as section contours, rails, or a lattice overlay | `PreviewSurfaceStripNode` |
 | Preview Profiles | `output.preview.preview_profiles` | Previews polygon profile boundaries and optional normal indicators | `PreviewPolygonProfilesNode` |
-| Preview Geometry | `output.preview.preview_geometry` | Previews analytic geometry directly (semi-transparent fill + outline) before voxelization | `PreviewGeometryNode` |
+| Preview Geometry | `output.preview.preview_geometry` | Previews analytic geometry as surfaces; voxel boolean (Difference/Intersection) as evaluated block ghosts matching bake | `PreviewGeometryNode` |
 
 ## pattern.grid（5）
 

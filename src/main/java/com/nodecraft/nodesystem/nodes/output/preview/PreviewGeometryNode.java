@@ -9,9 +9,16 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.*;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.preview.PreviewBackend;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
+import com.nodecraft.nodesystem.preview.PreviewSampling;
+import com.nodecraft.nodesystem.preview.protocol.PreviewPayloadAdapters;
+import com.nodecraft.nodesystem.preview.protocol.PreviewRequest;
+import com.nodecraft.nodesystem.preview.protocol.PreviewStyle;
+import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.Color;
+import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.SurfaceStripBridge;
 import org.jetbrains.annotations.Nullable;
 
@@ -25,10 +32,13 @@ import java.util.UUID;
     effect = NodeEffect.PREVIEW_WRITE,
     id = "output.preview.preview_geometry",
     displayName = "Preview Geometry",
-    description = "Previews analytic geometry directly (semi-transparent fill + outline) before voxelization",
+    description = "Previews analytic geometry as surfaces; voxel boolean (Difference/Intersection) as evaluated block ghosts matching bake",
     category = "output.preview"
 )
 public class PreviewGeometryNode extends BaseNode {
+
+    private static final int MAX_VOXEL_BOOLEAN_PREVIEW_BLOCKS = 12_000;
+    private static final String VOXEL_BOOLEAN_PREVIEW_BLOCK = "minecraft:light_blue_stained_glass";
 
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
@@ -136,6 +146,10 @@ public class PreviewGeometryNode extends BaseNode {
             return;
         }
         List<GeometryData> geometries = resolveGeometryInputs();
+        List<GeometryData> surfaceGeometries = new ArrayList<>();
+        List<GeometryData> voxelBooleanGeometries = new ArrayList<>();
+        partitionPreviewGeometries(geometries, surfaceGeometries, voxelBooleanGeometries);
+
         GeometryData geometry = geometries.isEmpty()
             ? null
             : (geometries.size() == 1 ? geometries.getFirst() : new CompositeGeometryData(geometries));
@@ -168,16 +182,26 @@ public class PreviewGeometryNode extends BaseNode {
             options.particleDensity = Math.max(8, Math.min(64, quality));
 
             if (previewDirty) {
-                List<String> refreshedIds = PreviewManager.showGeometrySurfaces(getId().toString(), geometries, options);
+                List<String> refreshedIds = new ArrayList<>();
+                refreshedIds.addAll(PreviewManager.showGeometrySurfaces(
+                    getId().toString(),
+                    surfaceGeometries,
+                    options
+                ));
+                String voxelPreviewId = refreshVoxelBooleanPreview(context, voxelBooleanGeometries);
+                if (voxelPreviewId != null) {
+                    refreshedIds.add(voxelPreviewId);
+                }
                 previewIds = List.copyOf(refreshedIds);
                 cachedPreviewIds = previewIds;
                 cachedGeometrySignature = geometrySignature;
                 lastExecutionTime = now;
                 cachedOptionsSignature = optionsSignature;
                 NodeCraft.LOGGER.info(
-                    "PreviewGeometryNode[{}] refreshed: geometries={}, previews={}, geometrySig={}, optionsSig={}",
+                    "PreviewGeometryNode[{}] refreshed: surfaces={}, voxelBooleans={}, previews={}, geometrySig={}, optionsSig={}",
                     getId(),
-                    geometries.size(),
+                    surfaceGeometries.size(),
+                    voxelBooleanGeometries.size(),
                     previewIds.size(),
                     geometrySignature,
                     optionsSignature
@@ -198,6 +222,50 @@ public class PreviewGeometryNode extends BaseNode {
         outputValues.put(OUTPUT_PREVIEW_IDS_ID, List.copyOf(previewIds));
         outputValues.put(OUTPUT_PREVIEW_COUNT_ID, previewIds.size());
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
+    }
+
+    private static void partitionPreviewGeometries(List<GeometryData> geometries,
+                                                   List<GeometryData> surfaceGeometries,
+                                                   List<GeometryData> voxelBooleanGeometries) {
+        for (GeometryData geometry : geometries) {
+            if (isVoxelBooleanGeometry(geometry)) {
+                voxelBooleanGeometries.add(geometry);
+            } else {
+                surfaceGeometries.add(geometry);
+            }
+        }
+    }
+
+    private static boolean isVoxelBooleanGeometry(@Nullable GeometryData geometry) {
+        return geometry instanceof DifferenceGeometryData
+            || geometry instanceof IntersectionGeometryData;
+    }
+
+    private @Nullable String refreshVoxelBooleanPreview(@Nullable ExecutionContext context,
+                                                        List<GeometryData> voxelBooleanGeometries) {
+        BlockPosList merged = new BlockPosList();
+        for (GeometryData geometry : voxelBooleanGeometries) {
+            BlockPosList voxelized = GeometryVoxelizer.voxelize(geometry, true);
+            if (voxelized != null && !voxelized.isEmpty()) {
+                merged.addAll(voxelized.getPositions());
+            }
+        }
+        PreviewSampling.BlockSample sample = PreviewSampling.sampleBlocks(merged, MAX_VOXEL_BOOLEAN_PREVIEW_BLOCKS);
+        var payload = PreviewPayloadAdapters.fromBlockPosList(sample.blocks(), VOXEL_BOOLEAN_PREVIEW_BLOCK);
+        PreviewStyle style = PreviewStyle.forGhostBlocks(
+            1.0f,
+            1.0f,
+            1.0f,
+            clamp01(transparency),
+            showOutline,
+            null,
+            Math.max(0.25f, lineWidth),
+            0.1f,
+            Math.max(1, duration) * 20
+        );
+        return PreviewManager.showPreview(
+            new PreviewRequest(getId().toString(), payload, style, PreviewBackend.GHOST, context)
+        );
     }
 
     private int computeGeometrySignature(List<GeometryData> geometries) {
@@ -288,14 +356,13 @@ public class PreviewGeometryNode extends BaseNode {
             }
             return;
         }
+        // Keep deferred voxel boolean intact — do not expand operands (Preview ≠ Bake bug).
         if (value instanceof DifferenceGeometryData difference) {
-            collectGeometryInput(difference.getMinuend(), target);
-            collectGeometryInput(difference.getSubtrahend(), target);
+            target.add(difference);
             return;
         }
         if (value instanceof IntersectionGeometryData intersection) {
-            collectGeometryInput(intersection.getLeft(), target);
-            collectGeometryInput(intersection.getRight(), target);
+            target.add(intersection);
             return;
         }
         if (value instanceof GeometryData geometry) {
