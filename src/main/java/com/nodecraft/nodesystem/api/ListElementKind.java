@@ -10,6 +10,7 @@ public enum ListElementKind {
     BLOCK_POS,
     POINT,
     VECTOR,
+    POLYGON_PROFILE,
     REGION,
     BLOCK_INFO,
     BLOCK_PLACEMENT,

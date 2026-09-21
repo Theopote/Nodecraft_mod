@@ -17,6 +17,9 @@ import java.util.List;
  * Graph language uses {@code POINT} / {@code POINT_LIST}; internal algorithms typically consume
  * {@link Vector3d}. Prefer {@link #resolvePointList(Object)} at list-input boundaries so
  * {@link PointData} and legacy {@link Vector3d} entries both work.
+ * <p>
+ * Direction ports use {@link #resolveVector(Object)} (strict): points and block positions are
+ * not treated as vectors.
  */
 public final class SpatialValueResolver {
     private SpatialValueResolver() {
@@ -24,15 +27,6 @@ public final class SpatialValueResolver {
 
     /** Resolves a graph {@code POINT} or location-like value to a continuous position. */
     public static @Nullable Vector3d resolvePoint(@Nullable Object value) {
-        return resolveVector3d(value);
-    }
-
-    /** Resolves a graph {@code VECTOR} or direction/displacement value. */
-    public static @Nullable Vector3d resolveVector(@Nullable Object value) {
-        return resolveVector3d(value);
-    }
-
-    public static @Nullable Vector3d resolveVector3d(@Nullable Object value) {
         if (value instanceof PointData pointData) {
             return pointData.getPosition();
         }
@@ -55,6 +49,31 @@ public final class SpatialValueResolver {
     }
 
     /**
+     * Resolves a graph {@code VECTOR} or direction/displacement value.
+     * Strict: accepts only vector-like values, not {@link PointData} or {@link BlockPos}.
+     */
+    public static @Nullable Vector3d resolveVector(@Nullable Object value) {
+        if (value instanceof Vector3d vector) {
+            return new Vector3d(vector);
+        }
+        if (value instanceof Vec3d vec3d) {
+            return new Vector3d(vec3d.x, vec3d.y, vec3d.z);
+        }
+        if (value instanceof Vector3 vector) {
+            return new Vector3d(vector.getX(), vector.getY(), vector.getZ());
+        }
+        return null;
+    }
+
+    /**
+     * Legacy shared resolver for point-like values. Prefer {@link #resolvePoint} or
+     * {@link #resolveVector} by role on new call sites.
+     */
+    public static @Nullable Vector3d resolveVector3d(@Nullable Object value) {
+        return resolvePoint(value);
+    }
+
+    /**
      * Resolves a collection of point-like entries into continuous locations for algorithms.
      * Accepts {@link PointData}, {@link Vector3d}, legacy position/vector wrappers, and
      * {@link BlockPos} (integer corner as continuous xyz). Unknown entries are skipped.
@@ -65,7 +84,7 @@ public final class SpatialValueResolver {
         }
         List<Vector3d> points = new ArrayList<>(collection.size());
         for (Object entry : collection) {
-            Vector3d resolved = resolveVector3d(entry);
+            Vector3d resolved = resolvePoint(entry);
             if (resolved != null
                     && Double.isFinite(resolved.x)
                     && Double.isFinite(resolved.y)
@@ -94,7 +113,7 @@ public final class SpatialValueResolver {
         if (value instanceof BlockPos blockPos) {
             return blockPos;
         }
-        Vector3d resolved = resolveVector3d(value);
+        Vector3d resolved = resolvePoint(value);
         if (resolved == null) {
             return null;
         }

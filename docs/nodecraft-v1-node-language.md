@@ -231,8 +231,11 @@ Applies to `geometry.primitives.*` and `geometry.profiles.*` (sample set first, 
 | Axis / Direction / Normal / X Axis | `VECTOR` |
 | Block grid | `BLOCK_POS` |
 | Ordered locations (corners, samples) | `POINT_LIST` |
+| Ordered polygon profiles (loft sections) | `POLYGON_PROFILE_LIST` |
 
 Do **not** type locations as `VECTOR` / `VECTOR_LIST`.
+Direction resolvers (`SpatialValueResolver.resolveVector`, `SolidNodeUtils.resolveDirection`)
+accept vector-like values only — not `PointData` or `BlockPos`.
 
 ### Defaults (Minecraft-first)
 
@@ -389,9 +392,9 @@ Arc defaults, Curve Evaluate contract).
 - **Offset Path In Plane** (`geometry.curves.offset_curve_plane`) is the canonical in-plane offset;
   shared kernel `InPlanePathOffset`. **Offset Polyline In Plane** kept as legacy (order 99), same algorithm
   without optional resampling — prefer Offset Path In Plane for new graphs.
-- **Along Path**, **Path Instances**, **Sweep Profile Along Path**, **Sweep Point List Along Path**,
-  **Sweep 2 Rails** (`input_path` / `input_rail_a_path` / `input_rail_b_path`) use single **`PATH`**
-  inputs with `POINT_LIST` fallback via `PathUtils.resolvePathOrPointList`.
+- **Along Path**, **Path Instances** use single **`PATH`** inputs with optional `POINT_LIST`
+  fallback via `PathUtils.resolvePathOrPointList`.
+- **Sweep** / **Sweep 2 Rails** spines/rails are **PATH-only** (Batch 4 P2 dropped path-point fallbacks).
 
 **Batch 3 P3 — pattern / reference / preview PATH (2026-09-21):**
 
@@ -439,8 +442,17 @@ Arc defaults, Curve Evaluate contract).
   not world `point - center`.
 - Contract/unit: `PathFrameUtilsTest` (+ existing Solids/Curves family contracts).
 
-**Next (Batch 4 P2):** Sweep PATH-only (drop Path Points fallback), Loft auto-resample,
-PROFILE_LIST, strict direction resolver.
+**Batch 4 P2 — Sweep PATH-only / Loft resample / PROFILE_LIST / strict direction (2026-09-22):**
+
+- **Sweep Surface / Sweep From Points / Sweep 2 Rails**: PATH-only spines/rails — dropped
+  `input_path_points` / `input_rail_*_points`. Use Points To Path when you have a point list.
+- **Loft Surface** and **Multi-Section Loft**: Auto Resample defaults **on** (target 0 = max vertex count).
+- New typed list **`POLYGON_PROFILE_LIST`** (`ListElementKind.POLYGON_PROFILE`); Multi-Section Loft
+  Profiles in/out and Sweep Section Profiles use it.
+- **`SolidNodeUtils.resolveDirection`** and **`SpatialValueResolver.resolveVector`** are strict:
+  `Vector3d` / `Vec3d` / `Vector3` only — not `PointData` or `BlockPos`.
+
+**Next (Batch 4 P3):** fill/solidization path for Sweep/Loft when ready; otherwise leave as surface.
 
 ---
 

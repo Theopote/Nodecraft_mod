@@ -151,6 +151,8 @@ class GeometryCurvesFamilyContractTest {
     void sweepAndAlongPathUseSinglePathInput() {
         assertPortType("geometry.solids.sweep", "input_path", true, NodeDataType.PATH);
         assertPortType("geometry.solids.sweep_from_points", "input_path", true, NodeDataType.PATH);
+        assertFalse(hasInputPort("geometry.solids.sweep", "input_path_points"));
+        assertFalse(hasInputPort("geometry.solids.sweep_from_points", "input_path_points"));
         assertPortType("pattern.linear.along_path", "input_path", true, NodeDataType.PATH);
         assertPortType("pattern.linear.path_instances", "input_path", true, NodeDataType.PATH);
         assertPortType("pattern.linear.curve_array_geometry", "input_path", true, NodeDataType.PATH);
@@ -312,5 +314,11 @@ class GeometryCurvesFamilyContractTest {
             .findFirst()
             .orElseThrow(() -> new AssertionError(typeId + " missing port " + portId));
         assertEquals(expected, port.getDataType(), typeId + "." + portId);
+    }
+
+    private static boolean hasInputPort(String typeId, String portId) {
+        INode node = NodeRegistry.getInstance().createNodeInstance(typeId);
+        assertInstanceOf(INode.class, node);
+        return node.getInputPorts().stream().anyMatch(port -> port.getId().equals(portId));
     }
 }

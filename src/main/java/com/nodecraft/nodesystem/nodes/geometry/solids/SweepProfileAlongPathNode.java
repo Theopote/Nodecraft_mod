@@ -56,7 +56,6 @@ public class SweepProfileAlongPathNode extends BaseNode {
 
     private static final String INPUT_PROFILE_ID = "input_profile";
     private static final String INPUT_PATH_ID = "input_path";
-    private static final String INPUT_PATH_POINTS_ID = "input_path_points";
     private static final String INPUT_SCALE_VALUES_ID = "input_scale_values";
     private static final String INPUT_ROTATION_VALUES_ID = "input_rotation_values";
 
@@ -77,13 +76,11 @@ public class SweepProfileAlongPathNode extends BaseNode {
         addInputPort(new BasePort(INPUT_PROFILE_ID, "Profile", "Polygon profile to sweep", NodeDataType.POLYGON_PROFILE, this));
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
             "Spine path (line, polyline, or curve)", NodeDataType.PATH, this));
-        addInputPort(new BasePort(INPUT_PATH_POINTS_ID, "Path Points",
-            "Fallback ordered point list when Path is unconnected", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_SCALE_VALUES_ID, "Scale Values", "Optional scale list sampled along the path", NodeDataType.LIST, this));
         addInputPort(new BasePort(INPUT_ROTATION_VALUES_ID, "Rotation Values", "Optional rotation degrees list sampled along the path", NodeDataType.LIST, this));
 
         addOutputPort(new BasePort(OUTPUT_SPINE_POINTS_ID, "Spine Points", "Resolved spine point list", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_SECTION_PROFILES_ID, "Section Profiles", "Polygon profiles generated along the path", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SECTION_PROFILES_ID, "Section Profiles", "Polygon profiles generated along the path", NodeDataType.POLYGON_PROFILE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PROFILES_TREE_ID, "Section Profiles Tree", "Section profiles keyed by section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "Boundary polylines for each swept section", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_TREE_ID, "Section Paths Tree", "Section paths keyed by section index", NodeDataType.DATA_TREE, this));
@@ -163,7 +160,6 @@ public class SweepProfileAlongPathNode extends BaseNode {
                 sectionProfiles.add(sectionProfile);
                 sectionPaths.add(sectionProfile.getBoundary());
             } else {
-                sectionProfiles.add(SolidNodeUtils.createPolyline(uniqueSectionPoints, false));
                 sectionPaths.add(SolidNodeUtils.createPolyline(uniqueSectionPoints, false));
             }
             stripSections.add(List.copyOf(uniqueSectionPoints));
@@ -301,10 +297,7 @@ public class SweepProfileAlongPathNode extends BaseNode {
     }
 
     private List<Vector3d> resolveSpinePoints() {
-        return SolidNodeUtils.resolveSpinePoints(
-            inputValues.get(INPUT_PATH_ID),
-            inputValues.get(INPUT_PATH_POINTS_ID)
-        );
+        return SolidNodeUtils.resolveSpinePoints(inputValues.get(INPUT_PATH_ID));
     }
 
     private List<Double> resolveNumberList(Object value) {

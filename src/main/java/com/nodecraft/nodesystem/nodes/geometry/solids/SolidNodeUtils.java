@@ -39,6 +39,11 @@ final class SolidNodeUtils {
         return null;
     }
 
+    /**
+     * Strict direction resolver: accepts only vector-like values
+     * ({@link Vector3d}, {@link Vec3d}, {@link Vector3}). Does not treat
+     * {@link PointData} or {@link BlockPos} as directions.
+     */
     static @Nullable Vector3d resolveDirection(@Nullable Object value) {
         if (value instanceof Vector3d vector) {
             return new Vector3d(vector);
@@ -48,12 +53,6 @@ final class SolidNodeUtils {
         }
         if (value instanceof Vector3 vector) {
             return new Vector3d(vector.getX(), vector.getY(), vector.getZ());
-        }
-        if (value instanceof PointData pointData) {
-            return new Vector3d(pointData.getPosition());
-        }
-        if (value instanceof BlockPos blockPos) {
-            return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
         }
         return null;
     }
@@ -89,8 +88,77 @@ final class SolidNodeUtils {
         return polylinePoints.size() >= 2 ? new PolylineData(polylinePoints) : null;
     }
 
-    static List<Vector3d> resolveSpinePoints(@Nullable Object pathObj, @Nullable Object pathPointsObj) {
-        return PathUtils.resolvePathOrPointList(pathObj, pathPointsObj);
+    /** Resolves a PATH-only spine; empty when the path is missing or too short. */
+    static List<Vector3d> resolveSpinePoints(@Nullable Object pathObj) {
+        List<Vector3d> path = PathUtils.resolvePath(pathObj);
+        return path == null || path.size() < 2 ? List.of() : path;
+    }
+
+    /**
+     * Arc-length resamples a closed or open section polyline to {@code targetCount} vertices.
+     * Returns empty when resampling is impossible.
+     */
+    static List<Vector3d> resampleSection(List<Vector3d> section, int targetCount, boolean closed) {
+        if (section == null || section.isEmpty()) {
+            return List.of();
+        }
+        if (section.size() == targetCount) {
+            List<Vector3d> copy = new ArrayList<>(section.size());
+            for (Vector3d point : section) {
+                copy.add(new Vector3d(point));
+            }
+            return List.copyOf(copy);
+        }
+        if (targetCount < 2 || section.size() < 2) {
+            return List.of();
+        }
+
+        int segmentCount = closed ? section.size() : section.size() - 1;
+        if (segmentCount < 1) {
+            return List.of();
+        }
+
+        double[] cumulative = new double[segmentCount + 1];
+        double total = 0.0d;
+        for (int i = 0; i < segmentCount; i++) {
+            Vector3d a = section.get(i);
+            Vector3d b = section.get((i + 1) % section.size());
+            total += a.distance(b);
+            cumulative[i + 1] = total;
+        }
+        if (total <= EPSILON) {
+            return List.of();
+        }
+
+        List<Vector3d> result = new ArrayList<>(targetCount);
+        int divisor = closed ? targetCount : Math.max(1, targetCount - 1);
+        for (int i = 0; i < targetCount; i++) {
+            double distance = (total * i) / divisor;
+            result.add(sampleSectionAtDistance(section, closed, cumulative, distance));
+        }
+        return List.copyOf(result);
+    }
+
+    private static Vector3d sampleSectionAtDistance(List<Vector3d> section,
+                                                    boolean closed,
+                                                    double[] cumulative,
+                                                    double distance) {
+        double clamped = Math.max(0.0d, Math.min(distance, cumulative[cumulative.length - 1]));
+        for (int i = 0; i < cumulative.length - 1; i++) {
+            double start = cumulative[i];
+            double end = cumulative[i + 1];
+            if (clamped <= end || i == cumulative.length - 2) {
+                Vector3d a = section.get(i);
+                Vector3d b = section.get((i + 1) % section.size());
+                double segmentLength = end - start;
+                if (segmentLength <= EPSILON) {
+                    return new Vector3d(a);
+                }
+                double t = (clamped - start) / segmentLength;
+                return new Vector3d(a).lerp(b, t);
+            }
+        }
+        return new Vector3d(section.getFirst());
     }
 
     static Vector3d computeTangent(List<Vector3d> points, int index) {

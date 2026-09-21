@@ -111,10 +111,38 @@ class SolidsFamilyContractTest {
     }
 
     @Test
-    void sweepUsesPathInput() {
+    void sweepUsesPathInputOnly() {
         assertPortType("geometry.solids.sweep", "input_path", true, NodeDataType.PATH);
         assertPortType("geometry.solids.sweep", "input_profile", true, NodeDataType.POLYGON_PROFILE);
         assertFalse(hasInputPort("geometry.solids.sweep", "input_curve"));
+        assertFalse(hasInputPort("geometry.solids.sweep", "input_path_points"));
+        assertFalse(hasInputPort("geometry.solids.sweep_from_points", "input_path_points"));
+        assertFalse(hasInputPort("geometry.solids.sweep_two_rails", "input_rail_a_points"));
+        assertFalse(hasInputPort("geometry.solids.sweep_two_rails", "input_rail_b_points"));
+        assertPortType("geometry.solids.sweep_two_rails", "input_rail_a_path", true, NodeDataType.PATH);
+        assertPortType("geometry.solids.sweep_two_rails", "input_rail_b_path", true, NodeDataType.PATH);
+    }
+
+    @Test
+    void loftUsesProfileListAndAutoResampleDefaults() {
+        assertPortType("geometry.solids.loft_multi_section", "input_profiles", true, NodeDataType.POLYGON_PROFILE_LIST);
+        assertPortType("geometry.solids.loft_multi_section", "output_profiles", false, NodeDataType.POLYGON_PROFILE_LIST);
+
+        INode loft = NodeRegistry.getInstance().createNodeInstance("geometry.solids.loft");
+        assertInstanceOf(INode.class, loft);
+        assertTrue(loft.getDescription().toLowerCase().contains("auto-resample")
+                || loft.getDescription().toLowerCase().contains("auto resample")
+                || loft.getDescription().toLowerCase().contains("resample"));
+
+        INode multi = NodeRegistry.getInstance().createNodeInstance("geometry.solids.loft_multi_section");
+        assertInstanceOf(com.nodecraft.nodesystem.nodes.geometry.solids.MultiSectionLoftNode.class, multi);
+        assertTrue(((com.nodecraft.nodesystem.nodes.geometry.solids.MultiSectionLoftNode) multi).isAutoResample());
+        assertTrue(((com.nodecraft.nodesystem.nodes.geometry.solids.LoftProfilesNode) loft).isAutoResample());
+    }
+
+    @Test
+    void sweepSectionProfilesUseProfileList() {
+        assertPortType("geometry.solids.sweep", "output_section_profiles", false, NodeDataType.POLYGON_PROFILE_LIST);
     }
 
     private static boolean hasInputPort(String typeId, String portId) {

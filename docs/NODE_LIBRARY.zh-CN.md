@@ -221,7 +221,7 @@
 | Extrude | `geometry.solids.extrude` | Extrudes a polygon profile by a direction vector into prism geometry (canonical Extrude) | `ExtrudeProfileNode` |
 | Extrude Point List | `geometry.solids.extrude_from_points` | Extrudes an ordered point list by a direction vector and emits source path, top path, and side segments | `ExtrudePointListNode` |
 | Extrude Box Face | `geometry.solids.extrude_box_face` | Extrudes a box face into a new box segment and returns a composite geometry | `ExtrudeBoxFaceNode` |
-| Loft Surface | `geometry.solids.loft` | Lofts two polygon profiles into a SURFACE_STRIP (surface topology, not a solid). Profiles must share vertex count unless resampled upstream. | `LoftProfilesNode` |
+| Loft Surface | `geometry.solids.loft` | Lofts two polygon profiles into a SURFACE_STRIP (surface topology, not a solid). Auto-resamples when vertex counts differ. | `LoftProfilesNode` |
 | Loft Point Lists | `geometry.solids.loft_from_points` | Connects two ordered point lists and emits source paths, target paths, and loft rail segments | `LoftPointListsNode` |
 | Sweep Surface | `geometry.solids.sweep` | Sweeps a polygon profile along a path into a SURFACE_STRIP (surface topology, not a solid). Use Surface Strip To Lattice for wireframe preview geometry. | `SweepProfileAlongPathNode` |
 | Sweep Surface From Points | `geometry.solids.sweep_from_points` | Sweeps an ordered point profile along a path into a SURFACE_STRIP (surface topology, not a solid) | `SweepPointListAlongPathNode` |

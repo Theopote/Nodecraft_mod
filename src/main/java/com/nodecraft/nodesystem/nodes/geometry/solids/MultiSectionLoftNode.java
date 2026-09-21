@@ -30,7 +30,6 @@ import java.util.UUID;
     order = 11
 )
 public class MultiSectionLoftNode extends BaseNode {
-    private static final double EPSILON = 1.0e-9d;
 
     @NodeProperty(displayName = "Close Sections", category = "Loft", order = 1,
         description = "Treat each section as closed when building the surface strip")
@@ -50,7 +49,7 @@ public class MultiSectionLoftNode extends BaseNode {
 
     @NodeProperty(displayName = "Auto Resample", category = "Compatibility", order = 10,
         description = "Resample sections to a shared point count when their vertex counts differ")
-    private boolean autoResample = false;
+    private boolean autoResample = true;
 
     @NodeProperty(displayName = "Target Section Points", category = "Compatibility", order = 11,
         description = "Target point count for auto resampling. Use 0 to use the largest section count.")
@@ -71,9 +70,9 @@ public class MultiSectionLoftNode extends BaseNode {
 
     public MultiSectionLoftNode() {
         super(UUID.randomUUID(), "geometry.solids.loft_multi_section");
-        addInputPort(new BasePort(INPUT_PROFILES_ID, "Profiles", "Ordered polygon profile list", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_PROFILES_ID, "Profiles", "Ordered polygon profile list", NodeDataType.POLYGON_PROFILE_LIST, this));
 
-        addOutputPort(new BasePort(OUTPUT_PROFILES_ID, "Profiles", "Resolved section profiles", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PROFILES_ID, "Profiles", "Resolved section profiles", NodeDataType.POLYGON_PROFILE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILES_TREE_ID, "Profiles Tree", "Resolved section profiles keyed by section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "Boundary path for each section", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_TREE_ID, "Section Paths Tree", "Section paths keyed by section index", NodeDataType.DATA_TREE, this));
@@ -210,66 +209,9 @@ public class MultiSectionLoftNode extends BaseNode {
     private List<List<Vector3d>> resampleSections(List<List<Vector3d>> sections, int targetCount, boolean closed) {
         List<List<Vector3d>> result = new ArrayList<>(sections.size());
         for (List<Vector3d> section : sections) {
-            result.add(resampleSection(section, targetCount, closed));
+            result.add(SolidNodeUtils.resampleSection(section, targetCount, closed));
         }
         return result;
-    }
-
-    private List<Vector3d> resampleSection(List<Vector3d> section, int targetCount, boolean closed) {
-        if (section.size() == targetCount) {
-            List<Vector3d> copy = new ArrayList<>(section.size());
-            for (Vector3d point : section) {
-                copy.add(new Vector3d(point));
-            }
-            return List.copyOf(copy);
-        }
-        if (targetCount < 2 || section.size() < 2) {
-            return List.of();
-        }
-
-        int segmentCount = closed ? section.size() : section.size() - 1;
-        if (segmentCount < 1) {
-            return List.of();
-        }
-
-        double[] cumulative = new double[segmentCount + 1];
-        double total = 0.0d;
-        for (int i = 0; i < segmentCount; i++) {
-            Vector3d a = section.get(i);
-            Vector3d b = section.get((i + 1) % section.size());
-            total += a.distance(b);
-            cumulative[i + 1] = total;
-        }
-        if (total <= EPSILON) {
-            return List.of();
-        }
-
-        List<Vector3d> result = new ArrayList<>(targetCount);
-        int divisor = closed ? targetCount : Math.max(1, targetCount - 1);
-        for (int i = 0; i < targetCount; i++) {
-            double distance = closed ? (total * i) / divisor : (total * i) / divisor;
-            result.add(sampleAtDistance(section, closed, cumulative, distance));
-        }
-        return List.copyOf(result);
-    }
-
-    private Vector3d sampleAtDistance(List<Vector3d> section, boolean closed, double[] cumulative, double distance) {
-        double clamped = Math.max(0.0d, Math.min(distance, cumulative[cumulative.length - 1]));
-        for (int i = 0; i < cumulative.length - 1; i++) {
-            double start = cumulative[i];
-            double end = cumulative[i + 1];
-            if (clamped <= end || i == cumulative.length - 2) {
-                Vector3d a = section.get(i);
-                Vector3d b = section.get((i + 1) % section.size());
-                double segmentLength = end - start;
-                if (segmentLength <= EPSILON) {
-                    return new Vector3d(a);
-                }
-                double t = (clamped - start) / segmentLength;
-                return new Vector3d(a).lerp(b, t);
-            }
-        }
-        return new Vector3d(section.getFirst());
     }
 
     private boolean allSameSize(List<List<Vector3d>> sections) {

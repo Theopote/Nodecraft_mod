@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.geometry.solids;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
@@ -16,18 +17,28 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.solids.loft",
     displayName = "Loft Surface",
-    description = "Lofts two polygon profiles into a SURFACE_STRIP (surface topology, not a solid). Profiles must share vertex count unless resampled upstream.",
+    description = "Lofts two polygon profiles into a SURFACE_STRIP (surface topology, not a solid). Auto-resamples when vertex counts differ.",
     category = "geometry.solids",
     order = 3
 )
 public class LoftProfilesNode extends BaseNode {
+
+    @NodeProperty(displayName = "Auto Resample", category = "Compatibility", order = 10,
+        description = "Resample both profiles to a shared point count when vertex counts differ")
+    private boolean autoResample = true;
+
+    @NodeProperty(displayName = "Target Section Points", category = "Compatibility", order = 11,
+        description = "Target point count for auto resampling. Use 0 to use the larger profile count.")
+    private int targetSectionPoints = 0;
 
     private static final String INPUT_SOURCE_PROFILE_ID = "input_source_profile";
     private static final String INPUT_TARGET_PROFILE_ID = "input_target_profile";
@@ -65,7 +76,7 @@ public class LoftProfilesNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Lofts two polygon profiles into a SURFACE_STRIP (surface topology, not a solid). Profiles must share vertex count unless resampled upstream.";
+        return "Lofts two polygon profiles into a SURFACE_STRIP (surface topology, not a solid). Auto-resamples when vertex counts differ.";
     }
 
     @Override
@@ -85,9 +96,25 @@ public class LoftProfilesNode extends BaseNode {
 
         List<Vector3d> sourceUniquePoints = sourceProfile.getUniquePoints();
         List<Vector3d> targetUniquePoints = targetProfile.getUniquePoints();
-        if (sourceUniquePoints.size() < 3 || sourceUniquePoints.size() != targetUniquePoints.size()) {
+        if (sourceUniquePoints.size() < 3 || targetUniquePoints.size() < 3) {
             writeEmptyOutputs();
             return;
+        }
+
+        if (sourceUniquePoints.size() != targetUniquePoints.size()) {
+            if (!autoResample) {
+                writeEmptyOutputs();
+                return;
+            }
+            int targetCount = resolveTargetPointCount(sourceUniquePoints.size(), targetUniquePoints.size());
+            sourceUniquePoints = SolidNodeUtils.resampleSection(sourceUniquePoints, targetCount, true);
+            targetUniquePoints = SolidNodeUtils.resampleSection(targetUniquePoints, targetCount, true);
+            if (sourceUniquePoints.size() < 3 || sourceUniquePoints.size() != targetUniquePoints.size()) {
+                writeEmptyOutputs();
+                return;
+            }
+            sourceProfile = rebuildProfile(sourceProfile, sourceUniquePoints);
+            targetProfile = rebuildProfile(targetProfile, targetUniquePoints);
         }
 
         List<LineData> railSegments = new ArrayList<>(sourceUniquePoints.size());
@@ -115,6 +142,69 @@ public class LoftProfilesNode extends BaseNode {
         outputValues.put(OUTPUT_SIDE_SURFACE_ID, sideSurface);
         outputValues.put(OUTPUT_COUNT_ID, railSegments.size());
         outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    public boolean isAutoResample() {
+        return autoResample;
+    }
+
+    public void setAutoResample(boolean autoResample) {
+        if (this.autoResample != autoResample) {
+            this.autoResample = autoResample;
+            markDirty();
+        }
+    }
+
+    public int getTargetSectionPoints() {
+        return targetSectionPoints;
+    }
+
+    public void setTargetSectionPoints(int targetSectionPoints) {
+        int clamped = Math.max(0, targetSectionPoints);
+        if (this.targetSectionPoints != clamped) {
+            this.targetSectionPoints = clamped;
+            markDirty();
+        }
+    }
+
+    @Override
+    public Object getNodeState() {
+        Map<String, Object> state = new HashMap<>();
+        state.put("autoResample", autoResample);
+        state.put("targetSectionPoints", targetSectionPoints);
+        return state;
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (!(state instanceof Map<?, ?> map)) {
+            return;
+        }
+        if (map.get("autoResample") instanceof Boolean value) {
+            autoResample = value;
+        }
+        if (map.get("targetSectionPoints") instanceof Number value) {
+            targetSectionPoints = Math.max(0, value.intValue());
+        }
+        markDirty();
+    }
+
+    private int resolveTargetPointCount(int sourceCount, int targetCount) {
+        if (targetSectionPoints >= 3) {
+            return targetSectionPoints;
+        }
+        return Math.max(3, Math.max(sourceCount, targetCount));
+    }
+
+    private static PolygonProfileData rebuildProfile(PolygonProfileData original, List<Vector3d> uniquePoints) {
+        List<Vector3d> closed = new ArrayList<>(uniquePoints.size() + 1);
+        for (Vector3d point : uniquePoints) {
+            closed.add(new Vector3d(point));
+        }
+        if (!closed.isEmpty()) {
+            closed.add(new Vector3d(closed.getFirst()));
+        }
+        return new PolygonProfileData(closed, original.getPlane());
     }
 
     private void writeEmptyOutputs() {

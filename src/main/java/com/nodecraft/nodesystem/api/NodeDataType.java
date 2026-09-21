@@ -60,6 +60,8 @@ public enum NodeDataType {
     ICOSAHEDRON_GEOMETRY("icosahedron_geometry", "Icosahedron Geometry", IcosahedronGeometryData.class),
     DODECAHEDRON_GEOMETRY("dodecahedron_geometry", "Dodecahedron Geometry", DodecahedronGeometryData.class),
     POLYGON_PROFILE("polygon_profile", "Polygon Profile", PolygonProfileData.class),
+    /** Ordered polygon profiles (loft sections, sweep section lists). */
+    POLYGON_PROFILE_LIST("polygon_profile_list", "Polygon Profile List", java.util.List.class, ListElementKind.POLYGON_PROFILE),
     PRISM_GEOMETRY("prism_geometry", "Prism Geometry", PrismGeometryData.class),
     TETRAHEDRON_GEOMETRY("tetrahedron_geometry", "Tetrahedron Geometry", TetrahedronGeometryData.class),
     TORUS_GEOMETRY("torus_geometry", "Torus Geometry", TorusGeometryData.class),

@@ -61,9 +61,7 @@ public class SweepTwoRailsNode extends BaseNode {
     private static final String INPUT_PROFILE_ID = "input_profile";
     private static final String INPUT_PROFILE_POINTS_ID = "input_profile_points";
     private static final String INPUT_RAIL_A_PATH_ID = "input_rail_a_path";
-    private static final String INPUT_RAIL_A_POINTS_ID = "input_rail_a_points";
     private static final String INPUT_RAIL_B_PATH_ID = "input_rail_b_path";
-    private static final String INPUT_RAIL_B_POINTS_ID = "input_rail_b_points";
     private static final String INPUT_SCALE_VALUES_ID = "input_scale_values";
     private static final String INPUT_ROTATION_VALUES_ID = "input_rotation_values";
 
@@ -86,12 +84,8 @@ public class SweepTwoRailsNode extends BaseNode {
         addInputPort(new BasePort(INPUT_PROFILE_POINTS_ID, "Profile Points", "Optional ordered point profile fallback", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_RAIL_A_PATH_ID, "Rail A Path",
             "First guide rail (line, polyline, or curve)", NodeDataType.PATH, this));
-        addInputPort(new BasePort(INPUT_RAIL_A_POINTS_ID, "Rail A Points",
-            "Fallback ordered points for rail A", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_RAIL_B_PATH_ID, "Rail B Path",
             "Second guide rail (line, polyline, or curve)", NodeDataType.PATH, this));
-        addInputPort(new BasePort(INPUT_RAIL_B_POINTS_ID, "Rail B Points",
-            "Fallback ordered points for rail B", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_SCALE_VALUES_ID, "Scale Values", "Optional scale list sampled along the rails", NodeDataType.LIST, this));
         addInputPort(new BasePort(INPUT_ROTATION_VALUES_ID, "Rotation Values", "Optional rotation degrees list sampled along the rails", NodeDataType.LIST, this));
 
@@ -116,14 +110,8 @@ public class SweepTwoRailsNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> profilePoints = resolveProfilePoints();
-        List<Vector3d> rawRailA = SolidNodeUtils.resolveSpinePoints(
-            inputValues.get(INPUT_RAIL_A_PATH_ID),
-            inputValues.get(INPUT_RAIL_A_POINTS_ID)
-        );
-        List<Vector3d> rawRailB = SolidNodeUtils.resolveSpinePoints(
-            inputValues.get(INPUT_RAIL_B_PATH_ID),
-            inputValues.get(INPUT_RAIL_B_POINTS_ID)
-        );
+        List<Vector3d> rawRailA = SolidNodeUtils.resolveSpinePoints(inputValues.get(INPUT_RAIL_A_PATH_ID));
+        List<Vector3d> rawRailB = SolidNodeUtils.resolveSpinePoints(inputValues.get(INPUT_RAIL_B_PATH_ID));
 
         if (profilePoints.size() < 2 || rawRailA.size() < 2 || rawRailB.size() < 2) {
             writeEmptyOutputs();
