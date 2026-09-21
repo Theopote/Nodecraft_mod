@@ -34,8 +34,15 @@ import java.util.UUID;
 )
 public class PolarArrayGeometryNode extends BaseNode {
 
-    @NodeProperty(displayName = "Include Original", category = "Array", order = 1)
-    private boolean includeOriginal = true;
+    private static final double ANGLE_EPS = 1.0e-9d;
+
+    @NodeProperty(
+        displayName = "Include End",
+        category = "Array",
+        order = 1,
+        description = "When true and Count >= 2, the last instance sits at Total Angle. Ignored for exact full-circle angles (multiple of 360°) so the start is not duplicated."
+    )
+    private boolean includeEnd = false;
 
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_CENTER_ID = "input_center";
@@ -55,8 +62,8 @@ public class PolarArrayGeometryNode extends BaseNode {
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to copy", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Array center point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_AXIS_ID, "Axis", "Rotation axis vector", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Number of rotated copies", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_TOTAL_ANGLE_ID, "Total Angle", "Total angle to distribute copies over in degrees", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Total number of emitted instances around the center", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_TOTAL_ANGLE_ID, "Total Angle", "Total angle span in degrees. Full circles (multiple of 360°) never emit a duplicate at 360°.", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing all copies", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRIES_ID, "Geometries", "List of copied geometry values", NodeDataType.LIST, this));
@@ -86,21 +93,26 @@ public class PolarArrayGeometryNode extends BaseNode {
         if (axis == null) {
             axis = new Vector3d(0.0d, 1.0d, 0.0d);
         }
-        int count = GenerationLimits.clampNonNegativeCount(getInputInteger(INPUT_COUNT_ID, 1));
+        int count = GenerationLimits.clampGeometryInstanceCount(getInputInteger(INPUT_COUNT_ID, 1));
         double totalAngle = getInputDouble(INPUT_TOTAL_ANGLE_ID, 360.0d);
-        if (!isFinite(center) || !isFinite(axis) || axis.lengthSquared() <= 1.0e-12d || !Double.isFinite(totalAngle)) {
+        if (count == 0 || !isFinite(center) || !isFinite(axis) || axis.lengthSquared() <= 1.0e-12d || !Double.isFinite(totalAngle)) {
             writeResult(List.of(), false);
             return;
         }
 
         axis.normalize();
-        double angleStep = count == 0 ? 0.0d : totalAngle / count;
-        List<GeometryData> copies = new ArrayList<>(count + (includeOriginal ? 1 : 0));
-        if (includeOriginal) {
-            copies.add(geometry);
-        }
-        for (int i = 1; i <= count; i++) {
-            Quaterniond quaternion = new Quaterniond(new AxisAngle4d(Math.toRadians(angleStep * i), axis.x, axis.y, axis.z));
+        boolean fullCircle = isFullCircle(totalAngle);
+        boolean useInclusiveEnd = includeEnd && !fullCircle && count >= 2;
+        List<GeometryData> copies = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            double degrees = useInclusiveEnd
+                ? totalAngle * i / (double) (count - 1)
+                : totalAngle * i / (double) count;
+            if (Math.abs(degrees) <= ANGLE_EPS) {
+                copies.add(geometry);
+                continue;
+            }
+            Quaterniond quaternion = new Quaterniond(new AxisAngle4d(Math.toRadians(degrees), axis.x, axis.y, axis.z));
             Matrix3d rotation = new Matrix3d().set(quaternion);
             GeometryData copy = GeometryTransform.transformAround(geometry, center, rotation, 1.0d);
             if (copy != null) {
@@ -111,26 +123,40 @@ public class PolarArrayGeometryNode extends BaseNode {
         writeResult(copies, !copies.isEmpty());
     }
 
-    public boolean isIncludeOriginal() {
-        return includeOriginal;
+    private static boolean isFullCircle(double totalAngleDegrees) {
+        if (!Double.isFinite(totalAngleDegrees) || Math.abs(totalAngleDegrees) <= ANGLE_EPS) {
+            return false;
+        }
+        double mod = Math.abs(totalAngleDegrees) % 360.0d;
+        return mod <= ANGLE_EPS || Math.abs(mod - 360.0d) <= ANGLE_EPS;
     }
 
-    public void setIncludeOriginal(boolean includeOriginal) {
-        if (this.includeOriginal != includeOriginal) {
-            this.includeOriginal = includeOriginal;
+    public boolean isIncludeEnd() {
+        return includeEnd;
+    }
+
+    public void setIncludeEnd(boolean includeEnd) {
+        if (this.includeEnd != includeEnd) {
+            this.includeEnd = includeEnd;
             markDirty();
         }
     }
 
     @Override
     public Object getNodeState() {
-        return Map.of("includeOriginal", includeOriginal);
+        return Map.of("includeEnd", includeEnd);
     }
 
     @Override
     public void setNodeState(Object state) {
-        if (state instanceof Map<?, ?> map && map.get("includeOriginal") instanceof Boolean value) {
-            setIncludeOriginal(value);
+        if (!(state instanceof Map<?, ?> map)) {
+            return;
+        }
+        if (map.get("includeEnd") instanceof Boolean value) {
+            setIncludeEnd(value);
+        } else if (map.get("includeOriginal") instanceof Boolean ignored) {
+            // Legacy graphs: Include Original is superseded by Count = total instances.
+            setIncludeEnd(false);
         }
     }
 

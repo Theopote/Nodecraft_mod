@@ -58,7 +58,7 @@ public class LinearArrayNode extends BaseNode {
         addInputPort(new BasePort(INPUT_DISTANCE_ID, "Distance", 
                 "Distance between repeated instances", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count", 
-                "Number of repetitions to create", NodeDataType.INTEGER, this));
+                "Total number of emitted instance groups (including the original at offset 0)", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_END_POINT_ID, "End Point", 
                 "Alternative: end point for the array (if not using direction)", NodeDataType.BLOCK_POS, this));
 
@@ -141,18 +141,17 @@ public class LinearArrayNode extends BaseNode {
                 
                 // 如果总距离太小，直接返回原始坐标
                 if (totalDistance < 0.0001 || count < 1) {
-                    if (includeOriginal) {
-                        result.addAll(coordinates.getPositions());
-                        addCopyBranch(branches, coordinates.getPositions());
-                    }
+                    result.addAll(coordinates.getPositions());
+                    addCopyBranch(branches, coordinates.getPositions());
                     outputValues.put(OUTPUT_ARRAY_COORDINATES_ID, result);
                     outputValues.put(OUTPUT_ARRAY_TREE_ID, new DataTreeData(branches));
                     return;
                 }
                 
-                // 计算标准化方向和单位距离
+                // Count = total instances from start to end (inclusive)
+                count = GenerationLimits.clampRepeatCount(Math.max(1, count), coordinates.size());
                 direction = diff.normalize();
-                distance = totalDistance / count;
+                distance = count <= 1 ? 0.0d : totalDistance / (count - 1);
                 
                 // 创建线性阵列
                 createLinearArray(coordinates, direction, distance, count, includeOriginal, result, branches);
@@ -186,31 +185,24 @@ public class LinearArrayNode extends BaseNode {
     private void createLinearArray(BlockPosList sourceCoords, Vector3d direction, 
                                 double distance, int count, boolean includeOriginal,
                                 BlockPosList result, List<DataTreeData.Branch> branches) {
-        // 将原始坐标添加到结果中（如果需要）
-        if (includeOriginal) {
-            result.addAll(sourceCoords.getPositions());
-            addCopyBranch(branches, sourceCoords.getPositions());
-        }
-        
-        // 计算实际的位移向量（方向 * 距离）
+        // Count = total emitted instance groups. includeOriginal is ignored (kept for legacy state).
         Vector3d displacement = new Vector3d(direction).mul(distance);
         
-        // 对于每个实例，将源坐标平移相应的距离
-        for (int i = 1; i <= count; i++) {
-            // 计算当前实例的位移
-            Vector3d currentDisplacement = new Vector3d(displacement).mul(i);
+        for (int i = 0; i < count; i++) {
             List<BlockPos> copyPositions = new ArrayList<>();
+            if (i == 0) {
+                result.addAll(sourceCoords.getPositions());
+                addCopyBranch(branches, sourceCoords.getPositions());
+                continue;
+            }
             
-            // 添加平移后的每个坐标
+            Vector3d currentDisplacement = new Vector3d(displacement).mul(i);
             for (BlockPos pos : sourceCoords) {
-                // 计算新坐标
                 BlockPos newPos = new BlockPos(
                     (int) Math.round(pos.getX() + currentDisplacement.x),
                     (int) Math.round(pos.getY() + currentDisplacement.y),
                     (int) Math.round(pos.getZ() + currentDisplacement.z)
                 );
-                
-                // 添加到结果列表
                 result.add(newPos);
                 copyPositions.add(newPos);
             }

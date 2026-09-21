@@ -580,10 +580,10 @@
 | Linear Array | `pattern.linear.linear_array` | 将坐标列表沿直线方向重复排列 | `LinearArrayNode` |
 | Along Path | `pattern.linear.along_path` | Repeats a block pattern at each resolved path point from a path or point list | `AlongPathNode` |
 | Staggered Array | `pattern.linear.staggered_array` | Repeats coordinates in rows and applies an alternating offset for brick-like staggering | `StaggeredArrayNode` |
-| Path Instances | `pattern.linear.path_instances` | Generates path instance frames (origin + axes) for oriented placement along a path. | `PathInstancesNode` |
+| Path Frames | `pattern.linear.path_instances` | Generates continuous parallel-transport frames along a path (FRAME_LIST + origins/axes). | `PathInstancesNode` |
 | Instance on Points | `pattern.linear.instance_on_points` | Instances a block or block-placement template at each input point. | `InstanceOnPointsNode` |
 | Linear Array Geometry | `pattern.linear.linear_array_geometry` | Creates repeated geometry copies along a direction vector | `LinearArrayGeometryNode` |
-| Curve Array Geometry | `pattern.linear.curve_array_geometry` | Creates repeated geometry copies along a curve, polyline, or line path with optional tangent orientation | `CurveArrayGeometryNode` |
+| Curve Array Geometry | `pattern.linear.curve_array_geometry` | Creates repeated geometry copies along a curve using parallel-transport frames and placement | `CurveArrayGeometryNode` |
 
 ## pattern.lsystem（2）
 

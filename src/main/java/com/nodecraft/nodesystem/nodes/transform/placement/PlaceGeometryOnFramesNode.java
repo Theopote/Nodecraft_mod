@@ -97,7 +97,10 @@ public class PlaceGeometryOnFramesNode extends BaseNode {
         writeResult(copies, !copies.isEmpty(), copies.isEmpty() ? "Unsupported geometry placement" : "");
     }
 
-    static @Nullable GeometryData placeOnFrame(GeometryData geometry, Vector3d pivot, FrameData frame) {
+    /**
+     * Shared placement kernel: align geometry local axes to frame X/Y/Z and map pivot to frame origin.
+     */
+    public static @Nullable GeometryData placeOnFrame(GeometryData geometry, Vector3d pivot, FrameData frame) {
         if (geometry == null || frame == null) {
             return null;
         }

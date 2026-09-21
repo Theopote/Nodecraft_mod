@@ -59,9 +59,9 @@ public class PolarArrayNode extends BaseNode {
         addInputPort(new BasePort(INPUT_AXIS_ID, "Axis", 
                 "Axis of rotation", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count", 
-                "Number of copies to create", NodeDataType.INTEGER, this));
+                "Total number of rotated instance groups (including the original at 0°)", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_TOTAL_ANGLE_ID, "Total Angle", 
-                "Total angle to distribute copies (degrees)", NodeDataType.DOUBLE, this));
+                "Total angle span in degrees. Full circles never emit a duplicate at 360°.", NodeDataType.DOUBLE, this));
 
         // 创建并添加输出端口
         addOutputPort(new BasePort(OUTPUT_ARRAY_COORDINATES_ID, "Array Coordinates", 
@@ -123,14 +123,11 @@ public class PolarArrayNode extends BaseNode {
                 axis.normalize(); // 标准化旋转轴
             }
             
-            // 确保计数为正数
+            // 确保计数为正数 — Count = total emitted instance groups (including original at 0°)
             count = GenerationLimits.clampRepeatCount(Math.max(1, count), coordinates.size());
             
-            // 计算每个实例的旋转角度（弧度）
-            double angleIncrement = Math.toRadians(totalAngleDegrees) / count;
-            
-            // 创建极坐标阵列
-            createPolarArray(coordinates, centerPos, axis, count, angleIncrement, includeOriginal, result, branches);
+            // 创建极坐标阵列（full-circle never emits a duplicate at 360°）
+            createPolarArray(coordinates, centerPos, axis, count, totalAngleDegrees, result, branches);
         }
         
         // 设置输出值
@@ -139,52 +136,35 @@ public class PolarArrayNode extends BaseNode {
     }
     
     /**
-     * 创建极坐标阵列
-     * @param sourceCoords 源坐标列表
-     * @param center 旋转中心
-     * @param axis 旋转轴
-     * @param count 重复次数
-     * @param angleIncrement 每次增加的角度（弧度）
-     * @param includeOriginal 是否包含原始坐标
-     * @param result 结果坐标列表
+     * 创建极坐标阵列. Count = total instance groups at angles {@code totalAngle * i / count}.
      */
     private void createPolarArray(BlockPosList sourceCoords, BlockPos center, Vector3d axis, 
-                               int count, double angleIncrement, boolean includeOriginal,
+                               int count, double totalAngleDegrees,
                                BlockPosList result, List<DataTreeData.Branch> branches) {
-        // 将中心点转换为向量
         Vector3d centerVec = new Vector3d(center.getX(), center.getY(), center.getZ());
         
-        // 如果需要，添加原始坐标
-        if (includeOriginal) {
-            result.addAll(sourceCoords.getPositions());
-            addCopyBranch(branches, sourceCoords.getPositions());
-        }
-        
-        // 对于每个实例，创建一个旋转副本
-        for (int i = 1; i <= count; i++) {
-            // 计算当前实例的旋转角度
-            double angle = angleIncrement * i;
-            
-            // 创建旋转矩阵
-            Matrix4d rotationMatrix = createRotationMatrix(centerVec, axis, angle);
+        for (int i = 0; i < count; i++) {
+            double angle = Math.toRadians(totalAngleDegrees * i / (double) count);
             List<BlockPos> copyPositions = new ArrayList<>();
             
-            // 对源坐标列表中的每个坐标应用旋转
+            if (Math.abs(angle) <= 1.0e-12d) {
+                result.addAll(sourceCoords.getPositions());
+                addCopyBranch(branches, sourceCoords.getPositions());
+                continue;
+            }
+            
+            Matrix4d rotationMatrix = createRotationMatrix(centerVec, axis, angle);
+            
             for (BlockPos pos : sourceCoords) {
-                // 将坐标转换为向量
                 Vector3d posVec = new Vector3d(pos.getX(), pos.getY(), pos.getZ());
-                
-                // 应用旋转
                 Vector3d rotatedVec = transformPoint(posVec, rotationMatrix);
                 
-                // 转换回方块坐标（四舍五入到最接近的整数）
                 BlockPos rotatedPos = new BlockPos(
                     (int) Math.round(rotatedVec.x),
                     (int) Math.round(rotatedVec.y),
                     (int) Math.round(rotatedVec.z)
                 );
                 
-                // 添加到结果列表
                 result.add(rotatedPos);
                 copyPositions.add(rotatedPos);
             }

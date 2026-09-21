@@ -179,17 +179,15 @@ public class CurveFrameAlongPathNode extends AbstractCurveNode {
         List<FrameData> frames = new ArrayList<>(pathFrames.size());
         List<PlaneData> planes = new ArrayList<>(pathFrames.size());
         for (PathFrameUtils.Frame frame : pathFrames) {
-            // Curve Frame ports / FRAME_LIST: X=tangent, Y=normal, Z=binormal
-            // PathFrameUtils Sweep convention: z=tangent, x/y=section plane
-            Vector3d x = new Vector3d(frame.zAxis());
-            Vector3d y = new Vector3d(frame.yAxis());
-            Vector3d z = new Vector3d(frame.xAxis());
-            Vector3d origin = new Vector3d(frame.origin());
+            FrameData packed = PathFrameUtils.toPlacementFrame(frame);
+            Vector3d origin = new Vector3d(packed.getOrigin());
+            Vector3d x = new Vector3d(packed.getXAxis());
+            Vector3d y = new Vector3d(packed.getYAxis());
+            Vector3d z = new Vector3d(packed.getZAxis());
             origins.add(origin);
             xAxes.add(x);
             yAxes.add(y);
             zAxes.add(z);
-            FrameData packed = new FrameData(origin, x, y, z);
             frames.add(packed);
             planes.add(packed.toPlane());
         }

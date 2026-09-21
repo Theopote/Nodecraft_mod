@@ -11,6 +11,12 @@ public final class GenerationLimits {
     public static final int MAX_LIST_ELEMENTS = 1_048_576;
 
     /**
+     * Hard cap for GeometryData / CompositeGeometry instance arrays.
+     * Much lower than {@link #MAX_LIST_ELEMENTS} because each instance is far heavier than a point or scalar.
+     */
+    public static final int MAX_GEOMETRY_INSTANCES = 16_384;
+
+    /**
      * Maximum repetitions per axis for 2D grid/array nodes before multiplying by source size.
      */
     public static final int MAX_GRID_AXIS = 1024;
@@ -49,6 +55,24 @@ public final class GenerationLimits {
         return Math.max(1, Math.min(MAX_LIST_ELEMENTS, count));
     }
 
+    /**
+     * Caps geometry array / placement instance counts to {@link #MAX_GEOMETRY_INSTANCES}.
+     * Returns 0 when {@code count <= 0}.
+     */
+    public static int clampGeometryInstanceCount(int count) {
+        if (count <= 0) {
+            return 0;
+        }
+        return Math.min(count, MAX_GEOMETRY_INSTANCES);
+    }
+
+    /**
+     * Caps positive geometry instance counts to at least one and at most {@link #MAX_GEOMETRY_INSTANCES}.
+     */
+    public static int clampPositiveGeometryInstanceCount(int count) {
+        return Math.max(1, Math.min(MAX_GEOMETRY_INSTANCES, count));
+    }
+
     public static int clampGridAxis(int count) {
         return clampNonNegativeCount(Math.min(count, MAX_GRID_AXIS));
     }
@@ -81,12 +105,30 @@ public final class GenerationLimits {
      * Caps grid counts for nodes that iterate {@code 0..count-1} along each axis.
      */
     public static GridAxisCounts clampExclusiveGridCounts(int xCount, int yCount, int zCount, int itemsPerCell) {
+        return clampExclusiveGridCounts(xCount, yCount, zCount, itemsPerCell, MAX_LIST_ELEMENTS);
+    }
+
+    /**
+     * Caps exclusive grid counts so total cells stay within {@link #MAX_GEOMETRY_INSTANCES}.
+     */
+    public static GridAxisCounts clampExclusiveGeometryGridCounts(int xCount, int yCount, int zCount) {
+        return clampExclusiveGridCounts(xCount, yCount, zCount, 1, MAX_GEOMETRY_INSTANCES);
+    }
+
+    private static GridAxisCounts clampExclusiveGridCounts(
+        int xCount,
+        int yCount,
+        int zCount,
+        int itemsPerCell,
+        int maxElements
+    ) {
         int x = clampPositiveGridAxis(xCount);
         int y = clampPositiveGridAxis(yCount);
         int z = clampPositiveGridAxis(zCount);
         int perCell = Math.max(1, itemsPerCell);
+        int cap = Math.max(1, maxElements);
 
-        while ((long) x * y * z * perCell > MAX_LIST_ELEMENTS) {
+        while ((long) x * y * z * perCell > cap) {
             if (z > 1 && z >= x && z >= y) {
                 z--;
             } else if (y > 1 && y >= x) {
@@ -115,11 +157,22 @@ public final class GenerationLimits {
      * Caps the number of instances produced by fixed-spacing sampling along a span.
      */
     public static int clampSpacingInstanceCount(double span, double spacing) {
+        return clampSpacingInstanceCount(span, spacing, MAX_LIST_ELEMENTS);
+    }
+
+    /**
+     * Caps spacing-based geometry instance counts to {@link #MAX_GEOMETRY_INSTANCES}.
+     */
+    public static int clampGeometrySpacingInstanceCount(double span, double spacing) {
+        return clampSpacingInstanceCount(span, spacing, MAX_GEOMETRY_INSTANCES);
+    }
+
+    private static int clampSpacingInstanceCount(double span, double spacing, int maxElements) {
         if (!Double.isFinite(span) || !Double.isFinite(spacing) || spacing <= 0.0d) {
             return 1;
         }
         long raw = (long) Math.ceil(span / spacing) + 1L;
-        return (int) Math.min(Math.max(1L, raw), MAX_LIST_ELEMENTS);
+        return (int) Math.min(Math.max(1L, raw), Math.max(1, maxElements));
     }
 
     /**

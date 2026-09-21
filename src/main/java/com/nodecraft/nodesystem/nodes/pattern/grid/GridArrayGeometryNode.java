@@ -102,7 +102,7 @@ public class GridArrayGeometryNode extends BaseNode {
             return;
         }
 
-        GenerationLimits.GridAxisCounts gridCounts = GenerationLimits.clampExclusiveGridCounts(xCount, yCount, zCount, 1);
+        GenerationLimits.GridAxisCounts gridCounts = GenerationLimits.clampExclusiveGeometryGridCounts(xCount, yCount, zCount);
         xCount = gridCounts.xCount();
         yCount = gridCounts.yCount();
         zCount = gridCounts.zCount();

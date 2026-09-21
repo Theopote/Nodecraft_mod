@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.pattern.linear;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
@@ -18,7 +17,6 @@ import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
@@ -30,9 +28,6 @@ import java.util.UUID;
     order = 5
 )
 public class LinearArrayGeometryNode extends BaseNode {
-
-    @NodeProperty(displayName = "Include Original", category = "Array", order = 1)
-    private boolean includeOriginal = true;
 
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_DIRECTION_ID = "input_direction";
@@ -50,8 +45,8 @@ public class LinearArrayGeometryNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to copy", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_DIRECTION_ID, "Direction", "Array direction vector", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_DISTANCE_ID, "Distance", "Distance between copies", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Number of moved copies", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_DISTANCE_ID, "Distance", "Distance between consecutive instances", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Total number of emitted instances (including the original at offset 0)", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing all copies", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRIES_ID, "Geometries", "List of copied geometry values", NodeDataType.LIST, this));
@@ -78,18 +73,19 @@ public class LinearArrayGeometryNode extends BaseNode {
             direction = new Vector3d(1.0d, 0.0d, 0.0d);
         }
         double distance = getInputDouble(INPUT_DISTANCE_ID, 1.0d);
-        int count = GenerationLimits.clampNonNegativeCount(getInputInteger(INPUT_COUNT_ID, 1));
-        if (!isFinite(direction) || direction.lengthSquared() <= 1.0e-12d || !Double.isFinite(distance)) {
+        int count = GenerationLimits.clampGeometryInstanceCount(getInputInteger(INPUT_COUNT_ID, 1));
+        if (count == 0 || !isFinite(direction) || direction.lengthSquared() <= 1.0e-12d || !Double.isFinite(distance)) {
             writeResult(List.of(), false);
             return;
         }
 
         direction.normalize().mul(distance);
-        List<GeometryData> copies = new ArrayList<>(count + (includeOriginal ? 1 : 0));
-        if (includeOriginal) {
-            copies.add(geometry);
-        }
-        for (int i = 1; i <= count; i++) {
+        List<GeometryData> copies = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            if (i == 0) {
+                copies.add(geometry);
+                continue;
+            }
             GeometryData copy = GeometryTransform.transform(geometry, new Vector3d(direction).mul(i), 0.0d, 0.0d, 0.0d, 1.0d);
             if (copy != null) {
                 copies.add(copy);
@@ -97,29 +93,6 @@ public class LinearArrayGeometryNode extends BaseNode {
         }
 
         writeResult(copies, !copies.isEmpty());
-    }
-
-    public boolean isIncludeOriginal() {
-        return includeOriginal;
-    }
-
-    public void setIncludeOriginal(boolean includeOriginal) {
-        if (this.includeOriginal != includeOriginal) {
-            this.includeOriginal = includeOriginal;
-            markDirty();
-        }
-    }
-
-    @Override
-    public Object getNodeState() {
-        return Map.of("includeOriginal", includeOriginal);
-    }
-
-    @Override
-    public void setNodeState(Object state) {
-        if (state instanceof Map<?, ?> map && map.get("includeOriginal") instanceof Boolean value) {
-            setIncludeOriginal(value);
-        }
     }
 
     private double getInputDouble(String portId, double fallback) {

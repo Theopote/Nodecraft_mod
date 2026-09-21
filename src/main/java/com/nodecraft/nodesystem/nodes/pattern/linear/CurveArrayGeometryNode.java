@@ -12,11 +12,11 @@ import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.nodes.transform.placement.PlaceGeometryOnFramesNode;
 import com.nodecraft.nodesystem.util.GenerationLimits;
-import com.nodecraft.nodesystem.util.GeometryTransform;
+import com.nodecraft.nodesystem.util.PathFrameUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
@@ -28,7 +28,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "pattern.linear.curve_array_geometry",
     displayName = "Curve Array Geometry",
-    description = "Creates repeated geometry copies along a curve, polyline, or line path with optional tangent orientation",
+    description = "Creates repeated geometry copies along a curve using parallel-transport frames and placement",
     category = "pattern.linear",
     order = 6
 )
@@ -64,7 +64,7 @@ public class CurveArrayGeometryNode extends BaseNode {
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to copy along the path", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_PIVOT_ID, "Pivot", "Local pivot point in the source geometry that maps to each path frame", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Path to sample (line, polyline, or curve)", NodeDataType.PATH, this));
-        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Number of instances along the path. Overrides Spacing when >= 2.", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Total number of instances along the path. Overrides Spacing when >= 2.", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing", "Distance between instances when Count is not set", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_UP_VECTOR_ID, "Up Vector", "Reference up vector for path frames", NodeDataType.VECTOR, this));
 
@@ -80,7 +80,7 @@ public class CurveArrayGeometryNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Creates repeated geometry copies along a curve, polyline, or line path with optional tangent orientation";
+        return "Creates repeated geometry copies along a curve using parallel-transport frames and placement";
     }
 
     @Override
@@ -118,41 +118,57 @@ public class CurveArrayGeometryNode extends BaseNode {
         }
         Vector3d up = resolveDirection(inputValues.get(INPUT_UP_VECTOR_ID), new Vector3d(0.0d, 1.0d, 0.0d));
 
-        List<GeometryData> copies = new ArrayList<>(distances.size());
-        List<Vector3d> origins = new ArrayList<>(distances.size());
-        List<FrameData> frames = new ArrayList<>(distances.size());
+        List<Vector3d> sampleOrigins = new ArrayList<>(distances.size());
+        List<Vector3d> sampleTangents = new ArrayList<>(distances.size());
         double delta = Math.max(total * 1.0e-4d, 1.0e-4d);
-
         for (double distance : distances) {
             Vector3d origin = PathUtils.sampleAtDistance(unique, closed, cumulative, distance);
-            FrameAxes axes = frameAxes(unique, closed, cumulative, total, distance, delta, up);
-            Matrix3d rotation = orientToPath && axes != null
-                ? axes.rotation()
-                : new Matrix3d().identity();
-            if (orientToPath && axes == null) {
+            double backDistance = closed ? wrapDistance(distance - delta, total) : Math.max(0.0d, distance - delta);
+            double forwardDistance = closed ? wrapDistance(distance + delta, total) : Math.min(total, distance + delta);
+            Vector3d prev = PathUtils.sampleAtDistance(unique, closed, cumulative, backDistance);
+            Vector3d next = PathUtils.sampleAtDistance(unique, closed, cumulative, forwardDistance);
+            Vector3d tangent = new Vector3d(next).sub(prev);
+            if (tangent.lengthSquared() <= EPS) {
                 continue;
             }
-            Vector3d rotatedPivot = new Vector3d(pivot);
-            rotation.transform(rotatedPivot);
-            Vector3d translation = new Vector3d(origin).sub(rotatedPivot);
-            GeometryData copy = GeometryTransform.transform(geometry, translation, rotation, 1.0d);
+            tangent.normalize();
+            sampleOrigins.add(origin);
+            sampleTangents.add(tangent);
+        }
+
+        if (sampleOrigins.isEmpty()) {
+            writeResult(List.of(), List.of(), List.of(), false);
+            return;
+        }
+
+        List<FrameData> frames = orientToPath
+            ? PathFrameUtils.placementFramesFromSamples(sampleOrigins, sampleTangents, up)
+            : identityFrames(sampleOrigins);
+
+        List<GeometryData> copies = new ArrayList<>(frames.size());
+        List<Vector3d> origins = new ArrayList<>(frames.size());
+        for (FrameData frame : frames) {
+            GeometryData copy = PlaceGeometryOnFramesNode.placeOnFrame(geometry, pivot, frame);
             if (copy != null) {
                 copies.add(copy);
-                origins.add(origin);
-                if (axes != null) {
-                    frames.add(new FrameData(origin, axes.x(), axes.y(), axes.z()));
-                } else {
-                    frames.add(new FrameData(
-                        origin,
-                        new Vector3d(1, 0, 0),
-                        new Vector3d(0, 1, 0),
-                        new Vector3d(0, 0, 1)
-                    ));
-                }
+                origins.add(new Vector3d(frame.getOrigin()));
             }
         }
 
         writeResult(copies, origins, frames, !copies.isEmpty());
+    }
+
+    private static List<FrameData> identityFrames(List<Vector3d> origins) {
+        List<FrameData> frames = new ArrayList<>(origins.size());
+        for (Vector3d origin : origins) {
+            frames.add(new FrameData(
+                origin,
+                new Vector3d(1, 0, 0),
+                new Vector3d(0, 1, 0),
+                new Vector3d(0, 0, 1)
+            ));
+        }
+        return frames;
     }
 
     private @Nullable List<Vector3d> resolvePath() {
@@ -165,7 +181,7 @@ public class CurveArrayGeometryNode extends BaseNode {
         double spacing = inputValues.get(INPUT_SPACING_ID) instanceof Number n ? n.doubleValue() : 0.0d;
         List<Double> distances = new ArrayList<>();
         if (count >= 2) {
-            count = GenerationLimits.clampPositiveCount(count);
+            count = GenerationLimits.clampPositiveGeometryInstanceCount(count);
             int denominator = includeEnds ? count - 1 : count + 1;
             int start = includeEnds ? 0 : 1;
             int end = includeEnds ? count - 1 : count;
@@ -175,7 +191,7 @@ public class CurveArrayGeometryNode extends BaseNode {
             return distances;
         }
         if (spacing > EPS) {
-            int maxInstances = GenerationLimits.clampSpacingInstanceCount(total, spacing);
+            int maxInstances = GenerationLimits.clampGeometrySpacingInstanceCount(total, spacing);
             int emitted = 0;
             for (double d = includeEnds ? 0.0d : spacing; d <= total + EPS && emitted < maxInstances; d += spacing) {
                 distances.add(Math.min(d, total));
@@ -187,46 +203,6 @@ public class CurveArrayGeometryNode extends BaseNode {
             }
         }
         return distances;
-    }
-
-    private @Nullable FrameAxes frameAxes(List<Vector3d> unique,
-                                          boolean closed,
-                                          double[] cumulative,
-                                          double total,
-                                          double distance,
-                                          double delta,
-                                          Vector3d up) {
-        double backDistance = closed ? wrapDistance(distance - delta, total) : Math.max(0.0d, distance - delta);
-        double forwardDistance = closed ? wrapDistance(distance + delta, total) : Math.min(total, distance + delta);
-        Vector3d prev = PathUtils.sampleAtDistance(unique, closed, cumulative, backDistance);
-        Vector3d next = PathUtils.sampleAtDistance(unique, closed, cumulative, forwardDistance);
-        Vector3d tangent = new Vector3d(next).sub(prev);
-        if (tangent.lengthSquared() <= EPS) {
-            return null;
-        }
-        tangent.normalize();
-
-        Vector3d binormal = new Vector3d(tangent).cross(up);
-        if (binormal.lengthSquared() <= EPS) {
-            Vector3d fallbackUp = Math.abs(tangent.y) < 0.9d ? new Vector3d(0.0d, 1.0d, 0.0d) : new Vector3d(1.0d, 0.0d, 0.0d);
-            binormal = new Vector3d(tangent).cross(fallbackUp);
-        }
-        if (binormal.lengthSquared() <= EPS) {
-            return null;
-        }
-        binormal.normalize();
-        Vector3d normal = new Vector3d(binormal).cross(tangent).normalize();
-        return new FrameAxes(tangent, normal, binormal);
-    }
-
-    private record FrameAxes(Vector3d x, Vector3d y, Vector3d z) {
-        Matrix3d rotation() {
-            Matrix3d rotation = new Matrix3d();
-            rotation.setColumn(0, x);
-            rotation.setColumn(1, y);
-            rotation.setColumn(2, z);
-            return rotation;
-        }
     }
 
     private static double wrapDistance(double value, double length) {

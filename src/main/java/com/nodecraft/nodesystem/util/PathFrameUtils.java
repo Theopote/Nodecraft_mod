@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.util;
 
+import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
@@ -47,6 +48,44 @@ public final class PathFrameUtils {
             result.add(new Vector3d(zAxis).mul(local.z));
             return result;
         }
+    }
+
+    /**
+     * Converts a Sweep-convention path frame to placement {@link FrameData}:
+     * {@code X = tangent (z)}, {@code Y = normal (y)}, {@code Z = binormal (x)}.
+     */
+    public static FrameData toPlacementFrame(Frame frame) {
+        Vector3d origin = new Vector3d(frame.origin());
+        Vector3d x = new Vector3d(frame.zAxis());
+        Vector3d y = new Vector3d(frame.yAxis());
+        Vector3d z = new Vector3d(frame.xAxis());
+        return new FrameData(origin, x, y, z);
+    }
+
+    /**
+     * Parallel-transports placement frames for sample origins + tangents.
+     */
+    public static List<FrameData> placementFramesFromSamples(List<Vector3d> origins,
+                                                             List<Vector3d> tangents,
+                                                             @Nullable Vector3d upHint) {
+        List<Frame> pathFrames = framesFromSamples(origins, tangents, upHint);
+        List<FrameData> frames = new ArrayList<>(pathFrames.size());
+        for (Frame frame : pathFrames) {
+            frames.add(toPlacementFrame(frame));
+        }
+        return frames;
+    }
+
+    /**
+     * Parallel-transports placement frames along a polyline (one frame per vertex).
+     */
+    public static List<FrameData> placementFramesAlongPolyline(List<Vector3d> points, @Nullable Vector3d upHint) {
+        List<Frame> pathFrames = framesAlongPolyline(points, upHint);
+        List<FrameData> frames = new ArrayList<>(pathFrames.size());
+        for (Frame frame : pathFrames) {
+            frames.add(toPlacementFrame(frame));
+        }
+        return frames;
     }
 
     /**
