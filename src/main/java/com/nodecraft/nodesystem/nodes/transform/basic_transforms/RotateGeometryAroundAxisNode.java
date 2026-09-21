@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryTransform;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.AxisAngle4d;
 import org.joml.Matrix3d;
@@ -46,7 +47,7 @@ public class RotateGeometryAroundAxisNode extends BaseNode {
         super(UUID.randomUUID(), "transform.basic_transforms.rotate_geometry_axis");
 
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to rotate", NodeDataType.GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Rotation center point", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Rotation center point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_AXIS_ID, "Axis", "Rotation axis vector", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_ANGLE_ID, "Angle", "Rotation angle in degrees", NodeDataType.DOUBLE, this));
 
@@ -70,8 +71,14 @@ public class RotateGeometryAroundAxisNode extends BaseNode {
             return;
         }
 
-        Vector3d center = inputValues.get(INPUT_CENTER_ID) instanceof Vector3d value ? new Vector3d(value) : new Vector3d();
-        Vector3d axis = inputValues.get(INPUT_AXIS_ID) instanceof Vector3d value ? new Vector3d(value) : new Vector3d(0.0d, 1.0d, 0.0d);
+        Vector3d center = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_CENTER_ID));
+        if (center == null) {
+            center = new Vector3d();
+        }
+        Vector3d axis = SpatialValueResolver.resolveVector(inputValues.get(INPUT_AXIS_ID));
+        if (axis == null) {
+            axis = new Vector3d(0.0d, 1.0d, 0.0d);
+        }
         double angle = getInputDouble(INPUT_ANGLE_ID, defaultAngle);
         if (!isFinite(center) || !isFinite(axis) || axis.lengthSquared() <= 1.0e-12d || !Double.isFinite(angle)) {
             writeResult(null, new Vector3d(), 0.0d, false, "Center, axis, or angle is invalid");

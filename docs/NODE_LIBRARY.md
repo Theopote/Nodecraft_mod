@@ -704,7 +704,7 @@
 | Transform Points by Frames | `transform.basic_transforms.transform_by_frames` | Transforms local points by frame origin and basis axes into world-space positions. | `TransformPointsByFramesNode` |
 | Move Geometry | `transform.basic_transforms.move_geometry` | Moves analytic geometry by a translation vector | `MoveGeometryNode` |
 | Rotate Geometry Around Axis | `transform.basic_transforms.rotate_geometry_axis` | Rotates analytic geometry around a center point and arbitrary axis | `RotateGeometryAroundAxisNode` |
-| Scale Geometry Around Point | `transform.basic_transforms.scale_geometry_point` | Uniformly scales analytic geometry around a center point | `ScaleGeometryAroundPointNode` |
+| Scale Geometry Around Point | `transform.basic_transforms.scale_geometry_point` | Uniformly scales analytic geometry around a center point (scale must be greater than zero; use Mirror for reflection) | `ScaleGeometryAroundPointNode` |
 
 ## transform.deformations (10)
 
@@ -726,7 +726,7 @@
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Project Point To Plane | `transform.orientation.project_to_plane` | Projects a geometric point onto a plane and reports the projection distance | `ProjectPointToPlaneNode` |
-| Rotate Vector | `transform.orientation.rotate_vector` | Rotates a vector around an axis by an angle in radians | `RotateVectorNode` |
+| Rotate Vector | `transform.orientation.rotate_vector` | Rotates a vector around an axis by an angle in degrees | `RotateVectorNode` |
 | Align Points To Surface Normals | `transform.orientation.align_to_surface` | Builds oriented frames per point by aligning local up axis to surface normals. | `AlignPointsToSurfaceNormalsNode` |
 | Project Points To Plane | `transform.orientation.project_points_to_plane` | Projects a list of points onto a target plane | `ProjectPointsToPlaneNode` |
 | Project Curve To Plane | `transform.orientation.project_curve_to_plane` | Projects a curve, polyline, or line onto a target plane | `ProjectCurveToPlaneNode` |

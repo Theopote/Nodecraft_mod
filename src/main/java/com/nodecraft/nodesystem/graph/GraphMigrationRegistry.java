@@ -68,6 +68,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V3 -> migrateV3ToV4(graph);
             case GraphFormatVersion.V4 -> migrateV4ToV5(graph);
             case GraphFormatVersion.V5 -> migrateV5ToV6(graph);
+            case GraphFormatVersion.V6 -> migrateV6ToV7(graph);
             default -> graph;
         };
     }
@@ -287,6 +288,10 @@ public final class GraphMigrationRegistry {
     private static final String LEGACY_COMBINE_GEOMETRY_TYPE = "geometry.boolean.union";
     private static final String COMBINE_GEOMETRY_TYPE = "geometry.combine.geometry";
 
+    private static final String ROTATE_VECTOR_TYPE = "transform.orientation.rotate_vector";
+    private static final String LEGACY_ROTATE_VECTOR_ANGLE_PORT = "input_angle_rad";
+    private static final String ROTATE_VECTOR_ANGLE_PORT = "input_angle";
+
     /**
      * Batch 5: Combine Geometry is structural compose, not analytic boolean union.
      * Remap legacy {@code geometry.boolean.union} → {@code geometry.combine.geometry}.
@@ -302,6 +307,39 @@ public final class GraphMigrationRegistry {
             if (LEGACY_COMBINE_GEOMETRY_TYPE.equalsIgnoreCase(node.typeId)) {
                 LOGGER.debug("Migrated node type: {} -> {}", node.typeId, COMBINE_GEOMETRY_TYPE);
                 node.typeId = COMBINE_GEOMETRY_TYPE;
+            }
+        }
+        return graph;
+    }
+
+    /**
+     * Batch 6: Rotate Vector angle port {@code input_angle_rad} → {@code input_angle} (degrees).
+     */
+    private static SavedGraph migrateV6ToV7(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null || connection.targetPortId == null) {
+                continue;
+            }
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            if (ROTATE_VECTOR_TYPE.equals(targetType)
+                    && LEGACY_ROTATE_VECTOR_ANGLE_PORT.equalsIgnoreCase(connection.targetPortId)) {
+                LOGGER.debug(
+                        "Migrated rotate vector angle port: {} -> {}",
+                        connection.targetPortId,
+                        ROTATE_VECTOR_ANGLE_PORT
+                );
+                connection.targetPortId = ROTATE_VECTOR_ANGLE_PORT;
             }
         }
         return graph;

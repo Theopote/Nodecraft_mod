@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryTransform;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -19,11 +20,13 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "transform.basic_transforms.scale_geometry_point",
     displayName = "Scale Geometry Around Point",
-    description = "Uniformly scales analytic geometry around a center point",
+    description = "Uniformly scales analytic geometry around a center point (scale must be greater than zero; use Mirror for reflection)",
     category = "transform.basic_transforms",
     order = 15
 )
 public class ScaleGeometryAroundPointNode extends BaseNode {
+
+    private static final double EPS = 1.0e-9d;
 
     @NodeProperty(displayName = "Default Scale", category = "Scale", order = 1)
     private double defaultScale = 1.0d;
@@ -40,8 +43,8 @@ public class ScaleGeometryAroundPointNode extends BaseNode {
         super(UUID.randomUUID(), "transform.basic_transforms.scale_geometry_point");
 
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to scale", NodeDataType.GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Scale center point", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_SCALE_ID, "Scale", "Uniform scale factor", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Scale center point", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_SCALE_ID, "Scale", "Uniform scale factor (must be > 0)", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Scaled geometry", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_EFFECTIVE_SCALE_ID, "Effective Scale", "Scale factor actually applied", NodeDataType.DOUBLE, this));
@@ -50,7 +53,7 @@ public class ScaleGeometryAroundPointNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Uniformly scales analytic geometry around a center point";
+        return "Uniformly scales analytic geometry around a center point (scale must be greater than zero; use Mirror for reflection)";
     }
 
     @Override
@@ -61,9 +64,12 @@ public class ScaleGeometryAroundPointNode extends BaseNode {
             return;
         }
 
-        Vector3d center = inputValues.get(INPUT_CENTER_ID) instanceof Vector3d value ? new Vector3d(value) : new Vector3d();
+        Vector3d center = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_CENTER_ID));
+        if (center == null) {
+            center = new Vector3d();
+        }
         double scale = getInputDouble(INPUT_SCALE_ID, defaultScale);
-        if (!isFinite(center) || !Double.isFinite(scale) || Math.abs(scale) <= 1.0e-9d) {
+        if (!isFinite(center) || !Double.isFinite(scale) || scale <= EPS) {
             writeResult(null, false);
             return;
         }

@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.util;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import net.minecraft.util.math.BlockPos;
+import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
 public final class EllipsoidBlockGenerator {
@@ -18,17 +19,33 @@ public final class EllipsoidBlockGenerator {
     public static RegionData createBoundingRegion(EllipsoidGeometryData geometry) {
         Vector3d center = geometry.getCenter();
         Vector3d radii = geometry.getRadii();
+        Matrix3d orientation = geometry.getOrientationMatrix();
 
-        BlockPos minCorner = BlockPos.ofFloored(
-            center.x - radii.x,
-            center.y - radii.y,
-            center.z - radii.z
-        );
-        BlockPos maxCorner = BlockPos.ofFloored(
-            center.x + radii.x,
-            center.y + radii.y,
-            center.z + radii.z
-        );
+        double minX = Double.POSITIVE_INFINITY;
+        double minY = Double.POSITIVE_INFINITY;
+        double minZ = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+        double maxZ = Double.NEGATIVE_INFINITY;
+
+        for (int sx = -1; sx <= 1; sx += 2) {
+            for (int sy = -1; sy <= 1; sy += 2) {
+                for (int sz = -1; sz <= 1; sz += 2) {
+                    Vector3d corner = new Vector3d(sx * radii.x, sy * radii.y, sz * radii.z);
+                    orientation.transform(corner);
+                    corner.add(center);
+                    minX = Math.min(minX, corner.x);
+                    minY = Math.min(minY, corner.y);
+                    minZ = Math.min(minZ, corner.z);
+                    maxX = Math.max(maxX, corner.x);
+                    maxY = Math.max(maxY, corner.y);
+                    maxZ = Math.max(maxZ, corner.z);
+                }
+            }
+        }
+
+        BlockPos minCorner = BlockPos.ofFloored(minX, minY, minZ);
+        BlockPos maxCorner = BlockPos.ofFloored(maxX - 1e-9d, maxY - 1e-9d, maxZ - 1e-9d);
         return new RegionData(minCorner, maxCorner);
     }
 
@@ -56,6 +73,7 @@ public final class EllipsoidBlockGenerator {
 
         Vector3d center = geometry.getCenter();
         Vector3d radii = geometry.getRadii();
+        Matrix3d inverseOrientation = geometry.getOrientationMatrix().transpose(new Matrix3d());
         boolean fillSolid = voxelMode == null || voxelMode == VoxelMode.SOLID;
 
         double innerRx = Math.max(0.0d, radii.x - Math.max(0.0d, shellThickness));
@@ -66,16 +84,15 @@ public final class EllipsoidBlockGenerator {
         for (int x = minCorner.getX(); x <= maxCorner.getX(); x++) {
             for (int y = minCorner.getY(); y <= maxCorner.getY(); y++) {
                 for (int z = minCorner.getZ(); z <= maxCorner.getZ(); z++) {
-                    double dx = (x + 0.5d) - center.x;
-                    double dy = (y + 0.5d) - center.y;
-                    double dz = (z + 0.5d) - center.z;
-                    double outerDist = normalizedDistance(dx, dy, dz, radii.x, radii.y, radii.z);
+                    Vector3d local = new Vector3d(x + 0.5d, y + 0.5d, z + 0.5d).sub(center);
+                    inverseOrientation.transform(local);
+                    double outerDist = normalizedDistance(local.x, local.y, local.z, radii.x, radii.y, radii.z);
                     if (outerDist > 1.0d) {
                         continue;
                     }
 
                     if (!fillSolid && hasInner) {
-                        double innerDist = normalizedDistance(dx, dy, dz, innerRx, innerRy, innerRz);
+                        double innerDist = normalizedDistance(local.x, local.y, local.z, innerRx, innerRy, innerRz);
                         if (innerDist < 1.0d) {
                             continue;
                         }

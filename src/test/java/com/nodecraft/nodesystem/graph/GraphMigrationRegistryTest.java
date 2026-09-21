@@ -241,6 +241,31 @@ class GraphMigrationRegistryTest {
     }
 
     @Test
+    void v6RotateVectorAnglePortMigratesToDegreesId() {
+        SavedGraph v6 = new SavedGraph();
+        v6.formatVersion = GraphFormatVersion.V6;
+        SavedNode rotate = new SavedNode();
+        rotate.nodeId = "rv";
+        rotate.typeId = "transform.orientation.rotate_vector";
+        SavedNode source = new SavedNode();
+        source.nodeId = "src";
+        source.typeId = "input.numeric.number";
+        v6.nodes = List.of(rotate, source);
+
+        SavedConnection angle = new SavedConnection();
+        angle.sourceNodeId = "src";
+        angle.sourcePortId = "output_value";
+        angle.targetNodeId = "rv";
+        angle.targetPortId = "input_angle_rad";
+        v6.connections = List.of(angle);
+        v6.nodePositions = java.util.Map.of();
+
+        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v6);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
+        assertEquals("input_angle", migrated.connections.getFirst().targetPortId);
+    }
+
+    @Test
     void futureVersionsAreLeftUntouched() {
         SavedGraph future = new SavedGraph();
         future.formatVersion = GraphFormatVersion.CURRENT + 5;

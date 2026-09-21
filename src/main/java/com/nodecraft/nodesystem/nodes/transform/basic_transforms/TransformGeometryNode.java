@@ -116,9 +116,9 @@ public class TransformGeometryNode extends BaseNode implements GizmoTransformTar
             writeResult(null, false, "Rotation contains NaN or Infinity");
             return;
         }
-        if (!Double.isFinite(s) || Math.abs(s) <= 1.0e-9d) {
+        if (!Double.isFinite(s) || s <= 1.0e-9d) {
             hideGizmoPreview();
-            writeResult(null, false, "Scale must be finite and non-zero");
+            writeResult(null, false, "Scale must be greater than zero. Use Mirror for reflection.");
             return;
         }
 
@@ -187,7 +187,10 @@ public class TransformGeometryNode extends BaseNode implements GizmoTransformTar
         }
 
         Vector3d translation = resolveTranslation();
-        GizmoOrientation.LocalAxes axes = GizmoOrientation.fromEulerDegrees(rotationX, rotationY, rotationZ);
+        double effectiveRx = getInputDouble(INPUT_ROT_X_ID, rotationX);
+        double effectiveRy = getInputDouble(INPUT_ROT_Y_ID, rotationY);
+        double effectiveRz = getInputDouble(INPUT_ROT_Z_ID, rotationZ);
+        GizmoOrientation.LocalAxes axes = GizmoOrientation.fromEulerDegrees(effectiveRx, effectiveRy, effectiveRz);
         return new TransformGizmoPreviewData(
             new Vec3d(translation.x, translation.y, translation.z),
             axes.xAxis(),

@@ -56,7 +56,7 @@ public final class GeometryTransform {
             this.rotationXDeg = rotationXDeg;
             this.rotationYDeg = rotationYDeg;
             this.rotationZDeg = rotationZDeg;
-            this.scale = Math.max(EPS, Math.abs(scale));
+            this.scale = requirePositiveScale(scale);
             this.rotation = new Matrix3d().rotateXYZ(
                 Math.toRadians(rotationXDeg),
                 Math.toRadians(rotationYDeg),
@@ -70,7 +70,7 @@ public final class GeometryTransform {
             this.rotationXDeg = 0.0d;
             this.rotationYDeg = 0.0d;
             this.rotationZDeg = 0.0d;
-            this.scale = Math.max(EPS, Math.abs(scale));
+            this.scale = requirePositiveScale(scale);
             this.rotation = rotation == null ? new Matrix3d().identity() : new Matrix3d(rotation);
             this.eulerBacked = false;
         }
@@ -139,19 +139,35 @@ public final class GeometryTransform {
         if (geometry == null) {
             return null;
         }
+        double resolvedScale = requirePositiveScale(scale);
+        if (!Double.isFinite(resolvedScale)) {
+            return null;
+        }
         Vector3d pivot = center == null ? new Vector3d() : new Vector3d(center);
         Matrix3d resolvedRotation = rotation == null ? new Matrix3d().identity() : new Matrix3d(rotation);
-        double resolvedScale = Math.max(EPS, Math.abs(scale));
         Vector3d movedPivot = new Vector3d(pivot).mul(resolvedScale);
         resolvedRotation.transform(movedPivot);
         Vector3d translation = new Vector3d(pivot).sub(movedPivot);
         return transform(geometry, translation, resolvedRotation, resolvedScale);
     }
 
+    /**
+     * V1 scale contract: strictly positive. Reflection uses {@link GeometryMirror}, not signed scale.
+     */
+    private static double requirePositiveScale(double scale) {
+        if (!Double.isFinite(scale) || scale <= EPS) {
+            return Double.NaN;
+        }
+        return scale;
+    }
+
     private static GeometryData transform0(GeometryData geometry, Spec spec) {
         Vector3d t = spec.translation();
         Matrix3d r = spec.rotationMatrix();
         double s = spec.scale();
+        if (!Double.isFinite(s)) {
+            return null;
+        }
 
         if (geometry instanceof CompositeGeometryData composite) {
             List<GeometryData> out = new ArrayList<>(composite.size());
@@ -206,9 +222,12 @@ public final class GeometryTransform {
         }
         if (geometry instanceof EllipsoidGeometryData ellipsoid) {
             Vector3d radii = ellipsoid.getRadii();
+            Matrix3d newOrientation = new Matrix3d(r).mul(ellipsoid.getOrientationMatrix());
             return new EllipsoidGeometryData(
                 transformPoint(ellipsoid.getCenter(), t, r, s),
-                new Vector3d(radii.x * s, radii.y * s, radii.z * s)
+                new Vector3d(radii.x * s, radii.y * s, radii.z * s),
+                newOrientation,
+                ellipsoid.isOriented() || !isIdentity(r)
             );
         }
         if (geometry instanceof HemisphereGeometryData hemisphere) {
@@ -303,21 +322,20 @@ public final class GeometryTransform {
             return new DodecahedronGeometryData(transformPoint(dod.getCenter(), t, r, s), dod.getEdgeLength() * s, rLocal);
         }
         if (geometry instanceof SdfGeometryData sdfGeom) {
-            if (!spec.isEulerBacked()) {
-                return null;
-            }
             SignedDistanceFieldData sdf = sdfGeom.getSdf();
             if (sdf == null) {
                 return null;
             }
-            SignedDistanceFieldData wrapped = new TransformedSdfData(
-                sdf,
-                spec.translation(),
-                spec.rotationXDeg(),
-                spec.rotationYDeg(),
-                spec.rotationZDeg(),
-                spec.scale()
-            );
+            SignedDistanceFieldData wrapped = spec.isEulerBacked()
+                ? new TransformedSdfData(
+                    sdf,
+                    spec.translation(),
+                    spec.rotationXDeg(),
+                    spec.rotationYDeg(),
+                    spec.rotationZDeg(),
+                    s
+                )
+                : new TransformedSdfData(sdf, spec.translation(), r, s);
             Vector3d min = sdfGeom.getMin();
             Vector3d max = sdfGeom.getMax();
             Vector3d[] corners = {
@@ -360,5 +378,10 @@ public final class GeometryTransform {
         }
         d.normalize();
         return d;
+    }
+
+    private static boolean isIdentity(Matrix3d matrix) {
+        Matrix3d identity = new Matrix3d().identity();
+        return matrix.equals(identity, EPS);
     }
 }

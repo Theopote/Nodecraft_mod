@@ -16,6 +16,7 @@ import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.Vec3d;
+import org.joml.Matrix3d;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -150,7 +151,7 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
         if (geometry instanceof SphereData sphere) {
             appendSphere(builder, sphere.getCenter(), sphere.getRadius(), quality);
         } else if (geometry instanceof EllipsoidGeometryData ellipsoid) {
-            appendEllipsoid(builder, ellipsoid.getCenter(), ellipsoid.getRadii(), quality);
+            appendEllipsoid(builder, ellipsoid, quality);
         } else if (geometry instanceof HemisphereGeometryData hemisphere) {
             appendHemisphere(builder, hemisphere, quality);
         } else if (geometry instanceof CylinderGeometryData cylinder) {
@@ -305,7 +306,10 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
         return toVec3d(new Vector3d(center).add(dir.mul(radius)));
     }
 
-    private void appendEllipsoid(MeshBuilder builder, Vector3d center, Vector3d radii, int quality) {
+    private void appendEllipsoid(MeshBuilder builder, EllipsoidGeometryData ellipsoid, int quality) {
+        Vector3d center = ellipsoid.getCenter();
+        Vector3d radii = ellipsoid.getRadii();
+        Matrix3d orientation = ellipsoid.getOrientationMatrix();
         if (radii.x <= 1.0e-6d || radii.y <= 1.0e-6d || radii.z <= 1.0e-6d) {
             return;
         }
@@ -324,10 +328,10 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
                 double theta0 = 2.0d * Math.PI * u0;
                 double theta1 = 2.0d * Math.PI * u1;
 
-                Vec3d p00 = ellipsoidPoint(center, radii, phi0, theta0);
-                Vec3d p01 = ellipsoidPoint(center, radii, phi0, theta1);
-                Vec3d p10 = ellipsoidPoint(center, radii, phi1, theta0);
-                Vec3d p11 = ellipsoidPoint(center, radii, phi1, theta1);
+                Vec3d p00 = ellipsoidPoint(center, radii, orientation, phi0, theta0);
+                Vec3d p01 = ellipsoidPoint(center, radii, orientation, phi0, theta1);
+                Vec3d p10 = ellipsoidPoint(center, radii, orientation, phi1, theta0);
+                Vec3d p11 = ellipsoidPoint(center, radii, orientation, phi1, theta1);
 
                 if (lat > 0) {
                     builder.addTriangle(p00, p10, p01);
@@ -868,12 +872,16 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
         return new Vec3d(x, y, z);
     }
 
-    private Vec3d ellipsoidPoint(Vector3d center, Vector3d radii, double phi, double theta) {
+    private Vec3d ellipsoidPoint(Vector3d center, Vector3d radii, Matrix3d orientation, double phi, double theta) {
         double sinPhi = Math.sin(phi);
-        double x = center.x + radii.x * sinPhi * Math.cos(theta);
-        double y = center.y + radii.y * Math.cos(phi);
-        double z = center.z + radii.z * sinPhi * Math.sin(theta);
-        return new Vec3d(x, y, z);
+        Vector3d local = new Vector3d(
+            radii.x * sinPhi * Math.cos(theta),
+            radii.y * Math.cos(phi),
+            radii.z * sinPhi * Math.sin(theta)
+        );
+        orientation.transform(local);
+        local.add(center);
+        return toVec3d(local);
     }
 
     private Vec3d torusPoint(Vector3d center, Vector3d axis, Vector3d basisU, Vector3d basisV,

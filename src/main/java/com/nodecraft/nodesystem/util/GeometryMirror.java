@@ -12,9 +12,12 @@ import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
 import com.nodecraft.nodesystem.datatypes.IcosahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.IntersectionGeometryData;
+import com.nodecraft.nodesystem.datatypes.MirroredSdfData;
 import com.nodecraft.nodesystem.datatypes.OctahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
+import com.nodecraft.nodesystem.datatypes.SdfGeometryData;
+import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.datatypes.SquarePyramidGeometryData;
 import com.nodecraft.nodesystem.datatypes.TetrahedronGeometryData;
@@ -90,9 +93,12 @@ public final class GeometryMirror {
             );
         }
         if (geometry instanceof EllipsoidGeometryData ellipsoid) {
+            Matrix3d rm = new Matrix3d(reflectionMatrix3(plane.getNormal())).mul(ellipsoid.getOrientationMatrix());
             return new EllipsoidGeometryData(
                 mirrorPoint(ellipsoid.getCenter(), plane),
-                ellipsoid.getRadii()
+                ellipsoid.getRadii(),
+                rm,
+                true
             );
         }
         if (geometry instanceof HemisphereGeometryData hemisphere) {
@@ -166,6 +172,33 @@ public final class GeometryMirror {
         if (geometry instanceof DodecahedronGeometryData dod) {
             Matrix3d rm = new Matrix3d(reflectionMatrix3(plane.getNormal())).mul(dod.getOrientationMatrix());
             return new DodecahedronGeometryData(mirrorPoint(dod.getCenter(), plane), dod.getEdgeLength(), rm);
+        }
+        if (geometry instanceof SdfGeometryData sdfGeom) {
+            SignedDistanceFieldData sdf = sdfGeom.getSdf();
+            if (sdf == null) {
+                return null;
+            }
+            SignedDistanceFieldData mirroredSdf = new MirroredSdfData(sdf, plane);
+            Vector3d min = sdfGeom.getMin();
+            Vector3d max = sdfGeom.getMax();
+            Vector3d[] corners = {
+                new Vector3d(min.x, min.y, min.z),
+                new Vector3d(max.x, min.y, min.z),
+                new Vector3d(min.x, max.y, min.z),
+                new Vector3d(max.x, max.y, min.z),
+                new Vector3d(min.x, min.y, max.z),
+                new Vector3d(max.x, min.y, max.z),
+                new Vector3d(min.x, max.y, max.z),
+                new Vector3d(max.x, max.y, max.z)
+            };
+            Vector3d newMin = new Vector3d(Double.POSITIVE_INFINITY);
+            Vector3d newMax = new Vector3d(Double.NEGATIVE_INFINITY);
+            for (Vector3d corner : corners) {
+                Vector3d p = mirrorPoint(corner, plane);
+                newMin.min(p);
+                newMax.max(p);
+            }
+            return new SdfGeometryData(mirroredSdf, newMin, newMax, sdfGeom.getIsoValue());
         }
         return null;
     }

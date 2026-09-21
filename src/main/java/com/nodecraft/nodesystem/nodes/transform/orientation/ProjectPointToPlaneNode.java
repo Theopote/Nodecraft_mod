@@ -8,11 +8,11 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
@@ -38,8 +38,8 @@ public class ProjectPointToPlaneNode extends BaseNode {
         super(UUID.randomUUID(), "transform.orientation.project_to_plane");
 
         addInputPort(new BasePort(INPUT_POINT_ID, "Point",
-            "Point to project. Supports Point, Vector, Position, or Block Coordinate.",
-            NodeDataType.ANY, this));
+            "Point to project onto the plane",
+            NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane",
             "Target plane for projection",
             NodeDataType.PLANE, this));
@@ -68,10 +68,13 @@ public class ProjectPointToPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d point = resolvePoint(inputValues.get(INPUT_POINT_ID));
+        Vector3d point = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_POINT_ID));
         Object planeObj = inputValues.get(INPUT_PLANE_ID);
 
-        if (!OrientationUtils.isFinite(point) || !(planeObj instanceof PlaneData plane) || !OrientationUtils.isUsablePlane(plane)) {
+        if (point == null
+            || !isFinite(point)
+            || !(planeObj instanceof PlaneData plane)
+            || !OrientationUtils.isUsablePlane(plane)) {
             outputValues.put(OUTPUT_POINT_ID, null);
             outputValues.put(OUTPUT_VECTOR_ID, null);
             outputValues.put(OUTPUT_DISTANCE_ID, Double.NaN);
@@ -101,8 +104,7 @@ public class ProjectPointToPlaneNode extends BaseNode {
         // stateless
     }
 
-    private Vector3d resolvePoint(Object value) {
-        Vector3d point = OrientationUtils.resolveVector(value);
-        return OrientationUtils.isFinite(point) ? point : null;
+    private boolean isFinite(Vector3d vector) {
+        return Double.isFinite(vector.x) && Double.isFinite(vector.y) && Double.isFinite(vector.z);
     }
 }
