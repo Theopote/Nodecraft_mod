@@ -3,30 +3,28 @@ package com.nodecraft.nodesystem.nodes.geometry.curves;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.LineData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3d;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
- * Reports total arc length of a polyline or a line segment.
+ * Reports total arc length of a path.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.curves.polyline_length",
     displayName = "Polyline Length",
-    description = "Computes the total length of a polyline or line segment",
+    description = "Computes the total length of a line, polyline, or curve path",
     category = "geometry.curves",
     order = 13
 )
 public class PolylineLengthNode extends AbstractCurveNode {
 
-    private static final String INPUT_POLYLINE_ID = "input_polyline";
-    private static final String INPUT_LINE_ID = "input_line";
+    private static final String INPUT_PATH_ID = "input_path";
 
     private static final String OUTPUT_LENGTH_ID = "output_length";
     private static final String OUTPUT_VALID_ID = "output_valid";
@@ -34,12 +32,9 @@ public class PolylineLengthNode extends AbstractCurveNode {
     public PolylineLengthNode() {
         super(UUID.randomUUID(), "geometry.curves.polyline_length");
 
-        addInputPort(new BasePort(INPUT_POLYLINE_ID, "Polyline",
-            "Polyline to measure",
-            NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_LINE_ID, "Line",
-            "Optional line segment when no polyline is connected",
-            NodeDataType.LINE, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path",
+            "Path to measure (line, polyline, or curve)",
+            NodeDataType.PATH, this));
 
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length",
             "Total path length",
@@ -51,19 +46,18 @@ public class PolylineLengthNode extends AbstractCurveNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object polyObj = inputValues.get(INPUT_POLYLINE_ID);
-        Object lineObj = inputValues.get(INPUT_LINE_ID);
-        if (polyObj instanceof PolylineData poly) {
-            outputValues.put(OUTPUT_LENGTH_ID, poly.getLength());
-            outputValues.put(OUTPUT_VALID_ID, true);
+        List<Vector3d> verts = resolvePathVertices(INPUT_PATH_ID);
+        if (verts == null || verts.size() < 2) {
+            outputValues.put(OUTPUT_LENGTH_ID, 0.0d);
+            outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
-        if (lineObj instanceof LineData line) {
-            outputValues.put(OUTPUT_LENGTH_ID, line.getLength());
-            outputValues.put(OUTPUT_VALID_ID, true);
-            return;
+
+        double length = 0.0d;
+        for (int i = 0; i < verts.size() - 1; i++) {
+            length += verts.get(i).distance(verts.get(i + 1));
         }
-        outputValues.put(OUTPUT_LENGTH_ID, 0.0d);
-        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_LENGTH_ID, length);
+        outputValues.put(OUTPUT_VALID_ID, true);
     }
 }

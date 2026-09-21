@@ -39,8 +39,7 @@ public class PolylineOffsetInPlaneNode extends AbstractCurveNode {
         description = "Maximum miter extension factor relative to |offset| before falling back to a bevel corner")
     private double miterLimit = 4.0d;
 
-    private static final String INPUT_POLYLINE_ID = "input_polyline";
-    private static final String INPUT_LINE_ID = "input_line";
+    private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_PLANE_ID = "input_plane";
     private static final String INPUT_OFFSET_ID = "input_offset";
 
@@ -50,12 +49,9 @@ public class PolylineOffsetInPlaneNode extends AbstractCurveNode {
     public PolylineOffsetInPlaneNode() {
         super(UUID.randomUUID(), "geometry.curves.offset_polyline_plane");
 
-        addInputPort(new BasePort(INPUT_POLYLINE_ID, "Polyline",
-            "Open or closed polyline to offset (projected into the plane)",
-            NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_LINE_ID, "Line",
-            "Optional 2-point line when no polyline is connected",
-            NodeDataType.LINE, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path",
+            "Path to offset in the plane (line, polyline, or curve)",
+            NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane",
             "Work plane containing the polyline",
             NodeDataType.PLANE, this));
@@ -114,7 +110,7 @@ public class PolylineOffsetInPlaneNode extends AbstractCurveNode {
             return;
         }
 
-        List<Vector3d> worldVerts = resolvePathVertices();
+        List<Vector3d> worldVerts = resolvePathVertices(INPUT_PATH_ID);
         if (worldVerts == null || worldVerts.size() < 2) {
             writeInvalid();
             return;
@@ -162,14 +158,6 @@ public class PolylineOffsetInPlaneNode extends AbstractCurveNode {
     private void writeInvalid() {
         outputValues.put(OUTPUT_POLYLINE_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private List<Vector3d> resolvePathVertices() {
-        return PathUtils.resolveVertices(
-            null,
-            inputValues.get(INPUT_POLYLINE_ID),
-            inputValues.get(INPUT_LINE_ID)
-        );
     }
 
     /**

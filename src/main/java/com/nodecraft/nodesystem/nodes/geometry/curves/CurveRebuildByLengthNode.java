@@ -35,9 +35,7 @@ public class CurveRebuildByLengthNode extends AbstractCurveNode {
 
     private static final double EPS = 1.0e-9d;
 
-    private static final String INPUT_CURVE_ID = "input_curve";
-    private static final String INPUT_POLYLINE_ID = "input_polyline";
-    private static final String INPUT_LINE_ID = "input_line";
+    private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_SPACING_ID = "input_spacing";
     private static final String INPUT_COUNT_ID = "input_count";
 
@@ -50,12 +48,8 @@ public class CurveRebuildByLengthNode extends AbstractCurveNode {
     public CurveRebuildByLengthNode() {
         super(UUID.randomUUID(), "geometry.curves.rebuild_curve_length");
 
-        addInputPort(new BasePort(INPUT_CURVE_ID, "Curve",
-            "Curve to rebuild by arc length", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_POLYLINE_ID, "Polyline",
-            "Fallback polyline to rebuild when no curve is connected", NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_LINE_ID, "Line",
-            "Fallback line segment when no curve/polyline is connected", NodeDataType.LINE, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path",
+            "Path to rebuild by arc length (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing",
             "Target distance between samples along the path (> 0 when used)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count",
@@ -166,10 +160,6 @@ public class CurveRebuildByLengthNode extends AbstractCurveNode {
     }
 
     private List<Vector3d> resolveVertices() {
-        return PathUtils.resolveVertices(
-            inputValues.get(INPUT_CURVE_ID),
-            inputValues.get(INPUT_POLYLINE_ID),
-            inputValues.get(INPUT_LINE_ID)
-        );
+        return resolvePathVertices(INPUT_PATH_ID);
     }
 }

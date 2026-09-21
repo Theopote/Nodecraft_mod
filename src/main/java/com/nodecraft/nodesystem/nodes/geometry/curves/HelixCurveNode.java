@@ -58,8 +58,8 @@ public class HelixCurveNode extends AbstractCurveNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d center = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_CENTER_ID));
-        Vector3d axisIn = resolveInputPoint(inputValues.get(INPUT_AXIS_ID));
+        Vector3d center = resolveInputPoint(inputValues.get(INPUT_CENTER_ID));
+        Vector3d axisIn = resolveInputVector(inputValues.get(INPUT_AXIS_ID));
         if (center == null || axisIn == null) {
             writeInvalid();
             return;

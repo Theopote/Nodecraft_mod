@@ -56,12 +56,8 @@ public class BlendCurvesNode extends AbstractCurveNode {
     @NodeProperty(displayName = "Default Segments", category = "Blend", order = 6)
     private int defaultSegments = 12;
 
-    private static final String INPUT_CURVE_A_ID = "input_curve_a";
-    private static final String INPUT_POLYLINE_A_ID = "input_polyline_a";
-    private static final String INPUT_LINE_A_ID = "input_line_a";
-    private static final String INPUT_CURVE_B_ID = "input_curve_b";
-    private static final String INPUT_POLYLINE_B_ID = "input_polyline_b";
-    private static final String INPUT_LINE_B_ID = "input_line_b";
+    private static final String INPUT_PATH_A_ID = "input_path_a";
+    private static final String INPUT_PATH_B_ID = "input_path_b";
     private static final String INPUT_LENGTH_A_ID = "input_length_a";
     private static final String INPUT_LENGTH_B_ID = "input_length_b";
     private static final String INPUT_SEGMENTS_ID = "input_segments";
@@ -77,12 +73,10 @@ public class BlendCurvesNode extends AbstractCurveNode {
     public BlendCurvesNode() {
         super(UUID.randomUUID(), "geometry.curves.blend_curves");
 
-        addInputPort(new BasePort(INPUT_CURVE_A_ID, "Curve A", "First curve to blend from", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_POLYLINE_A_ID, "Polyline A", "Fallback first polyline", NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_LINE_A_ID, "Line A", "Fallback first line", NodeDataType.LINE, this));
-        addInputPort(new BasePort(INPUT_CURVE_B_ID, "Curve B", "Second curve to blend to", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_POLYLINE_B_ID, "Polyline B", "Fallback second polyline", NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_LINE_B_ID, "Line B", "Fallback second line", NodeDataType.LINE, this));
+        addInputPort(new BasePort(INPUT_PATH_A_ID, "Path A",
+            "First path to blend from (line, polyline, or curve)", NodeDataType.PATH, this));
+        addInputPort(new BasePort(INPUT_PATH_B_ID, "Path B",
+            "Second path to blend to (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_LENGTH_A_ID, "Length A", "Tangent handle length from curve A endpoint", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_LENGTH_B_ID, "Length B", "Tangent handle length toward curve B endpoint", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Number of segments used to sample the blend", NodeDataType.INTEGER, this));
@@ -103,8 +97,8 @@ public class BlendCurvesNode extends AbstractCurveNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> pointsA = resolvePath(INPUT_CURVE_A_ID, INPUT_POLYLINE_A_ID, INPUT_LINE_A_ID, reverseA);
-        List<Vector3d> pointsB = resolvePath(INPUT_CURVE_B_ID, INPUT_POLYLINE_B_ID, INPUT_LINE_B_ID, reverseB);
+        List<Vector3d> pointsA = resolvePathVertices(INPUT_PATH_A_ID, reverseA);
+        List<Vector3d> pointsB = resolvePathVertices(INPUT_PATH_B_ID, reverseB);
         if (pointsA == null || pointsB == null || pointsA.size() < 2 || pointsB.size() < 2) {
             writeInvalid();
             return;
@@ -260,25 +254,6 @@ public class BlendCurvesNode extends AbstractCurveNode {
         if (map.get("defaultSegments") instanceof Number value) {
             setDefaultSegments(value.intValue());
         }
-    }
-
-    private @Nullable List<Vector3d> resolvePath(String curveId, String polylineId, String lineId, boolean reverse) {
-        List<Vector3d> points = PathUtils.resolveVertices(
-            inputValues.get(curveId),
-            inputValues.get(polylineId),
-            inputValues.get(lineId)
-        );
-        if (points == null || points.size() < 2) {
-            return null;
-        }
-        List<Vector3d> copy = new ArrayList<>(points.size());
-        for (Vector3d point : points) {
-            copy.add(new Vector3d(point));
-        }
-        if (reverse) {
-            Collections.reverse(copy);
-        }
-        return copy;
     }
 
     private @Nullable Vector3d endTangent(List<Vector3d> points) {

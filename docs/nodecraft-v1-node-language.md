@@ -357,8 +357,27 @@ bounds min/max emit `PointData`. Axes/normals/offsets stay `VECTOR_LIST`.
 emit `output_plane` + `output_center` alongside Profile / Boundary / Points / Valid; family contract
 test guards `output_profile` nodes for Plane + Center ports.
 
-**Next:** Curves batch — remaining curve nodes and downstream consumers: audit param echoes, plane/center
-emission where applicable, and LINE→POINT fallback removal (P3).
+**Batch 3 Curves — PATH language (2026-09-21):**
+
+- **`PATH`** is the unified graph input for line / polyline / curve consumers. Only
+  `LINE`, `POLYLINE`, and `CURVE` connect implicitly to `PATH` (not Point / Vector / Geometry).
+- Path consumers use a single **`input_path`** (or `input_path_a` / `input_path_b` for two-path nodes).
+  Runtime resolution precedence when unpacking legacy triple values: **CURVE > POLYLINE > LINE**.
+- V1 **`CURVE`** means a **sampleable path** (Bezier control structure or LINEAR sampled polyline),
+  not a CAD analytic kernel.
+- **`Curve.getLinearSamples()`** must not duplicate segment junction vertices (feeds Evaluate / Rebuild /
+  Frame / Offset / Tween downstream).
+- **Arc** center fallback uses numeric **`centerX` / `centerY` / `centerZ`**; plane fallback uses
+  **`DefaultPlane` enum** (`XZ` default), not CSV strings.
+- **`SpatialValueResolver.resolvePoint()`** / **`resolveVector()`** are the semantic entry points;
+  utilities must not use point resolvers for vector ports.
+- **Curve Evaluate** is the contract sample: `PATH` in → `POINT` + `VECTOR` frame out.
+
+**Contract tests:** `GeometryCurvesFamilyContractTest` (PATH ports, implicit connect, linear samples,
+Arc defaults, Curve Evaluate contract).
+
+**Next (Batch 3 P2):** Rebuild / Frame default spacing, Helix property fallbacks, Points To Path PATH
+output, offset node consolidation review, historical ID cleanup.
 
 ---
 

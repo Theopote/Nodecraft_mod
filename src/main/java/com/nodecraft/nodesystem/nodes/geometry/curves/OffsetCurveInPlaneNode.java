@@ -37,9 +37,7 @@ public class OffsetCurveInPlaneNode extends AbstractCurveNode {
         description = "Maximum miter extension factor relative to |offset| before bevel fallback")
     private double miterLimit = 4.0d;
 
-    private static final String INPUT_CURVE_ID = "input_curve";
-    private static final String INPUT_POLYLINE_ID = "input_polyline";
-    private static final String INPUT_LINE_ID = "input_line";
+    private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_PLANE_ID = "input_plane";
     private static final String INPUT_OFFSET_ID = "input_offset";
     private static final String INPUT_SPACING_ID = "input_spacing";
@@ -53,9 +51,8 @@ public class OffsetCurveInPlaneNode extends AbstractCurveNode {
     public OffsetCurveInPlaneNode() {
         super(UUID.randomUUID(), "geometry.curves.offset_curve_plane");
 
-        addInputPort(new BasePort(INPUT_CURVE_ID, "Curve", "Curve to offset", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_POLYLINE_ID, "Polyline", "Fallback polyline to offset", NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_LINE_ID, "Line", "Fallback line to offset", NodeDataType.LINE, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path",
+            "Path to offset (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Work plane containing the curve", NodeDataType.PLANE, this));
         addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Signed offset distance in the plane", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing", "Optional rebuild spacing before offset", NodeDataType.DOUBLE, this));
@@ -239,11 +236,7 @@ public class OffsetCurveInPlaneNode extends AbstractCurveNode {
     }
 
     private @Nullable List<Vector3d> resolveVertices() {
-        return PathUtils.resolveVertices(
-            inputValues.get(INPUT_CURVE_ID),
-            inputValues.get(INPUT_POLYLINE_ID),
-            inputValues.get(INPUT_LINE_ID)
-        );
+        return resolvePathVertices(INPUT_PATH_ID);
     }
 
     private void writeInvalid() {

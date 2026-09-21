@@ -118,6 +118,9 @@ public class Curve {
             Vec3d end = controlPoints.get(i + 1);
             
             for (int j = 0; j < resolution; j++) {
+                if (i > 0 && j == 0) {
+                    continue;
+                }
                 float t = j / (float) (resolution - 1);
                 samples.add(lerpVec3d(start, end, t));
             }

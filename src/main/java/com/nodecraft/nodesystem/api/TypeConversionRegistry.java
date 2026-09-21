@@ -53,6 +53,10 @@ public final class TypeConversionRegistry {
             return ConversionPolicy.IMPLICIT_SAFE;
         }
 
+        if (isPathSourceCompatible(output, input)) {
+            return ConversionPolicy.IMPLICIT_SAFE;
+        }
+
         if (isListConnectable(output, input)) {
             return ConversionPolicy.IMPLICIT_SAFE;
         }
@@ -200,6 +204,15 @@ public final class TypeConversionRegistry {
 
     private static boolean isCoordinateListAlias(NodeDataType type) {
         return type == NodeDataType.COORDINATE_LIST || type == NodeDataType.BLOCK_LIST;
+    }
+
+    private static boolean isPathSourceCompatible(NodeDataType outputType, NodeDataType inputType) {
+        if (inputType != NodeDataType.PATH) {
+            return false;
+        }
+        return outputType == NodeDataType.LINE
+                || outputType == NodeDataType.POLYLINE
+                || outputType == NodeDataType.CURVE;
     }
 
     private static boolean isListConnectable(NodeDataType outputType, NodeDataType inputType) {

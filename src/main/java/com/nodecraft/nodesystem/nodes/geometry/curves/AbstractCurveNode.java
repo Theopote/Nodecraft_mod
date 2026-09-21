@@ -2,12 +2,15 @@ package com.nodecraft.nodesystem.nodes.geometry.curves;
 
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 import com.nodecraft.nodesystem.util.Curve;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -74,6 +77,30 @@ abstract class AbstractCurveNode extends BaseNode {
         return PlaneProjectionUtils.resolvePoint(value);
     }
 
+    protected final @Nullable Vector3d resolveInputVector(@Nullable Object value) {
+        return PlaneProjectionUtils.resolveVector(value);
+    }
+
+    protected final @Nullable List<Vector3d> resolvePathVertices(String pathPortId) {
+        return PathUtils.resolvePath(inputValues.get(pathPortId));
+    }
+
+    protected final @Nullable List<Vector3d> resolvePathVertices(String pathPortId, boolean reverse) {
+        List<Vector3d> points = resolvePathVertices(pathPortId);
+        if (points == null || points.size() < 2) {
+            return null;
+        }
+        if (!reverse) {
+            return points;
+        }
+        List<Vector3d> copy = new ArrayList<>(points.size());
+        for (Vector3d point : points) {
+            copy.add(new Vector3d(point));
+        }
+        Collections.reverse(copy);
+        return copy;
+    }
+
     protected final Curve buildLinearCurve(List<Vec3d> points) {
         Curve curve = new Curve(Curve.CurveType.LINEAR, 2);
         for (Vec3d point : points) {
@@ -86,6 +113,6 @@ abstract class AbstractCurveNode extends BaseNode {
                                                                             @Nullable Object preferredAxisObj,
                                                                             PlaneData fallbackPlane) {
         PlaneData plane = planeObj instanceof PlaneData p ? p : fallbackPlane;
-        return PlaneProjectionUtils.createBasis(plane, resolveInputPoint(preferredAxisObj));
+        return PlaneProjectionUtils.createBasis(plane, resolveInputVector(preferredAxisObj));
     }
 }

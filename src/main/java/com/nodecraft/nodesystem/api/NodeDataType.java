@@ -68,6 +68,8 @@ public enum NodeDataType {
     LINE("line", "Line", LineData.class),
     POLYLINE("polyline", "Polyline", PolylineData.class),
     CURVE("curve", "Curve", Curve.class),
+    /** Unified path input accepting LINE, POLYLINE, or CURVE via implicit connect. */
+    PATH("path", "Path", PathData.class),
     REGION("region", "Region", RegionData.class),
 
     COLOR("color", "Color", ColorData.class),
@@ -190,6 +192,13 @@ public enum NodeDataType {
         if (this == NBT) {
             String simpleName = value.getClass().getSimpleName();
             return simpleName.contains("Tag") || simpleName.contains("NBT");
+        }
+
+        if (this == PATH) {
+            return value instanceof PathData
+                    || value instanceof LineData
+                    || value instanceof PolylineData
+                    || value instanceof Curve;
         }
 
         if (this == GEOMETRY && value instanceof GeometryData) {

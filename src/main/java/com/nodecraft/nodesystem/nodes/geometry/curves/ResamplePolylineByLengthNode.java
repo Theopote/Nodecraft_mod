@@ -34,8 +34,7 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
 
     private static final double EPS = 1.0e-9d;
 
-    private static final String INPUT_POLYLINE_ID = "input_polyline";
-    private static final String INPUT_LINE_ID = "input_line";
+    private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_SPACING_ID = "input_spacing";
     private static final String INPUT_COUNT_ID = "input_count";
 
@@ -47,12 +46,9 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
     public ResamplePolylineByLengthNode() {
         super(UUID.randomUUID(), "geometry.curves.resample_polyline_length");
 
-        addInputPort(new BasePort(INPUT_POLYLINE_ID, "Polyline",
-            "Polyline to resample (open or closed)",
-            NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_LINE_ID, "Line",
-            "Optional 2-point line when no polyline is connected",
-            NodeDataType.LINE, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path",
+            "Path to resample (line, polyline, or curve)",
+            NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing",
             "Target distance between samples along the path (must be > 0 when used)",
             NodeDataType.DOUBLE, this));
@@ -165,10 +161,6 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
     }
 
     private List<Vector3d> resolveVertices() {
-        return PathUtils.resolveVertices(
-            null,
-            inputValues.get(INPUT_POLYLINE_ID),
-            inputValues.get(INPUT_LINE_ID)
-        );
+        return resolvePathVertices(INPUT_PATH_ID);
     }
 }

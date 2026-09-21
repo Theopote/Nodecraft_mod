@@ -48,9 +48,7 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
     @NodeProperty(displayName = "Cap Ends", category = "Voxelize", order = 4)
     private boolean capEnds = true;
 
-    private static final String INPUT_CURVE_ID = "input_curve";
-    private static final String INPUT_POLYLINE_ID = "input_polyline";
-    private static final String INPUT_LINE_ID = "input_line";
+    private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_RADIUS_ID = "input_radius";
     private static final String INPUT_SPACING_ID = "input_spacing";
     private static final String INPUT_COUNT_ID = "input_count";
@@ -69,9 +67,8 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
     public VoxelizeCurveNode() {
         super(UUID.randomUUID(), "geometry.curves.voxelize_curve");
 
-        addInputPort(new BasePort(INPUT_CURVE_ID, "Curve", "Curve to voxelize", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_POLYLINE_ID, "Polyline", "Fallback polyline to voxelize", NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_LINE_ID, "Line", "Fallback line to voxelize", NodeDataType.LINE, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path",
+            "Path to voxelize (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Tube radius in blocks/meters", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing", "Optional path rebuild spacing before voxelization", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Optional rebuild sample count; overrides spacing", NodeDataType.INTEGER, this));
@@ -209,11 +206,7 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
     }
 
     private @Nullable List<Vector3d> resolveVertices() {
-        return PathUtils.resolveVertices(
-            inputValues.get(INPUT_CURVE_ID),
-            inputValues.get(INPUT_POLYLINE_ID),
-            inputValues.get(INPUT_LINE_ID)
-        );
+        return resolvePathVertices(INPUT_PATH_ID);
     }
 
     private @Nullable SampledPath samplePath(@Nullable List<Vector3d> verts) {

@@ -53,12 +53,8 @@ public class TweenCurvesNode extends AbstractCurveNode {
         description = "When enabled, Curve A and Curve B are included at the start and end of the output lists")
     private boolean includeInputs = false;
 
-    private static final String INPUT_CURVE_A_ID = "input_curve_a";
-    private static final String INPUT_POLYLINE_A_ID = "input_polyline_a";
-    private static final String INPUT_LINE_A_ID = "input_line_a";
-    private static final String INPUT_CURVE_B_ID = "input_curve_b";
-    private static final String INPUT_POLYLINE_B_ID = "input_polyline_b";
-    private static final String INPUT_LINE_B_ID = "input_line_b";
+    private static final String INPUT_PATH_A_ID = "input_path_a";
+    private static final String INPUT_PATH_B_ID = "input_path_b";
     private static final String INPUT_COUNT_ID = "input_count";
     private static final String INPUT_SAMPLES_ID = "input_samples";
 
@@ -75,18 +71,10 @@ public class TweenCurvesNode extends AbstractCurveNode {
     public TweenCurvesNode() {
         super(UUID.randomUUID(), "geometry.curves.tween_curves");
 
-        addInputPort(new BasePort(INPUT_CURVE_A_ID, "Curve A",
-            "First curve to tween from", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_POLYLINE_A_ID, "Polyline A",
-            "Fallback first polyline", NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_LINE_A_ID, "Line A",
-            "Fallback first line", NodeDataType.LINE, this));
-        addInputPort(new BasePort(INPUT_CURVE_B_ID, "Curve B",
-            "Second curve to tween to", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_POLYLINE_B_ID, "Polyline B",
-            "Fallback second polyline", NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_LINE_B_ID, "Line B",
-            "Fallback second line", NodeDataType.LINE, this));
+        addInputPort(new BasePort(INPUT_PATH_A_ID, "Path A",
+            "First path to tween from (line, polyline, or curve)", NodeDataType.PATH, this));
+        addInputPort(new BasePort(INPUT_PATH_B_ID, "Path B",
+            "Second path to tween to (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count",
             "Number of intermediate curves to generate", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SAMPLES_ID, "Samples",
@@ -119,8 +107,8 @@ public class TweenCurvesNode extends AbstractCurveNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> pathA = resolvePath(INPUT_CURVE_A_ID, INPUT_POLYLINE_A_ID, INPUT_LINE_A_ID, reverseA);
-        List<Vector3d> pathB = resolvePath(INPUT_CURVE_B_ID, INPUT_POLYLINE_B_ID, INPUT_LINE_B_ID, reverseB);
+        List<Vector3d> pathA = resolvePathVertices(INPUT_PATH_A_ID, reverseA);
+        List<Vector3d> pathB = resolvePathVertices(INPUT_PATH_B_ID, reverseB);
         int count = GenerationLimits.clampPositiveCount(Math.max(0, readIntInput(INPUT_COUNT_ID, defaultCount)));
         int samples = Math.max(2, readIntInput(INPUT_SAMPLES_ID, defaultSamples));
         if (pathA == null || pathB == null || count < 1) {
@@ -255,25 +243,6 @@ public class TweenCurvesNode extends AbstractCurveNode {
         if (map.get("includeInputs") instanceof Boolean value) {
             setIncludeInputs(value);
         }
-    }
-
-    private @Nullable List<Vector3d> resolvePath(String curveId, String polylineId, String lineId, boolean reverse) {
-        List<Vector3d> points = PathUtils.resolveVertices(
-            inputValues.get(curveId),
-            inputValues.get(polylineId),
-            inputValues.get(lineId)
-        );
-        if (points == null || points.size() < 2) {
-            return null;
-        }
-        List<Vector3d> copy = new ArrayList<>(points.size());
-        for (Vector3d point : points) {
-            copy.add(new Vector3d(point));
-        }
-        if (reverse) {
-            Collections.reverse(copy);
-        }
-        return copy;
     }
 
     private @Nullable ResampledPath resample(List<Vector3d> path, int samples) {

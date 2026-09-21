@@ -4,15 +4,12 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.LineData;
-import com.nodecraft.nodesystem.datatypes.PointData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Curve;
-import net.minecraft.util.math.Vec3d;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3d;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
@@ -27,9 +24,7 @@ import java.util.UUID;
 )
 public class PathToPointsNode extends AbstractCurveNode {
 
-    private static final String INPUT_LINE_ID = "input_line";
-    private static final String INPUT_POLYLINE_ID = "input_polyline";
-    private static final String INPUT_CURVE_ID = "input_curve";
+    private static final String INPUT_PATH_ID = "input_path";
 
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_COUNT_ID = "output_count";
@@ -38,44 +33,23 @@ public class PathToPointsNode extends AbstractCurveNode {
     public PathToPointsNode() {
         super(UUID.randomUUID(), "geometry.curves.divide_curve_to_points");
 
-        addInputPort(new BasePort(INPUT_LINE_ID, "Line",
-            "Line to convert into an ordered point list",
-            NodeDataType.LINE, this));
-        addInputPort(new BasePort(INPUT_POLYLINE_ID, "Polyline",
-            "Polyline to convert into an ordered point list",
-            NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_CURVE_ID, "Curve",
-            "Curve to sample into an ordered point list",
-            NodeDataType.CURVE, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path",
+            "Path to convert into an ordered point list (line, polyline, or curve)",
+            NodeDataType.PATH, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points",
             "Ordered point list extracted from the input path", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
             "Number of points extracted from the input path", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
-            "True when one of the path inputs was valid", NodeDataType.BOOLEAN, this));
+            "True when the path input was valid", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<PointData> points = new ArrayList<>();
-
-        Object lineObj = inputValues.get(INPUT_LINE_ID);
-        Object polylineObj = inputValues.get(INPUT_POLYLINE_ID);
-        Object curveObj = inputValues.get(INPUT_CURVE_ID);
-
-        if (lineObj instanceof LineData line) {
-            points.add(fromVec3d(line.getStart()));
-            points.add(fromVec3d(line.getEnd()));
-        } else if (polylineObj instanceof PolylineData polyline) {
-            for (Vec3d point : polyline.getPoints()) {
-                points.add(fromVec3d(point));
-            }
-        } else if (curveObj instanceof Curve curve) {
-            for (Vec3d point : curve.getSamplePoints()) {
-                points.add(fromVec3d(point));
-            }
-        }
+        List<Vector3d> vertices = PathUtils.resolvePath(inputValues.get(INPUT_PATH_ID));
+        var points = vertices == null ? List.<com.nodecraft.nodesystem.datatypes.PointData>of()
+            : SpatialValueResolver.toPointDataList(vertices);
 
         boolean valid = !points.isEmpty();
         outputValues.put(OUTPUT_POINTS_ID, points);
@@ -91,9 +65,5 @@ public class PathToPointsNode extends AbstractCurveNode {
     @Override
     public void setNodeState(Object state) {
         // stateless
-    }
-
-    private PointData fromVec3d(Vec3d point) {
-        return new PointData(point.x, point.y, point.z);
     }
 }

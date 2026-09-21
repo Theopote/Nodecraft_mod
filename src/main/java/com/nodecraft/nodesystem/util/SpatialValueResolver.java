@@ -22,6 +22,16 @@ public final class SpatialValueResolver {
     private SpatialValueResolver() {
     }
 
+    /** Resolves a graph {@code POINT} or location-like value to a continuous position. */
+    public static @Nullable Vector3d resolvePoint(@Nullable Object value) {
+        return resolveVector3d(value);
+    }
+
+    /** Resolves a graph {@code VECTOR} or direction/displacement value. */
+    public static @Nullable Vector3d resolveVector(@Nullable Object value) {
+        return resolveVector3d(value);
+    }
+
     public static @Nullable Vector3d resolveVector3d(@Nullable Object value) {
         if (value instanceof PointData pointData) {
             return pointData.getPosition();

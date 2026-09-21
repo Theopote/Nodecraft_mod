@@ -37,11 +37,21 @@ public class ArcNode extends AbstractCurveNode {
     @NodeProperty(displayName = "Default Resolution", category = "Arc", order = 2)
     private int defaultResolution = 24;
 
-    @NodeProperty(displayName = "Default Plane", category = "Arc", order = 3)
-    private String defaultPlaneType = "XZ";  // XZ, XY, or YZ
+    @NodeProperty(displayName = "Default Plane", category = "Arc", order = 3,
+        description = "Fallback plane when Plane and Normal ports are unconnected")
+    private PlaneProjectionUtils.DefaultPlane defaultPlane = PlaneProjectionUtils.DefaultPlane.XZ;
 
-    @NodeProperty(displayName = "Default Center", category = "Arc", order = 4)
-    private String defaultCenterCoords = "0,0,0";  // Format: x,y,z
+    @NodeProperty(displayName = "Center X", category = "Center", order = 4,
+        description = "Default center X when Center port is unconnected")
+    private double centerX = 0.0d;
+
+    @NodeProperty(displayName = "Center Y", category = "Center", order = 5,
+        description = "Default center Y when Center port is unconnected")
+    private double centerY = 0.0d;
+
+    @NodeProperty(displayName = "Center Z", category = "Center", order = 6,
+        description = "Default center Z when Center port is unconnected")
+    private double centerZ = 0.0d;
 
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_PLANE_ID = "input_plane";
@@ -79,18 +89,18 @@ public class ArcNode extends AbstractCurveNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d center = PlaneProjectionUtils.resolvePointOrDefault(inputValues.get(INPUT_CENTER_ID), defaultCenterCoords);
+        Vector3d center = PlaneProjectionUtils.resolvePointOrDefault(
+            inputValues.get(INPUT_CENTER_ID), centerX, centerY, centerZ);
         Vector3d normal = PlaneProjectionUtils.resolveNormal(
             inputValues.get(INPUT_PLANE_ID),
             inputValues.get(INPUT_NORMAL_ID),
-            defaultPlaneType
+            defaultPlane
         );
         double radius = readDoubleInput(INPUT_RADIUS_ID, defaultRadius);
         double startDegrees = readDoubleInput(INPUT_START_ANGLE_ID, 0.0d);
         double endDegrees = readDoubleInput(INPUT_END_ANGLE_ID, 90.0d);
         int resolution = GenerationLimits.clampSegments(2, readIntInput(INPUT_RESOLUTION_ID, defaultResolution));
 
-        // Validate inputs: center and normal are required
         if (normal == null || normal.lengthSquared() <= EPSILON) {
             writeInvalid();
             return;
@@ -162,26 +172,46 @@ public class ArcNode extends AbstractCurveNode {
         }
     }
 
-    public String getDefaultPlaneType() {
-        return defaultPlaneType;
+    public PlaneProjectionUtils.DefaultPlane getDefaultPlane() {
+        return defaultPlane;
     }
 
-    public void setDefaultPlaneType(String planeType) {
-        if (planeType != null && (planeType.equals("XY") || planeType.equals("XZ") || planeType.equals("YZ"))) {
-            if (!this.defaultPlaneType.equals(planeType)) {
-                this.defaultPlaneType = planeType;
-                markDirty();
-            }
+    public void setDefaultPlane(PlaneProjectionUtils.DefaultPlane defaultPlane) {
+        if (defaultPlane != null && this.defaultPlane != defaultPlane) {
+            this.defaultPlane = defaultPlane;
+            markDirty();
         }
     }
 
-    public String getDefaultCenterCoords() {
-        return defaultCenterCoords;
+    public double getCenterX() {
+        return centerX;
     }
 
-    public void setDefaultCenterCoords(String centerCoords) {
-        if (centerCoords != null && !this.defaultCenterCoords.equals(centerCoords)) {
-            this.defaultCenterCoords = centerCoords;
+    public void setCenterX(double centerX) {
+        if (Double.compare(this.centerX, centerX) != 0) {
+            this.centerX = centerX;
+            markDirty();
+        }
+    }
+
+    public double getCenterY() {
+        return centerY;
+    }
+
+    public void setCenterY(double centerY) {
+        if (Double.compare(this.centerY, centerY) != 0) {
+            this.centerY = centerY;
+            markDirty();
+        }
+    }
+
+    public double getCenterZ() {
+        return centerZ;
+    }
+
+    public void setCenterZ(double centerZ) {
+        if (Double.compare(this.centerZ, centerZ) != 0) {
+            this.centerZ = centerZ;
             markDirty();
         }
     }
@@ -191,8 +221,10 @@ public class ArcNode extends AbstractCurveNode {
         return new java.util.HashMap<String, Object>() {{
             put("defaultRadius", defaultRadius);
             put("defaultResolution", defaultResolution);
-            put("defaultPlaneType", defaultPlaneType);
-            put("defaultCenterCoords", defaultCenterCoords);
+            put("defaultPlane", defaultPlane.name());
+            put("centerX", centerX);
+            put("centerY", centerY);
+            put("centerZ", centerZ);
         }};
     }
 
@@ -207,11 +239,51 @@ public class ArcNode extends AbstractCurveNode {
         if (map.get("defaultResolution") instanceof Number value) {
             setDefaultResolution(value.intValue());
         }
-        if (map.get("defaultPlaneType") instanceof String value) {
-            setDefaultPlaneType(value);
+        if (map.get("defaultPlane") instanceof String value) {
+            try {
+                setDefaultPlane(PlaneProjectionUtils.DefaultPlane.valueOf(value));
+            } catch (IllegalArgumentException ignored) {
+                // ignore invalid legacy values
+            }
+        } else if (map.get("defaultPlaneType") instanceof String legacy) {
+            try {
+                setDefaultPlane(PlaneProjectionUtils.DefaultPlane.valueOf(legacy));
+            } catch (IllegalArgumentException ignored) {
+                setDefaultPlane(PlaneProjectionUtils.DefaultPlane.XZ);
+            }
         }
-        if (map.get("defaultCenterCoords") instanceof String value) {
-            setDefaultCenterCoords(value);
+        if (map.get("centerX") instanceof Number value) {
+            setCenterX(value.doubleValue());
+        }
+        if (map.get("centerY") instanceof Number value) {
+            setCenterY(value.doubleValue());
+        }
+        if (map.get("centerZ") instanceof Number value) {
+            setCenterZ(value.doubleValue());
+        }
+        if (map.get("defaultCenterCoords") instanceof String legacyCoords) {
+            Vector3d parsed = parseLegacyCenterCoords(legacyCoords);
+            if (parsed != null) {
+                setCenterX(parsed.x);
+                setCenterY(parsed.y);
+                setCenterZ(parsed.z);
+            }
+        }
+    }
+
+    private static @Nullable Vector3d parseLegacyCenterCoords(String coords) {
+        String[] parts = coords.trim().split(",");
+        if (parts.length != 3) {
+            return null;
+        }
+        try {
+            return new Vector3d(
+                Double.parseDouble(parts[0].trim()),
+                Double.parseDouble(parts[1].trim()),
+                Double.parseDouble(parts[2].trim())
+            );
+        } catch (NumberFormatException ignored) {
+            return null;
         }
     }
 
@@ -221,5 +293,4 @@ public class ArcNode extends AbstractCurveNode {
         putDoubleOutputs(0.0d, OUTPUT_LENGTH_ID, OUTPUT_SWEEP_DEGREES_ID);
         putBooleanOutputs(false, OUTPUT_VALID_ID);
     }
-
 }

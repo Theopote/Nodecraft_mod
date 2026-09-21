@@ -140,7 +140,7 @@
 | NURBS Curve | `geometry.curves.nurbs` | Builds a sampled clamped uniform NURBS curve from control points and optional per-point weights | `NurbsCurveNode` |
 | Rainbow Curve Offset | `geometry.curves.rainbow_curve_offset` | Generates multiple parallel offset polylines around a space curve using path frames. | `RainbowCurveOffsetNode` |
 | Resample Polyline By Length | `geometry.curves.resample_polyline_length` | Resamples a polyline along its arc length using spacing, or using a total point count (count wins when both are provided) | `ResamplePolylineByLengthNode` |
-| Polyline Length | `geometry.curves.polyline_length` | Computes the total length of a polyline or line segment | `PolylineLengthNode` |
+| Polyline Length | `geometry.curves.polyline_length` | Computes the total length of a line, polyline, or curve path | `PolylineLengthNode` |
 | Curve Rebuild By Length | `geometry.curves.rebuild_curve_length` | Rebuilds a curve/path to uniform arc-length samples using spacing, or using a total point count (count wins when both are provided) | `CurveRebuildByLengthNode` |
 | Curve Evaluate | `geometry.curves.evaluate_curve` | Evaluates a curve/path at normalized parameter t and outputs point, tangent, normal, and binormal | `CurveEvaluateNode` |
 | Curve Frame Along Path | `geometry.curves.frame_along_path` | Generates local frames along a curve/path using count or spacing, outputting origins, axes, and planes per sample | `CurveFrameAlongPathNode` |

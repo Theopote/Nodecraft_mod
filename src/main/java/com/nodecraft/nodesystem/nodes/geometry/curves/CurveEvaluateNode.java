@@ -41,9 +41,7 @@ public class CurveEvaluateNode extends AbstractCurveNode {
     @NodeProperty(displayName = "Clamp t", category = "Evaluate", order = 2)
     private boolean clampT = true;
 
-    private static final String INPUT_CURVE_ID = "input_curve";
-    private static final String INPUT_POLYLINE_ID = "input_polyline";
-    private static final String INPUT_LINE_ID = "input_line";
+    private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_T_ID = "input_t";
     private static final String INPUT_UP_VECTOR_ID = "input_up_vector";
 
@@ -57,12 +55,8 @@ public class CurveEvaluateNode extends AbstractCurveNode {
     public CurveEvaluateNode() {
         super(UUID.randomUUID(), "geometry.curves.evaluate_curve");
 
-        addInputPort(new BasePort(INPUT_CURVE_ID, "Curve",
-            "Curve to evaluate", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_POLYLINE_ID, "Polyline",
-            "Fallback polyline to evaluate when no curve is connected", NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_LINE_ID, "Line",
-            "Fallback line to evaluate when no curve/polyline is connected", NodeDataType.LINE, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path",
+            "Path to evaluate (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_T_ID, "t",
             "Normalized parameter along path (0..1)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_UP_VECTOR_ID, "Up Vector",
@@ -213,11 +207,7 @@ public class CurveEvaluateNode extends AbstractCurveNode {
     }
 
     private List<Vector3d> resolveVertices() {
-        return PathUtils.resolveVertices(
-            inputValues.get(INPUT_CURVE_ID),
-            inputValues.get(INPUT_POLYLINE_ID),
-            inputValues.get(INPUT_LINE_ID)
-        );
+        return resolvePathVertices(INPUT_PATH_ID);
     }
 
     private Vector3d resolveUpVector(Object value) {

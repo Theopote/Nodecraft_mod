@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.curves.util;
 
 import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.util.Curve;
 import net.minecraft.util.math.Vec3d;
@@ -17,25 +18,38 @@ public final class PathUtils {
     private PathUtils() {
     }
 
+    /**
+     * Resolves vertices from a single path value ({@link PathData}, {@link LineData},
+     * {@link PolylineData}, or {@link Curve}).
+     */
+    public static @Nullable List<Vector3d> resolvePath(@Nullable Object pathValue) {
+        PathData path = PathData.wrap(pathValue);
+        if (path == null) {
+            return null;
+        }
+        return switch (path.getKind()) {
+            case LINE -> verticesFromLine(path.getLine());
+            case POLYLINE -> toVector3dList(path.getPolyline().getPoints());
+            case CURVE -> verticesFromCurve(path.getCurve());
+        };
+    }
+
+    /**
+     * Legacy triple-input resolver. Precedence: CURVE &gt; POLYLINE &gt; LINE.
+     */
     public static @Nullable List<Vector3d> resolveVertices(@Nullable Object curveObj,
                                                            @Nullable Object polyObj,
                                                            @Nullable Object lineObj) {
         if (curveObj instanceof Curve curve) {
-            List<Vec3d> pts = curve.getSamplePoints();
-            if (pts.size() < 2) {
-                return null;
-            }
-            return toVector3dList(pts);
+            return verticesFromCurve(curve);
         }
         if (polyObj instanceof PolylineData poly) {
             return toVector3dList(poly.getPoints());
         }
         if (lineObj instanceof LineData line) {
-            Vec3d a = line.getStart();
-            Vec3d b = line.getEnd();
-            return List.of(new Vector3d(a.x, a.y, a.z), new Vector3d(b.x, b.y, b.z));
+            return verticesFromLine(line);
         }
-        return null;
+        return resolvePath(curveObj != null ? curveObj : (polyObj != null ? polyObj : lineObj));
     }
 
     public static boolean isClosed(List<Vector3d> verts) {
@@ -107,6 +121,23 @@ public final class PathUtils {
             }
         }
         return new PolylineData(points);
+    }
+
+    private static @Nullable List<Vector3d> verticesFromCurve(@Nullable Curve curve) {
+        if (curve == null) {
+            return null;
+        }
+        List<Vec3d> pts = curve.getSamplePoints();
+        if (pts.size() < 2) {
+            return null;
+        }
+        return toVector3dList(pts);
+    }
+
+    private static List<Vector3d> verticesFromLine(@Nullable LineData line) {
+        Vec3d a = line.getStart();
+        Vec3d b = line.getEnd();
+        return List.of(new Vector3d(a.x, a.y, a.z), new Vector3d(b.x, b.y, b.z));
     }
 
     private static List<Vector3d> toVector3dList(List<Vec3d> pts) {
