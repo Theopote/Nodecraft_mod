@@ -412,7 +412,7 @@ Arc defaults, Curve Evaluate contract).
 - Canonical ids: **`geometry.curves.points_to_path`**, **`geometry.curves.path_to_points`**
   (was `curve_from_points` / `divide_curve_to_points`). Graph format **V4** migrates old ids and
   remaps legacy path ports (`input_curve` / `input_polyline` / path `input_line`) → `input_path`
-  (Railing / Staircase keep intentional `input_line`).
+  **only for allowlisted PATH consumers** (not a global `input_line` rewrite).
 - In-repo presets updated to canonical ids + `input_path`. Remaining intentional `input_line`:
   architectural Railing / Staircase only.
 

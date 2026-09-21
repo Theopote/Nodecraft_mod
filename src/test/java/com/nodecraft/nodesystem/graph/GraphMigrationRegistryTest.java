@@ -127,7 +127,13 @@ class GraphMigrationRegistryTest {
         SavedNode railing = new SavedNode();
         railing.nodeId = "rail";
         railing.typeId = "geometry.architectural_primitives.railing";
-        v3.nodes = List.of(pointsToPath, pathToPoints, sweep, railing);
+        SavedNode staircase = new SavedNode();
+        staircase.nodeId = "stair";
+        staircase.typeId = "geometry.architectural_primitives.staircase";
+        SavedNode unknownLineOnly = new SavedNode();
+        unknownLineOnly.nodeId = "wall";
+        unknownLineOnly.typeId = "geometry.architectural_primitives.wall_from_line";
+        v3.nodes = List.of(pointsToPath, pathToPoints, sweep, railing, staircase, unknownLineOnly);
 
         SavedConnection pathConn = new SavedConnection();
         pathConn.sourceNodeId = "ptp";
@@ -135,12 +141,31 @@ class GraphMigrationRegistryTest {
         pathConn.targetNodeId = "sweep";
         pathConn.targetPortId = "input_curve";
 
+        SavedConnection pathLineConn = new SavedConnection();
+        pathLineConn.sourceNodeId = "ptp";
+        pathLineConn.sourcePortId = "output_line";
+        pathLineConn.targetNodeId = "ptp2";
+        pathLineConn.targetPortId = "input_line";
+
         SavedConnection railConn = new SavedConnection();
         railConn.sourceNodeId = "ptp";
         railConn.sourcePortId = "output_line";
         railConn.targetNodeId = "rail";
         railConn.targetPortId = "input_line";
-        v3.connections = List.of(pathConn, railConn);
+
+        SavedConnection stairConn = new SavedConnection();
+        stairConn.sourceNodeId = "ptp";
+        stairConn.sourcePortId = "output_line";
+        stairConn.targetNodeId = "stair";
+        stairConn.targetPortId = "input_line";
+
+        SavedConnection unknownConn = new SavedConnection();
+        unknownConn.sourceNodeId = "ptp";
+        unknownConn.sourcePortId = "output_line";
+        unknownConn.targetNodeId = "wall";
+        unknownConn.targetPortId = "input_line";
+
+        v3.connections = List.of(pathConn, pathLineConn, railConn, stairConn, unknownConn);
         v3.nodePositions = java.util.Map.of();
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v3);
@@ -148,7 +173,10 @@ class GraphMigrationRegistryTest {
         assertEquals("geometry.curves.points_to_path", migrated.nodes.get(0).typeId);
         assertEquals("geometry.curves.path_to_points", migrated.nodes.get(1).typeId);
         assertEquals("input_path", migrated.connections.get(0).targetPortId);
-        assertEquals("input_line", migrated.connections.get(1).targetPortId);
+        assertEquals("input_path", migrated.connections.get(1).targetPortId);
+        assertEquals("input_line", migrated.connections.get(2).targetPortId);
+        assertEquals("input_line", migrated.connections.get(3).targetPortId);
+        assertEquals("input_line", migrated.connections.get(4).targetPortId);
     }
 
     @Test

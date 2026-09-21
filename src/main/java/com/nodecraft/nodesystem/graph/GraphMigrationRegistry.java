@@ -135,14 +135,41 @@ public final class GraphMigrationRegistry {
     private static final String LEGACY_PATH_TO_POINTS_TYPE = "geometry.curves.divide_curve_to_points";
     private static final String PATH_TO_POINTS_TYPE = "geometry.curves.path_to_points";
 
-    /** Architectural nodes that intentionally keep a straight-line {@code input_line} port. */
-    private static final Set<String> LINE_ONLY_PATH_NODE_TYPES = Set.of(
-            "geometry.architectural_primitives.railing",
-            "geometry.architectural_primitives.staircase"
+    /**
+     * Only these Batch 3 PATH consumers remapped legacy triple path ports → {@code input_path}.
+     * Unknown / LINE-only nodes (e.g. Railing, Staircase, future Wall From Line) are left untouched.
+     */
+    private static final Set<String> PATH_INPUT_MIGRATION_NODE_TYPES = Set.of(
+            "geometry.curves.evaluate_curve",
+            "geometry.curves.rebuild_curve_length",
+            "geometry.curves.frame_along_path",
+            "geometry.curves.offset_curve_plane",
+            "geometry.curves.path_to_points",
+            "geometry.curves.voxelize_curve",
+            "geometry.curves.rainbow_curve_offset",
+            "geometry.curves.tween_curves",
+            "geometry.curves.blend_curves",
+            "geometry.curves.resample_polyline_length",
+            "geometry.curves.polyline_length",
+            "geometry.curves.offset_polyline_plane",
+            "geometry.curves.fillet_polyline_corners",
+            "geometry.solids.sweep",
+            "geometry.solids.sweep_from_points",
+            "pattern.linear.along_path",
+            "pattern.linear.path_instances",
+            "pattern.linear.curve_array_geometry",
+            "geometry.architectural_primitives.array_along_curve",
+            "transform.orientation.project_curve_to_plane",
+            "reference.points.project_to_polyline",
+            "reference.points.closest_point_to_object",
+            "output.preview.preview_curves",
+            "math.fields.curve_attractor_field",
+            "transform.deformations.curve_attract"
     );
 
     /**
-     * Batch 3: canonical Points To Path / Path To Points ids, and legacy path ports → {@code input_path}.
+     * Batch 3: canonical Points To Path / Path To Points ids, and allowlisted legacy path ports
+     * → {@code input_path}.
      */
     private static SavedGraph migrateV3ToV4(SavedGraph graph) {
         if (graph.nodes != null) {
@@ -176,8 +203,11 @@ public final class GraphMigrationRegistry {
                 continue;
             }
             String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            if (targetType == null || !PATH_INPUT_MIGRATION_NODE_TYPES.contains(targetType)) {
+                continue;
+            }
             String port = connection.targetPortId.toLowerCase(Locale.ROOT);
-            String migrated = migrateLegacyPathInputPort(targetType, port);
+            String migrated = migrateLegacyPathInputPort(port);
             if (migrated != null && !migrated.equals(connection.targetPortId)) {
                 LOGGER.debug("Migrated path port: {} ({}) -> {}", connection.targetPortId, targetType, migrated);
                 connection.targetPortId = migrated;
@@ -186,14 +216,11 @@ public final class GraphMigrationRegistry {
         return graph;
     }
 
-    private static @Nullable String migrateLegacyPathInputPort(@Nullable String targetType, String portId) {
+    private static @Nullable String migrateLegacyPathInputPort(String portId) {
         return switch (portId) {
-            case "input_curve", "input_polyline" -> "input_path";
-            case "input_curve_a", "input_polyline_a" -> "input_path_a";
-            case "input_curve_b", "input_polyline_b" -> "input_path_b";
-            case "input_line" -> LINE_ONLY_PATH_NODE_TYPES.contains(targetType) ? null : "input_path";
-            case "input_line_a" -> "input_path_a";
-            case "input_line_b" -> "input_path_b";
+            case "input_curve", "input_polyline", "input_line" -> "input_path";
+            case "input_curve_a", "input_polyline_a", "input_line_a" -> "input_path_a";
+            case "input_curve_b", "input_polyline_b", "input_line_b" -> "input_path_b";
             default -> null;
         };
     }
