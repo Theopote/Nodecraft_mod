@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -65,7 +66,7 @@ public class CurveRebuildByLengthNode extends AbstractCurveNode {
         addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline",
             "Rebuilt polyline", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points",
-            "Rebuilt points as a list of Vector3d positions", NodeDataType.VECTOR_LIST, this));
+            "Rebuilt points as point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length",
             "Total input path length used for rebuilding", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
@@ -151,7 +152,7 @@ public class CurveRebuildByLengthNode extends AbstractCurveNode {
         }
         outputValues.put(OUTPUT_CURVE_ID, curve);
         outputValues.put(OUTPUT_POLYLINE_ID, polyline);
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(samples));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(samples));
         outputValues.put(OUTPUT_LENGTH_ID, total);
         outputValues.put(OUTPUT_VALID_ID, true);
     }

@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -58,11 +59,11 @@ public class LoftPointListsNode extends BaseNode {
     public LoftPointListsNode() {
         super(UUID.randomUUID(), "geometry.solids.loft_from_points");
 
-        addInputPort(new BasePort(INPUT_SOURCE_POINTS_ID, "Source Points", "Ordered source point list", NodeDataType.LIST, this));
-        addInputPort(new BasePort(INPUT_TARGET_POINTS_ID, "Target Points", "Ordered target point list", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_SOURCE_POINTS_ID, "Source Points", "Ordered source point list", NodeDataType.POINT_LIST, this));
+        addInputPort(new BasePort(INPUT_TARGET_POINTS_ID, "Target Points", "Ordered target point list", NodeDataType.POINT_LIST, this));
 
-        addOutputPort(new BasePort(OUTPUT_SOURCE_POINTS_ID, "Source Points", "Resolved source point list", NodeDataType.VECTOR_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_TARGET_POINTS_ID, "Target Points", "Resolved target point list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SOURCE_POINTS_ID, "Source Points", "Resolved source point list", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_TARGET_POINTS_ID, "Target Points", "Resolved target point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_POINTS_TREE_ID, "Section Points Tree", "Paired source and target points keyed as {0} and {1}", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SOURCE_PATH_ID, "Source Path", "Polyline describing the source contour", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_TARGET_PATH_ID, "Target Path", "Polyline describing the target contour", NodeDataType.POLYLINE, this));
@@ -81,16 +82,8 @@ public class LoftPointListsNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object sourceObj = inputValues.get(INPUT_SOURCE_POINTS_ID);
-        Object targetObj = inputValues.get(INPUT_TARGET_POINTS_ID);
-
-        if (!(sourceObj instanceof List<?> sourceInput) || !(targetObj instanceof List<?> targetInput)) {
-            writeEmptyOutputs();
-            return;
-        }
-
-        List<Vector3d> sourcePoints = SolidNodeUtils.resolvePointList(sourceInput);
-        List<Vector3d> targetPoints = SolidNodeUtils.resolvePointList(targetInput);
+        List<Vector3d> sourcePoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_SOURCE_POINTS_ID));
+        List<Vector3d> targetPoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_TARGET_POINTS_ID));
         if (sourcePoints.size() < 2 || targetPoints.size() < 2) {
             writeEmptyOutputs();
             return;
@@ -126,8 +119,8 @@ public class LoftPointListsNode extends BaseNode {
             List.of(closeSource, closeTarget)
         );
 
-        outputValues.put(OUTPUT_SOURCE_POINTS_ID, List.copyOf(sourcePoints));
-        outputValues.put(OUTPUT_TARGET_POINTS_ID, List.copyOf(targetPoints));
+        outputValues.put(OUTPUT_SOURCE_POINTS_ID, SpatialValueResolver.toPointDataList(sourcePoints));
+        outputValues.put(OUTPUT_TARGET_POINTS_ID, SpatialValueResolver.toPointDataList(targetPoints));
         outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, SolidDataTreeUtils.indexedGroupTree(List.of(pairedSourcePoints, pairedTargetPoints)));
         outputValues.put(OUTPUT_SOURCE_PATH_ID, sourcePath);
         outputValues.put(OUTPUT_TARGET_PATH_ID, targetPath);

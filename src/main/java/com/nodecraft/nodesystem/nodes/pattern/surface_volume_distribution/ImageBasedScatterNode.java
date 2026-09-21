@@ -10,10 +10,10 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.ColorData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
@@ -75,7 +75,7 @@ public class ImageBasedScatterNode extends BaseNode {
         addInputPort(new BasePort(INPUT_IMAGE_HEIGHT_ID, "Image Height", "Image height in pixels", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_IMAGE_PATH_ID, "Image Path", "Optional image file path fallback", NodeDataType.FILE_PATH, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Optional target plane", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Optional scatter origin point", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Optional scatter origin point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_SPAN_U_ID, "Span U", "World span along U axis", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SPAN_V_ID, "Span V", "World span along V axis", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Target number of scattered points", NodeDataType.INTEGER, this));
@@ -83,7 +83,7 @@ public class ImageBasedScatterNode extends BaseNode {
         addInputPort(new BasePort(INPUT_THRESHOLD_ID, "Threshold", "Density threshold in [0,1]", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_INVERT_ID, "Invert", "Invert grayscale density", NodeDataType.BOOLEAN, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Scattered points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Scattered points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Scattered points snapped to block coordinates", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_UV_ID, "UV", "List of sampled UV maps {u,v,density}", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of scattered points", NodeDataType.INTEGER, this));
@@ -144,7 +144,7 @@ public class ImageBasedScatterNode extends BaseNode {
             uv.add(java.util.Map.of("u", u01, "v", v01, "density", d));
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(points));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(points));
         outputValues.put(OUTPUT_BLOCKS_ID, blocks);
         outputValues.put(OUTPUT_UV_ID, List.copyOf(uv));
         outputValues.put(OUTPUT_COUNT_ID, points.size());
@@ -250,14 +250,9 @@ public class ImageBasedScatterNode extends BaseNode {
     }
 
     private Vector3d resolveOrigin(Object value, @Nullable PlaneData plane) {
-        if (value instanceof Vector3d v) {
-            return new Vector3d(v);
-        }
-        if (value instanceof PointData p) {
-            return new Vector3d(p.getPosition());
-        }
-        if (value instanceof BlockPos b) {
-            return new Vector3d(b.getX(), b.getY(), b.getZ());
+        Vector3d resolved = SpatialValueResolver.resolveVector3d(value);
+        if (resolved != null) {
+            return resolved;
         }
         if (plane != null) {
             return new Vector3d(plane.getPoint());

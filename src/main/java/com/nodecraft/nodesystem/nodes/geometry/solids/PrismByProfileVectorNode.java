@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -50,7 +51,7 @@ public class PrismByProfileVectorNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip", "Side strip surface between base and top profiles", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_BASE_PROFILE_ID, "Base Profile", "Resolved base polygon profile", NodeDataType.POLYGON_PROFILE, this));
-        addOutputPort(new BasePort(OUTPUT_TOP_POINTS_ID, "Top Points", "Resolved top polygon points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_TOP_POINTS_ID, "Top Points", "Resolved top polygon points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_TOP_PLANE_ID, "Top Plane", "Plane through the top profile", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_HEIGHT_ID, "Height", "Prism extrusion length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SIDE_COUNT_ID, "Side Count", "Number of prism side faces", NodeDataType.INTEGER, this));
@@ -95,7 +96,7 @@ public class PrismByProfileVectorNode extends BaseNode {
         outputValues.put(OUTPUT_GEOMETRY_ID, prism);
         outputValues.put(OUTPUT_SURFACE_STRIP_ID, surfaceStrip);
         outputValues.put(OUTPUT_BASE_PROFILE_ID, profile);
-        outputValues.put(OUTPUT_TOP_POINTS_ID, List.copyOf(topPoints));
+        outputValues.put(OUTPUT_TOP_POINTS_ID, SpatialValueResolver.toPointDataList(topPoints));
         outputValues.put(OUTPUT_TOP_PLANE_ID, topPlane);
         outputValues.put(OUTPUT_HEIGHT_ID, height);
         outputValues.put(OUTPUT_SIDE_COUNT_ID, basePoints.size());

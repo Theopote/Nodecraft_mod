@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -47,7 +48,7 @@ public class FaceEdgeToPathNode extends AbstractCurveNode {
 
         addOutputPort(new BasePort(OUTPUT_LINE_ID, "Line", "Edge as a line segment", NodeDataType.LINE, this));
         addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Edge as a 2-point polyline", NodeDataType.POLYLINE, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Ordered edge endpoints as point list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Ordered edge endpoints as point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_START_ID, "Start", "Start point of the edge", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_END_ID, "End", "End point of the edge", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_START_CORNER_INDEX_ID, "Start Corner Index", "Start corner index passed through from the edge source", NodeDataType.INTEGER, this));
@@ -81,7 +82,7 @@ public class FaceEdgeToPathNode extends AbstractCurveNode {
 
         outputValues.put(OUTPUT_LINE_ID, edge);
         outputValues.put(OUTPUT_POLYLINE_ID, polyline);
-        outputValues.put(OUTPUT_POINTS_ID, List.of(startPoint, endPoint));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(List.of(startPoint, endPoint)));
         outputValues.put(OUTPUT_START_ID, startPoint);
         outputValues.put(OUTPUT_END_ID, endPoint);
         outputValues.put(OUTPUT_START_CORNER_INDEX_ID, startCornerIndexObj instanceof Number number ? number.intValue() : null);

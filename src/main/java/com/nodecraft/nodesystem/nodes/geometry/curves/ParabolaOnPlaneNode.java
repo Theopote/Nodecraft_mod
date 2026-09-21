@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -51,7 +52,7 @@ public class ParabolaOnPlaneNode extends AbstractCurveNode {
 
         addOutputPort(new BasePort(OUTPUT_CURVE_ID, "Curve", "Sampled parabola as curve", NodeDataType.CURVE, this));
         addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Sampled parabola boundary polyline", NodeDataType.POLYLINE, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled parabola points", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled parabola points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when parabola could be constructed", NodeDataType.BOOLEAN, this));
     }
 
@@ -94,7 +95,11 @@ public class ParabolaOnPlaneNode extends AbstractCurveNode {
         Curve curve = buildLinearCurve(pts);
         outputValues.put(OUTPUT_CURVE_ID, curve);
         outputValues.put(OUTPUT_POLYLINE_ID, new PolylineData(pts));
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(pts));
+        List<Vector3d> pointVectors = new ArrayList<>(pts.size());
+        for (Vec3d point : pts) {
+            pointVectors.add(new Vector3d(point.x, point.y, point.z));
+        }
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(pointVectors));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 }

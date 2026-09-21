@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.LSystemStringExpander;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaterniond;
@@ -62,7 +63,7 @@ public class LSystemTurtle3DNode extends BaseNode {
         addInputPort(new BasePort(INPUT_ANGLE_ID, "Angle", "Turn angle in degrees", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Optional start point", NodeDataType.POINT, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Polyline vertices in world space", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Polyline vertices in world space", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when at least one segment was emitted", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "True when command length or polyline point cap was reached", NodeDataType.BOOLEAN, this));
     }
@@ -138,7 +139,7 @@ public class LSystemTurtle3DNode extends BaseNode {
         }
 
         boolean valid = drew && points.size() >= 2;
-        outputValues.put(OUTPUT_POINTS_ID, valid ? List.copyOf(points) : List.of());
+        outputValues.put(OUTPUT_POINTS_ID, valid ? SpatialValueResolver.toPointDataList(points) : List.of());
         outputValues.put(OUTPUT_VALID_ID, valid);
         outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
     }

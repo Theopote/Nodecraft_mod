@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -50,8 +51,8 @@ public class LoftProfilesNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_SOURCE_PROFILE_ID, "Source Profile", "Resolved source polygon profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_TARGET_PROFILE_ID, "Target Profile", "Resolved target polygon profile", NodeDataType.POLYGON_PROFILE, this));
-        addOutputPort(new BasePort(OUTPUT_SOURCE_POINTS_ID, "Source Points", "Closed source polygon points", NodeDataType.VECTOR_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_TARGET_POINTS_ID, "Target Points", "Closed target polygon points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SOURCE_POINTS_ID, "Source Points", "Closed source polygon points", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_TARGET_POINTS_ID, "Target Points", "Closed target polygon points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_POINTS_TREE_ID, "Section Points Tree", "Source and target section points keyed as {0} and {1}", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_ID, "Rail Segments", "Segments connecting corresponding source and target vertices", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_TREE_ID, "Rail Segments Tree", "Loft rail segments keyed by rail index", NodeDataType.DATA_TREE, this));
@@ -99,8 +100,8 @@ public class LoftProfilesNode extends BaseNode {
 
         outputValues.put(OUTPUT_SOURCE_PROFILE_ID, sourceProfile);
         outputValues.put(OUTPUT_TARGET_PROFILE_ID, targetProfile);
-        outputValues.put(OUTPUT_SOURCE_POINTS_ID, sourceProfile.getClosedPoints());
-        outputValues.put(OUTPUT_TARGET_POINTS_ID, targetProfile.getClosedPoints());
+        outputValues.put(OUTPUT_SOURCE_POINTS_ID, SpatialValueResolver.toPointDataList(sourceProfile.getClosedPoints()));
+        outputValues.put(OUTPUT_TARGET_POINTS_ID, SpatialValueResolver.toPointDataList(targetProfile.getClosedPoints()));
         outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, SolidDataTreeUtils.indexedGroupTree(List.of(sourceUniquePoints, targetUniquePoints)));
         outputValues.put(OUTPUT_RAIL_SEGMENTS_ID, List.copyOf(railSegments));
         outputValues.put(OUTPUT_RAIL_SEGMENTS_TREE_ID, SolidDataTreeUtils.indexedValueTree(railSegments));

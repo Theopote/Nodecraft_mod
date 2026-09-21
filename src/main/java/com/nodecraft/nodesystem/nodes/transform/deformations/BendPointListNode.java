@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -56,13 +57,13 @@ public class BendPointListNode extends BaseNode {
 
     public BendPointListNode() {
         super(UUID.randomUUID(), "transform.deformations.bend");
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to bend", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_AXIS_ORIGIN_ID, "Axis Origin", "Origin point of the bend axis", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to bend", NodeDataType.POINT_LIST, this));
+        addInputPort(new BasePort(INPUT_AXIS_ORIGIN_ID, "Axis Origin", "Origin point of the bend axis", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_AXIS_DIRECTION_ID, "Axis Direction", "Direction vector of the bend axis", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_BEND_NORMAL_ID, "Bend Normal", "Direction the bend curves toward", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_BEND_DEGREES_ID, "Bend Degrees", "Optional total bend angle override in degrees", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_BEND_LENGTH_ID, "Bend Length", "Optional length over which the bend is distributed", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Bent point list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Bent point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of points in the bent output", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the inputs were resolved", NodeDataType.BOOLEAN, this));
     }
@@ -74,9 +75,9 @@ public class BendPointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object pointsObj = inputValues.get(INPUT_POINTS_ID);
-        Vector3d axisOrigin = resolvePoint(inputValues.get(INPUT_AXIS_ORIGIN_ID));
-        if (!(pointsObj instanceof List<?> pointsInput) || !DeformationUtils.isFinite(axisOrigin) || !(inputValues.get(INPUT_AXIS_DIRECTION_ID) instanceof Vector3d axisDirection)) {
+        List<Vector3d> pointsInput = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
+        Vector3d axisOrigin = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_AXIS_ORIGIN_ID));
+        if (pointsInput.isEmpty() || !DeformationUtils.isFinite(axisOrigin) || !(inputValues.get(INPUT_AXIS_DIRECTION_ID) instanceof Vector3d axisDirection)) {
             writeEmptyOutputs();
             return;
         }
@@ -116,11 +117,7 @@ public class BendPointListNode extends BaseNode {
         double radius = Math.abs(curvature) <= EPSILON ? 0.0d : 1.0d / curvature;
 
         List<Vector3d> bentPoints = new ArrayList<>(pointsInput.size());
-        for (Object entry : pointsInput) {
-            Vector3d point = resolvePoint(entry);
-            if (point == null) {
-                continue;
-            }
+        for (Vector3d point : pointsInput) {
             Vector3d offset = new Vector3d(point).sub(axisOrigin);
             double axialDistance = offset.dot(axis);
             double normalizedDistance = axialDistance / resolvedBendLength;
@@ -143,7 +140,7 @@ public class BendPointListNode extends BaseNode {
             bentPoints.add(centerline.add(rotatedRadial));
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(bentPoints));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(bentPoints));
         outputValues.put(OUTPUT_COUNT_ID, bentPoints.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
@@ -193,11 +190,6 @@ public class BendPointListNode extends BaseNode {
 
     private double resolveDouble(Object value, double fallback) {
         return DeformationUtils.resolveFiniteDouble(value, fallback);
-    }
-
-    private Vector3d resolvePoint(Object value) {
-        Vector3d point = DeformationUtils.resolvePoint(value);
-        return DeformationUtils.isFinite(point) ? point : null;
     }
 
     private double applyClampMode(double normalizedDistance) {

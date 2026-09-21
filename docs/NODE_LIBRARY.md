@@ -710,7 +710,7 @@
 | Project Point To Plane | `transform.orientation.project_to_plane` | Projects a geometric point onto a plane and reports the projection distance | `ProjectPointToPlaneNode` |
 | Rotate Vector | `transform.orientation.rotate_vector` | Rotates a vector around an axis by an angle in radians | `RotateVectorNode` |
 | Align Points To Surface Normals | `transform.orientation.align_to_surface` | Builds oriented frames per point by aligning local up axis to surface normals. | `AlignPointsToSurfaceNormalsNode` |
-| Project Points To Plane | `transform.orientation.project_points_to_plane` | Projects a list of points or vectors onto a target plane | `ProjectPointsToPlaneNode` |
+| Project Points To Plane | `transform.orientation.project_points_to_plane` | Projects a list of points onto a target plane | `ProjectPointsToPlaneNode` |
 | Project Curve To Plane | `transform.orientation.project_curve_to_plane` | Projects a curve, polyline, or line onto a target plane | `ProjectCurveToPlaneNode` |
 | Project Profile To Plane | `transform.orientation.project_profile_to_plane` | Projects a polygon profile boundary onto a target plane | `ProjectProfileToPlaneNode` |
 

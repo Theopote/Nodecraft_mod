@@ -6,11 +6,11 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -71,7 +71,7 @@ public class ArcNode extends AbstractCurveNode {
 
         addOutputPort(new BasePort(OUTPUT_CURVE_ID, "Curve", "Sampled curve representation of the arc", NodeDataType.CURVE, this));
         addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Polyline approximation of the arc", NodeDataType.POLYLINE, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled arc points", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled arc points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Analytical arc length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SWEEP_DEGREES_ID, "Sweep Degrees", "Angular sweep from start to end", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the arc inputs resolved", NodeDataType.BOOLEAN, this));
@@ -114,7 +114,7 @@ public class ArcNode extends AbstractCurveNode {
         }
 
         List<Vec3d> sampledPoints = new ArrayList<>(resolution);
-        List<PointData> pointData = new ArrayList<>(resolution);
+        List<Vector3d> sampledVectors = new ArrayList<>(resolution);
 
         for (int i = 0; i < resolution; i++) {
             double t = (double) i / (double) (resolution - 1);
@@ -123,9 +123,8 @@ public class ArcNode extends AbstractCurveNode {
                 .add(new Vector3d(basis.xAxis()).mul(Math.cos(angleRadians) * radius))
                 .add(new Vector3d(basis.yAxis()).mul(Math.sin(angleRadians) * radius));
 
-            Vec3d vec = new Vec3d(point.x, point.y, point.z);
-            sampledPoints.add(vec);
-            pointData.add(new PointData(point));
+            sampledPoints.add(new Vec3d(point.x, point.y, point.z));
+            sampledVectors.add(point);
         }
 
         Curve curve = buildLinearCurve(sampledPoints);
@@ -133,7 +132,7 @@ public class ArcNode extends AbstractCurveNode {
         PolylineData polyline = new PolylineData(sampledPoints);
         outputValues.put(OUTPUT_CURVE_ID, curve);
         outputValues.put(OUTPUT_POLYLINE_ID, polyline);
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(pointData));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(sampledVectors));
         outputValues.put(OUTPUT_LENGTH_ID, Math.abs(sweepRadians) * radius);
         outputValues.put(OUTPUT_SWEEP_DEGREES_ID, sweepDegrees);
         outputValues.put(OUTPUT_VALID_ID, true);

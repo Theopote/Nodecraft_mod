@@ -17,6 +17,7 @@ import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryTransform;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -77,7 +78,7 @@ public class CurveArrayGeometryNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing all path copies", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRIES_ID, "Geometries", "List of copied geometry values", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_ORIGINS_ID, "Origins", "Path frame origins used for each copy", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_ORIGINS_ID, "Origins", "Path frame origins used for each copy", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_TREE_ID, "Geometry Tree", "One branch per emitted geometry copy", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_ORIGIN_TREE_ID, "Origin Tree", "Path origins keyed by copy branch", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of emitted geometry copies", NodeDataType.INTEGER, this));
@@ -250,7 +251,7 @@ public class CurveArrayGeometryNode extends BaseNode {
     private void writeResult(List<GeometryData> copies, List<Vector3d> origins, boolean valid) {
         outputValues.put(OUTPUT_GEOMETRIES_ID, List.copyOf(copies));
         outputValues.put(OUTPUT_GEOMETRY_ID, copies.isEmpty() ? null : new CompositeGeometryData(copies));
-        outputValues.put(OUTPUT_ORIGINS_ID, List.copyOf(origins));
+        outputValues.put(OUTPUT_ORIGINS_ID, SpatialValueResolver.toPointDataList(origins));
         outputValues.put(OUTPUT_GEOMETRY_TREE_ID, buildTree(copies));
         outputValues.put(OUTPUT_ORIGIN_TREE_ID, buildTree(origins));
         outputValues.put(OUTPUT_COUNT_ID, copies.size());

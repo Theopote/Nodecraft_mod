@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -41,7 +42,7 @@ public class BoxFaceBoundaryPathNode extends AbstractCurveNode {
         addInputPort(new BasePort(INPUT_FACE_ID, "Face", "Box face to convert into a closed boundary path", NodeDataType.BOX_FACE, this));
 
         addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Closed boundary polyline of the face", NodeDataType.POLYLINE, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed ordered point list of the face boundary", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed ordered point list of the face boundary", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_CORNER_INDICES_ID, "Corner Indices", "Corner indices in winding order for the face boundary", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_NAME_ID, "Name", "Face name", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_INDEX_ID, "Index", "Face index", NodeDataType.INTEGER, this));
@@ -78,7 +79,7 @@ public class BoxFaceBoundaryPathNode extends AbstractCurveNode {
         PolylineData polyline = polylinePoints.size() >= 2 ? new PolylineData(polylinePoints) : null;
 
         outputValues.put(OUTPUT_POLYLINE_ID, polyline);
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(closedPoints));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(closedPoints));
         outputValues.put(OUTPUT_CORNER_INDICES_ID, face.getCornerIndices());
         outputValues.put(OUTPUT_NAME_ID, face.getName());
         outputValues.put(OUTPUT_INDEX_ID, face.getIndex());

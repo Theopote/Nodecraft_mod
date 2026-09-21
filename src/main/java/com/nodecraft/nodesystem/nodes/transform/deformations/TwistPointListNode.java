@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -56,13 +57,13 @@ public class TwistPointListNode extends BaseNode {
     public TwistPointListNode() {
         super(UUID.randomUUID(), "transform.deformations.twist");
 
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to twist", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_AXIS_ORIGIN_ID, "Axis Origin", "Origin point of the twist axis", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to twist", NodeDataType.POINT_LIST, this));
+        addInputPort(new BasePort(INPUT_AXIS_ORIGIN_ID, "Axis Origin", "Origin point of the twist axis", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_AXIS_DIRECTION_ID, "Axis Direction", "Direction vector of the twist axis", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_ANGLE_DEGREES_ID, "Angle Degrees", "Optional total twist angle override in degrees", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_TWIST_LENGTH_ID, "Twist Length", "Optional axial length over which the twist angle is distributed", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Twisted point list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Twisted point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of points in the twisted output", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the inputs were resolved", NodeDataType.BOOLEAN, this));
     }
@@ -74,11 +75,11 @@ public class TwistPointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object pointsObj = inputValues.get(INPUT_POINTS_ID);
-        Vector3d axisOrigin = resolvePoint(inputValues.get(INPUT_AXIS_ORIGIN_ID));
+        List<Vector3d> pointsInput = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
+        Vector3d axisOrigin = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_AXIS_ORIGIN_ID));
         Object axisDirectionObj = inputValues.get(INPUT_AXIS_DIRECTION_ID);
 
-        if (!(pointsObj instanceof List<?> pointsInput) || !DeformationUtils.isFinite(axisOrigin) || !(axisDirectionObj instanceof Vector3d axisDirection)) {
+        if (pointsInput.isEmpty() || !DeformationUtils.isFinite(axisOrigin) || !(axisDirectionObj instanceof Vector3d axisDirection)) {
             writeEmptyOutputs();
             return;
         }
@@ -99,12 +100,7 @@ public class TwistPointListNode extends BaseNode {
         double totalAngleRadians = Math.toRadians(resolvedAngleDegrees);
 
         List<Vector3d> twistedPoints = new ArrayList<>(pointsInput.size());
-        for (Object entry : pointsInput) {
-            Vector3d point = resolvePoint(entry);
-            if (point == null) {
-                continue;
-            }
-
+        for (Vector3d point : pointsInput) {
             Vector3d offset = new Vector3d(point).sub(axisOrigin);
             double axialDistance = offset.dot(axis);
             double normalizedDistance = axialDistance / resolvedTwistLength;
@@ -117,7 +113,7 @@ public class TwistPointListNode extends BaseNode {
             twistedPoints.add(new Vector3d(axisOrigin).add(axialComponent).add(rotatedRadial));
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(twistedPoints));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(twistedPoints));
         outputValues.put(OUTPUT_COUNT_ID, twistedPoints.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
@@ -197,11 +193,6 @@ public class TwistPointListNode extends BaseNode {
             return DeformationUtils.resolveFiniteDouble(number, fallback);
         }
         return fallback;
-    }
-
-    private Vector3d resolvePoint(Object value) {
-        Vector3d point = DeformationUtils.resolvePoint(value);
-        return DeformationUtils.isFinite(point) ? point : null;
     }
 
     private double applyClampMode(double normalizedDistance) {

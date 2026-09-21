@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -61,11 +62,11 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
     public AlignPointsToSurfaceNormalsNode() {
         super(UUID.randomUUID(), "transform.orientation.align_to_surface");
 
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to align", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_NORMALS_ID, "Normals", "Target surface normal list", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to align", NodeDataType.POINT_LIST, this));
+        addInputPort(new BasePort(INPUT_NORMALS_ID, "Normals", "Target surface normal list", NodeDataType.VECTOR_LIST, this));
         addInputPort(new BasePort(INPUT_FORWARD_HINT_ID, "Forward Hint", "Optional forward hint vector for stable tangent orientation", NodeDataType.VECTOR, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Aligned point list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Aligned point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_X_AXES_ID, "X Axes", "Frame X axes", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_Y_AXES_ID, "Y Axes", "Frame Y axes", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_Z_AXES_ID, "Z Axes", "Frame Z axes", NodeDataType.VECTOR_LIST, this));
@@ -86,15 +87,8 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object pointsObj = inputValues.get(INPUT_POINTS_ID);
-        Object normalsObj = inputValues.get(INPUT_NORMALS_ID);
-        if (!(pointsObj instanceof List<?> pointList) || !(normalsObj instanceof List<?> normalList)) {
-            writeInvalid();
-            return;
-        }
-
-        List<Vector3d> points = resolveVectors(pointList);
-        List<Vector3d> normals = resolveVectors(normalList);
+        List<Vector3d> points = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
+        List<Vector3d> normals = resolveNormals(inputValues.get(INPUT_NORMALS_ID));
         if (points.isEmpty() || normals.isEmpty()) {
             writeInvalid();
             return;
@@ -193,7 +187,7 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
             writeInvalid();
             return;
         }
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(outPoints));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(outPoints));
         outputValues.put(OUTPUT_X_AXES_ID, List.copyOf(xAxes));
         outputValues.put(OUTPUT_Y_AXES_ID, List.copyOf(yAxes));
         outputValues.put(OUTPUT_Z_AXES_ID, List.copyOf(zAxes));
@@ -218,19 +212,22 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
         return useShortestList ? null : list.get(list.size() - 1);
     }
 
-    private List<Vector3d> resolveVectors(List<?> values) {
+    private List<Vector3d> resolveNormals(Object value) {
+        if (!(value instanceof List<?> values)) {
+            return List.of();
+        }
         List<Vector3d> out = new ArrayList<>(values.size());
-        for (Object value : values) {
-            Vector3d v = resolveVector(value);
-            if (v != null) {
-                out.add(v);
+        for (Object entry : values) {
+            Vector3d vector = SpatialValueResolver.resolveVector3d(entry);
+            if (OrientationUtils.isFinite(vector)) {
+                out.add(vector);
             }
         }
         return out;
     }
 
     private Vector3d resolveVector(Object value) {
-        Vector3d vector = OrientationUtils.resolveVector(value);
+        Vector3d vector = SpatialValueResolver.resolveVector3d(value);
         return OrientationUtils.isFinite(vector) ? vector : null;
     }
 

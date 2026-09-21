@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -74,18 +75,18 @@ public class SweepPointListAlongPathNode extends BaseNode {
     public SweepPointListAlongPathNode() {
         super(UUID.randomUUID(), "geometry.solids.sweep_from_points");
 
-        addInputPort(new BasePort(INPUT_PROFILE_POINTS_ID, "Profile Points", "Ordered profile point list to sweep", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_PROFILE_POINTS_ID, "Profile Points", "Ordered profile point list to sweep", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_LINE_ID, "Line", "Optional line spine", NodeDataType.LINE, this));
         addInputPort(new BasePort(INPUT_POLYLINE_ID, "Polyline", "Optional polyline spine", NodeDataType.POLYLINE, this));
         addInputPort(new BasePort(INPUT_CURVE_ID, "Curve", "Optional curve spine", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_PATH_POINTS_ID, "Path Points", "Optional ordered path point list fallback", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_PATH_POINTS_ID, "Path Points", "Optional ordered path point list fallback", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_SCALE_VALUES_ID, "Scale Values", "Optional scale list sampled along the path", NodeDataType.LIST, this));
         addInputPort(new BasePort(INPUT_ROTATION_VALUES_ID, "Rotation Values", "Optional rotation degrees list sampled along the path", NodeDataType.LIST, this));
 
-        addOutputPort(new BasePort(OUTPUT_SPINE_POINTS_ID, "Spine Points", "Resolved spine point list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SPINE_POINTS_ID, "Spine Points", "Resolved spine point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "List of swept section polylines", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_TREE_ID, "Section Paths Tree", "Section paths keyed by section index", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_ALL_POINTS_ID, "All Points", "Flattened list of all swept section points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_ALL_POINTS_ID, "All Points", "Flattened list of all swept section points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_POINTS_TREE_ID, "Section Points Tree", "Section points keyed by section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_ID, "Rail Segments", "Line segments connecting corresponding section points", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_TREE_ID, "Rail Segments Tree", "Rail segments grouped by source section index", NodeDataType.DATA_TREE, this));
@@ -102,7 +103,7 @@ public class SweepPointListAlongPathNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object profileObj = inputValues.get(INPUT_PROFILE_POINTS_ID);
-        List<Vector3d> profilePoints = SolidNodeUtils.resolvePointList(profileObj);
+        List<Vector3d> profilePoints = SpatialValueResolver.resolvePointList(profileObj);
         List<Vector3d> spinePoints = resolveSpinePoints();
 
         if (profilePoints.size() < 2 || spinePoints.size() < 2) {
@@ -170,10 +171,10 @@ public class SweepPointListAlongPathNode extends BaseNode {
         }
         SurfaceStripData surfaceStrip = new SurfaceStripData(sections, sectionClosedFlags);
 
-        outputValues.put(OUTPUT_SPINE_POINTS_ID, List.copyOf(spinePoints));
+        outputValues.put(OUTPUT_SPINE_POINTS_ID, SpatialValueResolver.toPointDataList(spinePoints));
         outputValues.put(OUTPUT_SECTION_PATHS_ID, List.copyOf(sectionPaths));
         outputValues.put(OUTPUT_SECTION_PATHS_TREE_ID, SolidDataTreeUtils.indexedValueTree(sectionPaths));
-        outputValues.put(OUTPUT_ALL_POINTS_ID, List.copyOf(allPoints));
+        outputValues.put(OUTPUT_ALL_POINTS_ID, SpatialValueResolver.toPointDataList(allPoints));
         outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, SolidDataTreeUtils.indexedGroupTree(sections));
         outputValues.put(OUTPUT_RAIL_SEGMENTS_ID, List.copyOf(railSegments));
         outputValues.put(OUTPUT_RAIL_SEGMENTS_TREE_ID, SolidDataTreeUtils.indexedGroupTree(railSegmentRows));

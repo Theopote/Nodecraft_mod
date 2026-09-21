@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -63,8 +64,8 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
             "Resampled polyline (closed when the input polyline is closed)",
             NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points",
-            "Resampled points as a list of Vector3d positions",
-            NodeDataType.VECTOR_LIST, this));
+            "Resampled points as point list",
+            NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length",
             "Total path length used for sampling",
             NodeDataType.DOUBLE, this));
@@ -151,7 +152,7 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
         }
 
         outputValues.put(OUTPUT_POLYLINE_ID, polyline);
-        outputValues.put(OUTPUT_POINTS_ID, samples);
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(samples));
         outputValues.put(OUTPUT_LENGTH_ID, total);
         outputValues.put(OUTPUT_VALID_ID, true);
     }

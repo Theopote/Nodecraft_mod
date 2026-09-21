@@ -16,6 +16,7 @@ import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -80,7 +81,7 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite cylinder geometry used for voxelization", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_SEGMENT_GEOMETRY_TREE_ID, "Segment Geometry Tree", "Cylinder segment geometry keyed by path segment index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Sampled path used for voxelization", NodeDataType.POLYLINE, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled path points as Vector3d list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled path points as point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding region of the generated curve blocks", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Source path length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Generated block count", NodeDataType.INTEGER, this));
@@ -125,7 +126,7 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_SEGMENT_GEOMETRY_TREE_ID, buildSegmentTree(cylinders));
         outputValues.put(OUTPUT_POLYLINE_ID, polyline);
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(sampled.points()));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(sampled.points()));
         outputValues.put(OUTPUT_REGION_ID, region);
         outputValues.put(OUTPUT_LENGTH_ID, sampled.length());
         outputValues.put(OUTPUT_COUNT_ID, blocks.size());

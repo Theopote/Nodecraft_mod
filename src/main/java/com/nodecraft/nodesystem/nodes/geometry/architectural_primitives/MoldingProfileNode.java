@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -54,7 +55,7 @@ public class MoldingProfileNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_FACE_ID, "Face", "Optional box face used to derive the molding plane", NodeDataType.BOX_FACE, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Optional explicit construction plane", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional profile center point", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional profile center point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_PROFILE_TYPE_ID, "Profile Type", "flat, step, cove, ogee, or bevel", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_WIDTH_ID, "Width", "Profile width along local X", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Profile height along local Y", NodeDataType.DOUBLE, this));
@@ -62,7 +63,7 @@ public class MoldingProfileNode extends BaseNode {
         addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Curve segments used for rounded transitions", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Generated polygon profile", NodeDataType.POLYGON_PROFILE, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed profile points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed profile points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed boundary polyline", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved construction plane", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid molding profile could be generated", NodeDataType.BOOLEAN, this));
@@ -102,7 +103,7 @@ public class MoldingProfileNode extends BaseNode {
 
         PolygonProfileData profile = new PolygonProfileData(points, plane);
         outputValues.put(OUTPUT_PROFILE_ID, profile);
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(points));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(points));
         outputValues.put(OUTPUT_BOUNDARY_ID, PathUtils.createPolylineOrNull(PathUtils.toVec3dList(points, false)));
         outputValues.put(OUTPUT_PLANE_ID, plane);
         outputValues.put(OUTPUT_VALID_ID, true);
@@ -228,15 +229,9 @@ public class MoldingProfileNode extends BaseNode {
     }
 
     private Vector3d resolveCenter() {
-        Object centerObj = inputValues.get(INPUT_CENTER_ID);
-        if (centerObj instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (centerObj instanceof Vec3d vec3d) {
-            return new Vector3d(vec3d.x, vec3d.y, vec3d.z);
-        }
-        if (centerObj instanceof BoxFaceData face) {
-            return face.getCenter();
+        Vector3d center = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_CENTER_ID));
+        if (center != null) {
+            return center;
         }
         if (inputValues.get(INPUT_FACE_ID) instanceof BoxFaceData face) {
             return face.getCenter();

@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -44,7 +45,7 @@ public class ProjectProfileToPlaneNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Projected polygon profile on the target plane", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Projected profile boundary", NodeDataType.POLYLINE, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Projected closed points as Vector3d list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Projected closed points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_DISTANCES_ID, "Distances", "Absolute distances from source vertices to the target plane", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_EDGE_COUNT_ID, "Edge Count", "Number of projected profile edges", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when projection succeeded", NodeDataType.BOOLEAN, this));
@@ -91,7 +92,7 @@ public class ProjectProfileToPlaneNode extends BaseNode {
 
         outputValues.put(OUTPUT_PROFILE_ID, projectedProfile);
         outputValues.put(OUTPUT_BOUNDARY_ID, boundary);
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(projectedPoints));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(projectedPoints));
         outputValues.put(OUTPUT_DISTANCES_ID, List.copyOf(distances));
         outputValues.put(OUTPUT_EDGE_COUNT_ID, projectedProfile.getEdgeCount());
         outputValues.put(OUTPUT_VALID_ID, true);

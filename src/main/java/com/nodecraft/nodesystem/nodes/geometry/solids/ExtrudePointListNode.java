@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -48,11 +49,11 @@ public class ExtrudePointListNode extends BaseNode {
     public ExtrudePointListNode() {
         super(UUID.randomUUID(), "geometry.solids.extrude_from_points");
 
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Ordered point list to extrude", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Ordered point list to extrude", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_DIRECTION_ID, "Direction", "Extrusion direction vector", NodeDataType.VECTOR, this));
 
-        addOutputPort(new BasePort(OUTPUT_SOURCE_POINTS_ID, "Source Points", "Original ordered point list", NodeDataType.VECTOR_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_EXTRUDED_POINTS_ID, "Extruded Points", "Extruded ordered point list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SOURCE_POINTS_ID, "Source Points", "Original ordered point list", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_EXTRUDED_POINTS_ID, "Extruded Points", "Extruded ordered point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SOURCE_PATH_ID, "Source Path", "Polyline describing the source contour", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_EXTRUDED_PATH_ID, "Extruded Path", "Polyline describing the extruded contour", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_SIDE_SEGMENTS_ID, "Side Segments", "List of line segments connecting source and extruded points", NodeDataType.LIST, this));
@@ -68,29 +69,19 @@ public class ExtrudePointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object pointsObj = inputValues.get(INPUT_POINTS_ID);
+        List<Vector3d> resolvedPoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
         Vector3d direction = SolidNodeUtils.resolveDirection(inputValues.get(INPUT_DIRECTION_ID));
 
-        if (!(pointsObj instanceof List<?> pointsInput) || direction == null) {
+        if (resolvedPoints.size() < 2 || direction == null || direction.lengthSquared() <= 1.0e-12d) {
             writeEmptyOutputs();
             return;
         }
 
-        if (direction.lengthSquared() <= 1.0e-12d) {
-            writeEmptyOutputs();
-            return;
-        }
+        List<Vector3d> sourcePoints = new ArrayList<>(resolvedPoints.size());
+        List<Vector3d> extrudedPoints = new ArrayList<>(resolvedPoints.size());
+        List<LineData> sideSegments = new ArrayList<>(resolvedPoints.size());
 
-        List<Vector3d> sourcePoints = new ArrayList<>();
-        List<Vector3d> extrudedPoints = new ArrayList<>();
-        List<LineData> sideSegments = new ArrayList<>();
-
-        for (Object entry : pointsInput) {
-            Vector3d point = SolidNodeUtils.resolvePoint(entry);
-            if (point == null) {
-                continue;
-            }
-
+        for (Vector3d point : resolvedPoints) {
             Vector3d sourcePoint = new Vector3d(point);
             Vector3d extrudedPoint = new Vector3d(point).add(direction);
             sourcePoints.add(sourcePoint);
@@ -101,11 +92,6 @@ public class ExtrudePointListNode extends BaseNode {
             ));
         }
 
-        if (sourcePoints.size() < 2) {
-            writeEmptyOutputs();
-            return;
-        }
-
         PolylineData sourcePath = SolidNodeUtils.createPolyline(sourcePoints, closePath);
         PolylineData extrudedPath = SolidNodeUtils.createPolyline(extrudedPoints, closePath);
         SurfaceStripData surfaceStrip = new SurfaceStripData(
@@ -113,8 +99,8 @@ public class ExtrudePointListNode extends BaseNode {
             List.of(closePath, closePath)
         );
 
-        outputValues.put(OUTPUT_SOURCE_POINTS_ID, List.copyOf(sourcePoints));
-        outputValues.put(OUTPUT_EXTRUDED_POINTS_ID, List.copyOf(extrudedPoints));
+        outputValues.put(OUTPUT_SOURCE_POINTS_ID, SpatialValueResolver.toPointDataList(sourcePoints));
+        outputValues.put(OUTPUT_EXTRUDED_POINTS_ID, SpatialValueResolver.toPointDataList(extrudedPoints));
         outputValues.put(OUTPUT_SOURCE_PATH_ID, sourcePath);
         outputValues.put(OUTPUT_EXTRUDED_PATH_ID, extrudedPath);
         outputValues.put(OUTPUT_SIDE_SEGMENTS_ID, List.copyOf(sideSegments));

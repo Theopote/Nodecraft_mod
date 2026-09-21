@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BentSdfData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.SdfGeometryData;
@@ -81,7 +82,7 @@ public class BendGeometryNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to bend; SDF Geometry stays continuous", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SDF_ID, "SDF", "Optional source SDF when no Geometry is connected", NodeDataType.SDF, this));
-        addInputPort(new BasePort(INPUT_AXIS_ORIGIN_ID, "Axis Origin", "Point on the bend axis", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_AXIS_ORIGIN_ID, "Axis Origin", "Point on the bend axis", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_AXIS_DIRECTION_ID, "Axis Direction", "Direction along which bend is distributed", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_BEND_NORMAL_ID, "Bend Normal", "Direction the bend curves toward", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_BEND_DEGREES_ID, "Bend Degrees", "Total bend angle over the bend length", NodeDataType.DOUBLE, this));
@@ -92,8 +93,8 @@ public class BendGeometryNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Bent SDF-backed Geometry for voxel baking", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_SDF_ID, "SDF", "Bent signed distance field", NodeDataType.SDF, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDS_MIN_ID, "Bounds Min", "Estimated output bounds minimum", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDS_MAX_ID, "Bounds Max", "Estimated output bounds maximum", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDS_MIN_ID, "Bounds Min", "Estimated output bounds minimum", NodeDataType.POINT, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDS_MAX_ID, "Bounds Max", "Estimated output bounds maximum", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_APPROXIMATE_ID, "Approximate", "True when non-SDF geometry was voxelized before bending", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_SOURCE_VOXELS_ID, "Source Voxels", "Voxel count used for approximate non-SDF geometry input", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when bend geometry was generated", NodeDataType.BOOLEAN, this));
@@ -125,8 +126,8 @@ public class BendGeometryNode extends BaseNode {
         GeometryData geometry = new SdfGeometryData(bent, outputBounds.min(), outputBounds.max(), iso);
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_SDF_ID, bent);
-        outputValues.put(OUTPUT_BOUNDS_MIN_ID, outputBounds.min());
-        outputValues.put(OUTPUT_BOUNDS_MAX_ID, outputBounds.max());
+        outputValues.put(OUTPUT_BOUNDS_MIN_ID, new PointData(outputBounds.min()));
+        outputValues.put(OUTPUT_BOUNDS_MAX_ID, new PointData(outputBounds.max()));
         outputValues.put(OUTPUT_APPROXIMATE_ID, source.approximate);
         outputValues.put(OUTPUT_SOURCE_VOXELS_ID, source.sourceVoxelCount);
         outputValues.put(OUTPUT_VALID_ID, true);

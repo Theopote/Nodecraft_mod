@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -86,23 +87,23 @@ public class SweepTwoRailsNode extends BaseNode {
         super(UUID.randomUUID(), "geometry.solids.sweep_two_rails");
 
         addInputPort(new BasePort(INPUT_PROFILE_ID, "Profile", "Optional polygon profile to sweep", NodeDataType.POLYGON_PROFILE, this));
-        addInputPort(new BasePort(INPUT_PROFILE_POINTS_ID, "Profile Points", "Optional ordered point profile fallback", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_PROFILE_POINTS_ID, "Profile Points", "Optional ordered point profile fallback", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_RAIL_A_LINE_ID, "Rail A Line", "First guide rail as a line", NodeDataType.LINE, this));
         addInputPort(new BasePort(INPUT_RAIL_A_POLYLINE_ID, "Rail A Polyline", "First guide rail as a polyline", NodeDataType.POLYLINE, this));
         addInputPort(new BasePort(INPUT_RAIL_A_CURVE_ID, "Rail A Curve", "First guide rail as a curve", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_RAIL_A_POINTS_ID, "Rail A Points", "First guide rail as ordered points", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_RAIL_A_POINTS_ID, "Rail A Points", "First guide rail as ordered points", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_RAIL_B_LINE_ID, "Rail B Line", "Second guide rail as a line", NodeDataType.LINE, this));
         addInputPort(new BasePort(INPUT_RAIL_B_POLYLINE_ID, "Rail B Polyline", "Second guide rail as a polyline", NodeDataType.POLYLINE, this));
         addInputPort(new BasePort(INPUT_RAIL_B_CURVE_ID, "Rail B Curve", "Second guide rail as a curve", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_RAIL_B_POINTS_ID, "Rail B Points", "Second guide rail as ordered points", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_RAIL_B_POINTS_ID, "Rail B Points", "Second guide rail as ordered points", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_SCALE_VALUES_ID, "Scale Values", "Optional scale list sampled along the rails", NodeDataType.LIST, this));
         addInputPort(new BasePort(INPUT_ROTATION_VALUES_ID, "Rotation Values", "Optional rotation degrees list sampled along the rails", NodeDataType.LIST, this));
 
-        addOutputPort(new BasePort(OUTPUT_RAIL_A_POINTS_ID, "Rail A Points", "Resampled first guide rail points", NodeDataType.VECTOR_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_RAIL_B_POINTS_ID, "Rail B Points", "Resampled second guide rail points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_RAIL_A_POINTS_ID, "Rail A Points", "Resampled first guide rail points", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_RAIL_B_POINTS_ID, "Rail B Points", "Resampled second guide rail points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "List of swept section polylines", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_TREE_ID, "Section Paths Tree", "Section paths keyed by section index", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_ALL_POINTS_ID, "All Points", "Flattened list of all swept section points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_ALL_POINTS_ID, "All Points", "Flattened list of all swept section points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_POINTS_TREE_ID, "Section Points Tree", "Section points keyed by section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_ID, "Rail Segments", "Line segments connecting corresponding section points", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_TREE_ID, "Rail Segments Tree", "Rail segments grouped by source section index", NodeDataType.DATA_TREE, this));
@@ -186,11 +187,11 @@ public class SweepTwoRailsNode extends BaseNode {
         }
         SurfaceStripData surfaceStrip = new SurfaceStripData(sections, sectionClosedFlags);
 
-        outputValues.put(OUTPUT_RAIL_A_POINTS_ID, List.copyOf(railA));
-        outputValues.put(OUTPUT_RAIL_B_POINTS_ID, List.copyOf(railB));
+        outputValues.put(OUTPUT_RAIL_A_POINTS_ID, SpatialValueResolver.toPointDataList(railA));
+        outputValues.put(OUTPUT_RAIL_B_POINTS_ID, SpatialValueResolver.toPointDataList(railB));
         outputValues.put(OUTPUT_SECTION_PATHS_ID, List.copyOf(sectionPaths));
         outputValues.put(OUTPUT_SECTION_PATHS_TREE_ID, SolidDataTreeUtils.indexedValueTree(sectionPaths));
-        outputValues.put(OUTPUT_ALL_POINTS_ID, List.copyOf(allPoints));
+        outputValues.put(OUTPUT_ALL_POINTS_ID, SpatialValueResolver.toPointDataList(allPoints));
         outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, SolidDataTreeUtils.indexedGroupTree(sections));
         outputValues.put(OUTPUT_RAIL_SEGMENTS_ID, List.copyOf(railSegments));
         outputValues.put(OUTPUT_RAIL_SEGMENTS_TREE_ID, SolidDataTreeUtils.indexedGroupTree(railSegmentRows));
@@ -306,7 +307,7 @@ public class SweepTwoRailsNode extends BaseNode {
         if (profileObj instanceof PolygonProfileData profile) {
             return profile.getUniquePoints();
         }
-        return SolidNodeUtils.resolvePointList(inputValues.get(INPUT_PROFILE_POINTS_ID));
+        return SpatialValueResolver.resolvePointList(inputValues.get(INPUT_PROFILE_POINTS_ID));
     }
 
     private List<Vector3d> resolveRailPoints(Object lineObj, Object polylineObj, Object curveObj, Object pointsObj) {

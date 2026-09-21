@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -40,15 +41,15 @@ public class ShrinkwrapPointsOnSurfaceStripNode extends BaseNode {
         super(UUID.randomUUID(), "geometry.solids.shrinkwrap_points_surface_strip");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points",
-            "Point list (Point, Vector, BlockPos, etc.) or a single point value",
-            NodeDataType.ANY, this));
+            "Query point list to project onto the surface strip",
+            NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_SURFACE_STRIP_ID, "Surface Strip",
             "Surface strip whose quad strips are triangulated for projection",
             NodeDataType.SURFACE_STRIP, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Projected Points",
-            "Closest points on the strip as Vector3d list",
-            NodeDataType.VECTOR_LIST, this));
+            "Closest points on the strip as point list",
+            NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_DISTANCES_ID, "Distances",
             "Per-point distances from query to projected location",
             NodeDataType.LIST, this));
@@ -75,7 +76,7 @@ public class ShrinkwrapPointsOnSurfaceStripNode extends BaseNode {
             return;
         }
 
-        List<Vector3d> queries = SolidNodeUtils.resolvePointList(inputValues.get(INPUT_POINTS_ID));
+        List<Vector3d> queries = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
         if (queries.isEmpty()) {
             writeInvalid();
             return;
@@ -108,7 +109,7 @@ public class ShrinkwrapPointsOnSurfaceStripNode extends BaseNode {
             distances.add(Math.sqrt(bestSq));
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, projected);
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(projected));
         outputValues.put(OUTPUT_DISTANCES_ID, distances);
         outputValues.put(OUTPUT_VALID_ID, true);
     }

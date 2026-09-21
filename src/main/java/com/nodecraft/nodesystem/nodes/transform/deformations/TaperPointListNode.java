@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -58,13 +59,13 @@ public class TaperPointListNode extends BaseNode {
 
     public TaperPointListNode() {
         super(UUID.randomUUID(), "transform.deformations.taper");
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to taper", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_AXIS_ORIGIN_ID, "Axis Origin", "Origin point of the taper axis", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to taper", NodeDataType.POINT_LIST, this));
+        addInputPort(new BasePort(INPUT_AXIS_ORIGIN_ID, "Axis Origin", "Origin point of the taper axis", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_AXIS_DIRECTION_ID, "Axis Direction", "Direction vector of the taper axis", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_START_SCALE_ID, "Start Scale", "Optional start scale override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_END_SCALE_ID, "End Scale", "Optional end scale override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_TAPER_LENGTH_ID, "Taper Length", "Optional taper length override", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Tapered point list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Tapered point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of points in the tapered output", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the inputs were resolved", NodeDataType.BOOLEAN, this));
     }
@@ -76,9 +77,9 @@ public class TaperPointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object pointsObj = inputValues.get(INPUT_POINTS_ID);
-        Vector3d axisOrigin = resolvePoint(inputValues.get(INPUT_AXIS_ORIGIN_ID));
-        if (!(pointsObj instanceof List<?> pointsInput) || !DeformationUtils.isFinite(axisOrigin) || !(inputValues.get(INPUT_AXIS_DIRECTION_ID) instanceof Vector3d axisDirection)) {
+        List<Vector3d> pointsInput = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
+        Vector3d axisOrigin = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_AXIS_ORIGIN_ID));
+        if (pointsInput.isEmpty() || !DeformationUtils.isFinite(axisOrigin) || !(inputValues.get(INPUT_AXIS_DIRECTION_ID) instanceof Vector3d axisDirection)) {
             writeEmptyOutputs();
             return;
         }
@@ -99,11 +100,7 @@ public class TaperPointListNode extends BaseNode {
         }
 
         List<Vector3d> taperedPoints = new ArrayList<>(pointsInput.size());
-        for (Object entry : pointsInput) {
-            Vector3d point = resolvePoint(entry);
-            if (point == null) {
-                continue;
-            }
+        for (Vector3d point : pointsInput) {
             Vector3d offset = new Vector3d(point).sub(axisOrigin);
             double axialDistance = offset.dot(axis);
             Vector3d axialComponent = new Vector3d(axis).mul(axialDistance);
@@ -117,7 +114,7 @@ public class TaperPointListNode extends BaseNode {
             taperedPoints.add(new Vector3d(axisOrigin).add(axialComponent).add(radialComponent.mul(scale)));
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(taperedPoints));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(taperedPoints));
         outputValues.put(OUTPUT_COUNT_ID, taperedPoints.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
@@ -159,11 +156,6 @@ public class TaperPointListNode extends BaseNode {
 
     private double resolveDouble(Object value, double fallback) {
         return DeformationUtils.resolveFiniteDouble(value, fallback);
-    }
-
-    private Vector3d resolvePoint(Object value) {
-        Vector3d point = DeformationUtils.resolvePoint(value);
-        return DeformationUtils.isFinite(point) ? point : null;
     }
 
     private double applyClampMode(double normalizedDistance) {

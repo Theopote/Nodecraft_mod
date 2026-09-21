@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -60,7 +61,7 @@ public class SampleSphereSurfaceNode extends BaseNode {
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Optional sample count override", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional random seed override", NodeDataType.INTEGER, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled surface points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled surface points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_NORMALS_ID, "Normals", "Outward normals aligned with the sampled points", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of generated samples", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the sphere input is valid", NodeDataType.BOOLEAN, this));
@@ -104,7 +105,7 @@ public class SampleSphereSurfaceNode extends BaseNode {
             points.add(new Vector3d(outward).mul(radius).add(center));
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(points));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(points));
         outputValues.put(OUTPUT_NORMALS_ID, List.copyOf(outwardNormals));
         outputValues.put(OUTPUT_COUNT_ID, points.size());
         outputValues.put(OUTPUT_VALID_ID, true);

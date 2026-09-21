@@ -8,12 +8,11 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.util.Voronoi3DGridLloyd;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -47,13 +46,13 @@ public class Voronoi3DLloydRelaxNode extends BaseNode {
     public Voronoi3DLloydRelaxNode() {
         super(UUID.randomUUID(), "pattern.voronoi_3d.lloyd_relax");
 
-        addInputPort(new BasePort(INPUT_SITES_ID, "Sites", "Seed sites as Vector3d list", NodeDataType.VECTOR_LIST, this));
+        addInputPort(new BasePort(INPUT_SITES_ID, "Sites", "Seed site positions", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_MIN_ID, "Min", "Axis-aligned box minimum corner", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_MAX_ID, "Max", "Axis-aligned box maximum corner", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_CELLS_ID, "Cells", "Grid cells per axis (optional override)", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_ITERATIONS_ID, "Iterations", "Lloyd rounds (optional override)", NodeDataType.INTEGER, this));
 
-        addOutputPort(new BasePort(OUTPUT_SITES_ID, "Sites", "Relaxed site positions", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SITES_ID, "Sites", "Relaxed site positions", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of sites", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when relaxation succeeded", NodeDataType.BOOLEAN, this));
     }
@@ -70,20 +69,10 @@ public class Voronoi3DLloydRelaxNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object sitesObj = inputValues.get(INPUT_SITES_ID);
         Object minObj = inputValues.get(INPUT_MIN_ID);
         Object maxObj = inputValues.get(INPUT_MAX_ID);
-        if (!(sitesObj instanceof Collection<?> collection) || !(minObj instanceof Vector3d minRaw) || !(maxObj instanceof Vector3d maxRaw)) {
-            writeInvalid();
-            return;
-        }
-        List<Vector3d> sites = new ArrayList<>();
-        for (Object o : collection) {
-            if (o instanceof Vector3d v) {
-                sites.add(new Vector3d(v));
-            }
-        }
-        if (sites.isEmpty()) {
+        List<Vector3d> sites = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_SITES_ID));
+        if (!(minObj instanceof Vector3d minRaw) || !(maxObj instanceof Vector3d maxRaw) || sites.isEmpty()) {
             writeInvalid();
             return;
         }
@@ -110,7 +99,7 @@ public class Voronoi3DLloydRelaxNode extends BaseNode {
         int iters = Math.max(1, Math.min(32, GenerationLimits.clampLoopIterations(getInputInt(INPUT_ITERATIONS_ID, iterations))));
 
         List<Vector3d> relaxed = Voronoi3DGridLloyd.relax(min, max, sites, cells, iters);
-        outputValues.put(OUTPUT_SITES_ID, relaxed);
+        outputValues.put(OUTPUT_SITES_ID, SpatialValueResolver.toPointDataList(relaxed));
         outputValues.put(OUTPUT_COUNT_ID, relaxed.size());
         outputValues.put(OUTPUT_VALID_ID, !relaxed.isEmpty());
     }

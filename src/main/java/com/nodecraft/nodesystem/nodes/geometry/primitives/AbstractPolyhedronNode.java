@@ -37,6 +37,10 @@ public abstract class AbstractPolyhedronNode<T extends GeometryData> extends Bas
     @NodeProperty(displayName = "Center Z", category = "Center", order = 2)
     protected double centerZ = 0.0d;
 
+    @NodeProperty(displayName = "Default Size", category = "Size", order = 5,
+        description = "Used when the size port is unconnected")
+    protected double defaultSize = 5.0d;
+
     @NodeProperty(displayName = "Rotation X (deg)", category = "Orientation", order = 10,
         description = "Euler rotation about X in degrees when orientation port is not connected")
     protected double rotationXDeg = 0.0d;
@@ -86,13 +90,11 @@ public abstract class AbstractPolyhedronNode<T extends GeometryData> extends Bas
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d center = resolveCenter(inputValues.get(INPUT_CENTER_ID));
-        Object sizeObj = inputValues.get(inputSizeId);
-        if (center == null || !(sizeObj instanceof Number sizeNumber)) {
+        double size = resolveSize(inputValues.get(inputSizeId));
+        if (center == null) {
             writeEmptyOutputs();
             return;
         }
-
-        double size = sizeNumber.doubleValue();
         if (!Double.isFinite(size) || size <= 0.0d) {
             writeEmptyOutputs();
             return;
@@ -121,6 +123,7 @@ public abstract class AbstractPolyhedronNode<T extends GeometryData> extends Bas
         state.put("centerX", centerX);
         state.put("centerY", centerY);
         state.put("centerZ", centerZ);
+        state.put("defaultSize", defaultSize);
         state.put("rotationXDeg", rotationXDeg);
         state.put("rotationYDeg", rotationYDeg);
         state.put("rotationZDeg", rotationZDeg);
@@ -140,6 +143,9 @@ public abstract class AbstractPolyhedronNode<T extends GeometryData> extends Bas
         }
         if (map.get("centerZ") instanceof Number n) {
             centerZ = n.doubleValue();
+        }
+        if (map.get("defaultSize") instanceof Number n) {
+            defaultSize = n.doubleValue();
         }
         if (map.get("rotationXDeg") instanceof Number n) {
             rotationXDeg = n.doubleValue();
@@ -165,6 +171,13 @@ public abstract class AbstractPolyhedronNode<T extends GeometryData> extends Bas
     protected Vector3d resolveCenter(Object value) {
         Vector3d fromPort = SpatialValueResolver.resolveVector3d(value);
         return fromPort != null ? fromPort : new Vector3d(centerX, centerY, centerZ);
+    }
+
+    protected double resolveSize(@Nullable Object value) {
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        return defaultSize;
     }
 
     protected abstract T createGeometry(Vector3d center, double size, Matrix3d orientation);

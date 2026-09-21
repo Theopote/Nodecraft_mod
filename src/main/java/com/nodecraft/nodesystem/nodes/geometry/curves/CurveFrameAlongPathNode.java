@@ -13,6 +13,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -71,7 +72,7 @@ public class CurveFrameAlongPathNode extends AbstractCurveNode {
             "Reference up vector used to stabilize frame orientation", NodeDataType.VECTOR, this));
 
         addOutputPort(new BasePort(OUTPUT_ORIGINS_ID, "Origins",
-            "Frame origins as Vector3d list", NodeDataType.VECTOR_LIST, this));
+            "Frame origins as point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_X_AXES_ID, "X Axes",
             "Frame X axes (tangent) as Vector3d list", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_Y_AXES_ID, "Y Axes",
@@ -83,7 +84,7 @@ public class CurveFrameAlongPathNode extends AbstractCurveNode {
         addOutputPort(new BasePort(OUTPUT_TANGENTS_ID, "Tangents",
             "Alias of X axes for path-direction workflows", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points",
-            "Frame origins as PointData list", NodeDataType.LIST, this));
+            "Frame origins as point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
             "Number of generated frames", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length",
@@ -153,8 +154,6 @@ public class CurveFrameAlongPathNode extends AbstractCurveNode {
         List<Vector3d> yAxes = new ArrayList<>(sampleDistances.size());
         List<Vector3d> zAxes = new ArrayList<>(sampleDistances.size());
         List<PlaneData> planes = new ArrayList<>(sampleDistances.size());
-        List<PointData> points = new ArrayList<>(sampleDistances.size());
-
         double delta = Math.max(total * 1.0e-4d, 1.0e-4d);
         for (double d : sampleDistances) {
             Vector3d origin = PathUtils.sampleAtDistance(unique, closed, cumulative, d);
@@ -196,7 +195,6 @@ public class CurveFrameAlongPathNode extends AbstractCurveNode {
             yAxes.add(new Vector3d(normal));
             zAxes.add(new Vector3d(binormal));
             planes.add(new PlaneData(new Vector3d(origin), new Vector3d(binormal)));
-            points.add(new PointData(origin.x, origin.y, origin.z));
         }
 
         if (origins.isEmpty()) {
@@ -204,13 +202,14 @@ public class CurveFrameAlongPathNode extends AbstractCurveNode {
             return;
         }
 
-        outputValues.put(OUTPUT_ORIGINS_ID, List.copyOf(origins));
+        List<PointData> originPoints = SpatialValueResolver.toPointDataList(origins);
+        outputValues.put(OUTPUT_ORIGINS_ID, originPoints);
         outputValues.put(OUTPUT_X_AXES_ID, List.copyOf(xAxes));
         outputValues.put(OUTPUT_Y_AXES_ID, List.copyOf(yAxes));
         outputValues.put(OUTPUT_Z_AXES_ID, List.copyOf(zAxes));
         outputValues.put(OUTPUT_PLANES_ID, List.copyOf(planes));
         outputValues.put(OUTPUT_TANGENTS_ID, List.copyOf(xAxes));
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(points));
+        outputValues.put(OUTPUT_POINTS_ID, originPoints);
         outputValues.put(OUTPUT_COUNT_ID, origins.size());
         outputValues.put(OUTPUT_LENGTH_ID, total);
         outputValues.put(OUTPUT_VALID_ID, true);

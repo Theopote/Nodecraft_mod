@@ -7,7 +7,9 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -45,8 +47,8 @@ public class DeconstructBoxFaceNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_NAME_ID, "Name", "Face name", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_INDEX_ID, "Index", "Face index", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_CORNERS_ID, "Corners", "Face corners in winding order", NodeDataType.VECTOR_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Face center point", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_CORNERS_ID, "Corners", "Face corners in winding order", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Face center point", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_NORMAL_ID, "Normal", "Face normal vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Plane containing the face", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_EDGES_ID, "Edges", "Face edge segments", NodeDataType.LIST, this));
@@ -88,8 +90,8 @@ public class DeconstructBoxFaceNode extends BaseNode {
 
         outputValues.put(OUTPUT_NAME_ID, face.getName());
         outputValues.put(OUTPUT_INDEX_ID, face.getIndex());
-        outputValues.put(OUTPUT_CORNERS_ID, corners);
-        outputValues.put(OUTPUT_CENTER_ID, face.getCenter());
+        outputValues.put(OUTPUT_CORNERS_ID, SpatialValueResolver.toPointDataList(corners));
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(face.getCenter()));
         outputValues.put(OUTPUT_NORMAL_ID, face.getNormal());
         outputValues.put(OUTPUT_PLANE_ID, face.getPlane());
         outputValues.put(OUTPUT_EDGES_ID, edges);

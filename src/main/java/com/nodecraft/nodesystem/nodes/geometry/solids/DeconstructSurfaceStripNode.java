@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -47,7 +48,7 @@ public class DeconstructSurfaceStripNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "Polyline for each section", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_TREE_ID, "Section Paths Tree", "Section polylines keyed by section index", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_ALL_POINTS_ID, "All Points", "Flattened ordered section points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_ALL_POINTS_ID, "All Points", "Flattened ordered section points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_POINTS_TREE_ID, "Section Points Tree", "Section points keyed by section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_ID, "Rail Segments", "Line segments connecting corresponding points between sections", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_TREE_ID, "Rail Segments Tree", "Rail segments grouped by source section index", NodeDataType.DATA_TREE, this));
@@ -105,7 +106,7 @@ public class DeconstructSurfaceStripNode extends BaseNode {
 
         outputValues.put(OUTPUT_SECTION_PATHS_ID, List.copyOf(sectionPaths));
         outputValues.put(OUTPUT_SECTION_PATHS_TREE_ID, new DataTreeData(sectionPathBranches));
-        outputValues.put(OUTPUT_ALL_POINTS_ID, surfaceStrip.getFlattenedPoints());
+        outputValues.put(OUTPUT_ALL_POINTS_ID, SpatialValueResolver.toPointDataList(surfaceStrip.getFlattenedPoints()));
         outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, new DataTreeData(sectionPointBranches));
         outputValues.put(OUTPUT_RAIL_SEGMENTS_ID, List.copyOf(railSegments));
         outputValues.put(OUTPUT_RAIL_SEGMENTS_TREE_ID, new DataTreeData(railSegmentBranches));

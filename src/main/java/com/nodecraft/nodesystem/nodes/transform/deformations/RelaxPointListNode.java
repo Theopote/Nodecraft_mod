@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PointListKnn3d;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -54,12 +55,12 @@ public class RelaxPointListNode extends BaseNode {
     public RelaxPointListNode() {
         super(UUID.randomUUID(), "transform.deformations.relax_points");
 
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to smooth", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to smooth", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_K_ID, "K", "Neighbor count override", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_ITERATIONS_ID, "Iterations", "Smoothing iterations override", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_BLEND_ID, "Blend", "Blend factor override", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Smoothed point list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Smoothed point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output points", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when smoothing succeeded", NodeDataType.BOOLEAN, this));
     }
@@ -76,19 +77,7 @@ public class RelaxPointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object pointsObj = inputValues.get(INPUT_POINTS_ID);
-        if (!(pointsObj instanceof List<?> pointsInput)) {
-            writeEmpty();
-            return;
-        }
-
-        List<Vector3d> pts = new ArrayList<>();
-        for (Object entry : pointsInput) {
-            Vector3d p = resolvePoint(entry);
-            if (p != null) {
-                pts.add(new Vector3d(p));
-            }
-        }
+        List<Vector3d> pts = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
         if (pts.size() < 2) {
             writeEmpty();
             return;
@@ -136,7 +125,7 @@ public class RelaxPointListNode extends BaseNode {
             current = next;
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(current));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(current));
         outputValues.put(OUTPUT_COUNT_ID, current.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
@@ -153,11 +142,6 @@ public class RelaxPointListNode extends BaseNode {
 
     private static double resolveDouble(Object value, double fallback) {
         return DeformationUtils.resolveFiniteDouble(value, fallback);
-    }
-
-    private static Vector3d resolvePoint(Object value) {
-        Vector3d point = DeformationUtils.resolvePoint(value);
-        return DeformationUtils.isFinite(point) ? point : null;
     }
 
     @Override

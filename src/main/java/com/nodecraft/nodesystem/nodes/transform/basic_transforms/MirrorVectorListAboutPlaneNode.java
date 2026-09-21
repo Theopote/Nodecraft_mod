@@ -6,15 +6,13 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryMirror;
-import net.minecraft.util.math.BlockPos;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -43,15 +41,15 @@ public class MirrorVectorListAboutPlaneNode extends BaseNode {
         super(UUID.randomUUID(), "transform.basic_transforms.mirror_vector_list_plane");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points",
-            "List of Point, Vector, BlockPos, etc., or a single point value",
-            NodeDataType.ANY, this));
+            "Point list to mirror",
+            NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane",
             "Mirror plane",
             NodeDataType.PLANE, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points",
-            "Mirrored positions as Vector3d list",
-            NodeDataType.VECTOR_LIST, this));
+            "Mirrored point list",
+            NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
             "Number of mirrored points",
             NodeDataType.INTEGER, this));
@@ -81,20 +79,20 @@ public class MirrorVectorListAboutPlaneNode extends BaseNode {
             return;
         }
 
-        ResolvedPoints sources = resolvePoints(inputValues.get(INPUT_POINTS_ID));
-        if (sources.points().isEmpty()) {
+        List<Vector3d> sources = resolveInputPoints(inputValues.get(INPUT_POINTS_ID));
+        if (sources.isEmpty()) {
             writeInvalid();
             return;
         }
 
-        List<Vector3d> mirrored = new ArrayList<>(sources.points().size());
-        for (Vector3d p : sources.points()) {
+        List<Vector3d> mirrored = new ArrayList<>(sources.size());
+        for (Vector3d p : sources) {
             mirrored.add(GeometryMirror.mirrorPoint(p, plane));
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, mirrored);
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(mirrored));
         outputValues.put(OUTPUT_COUNT_ID, mirrored.size());
-        outputValues.put(OUTPUT_SKIPPED_COUNT_ID, sources.skippedCount());
+        outputValues.put(OUTPUT_SKIPPED_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
@@ -105,42 +103,12 @@ public class MirrorVectorListAboutPlaneNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
-    private static ResolvedPoints resolvePoints(Object value) {
-        List<Vector3d> out = new ArrayList<>();
-        int skipped = 0;
-        if (value instanceof Collection<?> collection) {
-            for (Object entry : collection) {
-                Vector3d p = resolvePoint(entry);
-                if (p != null) {
-                    out.add(p);
-                } else {
-                    skipped++;
-                }
-            }
-            return new ResolvedPoints(out, skipped);
+    private static List<Vector3d> resolveInputPoints(Object value) {
+        List<Vector3d> points = SpatialValueResolver.resolvePointList(value);
+        if (!points.isEmpty()) {
+            return points;
         }
-        Vector3d single = resolvePoint(value);
-        if (single != null) {
-            out.add(single);
-        } else if (value != null) {
-            skipped = 1;
-        }
-        return new ResolvedPoints(out, skipped);
-    }
-
-    private static Vector3d resolvePoint(Object value) {
-        if (value instanceof PointData pd) {
-            return new Vector3d(pd.getPosition());
-        }
-        if (value instanceof Vector3d v) {
-            return new Vector3d(v);
-        }
-        if (value instanceof BlockPos bp) {
-            return new Vector3d(bp.getX(), bp.getY(), bp.getZ());
-        }
-        return null;
-    }
-
-    private record ResolvedPoints(List<Vector3d> points, int skippedCount) {
+        Vector3d single = SpatialValueResolver.resolveVector3d(value);
+        return single != null ? List.of(single) : List.of();
     }
 }

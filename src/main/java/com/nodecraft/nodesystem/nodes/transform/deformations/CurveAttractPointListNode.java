@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.PolylineClosestPoint3d;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -63,12 +64,12 @@ public class CurveAttractPointListNode extends BaseNode {
     public CurveAttractPointListNode() {
         super(UUID.randomUUID(), "transform.deformations.curve_attract");
 
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to deform", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to deform", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_CURVE_ID, "Curve", "Target curve (sampled internally)", NodeDataType.CURVE, this));
         addInputPort(new BasePort(INPUT_STRENGTH_ID, "Strength", "Attraction strength override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Falloff radius override", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Deformed point list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Deformed point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output points", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when inputs resolved", NodeDataType.BOOLEAN, this));
     }
@@ -85,9 +86,9 @@ public class CurveAttractPointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object pointsObj = inputValues.get(INPUT_POINTS_ID);
+        List<Vector3d> pointsInput = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
         Object curveObj = inputValues.get(INPUT_CURVE_ID);
-        if (!(pointsObj instanceof List<?> pointsInput) || !(curveObj instanceof Curve curve)) {
+        if (pointsInput.isEmpty() || !(curveObj instanceof Curve curve)) {
             writeEmpty();
             return;
         }
@@ -110,11 +111,7 @@ public class CurveAttractPointListNode extends BaseNode {
         List<Vector3d> out = new ArrayList<>();
         Vector3d closest = new Vector3d();
         Vector3d tangent = new Vector3d();
-        for (Object entry : pointsInput) {
-            Vector3d p = resolvePoint(entry);
-            if (p == null) {
-                continue;
-            }
+        for (Vector3d p : pointsInput) {
             PolylineClosestPoint3d.closestPointAndTangent(poly, p, closest, tangent);
             double d = p.distance(closest);
             if (d >= rad) {
@@ -148,7 +145,7 @@ public class CurveAttractPointListNode extends BaseNode {
             writeEmpty();
             return;
         }
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(out));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(out));
         outputValues.put(OUTPUT_COUNT_ID, out.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
@@ -196,8 +193,4 @@ public class CurveAttractPointListNode extends BaseNode {
         return DeformationUtils.resolveFiniteDouble(value, fallback);
     }
 
-    private static Vector3d resolvePoint(Object value) {
-        Vector3d point = DeformationUtils.resolvePoint(value);
-        return DeformationUtils.isFinite(point) ? point : null;
-    }
 }

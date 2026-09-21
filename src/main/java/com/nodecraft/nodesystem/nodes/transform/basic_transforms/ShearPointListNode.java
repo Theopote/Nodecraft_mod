@@ -6,10 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -57,12 +55,12 @@ public class ShearPointListNode extends BaseNode {
     public ShearPointListNode() {
         super(UUID.randomUUID(), "transform.basic_transforms.shear");
 
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Points to shear", NodeDataType.LIST, this));
-        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Shear origin", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Points to shear", NodeDataType.POINT_LIST, this));
+        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Shear origin", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_FACTOR_U_ID, "Factor U", "Optional override for first shear factor", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_FACTOR_V_ID, "Factor V", "Optional override for second shear factor", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sheared point list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sheared point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output points", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_SKIPPED_COUNT_ID, "Skipped Count", "Number of input items that could not be parsed as points", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when shear was applied", NodeDataType.BOOLEAN, this));
@@ -81,12 +79,16 @@ public class ShearPointListNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object pointsObj = inputValues.get(INPUT_POINTS_ID);
-        if (!(pointsObj instanceof List<?> pointList)) {
+        List<Vector3d> points = SpatialValueResolver.resolvePointList(pointsObj);
+        if (points.isEmpty()) {
             writeInvalid();
             return;
         }
+        int skippedCount = pointsObj instanceof java.util.Collection<?> collection
+            ? Math.max(0, collection.size() - points.size())
+            : 0;
 
-        Vector3d origin = resolvePoint(inputValues.get(INPUT_ORIGIN_ID));
+        Vector3d origin = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_ORIGIN_ID));
         if (origin == null) {
             origin = new Vector3d(0.0d, 0.0d, 0.0d);
         }
@@ -97,14 +99,8 @@ public class ShearPointListNode extends BaseNode {
             return;
         }
 
-        List<Vector3d> out = new ArrayList<>(pointList.size());
-        int skippedCount = 0;
-        for (Object entry : pointList) {
-            Vector3d p = resolvePoint(entry);
-            if (p == null || !isFinite(p)) {
-                skippedCount++;
-                continue;
-            }
+        List<Vector3d> out = new ArrayList<>(points.size());
+        for (Vector3d p : points) {
             out.add(applyShear(p, origin, kU, kV));
         }
 
@@ -112,7 +108,7 @@ public class ShearPointListNode extends BaseNode {
             writeInvalid();
             return;
         }
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(out));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(out));
         outputValues.put(OUTPUT_COUNT_ID, out.size());
         outputValues.put(OUTPUT_SKIPPED_COUNT_ID, skippedCount);
         outputValues.put(OUTPUT_VALID_ID, true);
@@ -145,14 +141,6 @@ public class ShearPointListNode extends BaseNode {
 
     private double resolveDouble(Object value, double fallback) {
         return value instanceof Number n ? n.doubleValue() : fallback;
-    }
-
-    private Vector3d resolvePoint(Object value) {
-        if (value instanceof Vector3d v) return new Vector3d(v);
-        if (value instanceof Vec3d v) return new Vector3d(v.x, v.y, v.z);
-        if (value instanceof PointData p) return new Vector3d(p.getPosition());
-        if (value instanceof BlockPos b) return new Vector3d(b.getX(), b.getY(), b.getZ());
-        return null;
     }
 
     private boolean isFinite(Vector3d vector) {

@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -50,8 +51,8 @@ public class ExtrudeProfileNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_BASE_PROFILE_ID, "Base Profile", "Original polygon profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_TOP_PROFILE_ID, "Top Profile", "Extruded polygon profile", NodeDataType.POLYGON_PROFILE, this));
-        addOutputPort(new BasePort(OUTPUT_BASE_POINTS_ID, "Base Points", "Closed base polygon points", NodeDataType.VECTOR_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_TOP_POINTS_ID, "Top Points", "Closed extruded polygon points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_BASE_POINTS_ID, "Base Points", "Closed base polygon points", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_TOP_POINTS_ID, "Top Points", "Closed extruded polygon points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SIDE_SURFACE_ID, "Side Surface", "Side strip surface between the base and top profiles (surface shell representation)", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_HEIGHT_ID, "Height", "Extrusion vector length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid profile and direction were provided", NodeDataType.BOOLEAN, this));
@@ -107,8 +108,8 @@ public class ExtrudeProfileNode extends BaseNode {
         outputValues.put(OUTPUT_GEOMETRY_ID, prism);
         outputValues.put(OUTPUT_BASE_PROFILE_ID, baseProfile);
         outputValues.put(OUTPUT_TOP_PROFILE_ID, topProfile);
-        outputValues.put(OUTPUT_BASE_POINTS_ID, List.copyOf(baseClosedPoints));
-        outputValues.put(OUTPUT_TOP_POINTS_ID, List.copyOf(topClosedPoints));
+        outputValues.put(OUTPUT_BASE_POINTS_ID, SpatialValueResolver.toPointDataList(baseClosedPoints));
+        outputValues.put(OUTPUT_TOP_POINTS_ID, SpatialValueResolver.toPointDataList(topClosedPoints));
         outputValues.put(OUTPUT_SIDE_SURFACE_ID, sideSurface);
         outputValues.put(OUTPUT_HEIGHT_ID, height);
         outputValues.put(OUTPUT_VALID_ID, true);

@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -59,12 +60,12 @@ public class NoiseDisplacePointListNode extends BaseNode {
 
     public NoiseDisplacePointListNode() {
         super(UUID.randomUUID(), "transform.deformations.noise_displace");
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to displace", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to displace", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_AMPLITUDE_ID, "Amplitude", "Optional displacement amplitude override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_FREQUENCY_ID, "Frequency", "Optional noise frequency override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional noise seed override", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Optional noise-space offset override", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Displaced point list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Displaced point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of points in the displaced output", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when displacement was applied", NodeDataType.BOOLEAN, this));
     }
@@ -76,8 +77,8 @@ public class NoiseDisplacePointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object pointsObj = inputValues.get(INPUT_POINTS_ID);
-        if (!(pointsObj instanceof List<?> pointsInput)) {
+        List<Vector3d> pointsInput = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
+        if (pointsInput.isEmpty()) {
             writeEmptyOutputs();
             return;
         }
@@ -98,11 +99,7 @@ public class NoiseDisplacePointListNode extends BaseNode {
         }
 
         List<Vector3d> displaced = new ArrayList<>(pointsInput.size());
-        for (Object entry : pointsInput) {
-            Vector3d point = resolvePoint(entry);
-            if (point == null) {
-                continue;
-            }
+        for (Vector3d point : pointsInput) {
             double px = point.x + resolvedOffset.x;
             double py = point.y + resolvedOffset.y;
             double pz = point.z + resolvedOffset.z;
@@ -116,7 +113,7 @@ public class NoiseDisplacePointListNode extends BaseNode {
             ));
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(displaced));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(displaced));
         outputValues.put(OUTPUT_COUNT_ID, displaced.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
@@ -156,11 +153,6 @@ public class NoiseDisplacePointListNode extends BaseNode {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private Vector3d resolvePoint(Object value) {
-        Vector3d point = DeformationUtils.resolvePoint(value);
-        return DeformationUtils.isFinite(point) ? point : null;
     }
 
     private double resolveDouble(Object value, double fallback) {

@@ -6,10 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -51,13 +49,13 @@ public class TransformPointsByFramesNode extends BaseNode {
     public TransformPointsByFramesNode() {
         super(UUID.randomUUID(), "transform.basic_transforms.transform_by_frames");
 
-        addInputPort(new BasePort(INPUT_LOCAL_POINTS_ID, "Local Points", "Point list in local frame coordinates", NodeDataType.LIST, this));
-        addInputPort(new BasePort(INPUT_ORIGINS_ID, "Origins", "Frame origins list", NodeDataType.VECTOR_LIST, this));
+        addInputPort(new BasePort(INPUT_LOCAL_POINTS_ID, "Local Points", "Point list in local frame coordinates", NodeDataType.POINT_LIST, this));
+        addInputPort(new BasePort(INPUT_ORIGINS_ID, "Origins", "Frame origins list", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_X_AXES_ID, "X Axes", "Frame X axes list", NodeDataType.VECTOR_LIST, this));
         addInputPort(new BasePort(INPUT_Y_AXES_ID, "Y Axes", "Frame Y axes list", NodeDataType.VECTOR_LIST, this));
         addInputPort(new BasePort(INPUT_Z_AXES_ID, "Z Axes", "Frame Z axes list", NodeDataType.VECTOR_LIST, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "World-space transformed points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "World-space transformed points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output points", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_FRAME_COUNT_ID, "Frame Count", "Number of candidate frames", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_USED_FRAME_COUNT_ID, "Used Frame Count", "Number of frames actually used", NodeDataType.INTEGER, this));
@@ -77,26 +75,11 @@ public class TransformPointsByFramesNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object localObj = inputValues.get(INPUT_LOCAL_POINTS_ID);
-        Object originsObj = inputValues.get(INPUT_ORIGINS_ID);
-        Object xAxesObj = inputValues.get(INPUT_X_AXES_ID);
-        Object yAxesObj = inputValues.get(INPUT_Y_AXES_ID);
-        Object zAxesObj = inputValues.get(INPUT_Z_AXES_ID);
-
-        if (!(localObj instanceof List<?> localList)
-            || !(originsObj instanceof List<?> originsList)
-            || !(xAxesObj instanceof List<?> xList)
-            || !(yAxesObj instanceof List<?> yList)
-            || !(zAxesObj instanceof List<?> zList)) {
-            writeInvalid();
-            return;
-        }
-
-        List<Vector3d> localPoints = resolvePoints(localList);
-        List<Vector3d> origins = resolvePoints(originsList);
-        List<Vector3d> xAxes = resolvePoints(xList);
-        List<Vector3d> yAxes = resolvePoints(yList);
-        List<Vector3d> zAxes = resolvePoints(zList);
+        List<Vector3d> localPoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_LOCAL_POINTS_ID));
+        List<Vector3d> origins = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_ORIGINS_ID));
+        List<Vector3d> xAxes = resolveVectorList(inputValues.get(INPUT_X_AXES_ID));
+        List<Vector3d> yAxes = resolveVectorList(inputValues.get(INPUT_Y_AXES_ID));
+        List<Vector3d> zAxes = resolveVectorList(inputValues.get(INPUT_Z_AXES_ID));
         if (localPoints.isEmpty() || origins.isEmpty() || xAxes.isEmpty() || yAxes.isEmpty() || zAxes.isEmpty()) {
             writeInvalid();
             return;
@@ -153,7 +136,7 @@ public class TransformPointsByFramesNode extends BaseNode {
             writeInvalid();
             return;
         }
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(out));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(out));
         outputValues.put(OUTPUT_COUNT_ID, out.size());
         outputValues.put(OUTPUT_FRAME_COUNT_ID, frameCount);
         outputValues.put(OUTPUT_USED_FRAME_COUNT_ID, usedFrameCount);
@@ -176,23 +159,18 @@ public class TransformPointsByFramesNode extends BaseNode {
         return useShortestFrameList ? null : list.get(list.size() - 1);
     }
 
-    private List<Vector3d> resolvePoints(List<?> raw) {
+    private List<Vector3d> resolveVectorList(Object value) {
+        if (!(value instanceof List<?> raw)) {
+            return List.of();
+        }
         List<Vector3d> out = new ArrayList<>(raw.size());
         for (Object entry : raw) {
-            Vector3d point = resolvePoint(entry);
-            if (point != null && isFinite(point)) {
-                out.add(point);
+            Vector3d vector = SpatialValueResolver.resolveVector3d(entry);
+            if (vector != null && isFinite(vector)) {
+                out.add(vector);
             }
         }
         return out;
-    }
-
-    private Vector3d resolvePoint(Object value) {
-        if (value instanceof Vector3d v) return new Vector3d(v);
-        if (value instanceof Vec3d v) return new Vector3d(v.x, v.y, v.z);
-        if (value instanceof PointData p) return new Vector3d(p.getPosition());
-        if (value instanceof BlockPos b) return new Vector3d(b.getX(), b.getY(), b.getZ());
-        return null;
     }
 
     private boolean isUsableAxis(Vector3d axis) {

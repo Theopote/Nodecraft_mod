@@ -6,8 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -19,7 +19,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "transform.orientation.project_points_to_plane",
     displayName = "Project Points To Plane",
-    description = "Projects a list of points or vectors onto a target plane",
+    description = "Projects a list of points onto a target plane",
     category = "transform.orientation",
     order = 3
 )
@@ -29,7 +29,6 @@ public class ProjectPointsToPlaneNode extends BaseNode {
     private static final String INPUT_PLANE_ID = "input_plane";
 
     private static final String OUTPUT_POINTS_ID = "output_points";
-    private static final String OUTPUT_POINT_DATA_ID = "output_point_data";
     private static final String OUTPUT_DISTANCES_ID = "output_distances";
     private static final String OUTPUT_SIGNED_DISTANCES_ID = "output_signed_distances";
     private static final String OUTPUT_COUNT_ID = "output_count";
@@ -38,11 +37,10 @@ public class ProjectPointsToPlaneNode extends BaseNode {
     public ProjectPointsToPlaneNode() {
         super(UUID.randomUUID(), "transform.orientation.project_points_to_plane");
 
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "List of points, vectors, positions, or block coordinates to project", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to project", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target plane for projection", NodeDataType.PLANE, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Projected points as Vector3d list", NodeDataType.VECTOR_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_POINT_DATA_ID, "Point Data", "Projected points as PointData list", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Projected points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_DISTANCES_ID, "Distances", "Absolute distances from source points to the plane", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_SIGNED_DISTANCES_ID, "Signed Distances", "Signed distances from source points to the plane", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of projected points", NodeDataType.INTEGER, this));
@@ -51,32 +49,29 @@ public class ProjectPointsToPlaneNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Projects a list of points or vectors onto a target plane";
+        return "Projects a list of points onto a target plane";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object pointsObj = inputValues.get(INPUT_POINTS_ID);
+        List<Vector3d> sourcePoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
         Object planeObj = inputValues.get(INPUT_PLANE_ID);
-        if (!(pointsObj instanceof List<?> points) || !(planeObj instanceof PlaneData plane) || !OrientationUtils.isUsablePlane(plane)) {
+        if (sourcePoints.isEmpty() || !(planeObj instanceof PlaneData plane) || !OrientationUtils.isUsablePlane(plane)) {
             writeInvalid();
             return;
         }
 
-        List<Vector3d> projectedPoints = new ArrayList<>(points.size());
-        List<PointData> pointData = new ArrayList<>(points.size());
-        List<Double> distances = new ArrayList<>(points.size());
-        List<Double> signedDistances = new ArrayList<>(points.size());
+        List<Vector3d> projectedPoints = new ArrayList<>(sourcePoints.size());
+        List<Double> distances = new ArrayList<>(sourcePoints.size());
+        List<Double> signedDistances = new ArrayList<>(sourcePoints.size());
 
-        for (Object entry : points) {
-            Vector3d point = OrientationUtils.resolveVector(entry);
+        for (Vector3d point : sourcePoints) {
             if (!OrientationUtils.isFinite(point)) {
                 continue;
             }
             Vector3d projected = plane.projectPoint(point);
             double signedDistance = plane.signedDistanceTo(point);
             projectedPoints.add(projected);
-            pointData.add(new PointData(projected));
             distances.add(Math.abs(signedDistance));
             signedDistances.add(signedDistance);
         }
@@ -86,8 +81,7 @@ public class ProjectPointsToPlaneNode extends BaseNode {
             return;
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(projectedPoints));
-        outputValues.put(OUTPUT_POINT_DATA_ID, List.copyOf(pointData));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(projectedPoints));
         outputValues.put(OUTPUT_DISTANCES_ID, List.copyOf(distances));
         outputValues.put(OUTPUT_SIGNED_DISTANCES_ID, List.copyOf(signedDistances));
         outputValues.put(OUTPUT_COUNT_ID, projectedPoints.size());
@@ -106,7 +100,6 @@ public class ProjectPointsToPlaneNode extends BaseNode {
 
     private void writeInvalid() {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_POINT_DATA_ID, List.of());
         outputValues.put(OUTPUT_DISTANCES_ID, List.of());
         outputValues.put(OUTPUT_SIGNED_DISTANCES_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);

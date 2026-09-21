@@ -3,20 +3,16 @@ package com.nodecraft.nodesystem.nodes.geometry.curves;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Coordinate;
-import net.minecraft.util.math.BlockPos;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,8 +41,8 @@ public class PointsToPathNode extends AbstractCurveNode {
         super(UUID.randomUUID(), "geometry.curves.curve_from_points");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points",
-            "Ordered point list. Supports Point, Vector, Position, or Block Coordinate values.",
-            NodeDataType.LIST, this));
+            "Ordered point list",
+            NodeDataType.POINT_LIST, this));
 
         addOutputPort(new BasePort(OUTPUT_LINE_ID, "Line",
             "Line output when the path contains exactly 2 points", NodeDataType.LINE, this));
@@ -60,21 +56,10 @@ public class PointsToPathNode extends AbstractCurveNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object pointsObj = inputValues.get(INPUT_POINTS_ID);
-        if (!(pointsObj instanceof Collection<?> collection)) {
-            outputValues.put(OUTPUT_LINE_ID, null);
-            outputValues.put(OUTPUT_POLYLINE_ID, null);
-            outputValues.put(OUTPUT_COUNT_ID, 0);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-
-        List<Vec3d> points = new ArrayList<>();
-        for (Object entry : collection) {
-            Vec3d point = resolvePoint(entry);
-            if (point != null) {
-                points.add(point);
-            }
+        List<Vector3d> resolved = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
+        List<Vec3d> points = new ArrayList<>(resolved.size());
+        for (Vector3d point : resolved) {
+            points.add(new Vec3d(point.x, point.y, point.z));
         }
 
         if (closePath && points.size() >= 2) {
@@ -127,20 +112,4 @@ public class PointsToPathNode extends AbstractCurveNode {
         }
     }
 
-    private Vec3d resolvePoint(Object value) {
-        if (value instanceof PointData pointData) {
-            Vector3d p = pointData.getPosition();
-            return new Vec3d(p.x, p.y, p.z);
-        }
-        if (value instanceof Coordinate coordinate) {
-            return new Vec3d(coordinate.getX(), coordinate.getY(), coordinate.getZ());
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vec3d(vector.x, vector.y, vector.z);
-        }
-        if (value instanceof BlockPos blockPos) {
-            return new Vec3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
-        }
-        return null;
-    }
 }

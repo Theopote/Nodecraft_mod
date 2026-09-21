@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -59,7 +60,7 @@ public class PathInstancesNode extends BaseNode {
         addInputPort(new BasePort(INPUT_PATH_POINTS_ID, "Path Points", "Optional ordered point list fallback", NodeDataType.LIST, this));
         addInputPort(new BasePort(INPUT_UP_VECTOR_ID, "Up Vector", "Reference up vector for frame construction", NodeDataType.VECTOR, this));
 
-        addOutputPort(new BasePort(OUTPUT_ORIGINS_ID, "Origins", "Frame origins along path", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_ORIGINS_ID, "Origins", "Frame origins along path", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_X_AXES_ID, "X Axes", "Frame X axes (tangent)", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_Y_AXES_ID, "Y Axes", "Frame Y axes (normal)", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_Z_AXES_ID, "Z Axes", "Frame Z axes (binormal)", NodeDataType.VECTOR_LIST, this));
@@ -124,7 +125,7 @@ public class PathInstancesNode extends BaseNode {
             return;
         }
 
-        outputValues.put(OUTPUT_ORIGINS_ID, List.copyOf(origins));
+        outputValues.put(OUTPUT_ORIGINS_ID, SpatialValueResolver.toPointDataList(origins));
         outputValues.put(OUTPUT_X_AXES_ID, List.copyOf(xAxes));
         outputValues.put(OUTPUT_Y_AXES_ID, List.copyOf(yAxes));
         outputValues.put(OUTPUT_Z_AXES_ID, List.copyOf(zAxes));

@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -41,7 +42,7 @@ public class MorphBetweenProfilesNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Interpolated polygon profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Boundary polyline of interpolated profile", NodeDataType.POLYLINE, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed interpolated points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed interpolated points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when profile morph succeeds", NodeDataType.BOOLEAN, this));
     }
 
@@ -98,7 +99,7 @@ public class MorphBetweenProfilesNode extends BaseNode {
 
         outputValues.put(OUTPUT_PROFILE_ID, profile);
         outputValues.put(OUTPUT_BOUNDARY_ID, profile.getBoundary());
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(closed));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(closed));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 

@@ -3,8 +3,12 @@ package com.nodecraft.nodesystem.nodes.geometry.primitives;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import org.joml.Vector3d;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -24,6 +28,20 @@ public class BoxCornerSizeNode extends AbstractBoxGeneratorNode {
     private static final String INPUT_ROT_X_ID = "input_rotation_x";
     private static final String INPUT_ROT_Y_ID = "input_rotation_y";
     private static final String INPUT_ROT_Z_ID = "input_rotation_z";
+
+    @NodeProperty(displayName = "Corner X", category = "Corner", order = 1)
+    private double cornerX = 0.0d;
+    @NodeProperty(displayName = "Corner Y", category = "Corner", order = 2)
+    private double cornerY = 0.0d;
+    @NodeProperty(displayName = "Corner Z", category = "Corner", order = 3)
+    private double cornerZ = 0.0d;
+
+    @NodeProperty(displayName = "Size X", category = "Size", order = 10)
+    private double sizeX = 5.0d;
+    @NodeProperty(displayName = "Size Y", category = "Size", order = 11)
+    private double sizeY = 5.0d;
+    @NodeProperty(displayName = "Size Z", category = "Size", order = 12)
+    private double sizeZ = 5.0d;
 
     public BoxCornerSizeNode() {
         super("geometry.primitives.box_from_corner_size");
@@ -60,13 +78,13 @@ public class BoxCornerSizeNode extends AbstractBoxGeneratorNode {
         Object rotZObj = inputValues.get(INPUT_ROT_Z_ID);
 
         Vector3d cornerVector = resolveVectorInput(cornerObj);
-        if (cornerVector == null || !(sizeXObj instanceof Number) || !(sizeYObj instanceof Number) || !(sizeZObj instanceof Number)) {
-            return null;
+        if (cornerVector == null) {
+            cornerVector = new Vector3d(cornerX, cornerY, cornerZ);
         }
 
-        double sizeX = ((Number) sizeXObj).doubleValue();
-        double sizeY = ((Number) sizeYObj).doubleValue();
-        double sizeZ = ((Number) sizeZObj).doubleValue();
+        double resolvedSizeX = resolveFiniteDouble(sizeXObj, sizeX);
+        double resolvedSizeY = resolveFiniteDouble(sizeYObj, sizeY);
+        double resolvedSizeZ = resolveFiniteDouble(sizeZObj, sizeZ);
 
         double rotationX = resolveFiniteDouble(rotXObj, 0.0d);
         double rotationY = resolveFiniteDouble(rotYObj, 0.0d);
@@ -74,14 +92,48 @@ public class BoxCornerSizeNode extends AbstractBoxGeneratorNode {
 
         return createContinuousCornerAndSizeDefinition(
             cornerVector,
-            sizeX,
-            sizeY,
-            sizeZ,
+            resolvedSizeX,
+            resolvedSizeY,
+            resolvedSizeZ,
             planeObj,
             rotationX,
             rotationY,
             rotationZ
         );
+    }
+
+    @Override
+    public Object getNodeState() {
+        Map<String, Object> state = new HashMap<>();
+        Object parent = super.getNodeState();
+        if (parent instanceof Map<?, ?> parentMap) {
+            for (Map.Entry<?, ?> entry : parentMap.entrySet()) {
+                if (entry.getKey() != null) {
+                    state.put(String.valueOf(entry.getKey()), entry.getValue());
+                }
+            }
+        }
+        state.put("cornerX", cornerX);
+        state.put("cornerY", cornerY);
+        state.put("cornerZ", cornerZ);
+        state.put("sizeX", sizeX);
+        state.put("sizeY", sizeY);
+        state.put("sizeZ", sizeZ);
+        return state;
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        super.setNodeState(state);
+        if (!(state instanceof Map<?, ?> map)) {
+            return;
+        }
+        if (map.get("cornerX") instanceof Number n) cornerX = n.doubleValue();
+        if (map.get("cornerY") instanceof Number n) cornerY = n.doubleValue();
+        if (map.get("cornerZ") instanceof Number n) cornerZ = n.doubleValue();
+        if (map.get("sizeX") instanceof Number n) sizeX = n.doubleValue();
+        if (map.get("sizeY") instanceof Number n) sizeY = n.doubleValue();
+        if (map.get("sizeZ") instanceof Number n) sizeZ = n.doubleValue();
     }
 
 }

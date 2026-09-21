@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -50,14 +51,14 @@ public class LatticeDeformPointListNode extends BaseNode {
     public LatticeDeformPointListNode() {
         super(UUID.randomUUID(), "transform.deformations.lattice_deform");
 
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to deform", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_MIN_ID, "Min", "Lattice box minimum corner", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_MAX_ID, "Max", "Lattice box maximum corner", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to deform", NodeDataType.POINT_LIST, this));
+        addInputPort(new BasePort(INPUT_MIN_ID, "Min", "Lattice box minimum corner", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_MAX_ID, "Max", "Lattice box maximum corner", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_OFFSETS_ID, "Offsets",
             "Control displacement vectors in index order i + (nx+1)*(j + (ny+1)*k)",
             NodeDataType.VECTOR_LIST, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Deformed point list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Deformed point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output points", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when deformation succeeded", NodeDataType.BOOLEAN, this));
     }
@@ -74,16 +75,12 @@ public class LatticeDeformPointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object pointsObj = inputValues.get(INPUT_POINTS_ID);
-        Object minObj = inputValues.get(INPUT_MIN_ID);
-        Object maxObj = inputValues.get(INPUT_MAX_ID);
+        List<Vector3d> pointsInput = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
+        Vector3d min = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_MIN_ID));
+        Vector3d max = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_MAX_ID));
         Object offObj = inputValues.get(INPUT_OFFSETS_ID);
-        if (!(pointsObj instanceof List<?> pointsInput) || !(minObj instanceof Vector3d min) || !(maxObj instanceof Vector3d max)
+        if (pointsInput.isEmpty() || !DeformationUtils.isFinite(min) || !DeformationUtils.isFinite(max)
             || !(offObj instanceof List<?> offsetList)) {
-            writeEmpty();
-            return;
-        }
-        if (!DeformationUtils.isFinite(min) || !DeformationUtils.isFinite(max)) {
             writeEmpty();
             return;
         }
@@ -117,11 +114,7 @@ public class LatticeDeformPointListNode extends BaseNode {
         }
 
         List<Vector3d> out = new ArrayList<>();
-        for (Object entry : pointsInput) {
-            Vector3d p = resolvePoint(entry);
-            if (p == null) {
-                continue;
-            }
+        for (Vector3d p : pointsInput) {
             Vector3d delta = sampleLatticeDelta(p, mn, span, nx, ny, nz, controls, cx, cy);
             out.add(new Vector3d(p).add(delta));
         }
@@ -130,7 +123,7 @@ public class LatticeDeformPointListNode extends BaseNode {
             writeEmpty();
             return;
         }
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(out));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(out));
         outputValues.put(OUTPUT_COUNT_ID, out.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
@@ -234,8 +227,4 @@ public class LatticeDeformPointListNode extends BaseNode {
         gridZ = clampGrid(DeformationUtils.intOrCurrent(map.get("gridZ"), gridZ));
     }
 
-    private static Vector3d resolvePoint(Object value) {
-        Vector3d point = DeformationUtils.resolvePoint(value);
-        return DeformationUtils.isFinite(point) ? point : null;
-    }
 }

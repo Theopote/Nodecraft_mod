@@ -8,8 +8,10 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -50,9 +52,9 @@ public class InsetBoxFaceNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_FACE_ID, "Face", "Inset reference face", NodeDataType.BOX_FACE, this));
         addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Closed boundary polyline of the inset face", NodeDataType.POLYLINE, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed ordered point list of the inset boundary", NodeDataType.VECTOR_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_CORNERS_ID, "Corners", "Inset face corners in winding order", NodeDataType.VECTOR_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Center of the inset face", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed ordered point list of the inset boundary", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_CORNERS_ID, "Corners", "Inset face corners in winding order", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Center of the inset face", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_NORMAL_ID, "Normal", "Face normal", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Plane containing the inset face", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_EDGES_ID, "Edges", "Inset face edges", NodeDataType.LIST, this));
@@ -187,9 +189,9 @@ public class InsetBoxFaceNode extends BaseNode {
 
         outputValues.put(OUTPUT_FACE_ID, insetFace);
         outputValues.put(OUTPUT_POLYLINE_ID, polyline);
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(closedPoints));
-        outputValues.put(OUTPUT_CORNERS_ID, insetCorners);
-        outputValues.put(OUTPUT_CENTER_ID, insetCenter);
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(closedPoints));
+        outputValues.put(OUTPUT_CORNERS_ID, SpatialValueResolver.toPointDataList(insetCorners));
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(insetCenter));
         Vector3d normal = new Vector3d(face.getNormal());
         outputValues.put(OUTPUT_NORMAL_ID, normal);
         outputValues.put(OUTPUT_PLANE_ID, new PlaneData(insetCenter, normal));

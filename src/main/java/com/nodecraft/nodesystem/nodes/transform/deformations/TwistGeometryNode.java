@@ -90,7 +90,7 @@ public class TwistGeometryNode extends BaseNode {
         addInputPort(new BasePort(INPUT_SDF_ID, "SDF",
             "Optional source SDF when no Geometry is connected", NodeDataType.SDF, this));
         addInputPort(new BasePort(INPUT_AXIS_ORIGIN_ID, "Axis Origin",
-            "Point on the twist axis", NodeDataType.ANY, this));
+            "Point on the twist axis", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_AXIS_DIRECTION_ID, "Axis Direction",
             "Twist axis direction vector", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_ANGLE_DEGREES_ID, "Angle Degrees",
@@ -109,9 +109,9 @@ public class TwistGeometryNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_SDF_ID, "SDF",
             "Twisted signed distance field", NodeDataType.SDF, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDS_MIN_ID, "Bounds Min",
-            "Estimated output bounds minimum", NodeDataType.VECTOR, this));
+            "Estimated output bounds minimum", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDS_MAX_ID, "Bounds Max",
-            "Estimated output bounds maximum", NodeDataType.VECTOR, this));
+            "Estimated output bounds maximum", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_APPROXIMATE_ID, "Approximate",
             "True when non-SDF geometry was converted to a voxel SDF before twisting", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_SOURCE_VOXELS_ID, "Source Voxels",
@@ -162,8 +162,8 @@ public class TwistGeometryNode extends BaseNode {
         GeometryData geometry = new SdfGeometryData(twisted, outputBounds.min, outputBounds.max, iso);
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_SDF_ID, twisted);
-        outputValues.put(OUTPUT_BOUNDS_MIN_ID, new Vector3d(outputBounds.min));
-        outputValues.put(OUTPUT_BOUNDS_MAX_ID, new Vector3d(outputBounds.max));
+        outputValues.put(OUTPUT_BOUNDS_MIN_ID, new PointData(outputBounds.min));
+        outputValues.put(OUTPUT_BOUNDS_MAX_ID, new PointData(outputBounds.max));
         outputValues.put(OUTPUT_APPROXIMATE_ID, source.approximate);
         outputValues.put(OUTPUT_SOURCE_VOXELS_ID, source.sourceVoxelCount);
         outputValues.put(OUTPUT_VALID_ID, true);

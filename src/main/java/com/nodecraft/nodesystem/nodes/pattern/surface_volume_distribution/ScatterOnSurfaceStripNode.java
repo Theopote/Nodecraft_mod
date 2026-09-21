@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -56,7 +57,7 @@ public class ScatterOnSurfaceStripNode extends BaseNode {
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional random seed override", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_MIN_SPACING_ID, "Min Spacing", "Minimum Euclidean spacing between accepted points", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Scattered points on the strip surface", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Scattered points on the strip surface", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Scattered points snapped to block positions", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Generated point count", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid strip was sampled", NodeDataType.BOOLEAN, this));
@@ -129,7 +130,7 @@ public class ScatterOnSurfaceStripNode extends BaseNode {
             blocks.add(new BlockPos((int) Math.floor(p.x), (int) Math.floor(p.y), (int) Math.floor(p.z)));
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(points));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(points));
         outputValues.put(OUTPUT_BLOCKS_ID, blocks);
         outputValues.put(OUTPUT_COUNT_ID, points.size());
         outputValues.put(OUTPUT_VALID_ID, !points.isEmpty());

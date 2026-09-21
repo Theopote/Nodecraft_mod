@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -64,7 +65,7 @@ public class SampleGeometrySurfaceNode extends BaseNode {
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Optional explicit sample count override", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional random seed override", NodeDataType.INTEGER, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled surface points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled surface points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Sampled surface blocks", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Generated sample count", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid geometry surface could be sampled", NodeDataType.BOOLEAN, this));
@@ -119,7 +120,7 @@ public class SampleGeometrySurfaceNode extends BaseNode {
             pointSamples.add(new Vector3d(pos.getX() + 0.5d, pos.getY() + 0.5d, pos.getZ() + 0.5d));
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(pointSamples));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(pointSamples));
         outputValues.put(OUTPUT_BLOCKS_ID, blockSamples);
         outputValues.put(OUTPUT_COUNT_ID, pointSamples.size());
         outputValues.put(OUTPUT_VALID_ID, true);

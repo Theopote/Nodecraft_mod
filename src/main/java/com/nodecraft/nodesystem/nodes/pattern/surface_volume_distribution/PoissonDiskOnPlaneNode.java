@@ -9,10 +9,9 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
-import net.minecraft.util.math.BlockPos;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
 import org.joml.Vector3d;
@@ -61,8 +60,8 @@ public class PoissonDiskOnPlaneNode extends BaseNode {
             "Plane defining UV basis and projection",
             NodeDataType.PLANE, this));
         addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin",
-            "Rectangle center on the plane (Point, Vector, or BlockPos). When disconnected, the plane reference point is used.",
-            NodeDataType.ANY, this));
+            "Rectangle center on the plane. When disconnected, the plane reference point is used.",
+            NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_HALF_U_ID, "Half U",
             "Half extent along the plane U axis",
             NodeDataType.DOUBLE, this));
@@ -80,8 +79,8 @@ public class PoissonDiskOnPlaneNode extends BaseNode {
             NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points",
-            "Accepted sample positions as Vector3d list",
-            NodeDataType.VECTOR_LIST, this));
+            "Accepted sample positions",
+            NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
             "Number of accepted samples",
             NodeDataType.INTEGER, this));
@@ -162,7 +161,7 @@ public class PoissonDiskOnPlaneNode extends BaseNode {
             }
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, accepted);
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(accepted));
         outputValues.put(OUTPUT_COUNT_ID, accepted.size());
         outputValues.put(OUTPUT_ATTEMPTS_ID, attempts);
         outputValues.put(OUTPUT_VALID_ID, accepted.size() == targetCount);
@@ -176,14 +175,9 @@ public class PoissonDiskOnPlaneNode extends BaseNode {
     }
 
     private static Vector3d resolveOrigin(Object value, PlaneData plane) {
-        if (value instanceof PointData pd) {
-            return plane.projectPoint(new Vector3d(pd.getPosition()));
-        }
-        if (value instanceof Vector3d v) {
-            return plane.projectPoint(new Vector3d(v));
-        }
-        if (value instanceof BlockPos bp) {
-            return plane.projectPoint(new Vector3d(bp.getX(), bp.getY(), bp.getZ()));
+        Vector3d resolved = SpatialValueResolver.resolveVector3d(value);
+        if (resolved != null) {
+            return plane.projectPoint(resolved);
         }
         return new Vector3d(plane.getPoint());
     }

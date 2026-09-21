@@ -8,8 +8,10 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -49,9 +51,9 @@ public class OffsetBoxFaceNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_FACE_ID, "Face", "Offset face", NodeDataType.BOX_FACE, this));
         addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Closed boundary polyline of the offset face", NodeDataType.POLYLINE, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed ordered point list of the offset boundary", NodeDataType.VECTOR_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_CORNERS_ID, "Corners", "Offset face corners", NodeDataType.VECTOR_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Offset face center", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed ordered point list of the offset boundary", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_CORNERS_ID, "Corners", "Offset face corners", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Offset face center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_NORMAL_ID, "Normal", "Offset face normal", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Plane of the offset face", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_EDGES_ID, "Edges", "Offset face edge segments", NodeDataType.LIST, this));
@@ -127,9 +129,9 @@ public class OffsetBoxFaceNode extends BaseNode {
 
         outputValues.put(OUTPUT_FACE_ID, shiftedFace);
         outputValues.put(OUTPUT_POLYLINE_ID, polyline);
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(closedPoints));
-        outputValues.put(OUTPUT_CORNERS_ID, shiftedCorners);
-        outputValues.put(OUTPUT_CENTER_ID, shiftedCenter);
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(closedPoints));
+        outputValues.put(OUTPUT_CORNERS_ID, SpatialValueResolver.toPointDataList(shiftedCorners));
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(shiftedCenter));
         outputValues.put(OUTPUT_NORMAL_ID, normal);
         outputValues.put(OUTPUT_PLANE_ID, new PlaneData(shiftedCenter, normal));
         outputValues.put(OUTPUT_EDGES_ID, edges);

@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -61,7 +62,7 @@ public class RevolveProfileNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_SECTION_PROFILES_ID, "Section Profiles", "Polygon profiles generated along the revolution", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "Boundary polylines for each revolved section", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_ALL_POINTS_ID, "All Points", "Flattened list of all revolved section points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_ALL_POINTS_ID, "All Points", "Flattened list of all revolved section points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip", "Reusable strip surface made of revolved sections", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_COUNT_ID, "Section Count", "Number of generated rotational sections", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_ANGLE_RADIANS_ID, "Angle Radians", "Resolved revolution angle in radians", NodeDataType.DOUBLE, this));
@@ -154,7 +155,7 @@ public class RevolveProfileNode extends BaseNode {
 
         outputValues.put(OUTPUT_SECTION_PROFILES_ID, List.copyOf(sectionProfiles));
         outputValues.put(OUTPUT_SECTION_PATHS_ID, List.copyOf(sectionPaths));
-        outputValues.put(OUTPUT_ALL_POINTS_ID, List.copyOf(allPoints));
+        outputValues.put(OUTPUT_ALL_POINTS_ID, SpatialValueResolver.toPointDataList(allPoints));
         outputValues.put(OUTPUT_SURFACE_STRIP_ID, surfaceStrip);
         outputValues.put(OUTPUT_SECTION_COUNT_ID, sectionCount);
         outputValues.put(OUTPUT_ANGLE_RADIANS_ID, angleRadians);

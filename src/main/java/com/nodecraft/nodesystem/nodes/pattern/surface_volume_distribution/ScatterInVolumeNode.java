@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -78,7 +79,7 @@ public class ScatterInVolumeNode extends BaseNode {
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional seed override", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_MIN_SPACING_ID, "Min Spacing", "Minimum Euclidean spacing in block units", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Scattered volume points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Scattered volume points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Scattered points snapped to block coordinates", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_POINT_COUNT_ID, "Point Count", "Number of scattered geometric points", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_BLOCK_COUNT_ID, "Block Count", "Number of scattered snapped block coordinates", NodeDataType.INTEGER, this));
@@ -128,7 +129,7 @@ public class ScatterInVolumeNode extends BaseNode {
             }
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(points));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(points));
         outputValues.put(OUTPUT_BLOCKS_ID, blocks);
         outputValues.put(OUTPUT_POINT_COUNT_ID, points.size());
         outputValues.put(OUTPUT_BLOCK_COUNT_ID, blocks.size());

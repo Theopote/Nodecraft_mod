@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -51,13 +52,13 @@ public class SphericalDisplaceNode extends BaseNode {
     public SphericalDisplaceNode() {
         super(UUID.randomUUID(), "transform.deformations.spherical_displace");
 
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Input point list", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Center of spherical displacement", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Input point list", NodeDataType.POINT_LIST, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Center of spherical displacement", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_STRENGTH_ID, "Strength", "Optional displacement strength override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Optional influence radius override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_POWER_ID, "Falloff Power", "Optional falloff power override", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Displaced points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Displaced points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output points", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when displacement was applied", NodeDataType.BOOLEAN, this));
     }
@@ -74,13 +75,13 @@ public class SphericalDisplaceNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object pointsObj = inputValues.get(INPUT_POINTS_ID);
-        if (!(pointsObj instanceof List<?> inputPoints)) {
+        List<Vector3d> inputPoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
+        if (inputPoints.isEmpty()) {
             writeInvalid();
             return;
         }
 
-        Vector3d center = resolvePoint(inputValues.get(INPUT_CENTER_ID));
+        Vector3d center = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_CENTER_ID));
         if (center == null) {
             center = new Vector3d(0.0d, 0.0d, 0.0d);
         }
@@ -97,12 +98,7 @@ public class SphericalDisplaceNode extends BaseNode {
         }
 
         List<Vector3d> out = new ArrayList<>(inputPoints.size());
-        for (Object entry : inputPoints) {
-            Vector3d point = resolvePoint(entry);
-            if (point == null) {
-                continue;
-            }
-
+        for (Vector3d point : inputPoints) {
             Vector3d radial = new Vector3d(point).sub(center);
             double distance = radial.length();
             if (distance <= 1.0e-12d) {
@@ -130,7 +126,7 @@ public class SphericalDisplaceNode extends BaseNode {
             writeInvalid();
             return;
         }
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(out));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(out));
         outputValues.put(OUTPUT_COUNT_ID, out.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
@@ -143,11 +139,6 @@ public class SphericalDisplaceNode extends BaseNode {
 
     private double resolveDouble(Object value, double fallback) {
         return DeformationUtils.resolveFiniteDouble(value, fallback);
-    }
-
-    private Vector3d resolvePoint(Object value) {
-        Vector3d point = DeformationUtils.resolvePoint(value);
-        return DeformationUtils.isFinite(point) ? point : null;
     }
 
     @Override

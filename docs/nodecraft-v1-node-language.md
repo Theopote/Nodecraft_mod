@@ -269,6 +269,57 @@ Polygon By Points, deconstruct/resample, convex hull, Voronoi). Center inputs ar
 outputs are `POINT` / `POINT_LIST`; default plane is XZ via `ProfilePlaneUtils`; direction/axis
 ports remain `VECTOR`.
 
+**Primitives family rollout (`geometry.primitives.*`) — done (2026-09-21):** remaining constructors /
+deconstructors use `POINT` / `POINT_LIST` for locations; axes stay `VECTOR`. Orientation matrix
+ports may remain `ANY` until a matrix type is frozen. Continuous Box helpers cover corner/size
+siblings.
+
+**Point-list runtime bridge:** `SpatialValueResolver.resolvePointList(...)` accepts `PointData`,
+`Vector3d`, and legacy point-like entries for algorithms; `toPointDataList(...)` emits graph-facing
+`POINT_LIST` values. Prefer this at every list-input boundary that consumes profile/box points.
+
+**Contract tests:** `GeometrySampleLanguageContractTest` (sample 8) and
+`GeometryPrimitiveAndProfileFamilyContractTest` (whole family: no spatial `ANY` except orientation;
+location ports not `VECTOR` / `VECTOR_LIST`).
+
+**Extrude / Project / loft / morph — done (2026-09-21):** `ExtrudePointList`,
+`ExtrudeProfile` (base/top points), `Prism By Profile/Base Points Vector`, `Loft Point Lists`,
+`Loft Profiles`, `Morph Between Profiles`, `ProjectPointsToPlane`, and `ProjectProfileToPlane`
+use `POINT_LIST` + `resolvePointList` / `toPointDataList`. Project’s duplicate `Point Data`
+port was removed (pre-release; no old-graph compat).
+
+**Deformations point-list family — done (2026-09-21):** Twist/Bend/Taper/Relax/Noise/
+CurveAttract/Lattice/SphericalDisplace: points `POINT_LIST`, axis origin/center `POINT`,
+no spatial `ANY`; offsets that are displacements stay `VECTOR_LIST`.
+
+**Solids sweep/slice/shrinkwrap — done (2026-09-21):** Sweep Point List Along Path, Sweep Profile
+Along Path, Sweep 2 Rails, Deconstruct Surface Strip, Revolve Profile, Section Cut, Contour, and
+both Shrinkwrap nodes: location lists use `POINT_LIST` + `resolvePointList` / `toPointDataList`.
+Scale/rotation lists stay `LIST`; rail segments and profile lists unchanged.
+
+**Curves location-list family — done (2026-09-21):** Blend Curves, Box Face Boundary Path, Curve
+Rebuild By Length, Resample Polyline By Length, Voxelize Curve, Face Edge To Path, Offset Curve In
+Plane, and Curve Frame Along Path: location outputs use `POINT_LIST` + `toPointDataList`; frame
+X/Y/Z axes and path-direction aliases stay `VECTOR_LIST`.
+
+**Curves generators & splines — done (2026-09-21):** Points To Path, Path To Points, Interpolate Spline,
+B-Spline, Bezier, NURBS Curve, Arc, Helix, Parabola On Plane, and Infinity Curve On Plane: location
+inputs/outputs use `POINT` / `POINT_LIST` + `resolvePointList` / `toPointDataList`; spline weights
+and tween/offset nested list ports stay `LIST`.
+
+**Pattern scatter / grid — done (2026-09-21):** Scatter*, Sample*, Poisson Disk On Plane, Image Based
+Scatter, Facade Grid, Curve Array Origins, Path Instances Origins, L-System Points, Voronoi3D Lloyd
+sites: location lists `POINT_LIST`; normals/axes/offsets stay `VECTOR_LIST`.
+
+**Transform / world / arch leftovers — done (2026-09-21):** Project Curve To Plane, Offset/Inset Box Face,
+Transform Points by Frames, Align Points To Surface Normals, Shear Point List, Mirror Vector List About Plane,
+Selected Block Sequence centers, Filter Points By Rule, Molding Profile, Deconstruct Box Face; Bend/Twist Geometry
+bounds min/max emit `PointData`. Axes/normals/offsets stay `VECTOR_LIST`.
+
+**Next:** repo-wide location `VECTOR_LIST` audit complete except intentional axes/normals/offsets/displacement lists
+(e.g. Curve Frame Along Path, Path Instances, scatter normals, Grid Array offsets, Lattice Deform offsets,
+Vector Field Sample vectors). No further location migrations planned unless new nodes add regressions.
+
 ---
 
 ## Checklist for new nodes

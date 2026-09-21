@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -40,14 +41,14 @@ public class PrismByBasePointsVectorNode extends BaseNode {
     public PrismByBasePointsVectorNode() {
         super(UUID.randomUUID(), "geometry.solids.extrude_profile_from_points");
 
-        addInputPort(new BasePort(INPUT_BASE_POINTS_ID, "Base Points", "Ordered base polygon points", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_BASE_POINTS_ID, "Base Points", "Ordered base polygon points", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_EXTRUSION_VECTOR_ID, "Extrusion Vector", "Prism extrusion vector", NodeDataType.VECTOR, this));
 
         addOutputPort(new BasePort(OUTPUT_PRISM_ID, "Prism", "Constructed prism geometry", NodeDataType.PRISM_GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip", "Side strip surface between base and top polygons", NodeDataType.SURFACE_STRIP, this));
-        addOutputPort(new BasePort(OUTPUT_BASE_POINTS_ID, "Base Points", "Resolved base polygon points", NodeDataType.VECTOR_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_TOP_POINTS_ID, "Top Points", "Resolved top polygon points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_BASE_POINTS_ID, "Base Points", "Resolved base polygon points", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_TOP_POINTS_ID, "Top Points", "Resolved top polygon points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_HEIGHT_ID, "Height", "Prism extrusion length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SIDE_COUNT_ID, "Side Count", "Number of prism side faces", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a prism could be constructed", NodeDataType.BOOLEAN, this));
@@ -60,15 +61,14 @@ public class PrismByBasePointsVectorNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object basePointsObj = inputValues.get(INPUT_BASE_POINTS_ID);
+        List<Vector3d> basePoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_BASE_POINTS_ID));
         Vector3d extrusionVector = SolidNodeUtils.resolveDirection(inputValues.get(INPUT_EXTRUSION_VECTOR_ID));
 
-        if (!(basePointsObj instanceof List<?> basePointsInput) || extrusionVector == null) {
+        if (extrusionVector == null) {
             writeEmptyOutputs();
             return;
         }
 
-        List<Vector3d> basePoints = SolidNodeUtils.resolvePointList(basePointsInput);
         double height = extrusionVector.length();
         if (basePoints.size() < 3 || height <= 1.0e-9d) {
             writeEmptyOutputs();
@@ -89,8 +89,8 @@ public class PrismByBasePointsVectorNode extends BaseNode {
         outputValues.put(OUTPUT_PRISM_ID, prism);
         outputValues.put(OUTPUT_GEOMETRY_ID, prism);
         outputValues.put(OUTPUT_SURFACE_STRIP_ID, surfaceStrip);
-        outputValues.put(OUTPUT_BASE_POINTS_ID, List.copyOf(basePoints));
-        outputValues.put(OUTPUT_TOP_POINTS_ID, List.copyOf(topPoints));
+        outputValues.put(OUTPUT_BASE_POINTS_ID, SpatialValueResolver.toPointDataList(basePoints));
+        outputValues.put(OUTPUT_TOP_POINTS_ID, SpatialValueResolver.toPointDataList(topPoints));
         outputValues.put(OUTPUT_HEIGHT_ID, height);
         outputValues.put(OUTPUT_SIDE_COUNT_ID, basePoints.size());
         outputValues.put(OUTPUT_VALID_ID, true);

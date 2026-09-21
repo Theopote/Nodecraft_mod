@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -54,7 +55,7 @@ public class FacadeGridNode extends BaseNode {
         addInputPort(new BasePort(INPUT_MARGIN_X_ID, "Margin X", "Horizontal margin from the face edge", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_MARGIN_Y_ID, "Margin Y", "Vertical margin from the face edge", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_CENTER_POINTS_ID, "Center Points", "Center point of each facade cell", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_POINTS_ID, "Center Points", "Center point of each facade cell", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_BLOCKS_ID, "Center Blocks", "Cell centers snapped to block positions", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_CELL_BOUNDARIES_ID, "Cell Boundaries", "Closed polyline for each facade cell boundary", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_CELL_WIDTH_ID, "Cell Width", "Resolved facade cell width", NodeDataType.DOUBLE, this));
@@ -112,7 +113,7 @@ public class FacadeGridNode extends BaseNode {
             }
         }
 
-        outputValues.put(OUTPUT_CENTER_POINTS_ID, List.copyOf(centerPoints));
+        outputValues.put(OUTPUT_CENTER_POINTS_ID, SpatialValueResolver.toPointDataList(centerPoints));
         outputValues.put(OUTPUT_CENTER_BLOCKS_ID, new com.nodecraft.nodesystem.util.BlockPosList(centerBlocks));
         outputValues.put(OUTPUT_CELL_BOUNDARIES_ID, List.copyOf(boundaries));
         outputValues.put(OUTPUT_CELL_WIDTH_ID, geometry.cellWidth);

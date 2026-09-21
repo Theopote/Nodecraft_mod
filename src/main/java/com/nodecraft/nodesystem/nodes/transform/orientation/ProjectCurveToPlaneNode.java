@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -54,7 +55,7 @@ public class ProjectCurveToPlaneNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_CURVE_ID, "Curve", "Projected linear curve", NodeDataType.CURVE, this));
         addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Projected polyline", NodeDataType.POLYLINE, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Projected points as Vector3d list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Projected points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_DISTANCES_ID, "Distances", "Absolute distances from source vertices to the plane", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of projected points", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when projection succeeded", NodeDataType.BOOLEAN, this));
@@ -105,7 +106,7 @@ public class ProjectCurveToPlaneNode extends BaseNode {
 
         outputValues.put(OUTPUT_CURVE_ID, curve);
         outputValues.put(OUTPUT_POLYLINE_ID, polyline);
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(projectedVectors));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(projectedVectors));
         outputValues.put(OUTPUT_DISTANCES_ID, List.copyOf(distances));
         outputValues.put(OUTPUT_COUNT_ID, projectedVectors.size());
         outputValues.put(OUTPUT_VALID_ID, true);

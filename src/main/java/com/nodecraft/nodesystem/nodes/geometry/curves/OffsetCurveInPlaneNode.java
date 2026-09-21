@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -61,7 +62,7 @@ public class OffsetCurveInPlaneNode extends AbstractCurveNode {
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Optional rebuild sample count; overrides spacing", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Offset sampled polyline", NodeDataType.POLYLINE, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Offset points as Vector3d list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Offset points as point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Source path length used for offset", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the offset succeeded", NodeDataType.BOOLEAN, this));
     }
@@ -120,7 +121,7 @@ public class OffsetCurveInPlaneNode extends AbstractCurveNode {
         }
 
         outputValues.put(OUTPUT_POLYLINE_ID, polyline);
-        outputValues.put(OUTPUT_POINTS_ID, List.copyOf(offsetPoints));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(offsetPoints));
         outputValues.put(OUTPUT_LENGTH_ID, sampled.length());
         outputValues.put(OUTPUT_VALID_ID, true);
     }

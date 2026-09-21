@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.geometry.curves;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PointData;
@@ -16,7 +15,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
@@ -51,7 +49,7 @@ public class PathToPointsNode extends AbstractCurveNode {
             NodeDataType.CURVE, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points",
-            "Ordered point list extracted from the input path", NodeDataType.LIST, this));
+            "Ordered point list extracted from the input path", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
             "Number of points extracted from the input path", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",

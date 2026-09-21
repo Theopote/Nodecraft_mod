@@ -5,9 +5,9 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -49,7 +49,7 @@ public class FilterPointsByRuleNode extends BaseNode {
     public FilterPointsByRuleNode() {
         super(UUID.randomUUID(), "world.query.filter_points_by_rule");
 
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Points or block positions to filter", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Points or block positions to filter", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_NORMALS_ID, "Normals", "Optional normals aligned with points for slope tests", NodeDataType.VECTOR_LIST, this));
         addInputPort(new BasePort(INPUT_MIN_HEIGHT_ID, "Min Height", "Minimum Y value to keep", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_MAX_HEIGHT_ID, "Max Height", "Maximum Y value to keep", NodeDataType.DOUBLE, this));
@@ -58,8 +58,8 @@ public class FilterPointsByRuleNode extends BaseNode {
         addInputPort(new BasePort(INPUT_MODE_ID, "Mode", "Rule combination: all or any", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_INVERT_ID, "Invert", "Invert the final keep mask", NodeDataType.BOOLEAN, this));
 
-        addOutputPort(new BasePort(OUTPUT_FILTERED_POINTS_ID, "Filtered Points", "Points that passed the rule", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_REMOVED_POINTS_ID, "Removed Points", "Points rejected by the rule", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_FILTERED_POINTS_ID, "Filtered Points", "Points that passed the rule", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_REMOVED_POINTS_ID, "Removed Points", "Points rejected by the rule", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_FILTERED_BLOCKS_ID, "Filtered Blocks", "Filtered points snapped to block positions", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_REMOVED_BLOCKS_ID, "Removed Blocks", "Rejected points snapped to block positions", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_MASK_ID, "Mask", "Boolean keep mask aligned with input points", NodeDataType.LIST, this));
@@ -77,7 +77,7 @@ public class FilterPointsByRuleNode extends BaseNode {
             return;
         }
 
-        List<Vector3d> normals = resolveNormals(inputValues.get(INPUT_NORMALS_ID));
+        List<Vector3d> normals = resolveNormalList(inputValues.get(INPUT_NORMALS_ID));
         Double minHeight = resolveDouble(inputValues.get(INPUT_MIN_HEIGHT_ID));
         Double maxHeight = resolveDouble(inputValues.get(INPUT_MAX_HEIGHT_ID));
         Double minSlope = resolveDouble(inputValues.get(INPUT_MIN_SLOPE_ID));
@@ -127,51 +127,32 @@ public class FilterPointsByRuleNode extends BaseNode {
     }
 
     private List<Vector3d> resolvePoints(Object value) {
-        List<Vector3d> out = new ArrayList<>();
         if (value instanceof BlockPosList blockPosList) {
+            List<Vector3d> out = new ArrayList<>();
             for (BlockPos pos : blockPosList) {
                 out.add(new Vector3d(pos.getX(), pos.getY(), pos.getZ()));
             }
-        } else if (value instanceof List<?> list) {
-            for (Object entry : list) {
-                Vector3d point = resolvePoint(entry);
-                if (point != null) {
-                    out.add(point);
-                }
-            }
-        } else {
-            Vector3d point = resolvePoint(value);
-            if (point != null) {
-                out.add(point);
-            }
+            return out;
         }
-        return out;
+        List<Vector3d> resolved = SpatialValueResolver.resolvePointList(value);
+        if (!resolved.isEmpty()) {
+            return resolved;
+        }
+        Vector3d single = SpatialValueResolver.resolveVector3d(value);
+        return single != null ? List.of(single) : List.of();
     }
 
-    private List<Vector3d> resolveNormals(Object value) {
+    private List<Vector3d> resolveNormalList(Object value) {
         List<Vector3d> out = new ArrayList<>();
         if (value instanceof List<?> list) {
             for (Object entry : list) {
-                Vector3d normal = resolvePoint(entry);
+                Vector3d normal = SpatialValueResolver.resolveVector3d(entry);
                 if (normal != null && normal.lengthSquared() > 1.0e-12d) {
                     out.add(normal.normalize(new Vector3d()));
                 }
             }
         }
         return out;
-    }
-
-    private Vector3d resolvePoint(Object value) {
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof BlockPos pos) {
-            return new Vector3d(pos.getX(), pos.getY(), pos.getZ());
-        }
-        if (value instanceof PointData pointData) {
-            return new Vector3d(pointData.getPosition());
-        }
-        return null;
     }
 
     private Double resolveDouble(Object value) {
@@ -217,8 +198,8 @@ public class FilterPointsByRuleNode extends BaseNode {
                               List<Boolean> mask,
                               List<Double> slopes,
                               boolean valid) {
-        outputValues.put(OUTPUT_FILTERED_POINTS_ID, kept);
-        outputValues.put(OUTPUT_REMOVED_POINTS_ID, removed);
+        outputValues.put(OUTPUT_FILTERED_POINTS_ID, SpatialValueResolver.toPointDataList(kept));
+        outputValues.put(OUTPUT_REMOVED_POINTS_ID, SpatialValueResolver.toPointDataList(removed));
         outputValues.put(OUTPUT_FILTERED_BLOCKS_ID, keptBlocks);
         outputValues.put(OUTPUT_REMOVED_BLOCKS_ID, removedBlocks);
         outputValues.put(OUTPUT_MASK_ID, mask);
