@@ -28,8 +28,15 @@ public final class GraphFormatVersion {
      */
     public static final int V3 = 3;
 
+    /**
+     * Batch 3 curves language: Points To Path / Path To Points canonical ids, and legacy
+     * path triple ports ({@code input_curve} / {@code input_polyline} / path {@code input_line})
+     * → {@code input_path}.
+     */
+    public static final int V4 = 4;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V3;
+    public static final int CURRENT = V4;
 
     private GraphFormatVersion() {
     }

@@ -245,7 +245,7 @@
               "fromRef": "arch_curve",
               "fromPort": "output_curve",
               "toRef": "sweep_arch",
-              "toPort": "input_curve"
+              "toPort": "input_path"
             },
             {
               "fromRef": "arch_profile",
@@ -1145,7 +1145,7 @@
             },
             {
               "ref": "sample_curve",
-              "typeId": "geometry.curves.divide_curve_to_points",
+              "typeId": "geometry.curves.path_to_points",
               "x": 450,
               "y": 200
             },
@@ -1215,13 +1215,13 @@
               "fromRef": "helix_curve",
               "fromPort": "output_curve",
               "toRef": "sample_curve",
-              "toPort": "input_curve"
+              "toPort": "input_path"
             },
             {
               "fromRef": "helix_curve",
               "fromPort": "output_curve",
               "toRef": "orient_steps",
-              "toPort": "input_curve"
+              "toPort": "input_path"
             },
             {
               "fromRef": "sample_curve",
@@ -1287,13 +1287,13 @@
             },
             {
               "ref": "steps_line",
-              "typeId": "geometry.curves.curve_from_points",
+              "typeId": "geometry.curves.points_to_path",
               "x": 250,
               "y": 200
             },
             {
               "ref": "divide_steps",
-              "typeId": "geometry.curves.divide_curve_to_points",
+              "typeId": "geometry.curves.path_to_points",
               "x": 450,
               "y": 200
             },
@@ -1345,13 +1345,13 @@
               "fromRef": "steps_line",
               "fromPort": "output_polyline",
               "toRef": "divide_steps",
-              "toPort": "input_polyline"
+              "toPort": "input_path"
             },
             {
               "fromRef": "steps_line",
               "fromPort": "output_polyline",
               "toRef": "array_steps",
-              "toPort": "input_polyline"
+              "toPort": "input_path"
             },
             {
               "fromRef": "divide_steps",
@@ -1783,7 +1783,7 @@
             },
             {
               "ref": "column_points",
-              "typeId": "geometry.curves.divide_curve_to_points",
+              "typeId": "geometry.curves.path_to_points",
               "x": 450,
               "y": 350
             },
@@ -1847,13 +1847,13 @@
               "fromRef": "column_circle",
               "fromPort": "output_boundary",
               "toRef": "column_points",
-              "toPort": "input_polyline"
+              "toPort": "input_path"
             },
             {
               "fromRef": "column_circle",
               "fromPort": "output_boundary",
               "toRef": "array_columns",
-              "toPort": "input_polyline"
+              "toPort": "input_path"
             },
             {
               "fromRef": "column_points",

@@ -16,7 +16,7 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "geometry.curves.divide_curve_to_points",
+    id = "geometry.curves.path_to_points",
     displayName = "Path To Points",
     description = "Extracts an ordered point list from a line, polyline, or curve",
     category = "geometry.curves",
@@ -31,7 +31,7 @@ public class PathToPointsNode extends AbstractCurveNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public PathToPointsNode() {
-        super(UUID.randomUUID(), "geometry.curves.divide_curve_to_points");
+        super(UUID.randomUUID(), "geometry.curves.path_to_points");
 
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
             "Path to convert into an ordered point list (line, polyline, or curve)",

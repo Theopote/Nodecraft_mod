@@ -40,8 +40,8 @@ geometry.curves.arc|geometry.curves|Arc
 geometry.curves.b_spline|geometry.curves|B-Spline
 geometry.curves.bezier|geometry.curves|Bezier
 geometry.curves.blend_curves|geometry.curves|Blend Curves
-geometry.curves.curve_from_points|geometry.curves|Points To Path
-geometry.curves.divide_curve_to_points|geometry.curves|Path To Points
+geometry.curves.points_to_path|geometry.curves|Points To Path
+geometry.curves.path_to_points|geometry.curves|Path To Points
 geometry.curves.edge_to_curve|geometry.curves|Face Edge To Path
 geometry.curves.evaluate_curve|geometry.curves|Curve Evaluate
 geometry.curves.face_boundary_curve|geometry.curves|Box Face Boundary Path

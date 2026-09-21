@@ -112,6 +112,46 @@ class GraphMigrationRegistryTest {
     }
 
     @Test
+    void v3PathLanguageMigratesTypeIdsAndPorts() {
+        SavedGraph v3 = new SavedGraph();
+        v3.formatVersion = GraphFormatVersion.V3;
+        SavedNode pointsToPath = new SavedNode();
+        pointsToPath.nodeId = "ptp";
+        pointsToPath.typeId = "geometry.curves.curve_from_points";
+        SavedNode pathToPoints = new SavedNode();
+        pathToPoints.nodeId = "ptp2";
+        pathToPoints.typeId = "geometry.curves.divide_curve_to_points";
+        SavedNode sweep = new SavedNode();
+        sweep.nodeId = "sweep";
+        sweep.typeId = "geometry.solids.sweep";
+        SavedNode railing = new SavedNode();
+        railing.nodeId = "rail";
+        railing.typeId = "geometry.architectural_primitives.railing";
+        v3.nodes = List.of(pointsToPath, pathToPoints, sweep, railing);
+
+        SavedConnection pathConn = new SavedConnection();
+        pathConn.sourceNodeId = "ptp";
+        pathConn.sourcePortId = "output_path";
+        pathConn.targetNodeId = "sweep";
+        pathConn.targetPortId = "input_curve";
+
+        SavedConnection railConn = new SavedConnection();
+        railConn.sourceNodeId = "ptp";
+        railConn.sourcePortId = "output_line";
+        railConn.targetNodeId = "rail";
+        railConn.targetPortId = "input_line";
+        v3.connections = List.of(pathConn, railConn);
+        v3.nodePositions = java.util.Map.of();
+
+        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v3);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
+        assertEquals("geometry.curves.points_to_path", migrated.nodes.get(0).typeId);
+        assertEquals("geometry.curves.path_to_points", migrated.nodes.get(1).typeId);
+        assertEquals("input_path", migrated.connections.get(0).targetPortId);
+        assertEquals("input_line", migrated.connections.get(1).targetPortId);
+    }
+
+    @Test
     void futureVersionsAreLeftUntouched() {
         SavedGraph future = new SavedGraph();
         future.formatVersion = GraphFormatVersion.CURRENT + 5;

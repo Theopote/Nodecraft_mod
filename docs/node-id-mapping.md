@@ -22,7 +22,7 @@
 - ❌ `output.preview.geometry_viewer` → ✅ `output.preview.geometry_preview`
 
 **Curves:**
-- ❌ `geometry.curves.divide_curve` → ✅ `geometry.curves.divide_curve_to_points`
+- ❌ `geometry.curves.divide_curve` → ✅ `geometry.curves.path_to_points`
 
 **Profiles:**
 - ❌ `geometry.profiles.triangle` → ✅ `geometry.profiles.polygon_profile` (with 3 sides)

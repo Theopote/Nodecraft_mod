@@ -121,7 +121,7 @@
       },
       {
         "id": "sample_curve",
-        "type": "geometry.curves.divide_curve_to_points",
+        "type": "geometry.curves.path_to_points",
         "position": {
           "x": 450,
           "y": 200
@@ -263,7 +263,7 @@
         },
         "to": {
           "node": "sample_curve",
-          "port": "input_curve"
+          "port": "input_path"
         }
       },
       {

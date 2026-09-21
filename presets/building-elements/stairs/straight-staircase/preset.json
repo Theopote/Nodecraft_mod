@@ -82,7 +82,7 @@
       },
       {
         "id": "steps_line",
-        "type": "geometry.curves.curve_from_points",
+        "type": "geometry.curves.points_to_path",
         "position": {
           "x": 250,
           "y": 200
@@ -106,7 +106,7 @@
       },
       {
         "id": "divide_steps",
-        "type": "geometry.curves.divide_curve_to_points",
+        "type": "geometry.curves.path_to_points",
         "position": {
           "x": 450,
           "y": 200
@@ -208,7 +208,7 @@
         },
         "to": {
           "node": "divide_steps",
-          "port": "input_polyline"
+          "port": "input_path"
         }
       },
       {

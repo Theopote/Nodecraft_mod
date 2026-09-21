@@ -4,18 +4,20 @@ import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Applies incremental migrations to {@link SavedGraph} payloads loaded from disk or embedded JSON.
  * <p>
  * V0→V1 migration data lives in {@code nodecraft/migration/v0-to-v1.json}; runtime registries stay
- * canonical-only. Later steps apply Batch A/B remaps inline.
+ * canonical-only. Later steps apply Batch A/B/3 remaps inline.
  * <p>
  * Pre-release policy: migrate in-repo format bumps; do not preserve abandoned semantic variants
  * (e.g. Angle Slider {@code unit=RADIANS} is ignored — angles are degrees-only).
@@ -63,6 +65,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V0 -> migrateV0ToV1(graph);
             case GraphFormatVersion.V1 -> migrateV1ToV2(graph);
             case GraphFormatVersion.V2 -> migrateV2ToV3(graph);
+            case GraphFormatVersion.V3 -> migrateV3ToV4(graph);
             default -> graph;
         };
     }
@@ -125,6 +128,74 @@ public final class GraphMigrationRegistry {
             }
         }
         return graph;
+    }
+
+    private static final String LEGACY_POINTS_TO_PATH_TYPE = "geometry.curves.curve_from_points";
+    private static final String POINTS_TO_PATH_TYPE = "geometry.curves.points_to_path";
+    private static final String LEGACY_PATH_TO_POINTS_TYPE = "geometry.curves.divide_curve_to_points";
+    private static final String PATH_TO_POINTS_TYPE = "geometry.curves.path_to_points";
+
+    /** Architectural nodes that intentionally keep a straight-line {@code input_line} port. */
+    private static final Set<String> LINE_ONLY_PATH_NODE_TYPES = Set.of(
+            "geometry.architectural_primitives.railing",
+            "geometry.architectural_primitives.staircase"
+    );
+
+    /**
+     * Batch 3: canonical Points To Path / Path To Points ids, and legacy path ports → {@code input_path}.
+     */
+    private static SavedGraph migrateV3ToV4(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                if (LEGACY_POINTS_TO_PATH_TYPE.equalsIgnoreCase(node.typeId)) {
+                    LOGGER.debug("Migrated node type: {} -> {}", node.typeId, POINTS_TO_PATH_TYPE);
+                    node.typeId = POINTS_TO_PATH_TYPE;
+                } else if (LEGACY_PATH_TO_POINTS_TYPE.equalsIgnoreCase(node.typeId)) {
+                    LOGGER.debug("Migrated node type: {} -> {}", node.typeId, PATH_TO_POINTS_TYPE);
+                    node.typeId = PATH_TO_POINTS_TYPE;
+                }
+            }
+        }
+
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null || connection.targetPortId == null) {
+                continue;
+            }
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String port = connection.targetPortId.toLowerCase(Locale.ROOT);
+            String migrated = migrateLegacyPathInputPort(targetType, port);
+            if (migrated != null && !migrated.equals(connection.targetPortId)) {
+                LOGGER.debug("Migrated path port: {} ({}) -> {}", connection.targetPortId, targetType, migrated);
+                connection.targetPortId = migrated;
+            }
+        }
+        return graph;
+    }
+
+    private static @Nullable String migrateLegacyPathInputPort(@Nullable String targetType, String portId) {
+        return switch (portId) {
+            case "input_curve", "input_polyline" -> "input_path";
+            case "input_curve_a", "input_polyline_a" -> "input_path_a";
+            case "input_curve_b", "input_polyline_b" -> "input_path_b";
+            case "input_line" -> LINE_ONLY_PATH_NODE_TYPES.contains(targetType) ? null : "input_path";
+            case "input_line_a" -> "input_path_a";
+            case "input_line_b" -> "input_path_b";
+            default -> null;
+        };
     }
 
     private static void applyNodeTypeMigration(SavedGraph graph, GraphMigrationManifest manifest) {

@@ -292,8 +292,8 @@ Required aliases:
 - `spatial.points.scale_coordinates` -> `transform.basic_transforms.scale_points`
 - `spatial.points.mirror_coordinates` -> `transform.basic_transforms.mirror_points`
 - `spatial.points.project_point_to_plane` -> `transform.orientation.project_to_plane`
-- `spatial.points.points_to_path` -> `geometry.curves.curve_from_points`
-- `spatial.points.path_to_points` -> `geometry.curves.divide_curve_to_points`
+- `spatial.points.points_to_path` -> `geometry.curves.points_to_path`
+- `spatial.points.path_to_points` -> `geometry.curves.path_to_points`
 - `spatial.points.distance_point_to_plane` -> `reference.planes.distance_point_to_plane`
 - `spatial.points.snap_point_to_block` -> `world.selection.snap_point_to_block`
 - `spatial.points.snap_point_list_to_blocks` -> `world.selection.snap_points_to_blocks`

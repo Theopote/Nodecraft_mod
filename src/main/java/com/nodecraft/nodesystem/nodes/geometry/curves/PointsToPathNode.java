@@ -21,7 +21,7 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "geometry.curves.curve_from_points",
+    id = "geometry.curves.points_to_path",
     displayName = "Points To Path",
     description = "Builds a line or polyline from an ordered point list",
     category = "geometry.curves",
@@ -40,7 +40,7 @@ public class PointsToPathNode extends AbstractCurveNode {
     private boolean closePath = false;
 
     public PointsToPathNode() {
-        super(UUID.randomUUID(), "geometry.curves.curve_from_points");
+        super(UUID.randomUUID(), "geometry.curves.points_to_path");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points",
             "Ordered point list",

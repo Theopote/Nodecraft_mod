@@ -50,7 +50,7 @@ class GeometryCurvesFamilyContractTest {
             "geometry.curves.rebuild_curve_length",
             "geometry.curves.frame_along_path",
             "geometry.curves.offset_curve_plane",
-            "geometry.curves.divide_curve_to_points",
+            "geometry.curves.path_to_points",
             "geometry.curves.voxelize_curve",
             "geometry.curves.rainbow_curve_offset",
             "geometry.curves.tween_curves",
@@ -135,7 +135,7 @@ class GeometryCurvesFamilyContractTest {
 
     @Test
     void pointsToPathEmitsPathOutput() {
-        BaseNode node = node("geometry.curves.curve_from_points");
+        BaseNode node = node("geometry.curves.points_to_path");
         node.setInput("input_points", SpatialValueResolver.toPointDataList(List.of(
             new org.joml.Vector3d(0, 64, 0),
             new org.joml.Vector3d(10, 64, 0),
@@ -172,7 +172,7 @@ class GeometryCurvesFamilyContractTest {
 
     @Test
     void pathToPointsExtractsLineWithoutDuplicateVertices() {
-        BaseNode node = (BaseNode) NodeRegistry.getInstance().createNodeInstance("geometry.curves.divide_curve_to_points");
+        BaseNode node = (BaseNode) NodeRegistry.getInstance().createNodeInstance("geometry.curves.path_to_points");
         LineData line = new LineData(new Vec3d(0, 0, 0), new Vec3d(10, 0, 0));
         node.setInput("input_path", line);
         node.processNode(null);
@@ -276,7 +276,7 @@ class GeometryCurvesFamilyContractTest {
 
     @Test
     void pathToPointsExtractsLinearCurveWithoutDuplicateVertices() {
-        BaseNode node = (BaseNode) NodeRegistry.getInstance().createNodeInstance("geometry.curves.divide_curve_to_points");
+        BaseNode node = (BaseNode) NodeRegistry.getInstance().createNodeInstance("geometry.curves.path_to_points");
         Curve curve = new Curve(Curve.CurveType.LINEAR, 2);
         curve.addControlPoint(new Vec3d(0, 0, 0));
         curve.addControlPoint(new Vec3d(1, 0, 0));

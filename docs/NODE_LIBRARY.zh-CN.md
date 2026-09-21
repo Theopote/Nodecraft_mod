@@ -126,8 +126,8 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Points To Path | `geometry.curves.curve_from_points` | Builds a line or polyline from an ordered point list | `PointsToPathNode` |
-| Path To Points | `geometry.curves.divide_curve_to_points` | Extracts an ordered point list from a line, polyline, or curve | `PathToPointsNode` |
+| Points To Path | `geometry.curves.points_to_path` | Builds a line or polyline from an ordered point list | `PointsToPathNode` |
+| Path To Points | `geometry.curves.path_to_points` | Extracts an ordered point list from a line, polyline, or curve | `PathToPointsNode` |
 | Arc | `geometry.curves.arc` | Builds a sampled circular arc from a center point, plane, radius, and start/end angles | `ArcNode` |
 | Face Edge To Path | `geometry.curves.edge_to_curve` | Converts a face edge into line, polyline, and point outputs for path workflows | `FaceEdgeToPathNode` |
 | Bezier | `geometry.curves.bezier` | Builds a sampled Bezier curve from an ordered list of control points | `BezierNode` |

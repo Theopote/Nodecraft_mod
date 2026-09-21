@@ -340,7 +340,7 @@
         },
         "to": {
           "node": "sweep_arch",
-          "port": "input_curve"
+          "port": "input_path"
         }
       },
       {

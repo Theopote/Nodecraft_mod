@@ -407,8 +407,16 @@ Arc defaults, Curve Evaluate contract).
 - **Path Attractor Field** (`math.fields.curve_attractor_field`) and **Path Attract Point List**
   (`transform.deformations.curve_attract`) use **`input_path`** via `PathUtils.resolvePath`.
 
-**Next:** historical ID cleanup (`divide_curve_to_points`, `curve_from_points`), grep remaining legacy
-triple path ports.
+**Batch 3 P5 — historical IDs + legacy port sweep (2026-09-21):**
+
+- Canonical ids: **`geometry.curves.points_to_path`**, **`geometry.curves.path_to_points`**
+  (was `curve_from_points` / `divide_curve_to_points`). Graph format **V4** migrates old ids and
+  remaps legacy path ports (`input_curve` / `input_polyline` / path `input_line`) → `input_path`
+  (Railing / Staircase keep intentional `input_line`).
+- In-repo presets updated to canonical ids + `input_path`. Remaining intentional `input_line`:
+  architectural Railing / Staircase only.
+
+**Next:** none for Batch 3 path language; optional icon/alias polish.
 
 ---
 

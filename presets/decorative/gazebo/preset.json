@@ -147,7 +147,7 @@
       },
       {
         "id": "column_points",
-        "type": "geometry.curves.divide_curve_to_points",
+        "type": "geometry.curves.path_to_points",
         "position": {
           "x": 450,
           "y": 350
@@ -303,7 +303,7 @@
         },
         "to": {
           "node": "column_points",
-          "port": "input_polyline"
+          "port": "input_path"
         }
       },
       {
