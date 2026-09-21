@@ -25,6 +25,7 @@ import com.nodecraft.nodesystem.datatypes.TorusGeometryData;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
 import org.joml.Vector4d;
+import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,147 +42,165 @@ public final class GeometryMirror {
         if (geometry == null || plane == null) {
             return null;
         }
-        if (geometry instanceof CompositeGeometryData composite) {
-            List<GeometryData> mirrored = new ArrayList<>(composite.size());
-            for (GeometryData child : composite.getGeometries()) {
-                GeometryData m = mirror(child, plane);
-                if (m != null) {
-                    mirrored.add(m);
+        switch (geometry) {
+            case CompositeGeometryData composite -> {
+                List<GeometryData> mirrored = new ArrayList<>(composite.size());
+                for (GeometryData child : composite.getGeometries()) {
+                    GeometryData m = mirror(child, plane);
+                    if (m != null) {
+                        mirrored.add(m);
+                    }
                 }
+                return mirrored.isEmpty() ? null : new CompositeGeometryData(mirrored);
             }
-            return mirrored.isEmpty() ? null : new CompositeGeometryData(mirrored);
-        }
-        if (geometry instanceof IntersectionGeometryData intersection) {
-            GeometryData left = mirror(intersection.getLeft(), plane);
-            GeometryData right = mirror(intersection.getRight(), plane);
-            if (left == null || right == null) {
-                return null;
+            case IntersectionGeometryData intersection -> {
+                GeometryData left = mirror(intersection.getLeft(), plane);
+                GeometryData right = mirror(intersection.getRight(), plane);
+                if (left == null || right == null) {
+                    return null;
+                }
+                return new IntersectionGeometryData(left, right);
             }
-            return new IntersectionGeometryData(left, right);
-        }
-        if (geometry instanceof DifferenceGeometryData difference) {
-            GeometryData minuend = mirror(difference.getMinuend(), plane);
-            GeometryData subtrahend = mirror(difference.getSubtrahend(), plane);
-            if (minuend == null || subtrahend == null) {
-                return null;
+            case DifferenceGeometryData difference -> {
+                GeometryData minuend = mirror(difference.getMinuend(), plane);
+                GeometryData subtrahend = mirror(difference.getSubtrahend(), plane);
+                if (minuend == null || subtrahend == null) {
+                    return null;
+                }
+                return new DifferenceGeometryData(minuend, subtrahend);
             }
-            return new DifferenceGeometryData(minuend, subtrahend);
-        }
-        if (geometry instanceof SphereData sphere) {
-            return new SphereData(mirrorPoint(sphere.getCenter(), plane), sphere.getRadius());
-        }
-        if (geometry instanceof CylinderGeometryData cylinder) {
-            return new CylinderGeometryData(
-                mirrorPoint(cylinder.getStart(), plane),
-                mirrorPoint(cylinder.getEnd(), plane),
-                cylinder.getRadius()
-            );
-        }
-        if (geometry instanceof ConeGeometryData cone) {
-            return new ConeGeometryData(
-                mirrorPoint(cone.getBaseCenter(), plane),
-                mirrorPoint(cone.getApex(), plane),
-                cone.getBaseRadius()
-            );
-        }
-        if (geometry instanceof FrustumConeGeometryData frustum) {
-            return new FrustumConeGeometryData(
-                mirrorPoint(frustum.getBaseCenter(), plane),
-                mirrorPoint(frustum.getTopCenter(), plane),
-                frustum.getBaseRadius(),
-                frustum.getTopRadius()
-            );
-        }
-        if (geometry instanceof EllipsoidGeometryData ellipsoid) {
-            Matrix3d rm = new Matrix3d(reflectionMatrix3(plane.getNormal())).mul(ellipsoid.getOrientationMatrix());
-            return new EllipsoidGeometryData(
-                mirrorPoint(ellipsoid.getCenter(), plane),
-                ellipsoid.getRadii(),
-                rm,
-                true
-            );
-        }
-        if (geometry instanceof HemisphereGeometryData hemisphere) {
-            return new HemisphereGeometryData(
-                mirrorPoint(hemisphere.getCenter(), plane),
-                mirrorDirection(hemisphere.getAxis(), plane),
-                hemisphere.getRadius()
-            );
-        }
-        if (geometry instanceof BoxGeometryData box) {
-            Vector3d center = mirrorPoint(box.getCenter(), plane);
-            Matrix3d r = reflectionMatrix3(plane.getNormal());
-            Matrix3d rm = new Matrix3d(r).mul(box.getOrientationMatrix());
-            return new BoxGeometryData(center, box.getHalfExtents(), rm, box.isOriented());
-        }
-        if (geometry instanceof PrismGeometryData prism) {
-            List<Vector3d> base = prism.getBaseVertices();
-            List<Vector3d> mirroredBase = new ArrayList<>(base.size());
-            for (Vector3d v : base) {
-                mirroredBase.add(mirrorPoint(v, plane));
+            case SphereData sphere -> {
+                return new SphereData(mirrorPoint(sphere.getCenter(), plane), sphere.getRadius());
             }
-            Vector3d extrusion = mirrorDirection(prism.getExtrusionVector(), plane);
-            return new PrismGeometryData(mirroredBase, extrusion);
-        }
-        if (geometry instanceof TorusGeometryData torus) {
-            return new TorusGeometryData(
-                mirrorPoint(torus.getCenter(), plane),
-                mirrorDirection(torus.getAxis(), plane),
-                torus.getMajorRadius(),
-                torus.getMinorRadius()
-            );
-        }
-        if (geometry instanceof SquarePyramidGeometryData pyramid) {
-            Vector3d baseCenter = mirrorPoint(pyramid.getBaseCenter(), plane);
-            Vector3d xAxis = mirrorDirection(pyramid.getXAxis(), plane);
-            Vector3d yRaw = mirrorDirection(pyramid.getYAxis(), plane);
-            Vector3d nRaw = mirrorDirection(pyramid.getNormal(), plane);
-            if (xAxis.lengthSquared() < 1.0e-18d || yRaw.lengthSquared() < 1.0e-18d || nRaw.lengthSquared() < 1.0e-18d) {
-                return null;
+            case CylinderGeometryData cylinder -> {
+                return new CylinderGeometryData(
+                        mirrorPoint(cylinder.getStart(), plane),
+                        mirrorPoint(cylinder.getEnd(), plane),
+                        cylinder.getRadius()
+                );
             }
-            xAxis.normalize();
-            Vector3d normal = new Vector3d(xAxis).cross(yRaw);
-            if (normal.lengthSquared() < 1.0e-18d) {
-                normal.set(nRaw);
+            case ConeGeometryData cone -> {
+                return new ConeGeometryData(
+                        mirrorPoint(cone.getBaseCenter(), plane),
+                        mirrorPoint(cone.getApex(), plane),
+                        cone.getBaseRadius()
+                );
             }
-            normal.normalize();
-            Vector3d yAxis = new Vector3d(normal).cross(xAxis).normalize();
-            Vector3d apex = mirrorPoint(pyramid.getApex(), plane);
-            double height = new Vector3d(apex).sub(baseCenter).dot(normal);
-            if (height < 1.0e-9d) {
-                normal.negate();
-                height = new Vector3d(apex).sub(baseCenter).dot(normal);
+            case FrustumConeGeometryData frustum -> {
+                return new FrustumConeGeometryData(
+                        mirrorPoint(frustum.getBaseCenter(), plane),
+                        mirrorPoint(frustum.getTopCenter(), plane),
+                        frustum.getBaseRadius(),
+                        frustum.getTopRadius()
+                );
             }
-            if (height < 1.0e-9d) {
-                return null;
+            case EllipsoidGeometryData ellipsoid -> {
+                Matrix3d rm = new Matrix3d(reflectionMatrix3(plane.getNormal())).mul(ellipsoid.getOrientationMatrix());
+                return new EllipsoidGeometryData(
+                        mirrorPoint(ellipsoid.getCenter(), plane),
+                        ellipsoid.getRadii(),
+                        rm,
+                        true
+                );
             }
-            return new SquarePyramidGeometryData(baseCenter, xAxis, yAxis, normal, pyramid.getBaseSize(), height);
-        }
-        if (geometry instanceof OctahedronGeometryData oct) {
-            Matrix3d rm = new Matrix3d(reflectionMatrix3(plane.getNormal())).mul(oct.getOrientationMatrix());
-            return new OctahedronGeometryData(mirrorPoint(oct.getCenter(), plane), oct.getVertexRadius(), rm);
-        }
-        if (geometry instanceof TetrahedronGeometryData tet) {
-            Matrix3d rm = new Matrix3d(reflectionMatrix3(plane.getNormal())).mul(tet.getOrientationMatrix());
-            return new TetrahedronGeometryData(mirrorPoint(tet.getCenter(), plane), tet.getEdgeLength(), rm);
-        }
-        if (geometry instanceof IcosahedronGeometryData ico) {
-            Matrix3d rm = new Matrix3d(reflectionMatrix3(plane.getNormal())).mul(ico.getOrientationMatrix());
-            return new IcosahedronGeometryData(mirrorPoint(ico.getCenter(), plane), ico.getEdgeLength(), rm);
-        }
-        if (geometry instanceof DodecahedronGeometryData dod) {
-            Matrix3d rm = new Matrix3d(reflectionMatrix3(plane.getNormal())).mul(dod.getOrientationMatrix());
-            return new DodecahedronGeometryData(mirrorPoint(dod.getCenter(), plane), dod.getEdgeLength(), rm);
-        }
-        if (geometry instanceof SdfGeometryData sdfGeom) {
-            SignedDistanceFieldData sdf = sdfGeom.getSdf();
-            if (sdf == null) {
-                return null;
+            case HemisphereGeometryData hemisphere -> {
+                return new HemisphereGeometryData(
+                        mirrorPoint(hemisphere.getCenter(), plane),
+                        mirrorDirection(hemisphere.getAxis(), plane),
+                        hemisphere.getRadius()
+                );
             }
-            SignedDistanceFieldData mirroredSdf = new MirroredSdfData(sdf, plane);
-            Vector3d min = sdfGeom.getMin();
-            Vector3d max = sdfGeom.getMax();
-            Vector3d[] corners = {
+            case BoxGeometryData box -> {
+                Vector3d center = mirrorPoint(box.getCenter(), plane);
+                Matrix3d r = reflectionMatrix3(plane.getNormal());
+                Matrix3d rm = new Matrix3d(r).mul(box.getOrientationMatrix());
+                return new BoxGeometryData(center, box.getHalfExtents(), rm, box.isOriented());
+            }
+            case PrismGeometryData prism -> {
+                List<Vector3d> base = prism.getBaseVertices();
+                List<Vector3d> mirroredBase = new ArrayList<>(base.size());
+                for (Vector3d v : base) {
+                    mirroredBase.add(mirrorPoint(v, plane));
+                }
+                Vector3d extrusion = mirrorDirection(prism.getExtrusionVector(), plane);
+                return new PrismGeometryData(mirroredBase, extrusion);
+            }
+            case TorusGeometryData torus -> {
+                return new TorusGeometryData(
+                        mirrorPoint(torus.getCenter(), plane),
+                        mirrorDirection(torus.getAxis(), plane),
+                        torus.getMajorRadius(),
+                        torus.getMinorRadius()
+                );
+            }
+            case SquarePyramidGeometryData pyramid -> {
+                Vector3d baseCenter = mirrorPoint(pyramid.getBaseCenter(), plane);
+                Vector3d xAxis = mirrorDirection(pyramid.getXAxis(), plane);
+                Vector3d yRaw = mirrorDirection(pyramid.getYAxis(), plane);
+                Vector3d nRaw = mirrorDirection(pyramid.getNormal(), plane);
+                if (xAxis.lengthSquared() < 1.0e-18d || yRaw.lengthSquared() < 1.0e-18d || nRaw.lengthSquared() < 1.0e-18d) {
+                    return null;
+                }
+                xAxis.normalize();
+                Vector3d normal = new Vector3d(xAxis).cross(yRaw);
+                if (normal.lengthSquared() < 1.0e-18d) {
+                    normal.set(nRaw);
+                }
+                normal.normalize();
+                Vector3d yAxis = new Vector3d(normal).cross(xAxis).normalize();
+                Vector3d apex = mirrorPoint(pyramid.getApex(), plane);
+                double height = new Vector3d(apex).sub(baseCenter).dot(normal);
+                if (height < 1.0e-9d) {
+                    normal.negate();
+                    height = new Vector3d(apex).sub(baseCenter).dot(normal);
+                }
+                if (height < 1.0e-9d) {
+                    return null;
+                }
+                return new SquarePyramidGeometryData(baseCenter, xAxis, yAxis, normal, pyramid.getBaseSize(), height);
+            }
+            case OctahedronGeometryData oct -> {
+                Matrix3d rm = new Matrix3d(reflectionMatrix3(plane.getNormal())).mul(oct.getOrientationMatrix());
+                return new OctahedronGeometryData(mirrorPoint(oct.getCenter(), plane), oct.getVertexRadius(), rm);
+            }
+            case TetrahedronGeometryData tet -> {
+                Matrix3d rm = new Matrix3d(reflectionMatrix3(plane.getNormal())).mul(tet.getOrientationMatrix());
+                return new TetrahedronGeometryData(mirrorPoint(tet.getCenter(), plane), tet.getEdgeLength(), rm);
+            }
+            case IcosahedronGeometryData ico -> {
+                Matrix3d rm = new Matrix3d(reflectionMatrix3(plane.getNormal())).mul(ico.getOrientationMatrix());
+                return new IcosahedronGeometryData(mirrorPoint(ico.getCenter(), plane), ico.getEdgeLength(), rm);
+            }
+            case DodecahedronGeometryData dod -> {
+                Matrix3d rm = new Matrix3d(reflectionMatrix3(plane.getNormal())).mul(dod.getOrientationMatrix());
+                return new DodecahedronGeometryData(mirrorPoint(dod.getCenter(), plane), dod.getEdgeLength(), rm);
+            }
+            case SdfGeometryData sdfGeom -> {
+                SignedDistanceFieldData sdf = sdfGeom.getSdf();
+                if (sdf == null) {
+                    return null;
+                }
+                SignedDistanceFieldData mirroredSdf = new MirroredSdfData(sdf, plane);
+                Vector3d[] corners = getVector3ds(sdfGeom);
+                Vector3d newMin = new Vector3d(Double.POSITIVE_INFINITY);
+                Vector3d newMax = new Vector3d(Double.NEGATIVE_INFINITY);
+                for (Vector3d corner : corners) {
+                    Vector3d p = mirrorPoint(corner, plane);
+                    newMin.min(p);
+                    newMax.max(p);
+                }
+                return new SdfGeometryData(mirroredSdf, newMin, newMax, sdfGeom.getIsoValue());
+            }
+            default -> {
+            }
+        }
+        return null;
+    }
+
+    private static Vector3d @NonNull [] getVector3ds(SdfGeometryData sdfGeom) {
+        Vector3d min = sdfGeom.getMin();
+        Vector3d max = sdfGeom.getMax();
+        return new Vector3d[]{
                 new Vector3d(min.x, min.y, min.z),
                 new Vector3d(max.x, min.y, min.z),
                 new Vector3d(min.x, max.y, min.z),
@@ -190,17 +209,7 @@ public final class GeometryMirror {
                 new Vector3d(max.x, min.y, max.z),
                 new Vector3d(min.x, max.y, max.z),
                 new Vector3d(max.x, max.y, max.z)
-            };
-            Vector3d newMin = new Vector3d(Double.POSITIVE_INFINITY);
-            Vector3d newMax = new Vector3d(Double.NEGATIVE_INFINITY);
-            for (Vector3d corner : corners) {
-                Vector3d p = mirrorPoint(corner, plane);
-                newMin.min(p);
-                newMax.max(p);
-            }
-            return new SdfGeometryData(mirroredSdf, newMin, newMax, sdfGeom.getIsoValue());
-        }
-        return null;
+        };
     }
 
     public static Vector3d mirrorPoint(Vector3d point, PlaneData plane) {
