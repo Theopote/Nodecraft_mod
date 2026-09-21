@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PathFrameUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -119,34 +120,34 @@ public class SweepProfileAlongPathNode extends BaseNode {
             writeEmptyOutputs();
             return;
         }
-        if (flipProfile) {
-            baseUniquePoints = new ArrayList<>(baseUniquePoints);
-            Collections.reverse(baseUniquePoints);
-        }
 
-        Vector3d profileOrigin = new Vector3d(profile.getCenter());
+        List<Vector3d> localOffsets = PathFrameUtils.profileLocalOffsets(profile);
+        if (flipProfile) {
+            localOffsets = new ArrayList<>(localOffsets);
+            Collections.reverse(localOffsets);
+        }
         List<Double> scaleValues = resolveNumberList(inputValues.get(INPUT_SCALE_VALUES_ID));
         List<Double> rotationValues = resolveNumberList(inputValues.get(INPUT_ROTATION_VALUES_ID));
         List<Object> sectionProfiles = new ArrayList<>(spinePoints.size());
         List<Object> sectionPaths = new ArrayList<>(spinePoints.size());
-        List<Vector3d> allPoints = new ArrayList<>(baseUniquePoints.size() * spinePoints.size());
+        List<Vector3d> allPoints = new ArrayList<>(localOffsets.size() * spinePoints.size());
         List<List<Vector3d>> stripSections = new ArrayList<>(spinePoints.size());
         List<Boolean> sectionClosedFlags = new ArrayList<>(spinePoints.size());
 
+        List<PathFrameUtils.Frame> frames = orientToPath
+            ? PathFrameUtils.framesAlongPolyline(spinePoints, null)
+            : spinePoints.stream().map(PathFrameUtils.Frame::identity).toList();
+
         for (int i = 0; i < spinePoints.size(); i++) {
             Vector3d spinePoint = spinePoints.get(i);
-            Vector3d tangent = SolidNodeUtils.computeTangent(spinePoints, i);
-            SolidNodeUtils.Frame frame = orientToPath
-                ? SolidNodeUtils.buildFrame(spinePoint, tangent)
-                : SolidNodeUtils.Frame.identity(spinePoint);
+            PathFrameUtils.Frame frame = frames.get(i);
             double t = spinePoints.size() <= 1 ? 0.0d : (double) i / (double) (spinePoints.size() - 1);
             double scale = resolveScalarAt(scaleValues, t, startScale, endScale);
             double rotationRadians = Math.toRadians(resolveScalarAt(rotationValues, t, startRotationDegrees, endRotationDegrees));
 
-            List<Vector3d> uniqueSectionPoints = new ArrayList<>(baseUniquePoints.size());
-            for (Vector3d profilePoint : baseUniquePoints) {
-                Vector3d local = new Vector3d(profilePoint).sub(profileOrigin);
-                local = transformLocalProfilePoint(local, scale, rotationRadians);
+            List<Vector3d> uniqueSectionPoints = new ArrayList<>(localOffsets.size());
+            for (Vector3d localOffset : localOffsets) {
+                Vector3d local = transformLocalProfilePoint(new Vector3d(localOffset), scale, rotationRadians);
                 Vector3d worldPoint = frame.transform(local);
                 uniqueSectionPoints.add(worldPoint);
                 allPoints.add(worldPoint);

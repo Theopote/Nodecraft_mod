@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PathFrameUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -121,26 +122,26 @@ public class SweepPointListAlongPathNode extends BaseNode {
         }
 
         Vector3d profileOrigin = SolidNodeUtils.computeCenter(profilePoints);
+        List<Vector3d> localOffsets = PathFrameUtils.pointsToLocalOffsets(profilePoints, profileOrigin, null);
         List<Double> scaleValues = resolveNumberList(inputValues.get(INPUT_SCALE_VALUES_ID));
         List<Double> rotationValues = resolveNumberList(inputValues.get(INPUT_ROTATION_VALUES_ID));
         List<List<Vector3d>> sections = new ArrayList<>(spinePoints.size());
         List<Object> sectionPaths = new ArrayList<>(spinePoints.size());
-        List<Vector3d> allPoints = new ArrayList<>(profilePoints.size() * spinePoints.size());
+        List<Vector3d> allPoints = new ArrayList<>(localOffsets.size() * spinePoints.size());
+
+        List<PathFrameUtils.Frame> frames = orientToPath
+            ? PathFrameUtils.framesAlongPolyline(spinePoints, null)
+            : spinePoints.stream().map(PathFrameUtils.Frame::identity).toList();
 
         for (int i = 0; i < spinePoints.size(); i++) {
-            Vector3d spinePoint = spinePoints.get(i);
-            Vector3d tangent = SolidNodeUtils.computeTangent(spinePoints, i);
-            SolidNodeUtils.Frame frame = orientToPath
-                ? SolidNodeUtils.buildFrame(spinePoint, tangent)
-                : SolidNodeUtils.Frame.identity(spinePoint);
+            PathFrameUtils.Frame frame = frames.get(i);
             double t = spinePoints.size() <= 1 ? 0.0d : (double) i / (double) (spinePoints.size() - 1);
             double scale = resolveScalarAt(scaleValues, t, startScale, endScale);
             double rotationRadians = Math.toRadians(resolveScalarAt(rotationValues, t, startRotationDegrees, endRotationDegrees));
 
-            List<Vector3d> section = new ArrayList<>(profilePoints.size());
-            for (Vector3d profilePoint : profilePoints) {
-                Vector3d local = new Vector3d(profilePoint).sub(profileOrigin);
-                local = transformLocalProfilePoint(local, scale, rotationRadians);
+            List<Vector3d> section = new ArrayList<>(localOffsets.size());
+            for (Vector3d localOffset : localOffsets) {
+                Vector3d local = transformLocalProfilePoint(new Vector3d(localOffset), scale, rotationRadians);
                 Vector3d worldPoint = frame.transform(local);
                 section.add(worldPoint);
                 allPoints.add(worldPoint);

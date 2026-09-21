@@ -431,6 +431,17 @@ Arc defaults, Curve Evaluate contract).
 
 **Next (Batch 4 P1b):** PathFrameUtils parallel transport + Sweep profile-plane local (u,v).
 
+**Batch 4 P1b — Path frames + profile plane (2026-09-21):**
+
+- Shared **`PathFrameUtils`**: parallel-transport frames along polylines/samples (`z` = tangent,
+  `x`/`y` = section). Used by Sweep Surface, Sweep From Points, and Curve Frame Along Path.
+- Sweep places profiles via **profile plane UV** (`profileLocalOffsets` / `pointsToLocalOffsets`),
+  not world `point - center`.
+- Contract/unit: `PathFrameUtilsTest` (+ existing Solids/Curves family contracts).
+
+**Next (Batch 4 P2):** Sweep PATH-only (drop Path Points fallback), Loft auto-resample,
+PROFILE_LIST, strict direction resolver.
+
 ---
 
 ## Checklist for new nodes

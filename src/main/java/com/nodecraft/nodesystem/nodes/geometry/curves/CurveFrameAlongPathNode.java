@@ -14,6 +14,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.PathFrameUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -147,11 +148,8 @@ public class CurveFrameAlongPathNode extends AbstractCurveNode {
         }
 
         Vector3d up = resolveUpVector(inputValues.get(INPUT_UP_VECTOR_ID));
-        List<Vector3d> origins = new ArrayList<>(sampleDistances.size());
-        List<Vector3d> xAxes = new ArrayList<>(sampleDistances.size());
-        List<Vector3d> yAxes = new ArrayList<>(sampleDistances.size());
-        List<Vector3d> zAxes = new ArrayList<>(sampleDistances.size());
-        List<PlaneData> planes = new ArrayList<>(sampleDistances.size());
+        List<Vector3d> sampleOrigins = new ArrayList<>(sampleDistances.size());
+        List<Vector3d> sampleTangents = new ArrayList<>(sampleDistances.size());
         double delta = Math.max(total * 1.0e-4d, 1.0e-4d);
         for (double d : sampleDistances) {
             Vector3d origin = PathUtils.sampleAtDistance(unique, closed, cumulative, d);
@@ -165,34 +163,23 @@ public class CurveFrameAlongPathNode extends AbstractCurveNode {
                 continue;
             }
             tangent.normalize();
+            sampleOrigins.add(origin);
+            sampleTangents.add(tangent);
+        }
 
-            Vector3d binormal = new Vector3d(tangent).cross(up);
-            if (binormal.lengthSquared() <= EPS) {
-                Vector3d fallbackUp = Math.abs(tangent.y) < 0.9d
-                    ? new Vector3d(0.0d, 1.0d, 0.0d)
-                    : new Vector3d(1.0d, 0.0d, 0.0d);
-                binormal = new Vector3d(tangent).cross(fallbackUp);
-                if (binormal.lengthSquared() <= EPS) {
-                    fallbackUp = new Vector3d(0.0d, 0.0d, 1.0d);
-                    binormal = new Vector3d(tangent).cross(fallbackUp);
-                }
-            }
-            if (binormal.lengthSquared() <= EPS) {
-                continue;
-            }
-            binormal.normalize();
-
-            Vector3d normal = new Vector3d(binormal).cross(tangent);
-            if (normal.lengthSquared() <= EPS) {
-                continue;
-            }
-            normal.normalize();
-
-            origins.add(origin);
-            xAxes.add(new Vector3d(tangent));
-            yAxes.add(new Vector3d(normal));
-            zAxes.add(new Vector3d(binormal));
-            planes.add(new PlaneData(new Vector3d(origin), new Vector3d(binormal)));
+        List<PathFrameUtils.Frame> pathFrames = PathFrameUtils.framesFromSamples(sampleOrigins, sampleTangents, up);
+        List<Vector3d> origins = new ArrayList<>(pathFrames.size());
+        List<Vector3d> xAxes = new ArrayList<>(pathFrames.size());
+        List<Vector3d> yAxes = new ArrayList<>(pathFrames.size());
+        List<Vector3d> zAxes = new ArrayList<>(pathFrames.size());
+        List<PlaneData> planes = new ArrayList<>(pathFrames.size());
+        for (PathFrameUtils.Frame frame : pathFrames) {
+            // Curve Frame ports: X=tangent, Y=normal, Z=binormal
+            origins.add(new Vector3d(frame.origin()));
+            xAxes.add(new Vector3d(frame.zAxis()));
+            yAxes.add(new Vector3d(frame.yAxis()));
+            zAxes.add(new Vector3d(frame.xAxis()));
+            planes.add(new PlaneData(new Vector3d(frame.origin()), new Vector3d(frame.xAxis())));
         }
 
         if (origins.isEmpty()) {

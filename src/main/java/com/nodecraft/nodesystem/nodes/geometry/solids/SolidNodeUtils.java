@@ -6,7 +6,7 @@ import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
-import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.PathFrameUtils;
 import com.nodecraft.nodesystem.util.Vector3;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -94,37 +94,21 @@ final class SolidNodeUtils {
     }
 
     static Vector3d computeTangent(List<Vector3d> points, int index) {
-        Vector3d tangent;
-        if (index == 0) {
-            tangent = new Vector3d(points.get(1)).sub(points.get(0));
-        } else if (index == points.size() - 1) {
-            tangent = new Vector3d(points.get(index)).sub(points.get(index - 1));
-        } else {
-            tangent = new Vector3d(points.get(index + 1)).sub(points.get(index - 1));
-        }
-        return normalizeOr(tangent, new Vector3d(0.0d, 0.0d, 1.0d));
+        return PathFrameUtils.computeTangent(points, index);
     }
 
     static Frame buildFrame(Vector3d origin, Vector3d tangent) {
-        Vector3d zAxis = normalizeOr(new Vector3d(tangent), null);
-        if (zAxis == null) {
-            return Frame.identity(origin);
-        }
+        PathFrameUtils.Frame frame = PathFrameUtils.initialFrame(origin, tangent, null);
+        return new Frame(frame.origin(), frame.xAxis(), frame.yAxis(), frame.zAxis());
+    }
 
-        Vector3d reference = leastAlignedCardinal(zAxis);
-        Vector3d xAxis = reference.cross(zAxis, new Vector3d());
-        if (xAxis.lengthSquared() <= EPSILON) {
-            return Frame.identity(origin);
+    static List<Frame> framesAlongPolyline(List<Vector3d> points) {
+        List<PathFrameUtils.Frame> frames = PathFrameUtils.framesAlongPolyline(points, null);
+        List<Frame> converted = new ArrayList<>(frames.size());
+        for (PathFrameUtils.Frame frame : frames) {
+            converted.add(new Frame(frame.origin(), frame.xAxis(), frame.yAxis(), frame.zAxis()));
         }
-        xAxis.normalize();
-
-        Vector3d yAxis = new Vector3d(zAxis).cross(xAxis);
-        if (yAxis.lengthSquared() <= EPSILON) {
-            return Frame.identity(origin);
-        }
-        yAxis.normalize();
-
-        return new Frame(origin, xAxis, yAxis, zAxis);
+        return converted;
     }
 
     static Vector3d rotateAroundAxis(Vector3d point, Vector3d axisOrigin, Vector3d axisDirection, double angleRadians) {
@@ -193,30 +177,6 @@ final class SolidNodeUtils {
             case 2 -> vector.z = value;
             default -> throw new GeometryException("Unsupported axis: " + axis);
         }
-    }
-
-    private static Vector3d fromVec3d(Vec3d point) {
-        return new Vector3d(point.x, point.y, point.z);
-    }
-
-    private static Vector3d leastAlignedCardinal(Vector3d axis) {
-        double ax = Math.abs(axis.x);
-        double ay = Math.abs(axis.y);
-        double az = Math.abs(axis.z);
-        if (ax <= ay && ax <= az) {
-            return new Vector3d(1.0d, 0.0d, 0.0d);
-        }
-        if (ay <= az) {
-            return new Vector3d(0.0d, 1.0d, 0.0d);
-        }
-        return new Vector3d(0.0d, 0.0d, 1.0d);
-    }
-
-    private static @Nullable Vector3d normalizeOr(Vector3d vector, @Nullable Vector3d fallback) {
-        if (vector.lengthSquared() <= EPSILON) {
-            return fallback == null ? null : fallback;
-        }
-        return vector.normalize();
     }
 
     record Frame(Vector3d origin, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
