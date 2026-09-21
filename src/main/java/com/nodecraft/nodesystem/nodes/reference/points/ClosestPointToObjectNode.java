@@ -7,16 +7,14 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
-import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PointData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.BlockPosList;
-import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -48,9 +46,7 @@ public class ClosestPointToObjectNode extends BaseNode {
     private int maxGeometryVoxels = 65536;
 
     private static final String INPUT_POINT_ID = "input_point";
-    private static final String INPUT_CURVE_ID = "input_curve";
-    private static final String INPUT_POLYLINE_ID = "input_polyline";
-    private static final String INPUT_LINE_ID = "input_line";
+    private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_SURFACE_STRIP_ID = "input_surface_strip";
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
 
@@ -70,15 +66,9 @@ public class ClosestPointToObjectNode extends BaseNode {
         addInputPort(new BasePort(INPUT_POINT_ID, "Point",
             "Query point. Supports Point, Vector, Position, or Block Coordinate.",
             NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_CURVE_ID, "Curve",
-            "Curve to search using its sampled points",
-            NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_POLYLINE_ID, "Polyline",
-            "Polyline to search",
-            NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_LINE_ID, "Line",
-            "Line segment to search",
-            NodeDataType.LINE, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path",
+            "Path to search (line, polyline, or curve)",
+            NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_SURFACE_STRIP_ID, "Surface Strip",
             "Surface strip to search by triangulating its quads",
             NodeDataType.SURFACE_STRIP, this));
@@ -134,9 +124,7 @@ public class ClosestPointToObjectNode extends BaseNode {
         }
 
         ClosestResult best = null;
-        best = chooseBetter(best, closestOnCurve(query, inputValues.get(INPUT_CURVE_ID)));
-        best = chooseBetter(best, closestOnPolyline(query, inputValues.get(INPUT_POLYLINE_ID), "Polyline", false));
-        best = chooseBetter(best, closestOnLine(query, inputValues.get(INPUT_LINE_ID)));
+        best = chooseBetter(best, closestOnPath(query, inputValues.get(INPUT_PATH_ID)));
         best = chooseBetter(best, closestOnSurfaceStrip(query, inputValues.get(INPUT_SURFACE_STRIP_ID)));
         best = chooseBetter(best, closestOnGeometry(query, inputValues.get(INPUT_GEOMETRY_ID)));
 
@@ -166,33 +154,19 @@ public class ClosestPointToObjectNode extends BaseNode {
         return current;
     }
 
-    private @Nullable ClosestResult closestOnCurve(Vector3d query, @Nullable Object curveObj) {
-        if (!(curveObj instanceof Curve curve)) {
+    private @Nullable ClosestResult closestOnPath(Vector3d query, @Nullable Object pathObj) {
+        PathData path = PathData.wrap(pathObj);
+        List<Vector3d> points = PathUtils.resolvePath(pathObj);
+        if (points == null || points.size() < 2) {
             return null;
         }
-        List<Vector3d> points = new ArrayList<>();
-        for (Vec3d sample : curve.getSamplePoints()) {
-            points.add(fromVec3d(sample));
-        }
-        return closestOnPolyline(query, points, "Curve", true);
-    }
-
-    private @Nullable ClosestResult closestOnPolyline(Vector3d query, @Nullable Object polylineObj, String type, boolean approximate) {
-        if (!(polylineObj instanceof PolylineData polyline)) {
-            return null;
-        }
-        List<Vector3d> points = new ArrayList<>();
-        for (Vec3d point : polyline.getPoints()) {
-            points.add(fromVec3d(point));
-        }
+        String type = path == null ? "Path" : switch (path.getKind()) {
+            case LINE -> "Line";
+            case POLYLINE -> "Polyline";
+            case CURVE -> "Curve";
+        };
+        boolean approximate = path != null && path.getKind() == PathData.Kind.CURVE;
         return closestOnPolyline(query, points, type, approximate);
-    }
-
-    private @Nullable ClosestResult closestOnLine(Vector3d query, @Nullable Object lineObj) {
-        if (!(lineObj instanceof LineData line)) {
-            return null;
-        }
-        return closestOnPolyline(query, List.of(fromVec3d(line.getStart()), fromVec3d(line.getEnd())), "Line", false);
     }
 
     private @Nullable ClosestResult closestOnPolyline(Vector3d query, List<Vector3d> rawPoints, String type, boolean approximate) {
@@ -411,10 +385,6 @@ public class ClosestPointToObjectNode extends BaseNode {
 
     private static Vector3d blockCenter(BlockPos pos) {
         return new Vector3d(pos.getX() + 0.5d, pos.getY() + 0.5d, pos.getZ() + 0.5d);
-    }
-
-    private static Vector3d fromVec3d(Vec3d point) {
-        return new Vector3d(point.x, point.y, point.z);
     }
 
     public boolean isFillGeometry() {

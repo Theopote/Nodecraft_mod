@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -39,9 +40,7 @@ import java.util.UUID;
 )
 public class PreviewPathsNode extends BaseNode {
 
-    private static final String INPUT_LINE_ID = "input_line";
-    private static final String INPUT_POLYLINE_ID = "input_polyline";
-    private static final String INPUT_CURVE_ID = "input_curve";
+    private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_POINTS_ID = "input_points";
     private static final String OUTPUT_SUCCESS_ID = "output_success";
     private static final String OUTPUT_PREVIEW_IDS_ID = "output_preview_ids";
@@ -80,10 +79,10 @@ public class PreviewPathsNode extends BaseNode {
 
     public PreviewPathsNode() {
         super(UUID.randomUUID(), "output.preview.preview_curves");
-        addInputPort(new BasePort(INPUT_LINE_ID, "Line", "Single straight segment to preview", NodeDataType.LINE, this));
-        addInputPort(new BasePort(INPUT_POLYLINE_ID, "Polyline", "Multi-segment path to preview", NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_CURVE_ID, "Curve", "Sampled curve path to preview", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Paths / Points", "Fallback path list or ordered point list used as preview input", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path",
+            "Path to preview (line, polyline, or curve)", NodeDataType.PATH, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Paths / Points",
+            "Fallback path list or ordered point list used as preview input", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether the preview was shown", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_PREVIEW_IDS_ID, "Preview IDs", "Active preview identifiers", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_PREVIEW_COUNT_ID, "Preview Count", "Number of rendered path previews", NodeDataType.INTEGER, this));
@@ -234,13 +233,18 @@ public class PreviewPathsNode extends BaseNode {
     private List<Object> resolvePreviewItems() {
         List<Object> previewItems = new ArrayList<>();
 
-        if (inputValues.get(INPUT_LINE_ID) instanceof LineData line) {
+        Object pathObj = inputValues.get(INPUT_PATH_ID);
+        if (pathObj instanceof PathData path) {
+            switch (path.getKind()) {
+                case LINE -> previewItems.add(path.getLine());
+                case POLYLINE -> previewItems.add(path.getPolyline());
+                case CURVE -> previewItems.add(path.getCurve());
+            }
+        } else if (pathObj instanceof LineData line) {
             previewItems.add(line);
-        }
-        if (inputValues.get(INPUT_POLYLINE_ID) instanceof PolylineData polyline) {
+        } else if (pathObj instanceof PolylineData polyline) {
             previewItems.add(polyline);
-        }
-        if (inputValues.get(INPUT_CURVE_ID) instanceof Curve curve) {
+        } else if (pathObj instanceof Curve curve) {
             previewItems.add(curve);
         }
 

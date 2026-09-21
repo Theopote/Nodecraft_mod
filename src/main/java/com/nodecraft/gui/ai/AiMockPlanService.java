@@ -281,9 +281,9 @@ public final class AiMockPlanService {
         connections.add(new MockConnection("turns", "output_value", "helix", "input_turns"));
         connections.add(new MockConnection("segments", "output_value", "helix", "input_segments_per_turn"));
 
-        connections.add(new MockConnection("helix", "output_curve", "path_preview", "input_curve"));
+        connections.add(new MockConnection("helix", "output_curve", "path_preview", "input_path"));
         connections.add(new MockConnection("seed_bake", "output_blocks", "along_path", "input_coordinates"));
-        connections.add(new MockConnection("helix", "output_curve", "along_path", "input_curve"));
+        connections.add(new MockConnection("helix", "output_curve", "along_path", "input_path"));
 
         connections.add(new MockConnection("along_path", "output_array_coordinates", "preview", "input_blocks"));
         connections.add(new MockConnection("along_path", "output_array_coordinates", "apply", "input_blocks"));
@@ -357,14 +357,14 @@ public final class AiMockPlanService {
         connections.add(new MockConnection("arch_end", "output_value", "arch_curve", "input_end_angle"));
         connections.add(new MockConnection("arch_segments", "output_value", "arch_curve", "input_resolution"));
 
-        connections.add(new MockConnection("arch_curve", "output_curve", "path_preview", "input_curve"));
+        connections.add(new MockConnection("arch_curve", "output_curve", "path_preview", "input_path"));
 
         connections.add(new MockConnection("arch_center", "output_coordinate", "seed_sphere", "input_center"));
         connections.add(new MockConnection("seed_radius", "output_value", "seed_sphere", "input_radius"));
         connections.add(new MockConnection("seed_sphere", "output_geometry", "seed_bake", "input_geometry"));
 
         connections.add(new MockConnection("seed_bake", "output_blocks", "along_path", "input_coordinates"));
-        connections.add(new MockConnection("arch_curve", "output_curve", "along_path", "input_curve"));
+        connections.add(new MockConnection("arch_curve", "output_curve", "along_path", "input_path"));
 
         connections.add(new MockConnection("along_path", "output_array_coordinates", "preview", "input_blocks"));
         connections.add(new MockConnection("along_path", "output_array_coordinates", "apply", "input_blocks"));

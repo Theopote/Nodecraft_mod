@@ -49,9 +49,7 @@ public class CurveArrayGeometryNode extends BaseNode {
 
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_PIVOT_ID = "input_pivot";
-    private static final String INPUT_CURVE_ID = "input_curve";
-    private static final String INPUT_POLYLINE_ID = "input_polyline";
-    private static final String INPUT_LINE_ID = "input_line";
+    private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_COUNT_ID = "input_count";
     private static final String INPUT_SPACING_ID = "input_spacing";
     private static final String INPUT_UP_VECTOR_ID = "input_up_vector";
@@ -69,9 +67,7 @@ public class CurveArrayGeometryNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to copy along the path", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_PIVOT_ID, "Pivot", "Local pivot point in the source geometry that maps to each path frame", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_CURVE_ID, "Curve", "Curve path to sample", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_POLYLINE_ID, "Polyline", "Fallback polyline path", NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_LINE_ID, "Line", "Fallback line path", NodeDataType.LINE, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Path to sample (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Number of instances along the path. Overrides Spacing when >= 2.", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing", "Distance between instances when Count is not set", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_UP_VECTOR_ID, "Up Vector", "Reference up vector for path frames", NodeDataType.VECTOR, this));
@@ -151,11 +147,7 @@ public class CurveArrayGeometryNode extends BaseNode {
     }
 
     private @Nullable List<Vector3d> resolvePath() {
-        List<Vector3d> points = PathUtils.resolveVertices(
-            inputValues.get(INPUT_CURVE_ID),
-            inputValues.get(INPUT_POLYLINE_ID),
-            inputValues.get(INPUT_LINE_ID)
-        );
+        List<Vector3d> points = PathUtils.resolvePath(inputValues.get(INPUT_PATH_ID));
         return points == null ? null : List.copyOf(points);
     }
 

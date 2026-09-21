@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
@@ -85,8 +86,8 @@ public class BlendCurvesNode extends AbstractCurveNode {
         addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Blend Polyline", "Sampled blend polyline", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_JOINED_POLYLINE_ID, "Joined Polyline", "Curve A, blend, and curve B as one sampled polyline", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Blend points as point list", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_START_POINT_ID, "Start Point", "Blend start point", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_END_POINT_ID, "End Point", "Blend end point", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_START_POINT_ID, "Start Point", "Blend start point", NodeDataType.POINT, this));
+        addOutputPort(new BasePort(OUTPUT_END_POINT_ID, "End Point", "Blend end point", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the blend was generated", NodeDataType.BOOLEAN, this));
     }
 
@@ -132,8 +133,8 @@ public class BlendCurvesNode extends AbstractCurveNode {
         outputValues.put(OUTPUT_POLYLINE_ID, blendPolyline);
         outputValues.put(OUTPUT_JOINED_POLYLINE_ID, joinedPolyline);
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(blendPoints));
-        outputValues.put(OUTPUT_START_POINT_ID, start);
-        outputValues.put(OUTPUT_END_POINT_ID, end);
+        outputValues.put(OUTPUT_START_POINT_ID, new PointData(start));
+        outputValues.put(OUTPUT_END_POINT_ID, new PointData(end));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 

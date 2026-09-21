@@ -7,10 +7,9 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.PolylineClosestPoint3d;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -23,8 +22,8 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "transform.deformations.curve_attract",
-    displayName = "Curve Attract Point List",
-    description = "Pulls points toward a sampled curve with quadratic falloff; optional displacement along full vector, tangent only, or perpendicular-to-tangent only",
+    displayName = "Path Attract Point List",
+    description = "Pulls points toward a path with quadratic falloff; optional displacement along full vector, tangent only, or perpendicular-to-tangent only",
     category = "transform.deformations",
     order = 4
 )
@@ -33,11 +32,11 @@ public class CurveAttractPointListNode extends BaseNode {
     private static final double EPS = 1.0e-9d;
 
     public enum DisplacementMode {
-        /** Straight toward the closest point on the curve */
+        /** Straight toward the closest point on the path */
         TOWARD_POINT,
-        /** Only the component perpendicular to the local curve tangent */
+        /** Only the component perpendicular to the local path tangent */
         PERPENDICULAR,
-        /** Only the component parallel to the local curve tangent */
+        /** Only the component parallel to the local path tangent */
         TANGENTIAL
     }
 
@@ -53,7 +52,7 @@ public class CurveAttractPointListNode extends BaseNode {
     private DisplacementMode displacementMode = DisplacementMode.TOWARD_POINT;
 
     private static final String INPUT_POINTS_ID = "input_points";
-    private static final String INPUT_CURVE_ID = "input_curve";
+    private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_STRENGTH_ID = "input_strength";
     private static final String INPUT_RADIUS_ID = "input_radius";
 
@@ -65,7 +64,7 @@ public class CurveAttractPointListNode extends BaseNode {
         super(UUID.randomUUID(), "transform.deformations.curve_attract");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to deform", NodeDataType.POINT_LIST, this));
-        addInputPort(new BasePort(INPUT_CURVE_ID, "Curve", "Target curve (sampled internally)", NodeDataType.CURVE, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Target path (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_STRENGTH_ID, "Strength", "Attraction strength override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Falloff radius override", NodeDataType.DOUBLE, this));
 
@@ -76,25 +75,19 @@ public class CurveAttractPointListNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Pulls points toward a sampled curve with quadratic falloff; optional displacement along full vector, tangent only, or perpendicular-to-tangent only";
+        return "Pulls points toward a path with quadratic falloff; optional displacement along full vector, tangent only, or perpendicular-to-tangent only";
     }
 
     @Override
     public String getDisplayName() {
-        return "Curve Attract Point List";
+        return "Path Attract Point List";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> pointsInput = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
-        Object curveObj = inputValues.get(INPUT_CURVE_ID);
-        if (pointsInput.isEmpty() || !(curveObj instanceof Curve curve)) {
-            writeEmpty();
-            return;
-        }
-
-        List<Vector3d> poly = sampleCurvePolyline(curve);
-        if (poly.size() < 2) {
+        List<Vector3d> poly = PathUtils.resolvePath(inputValues.get(INPUT_PATH_ID));
+        if (pointsInput.isEmpty() || poly == null || poly.size() < 2) {
             writeEmpty();
             return;
         }
@@ -173,14 +166,6 @@ public class CurveAttractPointListNode extends BaseNode {
                 displacementMode = DisplacementMode.TOWARD_POINT;
             }
         }
-    }
-
-    private static List<Vector3d> sampleCurvePolyline(Curve curve) {
-        List<Vector3d> poly = new ArrayList<>();
-        for (Vec3d v : curve.getSamplePoints()) {
-            poly.add(new Vector3d(v.x, v.y, v.z));
-        }
-        return poly;
     }
 
     private void writeEmpty() {

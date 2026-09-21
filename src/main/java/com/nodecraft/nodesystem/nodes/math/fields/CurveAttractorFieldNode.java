@@ -8,7 +8,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.PolylineClosestPoint3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -19,8 +19,8 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "math.fields.curve_attractor_field",
-    displayName = "Curve Attractor Field",
-    description = "Builds a vector field that pulls points toward the closest point on a sampled curve.",
+    displayName = "Path Attractor Field",
+    description = "Builds a vector field that pulls points toward the closest point on a path.",
     category = "math.fields",
     order = 9
 )
@@ -38,7 +38,7 @@ public class CurveAttractorFieldNode extends BaseNode {
     @NodeProperty(displayName = "Exponent", category = "Attractor", order = 4)
     private double exponent = 2.0d;
 
-    private static final String INPUT_CURVE_ID = "input_curve";
+    private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_STRENGTH_ID = "input_strength";
     private static final String INPUT_RADIUS_ID = "input_radius";
     private static final String INPUT_EXPONENT_ID = "input_exponent";
@@ -47,29 +47,23 @@ public class CurveAttractorFieldNode extends BaseNode {
     public CurveAttractorFieldNode() {
         super(UUID.randomUUID(), "math.fields.curve_attractor_field");
 
-        addInputPort(new BasePort(INPUT_CURVE_ID, "Curve", "Attractor curve", NodeDataType.CURVE, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Attractor path (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_STRENGTH_ID, "Strength", "Field strength override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Falloff radius override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_EXPONENT_ID, "Exponent", "Falloff exponent override", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_FIELD_ID, "Field", "Curve attractor vector field output", NodeDataType.VECTOR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_FIELD_ID, "Field", "Path attractor vector field output", NodeDataType.VECTOR_FIELD, this));
     }
 
     @Override
     public String getDescription() {
-        return "Builds a vector field that pulls points toward the closest point on a sampled curve.";
+        return "Builds a vector field that pulls points toward the closest point on a path.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object curveObj = inputValues.get(INPUT_CURVE_ID);
-        if (!(curveObj instanceof Curve curve)) {
-            outputValues.put(OUTPUT_FIELD_ID, null);
-            return;
-        }
-
-        List<Vector3d> polyline = AttractorFieldUtils.sampleCurvePolyline(curve);
-        if (polyline.size() < 2) {
+        List<Vector3d> polyline = PathUtils.resolvePath(inputValues.get(INPUT_PATH_ID));
+        if (polyline == null || polyline.size() < 2) {
             outputValues.put(OUTPUT_FIELD_ID, null);
             return;
         }

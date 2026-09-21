@@ -5,10 +5,9 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PointData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -33,8 +32,7 @@ public class ProjectPointToPolylineNode extends BaseNode {
     private static final double EPS = 1.0e-9d;
 
     private static final String INPUT_POINT_ID = "input_point";
-    private static final String INPUT_POLYLINE_ID = "input_polyline";
-    private static final String INPUT_LINE_ID = "input_line";
+    private static final String INPUT_PATH_ID = "input_path";
 
     private static final String OUTPUT_POINT_ID = "output_point";
     private static final String OUTPUT_VECTOR_ID = "output_vector";
@@ -50,12 +48,9 @@ public class ProjectPointToPolylineNode extends BaseNode {
         addInputPort(new BasePort(INPUT_POINT_ID, "Point",
             "Query point. Supports Point, Vector, Position, or Block Coordinate.",
             NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_POLYLINE_ID, "Polyline",
-            "Polyline to project onto",
-            NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_LINE_ID, "Line",
-            "Optional 2-point line when no polyline is connected",
-            NodeDataType.LINE, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path",
+            "Path to project onto (line, polyline, or curve)",
+            NodeDataType.PATH, this));
 
         addOutputPort(new BasePort(OUTPUT_POINT_ID, "Closest Point",
             "Closest point on the path as PointData",
@@ -159,27 +154,7 @@ public class ProjectPointToPolylineNode extends BaseNode {
     }
 
     private List<Vector3d> resolveVertices() {
-        Object polyObj = inputValues.get(INPUT_POLYLINE_ID);
-        Object lineObj = inputValues.get(INPUT_LINE_ID);
-        if (polyObj instanceof PolylineData poly) {
-            List<Vec3d> pts = poly.getPoints();
-            List<Vector3d> out = new ArrayList<>(pts.size());
-            for (Vec3d v : pts) {
-                Vector3d point = PointUtils.resolvePoint(v);
-                if (PointUtils.isFinite(point)) {
-                    out.add(point);
-                }
-            }
-            return out;
-        }
-        if (lineObj instanceof LineData line) {
-            Vector3d a = PointUtils.resolvePoint(line.getStart());
-            Vector3d b = PointUtils.resolvePoint(line.getEnd());
-            if (PointUtils.isFinite(a) && PointUtils.isFinite(b)) {
-                return List.of(a, b);
-            }
-        }
-        return null;
+        return PathUtils.resolvePath(inputValues.get(INPUT_PATH_ID));
     }
 
     private static boolean isClosed(List<Vector3d> verts) {

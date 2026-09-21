@@ -22,13 +22,13 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Replaces interior corners of an open polyline with circular fillets lying in a plane.
+ * Replaces interior corners of an open path with circular fillets lying in a plane.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.curves.fillet_polyline_corners",
-    displayName = "Fillet Polyline Corners",
-    description = "Fillets interior corners of an open polyline with circular arcs in the work plane",
+    displayName = "Fillet Path Corners",
+    description = "Fillets interior corners of an open path with circular arcs in the work plane",
     category = "geometry.curves",
     order = 11
 )
@@ -40,7 +40,7 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
         description = "Number of straight segments used to approximate each circular fillet")
     private int arcSegments = 8;
 
-    private static final String INPUT_POLYLINE_ID = "input_polyline";
+    private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_PLANE_ID = "input_plane";
     private static final String INPUT_RADIUS_ID = "input_radius";
 
@@ -50,11 +50,11 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
     public PolylineCornerFilletNode() {
         super(UUID.randomUUID(), "geometry.curves.fillet_polyline_corners");
 
-        addInputPort(new BasePort(INPUT_POLYLINE_ID, "Polyline",
-            "Open polyline whose interior corners will be filleted (closed polylines are not supported)",
-            NodeDataType.POLYLINE, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path",
+            "Open path whose interior corners will be filleted (closed paths are not supported)",
+            NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane",
-            "Work plane containing the polyline",
+            "Work plane containing the path",
             NodeDataType.PLANE, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius",
             "Fillet radius (must be positive)",
@@ -99,14 +99,11 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object polyObj = inputValues.get(INPUT_POLYLINE_ID);
+        List<Vector3d> raw = PathUtils.resolvePath(inputValues.get(INPUT_PATH_ID));
         Object planeObj = inputValues.get(INPUT_PLANE_ID);
         Object radiusObj = inputValues.get(INPUT_RADIUS_ID);
-        if (!(polyObj instanceof PolylineData poly) || !(planeObj instanceof PlaneData plane) || !(radiusObj instanceof Number radNum)) {
-            writeInvalid();
-            return;
-        }
-        if (poly.isClosed()) {
+        if (raw == null || raw.size() < 3 || PathUtils.isClosed(raw)
+                || !(planeObj instanceof PlaneData plane) || !(radiusObj instanceof Number radNum)) {
             writeInvalid();
             return;
         }
@@ -117,16 +114,10 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
         }
         int segs = Math.min(64, Math.max(1, arcSegments));
 
-        List<Vec3d> raw = poly.getPoints();
-        if (raw.size() < 3) {
-            writeInvalid();
-            return;
-        }
-
         PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
         List<Vector2d> pts = new ArrayList<>(raw.size());
-        for (Vec3d v : raw) {
-            Vector3d p3 = plane.projectPoint(new Vector3d(v.x, v.y, v.z));
+        for (Vector3d v : raw) {
+            Vector3d p3 = plane.projectPoint(new Vector3d(v));
             pts.add(axes.to2d(p3));
         }
 

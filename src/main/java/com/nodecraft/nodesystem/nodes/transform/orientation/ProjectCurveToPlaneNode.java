@@ -6,10 +6,11 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
@@ -33,9 +34,7 @@ public class ProjectCurveToPlaneNode extends BaseNode {
     @NodeProperty(displayName = "Sample Curve", category = "Projection", order = 1)
     private boolean sampleCurve = true;
 
-    private static final String INPUT_CURVE_ID = "input_curve";
-    private static final String INPUT_POLYLINE_ID = "input_polyline";
-    private static final String INPUT_LINE_ID = "input_line";
+    private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_PLANE_ID = "input_plane";
 
     private static final String OUTPUT_CURVE_ID = "output_curve";
@@ -48,9 +47,8 @@ public class ProjectCurveToPlaneNode extends BaseNode {
     public ProjectCurveToPlaneNode() {
         super(UUID.randomUUID(), "transform.orientation.project_curve_to_plane");
 
-        addInputPort(new BasePort(INPUT_CURVE_ID, "Curve", "Curve to project", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_POLYLINE_ID, "Polyline", "Fallback polyline to project", NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_LINE_ID, "Line", "Fallback line to project", NodeDataType.LINE, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path",
+            "Path to project (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target plane for projection", NodeDataType.PLANE, this));
 
         addOutputPort(new BasePort(OUTPUT_CURVE_ID, "Curve", "Projected linear curve", NodeDataType.CURVE, this));
@@ -136,20 +134,21 @@ public class ProjectCurveToPlaneNode extends BaseNode {
     }
 
     private List<Vec3d> resolveSourcePoints() {
-        Object curveObj = inputValues.get(INPUT_CURVE_ID);
-        if (curveObj instanceof Curve curve) {
-            List<Vec3d> points = sampleCurve ? curve.getSamplePoints() : curve.getControlPoints();
-            return points == null ? List.of() : points;
+        Object pathObj = inputValues.get(INPUT_PATH_ID);
+        PathData path = PathData.wrap(pathObj);
+        if (path != null && path.getKind() == PathData.Kind.CURVE && !sampleCurve) {
+            List<Vec3d> controlPoints = path.getCurve().getControlPoints();
+            return controlPoints == null ? List.of() : controlPoints;
         }
-        Object polylineObj = inputValues.get(INPUT_POLYLINE_ID);
-        if (polylineObj instanceof PolylineData polyline) {
-            return polyline.getPoints();
+        List<Vector3d> vertices = PathUtils.resolvePath(pathObj);
+        if (vertices == null || vertices.isEmpty()) {
+            return List.of();
         }
-        Object lineObj = inputValues.get(INPUT_LINE_ID);
-        if (lineObj instanceof LineData line) {
-            return List.of(line.getStart(), line.getEnd());
+        List<Vec3d> points = new ArrayList<>(vertices.size());
+        for (Vector3d vertex : vertices) {
+            points.add(new Vec3d(vertex.x, vertex.y, vertex.z));
         }
-        return List.of();
+        return points;
     }
 
     private void writeInvalid() {

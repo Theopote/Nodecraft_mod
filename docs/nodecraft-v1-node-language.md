@@ -393,8 +393,22 @@ Arc defaults, Curve Evaluate contract).
   **Sweep 2 Rails** (`input_path` / `input_rail_a_path` / `input_rail_b_path`) use single **`PATH`**
   inputs with `POINT_LIST` fallback via `PathUtils.resolvePathOrPointList`.
 
-**Next:** historical ID cleanup (`divide_curve_to_points`, `curve_from_points`), CurveArray / ArrayAlongCurve
-PATH migration, Blend start/end `POINT` outputs.
+**Batch 3 P3 — pattern / reference / preview PATH (2026-09-21):**
+
+- **Curve Array Geometry**, **Array Along Curve** use single **`input_path`** (`POINT_LIST` fallback on
+  Array Along Curve via `input_path_points`).
+- **Project Curve To Plane**, **Project Point To Polyline**, **Closest Point To Object** use **`input_path`**.
+- **Preview Curves** uses **`input_path`** plus list fallback on `input_points`.
+- **Blend Curves** start/end outputs are **`POINT`** (`output_start_point` / `output_end_point`).
+
+**Batch 3 P4 — Fillet / attractor PATH (2026-09-21):**
+
+- **Fillet Path Corners** (`geometry.curves.fillet_polyline_corners`) uses **`input_path`**; closed paths rejected.
+- **Path Attractor Field** (`math.fields.curve_attractor_field`) and **Path Attract Point List**
+  (`transform.deformations.curve_attract`) use **`input_path`** via `PathUtils.resolvePath`.
+
+**Next:** historical ID cleanup (`divide_curve_to_points`, `curve_from_points`), grep remaining legacy
+triple path ports.
 
 ---
 

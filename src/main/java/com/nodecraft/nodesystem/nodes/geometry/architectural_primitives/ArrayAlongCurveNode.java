@@ -38,9 +38,7 @@ public class ArrayAlongCurveNode extends BaseNode {
 
     private static final double EPSILON = 1.0e-9d;
 
-    private static final String INPUT_CURVE_ID = "input_curve";
-    private static final String INPUT_POLYLINE_ID = "input_polyline";
-    private static final String INPUT_LINE_ID = "input_line";
+    private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_PATH_POINTS_ID = "input_path_points";
     private static final String INPUT_COUNT_ID = "input_count";
     private static final String INPUT_SPACING_ID = "input_spacing";
@@ -57,10 +55,10 @@ public class ArrayAlongCurveNode extends BaseNode {
     public ArrayAlongCurveNode() {
         super(UUID.randomUUID(), "geometry.architectural_primitives.array_along_curve");
 
-        addInputPort(new BasePort(INPUT_CURVE_ID, "Curve", "Curve path to sample", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_POLYLINE_ID, "Polyline", "Polyline path fallback", NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_LINE_ID, "Line", "Line path fallback", NodeDataType.LINE, this));
-        addInputPort(new BasePort(INPUT_PATH_POINTS_ID, "Path Points", "Ordered path point list fallback", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path",
+            "Path to array along (line, polyline, or curve)", NodeDataType.PATH, this));
+        addInputPort(new BasePort(INPUT_PATH_POINTS_ID, "Path Points",
+            "Fallback ordered point list when Path is unconnected", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Target sample count along the path", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing", "Target spacing between samples", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_ELEMENT_TYPE_ID, "Element Type", "box or cylinder", NodeDataType.STRING, this));
@@ -206,29 +204,10 @@ public class ArrayAlongCurveNode extends BaseNode {
     }
 
     private List<Vector3d> resolvePathPoints() {
-        return PathUtils.resolveVertices(
-            inputValues.get(INPUT_CURVE_ID),
-            inputValues.get(INPUT_POLYLINE_ID),
-            inputValues.get(INPUT_LINE_ID)
-        ) != null
-            ? PathUtils.resolveVertices(inputValues.get(INPUT_CURVE_ID), inputValues.get(INPUT_POLYLINE_ID), inputValues.get(INPUT_LINE_ID))
-            : resolveFallbackPathPoints();
-    }
-
-    private List<Vector3d> resolveFallbackPathPoints() {
-        Object pathPointsObj = inputValues.get(INPUT_PATH_POINTS_ID);
-        if (!(pathPointsObj instanceof List<?> list)) {
-            return List.of();
-        }
-        List<Vector3d> resolved = new ArrayList<>(list.size());
-        for (Object entry : list) {
-            if (entry instanceof Vector3d vector) {
-                resolved.add(new Vector3d(vector));
-            } else if (entry instanceof Vec3d vec3d) {
-                resolved.add(new Vector3d(vec3d.x, vec3d.y, vec3d.z));
-            }
-        }
-        return resolved;
+        return PathUtils.resolvePathOrPointList(
+            inputValues.get(INPUT_PATH_ID),
+            inputValues.get(INPUT_PATH_POINTS_ID)
+        );
     }
 
     private String resolveElementType(Object value) {

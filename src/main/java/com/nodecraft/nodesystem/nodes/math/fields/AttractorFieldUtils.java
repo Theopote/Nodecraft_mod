@@ -5,14 +5,10 @@ import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.SdfGeometryData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
-import com.nodecraft.nodesystem.util.Curve;
-import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
 
 final class AttractorFieldUtils {
     static final double EPS = 1.0e-9d;
@@ -46,17 +42,6 @@ final class AttractorFieldUtils {
                 yield Math.exp(-0.5d * x * x);
             }
         };
-    }
-
-    static List<Vector3d> sampleCurvePolyline(Curve curve) {
-        List<Vector3d> poly = new ArrayList<>();
-        if (curve == null) {
-            return poly;
-        }
-        for (Vec3d v : curve.getSamplePoints()) {
-            poly.add(new Vector3d(v.x, v.y, v.z));
-        }
-        return poly;
     }
 
     static boolean tryExtractCenter(Object source, Vector3d dest) {

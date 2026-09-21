@@ -134,7 +134,7 @@
 | Box Face Boundary Path | `geometry.curves.face_boundary_curve` | Builds a closed boundary path from a box face for preview and downstream path workflows | `BoxFaceBoundaryPathNode` |
 | Interpolate Spline | `geometry.curves.interpolate_spline` | Builds a Catmull-Rom interpolation spline that passes through all resolved input points | `InterpolateSplineNode` |
 | B-Spline | `geometry.curves.b_spline` | Builds a sampled clamped uniform B-spline from an ordered control point list | `BSplineNode` |
-| Fillet Polyline Corners | `geometry.curves.fillet_polyline_corners` | Fillets interior corners of an open polyline with circular arcs in the work plane | `PolylineCornerFilletNode` |
+| Fillet Path Corners | `geometry.curves.fillet_polyline_corners` | Fillets interior corners of an open path with circular arcs in the work plane | `PolylineCornerFilletNode` |
 | Offset Path In Plane | `geometry.curves.offset_curve_plane` | Offsets a path (line, polyline, or curve) in a work plane by signed distance, with optional resampling. | `OffsetCurveInPlaneNode` |
 | NURBS Curve | `geometry.curves.nurbs` | Builds a sampled clamped uniform NURBS curve from control points and optional per-point weights | `NurbsCurveNode` |
 | Rainbow Curve Offset | `geometry.curves.rainbow_curve_offset` | Generates multiple parallel offset polylines around a space curve using path frames. | `RainbowCurveOffsetNode` |
@@ -384,7 +384,7 @@
 | Vector Field Binary Op | `math.fields.vector_binary_op` | Combines two vector fields component-wise or via cross product. | `VectorFieldBinaryOpNode` |
 | Point Attractor Field | `math.fields.point_attractor_field` | Builds a vector field that pulls points toward a center with configurable distance falloff. | `PointAttractorFieldNode` |
 | Scalar Field Sample Point | `math.fields.scalar_sample_point` | Samples a scalar field at a point. | `ScalarFieldSamplePointNode` |
-| Curve Attractor Field | `math.fields.curve_attractor_field` | Builds a vector field that pulls points toward the closest point on a sampled curve. | `CurveAttractorFieldNode` |
+| Path Attractor Field | `math.fields.curve_attractor_field` | Builds a vector field that pulls points toward the closest point on a path. | `CurveAttractorFieldNode` |
 | Scalar Field Sample Points | `math.fields.scalar_sample_points` | Samples a scalar field for each query point and outputs a value list. | `ScalarFieldSamplePointsNode` |
 | Vector Field Sample Point | `math.fields.vector_sample_point` | Samples a vector field at a point. | `VectorFieldSamplePointNode` |
 | Volume Attractor Field | `math.fields.volume_attractor_field` | Builds a volume-based attractor field using center-pull or nearest-surface pull from geometry/SDF inputs. | `VolumeAttractorFieldNode` |
@@ -696,7 +696,7 @@
 | Bend Point List | `transform.deformations.bend` | Bends a point list into an arc along an axis over a configurable bend length | `BendPointListNode` |
 | Taper Point List | `transform.deformations.taper` | Scales radial distance along an axis to create tapered forms | `TaperPointListNode` |
 | Noise Displace Point List | `transform.deformations.noise_displace` | Applies deterministic pseudo-noise displacement to a point list | `NoiseDisplacePointListNode` |
-| Curve Attract Point List | `transform.deformations.curve_attract` | Pulls points toward a sampled curve with quadratic falloff; optional displacement along full vector, tangent only, or perpendicular-to-tangent only | `CurveAttractPointListNode` |
+| Path Attract Point List | `transform.deformations.curve_attract` | Pulls points toward a path with quadratic falloff; optional displacement along full vector, tangent only, or perpendicular-to-tangent only | `CurveAttractPointListNode` |
 | Relax Point List | `transform.deformations.relax_points` | Laplacian-style smoothing using k nearest neighbors (uniform grid hash for speed; capped point count) | `RelaxPointListNode` |
 | Lattice Deform Point List | `transform.deformations.lattice_deform` | Free-form deformation: trilinear blend of control displacements on a uniform (nx+1)(ny+1)(nz+1) lattice in an axis-aligned box | `LatticeDeformPointListNode` |
 | Spherical Displace | `transform.deformations.spherical_displace` | Applies radial displacement with spherical distance falloff around a center point. | `SphericalDisplaceNode` |

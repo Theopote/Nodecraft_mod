@@ -57,7 +57,16 @@ class GeometryCurvesFamilyContractTest {
             "geometry.curves.blend_curves",
             "geometry.curves.resample_polyline_length",
             "geometry.curves.polyline_length",
-            "geometry.curves.offset_polyline_plane"
+            "geometry.curves.offset_polyline_plane",
+            "geometry.curves.fillet_polyline_corners",
+            "pattern.linear.curve_array_geometry",
+            "geometry.architectural_primitives.array_along_curve",
+            "transform.orientation.project_curve_to_plane",
+            "reference.points.project_to_polyline",
+            "reference.points.closest_point_to_object",
+            "output.preview.preview_curves",
+            "math.fields.curve_attractor_field",
+            "transform.deformations.curve_attract"
     );
 
     @BeforeAll
@@ -144,6 +153,21 @@ class GeometryCurvesFamilyContractTest {
         assertPortType("geometry.solids.sweep_from_points", "input_path", true, NodeDataType.PATH);
         assertPortType("pattern.linear.along_path", "input_path", true, NodeDataType.PATH);
         assertPortType("pattern.linear.path_instances", "input_path", true, NodeDataType.PATH);
+        assertPortType("pattern.linear.curve_array_geometry", "input_path", true, NodeDataType.PATH);
+        assertPortType("geometry.architectural_primitives.array_along_curve", "input_path", true, NodeDataType.PATH);
+        assertPortType("transform.orientation.project_curve_to_plane", "input_path", true, NodeDataType.PATH);
+        assertPortType("reference.points.project_to_polyline", "input_path", true, NodeDataType.PATH);
+        assertPortType("reference.points.closest_point_to_object", "input_path", true, NodeDataType.PATH);
+        assertPortType("output.preview.preview_curves", "input_path", true, NodeDataType.PATH);
+        assertPortType("math.fields.curve_attractor_field", "input_path", true, NodeDataType.PATH);
+        assertPortType("transform.deformations.curve_attract", "input_path", true, NodeDataType.PATH);
+        assertPortType("geometry.curves.fillet_polyline_corners", "input_path", true, NodeDataType.PATH);
+    }
+
+    @Test
+    void blendCurvesStartAndEndOutputsArePoints() {
+        assertPortType("geometry.curves.blend_curves", "output_start_point", false, NodeDataType.POINT);
+        assertPortType("geometry.curves.blend_curves", "output_end_point", false, NodeDataType.POINT);
     }
 
     @Test
@@ -242,7 +266,7 @@ class GeometryCurvesFamilyContractTest {
                 new Vec3d(10, 64, 0),
                 new Vec3d(10, 64, 10)));
         BaseNode fillet = node("geometry.curves.fillet_polyline_corners");
-        fillet.setInput("input_polyline", elbow);
+        fillet.setInput("input_path", elbow);
         fillet.setInput("input_plane", PlaneData.XZ_PLANE);
         fillet.setInput("input_radius", 1.0d);
         fillet.processNode(null);
