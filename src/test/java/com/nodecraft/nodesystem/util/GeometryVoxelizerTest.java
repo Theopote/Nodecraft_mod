@@ -6,6 +6,7 @@ import org.joml.Vector3d;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GeometryVoxelizerTest {
@@ -66,5 +67,26 @@ class GeometryVoxelizerTest {
         BlockPosList blocks = GeometryVoxelizer.voxelize(solidBlock, true);
 
         assertEquals(27, blocks.size());
+    }
+
+    @Test
+    void differenceBoundingRegionUsesMinuendOnly() {
+        BoxGeometryData base = new BoxGeometryData(
+                new Vector3d(2.0d, 2.0d, 2.0d),
+                new Vector3d(2.0d, 2.0d, 2.0d)
+        );
+        BoxGeometryData cutterOutside = new BoxGeometryData(
+                new Vector3d(20.0d, 2.0d, 2.0d),
+                new Vector3d(2.0d, 2.0d, 2.0d)
+        );
+        var difference = new com.nodecraft.nodesystem.datatypes.DifferenceGeometryData(base, cutterOutside);
+
+        var baseRegion = GeometryVoxelizer.createBoundingRegion(base);
+        var differenceRegion = GeometryVoxelizer.createBoundingRegion(difference);
+
+        assertNotNull(baseRegion);
+        assertNotNull(differenceRegion);
+        assertEquals(baseRegion.getMinCorner(), differenceRegion.getMinCorner());
+        assertEquals(baseRegion.getMaxCorner(), differenceRegion.getMaxCorner());
     }
 }

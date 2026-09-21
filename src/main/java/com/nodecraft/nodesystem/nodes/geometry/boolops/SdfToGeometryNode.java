@@ -7,12 +7,11 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SdfGeometryData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.util.SdfBoundsEstimator;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -25,7 +24,7 @@ import java.util.UUID;
     id = "geometry.boolean.sdf_to_geometry",
     displayName = "SDF To Geometry",
     description = "Wraps an SDF into GeometryData with explicit or auto-estimated sampling bounds for block baking",
-    category = "geometry.boolean",
+    category = "geometry.sdf",
     order = 16
 )
 public class SdfToGeometryNode extends BaseNode {
@@ -126,16 +125,7 @@ public class SdfToGeometryNode extends BaseNode {
     }
 
     private Vector3d resolvePoint(Object value) {
-        if (value instanceof PointData pointData) {
-            return pointData.getPosition();
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof BlockPos blockPos) {
-            return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
-        }
-        return null;
+        return SpatialValueResolver.resolvePoint(value);
     }
 
     public boolean isAutoBounds() {

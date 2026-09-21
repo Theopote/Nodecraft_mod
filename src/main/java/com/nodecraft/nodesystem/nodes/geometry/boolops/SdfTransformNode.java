@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.TransformedSdfData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -21,7 +22,7 @@ import java.util.UUID;
     id = "geometry.boolean.sdf_transform",
     displayName = "SDF Transform",
     description = "Applies translation, rotation, and uniform scale to an input SDF",
-    category = "geometry.boolean",
+    category = "geometry.sdf",
     order = 21
 )
 public class SdfTransformNode extends BaseNode {
@@ -81,8 +82,9 @@ public class SdfTransformNode extends BaseNode {
             return;
         }
 
-        Vector3d translation = inputValues.get(INPUT_TRANSLATION_ID) instanceof Vector3d t
-            ? new Vector3d(t)
+        Vector3d translationResolved = SpatialValueResolver.resolveVector(inputValues.get(INPUT_TRANSLATION_ID));
+        Vector3d translation = translationResolved != null
+            ? translationResolved
             : new Vector3d(translationX, translationY, translationZ);
         double rx = getInputDouble(INPUT_ROT_X_ID, rotationX);
         double ry = getInputDouble(INPUT_ROT_Y_ID, rotationY);

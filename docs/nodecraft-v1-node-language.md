@@ -467,7 +467,15 @@ Three distinct mechanisms (do not treat as one “Boolean”):
 - **Preview Geometry**: Difference / Intersection are **not** expanded to operands for surface preview. They voxelize and show ghost blocks so Preview ≈ Bake.
 - Contract: `BooleanFamilyContractTest`.
 
-**Next (Batch 5 P2):** Bounds out of boolean category; SDF category split; Difference bounds = base; Auto Seam Alignment; PATH_LIST.
+**Batch 5 P2 — Category split + Difference bounds + SDF resolvers (2026-09-22):**
+
+- **Difference bounds** = minuend (base) only — no longer union with cutter (tighter voxel scan).
+- Library categories: `geometry.combine` (Combine), `geometry.boolean` (Difference / Intersection),
+  `geometry.sdf` (SDF primitives + ops + To Geometry), `geometry.analysis` (Bounding Box / Geometry Bounds).
+  Node type ids unchanged for Bounds/SDF (category move only).
+- SDF nodes use `SpatialValueResolver.resolvePoint` / `resolveVector` (strict roles).
+
+**Next (Batch 5 P3):** Auto Seam Alignment; PATH_LIST; voxelization cache; Combine single-input pass-through.
 
 ---
 

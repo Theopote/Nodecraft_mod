@@ -7,11 +7,9 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxSdfData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -22,7 +20,7 @@ import java.util.UUID;
     id = "geometry.boolean.sdf_box",
     displayName = "SDF Box",
     description = "Builds an axis-aligned box signed-distance-field primitive from center and half extents",
-    category = "geometry.boolean",
+    category = "geometry.sdf",
     order = 11
 )
 public class SdfBoxNode extends BaseNode {
@@ -55,7 +53,7 @@ public class SdfBoxNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d center = resolvePoint(inputValues.get(INPUT_CENTER_ID));
-        Vector3d extInput = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_HALF_EXTENTS_ID));
+        Vector3d extInput = SpatialValueResolver.resolveVector(inputValues.get(INPUT_HALF_EXTENTS_ID));
         Vector3d ext = extInput != null
             ? new Vector3d(Math.abs(extInput.x), Math.abs(extInput.y), Math.abs(extInput.z))
             : new Vector3d(Math.abs(halfX), Math.abs(halfY), Math.abs(halfZ));
@@ -70,6 +68,6 @@ public class SdfBoxNode extends BaseNode {
     }
 
     private Vector3d resolvePoint(Object value) {
-        return SpatialValueResolver.resolveVector3d(value);
+        return SpatialValueResolver.resolvePoint(value);
     }
 }

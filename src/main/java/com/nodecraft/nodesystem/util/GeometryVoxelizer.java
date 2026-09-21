@@ -156,10 +156,8 @@ public final class GeometryVoxelizer {
             return createCompositeBoundingRegion(compositeGeometry);
         }
         if (geometry instanceof DifferenceGeometryData differenceGeometry) {
-            return unionBoundingRegions(
-                createBoundingRegion(differenceGeometry.getMinuend()),
-                createBoundingRegion(differenceGeometry.getSubtrahend())
-            );
+            // A - B cannot extend beyond A; keep voxel scan tight to the minuend.
+            return createBoundingRegion(differenceGeometry.getMinuend());
         }
         if (geometry instanceof IntersectionGeometryData intersectionGeometry) {
             return createIntersectionBoundingRegion(intersectionGeometry);

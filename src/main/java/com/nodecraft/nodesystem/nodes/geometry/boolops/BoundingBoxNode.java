@@ -22,7 +22,7 @@ import java.util.UUID;
     id = "geometry.boolean.bounding_box",
     displayName = "Bounding Box",
     description = "Calculates an axis-aligned bounding box from a block list or region",
-    category = "geometry.boolean",
+    category = "geometry.analysis",
     order = 0
 )
 public class BoundingBoxNode extends BaseNode {

@@ -18,7 +18,7 @@ import java.util.UUID;
     id = "geometry.boolean.sdf_boolean",
     displayName = "SDF Boolean",
     description = "Combines two SDF inputs with union/intersection/difference and optional smooth blending",
-    category = "geometry.boolean",
+    category = "geometry.sdf",
     order = 14
 )
 public class SdfBooleanNode extends BaseNode {

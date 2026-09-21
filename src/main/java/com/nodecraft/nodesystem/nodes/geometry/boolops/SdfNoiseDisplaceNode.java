@@ -21,7 +21,7 @@ import java.util.UUID;
     id = "geometry.boolean.sdf_noise_displace",
     displayName = "SDF Noise Displace",
     description = "Applies deterministic pseudo-noise displacement to an input SDF",
-    category = "geometry.boolean",
+    category = "geometry.sdf",
     order = 20
 )
 public class SdfNoiseDisplaceNode extends BaseNode {

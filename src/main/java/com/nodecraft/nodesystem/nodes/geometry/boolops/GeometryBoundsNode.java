@@ -22,7 +22,7 @@ import java.util.UUID;
     id = "geometry.boolean.geometry_bounds",
     displayName = "Geometry Bounds",
     description = "Calculates an axis-aligned bounding box from any supported geometry",
-    category = "geometry.boolean",
+    category = "geometry.analysis",
     order = 1
 )
 public class GeometryBoundsNode extends BaseNode {

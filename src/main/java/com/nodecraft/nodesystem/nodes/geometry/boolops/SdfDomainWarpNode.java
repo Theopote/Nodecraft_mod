@@ -21,7 +21,7 @@ import java.util.UUID;
     id = "geometry.boolean.sdf_domain_warp",
     displayName = "SDF Domain Warp",
     description = "Applies coordinate-space noise warping before sampling an input SDF",
-    category = "geometry.boolean",
+    category = "geometry.sdf",
     order = 23
 )
 public class SdfDomainWarpNode extends BaseNode {

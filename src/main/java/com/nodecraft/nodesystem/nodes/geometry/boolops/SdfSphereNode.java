@@ -6,12 +6,10 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.SphereSdfData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -22,7 +20,7 @@ import java.util.UUID;
     id = "geometry.boolean.sdf_sphere",
     displayName = "SDF Sphere",
     description = "Builds a sphere signed-distance-field primitive from center and radius",
-    category = "geometry.boolean",
+    category = "geometry.sdf",
     order = 10
 )
 public class SdfSphereNode extends BaseNode {
@@ -65,7 +63,7 @@ public class SdfSphereNode extends BaseNode {
     }
 
     private Vector3d resolvePoint(Object value) {
-        return SpatialValueResolver.resolveVector3d(value);
+        return SpatialValueResolver.resolvePoint(value);
     }
 
     private double getInputDouble(String portId, double fallback) {

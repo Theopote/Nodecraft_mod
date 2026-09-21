@@ -136,6 +136,24 @@ class BooleanFamilyContractTest {
         assertEquals(Boolean.TRUE, combine.getOutput("output_valid"));
     }
 
+    @Test
+    void libraryCategoriesSeparateCombineBooleanSdfAndAnalysis() {
+        assertEquals("geometry.combine",
+            NodeRegistry.getInstance().getNodeInfo("geometry.combine.geometry").getCategoryId());
+        assertEquals("geometry.boolean",
+            NodeRegistry.getInstance().getNodeInfo("geometry.boolean.difference").getCategoryId());
+        assertEquals("geometry.boolean",
+            NodeRegistry.getInstance().getNodeInfo("geometry.boolean.intersection").getCategoryId());
+        assertEquals("geometry.sdf",
+            NodeRegistry.getInstance().getNodeInfo("geometry.boolean.sdf_boolean").getCategoryId());
+        assertEquals("geometry.sdf",
+            NodeRegistry.getInstance().getNodeInfo("geometry.boolean.sdf_sphere").getCategoryId());
+        assertEquals("geometry.analysis",
+            NodeRegistry.getInstance().getNodeInfo("geometry.boolean.bounding_box").getCategoryId());
+        assertEquals("geometry.analysis",
+            NodeRegistry.getInstance().getNodeInfo("geometry.boolean.geometry_bounds").getCategoryId());
+    }
+
     private static void assertPortType(String typeId, String portId, boolean input, NodeDataType expected) {
         INode node = NodeRegistry.getInstance().createNodeInstance(typeId);
         assertInstanceOf(INode.class, node);

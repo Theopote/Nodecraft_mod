@@ -18,7 +18,7 @@ import java.util.UUID;
     id = "geometry.boolean.sdf_blend_material_mask",
     displayName = "SDF Blend Material Mask",
     description = "Maps SDF distance values to smooth 0..1 blend weights and inside/outside booleans",
-    category = "geometry.boolean",
+    category = "geometry.sdf",
     order = 22
 )
 public class SdfBlendMaterialMaskNode extends BaseNode {
