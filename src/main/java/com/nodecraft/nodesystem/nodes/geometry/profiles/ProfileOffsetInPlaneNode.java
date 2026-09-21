@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
@@ -49,6 +50,8 @@ public class ProfileOffsetInPlaneNode extends BaseNode {
 
     private static final String OUTPUT_PROFILE_ID = "output_profile";
     private static final String OUTPUT_PROFILES_ID = "output_profiles";
+    private static final String OUTPUT_PLANE_ID = "output_plane";
+    private static final String OUTPUT_CENTER_ID = "output_center";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
@@ -59,6 +62,8 @@ public class ProfileOffsetInPlaneNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Primary offset profile (largest area)", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_PROFILES_ID, "Profiles", "All offset polygon profiles", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Plane of the primary offset profile", NodeDataType.PLANE, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Center of the primary offset profile", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of offset profiles produced", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when offset succeeded", NodeDataType.BOOLEAN, this));
     }
@@ -114,6 +119,8 @@ public class ProfileOffsetInPlaneNode extends BaseNode {
 
         outputValues.put(OUTPUT_PROFILE_ID, primary);
         outputValues.put(OUTPUT_PROFILES_ID, new ArrayList<>(profiles));
+        outputValues.put(OUTPUT_PLANE_ID, primary.getPlane());
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(primary.getCenter()));
         outputValues.put(OUTPUT_COUNT_ID, profiles.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
@@ -195,6 +202,8 @@ public class ProfileOffsetInPlaneNode extends BaseNode {
     private void writeInvalid() {
         outputValues.put(OUTPUT_PROFILE_ID, null);
         outputValues.put(OUTPUT_PROFILES_ID, List.of());
+        outputValues.put(OUTPUT_PLANE_ID, null);
+        outputValues.put(OUTPUT_CENTER_ID, null);
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
     }

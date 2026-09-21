@@ -270,17 +270,54 @@ outputs are `POINT` / `POINT_LIST`; default plane is XZ via `ProfilePlaneUtils`;
 ports remain `VECTOR`.
 
 **Primitives family rollout (`geometry.primitives.*`) — done (2026-09-21):** remaining constructors /
-deconstructors use `POINT` / `POINT_LIST` for locations; axes stay `VECTOR`. Orientation matrix
-ports may remain `ANY` until a matrix type is frozen. Continuous Box helpers cover corner/size
-siblings.
+deconstructors use `POINT` / `POINT_LIST` for locations; axes stay `VECTOR`. Continuous Box helpers
+cover corner/size siblings. Polyhedron `input_orientation` is **`MATRIX3`** (not `ANY`).
 
-**Point-list runtime bridge:** `SpatialValueResolver.resolvePointList(...)` accepts `PointData`,
-`Vector3d`, and legacy point-like entries for algorithms; `toPointDataList(...)` emits graph-facing
-`POINT_LIST` values. Prefer this at every list-input boundary that consumes profile/box points.
+**Point-list runtime bridge (accepted / frozen):** `SpatialValueResolver.resolvePointList(...)`
+accepts `PointData`, `Vector3d`, and legacy point-like entries for algorithms;
+`toPointDataList(...)` emits graph-facing `POINT_LIST`. Prefer this at every list-input boundary.
+Do not add new ad-hoc list coercion at node boundaries.
+
+### Profile generator minimum output protocol
+
+Every **OnPlane profile generator** (and any profile node that emits `output_profile` /
+`output_outer_profile`) must expose at least:
+
+| Port id | Display | Type |
+|---------|---------|------|
+| `output_profile` | Profile | `POLYGON_PROFILE` |
+| `output_boundary` | Boundary | `POLYLINE` (generators) |
+| `output_points` | Points | `POINT_LIST` (generators) |
+| `output_plane` | Plane | `PLANE` — resolved construction plane |
+| `output_center` | Center | `POINT` — resolved profile center |
+| `output_valid` | Valid | `BOOLEAN` |
+
+Port order for generators: Points → Profile → Boundary → **Plane → Center** → param echoes → Valid.
+On invalid input, emit `null` for Profile / Boundary / Plane / Center; empty list for Points;
+`false` for Valid. Reuse the same `PlaneData` instance passed to `PolygonProfileData` for
+`output_plane` when possible.
+
+Multi-boundary generators (e.g. Annulus) keep domain-specific profile/boundary ports but still
+emit shared `output_plane` / `output_center`. Profile Boolean / Offset emit Plane / Center from
+the primary result profile.
+
+**Orientation (polyhedra):** `input_orientation` → **`MATRIX3`**. Unconnected falls back to Euler
+degree properties via `PolyhedronOrientationUtil.resolveFromPortOrEuler`.
+
+**P3 — runtime fallback cleanup:** gradually remove obsolete **LINE → POINT** runtime fallbacks
+once consumers use explicit `POINT` / `POINT_LIST` and the point-list bridge. New nodes must not
+depend on LINE-as-point coercion.
 
 **Contract tests:** `GeometrySampleLanguageContractTest` (sample 8) and
-`GeometryPrimitiveAndProfileFamilyContractTest` (whole family: no spatial `ANY` except orientation;
-location ports not `VECTOR` / `VECTOR_LIST`).
+`GeometryPrimitiveAndProfileFamilyContractTest` (no spatial `ANY`; polyhedron orientation
+`MATRIX3`; location ports not `VECTOR` / `VECTOR_LIST`; profile Plane / Center outputs).
+
+**Product note — Primary vs construction variants:** beginner primitives (Sphere, Box, Cylinder, …)
+should be usable with property defaults; exact construction variants (Sphere By Diameter,
+Box By Two Corners, …) may stay invalid until required ports are connected.
+
+**Next:** Curves language batch (degrees / samples / frames), then remaining intentional
+`VECTOR_LIST` axes/normals only.
 
 **Extrude / Project / loft / morph — done (2026-09-21):** `ExtrudePointList`,
 `ExtrudeProfile` (base/top points), `Prism By Profile/Base Points Vector`, `Loft Point Lists`,
@@ -316,9 +353,12 @@ Transform Points by Frames, Align Points To Surface Normals, Shear Point List, M
 Selected Block Sequence centers, Filter Points By Rule, Molding Profile, Deconstruct Box Face; Bend/Twist Geometry
 bounds min/max emit `PointData`. Axes/normals/offsets stay `VECTOR_LIST`.
 
-**Next:** repo-wide location `VECTOR_LIST` audit complete except intentional axes/normals/offsets/displacement lists
-(e.g. Curve Frame Along Path, Path Instances, scatter normals, Grid Array offsets, Lattice Deform offsets,
-Vector Field Sample vectors). No further location migrations planned unless new nodes add regressions.
+**Batch F — Profile generator minimum outputs — done (2026-09-21):** all OnPlane profile generators
+emit `output_plane` + `output_center` alongside Profile / Boundary / Points / Valid; family contract
+test guards `output_profile` nodes for Plane + Center ports.
+
+**Next:** Curves batch — remaining curve nodes and downstream consumers: audit param echoes, plane/center
+emission where applicable, and LINE→POINT fallback removal (P3).
 
 ---
 

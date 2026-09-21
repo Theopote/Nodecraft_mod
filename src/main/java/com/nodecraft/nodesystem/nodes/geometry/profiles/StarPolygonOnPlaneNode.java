@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
@@ -37,6 +38,8 @@ public class StarPolygonOnPlaneNode extends BaseNode {
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_PROFILE_ID = "output_profile";
     private static final String OUTPUT_BOUNDARY_ID = "output_boundary";
+    private static final String OUTPUT_PLANE_ID = "output_plane";
+    private static final String OUTPUT_CENTER_ID = "output_center";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     @NodeProperty(displayName = "Outer Radius", category = "Size", order = 1)
@@ -60,6 +63,8 @@ public class StarPolygonOnPlaneNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed star polygon points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Star polygon profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed star polygon boundary polyline", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved construction plane", NodeDataType.PLANE, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved star polygon center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when star polygon profile was constructed", NodeDataType.BOOLEAN, this));
     }
 
@@ -100,9 +105,12 @@ public class StarPolygonOnPlaneNode extends BaseNode {
         }
         points.add(new Vector3d(points.get(0)));
 
+        PlaneData resolvedPlane = new PlaneData(center, basis.normal());
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(points));
-        outputValues.put(OUTPUT_PROFILE_ID, new PolygonProfileData(points, new PlaneData(center, basis.normal())));
+        outputValues.put(OUTPUT_PROFILE_ID, new PolygonProfileData(points, resolvedPlane));
         outputValues.put(OUTPUT_BOUNDARY_ID, ProfilePlaneUtils.toPolyline(points));
+        outputValues.put(OUTPUT_PLANE_ID, resolvedPlane);
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
@@ -122,6 +130,8 @@ public class StarPolygonOnPlaneNode extends BaseNode {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_PROFILE_ID, null);
         outputValues.put(OUTPUT_BOUNDARY_ID, null);
+        outputValues.put(OUTPUT_PLANE_ID, null);
+        outputValues.put(OUTPUT_CENTER_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 

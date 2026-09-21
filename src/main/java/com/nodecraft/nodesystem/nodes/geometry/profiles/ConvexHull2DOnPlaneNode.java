@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
@@ -38,8 +39,11 @@ public class ConvexHull2DOnPlaneNode extends BaseNode {
     private static final String INPUT_POINTS_ID = "input_points";
     private static final String INPUT_PLANE_ID = "input_plane";
 
+    private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_PROFILE_ID = "output_profile";
     private static final String OUTPUT_BOUNDARY_ID = "output_boundary";
+    private static final String OUTPUT_PLANE_ID = "output_plane";
+    private static final String OUTPUT_CENTER_ID = "output_center";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ConvexHull2DOnPlaneNode() {
@@ -52,12 +56,21 @@ public class ConvexHull2DOnPlaneNode extends BaseNode {
             "Plane used for projection and polygon embedding. Defaults to XZ (horizontal)",
             NodeDataType.PLANE, this));
 
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points",
+            "Closed convex hull points",
+            NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile",
             "Closed convex polygon profile on the plane",
             NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary",
             "Closed polyline boundary of the hull",
             NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane",
+            "Resolved construction plane",
+            NodeDataType.PLANE, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center",
+            "Average hull center",
+            NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when a hull with at least three vertices was created",
             NodeDataType.BOOLEAN, this));
@@ -106,14 +119,20 @@ public class ConvexHull2DOnPlaneNode extends BaseNode {
         closed.add(new Vector3d(unique3d.getFirst()));
 
         PolygonProfileData profile = new PolygonProfileData(closed, plane);
+        outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(closed));
         outputValues.put(OUTPUT_PROFILE_ID, profile);
         outputValues.put(OUTPUT_BOUNDARY_ID, profile.getBoundary());
+        outputValues.put(OUTPUT_PLANE_ID, plane);
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(profile.getCenter()));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private void writeInvalid() {
+        outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_PROFILE_ID, null);
         outputValues.put(OUTPUT_BOUNDARY_ID, null);
+        outputValues.put(OUTPUT_PLANE_ID, null);
+        outputValues.put(OUTPUT_CENTER_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 

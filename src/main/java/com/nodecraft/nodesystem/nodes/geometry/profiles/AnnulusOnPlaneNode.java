@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
@@ -41,6 +42,8 @@ public class AnnulusOnPlaneNode extends BaseNode {
     private static final String OUTPUT_INNER_PROFILE_ID = "output_inner_profile";
     private static final String OUTPUT_OUTER_BOUNDARY_ID = "output_outer_boundary";
     private static final String OUTPUT_INNER_BOUNDARY_ID = "output_inner_boundary";
+    private static final String OUTPUT_PLANE_ID = "output_plane";
+    private static final String OUTPUT_CENTER_ID = "output_center";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     @NodeProperty(displayName = "Inner Radius", category = "Size", order = 1)
@@ -67,6 +70,8 @@ public class AnnulusOnPlaneNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_INNER_PROFILE_ID, "Inner Profile", "Inner ring profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_OUTER_BOUNDARY_ID, "Outer Boundary", "Closed outer ring boundary", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_INNER_BOUNDARY_ID, "Inner Boundary", "Closed inner ring boundary", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved construction plane", NodeDataType.PLANE, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved annulus center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when annulus boundaries were constructed", NodeDataType.BOOLEAN, this));
     }
 
@@ -105,6 +110,8 @@ public class AnnulusOnPlaneNode extends BaseNode {
         outputValues.put(OUTPUT_INNER_PROFILE_ID, new PolygonProfileData(innerPts, resolvedPlane));
         outputValues.put(OUTPUT_OUTER_BOUNDARY_ID, ProfilePlaneUtils.toPolyline(outerPts));
         outputValues.put(OUTPUT_INNER_BOUNDARY_ID, ProfilePlaneUtils.toPolyline(innerPts));
+        outputValues.put(OUTPUT_PLANE_ID, resolvedPlane);
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
@@ -142,6 +149,8 @@ public class AnnulusOnPlaneNode extends BaseNode {
         outputValues.put(OUTPUT_INNER_PROFILE_ID, null);
         outputValues.put(OUTPUT_OUTER_BOUNDARY_ID, null);
         outputValues.put(OUTPUT_INNER_BOUNDARY_ID, null);
+        outputValues.put(OUTPUT_PLANE_ID, null);
+        outputValues.put(OUTPUT_CENTER_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 

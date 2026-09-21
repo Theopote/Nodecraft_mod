@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
@@ -32,6 +33,8 @@ public class ResamplePolygonProfileNode extends BaseNode {
     private static final String OUTPUT_PROFILE_ID = "output_profile";
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_BOUNDARY_ID = "output_boundary";
+    private static final String OUTPUT_PLANE_ID = "output_plane";
+    private static final String OUTPUT_CENTER_ID = "output_center";
     private static final String OUTPUT_EDGE_COUNT_ID = "output_edge_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
@@ -44,6 +47,8 @@ public class ResamplePolygonProfileNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Resampled polygon profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed resampled polygon points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Resampled polygon boundary", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved construction plane", NodeDataType.PLANE, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved profile center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_EDGE_COUNT_ID, "Edge Count", "Resolved target edge count", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid polygon profile and target count were provided", NodeDataType.BOOLEAN, this));
     }
@@ -90,6 +95,8 @@ public class ResamplePolygonProfileNode extends BaseNode {
         outputValues.put(OUTPUT_PROFILE_ID, resampledProfile);
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(closedResampledPoints));
         outputValues.put(OUTPUT_BOUNDARY_ID, resampledProfile.getBoundary());
+        outputValues.put(OUTPUT_PLANE_ID, resampledProfile.getPlane());
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(resampledProfile.getCenter()));
         outputValues.put(OUTPUT_EDGE_COUNT_ID, targetEdgeCount);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
@@ -98,6 +105,8 @@ public class ResamplePolygonProfileNode extends BaseNode {
         outputValues.put(OUTPUT_PROFILE_ID, null);
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_BOUNDARY_ID, null);
+        outputValues.put(OUTPUT_PLANE_ID, null);
+        outputValues.put(OUTPUT_CENTER_ID, null);
         outputValues.put(OUTPUT_EDGE_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
     }

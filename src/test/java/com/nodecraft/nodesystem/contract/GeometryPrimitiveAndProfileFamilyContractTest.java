@@ -37,9 +37,6 @@ class GeometryPrimitiveAndProfileFamilyContractTest {
             "axis", "direction", "normal", "x_axis", "y_axis", "z_axis", "half_extents",
             "radii", "diameters", "extrusion", "translation"
     );
-    private static final Set<String> ALLOWED_ANY_PORT_IDS = Set.of(
-            "input_orientation"
-    );
 
     @BeforeAll
     static void init() {
@@ -50,7 +47,7 @@ class GeometryPrimitiveAndProfileFamilyContractTest {
     }
 
     @Test
-    void geometryPrimitiveAndProfileNodesAvoidSpatialAnyExceptOrientation() {
+    void geometryPrimitiveAndProfileNodesAvoidSpatialAny() {
         List<String> errors = new ArrayList<>();
         for (String typeId : geometryFamilyIds()) {
             INode node = NodeRegistry.getInstance().createNodeInstance(typeId);
@@ -59,18 +56,36 @@ class GeometryPrimitiveAndProfileFamilyContractTest {
                 continue;
             }
             for (IPort port : node.getInputPorts()) {
-                if (port.getDataType() != NodeDataType.ANY) {
-                    continue;
+                if (port.getDataType() == NodeDataType.ANY) {
+                    errors.add(typeId + "." + port.getId() + " is ANY");
                 }
-                if (ALLOWED_ANY_PORT_IDS.contains(port.getId())) {
-                    continue;
-                }
-                errors.add(typeId + "." + port.getId() + " is ANY");
             }
             for (IPort port : node.getOutputPorts()) {
                 if (port.getDataType() == NodeDataType.ANY) {
                     errors.add(typeId + "." + port.getId() + " output is ANY");
                 }
+            }
+        }
+        assertTrue(errors.isEmpty(), String.join(System.lineSeparator(), errors));
+    }
+
+    @Test
+    void polyhedronOrientationPortsUseMatrix3() {
+        List<String> errors = new ArrayList<>();
+        for (String typeId : geometryFamilyIds()) {
+            if (!typeId.startsWith("geometry.primitives.")) {
+                continue;
+            }
+            INode node = NodeRegistry.getInstance().createNodeInstance(typeId);
+            if (node == null) {
+                continue;
+            }
+            IPort orientation = findPort(node.getInputPorts(), "input_orientation");
+            if (orientation == null) {
+                continue;
+            }
+            if (orientation.getDataType() != NodeDataType.MATRIX3) {
+                errors.add(typeId + ".input_orientation must be MATRIX3, was " + orientation.getDataType());
             }
         }
         assertTrue(errors.isEmpty(), String.join(System.lineSeparator(), errors));
@@ -131,6 +146,80 @@ class GeometryPrimitiveAndProfileFamilyContractTest {
         assertFalse(Math.abs(PlaneData.XY_PLANE.getNormal().y) > 0.9d);
     }
 
+    @Test
+    void onPlaneProfileGeneratorsExposeMinimumPlaneAndCenterOutputs() {
+        List<String> errors = new ArrayList<>();
+        for (String typeId : onPlaneProfileGeneratorIds()) {
+            INode node = NodeRegistry.getInstance().createNodeInstance(typeId);
+            if (node == null) {
+                errors.add("missing instance: " + typeId);
+                continue;
+            }
+            IPort planePort = findPort(node.getOutputPorts(), "output_plane");
+            IPort centerPort = findPort(node.getOutputPorts(), "output_center");
+            if (planePort == null || planePort.getDataType() != NodeDataType.PLANE) {
+                errors.add(typeId + " missing output_plane (PLANE)");
+            }
+            if (centerPort == null || centerPort.getDataType() != NodeDataType.POINT) {
+                errors.add(typeId + " missing output_center (POINT)");
+            }
+        }
+        assertTrue(errors.isEmpty(), String.join(System.lineSeparator(), errors));
+    }
+
+    @Test
+    void profileNodesEmittingProfileExposePlaneAndCenter() {
+        List<String> errors = new ArrayList<>();
+        for (String typeId : geometryFamilyIds()) {
+            if (!typeId.startsWith("geometry.profiles.")) {
+                continue;
+            }
+            INode node = NodeRegistry.getInstance().createNodeInstance(typeId);
+            if (node == null) {
+                continue;
+            }
+            boolean hasProfileOutput = node.getOutputPorts().stream()
+                    .anyMatch(port -> port.getDataType() == NodeDataType.POLYGON_PROFILE
+                            && ("output_profile".equals(port.getId())
+                            || "output_outer_profile".equals(port.getId())));
+            if (!hasProfileOutput) {
+                continue;
+            }
+            IPort planePort = findPort(node.getOutputPorts(), "output_plane");
+            IPort centerPort = findPort(node.getOutputPorts(), "output_center");
+            if (planePort == null || planePort.getDataType() != NodeDataType.PLANE) {
+                errors.add(typeId + " missing output_plane (PLANE)");
+            }
+            if (centerPort == null || centerPort.getDataType() != NodeDataType.POINT) {
+                errors.add(typeId + " missing output_center (POINT)");
+            }
+        }
+        assertTrue(errors.isEmpty(), String.join(System.lineSeparator(), errors));
+    }
+
+    private static List<String> onPlaneProfileGeneratorIds() {
+        return List.of(
+                "geometry.profiles.circle_profile",
+                "geometry.profiles.rectangle_profile",
+                "geometry.profiles.polygon_profile",
+                "geometry.profiles.custom_profile",
+                "geometry.profiles.ellipse_profile",
+                "geometry.profiles.sector_profile",
+                "geometry.profiles.annulus_profile",
+                "geometry.profiles.annular_sector_profile",
+                "geometry.profiles.capsule_profile",
+                "geometry.profiles.heart_profile",
+                "geometry.profiles.gear_profile",
+                "geometry.profiles.cross_profile",
+                "geometry.profiles.rhombus_profile",
+                "geometry.profiles.semicircle_profile",
+                "geometry.profiles.star_polygon_profile",
+                "geometry.profiles.rounded_rectangle_profile",
+                "geometry.profiles.convex_hull_plane",
+                "geometry.profiles.resample_profile"
+        );
+    }
+
     private static List<String> geometryFamilyIds() {
         List<String> ids = new ArrayList<>();
         for (String id : NodeRegistry.getInstance().getAllNodeIds()) {
@@ -182,5 +271,14 @@ class GeometryPrimitiveAndProfileFamilyContractTest {
 
     private static String normalize(String portId) {
         return portId == null ? "" : portId.toLowerCase(Locale.ROOT);
+    }
+
+    private static IPort findPort(List<IPort> ports, String id) {
+        for (IPort port : ports) {
+            if (id.equals(port.getId())) {
+                return port;
+            }
+        }
+        return null;
     }
 }
