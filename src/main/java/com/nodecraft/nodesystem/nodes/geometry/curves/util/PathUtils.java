@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -32,6 +33,19 @@ public final class PathUtils {
             case POLYLINE -> toVector3dList(path.getPolyline().getPoints());
             case CURVE -> verticesFromCurve(path.getCurve());
         };
+    }
+
+    /**
+     * Resolves a path from {@code PATH} (or line/polyline/curve) with {@code POINT_LIST} fallback.
+     * Precedence: path value &gt; point list.
+     */
+    public static List<Vector3d> resolvePathOrPointList(@Nullable Object pathValue,
+                                                        @Nullable Object pointListValue) {
+        List<Vector3d> path = resolvePath(pathValue);
+        if (path != null && path.size() >= 2) {
+            return path;
+        }
+        return SpatialValueResolver.resolvePointList(pointListValue);
     }
 
     /**

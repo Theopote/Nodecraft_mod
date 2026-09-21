@@ -6,9 +6,11 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.TypeConversionRegistry;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.Curve;
 import net.minecraft.util.math.Vec3d;
@@ -120,6 +122,28 @@ class GeometryCurvesFamilyContractTest {
         arc.processNode(null);
         assertEquals(Boolean.TRUE, arc.getOutput("output_valid"));
         assertInstanceOf(PointData.class, ((List<?>) arc.getOutput("output_points")).getFirst());
+    }
+
+    @Test
+    void pointsToPathEmitsPathOutput() {
+        BaseNode node = node("geometry.curves.curve_from_points");
+        node.setInput("input_points", SpatialValueResolver.toPointDataList(List.of(
+            new org.joml.Vector3d(0, 64, 0),
+            new org.joml.Vector3d(10, 64, 0),
+            new org.joml.Vector3d(10, 64, 10)
+        )));
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
+        assertInstanceOf(PathData.class, node.getOutput("output_path"));
+        assertInstanceOf(PolylineData.class, node.getOutput("output_polyline"));
+    }
+
+    @Test
+    void sweepAndAlongPathUseSinglePathInput() {
+        assertPortType("geometry.solids.sweep", "input_path", true, NodeDataType.PATH);
+        assertPortType("geometry.solids.sweep_from_points", "input_path", true, NodeDataType.PATH);
+        assertPortType("pattern.linear.along_path", "input_path", true, NodeDataType.PATH);
+        assertPortType("pattern.linear.path_instances", "input_path", true, NodeDataType.PATH);
     }
 
     @Test

@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.Vector3;
 import net.minecraft.util.math.BlockPos;
@@ -88,26 +89,8 @@ final class SolidNodeUtils {
         return polylinePoints.size() >= 2 ? new PolylineData(polylinePoints) : null;
     }
 
-    static List<Vector3d> resolveSpinePoints(@Nullable Object lineObj,
-                                             @Nullable Object polylineObj,
-                                             @Nullable Object curveObj,
-                                             @Nullable Object pathPointsObj) {
-        List<Vector3d> spinePoints = new ArrayList<>();
-        if (lineObj instanceof LineData line) {
-            spinePoints.add(fromVec3d(line.getStart()));
-            spinePoints.add(fromVec3d(line.getEnd()));
-        } else if (polylineObj instanceof PolylineData polyline) {
-            for (Vec3d point : polyline.getPoints()) {
-                spinePoints.add(fromVec3d(point));
-            }
-        } else if (curveObj instanceof Curve curve) {
-            for (Vec3d point : curve.getSamplePoints()) {
-                spinePoints.add(fromVec3d(point));
-            }
-        } else {
-            spinePoints.addAll(resolvePointList(pathPointsObj));
-        }
-        return spinePoints;
+    static List<Vector3d> resolveSpinePoints(@Nullable Object pathObj, @Nullable Object pathPointsObj) {
+        return PathUtils.resolvePathOrPointList(pathObj, pathPointsObj);
     }
 
     static Vector3d computeTangent(List<Vector3d> points, int index) {

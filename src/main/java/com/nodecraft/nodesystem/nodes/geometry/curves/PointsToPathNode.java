@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
@@ -30,6 +31,7 @@ public class PointsToPathNode extends AbstractCurveNode {
 
     private static final String INPUT_POINTS_ID = "input_points";
 
+    private static final String OUTPUT_PATH_ID = "output_path";
     private static final String OUTPUT_LINE_ID = "output_line";
     private static final String OUTPUT_POLYLINE_ID = "output_polyline";
     private static final String OUTPUT_COUNT_ID = "output_count";
@@ -44,6 +46,9 @@ public class PointsToPathNode extends AbstractCurveNode {
             "Ordered point list",
             NodeDataType.POINT_LIST, this));
 
+        addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path",
+            "Primary path output (line for 2 points, polyline for 3+)",
+            NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_LINE_ID, "Line",
             "Line output when the path contains exactly 2 points", NodeDataType.LINE, this));
         addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline",
@@ -72,14 +77,22 @@ public class PointsToPathNode extends AbstractCurveNode {
 
         LineData line = null;
         PolylineData polyline = null;
+        PathData path = null;
         boolean valid = points.size() >= 2;
         if (valid) {
             if (points.size() == 2) {
                 line = new LineData(points.get(0), points.get(1));
+                path = PathData.fromLine(line);
+            } else {
+                polyline = new PolylineData(points);
+                path = PathData.fromPolyline(polyline);
             }
-            polyline = new PolylineData(points);
+            if (polyline == null) {
+                polyline = new PolylineData(points);
+            }
         }
 
+        outputValues.put(OUTPUT_PATH_ID, path);
         outputValues.put(OUTPUT_LINE_ID, line);
         outputValues.put(OUTPUT_POLYLINE_ID, polyline);
         outputValues.put(OUTPUT_COUNT_ID, points.size());
@@ -111,5 +124,4 @@ public class PointsToPathNode extends AbstractCurveNode {
             }
         }
     }
-
 }

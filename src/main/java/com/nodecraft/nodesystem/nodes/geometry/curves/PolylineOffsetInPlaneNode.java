@@ -5,31 +5,26 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
-import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
-import net.minecraft.util.math.Vec3d;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.InPlanePathOffset;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector2d;
 import org.joml.Vector3d;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Offsets a polyline (or line) within a reference plane using parallel segment offsets and miter joins.
+ * Legacy polyline-only offset. Prefer {@link OffsetCurveInPlaneNode} (Offset Path In Plane) for new graphs.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.curves.offset_polyline_plane",
     displayName = "Offset Polyline In Plane",
-    description = "Offsets a polyline in a plane using parallel segments and miters (left is CCW in the plane UV basis)",
+    description = "Legacy polyline offset in a plane. Prefer Offset Path In Plane for line/polyline/curve paths.",
     category = "geometry.curves",
-    order = 10
+    order = 99
 )
 public class PolylineOffsetInPlaneNode extends AbstractCurveNode {
 
@@ -111,47 +106,13 @@ public class PolylineOffsetInPlaneNode extends AbstractCurveNode {
         }
 
         List<Vector3d> worldVerts = resolvePathVertices(INPUT_PATH_ID);
-        if (worldVerts == null || worldVerts.size() < 2) {
+        InPlanePathOffset.Result result = InPlanePathOffset.offset(worldVerts, plane, offset, miterLimit);
+        if (result == null) {
             writeInvalid();
             return;
         }
 
-        boolean closed = PathUtils.isClosed(worldVerts);
-        List<Vector3d> unique = closed ? worldVerts.subList(0, worldVerts.size() - 1) : worldVerts;
-        if (unique.size() < 2) {
-            writeInvalid();
-            return;
-        }
-
-        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
-        List<Vector2d> pts2d = new ArrayList<>(unique.size());
-        for (Vector3d p : unique) {
-            Vector3d proj = plane.projectPoint(p);
-            pts2d.add(axes.to2d(proj));
-        }
-
-        List<Vector2d> offset2d = offsetPolyline2d(pts2d, closed, offset, miterLimit);
-        if (offset2d == null || offset2d.size() < 2) {
-            writeInvalid();
-            return;
-        }
-
-        List<Vec3d> outPts = new ArrayList<>(offset2d.size());
-        for (Vector2d p : offset2d) {
-            Vector3d w = axes.from2d(p);
-            outPts.add(new Vec3d(w.x, w.y, w.z));
-        }
-        if (closed) {
-            outPts.add(outPts.getFirst());
-        }
-
-        PolylineData polyline = PathUtils.createPolylineOrNull(outPts);
-        if (polyline == null) {
-            writeInvalid();
-            return;
-        }
-
-        outputValues.put(OUTPUT_POLYLINE_ID, polyline);
+        outputValues.put(OUTPUT_POLYLINE_ID, result.polyline());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
@@ -159,63 +120,4 @@ public class PolylineOffsetInPlaneNode extends AbstractCurveNode {
         outputValues.put(OUTPUT_POLYLINE_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
-
-    /**
-     * Parallel offset for a 2D polyline. {@code pts} are unique vertices; {@code closed} means first/last should join.
-     */
-    private static List<Vector2d> offsetPolyline2d(List<Vector2d> pts, boolean closed, double offset, double miterLimit) {
-        int n = pts.size();
-        if (n < 2) {
-            return null;
-        }
-        int segCount = closed ? n : n - 1;
-        Vector2d[] left = new Vector2d[segCount];
-        for (int i = 0; i < segCount; i++) {
-            Vector2d a = pts.get(i);
-            Vector2d b = pts.get((i + 1) % n);
-            Vector2d d = new Vector2d(b).sub(a);
-            double len = d.length();
-            if (len < EPS) {
-                return null;
-            }
-            d.mul(1.0d / len);
-            Vector2d ln = new Vector2d(-d.y, d.x).mul(offset);
-            left[i] = ln;
-        }
-
-        List<Vector2d> out = new ArrayList<>(n);
-        if (!closed) {
-            Vector2d start = new Vector2d(pts.getFirst()).add(left[0]);
-            out.add(start);
-            for (int i = 1; i < n - 1; i++) {
-                Vector2d corner = MiterJoinCalculator.intersectOrBevel(
-                    pts.get(i - 1), pts.get(i), left[i - 1],
-                    pts.get(i), pts.get(i + 1), left[i],
-                    pts.get(i), miterLimit, offset);
-                if (corner == null) {
-                    return null;
-                }
-                out.add(corner);
-            }
-            Vector2d end = new Vector2d(pts.get(n - 1)).add(left[n - 2]);
-            out.add(end);
-            return out;
-        }
-
-        for (int i = 0; i < n; i++) {
-            int prev = (i - 1 + n) % n;
-            int self = i;
-            int next = (i + 1) % n;
-            Vector2d corner = MiterJoinCalculator.intersectOrBevel(
-                pts.get(prev), pts.get(self), left[prev],
-                pts.get(self), pts.get(next), left[self],
-                pts.get(self), miterLimit, offset);
-            if (corner == null) {
-                return null;
-            }
-            out.add(corner);
-        }
-        return out;
-    }
-
 }

@@ -60,13 +60,9 @@ public class SweepTwoRailsNode extends BaseNode {
 
     private static final String INPUT_PROFILE_ID = "input_profile";
     private static final String INPUT_PROFILE_POINTS_ID = "input_profile_points";
-    private static final String INPUT_RAIL_A_LINE_ID = "input_rail_a_line";
-    private static final String INPUT_RAIL_A_POLYLINE_ID = "input_rail_a_polyline";
-    private static final String INPUT_RAIL_A_CURVE_ID = "input_rail_a_curve";
+    private static final String INPUT_RAIL_A_PATH_ID = "input_rail_a_path";
     private static final String INPUT_RAIL_A_POINTS_ID = "input_rail_a_points";
-    private static final String INPUT_RAIL_B_LINE_ID = "input_rail_b_line";
-    private static final String INPUT_RAIL_B_POLYLINE_ID = "input_rail_b_polyline";
-    private static final String INPUT_RAIL_B_CURVE_ID = "input_rail_b_curve";
+    private static final String INPUT_RAIL_B_PATH_ID = "input_rail_b_path";
     private static final String INPUT_RAIL_B_POINTS_ID = "input_rail_b_points";
     private static final String INPUT_SCALE_VALUES_ID = "input_scale_values";
     private static final String INPUT_ROTATION_VALUES_ID = "input_rotation_values";
@@ -88,14 +84,14 @@ public class SweepTwoRailsNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_PROFILE_ID, "Profile", "Optional polygon profile to sweep", NodeDataType.POLYGON_PROFILE, this));
         addInputPort(new BasePort(INPUT_PROFILE_POINTS_ID, "Profile Points", "Optional ordered point profile fallback", NodeDataType.POINT_LIST, this));
-        addInputPort(new BasePort(INPUT_RAIL_A_LINE_ID, "Rail A Line", "First guide rail as a line", NodeDataType.LINE, this));
-        addInputPort(new BasePort(INPUT_RAIL_A_POLYLINE_ID, "Rail A Polyline", "First guide rail as a polyline", NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_RAIL_A_CURVE_ID, "Rail A Curve", "First guide rail as a curve", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_RAIL_A_POINTS_ID, "Rail A Points", "First guide rail as ordered points", NodeDataType.POINT_LIST, this));
-        addInputPort(new BasePort(INPUT_RAIL_B_LINE_ID, "Rail B Line", "Second guide rail as a line", NodeDataType.LINE, this));
-        addInputPort(new BasePort(INPUT_RAIL_B_POLYLINE_ID, "Rail B Polyline", "Second guide rail as a polyline", NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_RAIL_B_CURVE_ID, "Rail B Curve", "Second guide rail as a curve", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_RAIL_B_POINTS_ID, "Rail B Points", "Second guide rail as ordered points", NodeDataType.POINT_LIST, this));
+        addInputPort(new BasePort(INPUT_RAIL_A_PATH_ID, "Rail A Path",
+            "First guide rail (line, polyline, or curve)", NodeDataType.PATH, this));
+        addInputPort(new BasePort(INPUT_RAIL_A_POINTS_ID, "Rail A Points",
+            "Fallback ordered points for rail A", NodeDataType.POINT_LIST, this));
+        addInputPort(new BasePort(INPUT_RAIL_B_PATH_ID, "Rail B Path",
+            "Second guide rail (line, polyline, or curve)", NodeDataType.PATH, this));
+        addInputPort(new BasePort(INPUT_RAIL_B_POINTS_ID, "Rail B Points",
+            "Fallback ordered points for rail B", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_SCALE_VALUES_ID, "Scale Values", "Optional scale list sampled along the rails", NodeDataType.LIST, this));
         addInputPort(new BasePort(INPUT_ROTATION_VALUES_ID, "Rotation Values", "Optional rotation degrees list sampled along the rails", NodeDataType.LIST, this));
 
@@ -120,16 +116,12 @@ public class SweepTwoRailsNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> profilePoints = resolveProfilePoints();
-        List<Vector3d> rawRailA = resolveRailPoints(
-            inputValues.get(INPUT_RAIL_A_LINE_ID),
-            inputValues.get(INPUT_RAIL_A_POLYLINE_ID),
-            inputValues.get(INPUT_RAIL_A_CURVE_ID),
+        List<Vector3d> rawRailA = SolidNodeUtils.resolveSpinePoints(
+            inputValues.get(INPUT_RAIL_A_PATH_ID),
             inputValues.get(INPUT_RAIL_A_POINTS_ID)
         );
-        List<Vector3d> rawRailB = resolveRailPoints(
-            inputValues.get(INPUT_RAIL_B_LINE_ID),
-            inputValues.get(INPUT_RAIL_B_POLYLINE_ID),
-            inputValues.get(INPUT_RAIL_B_CURVE_ID),
+        List<Vector3d> rawRailB = SolidNodeUtils.resolveSpinePoints(
+            inputValues.get(INPUT_RAIL_B_PATH_ID),
             inputValues.get(INPUT_RAIL_B_POINTS_ID)
         );
 
@@ -308,10 +300,6 @@ public class SweepTwoRailsNode extends BaseNode {
             return profile.getUniquePoints();
         }
         return SpatialValueResolver.resolvePointList(inputValues.get(INPUT_PROFILE_POINTS_ID));
-    }
-
-    private List<Vector3d> resolveRailPoints(Object lineObj, Object polylineObj, Object curveObj, Object pointsObj) {
-        return SolidNodeUtils.resolveSpinePoints(lineObj, polylineObj, curveObj, pointsObj);
     }
 
     private List<Vector3d> computeCenters(List<Vector3d> railA, List<Vector3d> railB) {

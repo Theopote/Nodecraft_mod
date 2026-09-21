@@ -383,8 +383,18 @@ Arc defaults, Curve Evaluate contract).
 - **Helix**: numeric property fallbacks — center `0,0,0`, axis `0,1,0`, radius `4`, pitch `2`, turns `3`,
   segments/turn `24`, start angle `0°`.
 
-**Next (Batch 3 P2 remainder):** Points To Path PATH output, offset node consolidation review,
-historical ID cleanup, downstream AlongPath / Sweep PATH migration.
+**Batch 3 P2 — PATH producers & downstream (2026-09-21):**
+
+- **Points To Path** emits primary **`output_path`** (`PATH`) plus legacy `Line` / `Polyline`.
+- **Offset Path In Plane** (`geometry.curves.offset_curve_plane`) is the canonical in-plane offset;
+  shared kernel `InPlanePathOffset`. **Offset Polyline In Plane** kept as legacy (order 99), same algorithm
+  without optional resampling — prefer Offset Path In Plane for new graphs.
+- **Along Path**, **Path Instances**, **Sweep Profile Along Path**, **Sweep Point List Along Path**,
+  **Sweep 2 Rails** (`input_path` / `input_rail_a_path` / `input_rail_b_path`) use single **`PATH`**
+  inputs with `POINT_LIST` fallback via `PathUtils.resolvePathOrPointList`.
+
+**Next:** historical ID cleanup (`divide_curve_to_points`, `curve_from_points`), CurveArray / ArrayAlongCurve
+PATH migration, Blend start/end `POINT` outputs.
 
 ---
 

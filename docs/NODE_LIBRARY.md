@@ -133,10 +133,9 @@
 | Bezier | `geometry.curves.bezier` | Builds a sampled Bezier curve from an ordered list of control points | `BezierNode` |
 | Box Face Boundary Path | `geometry.curves.face_boundary_curve` | Builds a closed boundary path from a box face for preview and downstream path workflows | `BoxFaceBoundaryPathNode` |
 | Interpolate Spline | `geometry.curves.interpolate_spline` | Builds a Catmull-Rom interpolation spline that passes through all resolved input points | `InterpolateSplineNode` |
-| Offset Polyline In Plane | `geometry.curves.offset_polyline_plane` | Offsets a polyline in a plane using parallel segments and miters (left is CCW in the plane UV basis) | `PolylineOffsetInPlaneNode` |
 | B-Spline | `geometry.curves.b_spline` | Builds a sampled clamped uniform B-spline from an ordered control point list | `BSplineNode` |
 | Fillet Polyline Corners | `geometry.curves.fillet_polyline_corners` | Fillets interior corners of an open polyline with circular arcs in the work plane | `PolylineCornerFilletNode` |
-| Offset Curve In Plane | `geometry.curves.offset_curve_plane` | Offsets a curve, polyline, or line in a work plane by signed distance. | `OffsetCurveInPlaneNode` |
+| Offset Path In Plane | `geometry.curves.offset_curve_plane` | Offsets a path (line, polyline, or curve) in a work plane by signed distance, with optional resampling. | `OffsetCurveInPlaneNode` |
 | NURBS Curve | `geometry.curves.nurbs` | Builds a sampled clamped uniform NURBS curve from control points and optional per-point weights | `NurbsCurveNode` |
 | Rainbow Curve Offset | `geometry.curves.rainbow_curve_offset` | Generates multiple parallel offset polylines around a space curve using path frames. | `RainbowCurveOffsetNode` |
 | Resample Polyline By Length | `geometry.curves.resample_polyline_length` | Resamples a polyline along its arc length using spacing, or using a total point count (count wins when both are provided) | `ResamplePolylineByLengthNode` |
@@ -150,6 +149,7 @@
 | Voxelize Curve | `geometry.curves.voxelize_curve` | Converts a curve, polyline, or line directly into voxel block coordinates using cylindrical path segments | `VoxelizeCurveNode` |
 | Blend Curves | `geometry.curves.blend_curves` | Creates a smooth transition curve between two curve, polyline, or line endpoints | `BlendCurvesNode` |
 | Tween Curves | `geometry.curves.tween_curves` | Creates evenly spaced intermediate curves between two curve, polyline, or line inputs | `TweenCurvesNode` |
+| Offset Polyline In Plane | `geometry.curves.offset_polyline_plane` | Legacy polyline offset in a plane. Prefer Offset Path In Plane for line/polyline/curve paths. | `PolylineOffsetInPlaneNode` |
 
 ## geometry.primitives (29)
 
@@ -559,7 +559,7 @@
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Linear Array | `pattern.linear.linear_array` | 将坐标列表沿直线方向重复排列 | `LinearArrayNode` |
-| Along Path | `pattern.linear.along_path` | Repeats a block pattern at each resolved path point from a line, polyline, curve, or point list | `AlongPathNode` |
+| Along Path | `pattern.linear.along_path` | Repeats a block pattern at each resolved path point from a path or point list | `AlongPathNode` |
 | Staggered Array | `pattern.linear.staggered_array` | Repeats coordinates in rows and applies an alternating offset for brick-like staggering | `StaggeredArrayNode` |
 | Path Instances | `pattern.linear.path_instances` | Generates path instance frames (origin + axes) for oriented placement along a path. | `PathInstancesNode` |
 | Instance on Points | `pattern.linear.instance_on_points` | Instances a block or block-placement template at each input point. | `InstanceOnPointsNode` |

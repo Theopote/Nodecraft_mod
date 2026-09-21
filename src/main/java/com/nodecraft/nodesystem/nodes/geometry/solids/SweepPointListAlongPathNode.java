@@ -54,9 +54,7 @@ public class SweepPointListAlongPathNode extends BaseNode {
     private double endRotationDegrees = 0.0d;
 
     private static final String INPUT_PROFILE_POINTS_ID = "input_profile_points";
-    private static final String INPUT_LINE_ID = "input_line";
-    private static final String INPUT_POLYLINE_ID = "input_polyline";
-    private static final String INPUT_CURVE_ID = "input_curve";
+    private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_PATH_POINTS_ID = "input_path_points";
     private static final String INPUT_SCALE_VALUES_ID = "input_scale_values";
     private static final String INPUT_ROTATION_VALUES_ID = "input_rotation_values";
@@ -76,10 +74,10 @@ public class SweepPointListAlongPathNode extends BaseNode {
         super(UUID.randomUUID(), "geometry.solids.sweep_from_points");
 
         addInputPort(new BasePort(INPUT_PROFILE_POINTS_ID, "Profile Points", "Ordered profile point list to sweep", NodeDataType.POINT_LIST, this));
-        addInputPort(new BasePort(INPUT_LINE_ID, "Line", "Optional line spine", NodeDataType.LINE, this));
-        addInputPort(new BasePort(INPUT_POLYLINE_ID, "Polyline", "Optional polyline spine", NodeDataType.POLYLINE, this));
-        addInputPort(new BasePort(INPUT_CURVE_ID, "Curve", "Optional curve spine", NodeDataType.CURVE, this));
-        addInputPort(new BasePort(INPUT_PATH_POINTS_ID, "Path Points", "Optional ordered path point list fallback", NodeDataType.POINT_LIST, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path",
+            "Spine path (line, polyline, or curve)", NodeDataType.PATH, this));
+        addInputPort(new BasePort(INPUT_PATH_POINTS_ID, "Path Points",
+            "Fallback ordered point list when Path is unconnected", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_SCALE_VALUES_ID, "Scale Values", "Optional scale list sampled along the path", NodeDataType.LIST, this));
         addInputPort(new BasePort(INPUT_ROTATION_VALUES_ID, "Rotation Values", "Optional rotation degrees list sampled along the path", NodeDataType.LIST, this));
 
@@ -301,12 +299,10 @@ public class SweepPointListAlongPathNode extends BaseNode {
     }
 
     private List<Vector3d> resolveSpinePoints() {
-        Object lineObj = inputValues.get(INPUT_LINE_ID);
-        Object polylineObj = inputValues.get(INPUT_POLYLINE_ID);
-        Object curveObj = inputValues.get(INPUT_CURVE_ID);
-        Object pathPointsObj = inputValues.get(INPUT_PATH_POINTS_ID);
-
-        return SolidNodeUtils.resolveSpinePoints(lineObj, polylineObj, curveObj, pathPointsObj);
+        return SolidNodeUtils.resolveSpinePoints(
+            inputValues.get(INPUT_PATH_ID),
+            inputValues.get(INPUT_PATH_POINTS_ID)
+        );
     }
 
     private List<Double> resolveNumberList(Object value) {

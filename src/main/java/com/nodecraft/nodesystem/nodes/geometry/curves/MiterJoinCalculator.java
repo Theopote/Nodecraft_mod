@@ -2,14 +2,14 @@ package com.nodecraft.nodesystem.nodes.geometry.curves;
 
 import org.joml.Vector2d;
 
-final class MiterJoinCalculator {
+public final class MiterJoinCalculator {
 
     private static final double EPS = 1.0e-9d;
 
     private MiterJoinCalculator() {
     }
 
-    static Vector2d intersectOrBevel(Vector2d p0, Vector2d p1, Vector2d left0,
+    public static Vector2d intersectOrBevel(Vector2d p0, Vector2d p1, Vector2d left0,
                                      Vector2d q0, Vector2d q1, Vector2d left1,
                                      Vector2d cornerWorld,
                                      double miterLimit,
