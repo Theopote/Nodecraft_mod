@@ -376,8 +376,15 @@ test guards `output_profile` nodes for Plane + Center ports.
 **Contract tests:** `GeometryCurvesFamilyContractTest` (PATH ports, implicit connect, linear samples,
 Arc defaults, Curve Evaluate contract).
 
-**Next (Batch 3 P2):** Rebuild / Frame default spacing, Helix property fallbacks, Points To Path PATH
-output, offset node consolidation review, historical ID cleanup.
+**Batch 3 P2 — drag-out defaults (2026-09-21):**
+
+- **Curve Rebuild By Length** and **Curve Frame Along Path**: `defaultSpacing = 1.0` block when Spacing /
+  Count ports are unconnected (Count still wins when connected).
+- **Helix**: numeric property fallbacks — center `0,0,0`, axis `0,1,0`, radius `4`, pitch `2`, turns `3`,
+  segments/turn `24`, start angle `0°`.
+
+**Next (Batch 3 P2 remainder):** Points To Path PATH output, offset node consolidation review,
+historical ID cleanup, downstream AlongPath / Sweep PATH migration.
 
 ---
 

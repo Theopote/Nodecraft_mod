@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.geometry.curves;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
@@ -34,6 +35,10 @@ import java.util.UUID;
 public class CurveRebuildByLengthNode extends AbstractCurveNode {
 
     private static final double EPS = 1.0e-9d;
+
+    @NodeProperty(displayName = "Default Spacing", category = "Rebuild", order = 1,
+        description = "Target distance between samples when Spacing port is unconnected (Minecraft-friendly 1 block)")
+    private double defaultSpacing = 1.0d;
 
     private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_SPACING_ID = "input_spacing";
@@ -93,13 +98,12 @@ public class CurveRebuildByLengthNode extends AbstractCurveNode {
             return;
         }
 
-        Object spacingObj = inputValues.get(INPUT_SPACING_ID);
         Object countObj = inputValues.get(INPUT_COUNT_ID);
         int count = countObj instanceof Number n ? n.intValue() : -1;
         if (count >= 2) {
             count = GenerationLimits.clampPositiveCount(count);
         }
-        double spacing = spacingObj instanceof Number s ? s.doubleValue() : 0.0d;
+        double spacing = readDoubleInput(INPUT_SPACING_ID, defaultSpacing);
 
         List<Double> sampleDistances = new ArrayList<>();
         if (count >= 2) {

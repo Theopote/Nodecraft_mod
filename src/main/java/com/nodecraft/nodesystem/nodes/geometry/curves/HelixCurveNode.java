@@ -3,17 +3,22 @@ package com.nodecraft.nodesystem.nodes.geometry.curves;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
@@ -25,6 +30,48 @@ import java.util.UUID;
     order = 17
 )
 public class HelixCurveNode extends AbstractCurveNode {
+
+    @NodeProperty(displayName = "Center X", category = "Center", order = 1,
+        description = "Default center X when Center port is unconnected")
+    private double centerX = 0.0d;
+
+    @NodeProperty(displayName = "Center Y", category = "Center", order = 2,
+        description = "Default center Y when Center port is unconnected")
+    private double centerY = 0.0d;
+
+    @NodeProperty(displayName = "Center Z", category = "Center", order = 3,
+        description = "Default center Z when Center port is unconnected")
+    private double centerZ = 0.0d;
+
+    @NodeProperty(displayName = "Axis X", category = "Axis", order = 4,
+        description = "Default axis X when Axis port is unconnected")
+    private double axisX = 0.0d;
+
+    @NodeProperty(displayName = "Axis Y", category = "Axis", order = 5,
+        description = "Default axis Y when Axis port is unconnected")
+    private double axisY = 1.0d;
+
+    @NodeProperty(displayName = "Axis Z", category = "Axis", order = 6,
+        description = "Default axis Z when Axis port is unconnected")
+    private double axisZ = 0.0d;
+
+    @NodeProperty(displayName = "Default Radius", category = "Helix", order = 7)
+    private double defaultRadius = 4.0d;
+
+    @NodeProperty(displayName = "Default Pitch", category = "Helix", order = 8,
+        description = "Vertical advance per turn")
+    private double defaultPitch = 2.0d;
+
+    @NodeProperty(displayName = "Default Turns", category = "Helix", order = 9)
+    private double defaultTurns = 3.0d;
+
+    @NodeProperty(displayName = "Default Segments Per Turn", category = "Helix", order = 10)
+    private int defaultSegmentsPerTurn = 24;
+
+    @NodeProperty(displayName = "Default Start Angle", category = "Helix", order = 11,
+        description = "Initial angle in degrees")
+    private double defaultStartAngle = 0.0d;
+
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_AXIS_ID = "input_axis";
     private static final String INPUT_RADIUS_ID = "input_radius";
@@ -58,11 +105,11 @@ public class HelixCurveNode extends AbstractCurveNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d center = resolveInputPoint(inputValues.get(INPUT_CENTER_ID));
+        Vector3d center = PlaneProjectionUtils.resolvePointOrDefault(
+            inputValues.get(INPUT_CENTER_ID), centerX, centerY, centerZ);
         Vector3d axisIn = resolveInputVector(inputValues.get(INPUT_AXIS_ID));
-        if (center == null || axisIn == null) {
-            writeInvalid();
-            return;
+        if (axisIn == null) {
+            axisIn = new Vector3d(axisX, axisY, axisZ);
         }
 
         Vector3d axis = new Vector3d(axisIn);
@@ -72,12 +119,12 @@ public class HelixCurveNode extends AbstractCurveNode {
         }
         axis.normalize();
 
-        double radius = readDoubleInput(INPUT_RADIUS_ID, Double.NaN);
-        double pitch = readDoubleInput(INPUT_PITCH_ID, Double.NaN);
-        double turns = readDoubleInput(INPUT_TURNS_ID, Double.NaN);
-        int segmentsPerTurn = Math.max(6, readIntInput(INPUT_SEGMENTS_PER_TURN_ID, 32));
-        double startAngle = Math.toRadians(readDoubleInput(INPUT_START_ANGLE_ID, 0.0d));
-        if (!Double.isFinite(radius) || radius <= 0.0d || !Double.isFinite(pitch) || !Double.isFinite(turns) || turns <= 0.0d) {
+        double radius = readDoubleInput(INPUT_RADIUS_ID, defaultRadius);
+        double pitch = readDoubleInput(INPUT_PITCH_ID, defaultPitch);
+        double turns = readDoubleInput(INPUT_TURNS_ID, defaultTurns);
+        int segmentsPerTurn = GenerationLimits.clampSegments(6, readIntInput(INPUT_SEGMENTS_PER_TURN_ID, defaultSegmentsPerTurn));
+        double startAngle = Math.toRadians(readDoubleInput(INPUT_START_ANGLE_ID, defaultStartAngle));
+        if (radius <= 0.0d || turns <= 0.0d) {
             writeInvalid();
             return;
         }
@@ -116,6 +163,63 @@ public class HelixCurveNode extends AbstractCurveNode {
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
+    @Override
+    public Object getNodeState() {
+        Map<String, Object> state = new HashMap<>();
+        state.put("centerX", centerX);
+        state.put("centerY", centerY);
+        state.put("centerZ", centerZ);
+        state.put("axisX", axisX);
+        state.put("axisY", axisY);
+        state.put("axisZ", axisZ);
+        state.put("defaultRadius", defaultRadius);
+        state.put("defaultPitch", defaultPitch);
+        state.put("defaultTurns", defaultTurns);
+        state.put("defaultSegmentsPerTurn", defaultSegmentsPerTurn);
+        state.put("defaultStartAngle", defaultStartAngle);
+        return state;
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (!(state instanceof Map<?, ?> map)) {
+            return;
+        }
+        if (map.get("centerX") instanceof Number n) {
+            centerX = n.doubleValue();
+        }
+        if (map.get("centerY") instanceof Number n) {
+            centerY = n.doubleValue();
+        }
+        if (map.get("centerZ") instanceof Number n) {
+            centerZ = n.doubleValue();
+        }
+        if (map.get("axisX") instanceof Number n) {
+            axisX = n.doubleValue();
+        }
+        if (map.get("axisY") instanceof Number n) {
+            axisY = n.doubleValue();
+        }
+        if (map.get("axisZ") instanceof Number n) {
+            axisZ = n.doubleValue();
+        }
+        if (map.get("defaultRadius") instanceof Number n) {
+            defaultRadius = n.doubleValue();
+        }
+        if (map.get("defaultPitch") instanceof Number n) {
+            defaultPitch = n.doubleValue();
+        }
+        if (map.get("defaultTurns") instanceof Number n) {
+            defaultTurns = n.doubleValue();
+        }
+        if (map.get("defaultSegmentsPerTurn") instanceof Number n) {
+            defaultSegmentsPerTurn = n.intValue();
+        }
+        if (map.get("defaultStartAngle") instanceof Number n) {
+            defaultStartAngle = n.doubleValue();
+        }
+    }
+
     private void writeInvalid() {
         writeInvalidOutputs();
         putDoubleOutputs(0.0d, OUTPUT_LENGTH_ID);
@@ -130,5 +234,4 @@ public class HelixCurveNode extends AbstractCurveNode {
         }
         return u.normalize();
     }
-
 }
