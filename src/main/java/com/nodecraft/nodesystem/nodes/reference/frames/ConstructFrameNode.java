@@ -16,7 +16,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "reference.frames.construct_frame",
     displayName = "Construct Frame",
-    description = "Packs origin point and X/Y/Z axes into a FRAME",
+    description = "Packs origin point and X/Y/Z axes into an orthonormal right-handed FRAME",
     category = "reference.frames",
     order = 4
 )
@@ -45,7 +45,7 @@ public class ConstructFrameNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Packs origin point and X/Y/Z axes into a FRAME";
+        return "Packs origin point and X/Y/Z axes into an orthonormal right-handed FRAME";
     }
 
     @Override
@@ -68,17 +68,13 @@ public class ConstructFrameNode extends BaseNode {
             z = new Vector3d(0, 0, 1);
         }
 
-        if (!FrameUtils.isFinite(origin)
-            || !FrameUtils.isUsableAxis(x)
-            || !FrameUtils.isUsableAxis(y)
-            || !FrameUtils.isUsableAxis(z)) {
+        FrameData frame = FrameData.orthonormal(origin, x, y, z);
+        if (frame == null) {
             outputValues.put(OUTPUT_FRAME_ID, null);
             outputValues.put(OUTPUT_PLANE_ID, null);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
-
-        FrameData frame = new FrameData(origin, x, y, z);
         outputValues.put(OUTPUT_FRAME_ID, frame);
         outputValues.put(OUTPUT_PLANE_ID, frame.toPlane());
         outputValues.put(OUTPUT_VALID_ID, true);

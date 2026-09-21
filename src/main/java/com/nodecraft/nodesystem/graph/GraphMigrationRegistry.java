@@ -8,7 +8,9 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -290,7 +292,6 @@ public final class GraphMigrationRegistry {
 
     private static final String ROTATE_VECTOR_TYPE = "transform.orientation.rotate_vector";
     private static final String LEGACY_ROTATE_VECTOR_ANGLE_PORT = "input_angle_rad";
-    private static final String ROTATE_VECTOR_ANGLE_PORT = "input_angle";
 
     /**
      * Batch 5: Combine Geometry is structural compose, not analytic boolean union.
@@ -313,7 +314,12 @@ public final class GraphMigrationRegistry {
     }
 
     /**
-     * Batch 6: Rotate Vector angle port {@code input_angle_rad} → {@code input_angle} (degrees).
+     * Batch 6: Rotate Vector angle language freezes to degrees.
+     * <p>
+     * Pre-release policy: do <em>not</em> remap {@code input_angle_rad} → {@code input_angle}.
+     * That would keep the upstream numeric payload but reinterpret radians as degrees
+     * (e.g. {@code π/2} become ~1.57° instead of 90°). Drop the abandoned radians
+     * connection instead — graphs must reconnect with degree values.
      */
     private static SavedGraph migrateV6ToV7(SavedGraph graph) {
         if (graph.connections == null || graph.nodes == null) {
@@ -327,21 +333,25 @@ public final class GraphMigrationRegistry {
             }
         }
 
+        List<SavedConnection> kept = new ArrayList<>(graph.connections.size());
         for (SavedConnection connection : graph.connections) {
-            if (connection == null || connection.targetPortId == null) {
+            if (connection == null) {
                 continue;
             }
             String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
             if (ROTATE_VECTOR_TYPE.equals(targetType)
                     && LEGACY_ROTATE_VECTOR_ANGLE_PORT.equalsIgnoreCase(connection.targetPortId)) {
-                LOGGER.debug(
-                        "Migrated rotate vector angle port: {} -> {}",
-                        connection.targetPortId,
-                        ROTATE_VECTOR_ANGLE_PORT
+                LOGGER.warn(
+                        "Dropped Rotate Vector radians angle connection {} -> {} (pre-release: "
+                                + "input_angle_rad is abandoned; reconnect with degrees to input_angle)",
+                        connection.sourceNodeId,
+                        connection.targetNodeId
                 );
-                connection.targetPortId = ROTATE_VECTOR_ANGLE_PORT;
+                continue;
             }
+            kept.add(connection);
         }
+        graph.connections = kept;
         return graph;
     }
 

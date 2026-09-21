@@ -29,8 +29,6 @@ import java.util.UUID;
 )
 public class OrientGeometryToFrameNode extends BaseNode {
 
-    private static final double EPS = 1.0e-12d;
-
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_PIVOT_ID = "input_pivot";
     private static final String INPUT_FRAME_ID = "input_frame";
@@ -78,19 +76,13 @@ public class OrientGeometryToFrameNode extends BaseNode {
             return;
         }
 
-        Vector3d x = frame.getXAxis();
-        Vector3d y = frame.getYAxis();
-        Vector3d z = frame.getZAxis();
-        if (!isUsable(x) || !isUsable(y) || !isUsable(z)) {
+        FrameData basis = frame.orthonormalized();
+        if (basis == null) {
             writeResult(null, false, "Frame axes are invalid");
             return;
         }
 
-        Matrix3d rotation = new Matrix3d(
-            x.x, y.x, z.x,
-            x.y, y.y, z.y,
-            x.z, y.z, z.z
-        );
+        Matrix3d rotation = basis.toRotationMatrix();
         GeometryData oriented = GeometryTransform.transformAround(geometry, pivot, rotation, 1.0d);
         writeResult(oriented, oriented != null, oriented == null ? "Unsupported geometry orientation" : "");
     }
@@ -106,9 +98,5 @@ public class OrientGeometryToFrameNode extends BaseNode {
             && Double.isFinite(vector.x)
             && Double.isFinite(vector.y)
             && Double.isFinite(vector.z);
-    }
-
-    private static boolean isUsable(Vector3d vector) {
-        return isFinite(vector) && vector.lengthSquared() > EPS;
     }
 }

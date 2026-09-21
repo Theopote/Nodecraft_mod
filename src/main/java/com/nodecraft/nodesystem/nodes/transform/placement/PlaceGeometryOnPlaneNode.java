@@ -111,7 +111,11 @@ public class PlaceGeometryOnPlaneNode extends BaseNode {
         }
         y.normalize();
 
-        FrameData frame = new FrameData(origin, x, y, normal);
+        FrameData frame = FrameData.orthonormal(origin, x, y, normal);
+        if (frame == null) {
+            writeResult(null, null, false, "Could not build orthonormal frame on plane");
+            return;
+        }
         Vector3d pivot = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_PIVOT_ID));
         if (pivot == null) {
             pivot = new Vector3d();

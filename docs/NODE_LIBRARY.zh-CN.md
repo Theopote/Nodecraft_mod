@@ -629,7 +629,7 @@
 | Sphere Surface Frame | `reference.frames.frame_along_surface` | Builds a local tangent frame on a sphere using the nearest surface point and outward normal | `SphereSurfaceFrameNode` |
 | World Frame | `reference.frames.world_frame` | Outputs the world coordinate frame as FRAME plus decomposed origin/axes | `WorldFrameNode` |
 | Transform Frame | `reference.frames.transform_frame` | Applies translation, Euler rotation (degrees), and positive uniform scale to a frame | `TransformFrameNode` |
-| Construct Frame | `reference.frames.construct_frame` | Packs origin point and X/Y/Z axes into a FRAME | `ConstructFrameNode` |
+| Construct Frame | `reference.frames.construct_frame` | Packs origin point and X/Y/Z axes into an orthonormal right-handed FRAME | `ConstructFrameNode` |
 | Deconstruct Frame | `reference.frames.deconstruct_frame` | Splits a FRAME into origin point, X/Y/Z axes, and plane | `DeconstructFrameNode` |
 
 ## reference.planes（6）

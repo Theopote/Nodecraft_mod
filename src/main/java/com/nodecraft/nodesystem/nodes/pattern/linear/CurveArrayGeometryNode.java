@@ -221,11 +221,11 @@ public class CurveArrayGeometryNode extends BaseNode {
 
     private record FrameAxes(Vector3d x, Vector3d y, Vector3d z) {
         Matrix3d rotation() {
-            return new Matrix3d(
-                x.x, y.x, z.x,
-                x.y, y.y, z.y,
-                x.z, y.z, z.z
-            );
+            Matrix3d rotation = new Matrix3d();
+            rotation.setColumn(0, x);
+            rotation.setColumn(1, y);
+            rotation.setColumn(2, z);
+            return rotation;
         }
     }
 

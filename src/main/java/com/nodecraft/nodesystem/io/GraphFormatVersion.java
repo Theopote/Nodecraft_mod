@@ -48,8 +48,9 @@ public final class GraphFormatVersion {
     public static final int V6 = 6;
 
     /**
-     * Batch 6 transform language: Rotate Vector {@code input_angle_rad} → {@code input_angle}
-     * (degrees), plus related Transform family port/type freezes.
+     * Batch 6 transform language: Rotate Vector angle units freeze to degrees.
+     * Legacy {@code input_angle_rad} connections are dropped (pre-release: no
+     * radians→degrees value preservation).
      */
     public static final int V7 = 7;
 

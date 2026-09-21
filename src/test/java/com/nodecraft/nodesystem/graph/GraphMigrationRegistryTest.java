@@ -241,7 +241,7 @@ class GraphMigrationRegistryTest {
     }
 
     @Test
-    void v6RotateVectorAnglePortMigratesToDegreesId() {
+    void v6RotateVectorRadiansAngleConnectionIsDropped() {
         SavedGraph v6 = new SavedGraph();
         v6.formatVersion = GraphFormatVersion.V6;
         SavedNode rotate = new SavedNode();
@@ -257,12 +257,13 @@ class GraphMigrationRegistryTest {
         angle.sourcePortId = "output_value";
         angle.targetNodeId = "rv";
         angle.targetPortId = "input_angle_rad";
-        v6.connections = List.of(angle);
+        v6.connections = new java.util.ArrayList<>(List.of(angle));
         v6.nodePositions = java.util.Map.of();
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v6);
         assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals("input_angle", migrated.connections.getFirst().targetPortId);
+        // Pre-release: do not remap radians payloads onto degrees ports (would silently change results).
+        assertTrue(migrated.connections.isEmpty());
     }
 
     @Test
