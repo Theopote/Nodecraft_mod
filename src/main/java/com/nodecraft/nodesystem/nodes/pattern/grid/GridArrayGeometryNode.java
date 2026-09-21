@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryTransform;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -136,7 +137,10 @@ public class GridArrayGeometryNode extends BaseNode {
     }
 
     private @Nullable Vector3d resolveStep(String directionId, String distanceId, Vector3d fallbackDirection, double fallbackDistance) {
-        Vector3d direction = inputValues.get(directionId) instanceof Vector3d value ? new Vector3d(value) : new Vector3d(fallbackDirection);
+        Vector3d direction = SpatialValueResolver.resolveVector(inputValues.get(directionId));
+        if (direction == null) {
+            direction = new Vector3d(fallbackDirection);
+        }
         double distance = inputValues.get(distanceId) instanceof Number number ? number.doubleValue() : fallbackDistance;
         if (!isFinite(direction) || direction.lengthSquared() <= EPS || !Double.isFinite(distance)) {
             return null;

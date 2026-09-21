@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
@@ -52,6 +53,7 @@ public class CurveFrameAlongPathNode extends AbstractCurveNode {
     private static final String OUTPUT_X_AXES_ID = "output_x_axes";
     private static final String OUTPUT_Y_AXES_ID = "output_y_axes";
     private static final String OUTPUT_Z_AXES_ID = "output_z_axes";
+    private static final String OUTPUT_FRAMES_ID = "output_frames";
     private static final String OUTPUT_PLANES_ID = "output_planes";
     private static final String OUTPUT_TANGENTS_ID = "output_tangents";
     private static final String OUTPUT_POINTS_ID = "output_points";
@@ -79,8 +81,10 @@ public class CurveFrameAlongPathNode extends AbstractCurveNode {
             "Frame Y axes (normal) as Vector3d list", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_Z_AXES_ID, "Z Axes",
             "Frame Z axes (binormal) as Vector3d list", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames",
+            "Oriented frames along the path (X=tangent, Y=normal, Z=binormal)", NodeDataType.FRAME_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PLANES_ID, "Planes",
-            "PlaneData list built from each frame origin + Z axis", NodeDataType.LIST, this));
+            "Plane list from each frame origin + Z axis", NodeDataType.PLANE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_TANGENTS_ID, "Tangents",
             "Alias of X axes for path-direction workflows", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points",
@@ -172,14 +176,22 @@ public class CurveFrameAlongPathNode extends AbstractCurveNode {
         List<Vector3d> xAxes = new ArrayList<>(pathFrames.size());
         List<Vector3d> yAxes = new ArrayList<>(pathFrames.size());
         List<Vector3d> zAxes = new ArrayList<>(pathFrames.size());
+        List<FrameData> frames = new ArrayList<>(pathFrames.size());
         List<PlaneData> planes = new ArrayList<>(pathFrames.size());
         for (PathFrameUtils.Frame frame : pathFrames) {
-            // Curve Frame ports: X=tangent, Y=normal, Z=binormal
-            origins.add(new Vector3d(frame.origin()));
-            xAxes.add(new Vector3d(frame.zAxis()));
-            yAxes.add(new Vector3d(frame.yAxis()));
-            zAxes.add(new Vector3d(frame.xAxis()));
-            planes.add(new PlaneData(new Vector3d(frame.origin()), new Vector3d(frame.xAxis())));
+            // Curve Frame ports / FRAME_LIST: X=tangent, Y=normal, Z=binormal
+            // PathFrameUtils Sweep convention: z=tangent, x/y=section plane
+            Vector3d x = new Vector3d(frame.zAxis());
+            Vector3d y = new Vector3d(frame.yAxis());
+            Vector3d z = new Vector3d(frame.xAxis());
+            Vector3d origin = new Vector3d(frame.origin());
+            origins.add(origin);
+            xAxes.add(x);
+            yAxes.add(y);
+            zAxes.add(z);
+            FrameData packed = new FrameData(origin, x, y, z);
+            frames.add(packed);
+            planes.add(packed.toPlane());
         }
 
         if (origins.isEmpty()) {
@@ -192,6 +204,7 @@ public class CurveFrameAlongPathNode extends AbstractCurveNode {
         outputValues.put(OUTPUT_X_AXES_ID, List.copyOf(xAxes));
         outputValues.put(OUTPUT_Y_AXES_ID, List.copyOf(yAxes));
         outputValues.put(OUTPUT_Z_AXES_ID, List.copyOf(zAxes));
+        outputValues.put(OUTPUT_FRAMES_ID, List.copyOf(frames));
         outputValues.put(OUTPUT_PLANES_ID, List.copyOf(planes));
         outputValues.put(OUTPUT_TANGENTS_ID, List.copyOf(xAxes));
         outputValues.put(OUTPUT_POINTS_ID, originPoints);
@@ -205,6 +218,7 @@ public class CurveFrameAlongPathNode extends AbstractCurveNode {
         outputValues.put(OUTPUT_X_AXES_ID, List.of());
         outputValues.put(OUTPUT_Y_AXES_ID, List.of());
         outputValues.put(OUTPUT_Z_AXES_ID, List.of());
+        outputValues.put(OUTPUT_FRAMES_ID, List.of());
         outputValues.put(OUTPUT_PLANES_ID, List.of());
         outputValues.put(OUTPUT_TANGENTS_ID, List.of());
         outputValues.put(OUTPUT_POINTS_ID, List.of());
@@ -218,8 +232,9 @@ public class CurveFrameAlongPathNode extends AbstractCurveNode {
     }
 
     private Vector3d resolveUpVector(Object value) {
-        if (value instanceof Vector3d vector && vector.lengthSquared() > EPS) {
-            return new Vector3d(vector).normalize();
+        Vector3d vector = SpatialValueResolver.resolveVector(value);
+        if (vector != null && vector.lengthSquared() > EPS) {
+            return vector.normalize();
         }
         return new Vector3d(0.0d, 1.0d, 0.0d);
     }

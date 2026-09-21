@@ -1,8 +1,8 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **524**
-- Total categories: **57**
+- Total nodes: **527**
+- Total categories: **58**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
 ## Category Statistics
@@ -56,6 +56,7 @@
 | `transform.basic_transforms` | 15 |
 | `transform.deformations` | 10 |
 | `transform.orientation` | 6 |
+| `transform.placement` | 3 |
 | `utilities.assist` | 6 |
 | `utilities.fileio` | 3 |
 | `utilities.morphology` | 1 |
@@ -733,6 +734,14 @@
 | Project Points To Plane | `transform.orientation.project_points_to_plane` | Projects a list of points onto a target plane | `ProjectPointsToPlaneNode` |
 | Project Curve To Plane | `transform.orientation.project_curve_to_plane` | Projects a curve, polyline, or line onto a target plane | `ProjectCurveToPlaneNode` |
 | Project Profile To Plane | `transform.orientation.project_profile_to_plane` | Projects a polygon profile boundary onto a target plane | `ProjectProfileToPlaneNode` |
+
+## transform.placement (3)
+
+| Node Name | Node ID | Description | Class |
+|---|---|---|---|
+| Place Geometry On Frames | `transform.placement.place_geometry_on_frames` | Places geometry copies onto FRAME / FRAME_LIST: pivot maps to each frame origin and local axes align to frame X/Y/Z | `PlaceGeometryOnFramesNode` |
+| Place Geometry On Plane | `transform.placement.place_geometry_on_plane` | Places geometry onto a plane: builds a FRAME (Z=normal, X from hint) then maps pivot to plane origin | `PlaceGeometryOnPlaneNode` |
+| Orient Geometry To Frame | `transform.placement.orient_geometry_to_frame` | Rotates geometry so local axes match FRAME X/Y/Z while keeping the pivot point fixed in world space | `OrientGeometryToFrameNode` |
 
 ## utilities.assist (6)
 

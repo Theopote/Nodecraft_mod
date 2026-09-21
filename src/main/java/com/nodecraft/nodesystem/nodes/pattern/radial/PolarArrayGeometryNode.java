@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryTransform;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.AxisAngle4d;
 import org.joml.Matrix3d;
@@ -52,7 +53,7 @@ public class PolarArrayGeometryNode extends BaseNode {
         super(UUID.randomUUID(), "pattern.radial.polar_array_geometry");
 
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to copy", NodeDataType.GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Array center point", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Array center point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_AXIS_ID, "Axis", "Rotation axis vector", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Number of rotated copies", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_TOTAL_ANGLE_ID, "Total Angle", "Total angle to distribute copies over in degrees", NodeDataType.DOUBLE, this));
@@ -77,8 +78,14 @@ public class PolarArrayGeometryNode extends BaseNode {
             return;
         }
 
-        Vector3d center = inputValues.get(INPUT_CENTER_ID) instanceof Vector3d value ? new Vector3d(value) : new Vector3d();
-        Vector3d axis = inputValues.get(INPUT_AXIS_ID) instanceof Vector3d value ? new Vector3d(value) : new Vector3d(0.0d, 1.0d, 0.0d);
+        Vector3d center = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_CENTER_ID));
+        if (center == null) {
+            center = new Vector3d();
+        }
+        Vector3d axis = SpatialValueResolver.resolveVector(inputValues.get(INPUT_AXIS_ID));
+        if (axis == null) {
+            axis = new Vector3d(0.0d, 1.0d, 0.0d);
+        }
         int count = GenerationLimits.clampNonNegativeCount(getInputInteger(INPUT_COUNT_ID, 1));
         double totalAngle = getInputDouble(INPUT_TOTAL_ANGLE_ID, 360.0d);
         if (!isFinite(center) || !isFinite(axis) || axis.lengthSquared() <= 1.0e-12d || !Double.isFinite(totalAngle)) {
