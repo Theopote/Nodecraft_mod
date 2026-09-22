@@ -34,10 +34,10 @@ public class MathRangeNode extends BaseNode {
     public MathRangeNode() {
         super(UUID.randomUUID(), "math.sequence.range");
 
-        addInputPort(new BasePort(INPUT_START_ID, "Start", "The starting number of the range", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_END_ID, "End", "The ending number of the range", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_STEP_ID, "Step", "The step size between numbers", NodeDataType.ANY, this));
-        addOutputPort(new BasePort(OUTPUT_NUMBERS_ID, "Numbers", "The generated list of numbers", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_START_ID, "Start", "The starting number of the range", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_END_ID, "End", "The ending number of the range", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_STEP_ID, "Step", "The step size between numbers", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_NUMBERS_ID, "Numbers", "The generated list of numbers", NodeDataType.LIST, this));
     }
 
     @Override

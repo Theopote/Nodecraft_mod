@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
@@ -63,7 +64,7 @@ public class BlockPaletteNode extends BaseNode {
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to materialize", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
         addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry data to materialize", NodeDataType.TORUS_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_PALETTE_ID, "Palette", "List of block ids such as [minecraft:stone, minecraft:andesite]", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_PALETTE_ID, "Palette", "Typed block palette (BLOCK_PALETTE)", NodeDataType.BLOCK_PALETTE, this));
         addInputPort(new BasePort(INPUT_FALLBACK_BLOCK_TYPE_ID, "Fallback Block Type", "Used when the palette input is empty", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_START_INDEX_ID, "Start Index", "Palette offset applied to the first resolved block", NodeDataType.INTEGER, this));
 
@@ -239,20 +240,10 @@ public class BlockPaletteNode extends BaseNode {
     }
 
     private List<String> resolvePalette() {
-        Object paletteObj = inputValues.get(INPUT_PALETTE_ID);
-        List<String> palette = new ArrayList<>();
-        if (paletteObj instanceof List<?> list) {
-            for (Object entry : list) {
-                if (entry instanceof String blockId && !blockId.isBlank()) {
-                    palette.add(blockId);
-                }
-            }
-        }
-
-        if (palette.isEmpty()) {
-            palette.add(getInputString(INPUT_FALLBACK_BLOCK_TYPE_ID, "minecraft:stone"));
-        }
-        return palette;
+        String fallback = getInputString(INPUT_FALLBACK_BLOCK_TYPE_ID, "minecraft:stone");
+        BlockPaletteData palette = BlockPaletteData.fromObject(inputValues.get(INPUT_PALETTE_ID))
+            .withFallback(fallback);
+        return new ArrayList<>(palette.blockIds());
     }
 
     private String getPaletteValue(List<String> palette, int index, String fallback) {

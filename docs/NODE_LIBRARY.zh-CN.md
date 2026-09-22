@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**527**
+- **节点总数**：**528**
 - **分类总数**：**59**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -25,7 +25,7 @@
 | `input.numeric` | 8 |
 | `input.type_selectors` | 5 |
 | `input.values` | 6 |
-| `material.basic_assignment` | 3 |
+| `material.basic_assignment` | 4 |
 | `material.block_state` | 8 |
 | `material.directional_mapping` | 2 |
 | `material.gradient_mapping` | 5 |
@@ -312,11 +312,12 @@
 | Dropdown Selector | `input.values.dropdown` | Selects one value from user-defined option list and outputs index + text value. | `DropdownSelectorNode` |
 | File Path Input | `input.values.file_path` | Selects or types a local file path and outputs it for file read/write nodes. | `FilePathInputNode` |
 
-## material.basic_assignment（3）
+## material.basic_assignment（4）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Assign Block Type | `material.basic_assignment.assign_block_type` | Assigns a single block type to flat or tree-grouped block positions | `AssignBlockTypeNode` |
+| Create Block Palette | `material.basic_assignment.create_block_palette` | Builds a BLOCK_PALETTE from block ids and optional weights | `CreateBlockPaletteNode` |
 | Block Palette | `material.basic_assignment.block_palette` | Assigns palette block types to flat positions or tree branches | `BlockPaletteNode` |
 | Weighted Block Palette | `material.basic_assignment.weighted_palette` | Assigns weighted random block types to flat positions or tree branches. | `WeightedBlockPaletteNode` |
 

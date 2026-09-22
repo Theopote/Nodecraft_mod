@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
@@ -71,7 +72,7 @@ public class NoiseMaterialNode extends BaseNode {
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to materialize", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
         addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry data to materialize", NodeDataType.TORUS_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_PALETTE_ID, "Palette", "Ordered block id list used as noise bands", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_PALETTE_ID, "Palette", "Typed block palette (BLOCK_PALETTE)", NodeDataType.BLOCK_PALETTE, this));
         addInputPort(new BasePort(INPUT_FALLBACK_BLOCK_ID, "Fallback Block", "Fallback block when palette is empty", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Seed used for deterministic material noise", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_THRESHOLD_LOW_ID, "Low Threshold", "Lower threshold remapped into the noise range", NodeDataType.DOUBLE, this));
@@ -163,20 +164,10 @@ public class NoiseMaterialNode extends BaseNode {
     }
 
     private List<String> resolvePalette() {
-        Object paletteObj = inputValues.get(INPUT_PALETTE_ID);
-        List<String> palette = new ArrayList<>();
-        if (paletteObj instanceof List<?> list) {
-            for (Object entry : list) {
-                if (entry instanceof String blockId && !blockId.isBlank()) {
-                    palette.add(blockId);
-                }
-            }
-        }
-
-        if (palette.isEmpty()) {
-            palette.add(getInputString(INPUT_FALLBACK_BLOCK_ID, "minecraft:stone"));
-        }
-        return List.copyOf(palette);
+        String fallback = getInputString(INPUT_FALLBACK_BLOCK_ID, "minecraft:stone");
+        return List.copyOf(BlockPaletteData.fromObject(inputValues.get(INPUT_PALETTE_ID))
+            .withFallback(fallback)
+            .blockIds());
     }
 
     private String selectPaletteBlock(List<String> palette, double normalizedNoise, String fallback) {

@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **527**
+- Total nodes: **528**
 - Total categories: **59**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -25,7 +25,7 @@
 | `input.numeric` | 8 |
 | `input.type_selectors` | 5 |
 | `input.values` | 6 |
-| `material.basic_assignment` | 3 |
+| `material.basic_assignment` | 4 |
 | `material.block_state` | 8 |
 | `material.directional_mapping` | 2 |
 | `material.gradient_mapping` | 5 |
@@ -312,11 +312,12 @@
 | Dropdown Selector | `input.values.dropdown` | Selects one value from user-defined option list and outputs index + text value. | `DropdownSelectorNode` |
 | File Path Input | `input.values.file_path` | Selects or types a local file path and outputs it for file read/write nodes. | `FilePathInputNode` |
 
-## material.basic_assignment (3)
+## material.basic_assignment (4)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Assign Block Type | `material.basic_assignment.assign_block_type` | Assigns a single block type to flat or tree-grouped block positions | `AssignBlockTypeNode` |
+| Create Block Palette | `material.basic_assignment.create_block_palette` | Builds a BLOCK_PALETTE from block ids and optional weights | `CreateBlockPaletteNode` |
 | Block Palette | `material.basic_assignment.block_palette` | Assigns palette block types to flat positions or tree branches | `BlockPaletteNode` |
 | Weighted Block Palette | `material.basic_assignment.weighted_palette` | Assigns weighted random block types to flat positions or tree branches. | `WeightedBlockPaletteNode` |
 

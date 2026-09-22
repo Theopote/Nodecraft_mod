@@ -83,6 +83,8 @@ public enum NodeDataType {
     BLOCK_INFO("block_info", "Block Info", Object.class),
     BLOCK_STATE_DATA("block_state_data", "Block State Data", com.nodecraft.nodesystem.util.BlockStateData.class),
     BLOCK_TYPE("block_type", "Block Type", String.class),
+    /** Ordered weighted block ids for Material palette mapping. */
+    BLOCK_PALETTE("block_palette", "Block Palette", com.nodecraft.nodesystem.util.BlockPaletteData.class),
     ITEM_TYPE("item_type", "Item Type", String.class),
     ITEM_STACK("item_stack", "Item Stack", Object.class),
     ENTITY_TYPE("entity_type", "Entity Type", String.class),
@@ -207,6 +209,12 @@ public enum NodeDataType {
                     || value instanceof LineData
                     || value instanceof PolylineData
                     || value instanceof Curve;
+        }
+
+        if (this == BLOCK_PALETTE) {
+            return value instanceof com.nodecraft.nodesystem.util.BlockPaletteData
+                    || value instanceof String
+                    || value instanceof java.util.List;
         }
 
         if (this == GEOMETRY && value instanceof GeometryData) {

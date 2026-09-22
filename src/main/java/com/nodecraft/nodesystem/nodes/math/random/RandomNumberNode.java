@@ -34,10 +34,10 @@ public class RandomNumberNode extends BaseNode {
     public RandomNumberNode() {
         super(UUID.randomUUID(), "math.random.random_number");
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Number of random values to generate", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_MIN_ID, "Min", "Minimum random value (inclusive)", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_MAX_ID, "Max", "Maximum random value (exclusive)", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_MIN_ID, "Min", "Minimum random value (inclusive)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_MAX_ID, "Max", "Maximum random value (exclusive)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional seed for the random generator", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_RANDOM_ID, "Random", "The generated random number(s)", NodeDataType.ANY, this));
+        addOutputPort(new BasePort(OUTPUT_RANDOM_ID, "Random", "Single value when Count=1; otherwise a list of doubles", NodeDataType.ANY, this));
     }
 
     @Override

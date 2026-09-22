@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
@@ -62,7 +63,7 @@ public class WeightedBlockPaletteNode extends BaseNode {
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to materialize", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
         addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry data to materialize", NodeDataType.TORUS_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_PALETTE_ID, "Palette", "List of block ids", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_PALETTE_ID, "Palette", "Typed block palette (weights optional via Weights port)", NodeDataType.BLOCK_PALETTE, this));
         addInputPort(new BasePort(INPUT_WEIGHTS_ID, "Weights", "List of weights aligned with palette entries", NodeDataType.LIST, this));
         addInputPort(new BasePort(INPUT_FALLBACK_BLOCK_TYPE_ID, "Fallback Block Type", "Used when palette is empty", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Deterministic random seed", NodeDataType.INTEGER, this));
@@ -258,25 +259,15 @@ public class WeightedBlockPaletteNode extends BaseNode {
     }
 
     private List<String> resolvePalette(String fallback) {
-        Object paletteObj = inputValues.get(INPUT_PALETTE_ID);
-        List<String> palette = new ArrayList<>();
-        if (paletteObj instanceof List<?> list) {
-            for (Object entry : list) {
-                if (entry instanceof String blockId && !blockId.isBlank()) {
-                    palette.add(blockId);
-                }
-            }
-        }
-        if (palette.isEmpty()) {
-            palette.add(fallback);
-        }
-        return palette;
+        BlockPaletteData palette = BlockPaletteData.fromObject(inputValues.get(INPUT_PALETTE_ID))
+            .withFallback(fallback);
+        return new ArrayList<>(palette.blockIds());
     }
 
     private List<Double> resolveWeights(int paletteSize) {
         Object weightsObj = inputValues.get(INPUT_WEIGHTS_ID);
-        List<Double> weights = new ArrayList<>(paletteSize);
-        if (weightsObj instanceof List<?> list) {
+        if (weightsObj instanceof List<?> list && !list.isEmpty()) {
+            List<Double> weights = new ArrayList<>(paletteSize);
             for (int i = 0; i < paletteSize; i++) {
                 double w = 1.0d;
                 if (i < list.size() && list.get(i) instanceof Number number) {
@@ -284,12 +275,26 @@ public class WeightedBlockPaletteNode extends BaseNode {
                 }
                 weights.add(w);
             }
-        } else {
-            for (int i = 0; i < paletteSize; i++) {
-                weights.add(1.0d);
-            }
+            return normalizeWeights(weights);
         }
 
+        BlockPaletteData palette = BlockPaletteData.fromObject(inputValues.get(INPUT_PALETTE_ID));
+        List<Double> fromPalette = new ArrayList<>(palette.weights());
+        while (fromPalette.size() < paletteSize) {
+            fromPalette.add(1.0d);
+        }
+        if (fromPalette.size() > paletteSize) {
+            fromPalette = new ArrayList<>(fromPalette.subList(0, paletteSize));
+        }
+        if (fromPalette.isEmpty()) {
+            for (int i = 0; i < paletteSize; i++) {
+                fromPalette.add(1.0d);
+            }
+        }
+        return normalizeWeights(fromPalette);
+    }
+
+    private List<Double> normalizeWeights(List<Double> weights) {
         boolean allZero = true;
         for (double w : weights) {
             if (w > 0.0d) {

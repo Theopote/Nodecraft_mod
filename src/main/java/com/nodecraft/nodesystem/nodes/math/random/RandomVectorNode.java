@@ -38,7 +38,7 @@ public class RandomVectorNode extends BaseNode {
         addInputPort(new BasePort(INPUT_MIN_CORNER_ID, "Min Corner", "Minimum corner of the bounding box", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_MAX_CORNER_ID, "Max Corner", "Maximum corner of the bounding box", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional random seed", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_RANDOM_ID, "Random", "The generated random vector(s)", NodeDataType.ANY, this));
+        addOutputPort(new BasePort(OUTPUT_RANDOM_ID, "Random", "Single vector when Count=1; otherwise a vector list", NodeDataType.ANY, this));
     }
 
     @Override
