@@ -44,9 +44,11 @@ public final class AiRemotePlanningOrchestrator {
             """
                 Additional strict requirement for this retry:
                 - Fix data type compatibility for all connections.
+                - Follow NODECRAFT_LANGUAGE_V1: degrees (not radians), EXEC only for triggers, no ANY bridging for Point/Vector/BlockPos.
                 - Do NOT connect scalar values (float/integer/double) directly to geometry inputs.
                 - Do NOT connect vectors to geometry inputs.
                 - Do NOT connect vectors to list inputs unless the input port explicitly accepts vector data.
+                - LIST↔DATA_TREE and SDF↔field pairs require the listed conversion nodes (Graft List, Flatten Tree, Scalar Field From SDF, etc.).
                 - Do NOT guess converters. Use a converter node only if it appears in the provided node library.
                 - If no compatible path exists, delete the invalid connection and keep the valid nodes.
                 - Ensure output ports and input ports exist on the corresponding node types.

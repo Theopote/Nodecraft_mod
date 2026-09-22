@@ -10,6 +10,7 @@ import com.google.gson.reflect.TypeToken;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.TypeConversionRegistry;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 import java.lang.reflect.Type;
@@ -98,8 +99,56 @@ public final class AiGraphDslSupport {
         String description = root.has("description") ? root.get("description").getAsString() : "";
 
         DslGraph graph = new DslGraph(nodes, connections, description);
+        AiGraphConversionRewriter.RewriteResult rewrite =
+                AiGraphConversionRewriter.rewrite(graph, registry);
+        graph = rewrite.graph();
+        warnings.addAll(rewrite.warnings());
+
         validateGraph(graph, registry, errors, warnings);
-        return new ParseValidationResult(graph, errors, warnings, GSON.toJson(root));
+        return new ParseValidationResult(graph, errors, warnings, GSON.toJson(toNormalizedJson(graph, root)));
+    }
+
+    private static JsonObject toNormalizedJson(DslGraph graph, JsonObject originalRoot) {
+        JsonObject normalized = new JsonObject();
+        if (graph.description() != null && !graph.description().isBlank()) {
+            normalized.addProperty("description", graph.description());
+        } else if (originalRoot.has("description")) {
+            normalized.add("description", originalRoot.get("description"));
+        }
+
+        JsonArray nodeArray = new JsonArray();
+        for (DslNode node : graph.nodes()) {
+            JsonObject nodeObj = new JsonObject();
+            nodeObj.addProperty("id", node.id());
+            nodeObj.addProperty("type", node.type());
+            if (node.params() != null && !node.params().isEmpty()) {
+                nodeObj.add("params", GSON.toJsonTree(node.params()));
+            } else {
+                nodeObj.add("params", new JsonObject());
+            }
+            JsonObject pos = new JsonObject();
+            pos.addProperty("x", node.position().x());
+            pos.addProperty("y", node.position().y());
+            nodeObj.add("position", pos);
+            nodeArray.add(nodeObj);
+        }
+        normalized.add("nodes", nodeArray);
+
+        JsonArray connectionArray = new JsonArray();
+        for (DslConnection connection : graph.connections()) {
+            JsonObject connObj = new JsonObject();
+            JsonObject from = new JsonObject();
+            from.addProperty("nodeId", connection.from().nodeId());
+            from.addProperty("port", connection.from().port());
+            JsonObject to = new JsonObject();
+            to.addProperty("nodeId", connection.to().nodeId());
+            to.addProperty("port", connection.to().port());
+            connObj.add("from", from);
+            connObj.add("to", to);
+            connectionArray.add(connObj);
+        }
+        normalized.add("connections", connectionArray);
+        return normalized;
     }
 
     public static String extractJsonPayload(String response) {
@@ -370,9 +419,19 @@ public final class AiGraphDslSupport {
             NodeDataType inType = inPort.getDataType();
             if (!NodeDataType.isConnectableTo(outType, inType)) {
                 String reason = NodeDataType.getConnectabilityRejectionReason(outType, inType);
-                errors.add("Type mismatch on connection " + connection.from().nodeId() + "." + outPort.getId()
-                        + " -> " + connection.to().nodeId() + "." + inPort.getId()
-                        + " : " + reason);
+                TypeConversionRegistry.ConversionSuggestion suggestion =
+                        TypeConversionRegistry.getSuggestedConversion(outType, inType);
+                if (suggestion != null) {
+                    errors.add("Type mismatch on connection " + connection.from().nodeId() + "." + outPort.getId()
+                            + " -> " + connection.to().nodeId() + "." + inPort.getId()
+                            + " : " + reason
+                            + ". Insert conversion node '" + suggestion.nodeId()
+                            + "' (" + suggestion.displayName() + ").");
+                } else {
+                    errors.add("Type mismatch on connection " + connection.from().nodeId() + "." + outPort.getId()
+                            + " -> " + connection.to().nodeId() + "." + inPort.getId()
+                            + " : " + reason);
+                }
             }
         }
     }

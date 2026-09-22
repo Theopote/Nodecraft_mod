@@ -26,7 +26,12 @@ public final class AiNodeSchemaCatalog {
             "input.basic.",
             "input.numeric.",
             "input.type_selectors.",
-            "math.scalar_math."
+            "math.scalar_math.",
+            "math.data_tree.",
+            "math.fields.",
+            "material.basic_assignment.create_block_palette",
+            "reference.points.",
+            "geometry.voxel.voxelize_geometry"
     );
 
         private static final List<String> DIVERSITY_CATEGORY_PREFIXES = List.of(

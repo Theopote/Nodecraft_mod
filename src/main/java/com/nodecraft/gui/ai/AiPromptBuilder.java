@@ -87,13 +87,23 @@ public final class AiPromptBuilder {
             }
 
             # TYPE_SYSTEM_RULES
-            - Numeric Flow: integer, float, and double are mutually compatible.
+            - Numeric Flow: integer, float, and double are mutually compatible. Prefer double for continuous numeric ports.
             - Semantic Aliases: block_pos is compatible with coordinate; vector is compatible with position.
             - Geometry Inheritance: specific geometry outputs can feed generic geometry inputs.
             - Explicit Conversions: if a pair requires an explicit converter node, include that converter node.
             - Never connect vector outputs directly to geometry inputs.
             - Never connect vector outputs directly to list inputs unless the listed input port dataType is vector-compatible.
             - If no listed port pair is type-compatible, omit the connection and return the valid nodes.
+
+            # NODECRAFT_LANGUAGE_V1
+            - Graph-level angle unit is degrees. Never emit radians semantics in params, ports, or descriptions.
+            - EXEC ports are execution triggers only. Never wire EXEC to data ports.
+            - ANY is reserved for truly polymorphic list/tree utilities. Do not use ANY to bridge Point/Vector/BlockPos.
+            - LIST and DATA_TREE require explicit Graft List / Flatten Tree conversion nodes.
+            - SDF to SCALAR_FIELD / VECTOR_FIELD requires Scalar Field From SDF / Vector Field From SDF Gradient.
+            - Legacy list/string block ids require Create Block Palette before BLOCK_PALETTE ports.
+            - Architectural path-driven nodes use PATH (not LINE) for curve/path inputs.
+            - Prefer BOX_FACE footprints and DOUBLE sizes for architectural wall/floor/roof/window array nodes.
 
             # DSL_PLANNING_GUIDANCE
             - Pick node types only from AVAILABLE_NODE_LIBRARY.
