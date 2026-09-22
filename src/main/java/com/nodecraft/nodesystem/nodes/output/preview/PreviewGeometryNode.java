@@ -347,31 +347,36 @@ public class PreviewGeometryNode extends BaseNode {
     }
 
     private void collectGeometryInput(@Nullable Object value, List<GeometryData> target) {
-        if (value == null) {
-            return;
-        }
-        if (value instanceof CompositeGeometryData composite) {
-            for (GeometryData child : composite.getGeometries()) {
-                collectGeometryInput(child, target);
+        switch (value) {
+            case null -> {
+                return;
             }
-            return;
-        }
-        // Keep deferred voxel boolean intact — do not expand operands (Preview ≠ Bake bug).
-        if (value instanceof DifferenceGeometryData difference) {
-            target.add(difference);
-            return;
-        }
-        if (value instanceof IntersectionGeometryData intersection) {
-            target.add(intersection);
-            return;
-        }
-        if (value instanceof GeometryData geometry) {
-            target.add(geometry);
-            return;
-        }
-        if (value instanceof List<?> list) {
-            for (Object entry : list) {
-                collectGeometryInput(entry, target);
+            case CompositeGeometryData composite -> {
+                for (GeometryData child : composite.getGeometries()) {
+                    collectGeometryInput(child, target);
+                }
+                return;
+            }
+
+            // Keep deferred voxel boolean intact — do not expand operands (Preview ≠ Bake bug).
+            case DifferenceGeometryData difference -> {
+                target.add(difference);
+                return;
+            }
+            case IntersectionGeometryData intersection -> {
+                target.add(intersection);
+                return;
+            }
+            case GeometryData geometry -> {
+                target.add(geometry);
+                return;
+            }
+            case List<?> list -> {
+                for (Object entry : list) {
+                    collectGeometryInput(entry, target);
+                }
+            }
+            default -> {
             }
         }
     }

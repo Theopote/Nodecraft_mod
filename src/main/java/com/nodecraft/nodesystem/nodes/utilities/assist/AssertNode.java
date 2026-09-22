@@ -79,24 +79,28 @@ public class AssertNode extends BaseNode {
     }
 
     private boolean resolveCondition(Object value) {
-        if (value == null) {
-            return defaultCondition;
-        }
-        if (value instanceof Boolean booleanValue) {
-            return booleanValue;
-        }
-        if (value instanceof Number number) {
-            return number.doubleValue() != 0.0d;
-        }
-        if (value instanceof String text) {
-            String normalized = text.trim();
-            if (normalized.isEmpty()) {
-                return false;
+        switch (value) {
+            case null -> {
+                return defaultCondition;
             }
-            return switch (normalized.toLowerCase(Locale.ROOT)) {
-                case "true", "yes", "1", "on" -> true;
-                default -> false;
-            };
+            case Boolean booleanValue -> {
+                return booleanValue;
+            }
+            case Number number -> {
+                return number.doubleValue() != 0.0d;
+            }
+            case String text -> {
+                String normalized = text.trim();
+                if (normalized.isEmpty()) {
+                    return false;
+                }
+                return switch (normalized.toLowerCase(Locale.ROOT)) {
+                    case "true", "yes", "1", "on" -> true;
+                    default -> false;
+                };
+            }
+            default -> {
+            }
         }
         return true;
     }

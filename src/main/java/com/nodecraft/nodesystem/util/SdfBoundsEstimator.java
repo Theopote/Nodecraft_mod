@@ -76,54 +76,58 @@ public final class SdfBoundsEstimator {
     }
 
     public static @Nullable AxisAlignedBounds estimate(SignedDistanceFieldData sdf) {
-        if (sdf == null) {
-            return null;
+        switch (sdf) {
+            case null -> {
+                return null;
+            }
+            case SphereSdfData sphere -> {
+                Vector3d center = sphere.getCenter();
+                double r = sphere.getRadius();
+                return boxAround(center, r, r, r);
+            }
+            case BoxSdfData box -> {
+                Vector3d center = box.getCenter();
+                Vector3d half = box.getHalfExtents();
+                return boxAround(center, half.x, half.y, half.z);
+            }
+            case CapsuleSdfData capsule -> {
+                return boundsForCapsule(capsule);
+            }
+            case TorusSdfData torus -> {
+                Vector3d center = torus.getCenter();
+                double outer = torus.getMajorRadius() + torus.getMinorRadius();
+                return boxAround(center, outer, torus.getMinorRadius(), outer);
+            }
+            case BooleanSdfData booleanSdf -> {
+                return boundsForBoolean(booleanSdf);
+            }
+            case TransformedSdfData transformed -> {
+                return boundsForTransform(transformed);
+            }
+            case NoiseDisplacedSdfData noise -> {
+                AxisAlignedBounds inner = estimate(noise.getSource());
+                if (inner == null) {
+                    return null;
+                }
+                return inner.expanded(noise.getAmplitude());
+            }
+            case DomainWarpedSdfData warp -> {
+                AxisAlignedBounds inner = estimate(warp.getSource());
+                if (inner == null) {
+                    return null;
+                }
+                return inner.expanded(warp.getWarpAmplitude());
+            }
+            case TwistedSdfData twisted -> {
+                return boundsForTwist(twisted);
+            }
+            case BentSdfData bent -> {
+                return boundsForBend(bent);
+            }
+            default -> {
+            }
         }
 
-        if (sdf instanceof SphereSdfData sphere) {
-            Vector3d center = sphere.getCenter();
-            double r = sphere.getRadius();
-            return boxAround(center, r, r, r);
-        }
-        if (sdf instanceof BoxSdfData box) {
-            Vector3d center = box.getCenter();
-            Vector3d half = box.getHalfExtents();
-            return boxAround(center, half.x, half.y, half.z);
-        }
-        if (sdf instanceof CapsuleSdfData capsule) {
-            return boundsForCapsule(capsule);
-        }
-        if (sdf instanceof TorusSdfData torus) {
-            Vector3d center = torus.getCenter();
-            double outer = torus.getMajorRadius() + torus.getMinorRadius();
-            return boxAround(center, outer, torus.getMinorRadius(), outer);
-        }
-        if (sdf instanceof BooleanSdfData booleanSdf) {
-            return boundsForBoolean(booleanSdf);
-        }
-        if (sdf instanceof TransformedSdfData transformed) {
-            return boundsForTransform(transformed);
-        }
-        if (sdf instanceof NoiseDisplacedSdfData noise) {
-            AxisAlignedBounds inner = estimate(noise.getSource());
-            if (inner == null) {
-                return null;
-            }
-            return inner.expanded(noise.getAmplitude());
-        }
-        if (sdf instanceof DomainWarpedSdfData warp) {
-            AxisAlignedBounds inner = estimate(warp.getSource());
-            if (inner == null) {
-                return null;
-            }
-            return inner.expanded(warp.getWarpAmplitude());
-        }
-        if (sdf instanceof TwistedSdfData twisted) {
-            return boundsForTwist(twisted);
-        }
-        if (sdf instanceof BentSdfData bent) {
-            return boundsForBend(bent);
-        }
         return null;
     }
 

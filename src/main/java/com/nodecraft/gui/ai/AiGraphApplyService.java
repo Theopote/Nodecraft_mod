@@ -302,33 +302,33 @@ public final class AiGraphApplyService {
     }
 
     private static Object sanitizeForJson(Object value) {
-        if (value == null) {
-            return null;
-        }
-
-        if (value instanceof Double doubleValue) {
-            return Double.isFinite(doubleValue) ? doubleValue : 0.0d;
-        }
-
-        if (value instanceof Float floatValue) {
-            return Float.isFinite(floatValue) ? floatValue : 0.0f;
-        }
-
-        if (value instanceof Map<?, ?> mapValue) {
-            Map<String, Object> sanitizedMap = new LinkedHashMap<>();
-            for (Map.Entry<?, ?> entry : mapValue.entrySet()) {
-                String key = String.valueOf(entry.getKey());
-                sanitizedMap.put(key, sanitizeForJson(entry.getValue()));
+        switch (value) {
+            case null -> {
+                return null;
             }
-            return sanitizedMap;
-        }
-
-        if (value instanceof List<?> listValue) {
-            List<Object> sanitizedList = new ArrayList<>(listValue.size());
-            for (Object item : listValue) {
-                sanitizedList.add(sanitizeForJson(item));
+            case Double doubleValue -> {
+                return Double.isFinite(doubleValue) ? doubleValue : 0.0d;
             }
-            return sanitizedList;
+            case Float floatValue -> {
+                return Float.isFinite(floatValue) ? floatValue : 0.0f;
+            }
+            case Map<?, ?> mapValue -> {
+                Map<String, Object> sanitizedMap = new LinkedHashMap<>();
+                for (Map.Entry<?, ?> entry : mapValue.entrySet()) {
+                    String key = String.valueOf(entry.getKey());
+                    sanitizedMap.put(key, sanitizeForJson(entry.getValue()));
+                }
+                return sanitizedMap;
+            }
+            case List<?> listValue -> {
+                List<Object> sanitizedList = new ArrayList<>(listValue.size());
+                for (Object item : listValue) {
+                    sanitizedList.add(sanitizeForJson(item));
+                }
+                return sanitizedList;
+            }
+            default -> {
+            }
         }
 
         return value;

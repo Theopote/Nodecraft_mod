@@ -134,7 +134,7 @@ public class ExportDataNode extends BaseNode {
 
     private String toCsv(List<?> data) {
         StringBuilder sb = new StringBuilder();
-        boolean mapRows = !data.isEmpty() && data.get(0) instanceof Map<?, ?>;
+        boolean mapRows = !data.isEmpty() && data.getFirst() instanceof Map<?, ?>;
         if (mapRows) {
             List<String> headers = collectHeaders(data);
             sb.append(String.join(",", headers)).append('\n');
@@ -188,37 +188,41 @@ public class ExportDataNode extends BaseNode {
         if (value instanceof Boolean || value instanceof Integer || value instanceof Long || value instanceof Short || value instanceof Byte) {
             return String.valueOf(value);
         }
-        if (value instanceof Number n) {
-            double d = n.doubleValue();
-            if (Double.isFinite(d)) return String.valueOf(d);
-            return "null";
-        }
-        if (value instanceof String text) {
-            return "\"" + escapeJson(text) + "\"";
-        }
-        if (value instanceof BlockPos b) {
-            return "{\"x\":" + b.getX() + ",\"y\":" + b.getY() + ",\"z\":" + b.getZ() + "}";
-        }
-        if (value instanceof Vector3d v) {
-            return "{\"x\":" + v.x + ",\"y\":" + v.y + ",\"z\":" + v.z + "}";
-        }
-        if (value instanceof PointData p) {
-            return toJson(p.getPosition(), pretty, depth);
-        }
-        if (value instanceof Map<?, ?> map) {
-            List<String> parts = new ArrayList<>();
-            for (Map.Entry<?, ?> e : map.entrySet()) {
-                String key = "\"" + escapeJson(String.valueOf(e.getKey())) + "\"";
-                parts.add(key + ":" + (pretty ? " " : "") + toJson(e.getValue(), pretty, depth + 1));
+        switch (value) {
+            case Number n -> {
+                double d = n.doubleValue();
+                if (Double.isFinite(d)) return String.valueOf(d);
+                return "null";
             }
-            return wrapObject(parts, pretty, depth);
-        }
-        if (value instanceof Iterable<?> iterable) {
-            List<String> parts = new ArrayList<>();
-            for (Object item : iterable) {
-                parts.add(toJson(item, pretty, depth + 1));
+            case String text -> {
+                return "\"" + escapeJson(text) + "\"";
             }
-            return wrapArray(parts, pretty, depth);
+            case BlockPos b -> {
+                return "{\"x\":" + b.getX() + ",\"y\":" + b.getY() + ",\"z\":" + b.getZ() + "}";
+            }
+            case Vector3d v -> {
+                return "{\"x\":" + v.x + ",\"y\":" + v.y + ",\"z\":" + v.z + "}";
+            }
+            case PointData p -> {
+                return toJson(p.getPosition(), pretty, depth);
+            }
+            case Map<?, ?> map -> {
+                List<String> parts = new ArrayList<>();
+                for (Map.Entry<?, ?> e : map.entrySet()) {
+                    String key = "\"" + escapeJson(String.valueOf(e.getKey())) + "\"";
+                    parts.add(key + ":" + (pretty ? " " : "") + toJson(e.getValue(), pretty, depth + 1));
+                }
+                return wrapObject(parts, pretty, depth);
+            }
+            case Iterable<?> iterable -> {
+                List<String> parts = new ArrayList<>();
+                for (Object item : iterable) {
+                    parts.add(toJson(item, pretty, depth + 1));
+                }
+                return wrapArray(parts, pretty, depth);
+            }
+            default -> {
+            }
         }
         return "\"" + escapeJson(String.valueOf(value)) + "\"";
     }
@@ -255,11 +259,13 @@ public class ExportDataNode extends BaseNode {
     }
 
     private String stringify(Object value) {
-        if (value == null) return "";
-        if (value instanceof BlockPos b) return b.getX() + "," + b.getY() + "," + b.getZ();
-        if (value instanceof Vector3d v) return v.x + "," + v.y + "," + v.z;
-        if (value instanceof PointData p) return stringify(p.getPosition());
-        return String.valueOf(value);
+        return switch (value) {
+            case null -> "";
+            case BlockPos b -> b.getX() + "," + b.getY() + "," + b.getZ();
+            case Vector3d v -> v.x + "," + v.y + "," + v.z;
+            case PointData p -> stringify(p.getPosition());
+            default -> String.valueOf(value);
+        };
     }
 
     private void publish(boolean success, String path, int count, String formatText, String error) {

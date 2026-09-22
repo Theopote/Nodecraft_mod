@@ -66,6 +66,9 @@ public final class GraphPresetApplier {
                 rollback(editor, createdNodeIds);
                 return ApplyResult.failure("Failed to create node: " + presetNode.typeId);
             }
+            if (presetNode.state != null && !presetNode.state.isEmpty()) {
+                created.setNodeState(presetNode.state);
+            }
             refToNodeId.put(presetNode.ref, created.getId());
             createdNodeIds.add(created.getId());
         }

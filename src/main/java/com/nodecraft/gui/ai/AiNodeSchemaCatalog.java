@@ -264,10 +264,12 @@ public final class AiNodeSchemaCatalog {
             Object value = entry.getValue();
             String valueType = "any";
             if (value != null) {
-                if (value instanceof Number) valueType = "number";
-                else if (value instanceof Boolean) valueType = "boolean";
-                else if (value instanceof String) valueType = "string";
-                else valueType = value.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+                valueType = switch (value) {
+                    case Number number -> "number";
+                    case Boolean b -> "boolean";
+                    case String s -> "string";
+                    default -> value.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+                };
             }
             params.add(new ParamSchema(keyText, valueType));
         }

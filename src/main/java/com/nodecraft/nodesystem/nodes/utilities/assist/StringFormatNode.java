@@ -157,41 +157,45 @@ public class StringFormatNode extends BaseNode {
     }
 
     private String valueToString(Object value) {
-        if (value == null) {
-            return "null";
-        }
-        if (value instanceof Number n) {
-            if (value instanceof Integer || value instanceof Long || value instanceof Short || value instanceof Byte) {
-                return String.valueOf(n.longValue());
+        switch (value) {
+            case null -> {
+                return "null";
             }
-            int p = Math.max(0, Math.min(8, precision));
-            String format = "%." + p + "f";
-            return String.format(Locale.ROOT, format, n.doubleValue());
-        }
-        if (value instanceof Vector3d v) {
-            int p = Math.max(0, Math.min(8, precision));
-            String f = "%." + p + "f";
-            return "(" + String.format(Locale.ROOT, f, v.x) + ", " + String.format(Locale.ROOT, f, v.y) + ", " + String.format(Locale.ROOT, f, v.z) + ")";
-        }
-        if (value instanceof PointData p) {
-            return valueToString(p.getPosition());
-        }
-        if (value instanceof BlockPos b) {
-            return "(" + b.getX() + ", " + b.getY() + ", " + b.getZ() + ")";
-        }
-        if (value instanceof List<?> list) {
-            List<String> out = new ArrayList<>();
-            for (Object item : list) {
-                out.add(valueToString(item));
+            case Number n -> {
+                if (value instanceof Integer || value instanceof Long || value instanceof Short || value instanceof Byte) {
+                    return String.valueOf(n.longValue());
+                }
+                int p = Math.max(0, Math.min(8, precision));
+                String format = "%." + p + "f";
+                return String.format(Locale.ROOT, format, n.doubleValue());
             }
-            return "[" + String.join(", ", out) + "]";
-        }
-        if (value instanceof Map<?, ?> map) {
-            List<String> out = new ArrayList<>();
-            for (Map.Entry<?, ?> e : map.entrySet()) {
-                out.add(String.valueOf(e.getKey()) + "=" + valueToString(e.getValue()));
+            case Vector3d v -> {
+                int p = Math.max(0, Math.min(8, precision));
+                String f = "%." + p + "f";
+                return "(" + String.format(Locale.ROOT, f, v.x) + ", " + String.format(Locale.ROOT, f, v.y) + ", " + String.format(Locale.ROOT, f, v.z) + ")";
             }
-            return "{" + String.join(", ", out) + "}";
+            case PointData p -> {
+                return valueToString(p.getPosition());
+            }
+            case BlockPos b -> {
+                return "(" + b.getX() + ", " + b.getY() + ", " + b.getZ() + ")";
+            }
+            case List<?> list -> {
+                List<String> out = new ArrayList<>();
+                for (Object item : list) {
+                    out.add(valueToString(item));
+                }
+                return "[" + String.join(", ", out) + "]";
+            }
+            case Map<?, ?> map -> {
+                List<String> out = new ArrayList<>();
+                for (Map.Entry<?, ?> e : map.entrySet()) {
+                    out.add(String.valueOf(e.getKey()) + "=" + valueToString(e.getValue()));
+                }
+                return "{" + String.join(", ", out) + "}";
+            }
+            default -> {
+            }
         }
         return String.valueOf(value);
     }

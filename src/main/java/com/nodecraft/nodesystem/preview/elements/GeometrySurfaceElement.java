@@ -114,24 +114,27 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
     }
 
     private void collectGeometry(Object data, List<GeometryData> target) {
-        if (data == null) {
-            return;
-        }
-        if (data instanceof PreviewGeometryPayload payload) {
-            collectGeometry(payload.getGeometry(), target);
-            return;
-        }
-
-        if (data instanceof GeometryData geometry) {
-            collectSingleGeometry(geometry, target);
-            return;
-        }
-
-        if (data instanceof List<?> list) {
-            for (Object item : list) {
-                collectGeometry(item, target);
+        switch (data) {
+            case null -> {
+                return;
+            }
+            case PreviewGeometryPayload payload -> {
+                collectGeometry(payload.getGeometry(), target);
+                return;
+            }
+            case GeometryData geometry -> {
+                collectSingleGeometry(geometry, target);
+                return;
+            }
+            case List<?> list -> {
+                for (Object item : list) {
+                    collectGeometry(item, target);
+                }
+            }
+            default -> {
             }
         }
+
     }
 
     private void collectSingleGeometry(GeometryData geometry, List<GeometryData> target) {

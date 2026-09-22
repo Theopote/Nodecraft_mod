@@ -830,6 +830,201 @@
               "toPort": "input_blocks"
             }
           ]
+        },
+        {
+          "id": "architectural.residential.mini_building_v1",
+          "displayName": "Mini Building (Component Chain)",
+          "description": "Floor → Wall Along Path → Window Array → Roof → Voxelize → Preview using Architectural Component Protocol v1.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "volume",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 40,
+              "y": 220,
+              "state": {
+                "sizeX": 10.0,
+                "sizeY": 3.0,
+                "sizeZ": 8.0
+              }
+            },
+            {
+              "ref": "floor_face",
+              "typeId": "reference.points.get_box_face",
+              "x": 280,
+              "y": 40,
+              "state": {
+                "defaultFaceName": "bottom"
+              }
+            },
+            {
+              "ref": "front_face",
+              "typeId": "reference.points.get_box_face",
+              "x": 280,
+              "y": 260,
+              "state": {
+                "defaultFaceName": "front"
+              }
+            },
+            {
+              "ref": "roof_face",
+              "typeId": "reference.points.get_box_face",
+              "x": 280,
+              "y": 460,
+              "state": {
+                "defaultFaceName": "top"
+              }
+            },
+            {
+              "ref": "perimeter",
+              "typeId": "geometry.curves.face_boundary_curve",
+              "x": 520,
+              "y": 40
+            },
+            {
+              "ref": "floor",
+              "typeId": "geometry.architectural_primitives.floor_slab_with_beams",
+              "x": 520,
+              "y": 180
+            },
+            {
+              "ref": "walls",
+              "typeId": "geometry.architectural_primitives.wall_along_path",
+              "x": 760,
+              "y": 40
+            },
+            {
+              "ref": "windows",
+              "typeId": "geometry.architectural_primitives.window_array",
+              "x": 760,
+              "y": 260,
+              "state": {
+                "defaultDepth": 0.3
+              }
+            },
+            {
+              "ref": "roof",
+              "typeId": "geometry.architectural_primitives.roof_generator",
+              "x": 760,
+              "y": 460
+            },
+            {
+              "ref": "combine",
+              "typeId": "geometry.combine.geometry",
+              "x": 1000,
+              "y": 240
+            },
+            {
+              "ref": "voxelize",
+              "typeId": "geometry.voxel.voxelize_geometry",
+              "x": 1240,
+              "y": 240
+            },
+            {
+              "ref": "preview_blocks",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1480,
+              "y": 180
+            },
+            {
+              "ref": "preview_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 1480,
+              "y": 340
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "volume",
+              "fromPort": "output_box_geometry",
+              "toRef": "floor_face",
+              "toPort": "input_box_geometry"
+            },
+            {
+              "fromRef": "volume",
+              "fromPort": "output_box_geometry",
+              "toRef": "front_face",
+              "toPort": "input_box_geometry"
+            },
+            {
+              "fromRef": "volume",
+              "fromPort": "output_box_geometry",
+              "toRef": "roof_face",
+              "toPort": "input_box_geometry"
+            },
+            {
+              "fromRef": "floor_face",
+              "fromPort": "output_face",
+              "toRef": "perimeter",
+              "toPort": "input_face"
+            },
+            {
+              "fromRef": "floor_face",
+              "fromPort": "output_face",
+              "toRef": "floor",
+              "toPort": "input_face"
+            },
+            {
+              "fromRef": "perimeter",
+              "fromPort": "output_polyline",
+              "toRef": "walls",
+              "toPort": "input_path"
+            },
+            {
+              "fromRef": "front_face",
+              "fromPort": "output_face",
+              "toRef": "windows",
+              "toPort": "input_face"
+            },
+            {
+              "fromRef": "roof_face",
+              "fromPort": "output_face",
+              "toRef": "roof",
+              "toPort": "input_face"
+            },
+            {
+              "fromRef": "floor",
+              "fromPort": "output_geometry",
+              "toRef": "combine",
+              "toPort": "input_geometry_0"
+            },
+            {
+              "fromRef": "walls",
+              "fromPort": "output_geometry",
+              "toRef": "combine",
+              "toPort": "input_geometry_1"
+            },
+            {
+              "fromRef": "windows",
+              "fromPort": "output_geometry",
+              "toRef": "combine",
+              "toPort": "input_geometry_2"
+            },
+            {
+              "fromRef": "roof",
+              "fromPort": "output_geometry",
+              "toRef": "combine",
+              "toPort": "input_geometry_3"
+            },
+            {
+              "fromRef": "combine",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "combine",
+              "fromPort": "output_geometry",
+              "toRef": "preview_geometry",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize",
+              "fromPort": "output_blocks",
+              "toRef": "preview_blocks",
+              "toPort": "input_blocks"
+            }
+          ]
         }
       ]
     },
