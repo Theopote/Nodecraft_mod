@@ -74,6 +74,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V7 -> migrateV7ToV8(graph);
             case GraphFormatVersion.V8 -> migrateV8ToV9(graph);
             case GraphFormatVersion.V9 -> migrateV9ToV10(graph);
+            case GraphFormatVersion.V10 -> migrateV10ToV11(graph);
             default -> graph;
         };
     }
@@ -478,6 +479,78 @@ public final class GraphMigrationRegistry {
                 LOGGER.debug("Migrated architectural path port: {} ({}) input_line -> input_path",
                         connection.targetNodeId, targetType);
                 connection.targetPortId = "input_path";
+            }
+        }
+        return graph;
+    }
+
+    private static final String CLOSEST_POINT_TYPE = "reference.points.closest_point";
+    private static final String LEGACY_DECONSTRUCT_POINT_AS_BLOCK_TYPE = "reference.points.deconstruct_point";
+    private static final String DECONSTRUCT_BLOCK_POSITION_TYPE = "reference.points.deconstruct_block_position";
+
+    /**
+     * Spatial P1: Closest Point continuous output; Deconstruct Block Position rename.
+     * <p>
+     * Closest Point: {@code output_point_data} → {@code output_closest_point} (now POINT).
+     * Legacy {@code output_closest_point} BLOCK_POS and {@code output_vector} wires are dropped
+     * (pre-release: no hidden snap preservation).
+     * Deconstruct: type id {@code deconstruct_point} (old BLOCK_POS node) → {@code deconstruct_block_position}.
+     */
+    private static SavedGraph migrateV10ToV11(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                if (LEGACY_DECONSTRUCT_POINT_AS_BLOCK_TYPE.equalsIgnoreCase(node.typeId)) {
+                    // Only remap when this graph version predates Deconstruct Point (POINT).
+                    // At V10 the id still meant the BLOCK_POS deconstruct node.
+                    LOGGER.debug("Migrated node type: {} -> {}", node.typeId, DECONSTRUCT_BLOCK_POSITION_TYPE);
+                    node.typeId = DECONSTRUCT_BLOCK_POSITION_TYPE;
+                }
+            }
+        }
+
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        // Drop legacy discrete / vector Closest Point outputs first, then remap continuous POINT alias.
+        graph.connections.removeIf(connection -> {
+            if (connection == null || connection.sourcePortId == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            if (!CLOSEST_POINT_TYPE.equals(sourceType)) {
+                return false;
+            }
+            String port = connection.sourcePortId.toLowerCase(Locale.ROOT);
+            if ("output_vector".equals(port) || "output_closest_point".equals(port)) {
+                LOGGER.debug("Dropped Closest Point legacy {} connection from {}",
+                        connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+            return false;
+        });
+
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null || connection.sourcePortId == null) {
+                continue;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            if (!CLOSEST_POINT_TYPE.equals(sourceType)) {
+                continue;
+            }
+            if ("output_point_data".equalsIgnoreCase(connection.sourcePortId)) {
+                LOGGER.debug("Migrated Closest Point port: output_point_data -> output_closest_point");
+                connection.sourcePortId = "output_closest_point";
             }
         }
         return graph;

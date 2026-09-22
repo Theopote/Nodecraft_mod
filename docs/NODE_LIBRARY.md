@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **528**
+- Total nodes: **529**
 - Total categories: **59**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -52,7 +52,7 @@
 | `pattern.voronoi_3d` | 1 |
 | `reference.frames` | 6 |
 | `reference.planes` | 6 |
-| `reference.points` | 18 |
+| `reference.points` | 19 |
 | `reference.vectors` | 18 |
 | `transform.basic_transforms` | 15 |
 | `transform.deformations` | 10 |
@@ -650,7 +650,7 @@
 | Box Face To Plane | `reference.planes.block_face_plane` | Explicitly converts a box face into its supporting plane and related face frame data | `BoxFaceToPlaneNode` |
 | Offset Plane | `reference.planes.offset_plane` | Offsets a plane along its normal by a signed distance | `OffsetPlaneNode` |
 
-## reference.points (18)
+## reference.points (19)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -658,11 +658,12 @@
 | Construct Coordinate | `reference.points.construct_coordinate` | Constructs a block coordinate from X, Y, and Z integer components. | `ConstructCoordinateNode` |
 | Block To Point | `reference.points.point_from_block` | Explicitly converts a block coordinate into a geometric point, with optional block-center offset | `BlockToPointNode` |
 | Point Along Vector | `reference.points.point_along_vector` | Creates a new point by moving a start point along a direction vector by a distance | `PointAlongVectorNode` |
-| Block To Vector | `reference.points.block_to_vector` | Explicitly converts a block coordinate into a Vector3d position, with optional block-center offset. | `BlockToVectorNode` |
-| Deconstruct Coordinate | `reference.points.deconstruct_point` | Extracts X, Y, and Z integer components from a block coordinate. | `DeconstructCoordinateNode` |
+| Block To Vector | `reference.points.block_to_vector` | Convenience: Block Pos → VECTOR position. Canonical spatial path is Block To Point (POINT), then use the point as needed. | `BlockToVectorNode` |
+| Deconstruct Block Position | `reference.points.deconstruct_block_position` | Extracts X, Y, and Z integer components from a block position | `DeconstructCoordinateNode` |
+| Deconstruct Point | `reference.points.deconstruct_point` | Extracts X, Y, and Z double components from a geometric point | `DeconstructPointNode` |
 | Mid Point | `reference.points.mid_point` | Computes the midpoint between two input points | `MidpointNode` |
 | Distance Between Points | `reference.points.distance_between_points` | Computes the distance between two input points | `DistanceNode` |
-| Closest Point | `reference.points.closest_point` | Finds the closest point in a point collection to a reference point. | `ClosestPointNode` |
+| Closest Point | `reference.points.closest_point` | Finds the closest geometric point in a point list to a reference point | `ClosestPointNode` |
 | Point List Center | `reference.points.point_list_center` | Calculates the average geometric center of a point list | `PointListCenterNode` |
 | Point List Bounds | `reference.points.point_list_bounds` | Calculates an axis-aligned bounding box from a list of geometric points | `PointListBoundsNode` |
 | Get Box Corner | `reference.points.get_box_corner` | Gets a single corner from box geometry by index | `GetBoxCornerNode` |

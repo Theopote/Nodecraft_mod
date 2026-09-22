@@ -57,7 +57,7 @@
     "math.vector.construct_plane_from_points": "reference.planes.plane_from_points",
     "math.vector.construct_vector": "reference.vectors.vector",
     "math.vector.cross_product": "reference.vectors.cross_product",
-    "math.vector.deconstruct_coordinate": "reference.points.deconstruct_point",
+    "math.vector.deconstruct_coordinate": "reference.points.deconstruct_block_position",
     "math.vector.deconstruct_vector": "reference.vectors.deconstruct_vector",
     "math.vector.distance": "reference.points.distance_between_points",
     "math.vector.dot_product": "reference.vectors.dot_product",

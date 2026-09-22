@@ -18,7 +18,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "reference.points.block_to_vector",
     displayName = "Block To Vector",
-    description = "Explicitly converts a block coordinate into a Vector3d position, with optional block-center offset.",
+    description = "Convenience: Block Pos → VECTOR position. Canonical spatial path is Block To Point (POINT), then use the point as needed.",
     category = "reference.points",
     order = 3
 )
@@ -44,7 +44,7 @@ public class BlockToVectorNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Explicitly converts a block coordinate into a Vector3d position, with optional block-center offset.";
+        return "Convenience conversion from Block Pos to VECTOR. Prefer Block To Point for canonical location typing.";
     }
 
     @Override

@@ -378,6 +378,57 @@ class GraphMigrationRegistryTest {
     }
 
     @Test
+    void v10SpatialLanguageMigratesClosestPointAndDeconstruct() {
+        SavedGraph v10 = new SavedGraph();
+        v10.formatVersion = GraphFormatVersion.V10;
+
+        SavedNode closest = new SavedNode();
+        closest.nodeId = "closest";
+        closest.typeId = "reference.points.closest_point";
+        SavedNode deconstruct = new SavedNode();
+        deconstruct.nodeId = "deconstruct";
+        deconstruct.typeId = "reference.points.deconstruct_point";
+        SavedNode sinkPoint = new SavedNode();
+        sinkPoint.nodeId = "sink_point";
+        sinkPoint.typeId = "reference.points.distance";
+        SavedNode sinkBlock = new SavedNode();
+        sinkBlock.nodeId = "sink_block";
+        sinkBlock.typeId = "reference.points.block_to_vector";
+        SavedNode sinkVector = new SavedNode();
+        sinkVector.nodeId = "sink_vector";
+        sinkVector.typeId = "reference.vectors.vector_length";
+        v10.nodes = List.of(closest, deconstruct, sinkPoint, sinkBlock, sinkVector);
+
+        SavedConnection continuous = new SavedConnection();
+        continuous.sourceNodeId = "closest";
+        continuous.sourcePortId = "output_point_data";
+        continuous.targetNodeId = "sink_point";
+        continuous.targetPortId = "input_point_a";
+
+        SavedConnection legacyBlock = new SavedConnection();
+        legacyBlock.sourceNodeId = "closest";
+        legacyBlock.sourcePortId = "output_closest_point";
+        legacyBlock.targetNodeId = "sink_block";
+        legacyBlock.targetPortId = "input_coordinate";
+
+        SavedConnection legacyVector = new SavedConnection();
+        legacyVector.sourceNodeId = "closest";
+        legacyVector.sourcePortId = "output_vector";
+        legacyVector.targetNodeId = "sink_vector";
+        legacyVector.targetPortId = "input_vector";
+
+        v10.connections = new java.util.ArrayList<>(List.of(continuous, legacyBlock, legacyVector));
+        v10.nodePositions = java.util.Map.of();
+
+        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v10);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
+        assertEquals("reference.points.deconstruct_block_position", migrated.nodes.get(1).typeId);
+        assertEquals(1, migrated.connections.size());
+        assertEquals("output_closest_point", migrated.connections.getFirst().sourcePortId);
+        assertEquals("sink_point", migrated.connections.getFirst().targetNodeId);
+    }
+
+    @Test
     void futureVersionsAreLeftUntouched() {
         SavedGraph future = new SavedGraph();
         future.formatVersion = GraphFormatVersion.CURRENT + 5;

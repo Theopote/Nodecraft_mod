@@ -157,6 +157,7 @@ class AnyAllowlistContractTest {
         assertEquals(NodeDataType.BLOCK_POS, findPort(new BlockToVectorNode(), "input_coordinate").getDataType());
         assertEquals(NodeDataType.DOUBLE, findPort(new VectorScalarMultiplyNode(), "input_scalar").getDataType());
         assertEquals(NodeDataType.POINT_LIST, findPort(new ClosestPointNode(), "input_coordinates").getDataType());
+        assertEquals(NodeDataType.POINT, findPort(new ClosestPointNode(), "output_closest_point").getDataType());
     }
 
     @Test

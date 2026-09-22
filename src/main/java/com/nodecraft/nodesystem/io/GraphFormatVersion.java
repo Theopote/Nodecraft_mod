@@ -72,8 +72,14 @@ public final class GraphFormatVersion {
      */
     public static final int V10 = 10;
 
+    /**
+     * Spatial language P1: Closest Point no longer emits BLOCK_POS;
+     * Deconstruct Coordinate → Deconstruct Block Position; legacy closest ports remapped.
+     */
+    public static final int V11 = 11;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V10;
+    public static final int CURRENT = V11;
 
     private GraphFormatVersion() {
     }

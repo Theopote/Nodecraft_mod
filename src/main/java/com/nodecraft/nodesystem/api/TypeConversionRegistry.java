@@ -99,6 +99,7 @@ public final class TypeConversionRegistry {
             return new ConversionSuggestion("reference.points.point_from_block", "Block To Point");
         }
         if (isBlockCoordinateToVectorConversion(output, input)) {
+            // Convenience shortcut; canonical location path is Block To Point.
             return new ConversionSuggestion("reference.points.block_to_vector", "Block To Vector");
         }
         if (isPointToBlockCoordinateConversion(output, input)) {

@@ -8,7 +8,6 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -17,12 +16,13 @@ import java.util.UUID;
 
 /**
  * Finds the closest point in a point collection to a reference point.
+ * Does not snap to the block grid — use Snap Point To Block for BLOCK_POS.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "reference.points.closest_point",
     displayName = "Closest Point",
-    description = "Finds the closest point in a point collection to a reference point.",
+    description = "Finds the closest geometric point in a point list to a reference point",
     category = "reference.points",
     order = 7
 )
@@ -34,8 +34,6 @@ public class ClosestPointNode extends BaseNode {
     private static final String OUTPUT_CLOSEST_POINT_ID = "output_closest_point";
     private static final String OUTPUT_DISTANCE_ID = "output_distance";
     private static final String OUTPUT_INDEX_ID = "output_index";
-    private static final String OUTPUT_POINT_DATA_ID = "output_point_data";
-    private static final String OUTPUT_VECTOR_ID = "output_vector";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ClosestPointNode() {
@@ -48,16 +46,12 @@ public class ClosestPointNode extends BaseNode {
             "Candidate geometric points",
             NodeDataType.POINT_LIST, this));
 
-        addOutputPort(new BasePort(OUTPUT_CLOSEST_POINT_ID, "Closest Block",
-            "Closest point snapped to a block coordinate", NodeDataType.BLOCK_POS, this));
+        addOutputPort(new BasePort(OUTPUT_CLOSEST_POINT_ID, "Closest Point",
+            "Closest geometric point (continuous; not block-snapped)", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_DISTANCE_ID, "Distance",
             "Distance from the reference point to the closest point", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_INDEX_ID, "Index",
             "Index of the closest valid point in the input collection", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_POINT_DATA_ID, "Closest Point",
-            "Closest point as PointData", NodeDataType.POINT, this));
-        addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Closest Vector",
-            "Closest point as a Vector3d position", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when a closest point was found", NodeDataType.BOOLEAN, this));
     }
@@ -69,7 +63,7 @@ public class ClosestPointNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Finds the closest point in a point collection to a reference point.";
+        return "Finds the closest geometric point in a point list to a reference point";
     }
 
     @Override
@@ -110,11 +104,9 @@ public class ClosestPointNode extends BaseNode {
             return;
         }
 
-        outputValues.put(OUTPUT_CLOSEST_POINT_ID, BlockPos.ofFloored(closest.x, closest.y, closest.z));
+        outputValues.put(OUTPUT_CLOSEST_POINT_ID, new PointData(closest));
         outputValues.put(OUTPUT_DISTANCE_ID, Math.sqrt(minDistanceSquared));
         outputValues.put(OUTPUT_INDEX_ID, closestIndex);
-        outputValues.put(OUTPUT_POINT_DATA_ID, new PointData(closest));
-        outputValues.put(OUTPUT_VECTOR_ID, new Vector3d(closest));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
@@ -132,8 +124,6 @@ public class ClosestPointNode extends BaseNode {
         outputValues.put(OUTPUT_CLOSEST_POINT_ID, null);
         outputValues.put(OUTPUT_DISTANCE_ID, Double.NaN);
         outputValues.put(OUTPUT_INDEX_ID, -1);
-        outputValues.put(OUTPUT_POINT_DATA_ID, null);
-        outputValues.put(OUTPUT_VECTOR_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 }

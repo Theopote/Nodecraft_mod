@@ -12,13 +12,13 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 /**
- * Extracts X, Y, and Z integer components from a block coordinate.
+ * Extracts integer X/Y/Z components from a block position.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "reference.points.deconstruct_point",
-    displayName = "Deconstruct Coordinate",
-    description = "Extracts X, Y, and Z integer components from a block coordinate.",
+    id = "reference.points.deconstruct_block_position",
+    displayName = "Deconstruct Block Position",
+    description = "Extracts X, Y, and Z integer components from a block position",
     category = "reference.points",
     order = 4
 )
@@ -32,27 +32,27 @@ public class DeconstructCoordinateNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public DeconstructCoordinateNode() {
-        super(UUID.randomUUID(), "reference.points.deconstruct_point");
+        super(UUID.randomUUID(), "reference.points.deconstruct_block_position");
 
-        addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate",
-            "Block coordinate to deconstruct into X/Y/Z integers",
+        addInputPort(new BasePort(INPUT_COORDINATE_ID, "Block Pos",
+            "Block position to deconstruct into X/Y/Z integers",
             NodeDataType.BLOCK_POS, this));
 
-        addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X coordinate", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y coordinate", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z coordinate", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the coordinate input is valid",
+        addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X block coordinate", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y block coordinate", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z block coordinate", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the block position input is valid",
             NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Extracts X, Y, and Z integer components from a block coordinate.";
+        return "Extracts X, Y, and Z integer components from a block position";
     }
 
     @Override
     public String getDisplayName() {
-        return "Deconstruct Coordinate";
+        return "Deconstruct Block Position";
     }
 
     @Override
