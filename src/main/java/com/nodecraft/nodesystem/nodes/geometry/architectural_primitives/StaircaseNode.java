@@ -18,7 +18,10 @@ import java.util.Locale;
 import java.util.UUID;
 
 /**
- * Generates architectural staircases from a path run.
+ * Generates architectural staircases from a path.
+ * <p>
+ * Layout {@code straight} follows the true PATH centerline. U / double-run / switchback /
+ * spiral layouts still use the path chord for plan orientation.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -55,7 +58,9 @@ public class StaircaseNode extends BaseNode {
     public StaircaseNode() {
         super(UUID.randomUUID(), "geometry.architectural_primitives.staircase");
 
-        addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Path run for straight stairs; for spiral, start is the stair axis base and direction defines the entry tangent in plan", NodeDataType.PATH, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path",
+            "Path for stairs: straight layout follows the path; spiral uses start as axis base and direction as entry tangent",
+            NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_LAYOUT_ID, "Layout", "Stair layout: straight, u, double_run, switchback, or spiral", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_STEP_COUNT_ID, "Step Count", "Number of steps to generate", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_FIRST_FLIGHT_STEPS_ID, "First Flight Steps", "Optional step count used before the landing in U/double-run layouts", NodeDataType.INTEGER, this));
@@ -78,35 +83,84 @@ public class StaircaseNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Generates straight, U-shaped, double-run, switchback, or vertical spiral staircases from a path";
+        return "Generates straight (path-following), U-shaped, double-run, switchback, or spiral staircases";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        ArchitecturalPrimitiveSupport.LineFrame frame =
-            ArchitecturalPrimitiveSupport.resolvePathAsLineFrame(inputValues.get(INPUT_PATH_ID));
-
+        StairParameters parameters = resolveStairParameters();
         GeometryData geometry = null;
         int count = 0;
         boolean valid = false;
 
-        if (frame != null) {
-            StairParameters parameters = resolveStairParameters();
-            List<GeometryData> steps = switch (parameters.layout()) {
-                case "u", "double_run", "switchback" -> buildDoubleRunStairs(frame, parameters);
-                case "spiral" -> buildSpiralStairs(frame, parameters, resolveSpiralParameters(frame, parameters));
-                default -> buildStraightStairs(frame, parameters.stepCount(), parameters.stepRun(), parameters.stepRise(), parameters.width(), parameters.landingLength());
-            };
-            if (!steps.isEmpty()) {
-                geometry = new CompositeGeometryData(steps);
-                count = steps.size();
-                valid = true;
+        List<GeometryData> steps = switch (parameters.layout()) {
+            case "u", "double_run", "switchback" -> {
+                ArchitecturalPrimitiveSupport.LineFrame frame =
+                    ArchitecturalPrimitiveSupport.resolvePathChordFrame(inputValues.get(INPUT_PATH_ID));
+                yield frame != null ? buildDoubleRunStairs(frame, parameters) : List.of();
             }
+            case "spiral" -> {
+                ArchitecturalPrimitiveSupport.LineFrame frame =
+                    ArchitecturalPrimitiveSupport.resolvePathChordFrame(inputValues.get(INPUT_PATH_ID));
+                yield frame != null
+                    ? buildSpiralStairs(frame, parameters, resolveSpiralParameters(frame, parameters))
+                    : List.of();
+            }
+            default -> {
+                ArchitecturalPathSupport.PathGeometry path =
+                    ArchitecturalPathSupport.resolve(inputValues.get(INPUT_PATH_ID));
+                yield path != null
+                    ? buildPathFollowingStairs(path, parameters.stepCount(), parameters.stepRun(),
+                        parameters.stepRise(), parameters.width(), parameters.landingLength())
+                    : List.of();
+            }
+        };
+
+        if (!steps.isEmpty()) {
+            geometry = new CompositeGeometryData(steps);
+            count = steps.size();
+            valid = true;
         }
 
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_COUNT_ID, count);
         outputValues.put(OUTPUT_VALID_ID, valid);
+    }
+
+    private List<GeometryData> buildPathFollowingStairs(
+        ArchitecturalPathSupport.PathGeometry path,
+        int stepCount,
+        double stepRun,
+        double stepRise,
+        double width,
+        double landingLength
+    ) {
+        List<GeometryData> results = new ArrayList<>(stepCount + 1);
+        double maxRun = path.length();
+
+        for (int index = 0; index < stepCount; index++) {
+            double centerDistance = stepRun * index + stepRun / 2.0d;
+            if (centerDistance > maxRun + EPSILON) {
+                break;
+            }
+            ArchitecturalPathSupport.SampleFrame frame = ArchitecturalPathSupport.sampleAt(path, centerDistance);
+            Vector3d center = new Vector3d(frame.origin()).fma(stepRise * index + stepRise / 2.0d, frame.up());
+            Vector3d halfExtents = new Vector3d(stepRun / 2.0d, stepRise / 2.0d, width / 2.0d);
+            results.add(ArchitecturalPrimitiveSupport.createOrientedBox(
+                center, halfExtents, frame.tangent(), frame.up(), frame.side()));
+        }
+
+        if (landingLength > 0.0d && !results.isEmpty()) {
+            double landingCenterDistance = Math.min(maxRun, stepRun * stepCount + landingLength / 2.0d);
+            ArchitecturalPathSupport.SampleFrame frame = ArchitecturalPathSupport.sampleAt(path, landingCenterDistance);
+            Vector3d landingCenter = new Vector3d(frame.origin())
+                .fma(stepRise * Math.min(stepCount, results.size()) + stepRise / 2.0d, frame.up());
+            Vector3d halfExtents = new Vector3d(landingLength / 2.0d, stepRise / 2.0d, width / 2.0d);
+            results.add(ArchitecturalPrimitiveSupport.createOrientedBox(
+                landingCenter, halfExtents, frame.tangent(), frame.up(), frame.side()));
+        }
+
+        return List.copyOf(results);
     }
 
     private List<GeometryData> buildStraightStairs(

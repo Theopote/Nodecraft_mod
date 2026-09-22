@@ -7,7 +7,9 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
+import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -17,13 +19,13 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Generates a rectangular array of inset door opening boxes on a box face.
+ * Generates a rectangular array of inset door openings with placement frames.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.architectural_primitives.door_array",
     displayName = "Door Array",
-    description = "Generates a rectangular array of inset door opening boxes on a box face",
+    description = "Generates a rectangular array of inset door openings with placement frames",
     category = "geometry.architectural_primitives",
     order = 1
 )
@@ -38,6 +40,8 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
     private static final String INPUT_DEPTH_ID = "input_depth";
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
+    private static final String OUTPUT_FRAMES_ID = "output_frames";
+    private static final String OUTPUT_CENTERS_ID = "output_centers";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
@@ -53,13 +57,15 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
         addInputPort(new BasePort(INPUT_DEPTH_ID, "Depth", "Inset depth of each opening into the solid", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing all door opening boxes", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Placement frames at each door center (face-aligned)", NodeDataType.FRAME_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_CENTERS_ID, "Centers", "Door center points on the face", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of door opening boxes created", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid door array could be generated", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Generates a rectangular array of inset door opening boxes on a box face";
+        return "Generates a rectangular array of inset door openings with placement frames";
     }
 
     @Override
@@ -67,6 +73,8 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
         Object faceObj = inputValues.get(INPUT_FACE_ID);
 
         GeometryData geometry = null;
+        List<FrameData> frames = null;
+        List<PointData> centers = null;
         int count = 0;
         boolean valid = false;
 
@@ -82,6 +90,8 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
                 List<BoxGeometryData> openings = buildOpeningBoxes(layout, depth);
                 if (!openings.isEmpty()) {
                     geometry = new CompositeGeometryData(new ArrayList<>(openings));
+                    frames = buildPlacementFrames(layout);
+                    centers = buildCenters(layout);
                     count = openings.size();
                     valid = true;
                 }
@@ -89,18 +99,18 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
         }
 
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
+        outputValues.put(OUTPUT_FRAMES_ID, frames);
+        outputValues.put(OUTPUT_CENTERS_ID, centers);
         outputValues.put(OUTPUT_COUNT_ID, count);
         outputValues.put(OUTPUT_VALID_ID, valid);
     }
 
-    private List<BoxGeometryData> buildOpeningBoxes(
-        FaceArrayLayout layout,
-        double depth
-    ) {
+    private List<BoxGeometryData> buildOpeningBoxes(FaceArrayLayout layout, double depth) {
         return buildFaceArray(layout, placement -> {
             Vector3d center = placement.centerOnFace().fma(-depth / 2.0d, layout.frame().zAxis());
             Vector3d halfExtents = new Vector3d(layout.elementWidth() / 2.0d, layout.elementHeight() / 2.0d, depth / 2.0d);
-            return ArchitecturalPrimitiveSupport.createOrientedBox(center, halfExtents, layout.frame().xAxis(), layout.frame().yAxis(), layout.frame().zAxis());
+            return ArchitecturalPrimitiveSupport.createOrientedBox(
+                center, halfExtents, layout.frame().xAxis(), layout.frame().yAxis(), layout.frame().zAxis());
         });
     }
 }

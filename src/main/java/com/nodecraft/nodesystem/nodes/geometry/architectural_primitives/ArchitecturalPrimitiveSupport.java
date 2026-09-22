@@ -92,10 +92,12 @@ final class ArchitecturalPrimitiveSupport {
     }
 
     /**
-     * Resolves a PATH (line / polyline / curve) into a straight run frame using first and last vertices.
-     * Multi-segment paths are treated as a chord run for railing / staircase generators.
+     * Resolves a PATH into a straight chord frame using first and last vertices.
+     * Prefer {@link ArchitecturalPathSupport} for path-following components.
+     * Keep this only for layouts that intentionally need a straight approximation
+     * (e.g. spiral/U stair plan orientation).
      */
-    static @Nullable LineFrame resolvePathAsLineFrame(@Nullable Object pathValue) {
+    static @Nullable LineFrame resolvePathChordFrame(@Nullable Object pathValue) {
         List<Vector3d> points = PathUtils.resolvePath(pathValue);
         if (points == null || points.size() < 2) {
             return null;
@@ -106,6 +108,12 @@ final class ArchitecturalPrimitiveSupport {
             new Vec3d(start.x, start.y, start.z),
             new Vec3d(end.x, end.y, end.z)
         );
+    }
+
+    /** @deprecated Use {@link #resolvePathChordFrame(Object)}. */
+    @Deprecated
+    static @Nullable LineFrame resolvePathAsLineFrame(@Nullable Object pathValue) {
+        return resolvePathChordFrame(pathValue);
     }
 
     static Matrix3d createOrientation(Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {

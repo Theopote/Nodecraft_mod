@@ -5,11 +5,12 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
-import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
+import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -20,13 +21,13 @@ import java.util.Locale;
 import java.util.UUID;
 
 /**
- * Generates a rectangular grid of architectural columns from a box face.
+ * Generates a rectangular grid of architectural columns with placement frames.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.architectural_primitives.column_grid",
     displayName = "Column Grid",
-    description = "Generates a rectangular grid of columns on a box face",
+    description = "Generates a rectangular grid of columns with base/top points and placement frames",
     category = "geometry.architectural_primitives",
     order = 2
 )
@@ -42,6 +43,9 @@ public class ColumnGridNode extends AbstractFaceArrayNode {
     private static final String INPUT_TOP_SCALE_ID = "input_top_scale";
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
+    private static final String OUTPUT_FRAMES_ID = "output_frames";
+    private static final String OUTPUT_BASE_POINTS_ID = "output_base_points";
+    private static final String OUTPUT_TOP_POINTS_ID = "output_top_points";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
@@ -58,13 +62,16 @@ public class ColumnGridNode extends AbstractFaceArrayNode {
         addInputPort(new BasePort(INPUT_TOP_SCALE_ID, "Top Scale", "Top radius scale used for frustum columns", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing all columns", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Placement frames at each column base (face-aligned)", NodeDataType.FRAME_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_BASE_POINTS_ID, "Base Points", "Column base points on the face", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_TOP_POINTS_ID, "Top Points", "Column top points along the face normal", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of columns created", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid column grid could be generated", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Generates a rectangular grid of columns on a box face";
+        return "Generates a rectangular grid of columns with base/top points and placement frames";
     }
 
     @Override
@@ -72,6 +79,9 @@ public class ColumnGridNode extends AbstractFaceArrayNode {
         Object faceObj = inputValues.get(INPUT_FACE_ID);
 
         GeometryData geometry = null;
+        List<FrameData> frames = null;
+        List<PointData> basePoints = null;
+        List<PointData> topPoints = null;
         int count = 0;
         boolean valid = false;
 
@@ -88,6 +98,9 @@ public class ColumnGridNode extends AbstractFaceArrayNode {
                 List<GeometryData> columnsGeometry = buildColumns(layout, radius, height, topScale, shape);
                 if (!columnsGeometry.isEmpty()) {
                     geometry = new CompositeGeometryData(columnsGeometry);
+                    frames = buildPlacementFrames(layout);
+                    basePoints = buildCenters(layout);
+                    topPoints = buildTopPoints(layout, height);
                     count = columnsGeometry.size();
                     valid = true;
                 }
@@ -95,8 +108,20 @@ public class ColumnGridNode extends AbstractFaceArrayNode {
         }
 
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
+        outputValues.put(OUTPUT_FRAMES_ID, frames);
+        outputValues.put(OUTPUT_BASE_POINTS_ID, basePoints);
+        outputValues.put(OUTPUT_TOP_POINTS_ID, topPoints);
         outputValues.put(OUTPUT_COUNT_ID, count);
         outputValues.put(OUTPUT_VALID_ID, valid);
+    }
+
+    private List<PointData> buildTopPoints(FaceArrayLayout layout, double height) {
+        List<PointData> tops = new ArrayList<>(layout.columns() * layout.rows());
+        Vector3d up = layout.frame().zAxis();
+        for (FaceArrayPlacement placement : enumeratePlacements(layout)) {
+            tops.add(new PointData(new Vector3d(placement.centerOnFace()).fma(height, up)));
+        }
+        return List.copyOf(tops);
     }
 
     private List<GeometryData> buildColumns(

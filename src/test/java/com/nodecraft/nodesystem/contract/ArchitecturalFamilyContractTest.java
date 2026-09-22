@@ -3,10 +3,15 @@ package com.nodecraft.nodesystem.contract;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.BeamAlongPathNode;
+import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.ColumnGridNode;
+import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.ColumnNode;
+import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.DoorArrayNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.FloorSlabWithBeamsNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.RailingNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.RoofGeneratorNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.StaircaseNode;
+import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WallAlongPathNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WallWithOpeningsNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WindowArrayNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -18,6 +23,7 @@ import java.util.List;
 import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -48,6 +54,8 @@ class ArchitecturalFamilyContractTest {
     @Test
     void coreFiveEmitGeometryAndValid() {
         assertPortType(new WallWithOpeningsNode(), "output_geometry", NodeDataType.GEOMETRY);
+        assertPortType(new WallWithOpeningsNode(), "output_openings", NodeDataType.GEOMETRY);
+        assertPortType(new WallWithOpeningsNode(), "output_top_edge", NodeDataType.PATH);
         assertPortType(new FloorSlabWithBeamsNode(), "output_geometry", NodeDataType.GEOMETRY);
         assertPortType(new RoofGeneratorNode(), "output_geometry", NodeDataType.GEOMETRY);
         assertPortType(new WindowArrayNode(), "output_geometry", NodeDataType.GEOMETRY);
@@ -57,6 +65,30 @@ class ArchitecturalFamilyContractTest {
         assertPortType(new RoofGeneratorNode(), "output_valid", NodeDataType.BOOLEAN);
         assertPortType(new WindowArrayNode(), "output_valid", NodeDataType.BOOLEAN);
         assertPortType(new StaircaseNode(), "output_valid", NodeDataType.BOOLEAN);
+    }
+
+    @Test
+    void pathElementsAndColumnAreRegistered() {
+        assertNotNull(registry.createNodeInstance("geometry.architectural_primitives.wall_along_path"));
+        assertNotNull(registry.createNodeInstance("geometry.architectural_primitives.beam_along_path"));
+        assertNotNull(registry.createNodeInstance("geometry.architectural_primitives.column"));
+        assertPortType(new WallAlongPathNode(), "input_path", NodeDataType.PATH);
+        assertPortType(new BeamAlongPathNode(), "input_path", NodeDataType.PATH);
+        assertPortType(new ColumnNode(), "input_frame", NodeDataType.FRAME);
+        assertPortType(new ColumnNode(), "input_base", NodeDataType.POINT);
+        assertPortType(new WallAlongPathNode(), "output_frames", NodeDataType.FRAME_LIST);
+        assertPortType(new BeamAlongPathNode(), "output_frames", NodeDataType.FRAME_LIST);
+    }
+
+    @Test
+    void faceArrayFamilyEmitsFramesAndCenters() {
+        assertPortType(new WindowArrayNode(), "output_frames", NodeDataType.FRAME_LIST);
+        assertPortType(new WindowArrayNode(), "output_centers", NodeDataType.POINT_LIST);
+        assertPortType(new DoorArrayNode(), "output_frames", NodeDataType.FRAME_LIST);
+        assertPortType(new DoorArrayNode(), "output_centers", NodeDataType.POINT_LIST);
+        assertPortType(new ColumnGridNode(), "output_frames", NodeDataType.FRAME_LIST);
+        assertPortType(new ColumnGridNode(), "output_base_points", NodeDataType.POINT_LIST);
+        assertPortType(new ColumnGridNode(), "output_top_points", NodeDataType.POINT_LIST);
     }
 
     @Test

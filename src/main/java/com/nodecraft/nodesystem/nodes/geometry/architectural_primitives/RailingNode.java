@@ -17,13 +17,14 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Generates a straight railing or balustrade along a path run (first-to-last chord).
+ * Generates a railing or balustrade that follows the true PATH centerline
+ * (line, polyline, or curve) — not a first→last chord.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.architectural_primitives.railing",
     displayName = "Railing",
-    description = "Generates a straight railing or balustrade along a path",
+    description = "Generates a railing or balustrade that follows a path (line, polyline, or curve)",
     category = "geometry.architectural_primitives",
     order = 3
 )
@@ -59,19 +60,19 @@ public class RailingNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Generates a straight railing or balustrade along a path";
+        return "Generates a railing or balustrade that follows a path (line, polyline, or curve)";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        ArchitecturalPrimitiveSupport.LineFrame frame =
-            ArchitecturalPrimitiveSupport.resolvePathAsLineFrame(inputValues.get(INPUT_PATH_ID));
+        ArchitecturalPathSupport.PathGeometry path =
+            ArchitecturalPathSupport.resolve(inputValues.get(INPUT_PATH_ID));
 
         GeometryData geometry = null;
         int count = 0;
         boolean valid = false;
 
-        if (frame != null) {
+        if (path != null) {
             int postCount = ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_POST_COUNT_ID), 2);
             int railCount = ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_RAIL_COUNT_ID), 2);
             double height = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_HEIGHT_ID), 1.2d);
@@ -79,7 +80,7 @@ public class RailingNode extends BaseNode {
             double railRadius = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_RAIL_RADIUS_ID), postRadius * 0.65d);
             double offset = ArchitecturalPrimitiveSupport.resolveNonNegativeDouble(inputValues.get(INPUT_OFFSET_ID), 0.0d);
 
-            List<GeometryData> railing = buildRailing(frame, postCount, railCount, height, postRadius, railRadius, offset);
+            List<GeometryData> railing = buildRailing(path, postCount, railCount, height, postRadius, railRadius, offset);
             if (!railing.isEmpty()) {
                 geometry = new CompositeGeometryData(railing);
                 count = railing.size();
@@ -93,7 +94,7 @@ public class RailingNode extends BaseNode {
     }
 
     private List<GeometryData> buildRailing(
-        ArchitecturalPrimitiveSupport.LineFrame frame,
+        ArchitecturalPathSupport.PathGeometry path,
         int postCount,
         int railCount,
         double height,
@@ -101,25 +102,33 @@ public class RailingNode extends BaseNode {
         double railRadius,
         double offset
     ) {
-        List<GeometryData> results = new ArrayList<>(postCount + railCount);
+        List<GeometryData> results = new ArrayList<>();
 
-        Vector3d baseOffset = new Vector3d(frame.sideAxis()).mul(offset);
-        Vector3d topOffset = new Vector3d(frame.upAxis()).mul(height);
-
-        double postSpacing = postCount > 1 ? frame.length() / (postCount - 1) : 0.0d;
-        for (int index = 0; index < postCount; index++) {
-            double distance = Math.min(frame.length(), index * postSpacing);
-            Vector3d base = new Vector3d(frame.start()).fma(distance, frame.runAxis()).add(baseOffset);
-            Vector3d top = new Vector3d(base).add(topOffset);
+        List<ArchitecturalPathSupport.SampleFrame> posts = ArchitecturalPathSupport.sampleEvenly(path, postCount);
+        for (ArchitecturalPathSupport.SampleFrame frame : posts) {
+            Vector3d base = new Vector3d(frame.origin()).fma(offset, frame.side());
+            Vector3d top = new Vector3d(base).fma(height, frame.up());
             results.add(new CylinderGeometryData(base, top, postRadius));
         }
 
         double railSpacing = railCount > 1 ? height / railCount : height;
+        List<ArchitecturalPathSupport.Segment> segments = ArchitecturalPathSupport.segments(path);
         for (int level = 0; level < railCount; level++) {
             double railHeight = railCount > 1 ? railSpacing * (level + 1) : height;
-            Vector3d railBase = new Vector3d(frame.start()).add(baseOffset).fma(railHeight, frame.upAxis());
-            Vector3d railTop = new Vector3d(frame.end()).add(baseOffset).fma(railHeight, frame.upAxis());
-            results.add(new CylinderGeometryData(railBase, railTop, railRadius));
+            for (ArchitecturalPathSupport.Segment segment : segments) {
+                Vector3d direction = new Vector3d(segment.end()).sub(segment.start());
+                ArchitecturalPathSupport.SampleFrame frame =
+                    ArchitecturalPathSupport.frameForDirection(segment.start(), direction);
+                Vector3d railStart = new Vector3d(segment.start())
+                    .fma(offset, frame.side())
+                    .fma(railHeight, frame.up());
+                Vector3d railEnd = new Vector3d(segment.end())
+                    .fma(offset, frame.side())
+                    .fma(railHeight, frame.up());
+                if (railStart.distanceSquared(railEnd) > 1.0e-12d) {
+                    results.add(new CylinderGeometryData(railStart, railEnd, railRadius));
+                }
+            }
         }
 
         return List.copyOf(results);

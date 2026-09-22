@@ -8,7 +8,9 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
+import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -41,6 +43,8 @@ public class WindowArrayNode extends AbstractFaceArrayNode {
     private static final String INPUT_DEPTH_ID = "input_depth";
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
+    private static final String OUTPUT_FRAMES_ID = "output_frames";
+    private static final String OUTPUT_CENTERS_ID = "output_centers";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
@@ -64,13 +68,15 @@ public class WindowArrayNode extends AbstractFaceArrayNode {
         addInputPort(new BasePort(INPUT_DEPTH_ID, "Depth", "Inset depth of each opening into the solid", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing all opening boxes", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Placement frames at each window center (face-aligned)", NodeDataType.FRAME_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_CENTERS_ID, "Centers", "Window center points on the face", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of opening boxes created", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid opening array could be generated", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Generates a rectangular array of inset window opening boxes on a box face";
+        return "Generates a rectangular array of inset window openings with placement frames";
     }
 
     @Override
@@ -84,6 +90,8 @@ public class WindowArrayNode extends AbstractFaceArrayNode {
         Object depthObj = inputValues.get(INPUT_DEPTH_ID);
 
         GeometryData geometry = null;
+        List<FrameData> frames = null;
+        List<PointData> centers = null;
         int count = 0;
         boolean valid = false;
 
@@ -99,12 +107,16 @@ public class WindowArrayNode extends AbstractFaceArrayNode {
             if (layout != null) {
                 List<BoxGeometryData> openings = buildOpeningBoxes(layout, depth);
                 geometry = new CompositeGeometryData(new ArrayList<>(openings));
+                frames = buildPlacementFrames(layout);
+                centers = buildCenters(layout);
                 count = openings.size();
                 valid = true;
             }
         }
 
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
+        outputValues.put(OUTPUT_FRAMES_ID, frames);
+        outputValues.put(OUTPUT_CENTERS_ID, centers);
         outputValues.put(OUTPUT_COUNT_ID, count);
         outputValues.put(OUTPUT_VALID_ID, valid);
     }
