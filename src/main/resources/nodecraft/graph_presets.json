@@ -1025,6 +1025,321 @@
               "toPort": "input_blocks"
             }
           ]
+        },
+        {
+          "id": "architectural.workflow.wall_with_windows",
+          "displayName": "Wall + Windows",
+          "description": "Wall With Openings → Difference (cut holes) + Window Array frames → Combine → Preview.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "volume",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 40,
+              "y": 180,
+              "state": {
+                "sizeX": 8.0,
+                "sizeY": 3.0,
+                "sizeZ": 0.5
+              }
+            },
+            {
+              "ref": "front_face",
+              "typeId": "reference.points.get_box_face",
+              "x": 280,
+              "y": 180,
+              "state": {
+                "defaultFaceName": "front"
+              }
+            },
+            {
+              "ref": "wall",
+              "typeId": "geometry.architectural_primitives.wall_with_openings",
+              "x": 520,
+              "y": 60
+            },
+            {
+              "ref": "windows",
+              "typeId": "geometry.architectural_primitives.window_array",
+              "x": 520,
+              "y": 300,
+              "state": {
+                "defaultDepth": 0.3
+              }
+            },
+            {
+              "ref": "cut",
+              "typeId": "geometry.boolean.difference",
+              "x": 760,
+              "y": 60
+            },
+            {
+              "ref": "combine",
+              "typeId": "geometry.combine.geometry",
+              "x": 1000,
+              "y": 180
+            },
+            {
+              "ref": "preview_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 1240,
+              "y": 180
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "volume",
+              "fromPort": "output_box_geometry",
+              "toRef": "front_face",
+              "toPort": "input_box_geometry"
+            },
+            {
+              "fromRef": "front_face",
+              "fromPort": "output_face",
+              "toRef": "wall",
+              "toPort": "input_face"
+            },
+            {
+              "fromRef": "front_face",
+              "fromPort": "output_face",
+              "toRef": "windows",
+              "toPort": "input_face"
+            },
+            {
+              "fromRef": "wall",
+              "fromPort": "output_geometry",
+              "toRef": "cut",
+              "toPort": "input_base"
+            },
+            {
+              "fromRef": "wall",
+              "fromPort": "output_openings",
+              "toRef": "cut",
+              "toPort": "input_cutter"
+            },
+            {
+              "fromRef": "cut",
+              "fromPort": "output_geometry",
+              "toRef": "combine",
+              "toPort": "input_geometry_0"
+            },
+            {
+              "fromRef": "windows",
+              "fromPort": "output_geometry",
+              "toRef": "combine",
+              "toPort": "input_geometry_1"
+            },
+            {
+              "fromRef": "combine",
+              "fromPort": "output_geometry",
+              "toRef": "preview_geometry",
+              "toPort": "input_geometry"
+            }
+          ]
+        },
+        {
+          "id": "architectural.workflow.floor_with_beam_grid",
+          "displayName": "Floor + Beam Grid",
+          "description": "Composable Floor Slab + Beam Grid on the same BOX_FACE → Combine → Preview.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "volume",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 40,
+              "y": 160,
+              "state": {
+                "sizeX": 10.0,
+                "sizeY": 0.4,
+                "sizeZ": 8.0
+              }
+            },
+            {
+              "ref": "floor_face",
+              "typeId": "reference.points.get_box_face",
+              "x": 280,
+              "y": 160,
+              "state": {
+                "defaultFaceName": "top"
+              }
+            },
+            {
+              "ref": "slab",
+              "typeId": "geometry.architectural_primitives.floor_slab",
+              "x": 520,
+              "y": 60
+            },
+            {
+              "ref": "beams",
+              "typeId": "geometry.architectural_primitives.beam_grid",
+              "x": 520,
+              "y": 260
+            },
+            {
+              "ref": "combine",
+              "typeId": "geometry.combine.geometry",
+              "x": 760,
+              "y": 160
+            },
+            {
+              "ref": "preview_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 1000,
+              "y": 100
+            },
+            {
+              "ref": "preview_curves",
+              "typeId": "output.preview.preview_curves",
+              "x": 1000,
+              "y": 260
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "volume",
+              "fromPort": "output_box_geometry",
+              "toRef": "floor_face",
+              "toPort": "input_box_geometry"
+            },
+            {
+              "fromRef": "floor_face",
+              "fromPort": "output_face",
+              "toRef": "slab",
+              "toPort": "input_face"
+            },
+            {
+              "fromRef": "floor_face",
+              "fromPort": "output_face",
+              "toRef": "beams",
+              "toPort": "input_face"
+            },
+            {
+              "fromRef": "slab",
+              "fromPort": "output_geometry",
+              "toRef": "combine",
+              "toPort": "input_geometry_0"
+            },
+            {
+              "fromRef": "beams",
+              "fromPort": "output_geometry",
+              "toRef": "combine",
+              "toPort": "input_geometry_1"
+            },
+            {
+              "fromRef": "combine",
+              "fromPort": "output_geometry",
+              "toRef": "preview_geometry",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "beams",
+              "fromPort": "output_center_lines",
+              "toRef": "preview_curves",
+              "toPort": "input_paths"
+            }
+          ]
+        },
+        {
+          "id": "architectural.workflow.roof_with_eave",
+          "displayName": "Roof + Eave Railing",
+          "description": "Roof Base (gable) → Eave Path drives Railing → Combine → Preview Geometry / Curves.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "volume",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 40,
+              "y": 180,
+              "state": {
+                "sizeX": 10.0,
+                "sizeY": 0.4,
+                "sizeZ": 8.0
+              }
+            },
+            {
+              "ref": "roof_face",
+              "typeId": "reference.points.get_box_face",
+              "x": 280,
+              "y": 180,
+              "state": {
+                "defaultFaceName": "top"
+              }
+            },
+            {
+              "ref": "roof",
+              "typeId": "geometry.architectural_primitives.roof_base",
+              "x": 520,
+              "y": 80
+            },
+            {
+              "ref": "eave_railing",
+              "typeId": "geometry.architectural_primitives.railing",
+              "x": 520,
+              "y": 300
+            },
+            {
+              "ref": "combine",
+              "typeId": "geometry.combine.geometry",
+              "x": 760,
+              "y": 180
+            },
+            {
+              "ref": "preview_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 1000,
+              "y": 100
+            },
+            {
+              "ref": "preview_curves",
+              "typeId": "output.preview.preview_curves",
+              "x": 1000,
+              "y": 280
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "volume",
+              "fromPort": "output_box_geometry",
+              "toRef": "roof_face",
+              "toPort": "input_box_geometry"
+            },
+            {
+              "fromRef": "roof_face",
+              "fromPort": "output_face",
+              "toRef": "roof",
+              "toPort": "input_face"
+            },
+            {
+              "fromRef": "roof",
+              "fromPort": "output_eave_path",
+              "toRef": "eave_railing",
+              "toPort": "input_path"
+            },
+            {
+              "fromRef": "roof",
+              "fromPort": "output_eave_path",
+              "toRef": "preview_curves",
+              "toPort": "input_path"
+            },
+            {
+              "fromRef": "roof",
+              "fromPort": "output_geometry",
+              "toRef": "combine",
+              "toPort": "input_geometry_0"
+            },
+            {
+              "fromRef": "eave_railing",
+              "fromPort": "output_geometry",
+              "toRef": "combine",
+              "toPort": "input_geometry_1"
+            },
+            {
+              "fromRef": "combine",
+              "fromPort": "output_geometry",
+              "toRef": "preview_geometry",
+              "toPort": "input_geometry"
+            }
+          ]
         }
       ]
     },

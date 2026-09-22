@@ -518,6 +518,14 @@ Three distinct mechanisms (do not treat as one “Boolean”):
   (Roof eave → Railing, Floor top → Column Grid, Wall openings → Difference cutter, Window frames → Place On Frames).
 - Contract: `ArchitecturalRecommendationContractTest`.
 
+**Batch 13.2 / Architectural workflow presets (2026-09-23):**
+
+- Built-in Architecture presets teach composable mini workflows (not God Nodes):
+  - `architectural.workflow.wall_with_windows`
+  - `architectural.workflow.floor_with_beam_grid`
+  - `architectural.workflow.roof_with_eave`
+- Contract: `ArchitecturalWorkflowPresetsContractTest`.
+
 ---
 
 ## Checklist for new nodes
