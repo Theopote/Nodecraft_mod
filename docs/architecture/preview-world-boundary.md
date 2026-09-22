@@ -90,8 +90,8 @@ See [Capability inventory](#capability-inventory-p2) below and
 - Saved-graph restore still keeps TRACKED_WORLD (`sanitizeRestored`)
 - Restore conflict protection: clear/update restores original only when
   `currentWorldState == previewState`; external edits are left alone
-- Uniform BlockState gate: heterogeneous `PreviewBlocksPayload` is rejected for
-  TRACKED_WORLD (use Ghost for multi-material/state)
+- Uniform BlockState gate: heterogeneous `PreviewBlocksPayload` falls back to
+  **GHOST** (Tracked World remains uniform-state compatibility backend)
 
 **Still deferred (true retirement):** remove enum / service only after
 `GHOST_GAPS` are closed (or accepted as Bake-only). Do not delete yet.

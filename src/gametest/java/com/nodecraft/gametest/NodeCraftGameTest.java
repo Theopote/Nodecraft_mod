@@ -68,6 +68,48 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         ctx.complete();
     }
 
+    /**
+     * Tracked preview must not overwrite external edits made after preview placement.
+     * Original=air → preview=stone → external=oak_planks → clear must leave oak_planks.
+     */
+    @GameTest
+    public void trackedPreviewClearSkipsExternallyModifiedBlocks(TestContext ctx) {
+        ServerWorld world = ctx.getWorld();
+        TrackedPreviewPlacementService service = TrackedPreviewPlacementService.getInstance();
+        ExecutionContext executionContext = ExecutionContext.createEmpty(world);
+
+        BlockPos relPreview = new BlockPos(1, 1, 1);
+        BlockPos relExternal = new BlockPos(2, 1, 1);
+        BlockPos absPreview = ctx.getAbsolutePos(relPreview);
+        BlockPos absExternal = ctx.getAbsolutePos(relExternal);
+        String nodeId = "preview-external-edit-guard";
+
+        service.updateTrackedPreview(
+            world,
+            nodeId,
+            List.of(absPreview, absExternal),
+            Blocks.STONE.getDefaultState(),
+            PlacementMode.OVERWRITE
+        );
+        ctx.expectBlock(Blocks.STONE, relPreview);
+        ctx.expectBlock(Blocks.STONE, relExternal);
+
+        // External mutation after preview (player / command / other mod).
+        world.setBlockState(absExternal, Blocks.OAK_PLANKS.getDefaultState());
+        ctx.expectBlock(Blocks.OAK_PLANKS, relExternal);
+
+        int restored = service.clearTrackedPreviewOnWorldThread(world, nodeId, executionContext);
+        ctx.assertEquals(1, restored, "only unmodified preview cell should restore");
+        ctx.checkBlockState(relPreview, state -> state.isOf(Blocks.AIR), state -> Text.literal("unmodified preview cell restores original"));
+        ctx.checkBlockState(
+            relExternal,
+            state -> state.isOf(Blocks.OAK_PLANKS),
+            state -> Text.literal("external edit must survive tracked preview clear")
+        );
+
+        ctx.complete();
+    }
+
     @GameTest
     public void trackedPreviewCleanupWithoutContextOnServerThread(TestContext ctx) {
         ServerWorld world = ctx.getWorld();

@@ -189,10 +189,15 @@ public final class PreviewManager {
             }
             if (!isUniformTrackedWorldPayload(cells)) {
                 NodeCraft.LOGGER.warn(
-                    "PreviewManager.showPreview TRACKED_WORLD: heterogeneous BlockState payload rejected. "
-                        + "Tracked World requires uniform blockId/stateData; use Ghost preview for material/state previews."
+                    "PreviewManager.showPreview TRACKED_WORLD: heterogeneous BlockState payload — "
+                        + "falling back to GHOST (Tracked World is uniform-state only)."
                 );
-                return null;
+                // Compatibility backend cannot express per-cell materials; demote to Ghost.
+                TrackedPreviewPlacementService.getInstance().clearTrackedPreviewAcrossWorlds(nodeId, ctx);
+                clearTrackedWorldRequestState(nodeId);
+                LAST_BLOCKS_BACKEND_BY_NODE.put(nodeId, PreviewBackend.GHOST);
+                touchNonEmpty(nodeId, "ghost_block");
+                return RENDERER.upsertPreview(nodeId, "ghost_block", blocksPayload, opts);
             }
             BlockState state = BlockStateResolver.resolve(cells.getFirst().blockId(), cells.getFirst().stateData());
             if (state == null) {
@@ -578,7 +583,8 @@ public final class PreviewManager {
 
     /**
      * Tracked World places a single BlockState at every position.
-     * Heterogeneous material/state payloads must use Ghost preview.
+     * Heterogeneous material/state payloads must use Ghost preview
+     * ({@link PreviewManager} falls back to GHOST automatically).
      */
     private static boolean isUniformTrackedWorldPayload(List<PreviewBlock> cells) {
         PreviewBlock first = cells.getFirst();
