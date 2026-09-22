@@ -60,6 +60,10 @@ These must stay as explicit nodes in the graph:
   - flattens branch structure; use **Flatten Tree**
 - `LIST / BLOCK_TYPE / STRING -> BLOCK_PALETTE`
   - legacy block-id bags; use **Create Block Palette**
+- `SDF -> SCALAR_FIELD`
+  - distance value wrap; use **Scalar Field From SDF**
+- `SDF -> VECTOR_FIELD`
+  - gradient policy; use **Vector Field From SDF Gradient**
 
 Canonical spatial chain for new graphs:
 

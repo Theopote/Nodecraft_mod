@@ -477,6 +477,14 @@ Three distinct mechanisms (do not treat as one “Boolean”):
 
 **Next (Batch 5 P3):** Auto Seam Alignment; PATH_LIST; voxelization cache; Combine single-input pass-through.
 
+**Batch 12 — Field System language (2026-09-22):**
+
+- **Locations** (Center / Origin / sample Point): `POINT` / `POINT_LIST` — not `VECTOR` / bare `LIST`.
+- **Directions** (Axis): `VECTOR` via `SpatialValueResolver.resolveVector`.
+- **Field types**: `SCALAR_FIELD` / `VECTOR_FIELD` stay first-class; no `ANY` in `math.fields.*`.
+- **SDF bridges** are explicit: **Scalar Field From SDF**, **Vector Field From SDF Gradient**.
+- Contract: `FieldsFamilyContractTest`.
+
 ---
 
 ## Checklist for new nodes

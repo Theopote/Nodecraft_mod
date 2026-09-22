@@ -49,7 +49,7 @@ public class VortexFieldNode extends BaseNode {
     public VortexFieldNode() {
         super(UUID.randomUUID(), "math.fields.vortex_field");
 
-        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Axis origin point", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Axis origin point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_AXIS_ID, "Axis", "Axis direction vector", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_STRENGTH_ID, "Strength", "Field strength override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Radial falloff radius override", NodeDataType.DOUBLE, this));
@@ -67,7 +67,7 @@ public class VortexFieldNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d origin = FieldSampleUtils.resolvePoint(inputValues.get(INPUT_ORIGIN_ID));
-        Vector3d axis = FieldSampleUtils.resolvePoint(inputValues.get(INPUT_AXIS_ID));
+        Vector3d axis = FieldSampleUtils.resolveVector(inputValues.get(INPUT_AXIS_ID));
         if (origin == null || axis == null || axis.lengthSquared() <= AttractorFieldUtils.EPS) {
             outputValues.put(OUTPUT_FIELD_ID, null);
             return;

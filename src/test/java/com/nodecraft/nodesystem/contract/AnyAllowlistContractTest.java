@@ -74,6 +74,7 @@ class AnyAllowlistContractTest {
     private static final Set<String> ANY_FORBIDDEN_PREFIXES = Set.of(
         "math.trigonometry.",
         "math.scalar_math.",
+        "math.fields.",
         "material."
     );
 

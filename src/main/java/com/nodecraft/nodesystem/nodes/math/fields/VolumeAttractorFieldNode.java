@@ -62,7 +62,7 @@ public class VolumeAttractorFieldNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry volume used by the attractor", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SDF_ID, "SDF", "Optional SDF for accurate surface pull", NodeDataType.SDF, this));
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_STRENGTH_ID, "Strength", "Field strength override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Falloff radius override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_EXPONENT_ID, "Exponent", "Falloff exponent override", NodeDataType.DOUBLE, this));

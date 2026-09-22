@@ -11,7 +11,6 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -36,7 +35,7 @@ public class VectorFieldSamplePointsNode extends BaseNode {
         super(UUID.randomUUID(), "math.fields.vector_sample_points");
 
         addInputPort(new BasePort(INPUT_FIELD_ID, "Field", "Vector field input", NodeDataType.VECTOR_FIELD, this));
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Query point list", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Query point list", NodeDataType.POINT_LIST, this));
 
         addOutputPort(new BasePort(OUTPUT_VECTORS_ID, "Vectors", "Vector samples aligned with resolved points", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of resolved samples", NodeDataType.INTEGER, this));
@@ -56,26 +55,22 @@ public class VectorFieldSamplePointsNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object fieldObj = inputValues.get(INPUT_FIELD_ID);
-        Object pointsObj = inputValues.get(INPUT_POINTS_ID);
-        if (!(fieldObj instanceof VectorFieldData field) || !(pointsObj instanceof Collection<?> collection)) {
+        if (!(fieldObj instanceof VectorFieldData field)) {
             writeInvalid();
             return;
         }
 
-        List<Vector3d> vectors = new ArrayList<>();
+        List<Vector3d> points = FieldSampleUtils.resolvePointList(inputValues.get(INPUT_POINTS_ID));
+        if (points.isEmpty()) {
+            writeInvalid();
+            return;
+        }
+
+        List<Vector3d> vectors = new ArrayList<>(points.size());
         Vector3d tmp = new Vector3d();
-        for (Object entry : collection) {
-            Vector3d p = FieldSampleUtils.resolvePoint(entry);
-            if (p == null) {
-                continue;
-            }
+        for (Vector3d p : points) {
             field.sampleVector(p, tmp);
             vectors.add(new Vector3d(tmp));
-        }
-
-        if (vectors.isEmpty()) {
-            writeInvalid();
-            return;
         }
 
         outputValues.put(OUTPUT_VECTORS_ID, List.copyOf(vectors));

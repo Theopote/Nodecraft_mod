@@ -119,6 +119,12 @@ public final class TypeConversionRegistry {
         if (isDataTreeToListConversion(output, input)) {
             return new ConversionSuggestion("math.data_tree.flatten", "Flatten Tree");
         }
+        if (isSdfToScalarFieldConversion(output, input)) {
+            return new ConversionSuggestion("math.fields.scalar_from_sdf", "Scalar Field From SDF");
+        }
+        if (isSdfToVectorFieldConversion(output, input)) {
+            return new ConversionSuggestion("math.fields.vector_from_sdf_gradient", "Vector Field From SDF Gradient");
+        }
         return null;
     }
 
@@ -132,7 +138,9 @@ public final class TypeConversionRegistry {
                 || isGeometryToPlacementConversion(outputType, inputType)
                 || isLegacyPaletteConversion(outputType, inputType)
                 || isListToDataTreeConversion(outputType, inputType)
-                || isDataTreeToListConversion(outputType, inputType);
+                || isDataTreeToListConversion(outputType, inputType)
+                || isSdfToScalarFieldConversion(outputType, inputType)
+                || isSdfToVectorFieldConversion(outputType, inputType);
     }
 
     private static boolean isBlockCoordinateToPointConversion(NodeDataType outputType, NodeDataType inputType) {
@@ -183,6 +191,16 @@ public final class TypeConversionRegistry {
      */
     private static boolean isDataTreeToListConversion(NodeDataType outputType, NodeDataType inputType) {
         return outputType == NodeDataType.DATA_TREE && inputType == NodeDataType.LIST;
+    }
+
+    /** SDF distance values become scalar fields via Scalar Field From SDF. */
+    private static boolean isSdfToScalarFieldConversion(NodeDataType outputType, NodeDataType inputType) {
+        return outputType == NodeDataType.SDF && inputType == NodeDataType.SCALAR_FIELD;
+    }
+
+    /** SDF gradients become vector fields via Vector Field From SDF Gradient. */
+    private static boolean isSdfToVectorFieldConversion(NodeDataType outputType, NodeDataType inputType) {
+        return outputType == NodeDataType.SDF && inputType == NodeDataType.VECTOR_FIELD;
     }
 
     private static boolean isNumericType(NodeDataType type) {

@@ -123,6 +123,25 @@ class TypeConversionRegistryTest {
     }
 
     @Test
+    void sdfToFieldRequiresExplicitConversionNodes() {
+        assertEquals(TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
+            TypeConversionRegistry.classify(NodeDataType.SDF, NodeDataType.SCALAR_FIELD));
+        assertEquals(TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
+            TypeConversionRegistry.classify(NodeDataType.SDF, NodeDataType.VECTOR_FIELD));
+        assertFalse(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.SDF, NodeDataType.SCALAR_FIELD));
+
+        TypeConversionRegistry.ConversionSuggestion scalar =
+            TypeConversionRegistry.getSuggestedConversion(NodeDataType.SDF, NodeDataType.SCALAR_FIELD);
+        assertNotNull(scalar);
+        assertEquals("math.fields.scalar_from_sdf", scalar.nodeId());
+
+        TypeConversionRegistry.ConversionSuggestion vector =
+            TypeConversionRegistry.getSuggestedConversion(NodeDataType.SDF, NodeDataType.VECTOR_FIELD);
+        assertNotNull(vector);
+        assertEquals("math.fields.vector_from_sdf_gradient", vector.nodeId());
+    }
+
+    @Test
     void unrelatedTypesAreUnsupported() {
         assertEquals(TypeConversionRegistry.ConversionPolicy.UNSUPPORTED,
             TypeConversionRegistry.classify(NodeDataType.STRING, NodeDataType.GEOMETRY));

@@ -11,7 +11,6 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -36,7 +35,7 @@ public class ScalarFieldSamplePointsNode extends BaseNode {
         super(UUID.randomUUID(), "math.fields.scalar_sample_points");
 
         addInputPort(new BasePort(INPUT_FIELD_ID, "Field", "Scalar field input", NodeDataType.SCALAR_FIELD, this));
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Query point list", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Query point list", NodeDataType.POINT_LIST, this));
 
         addOutputPort(new BasePort(OUTPUT_VALUES_ID, "Values", "Scalar samples aligned with resolved points", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of resolved samples", NodeDataType.INTEGER, this));
@@ -56,24 +55,20 @@ public class ScalarFieldSamplePointsNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object fieldObj = inputValues.get(INPUT_FIELD_ID);
-        Object pointsObj = inputValues.get(INPUT_POINTS_ID);
-        if (!(fieldObj instanceof ScalarFieldData field) || !(pointsObj instanceof Collection<?> collection)) {
+        if (!(fieldObj instanceof ScalarFieldData field)) {
             writeInvalid();
             return;
         }
 
-        List<Double> values = new ArrayList<>();
-        for (Object entry : collection) {
-            Vector3d p = FieldSampleUtils.resolvePoint(entry);
-            if (p == null) {
-                continue;
-            }
+        List<Vector3d> points = FieldSampleUtils.resolvePointList(inputValues.get(INPUT_POINTS_ID));
+        if (points.isEmpty()) {
+            writeInvalid();
+            return;
+        }
+
+        List<Double> values = new ArrayList<>(points.size());
+        for (Vector3d p : points) {
             values.add(field.sampleScalar(p));
-        }
-
-        if (values.isEmpty()) {
-            writeInvalid();
-            return;
         }
 
         outputValues.put(OUTPUT_VALUES_ID, List.copyOf(values));

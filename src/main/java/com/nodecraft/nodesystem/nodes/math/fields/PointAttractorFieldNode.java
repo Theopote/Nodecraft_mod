@@ -44,7 +44,7 @@ public class PointAttractorFieldNode extends BaseNode {
     public PointAttractorFieldNode() {
         super(UUID.randomUUID(), "math.fields.point_attractor_field");
 
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Attractor center position", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Attractor center position", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_STRENGTH_ID, "Strength", "Field strength override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Falloff radius override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_EXPONENT_ID, "Exponent", "Falloff exponent override", NodeDataType.DOUBLE, this));
