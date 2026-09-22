@@ -1,11 +1,14 @@
 {
-  "version": 1,
+  "version": 2,
   "defaults": {
     "limit": 8,
     "workflowOrder": [
       "output.preview",
-      "transform",
+      "geometry.architectural_primitives",
       "geometry.boolean",
+      "geometry.combine",
+      "transform.placement",
+      "transform",
       "pattern",
       "material",
       "output.execute",
@@ -76,6 +79,272 @@
           ]
         }
       }
+    },
+    "geometry.architectural_primitives.roof_base": {
+      "outputs": {
+        "output_eave_path": {
+          "downstream": [
+            {
+              "nodeId": "geometry.architectural_primitives.railing",
+              "order": 0,
+              "reason": "檐口栏杆 / 封边",
+              "connectPortId": "input_path"
+            },
+            {
+              "nodeId": "geometry.architectural_primitives.beam_along_path",
+              "order": 10,
+              "reason": "檐口梁",
+              "connectPortId": "input_path"
+            },
+            {
+              "nodeId": "output.preview.preview_curves",
+              "order": 20,
+              "reason": "预览屋檐路径",
+              "connectPortId": "input_path"
+            }
+          ]
+        },
+        "output_ridge_path": {
+          "downstream": [
+            {
+              "nodeId": "geometry.architectural_primitives.beam_along_path",
+              "order": 0,
+              "reason": "屋脊梁",
+              "connectPortId": "input_path"
+            },
+            {
+              "nodeId": "geometry.architectural_primitives.railing",
+              "order": 10,
+              "reason": "脊线装饰",
+              "connectPortId": "input_path"
+            },
+            {
+              "nodeId": "output.preview.preview_curves",
+              "order": 20,
+              "connectPortId": "input_path"
+            }
+          ]
+        },
+        "output_geometry": {
+          "downstream": [
+            {
+              "nodeId": "geometry.combine.geometry",
+              "order": 0,
+              "connectPortId": "input_geometry_0"
+            },
+            {
+              "nodeId": "output.preview.preview_geometry",
+              "order": 10,
+              "connectPortId": "input_geometry"
+            },
+            {
+              "nodeId": "geometry.voxel.voxelize_geometry",
+              "order": 20,
+              "connectPortId": "input_geometry"
+            }
+          ]
+        }
+      }
+    },
+    "geometry.architectural_primitives.floor_slab": {
+      "outputs": {
+        "output_top_face": {
+          "downstream": [
+            {
+              "nodeId": "geometry.architectural_primitives.column_grid",
+              "order": 0,
+              "reason": "楼面柱网",
+              "connectPortId": "input_face"
+            },
+            {
+              "nodeId": "geometry.architectural_primitives.beam_grid",
+              "order": 10,
+              "reason": "楼面梁网",
+              "connectPortId": "input_face"
+            },
+            {
+              "nodeId": "geometry.architectural_primitives.roof_base",
+              "order": 20,
+              "connectPortId": "input_face"
+            }
+          ]
+        },
+        "output_bottom_face": {
+          "downstream": [
+            {
+              "nodeId": "geometry.architectural_primitives.beam_grid",
+              "order": 0,
+              "reason": "板底梁网",
+              "connectPortId": "input_face"
+            }
+          ]
+        },
+        "output_geometry": {
+          "downstream": [
+            {
+              "nodeId": "geometry.combine.geometry",
+              "order": 0,
+              "connectPortId": "input_geometry_0"
+            },
+            {
+              "nodeId": "output.preview.preview_geometry",
+              "order": 10,
+              "connectPortId": "input_geometry"
+            }
+          ]
+        }
+      }
+    },
+    "geometry.architectural_primitives.beam_grid": {
+      "outputs": {
+        "output_frames": {
+          "downstream": [
+            {
+              "nodeId": "transform.placement.place_geometry_on_frames",
+              "order": 0,
+              "reason": "在梁位放置配件",
+              "connectPortId": "input_frames"
+            }
+          ]
+        },
+        "output_center_lines": {
+          "downstream": [
+            {
+              "nodeId": "output.preview.preview_curves",
+              "order": 0,
+              "reason": "预览梁中心线",
+              "connectPortId": "input_paths"
+            }
+          ]
+        },
+        "output_geometry": {
+          "downstream": [
+            {
+              "nodeId": "geometry.combine.geometry",
+              "order": 0,
+              "connectPortId": "input_geometry_0"
+            },
+            {
+              "nodeId": "output.preview.preview_geometry",
+              "order": 10,
+              "connectPortId": "input_geometry"
+            }
+          ]
+        }
+      }
+    },
+    "geometry.architectural_primitives.wall_with_openings": {
+      "outputs": {
+        "output_geometry": {
+          "downstream": [
+            {
+              "nodeId": "geometry.boolean.difference",
+              "order": 0,
+              "reason": "墙体作为差集底板",
+              "connectPortId": "input_base"
+            },
+            {
+              "nodeId": "geometry.combine.geometry",
+              "order": 10,
+              "connectPortId": "input_geometry_0"
+            },
+            {
+              "nodeId": "output.preview.preview_geometry",
+              "order": 20,
+              "connectPortId": "input_geometry"
+            }
+          ]
+        },
+        "output_openings": {
+          "downstream": [
+            {
+              "nodeId": "geometry.boolean.difference",
+              "order": 0,
+              "reason": "洞口作为差集刀具",
+              "connectPortId": "input_cutter"
+            }
+          ]
+        },
+        "output_top_edge": {
+          "downstream": [
+            {
+              "nodeId": "geometry.architectural_primitives.railing",
+              "order": 0,
+              "reason": "墙顶栏杆",
+              "connectPortId": "input_path"
+            },
+            {
+              "nodeId": "geometry.architectural_primitives.beam_along_path",
+              "order": 10,
+              "connectPortId": "input_path"
+            }
+          ]
+        }
+      }
+    },
+    "geometry.architectural_primitives.window_array": {
+      "outputs": {
+        "output_frames": {
+          "downstream": [
+            {
+              "nodeId": "transform.placement.place_geometry_on_frames",
+              "order": 0,
+              "reason": "自定义窗框布置",
+              "connectPortId": "input_frames"
+            }
+          ]
+        },
+        "output_geometry": {
+          "downstream": [
+            {
+              "nodeId": "geometry.boolean.difference",
+              "order": 0,
+              "reason": "窗洞切削",
+              "connectPortId": "input_cutter"
+            },
+            {
+              "nodeId": "geometry.combine.geometry",
+              "order": 10,
+              "connectPortId": "input_geometry_0"
+            }
+          ]
+        }
+      }
+    },
+    "geometry.architectural_primitives.door_array": {
+      "outputs": {
+        "output_frames": {
+          "downstream": [
+            {
+              "nodeId": "transform.placement.place_geometry_on_frames",
+              "order": 0,
+              "connectPortId": "input_frames"
+            }
+          ]
+        },
+        "output_geometry": {
+          "downstream": [
+            {
+              "nodeId": "geometry.boolean.difference",
+              "order": 0,
+              "connectPortId": "input_cutter"
+            }
+          ]
+        }
+      }
+    },
+    "geometry.architectural_primitives.column_grid": {
+      "outputs": {
+        "output_frames": {
+          "downstream": [
+            {
+              "nodeId": "transform.placement.place_geometry_on_frames",
+              "order": 0,
+              "connectPortId": "input_frames"
+            }
+          ]
+        }
+      }
     }
   },
   "sourceCategories": {
@@ -104,6 +373,115 @@
           ]
         }
       }
+    },
+    "geometry.architectural_primitives": {
+      "outputTypes": {
+        "path": {
+          "downstream": [
+            {
+              "nodeId": "geometry.architectural_primitives.railing",
+              "order": 0,
+              "connectPortId": "input_path"
+            },
+            {
+              "nodeId": "geometry.architectural_primitives.beam_along_path",
+              "order": 10,
+              "connectPortId": "input_path"
+            },
+            {
+              "nodeId": "geometry.architectural_primitives.wall_along_path",
+              "order": 20,
+              "connectPortId": "input_path"
+            },
+            {
+              "nodeId": "geometry.architectural_primitives.staircase",
+              "order": 30,
+              "connectPortId": "input_path"
+            },
+            {
+              "nodeId": "output.preview.preview_curves",
+              "order": 40,
+              "connectPortId": "input_path"
+            }
+          ]
+        },
+        "path_list": {
+          "downstream": [
+            {
+              "nodeId": "output.preview.preview_curves",
+              "order": 0,
+              "connectPortId": "input_paths"
+            }
+          ]
+        },
+        "box_face": {
+          "downstream": [
+            {
+              "nodeId": "geometry.architectural_primitives.floor_slab",
+              "order": 0,
+              "connectPortId": "input_face"
+            },
+            {
+              "nodeId": "geometry.architectural_primitives.beam_grid",
+              "order": 10,
+              "connectPortId": "input_face"
+            },
+            {
+              "nodeId": "geometry.architectural_primitives.roof_base",
+              "order": 20,
+              "connectPortId": "input_face"
+            },
+            {
+              "nodeId": "geometry.architectural_primitives.window_array",
+              "order": 30,
+              "connectPortId": "input_face"
+            },
+            {
+              "nodeId": "geometry.architectural_primitives.wall_with_openings",
+              "order": 40,
+              "connectPortId": "input_face"
+            },
+            {
+              "nodeId": "geometry.curves.face_boundary_curve",
+              "order": 50,
+              "connectPortId": "input_face"
+            }
+          ]
+        },
+        "frame_list": {
+          "downstream": [
+            {
+              "nodeId": "transform.placement.place_geometry_on_frames",
+              "order": 0,
+              "connectPortId": "input_frames"
+            }
+          ]
+        },
+        "geometry": {
+          "downstream": [
+            {
+              "nodeId": "geometry.combine.geometry",
+              "order": 0,
+              "connectPortId": "input_geometry_0"
+            },
+            {
+              "nodeId": "geometry.boolean.difference",
+              "order": 10,
+              "connectPortId": "input_base"
+            },
+            {
+              "nodeId": "output.preview.preview_geometry",
+              "order": 20,
+              "connectPortId": "input_geometry"
+            },
+            {
+              "nodeId": "geometry.voxel.voxelize_geometry",
+              "order": 30,
+              "connectPortId": "input_geometry"
+            }
+          ]
+        }
+      }
     }
   },
   "outputTypes": {
@@ -126,6 +504,77 @@
       "downstream": [
         "world.read.get_block",
         "world.write.set_block"
+      ]
+    },
+    "path": {
+      "downstream": [
+        {
+          "nodeId": "geometry.architectural_primitives.railing",
+          "order": 0,
+          "connectPortId": "input_path"
+        },
+        {
+          "nodeId": "geometry.architectural_primitives.beam_along_path",
+          "order": 10,
+          "connectPortId": "input_path"
+        },
+        {
+          "nodeId": "geometry.architectural_primitives.wall_along_path",
+          "order": 20,
+          "connectPortId": "input_path"
+        },
+        {
+          "nodeId": "geometry.architectural_primitives.staircase",
+          "order": 30,
+          "connectPortId": "input_path"
+        },
+        {
+          "nodeId": "output.preview.preview_curves",
+          "order": 40,
+          "connectPortId": "input_path"
+        }
+      ]
+    },
+    "path_list": {
+      "downstream": [
+        {
+          "nodeId": "output.preview.preview_curves",
+          "order": 0,
+          "connectPortId": "input_paths"
+        }
+      ]
+    },
+    "box_face": {
+      "downstream": [
+        {
+          "nodeId": "geometry.architectural_primitives.floor_slab",
+          "order": 0,
+          "connectPortId": "input_face"
+        },
+        {
+          "nodeId": "geometry.architectural_primitives.roof_base",
+          "order": 10,
+          "connectPortId": "input_face"
+        },
+        {
+          "nodeId": "geometry.architectural_primitives.window_array",
+          "order": 20,
+          "connectPortId": "input_face"
+        },
+        {
+          "nodeId": "geometry.curves.face_boundary_curve",
+          "order": 30,
+          "connectPortId": "input_face"
+        }
+      ]
+    },
+    "frame_list": {
+      "downstream": [
+        {
+          "nodeId": "transform.placement.place_geometry_on_frames",
+          "order": 0,
+          "connectPortId": "input_frames"
+        }
       ]
     }
   },

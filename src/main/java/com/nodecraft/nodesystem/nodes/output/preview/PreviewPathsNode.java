@@ -41,6 +41,7 @@ import java.util.UUID;
 public class PreviewPathsNode extends BaseNode {
 
     private static final String INPUT_PATH_ID = "input_path";
+    private static final String INPUT_PATHS_ID = "input_paths";
     private static final String INPUT_POINTS_ID = "input_points";
     private static final String OUTPUT_SUCCESS_ID = "output_success";
     private static final String OUTPUT_PREVIEW_IDS_ID = "output_preview_ids";
@@ -81,8 +82,10 @@ public class PreviewPathsNode extends BaseNode {
         super(UUID.randomUUID(), "output.preview.preview_curves");
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
             "Path to preview (line, polyline, or curve)", NodeDataType.PATH, this));
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Paths / Points",
-            "Fallback path list or ordered point list used as preview input", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_PATHS_ID, "Paths",
+            "Multiple paths to preview (beam centerlines, eaves, etc.)", NodeDataType.PATH_LIST, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points",
+            "Ordered point list converted to a single polyline preview", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether the preview was shown", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_PREVIEW_IDS_ID, "Preview IDs", "Active preview identifiers", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_PREVIEW_COUNT_ID, "Preview Count", "Number of rendered path previews", NodeDataType.INTEGER, this));
@@ -248,6 +251,13 @@ public class PreviewPathsNode extends BaseNode {
             previewItems.add(curve);
         }
 
+        Object pathsObj = inputValues.get(INPUT_PATHS_ID);
+        if (pathsObj instanceof List<?> pathList) {
+            for (Object entry : pathList) {
+                appendPathPreviewItem(previewItems, entry);
+            }
+        }
+
         Object pointsObj = inputValues.get(INPUT_POINTS_ID);
         if (pointsObj instanceof List<?> list && !list.isEmpty()) {
             if (isPointList(list)) {
@@ -257,9 +267,8 @@ public class PreviewPathsNode extends BaseNode {
                 }
             } else {
                 for (Object entry : list) {
-                    if (entry instanceof LineData || entry instanceof PolylineData || entry instanceof Curve) {
-                        previewItems.add(entry);
-                    } else if (entry instanceof List<?> nested && isPointList(nested)) {
+                    appendPathPreviewItem(previewItems, entry);
+                    if (entry instanceof List<?> nested && isPointList(nested)) {
                         PolylineData polyline = createPolylineFromPoints(nested);
                         if (polyline != null) {
                             previewItems.add(polyline);
@@ -270,6 +279,18 @@ public class PreviewPathsNode extends BaseNode {
         }
 
         return previewItems;
+    }
+
+    private static void appendPathPreviewItem(List<Object> previewItems, Object entry) {
+        if (entry instanceof PathData path) {
+            switch (path.getKind()) {
+                case LINE -> previewItems.add(path.getLine());
+                case POLYLINE -> previewItems.add(path.getPolyline());
+                case CURVE -> previewItems.add(path.getCurve());
+            }
+        } else if (entry instanceof LineData || entry instanceof PolylineData || entry instanceof Curve) {
+            previewItems.add(entry);
+        }
     }
 
     private boolean isPointList(Collection<?> list) {

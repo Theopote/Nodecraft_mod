@@ -12,7 +12,7 @@ class NodeRecommendationRulesLoaderTest {
     void loadsRulesWithDefaults() {
         NodeRecommendationRules rules = NodeRecommendationRulesLoader.load();
         assertNotNull(rules);
-        assertEquals(1, rules.version);
+        assertEquals(2, rules.version);
         assertNotNull(rules.defaults);
         assertFalse(rules.defaults.workflowOrder.isEmpty());
     }

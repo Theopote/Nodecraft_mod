@@ -507,9 +507,16 @@ Three distinct mechanisms (do not treat as one “Boolean”):
 **Batch 13.2 / PATH_LIST (2026-09-23):**
 
 - Multi-path architectural outputs use **`PATH_LIST`** (`ListElementKind.PATH`), not bare `LIST`.
-- First consumers: **Beam Grid** `output_center_lines`, **Floor Slab With Beams** `output_beam_center_lines`.
+- First consumers: **Beam Grid** `output_center_lines`, **Floor Slab With Beams** `output_beam_center_lines`,
+  **Preview Curves** `input_paths`.
 - Same typed-list rules as `POINT_LIST` / `FRAME_LIST`: same kind connects; different kinds unsupported;
   unconstrained `LIST` still bridges.
+
+**Batch 13.2 / Architectural suggested connections (2026-09-23):**
+
+- `node_recommendations.json` v2 prioritizes architectural PATH / PATH_LIST / BOX_FACE / FRAME_LIST chains
+  (Roof eave → Railing, Floor top → Column Grid, Wall openings → Difference cutter, Window frames → Place On Frames).
+- Contract: `ArchitecturalRecommendationContractTest`.
 
 ---
 
