@@ -34,7 +34,7 @@ public class VectorScalarMultiplyNode extends BaseNode {
         super(UUID.randomUUID(), "reference.vectors.vector_scalar_multiply");
 
         addInputPort(new BasePort(INPUT_VECTOR_ID, "Vector", "Input vector", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_SCALAR_ID, "Scalar", "Scalar value", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_SCALAR_ID, "Scalar", "Scalar value", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_PRODUCT_ID, "Scaled Vector", "Result V * s", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether vector and scalar inputs are valid",

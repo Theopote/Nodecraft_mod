@@ -42,11 +42,11 @@ public class ClosestPointNode extends BaseNode {
         super(UUID.randomUUID(), "reference.points.closest_point");
 
         addInputPort(new BasePort(INPUT_POINT_ID, "Point",
-            "Reference point. Supports Point, Vector, Position, or Block Coordinate.",
-            NodeDataType.ANY, this));
+            "Reference geometric point",
+            NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Points",
-            "Collection of candidate points or block coordinates.",
-            NodeDataType.ANY, this));
+            "Candidate geometric points",
+            NodeDataType.POINT_LIST, this));
 
         addOutputPort(new BasePort(OUTPUT_CLOSEST_POINT_ID, "Closest Block",
             "Closest point snapped to a block coordinate", NodeDataType.BLOCK_POS, this));

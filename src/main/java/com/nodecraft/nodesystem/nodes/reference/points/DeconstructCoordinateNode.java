@@ -35,8 +35,8 @@ public class DeconstructCoordinateNode extends BaseNode {
         super(UUID.randomUUID(), "reference.points.deconstruct_point");
 
         addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate",
-            "Coordinate to deconstruct. Supports BlockPos, PointData, Vector3d, or Vec3d.",
-            NodeDataType.ANY, this));
+            "Block coordinate to deconstruct into X/Y/Z integers",
+            NodeDataType.BLOCK_POS, this));
 
         addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X coordinate", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y coordinate", NodeDataType.INTEGER, this));

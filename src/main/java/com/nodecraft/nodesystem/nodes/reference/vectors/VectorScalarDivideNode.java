@@ -34,7 +34,7 @@ public class VectorScalarDivideNode extends BaseNode {
         super(UUID.randomUUID(), "reference.vectors.vector_scalar_divide");
 
         addInputPort(new BasePort(INPUT_VECTOR_ID, "Vector", "Input vector (dividend)", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_SCALAR_ID, "Scalar", "Scalar value (divisor)", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_SCALAR_ID, "Scalar", "Scalar value (divisor)", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_QUOTIENT_ID, "Scaled Vector", "Result V / s", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether division input is valid",

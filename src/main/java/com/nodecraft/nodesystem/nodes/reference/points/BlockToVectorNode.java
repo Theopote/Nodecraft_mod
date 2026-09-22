@@ -34,8 +34,8 @@ public class BlockToVectorNode extends BaseNode {
         super(UUID.randomUUID(), "reference.points.block_to_vector");
 
         addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate",
-            "Coordinate to convert. Supports BlockPos, PointData, Vector3d, or Vec3d.",
-            NodeDataType.ANY, this));
+            "Block coordinate to convert into a Vector3d position",
+            NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector",
             "Converted Vector3d position", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",

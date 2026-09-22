@@ -11,6 +11,12 @@ import com.nodecraft.nodesystem.nodes.math.scalar_math.AbsoluteNode;
 import com.nodecraft.nodesystem.nodes.math.trigonometry.SineNode;
 import com.nodecraft.nodesystem.nodes.material.basic_assignment.BlockPaletteNode;
 import com.nodecraft.nodesystem.nodes.material.basic_assignment.CreateBlockPaletteNode;
+import com.nodecraft.nodesystem.nodes.reference.planes.ConstructPlaneNode;
+import com.nodecraft.nodesystem.nodes.reference.points.BlockToVectorNode;
+import com.nodecraft.nodesystem.nodes.reference.points.ClosestPointNode;
+import com.nodecraft.nodesystem.nodes.reference.points.DistanceNode;
+import com.nodecraft.nodesystem.nodes.reference.points.MidpointNode;
+import com.nodecraft.nodesystem.nodes.reference.vectors.VectorScalarMultiplyNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
 import org.junit.jupiter.api.BeforeAll;
@@ -51,7 +57,6 @@ class AnyAllowlistContractTest {
         "output.execute.clear_preview",
         "output.execute.bake_status",
         "world.",
-        "reference.",
         "input.values."
     );
 
@@ -70,13 +75,14 @@ class AnyAllowlistContractTest {
         "math.data_tree.item"
     );
 
-    /** Families frozen in Batch 10 / 10.1 / 11 — must never regress to ANY. */
+    /** Families frozen in Batch 10 / 10.1 / 11 / reference ANY cleanup — must never regress to ANY. */
     private static final Set<String> ANY_FORBIDDEN_PREFIXES = Set.of(
         "math.trigonometry.",
         "math.scalar_math.",
         "math.fields.",
         "geometry.architectural_primitives.",
-        "material."
+        "material.",
+        "reference."
     );
 
     private static final Set<String> ANY_FORBIDDEN_TYPE_IDS = Set.of(
@@ -141,6 +147,16 @@ class AnyAllowlistContractTest {
         }
         assertTrue(violations.isEmpty(),
             "ANY ports require an explicit allowlist entry (Batch 10.1 freeze): " + violations);
+    }
+
+    @Test
+    void referencePointPortsAreTypedNotAny() {
+        assertEquals(NodeDataType.POINT, findPort(new DistanceNode(), "input_point_a").getDataType());
+        assertEquals(NodeDataType.POINT, findPort(new MidpointNode(), "input_point_a").getDataType());
+        assertEquals(NodeDataType.POINT, findPort(new ConstructPlaneNode(), "input_origin").getDataType());
+        assertEquals(NodeDataType.BLOCK_POS, findPort(new BlockToVectorNode(), "input_coordinate").getDataType());
+        assertEquals(NodeDataType.DOUBLE, findPort(new VectorScalarMultiplyNode(), "input_scalar").getDataType());
+        assertEquals(NodeDataType.POINT_LIST, findPort(new ClosestPointNode(), "input_coordinates").getDataType());
     }
 
     @Test

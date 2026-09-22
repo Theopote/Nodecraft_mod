@@ -34,8 +34,8 @@ public class DistancePointToPlaneNode extends BaseNode {
         super(UUID.randomUUID(), "reference.planes.distance_point_to_plane");
 
         addInputPort(new BasePort(INPUT_POINT_ID, "Point",
-            "Point to measure. Supports Point, Vector, Position, or Block Coordinate.",
-            NodeDataType.ANY, this));
+            "Geometric point to measure",
+            NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane",
             "Reference plane for the distance measurement",
             NodeDataType.PLANE, this));

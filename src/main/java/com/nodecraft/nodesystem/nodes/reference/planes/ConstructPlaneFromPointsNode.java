@@ -34,9 +34,9 @@ public class ConstructPlaneFromPointsNode extends BaseNode {
     public ConstructPlaneFromPointsNode() {
         super(UUID.randomUUID(), "reference.planes.plane_from_points");
 
-        addInputPort(new BasePort(INPUT_POINT_A_ID, "Point A", "First point on the plane. Supports Point, Vector, Position, or Block Coordinate.", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_POINT_B_ID, "Point B", "Second point on the plane. Supports Point, Vector, Position, or Block Coordinate.", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_POINT_C_ID, "Point C", "Third point on the plane. Supports Point, Vector, Position, or Block Coordinate.", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_POINT_A_ID, "Point A", "First geometric point on the plane", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_POINT_B_ID, "Point B", "Second geometric point on the plane", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_POINT_C_ID, "Point C", "Third geometric point on the plane", NodeDataType.POINT, this));
 
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Constructed plane", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_NORMAL_ID, "Normal", "Plane normal vector", NodeDataType.VECTOR, this));

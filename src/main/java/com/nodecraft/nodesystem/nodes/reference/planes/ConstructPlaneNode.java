@@ -33,7 +33,7 @@ public class ConstructPlaneNode extends BaseNode {
     public ConstructPlaneNode() {
         super(UUID.randomUUID(), "reference.planes.construct_plane");
 
-        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "A point on the plane. Supports Point, Vector, or Block Coordinate.", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "A geometric point on the plane", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_NORMAL_ID, "Normal", "Plane normal vector", NodeDataType.VECTOR, this));
 
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Constructed plane", NodeDataType.PLANE, this));

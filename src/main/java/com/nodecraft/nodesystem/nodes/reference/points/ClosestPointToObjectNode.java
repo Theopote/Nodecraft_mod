@@ -64,8 +64,8 @@ public class ClosestPointToObjectNode extends BaseNode {
         super(UUID.randomUUID(), "reference.points.closest_point_to_object");
 
         addInputPort(new BasePort(INPUT_POINT_ID, "Point",
-            "Query point. Supports Point, Vector, Position, or Block Coordinate.",
-            NodeDataType.ANY, this));
+            "Query geometric point",
+            NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
             "Path to search (line, polyline, or curve)",
             NodeDataType.PATH, this));

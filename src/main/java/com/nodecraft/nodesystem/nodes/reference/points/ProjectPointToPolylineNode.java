@@ -46,8 +46,8 @@ public class ProjectPointToPolylineNode extends BaseNode {
         super(UUID.randomUUID(), "reference.points.project_to_polyline");
 
         addInputPort(new BasePort(INPUT_POINT_ID, "Point",
-            "Query point. Supports Point, Vector, Position, or Block Coordinate.",
-            NodeDataType.ANY, this));
+            "Query geometric point",
+            NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
             "Path to project onto (line, polyline, or curve)",
             NodeDataType.PATH, this));

@@ -39,8 +39,8 @@ public class PointAlongVectorNode extends BaseNode {
         super(UUID.randomUUID(), "reference.points.point_along_vector");
 
         addInputPort(new BasePort(INPUT_POINT_ID, "Point",
-            "Start point. Supports Point, Vector, Position, or Block Coordinate.",
-            NodeDataType.ANY, this));
+            "Start geometric point",
+            NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_VECTOR_ID, "Vector",
             "Direction vector used to move the point",
             NodeDataType.VECTOR, this));

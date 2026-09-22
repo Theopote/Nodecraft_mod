@@ -33,11 +33,11 @@ public class MidpointNode extends BaseNode {
         super(UUID.randomUUID(), "reference.points.mid_point");
 
         addInputPort(new BasePort(INPUT_A_ID, "Point A",
-            "First point. Supports Point, Vector, Position, or Block Coordinate.",
-            NodeDataType.ANY, this));
+            "First geometric point",
+            NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_B_ID, "Point B",
-            "Second point. Supports Point, Vector, Position, or Block Coordinate.",
-            NodeDataType.ANY, this));
+            "Second geometric point",
+            NodeDataType.POINT, this));
 
         addOutputPort(new BasePort(OUTPUT_POINT_ID, "Mid Point",
             "Midpoint as point data", NodeDataType.POINT, this));
