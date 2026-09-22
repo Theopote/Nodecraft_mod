@@ -10,8 +10,8 @@ import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
-import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.FloorSlabWithBeamsNode;
-import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.RoofGeneratorNode;
+import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.FloorSlabNode;
+import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.RoofBaseNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WallAlongPathNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WindowArrayNode;
 import com.nodecraft.nodesystem.nodes.geometry.curves.BoxFaceBoundaryPathNode;
@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Batch 13.1 product acceptance: Floor → Wall Along Path → Window Array → Roof → Voxelize → Preview.
+ * Batch 13.1 product acceptance: Floor Slab → Wall Along Path → Window Array → Roof Base → Voxelize → Preview.
  * <p>
  * Asserts the typed host/placement chain can assemble a small building without ANY,
  * without hidden BlockPos snap, and without world-write side effects in the PURE stage.
@@ -66,19 +66,14 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         BoxFaceData frontFace = requireFace(box, "Front");
         BoxFaceData roofFace = requireFace(box, "Top");
 
-        // Floor ← BOX_FACE
-        FloorSlabWithBeamsNode floor = new FloorSlabWithBeamsNode();
+        // Floor Slab ← BOX_FACE
+        FloorSlabNode floor = new FloorSlabNode();
         floor.setInput("input_face", floorFace);
-        floor.setInput("input_slab_thickness", 0.3d);
-        floor.setInput("input_beam_columns", 1);
-        floor.setInput("input_beam_rows", 1);
-        floor.setInput("input_beam_width", 0.2d);
-        floor.setInput("input_beam_depth", 0.2d);
-        floor.setInput("input_beam_drop", 0.1d);
-        floor.setInput("input_margin", 0.5d);
+        floor.setInput("input_thickness", 0.3d);
         floor.processNode(null);
         assertEquals(Boolean.TRUE, floor.getOutput("output_valid"));
         GeometryData floorGeom = assertInstanceOf(GeometryData.class, floor.getOutput("output_geometry"));
+        assertNotNull(floor.getOutput("output_top_face"));
 
         // Perimeter PATH ← face boundary polyline (implicit PATH connect)
         BoxFaceBoundaryPathNode boundary = new BoxFaceBoundaryPathNode();
@@ -114,8 +109,8 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         assertNotNull(windows.getOutput("output_frames"));
         GeometryData windowGeom = assertInstanceOf(GeometryData.class, windows.getOutput("output_geometry"));
 
-        // Roof ← top BOX_FACE
-        RoofGeneratorNode roof = new RoofGeneratorNode();
+        // Roof Base ← top BOX_FACE
+        RoofBaseNode roof = new RoofBaseNode();
         roof.setInput("input_face", roofFace);
         roof.setInput("input_roof_type", "gable");
         roof.setInput("input_height", 2.0d);
@@ -124,6 +119,8 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         roof.processNode(null);
         assertEquals(Boolean.TRUE, roof.getOutput("output_valid"));
         GeometryData roofGeom = assertInstanceOf(GeometryData.class, roof.getOutput("output_geometry"));
+        assertNotNull(roof.getOutput("output_eave_path"));
+        assertNotNull(roof.getOutput("output_ridge_path"));
 
         // Combine → Voxelize (PURE, no world write)
         BaseNode combine = (BaseNode) registry.createNodeInstance("geometry.combine.geometry");
@@ -155,13 +152,14 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
 
     @Test
     void miniBuildingGraphPortsStayTypedWithoutAny() {
-        assertPortType("geometry.architectural_primitives.floor_slab_with_beams", "input_face", true, NodeDataType.BOX_FACE);
+        assertPortType("geometry.architectural_primitives.floor_slab", "input_face", true, NodeDataType.BOX_FACE);
         assertPortType("geometry.curves.face_boundary_curve", "input_face", true, NodeDataType.BOX_FACE);
         assertPortType("geometry.curves.face_boundary_curve", "output_polyline", false, NodeDataType.POLYLINE);
         assertPortType("geometry.architectural_primitives.wall_along_path", "input_path", true, NodeDataType.PATH);
         assertPortType("geometry.architectural_primitives.window_array", "input_face", true, NodeDataType.BOX_FACE);
         assertPortType("geometry.architectural_primitives.window_array", "output_frames", false, NodeDataType.FRAME_LIST);
-        assertPortType("geometry.architectural_primitives.roof_generator", "input_face", true, NodeDataType.BOX_FACE);
+        assertPortType("geometry.architectural_primitives.roof_base", "input_face", true, NodeDataType.BOX_FACE);
+        assertPortType("geometry.architectural_primitives.roof_base", "output_eave_path", false, NodeDataType.PATH);
         assertPortType("geometry.voxel.voxelize_geometry", "output_blocks", false, NodeDataType.BLOCK_LIST);
         assertPortType("output.preview.preview_geometry", "input_geometry", true, NodeDataType.GEOMETRY);
 
@@ -175,10 +173,11 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         );
 
         for (String nodeId : List.of(
-            "geometry.architectural_primitives.floor_slab_with_beams",
+            "geometry.architectural_primitives.floor_slab",
+            "geometry.architectural_primitives.beam_grid",
             "geometry.architectural_primitives.wall_along_path",
             "geometry.architectural_primitives.window_array",
-            "geometry.architectural_primitives.roof_generator",
+            "geometry.architectural_primitives.roof_base",
             "geometry.curves.face_boundary_curve",
             "geometry.combine.geometry",
             "geometry.voxel.voxelize_geometry"

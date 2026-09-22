@@ -487,12 +487,20 @@ Three distinct mechanisms (do not treat as one “Boolean”):
 
 **Batch 13 — Architectural Components language (2026-09-22):**
 
-- Core five: **Wall With Openings**, **Floor Slab With Beams**, **Roof Generator**, **Staircase**,
+- Core five: **Wall With Openings**, **Floor Slab**, **Roof Base**, **Staircase**,
   **Window Array** — footprint face ports stay `BOX_FACE`; continuous sizes stay `DOUBLE`.
 - **Railing** / **Staircase** join PATH language: `input_line` → `input_path` (graph format **V10**).
 - Spiral stair start angle remains **degrees** as `DOUBLE`.
 - No `ANY` / no leftover `LINE` ports under `geometry.architectural_primitives.*`.
 - Contract: `ArchitecturalFamilyContractTest`.
+
+**Batch 13.1 P2 — Floor / Roof split (2026-09-23):**
+
+- **Floor Slab** + **Beam Grid** are the composable hosts; **Floor Slab With Beams** stays a convenience composite
+  (slab / beams / beam frames / center lines / top / bottom).
+- **Roof Base** owns core types (`flat` / `shed` / `gable`) with **Eave Path** / **Ridge Path**.
+- **Roof Generator** is the advanced specialty convenience node — do not expand it into more roof types;
+  prefer composing Roof Base + future modifiers instead.
 
 ---
 

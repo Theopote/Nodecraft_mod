@@ -6,27 +6,26 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
-import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
-import com.nodecraft.nodesystem.datatypes.SquarePyramidGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 /**
- * Generates configurable roof volumes from a box face footprint.
+ * Advanced roof convenience node (specialty shapes).
+ * Prefer {@link RoofBaseNode} for flat / shed / gable.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.architectural_primitives.roof_generator",
     displayName = "Roof Generator",
-    description = "Generates configurable roof volumes from a box face footprint",
+    description = "Advanced roof convenience (specialty shapes); prefer Roof Base for flat/shed/gable",
     category = "geometry.architectural_primitives",
     order = 5
 )
@@ -50,13 +49,16 @@ public class RoofGeneratorNode extends BaseNode {
     private static final String INPUT_CROSS_GABLE_OFFSET_ID = "input_cross_gable_offset";
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
+    private static final String OUTPUT_EAVE_PATH_ID = "output_eave_path";
+    private static final String OUTPUT_RIDGE_PATH_ID = "output_ridge_path";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public RoofGeneratorNode() {
         super(UUID.randomUUID(), "geometry.architectural_primitives.roof_generator");
 
         addInputPort(new BasePort(INPUT_FACE_ID, "Face", "Box face used as the roof footprint", NodeDataType.BOX_FACE, this));
-        addInputPort(new BasePort(INPUT_ROOF_TYPE_ID, "Roof Type", "Roof type: flat, shed, gable, asymmetric_gable, hip, cross_gable, or m", NodeDataType.STRING, this));
+        addInputPort(new BasePort(INPUT_ROOF_TYPE_ID, "Roof Type",
+            "Advanced roof type: flat, shed, gable, asymmetric_gable, hip, cross_gable, or m", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Roof peak height above the footprint", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_THICKNESS_ID, "Thickness", "Thickness used for flat roof slabs", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_OVERHANG_ID, "Overhang", "Extra overhang beyond the footprint edges", NodeDataType.DOUBLE, this));
@@ -73,28 +75,31 @@ public class RoofGeneratorNode extends BaseNode {
         addInputPort(new BasePort(INPUT_CROSS_GABLE_OFFSET_ID, "Cross Gable Offset", "Normalized offset for the crossing gable wing along the primary ridge axis (-0.5 to 0.5)", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Generated roof geometry", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_EAVE_PATH_ID, "Eave Path", "Primary eave edge path", NodeDataType.PATH, this));
+        addOutputPort(new BasePort(OUTPUT_RIDGE_PATH_ID, "Ridge Path", "Primary ridge path when applicable", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid roof could be generated", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Generates configurable roof volumes from a box face footprint";
+        return "Advanced roof convenience (specialty shapes); prefer Roof Base for flat/shed/gable";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object faceObj = inputValues.get(INPUT_FACE_ID);
         GeometryData geometry = null;
+        PathData eavePath = null;
+        PathData ridgePath = null;
         boolean valid = false;
 
-        if (faceObj instanceof BoxFaceData face) {
+        if (inputValues.get(INPUT_FACE_ID) instanceof BoxFaceData face) {
             ArchitecturalPrimitiveSupport.FaceFrame frame = ArchitecturalPrimitiveSupport.resolveFaceFrame(face);
             if (frame != null) {
-                String roofType = resolveRoofType(inputValues.get(INPUT_ROOF_TYPE_ID));
+                String roofType = RoofGeometrySupport.resolveRoofType(inputValues.get(INPUT_ROOF_TYPE_ID));
                 double height = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_HEIGHT_ID), 2.0d);
                 double thickness = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_THICKNESS_ID), 0.25d);
                 double overhang = ArchitecturalPrimitiveSupport.resolveNonNegativeDouble(inputValues.get(INPUT_OVERHANG_ID), 0.0d);
-                String ridgeDirection = resolveRidgeDirection(inputValues.get(INPUT_RIDGE_DIRECTION_ID));
+                String ridgeDirection = RoofGeometrySupport.resolveRidgeDirection(inputValues.get(INPUT_RIDGE_DIRECTION_ID));
                 double ridgeRatio = resolveRidgeRatio(inputValues.get(INPUT_RIDGE_RATIO_ID));
                 double inset = ArchitecturalPrimitiveSupport.resolveNonNegativeDouble(inputValues.get(INPUT_INSET_ID), 0.0d);
                 double eaveDrop = ArchitecturalPrimitiveSupport.resolveNonNegativeDouble(inputValues.get(INPUT_EAVE_DROP_ID), 0.0d);
@@ -106,42 +111,63 @@ public class RoofGeneratorNode extends BaseNode {
                 double secondaryHeightRatio = resolveHeightRatio(inputValues.get(INPUT_SECONDARY_HEIGHT_RATIO_ID), 0.85d);
                 double crossGableOffset = resolveCrossGableOffset(inputValues.get(INPUT_CROSS_GABLE_OFFSET_ID));
 
-                geometry = buildRoof(
-                    frame,
-                    roofType,
-                    height,
-                    thickness,
-                    overhang,
-                    ridgeDirection,
-                    ridgeRatio,
-                    inset,
-                    eaveDrop,
-                    mPeakRatio,
-                    valleyDrop,
-                    asymmetricLeftHeightRatio,
-                    asymmetricRightHeightRatio,
-                    crossGableRatio,
-                    secondaryHeightRatio,
-                    crossGableOffset
-                );
+                double roofWidth = frame.width() + 2.0d * overhang;
+                double roofDepth = frame.height() + 2.0d * overhang;
+                Vector3d eaveCenter = new Vector3d(frame.center()).fma(-eaveDrop, frame.zAxis());
+                eavePath = RoofGeometrySupport.eaveLoop(frame, eaveCenter, roofWidth, roofDepth);
+
+                if ("flat".equals(roofType) || "shed".equals(roofType) || "gable".equals(roofType)) {
+                    RoofGeometrySupport.RoofResult core = RoofGeometrySupport.buildCoreRoof(
+                        new RoofGeometrySupport.RoofLayout(
+                            frame, roofType, height, thickness, overhang, ridgeDirection, eaveDrop));
+                    geometry = core.geometry();
+                    eavePath = core.eavePath();
+                    ridgePath = core.ridgePath();
+                } else {
+                    geometry = buildSpecialtyRoof(
+                        frame,
+                        eaveCenter,
+                        roofWidth,
+                        roofDepth,
+                        roofType,
+                        height,
+                        ridgeDirection,
+                        ridgeRatio,
+                        inset,
+                        mPeakRatio,
+                        valleyDrop,
+                        asymmetricLeftHeightRatio,
+                        asymmetricRightHeightRatio,
+                        crossGableRatio,
+                        secondaryHeightRatio,
+                        crossGableOffset
+                    );
+                    if ("asymmetric_gable".equals(roofType) || "hip".equals(roofType)
+                        || "cross_gable".equals(roofType) || "m".equals(roofType)) {
+                        ridgePath = RoofGeometrySupport.gableRidgePath(
+                            frame, eaveCenter, roofWidth, roofDepth, height, ridgeDirection);
+                    }
+                }
                 valid = geometry != null;
             }
         }
 
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
+        outputValues.put(OUTPUT_EAVE_PATH_ID, eavePath);
+        outputValues.put(OUTPUT_RIDGE_PATH_ID, ridgePath);
         outputValues.put(OUTPUT_VALID_ID, valid);
     }
 
-    private GeometryData buildRoof(
+    private GeometryData buildSpecialtyRoof(
         ArchitecturalPrimitiveSupport.FaceFrame frame,
+        Vector3d eaveCenter,
+        double roofWidth,
+        double roofDepth,
         String roofType,
         double height,
-        double thickness,
-        double overhang,
         String ridgeDirection,
         double ridgeRatio,
         double inset,
-        double eaveDrop,
         double mPeakRatio,
         double valleyDrop,
         double asymmetricLeftHeightRatio,
@@ -150,28 +176,7 @@ public class RoofGeneratorNode extends BaseNode {
         double secondaryHeightRatio,
         double crossGableOffset
     ) {
-        double roofWidth = frame.width() + 2.0d * overhang;
-        double roofDepth = frame.height() + 2.0d * overhang;
-        Vector3d footprintCenter = new Vector3d(frame.center());
-        Vector3d eaveCenter = new Vector3d(footprintCenter).fma(-eaveDrop, frame.zAxis());
-
         return switch (roofType) {
-            case "flat" -> new BoxGeometryData(
-                new Vector3d(eaveCenter).fma(thickness / 2.0d, frame.zAxis()),
-                new Vector3d(roofWidth / 2.0d, thickness / 2.0d, roofDepth / 2.0d),
-                ArchitecturalPrimitiveSupport.createOrientation(frame.xAxis(), frame.yAxis(), frame.zAxis()),
-                true
-            );
-            case "shed" -> new PrismGeometryData(
-                List.of(
-                    new Vector3d(eaveCenter).fma(-roofDepth / 2.0d, frame.yAxis()),
-                    new Vector3d(eaveCenter).fma(roofDepth / 2.0d, frame.yAxis()),
-                    new Vector3d(eaveCenter).fma(roofDepth / 2.0d, frame.yAxis()).fma(height, frame.zAxis()),
-                    new Vector3d(eaveCenter).fma(-roofDepth / 2.0d, frame.yAxis()).fma(height, frame.zAxis())
-                ),
-                new Vector3d(frame.xAxis()).mul(roofWidth)
-            );
-            case "gable" -> buildGableRoof(frame, eaveCenter, roofWidth, roofDepth, height, ridgeDirection);
             case "asymmetric_gable" -> buildAsymmetricGableRoof(
                 frame,
                 eaveCenter,
@@ -198,35 +203,6 @@ public class RoofGeneratorNode extends BaseNode {
             case "m" -> buildMRoof(frame, eaveCenter, roofWidth, roofDepth, height, ridgeDirection, mPeakRatio, valleyDrop);
             default -> null;
         };
-    }
-
-    private GeometryData buildGableRoof(
-        ArchitecturalPrimitiveSupport.FaceFrame frame,
-        Vector3d eaveCenter,
-        double roofWidth,
-        double roofDepth,
-        double height,
-        String ridgeDirection
-    ) {
-        if ("y".equals(ridgeDirection)) {
-            return new PrismGeometryData(
-                List.of(
-                    new Vector3d(eaveCenter).fma(-roofWidth / 2.0d, frame.xAxis()),
-                    new Vector3d(eaveCenter).fma(height, frame.zAxis()),
-                    new Vector3d(eaveCenter).fma(roofWidth / 2.0d, frame.xAxis())
-                ),
-                new Vector3d(frame.yAxis()).mul(roofDepth)
-            );
-        }
-
-        return new PrismGeometryData(
-            List.of(
-                new Vector3d(eaveCenter).fma(-roofDepth / 2.0d, frame.yAxis()),
-                new Vector3d(eaveCenter).fma(height, frame.zAxis()),
-                new Vector3d(eaveCenter).fma(roofDepth / 2.0d, frame.yAxis())
-            ),
-            new Vector3d(frame.xAxis()).mul(roofWidth)
-        );
     }
 
     private GeometryData buildHipRoof(
@@ -316,7 +292,8 @@ public class RoofGeneratorNode extends BaseNode {
         double secondaryHeightRatio,
         double crossGableOffset
     ) {
-        GeometryData primary = buildGableRoof(frame, eaveCenter, roofWidth, roofDepth, height, ridgeDirection);
+        GeometryData primary = RoofGeometrySupport.buildGableRoof(
+            frame, eaveCenter, roofWidth, roofDepth, height, ridgeDirection);
         String secondaryDirection = "y".equals(ridgeDirection) ? "x" : "y";
         Vector3d secondaryCenter = new Vector3d(eaveCenter);
         if ("y".equals(ridgeDirection)) {
@@ -324,7 +301,7 @@ public class RoofGeneratorNode extends BaseNode {
         } else {
             secondaryCenter.fma(crossGableOffset * roofWidth * 0.5d, frame.xAxis());
         }
-        GeometryData secondary = buildGableRoof(
+        GeometryData secondary = RoofGeometrySupport.buildGableRoof(
             frame,
             secondaryCenter,
             roofWidth * crossGableRatio,
@@ -367,23 +344,6 @@ public class RoofGeneratorNode extends BaseNode {
             new Vector3d(eaveCenter).fma(roofDepth / 2.0d, frame.yAxis())
         );
         return new PrismGeometryData(profile, new Vector3d(frame.xAxis()).mul(roofWidth));
-    }
-
-    private String resolveRoofType(Object value) {
-        if (value instanceof String stringValue && !stringValue.isBlank()) {
-            return stringValue.trim().toLowerCase(Locale.ROOT).replace('-', '_').replace(' ', '_');
-        }
-        return "gable";
-    }
-
-    private String resolveRidgeDirection(Object value) {
-        if (value instanceof String stringValue && !stringValue.isBlank()) {
-            String normalized = stringValue.trim().toLowerCase(Locale.ROOT);
-            if (normalized.startsWith("y")) {
-                return "y";
-            }
-        }
-        return "x";
     }
 
     private double resolveRidgeRatio(Object value) {

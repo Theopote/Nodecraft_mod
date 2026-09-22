@@ -834,7 +834,7 @@
         {
           "id": "architectural.residential.mini_building_v1",
           "displayName": "Mini Building (Component Chain)",
-          "description": "Floor → Wall Along Path → Window Array → Roof → Voxelize → Preview using Architectural Component Protocol v1.",
+          "description": "Floor Slab → Wall Along Path → Window Array → Roof Base → Voxelize → Preview using Architectural Component Protocol v1.",
           "kind": "composite",
           "nodes": [
             {
@@ -883,7 +883,7 @@
             },
             {
               "ref": "floor",
-              "typeId": "geometry.architectural_primitives.floor_slab_with_beams",
+              "typeId": "geometry.architectural_primitives.floor_slab",
               "x": 520,
               "y": 180
             },
@@ -904,7 +904,7 @@
             },
             {
               "ref": "roof",
-              "typeId": "geometry.architectural_primitives.roof_generator",
+              "typeId": "geometry.architectural_primitives.roof_base",
               "x": 760,
               "y": 460
             },

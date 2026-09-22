@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **532**
+- Total nodes: **535**
 - Total categories: **59**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -12,7 +12,7 @@
 | `flow.control` | 3 |
 | `flow.loop` | 3 |
 | `geometry.analysis` | 2 |
-| `geometry.architectural_primitives` | 17 |
+| `geometry.architectural_primitives` | 20 |
 | `geometry.boolean` | 2 |
 | `geometry.combine` | 1 |
 | `geometry.curves` | 24 |
@@ -92,7 +92,7 @@
 | Bounding Box | `geometry.boolean.bounding_box` | Calculates an axis-aligned bounding box from a block list or region | `BoundingBoxNode` |
 | Geometry Bounds | `geometry.boolean.geometry_bounds` | Calculates an axis-aligned bounding box from any supported geometry | `GeometryBoundsNode` |
 
-## geometry.architectural_primitives (17)
+## geometry.architectural_primitives (20)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -100,15 +100,18 @@
 | Door Array | `geometry.architectural_primitives.door_array` | Generates a rectangular array of inset door openings with placement frames | `DoorArrayNode` |
 | Column Grid | `geometry.architectural_primitives.column_grid` | Generates a rectangular grid of columns with base/top points and placement frames | `ColumnGridNode` |
 | Railing | `geometry.architectural_primitives.railing` | Generates a railing or balustrade that follows a path (line, polyline, or curve) | `RailingNode` |
+| Roof Base | `geometry.architectural_primitives.roof_base` | Generates a core roof (flat, shed, or gable) from a box face footprint | `RoofBaseNode` |
 | Staircase | `geometry.architectural_primitives.staircase` | Generates architectural staircases from a path | `StaircaseNode` |
-| Roof Generator | `geometry.architectural_primitives.roof_generator` | Generates configurable roof volumes from a box face footprint | `RoofGeneratorNode` |
+| Roof Generator | `geometry.architectural_primitives.roof_generator` | Advanced roof convenience (specialty shapes); prefer Roof Base for flat/shed/gable | `RoofGeneratorNode` |
 | Facade Panel Array | `geometry.architectural_primitives.facade_panel_array` | Generates a rectangular array of facade panels on a box face | `FacadePanelArrayNode` |
 | Arch Opening | `geometry.architectural_primitives.arch_opening` | Generates a rectangular, round, or pointed arch opening volume | `ArchOpeningNode` |
 | Wall With Openings | `geometry.architectural_primitives.wall_with_openings` | Generates a wall slab and separate opening volumes (use Difference to cut holes) | `WallWithOpeningsNode` |
 | Pilaster / Cornice | `geometry.architectural_primitives.pilaster_cornice` | Generates pilasters and a cornice along a box face | `PilasterOrCorniceNode` |
 | Array Along Curve | `geometry.architectural_primitives.array_along_curve` | Places repeated columns, posts, or panels along a curve or polyline path | `ArrayAlongCurveNode` |
 | Deconstruct Architectural Opening | `geometry.architectural_primitives.deconstruct_opening` | Flattens architectural opening geometry into component lists and bounds | `DeconstructArchitecturalOpeningNode` |
-| Floor Slab With Beams | `geometry.architectural_primitives.floor_slab_with_beams` | Generates a floor slab and a configurable support beam grid | `FloorSlabWithBeamsNode` |
+| Floor Slab | `geometry.architectural_primitives.floor_slab` | Generates a floor slab from a box face footprint | `FloorSlabNode` |
+| Floor Slab With Beams | `geometry.architectural_primitives.floor_slab_with_beams` | Convenience: floor slab plus support beam grid (prefer Floor Slab + Beam Grid) | `FloorSlabWithBeamsNode` |
+| Beam Grid | `geometry.architectural_primitives.beam_grid` | Generates a support beam grid on a box face footprint | `BeamGridNode` |
 | Molding Profile | `geometry.architectural_primitives.molding_profile` | Generates decorative molding cross-section profiles | `MoldingProfileNode` |
 | Wall Along Path | `geometry.architectural_primitives.wall_along_path` | Generates continuous wall slabs along a path (line, polyline, or curve) | `WallAlongPathNode` |
 | Beam Along Path | `geometry.architectural_primitives.beam_along_path` | Generates structural beams along a path (line, polyline, or curve) | `BeamAlongPathNode` |
