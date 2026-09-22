@@ -64,9 +64,12 @@ public final class BlockPaletteData {
     }
 
     /**
-     * Coerce common palette payloads: {@link BlockPaletteData}, {@code List<String>}, or a single block id string.
+     * Legacy coercion: {@code List}/{@code String} → {@link BlockPaletteData}.
+     * <p>
+     * Do <em>not</em> call from typed palette consumers. Use
+     * {@link LegacyBlockPaletteAdapter} / Create Block Palette instead.
      */
-    public static BlockPaletteData fromObject(@Nullable Object value) {
+    public static BlockPaletteData fromLegacyObject(@Nullable Object value) {
         if (value instanceof BlockPaletteData palette) {
             return palette;
         }
@@ -85,6 +88,13 @@ public final class BlockPaletteData {
             return new BlockPaletteData(entries);
         }
         return empty();
+    }
+
+    /**
+     * Typed-port helper: only {@link BlockPaletteData} is accepted; otherwise empty.
+     */
+    public static BlockPaletteData requireTyped(@Nullable Object value) {
+        return value instanceof BlockPaletteData palette ? palette : empty();
     }
 
     public List<BlockPaletteEntry> entries() {

@@ -165,7 +165,7 @@ public class NoiseMaterialNode extends BaseNode {
 
     private List<String> resolvePalette() {
         String fallback = getInputString(INPUT_FALLBACK_BLOCK_ID, "minecraft:stone");
-        return List.copyOf(BlockPaletteData.fromObject(inputValues.get(INPUT_PALETTE_ID))
+        return List.copyOf(BlockPaletteData.requireTyped(inputValues.get(INPUT_PALETTE_ID))
             .withFallback(fallback)
             .blockIds());
     }

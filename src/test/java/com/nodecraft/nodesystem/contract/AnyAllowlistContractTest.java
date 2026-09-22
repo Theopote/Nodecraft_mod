@@ -3,11 +3,11 @@ package com.nodecraft.nodesystem.contract;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.TypeConversionRegistry;
 import com.nodecraft.nodesystem.nodes.math.compare.EqualsNode;
 import com.nodecraft.nodesystem.nodes.math.compare.LessThanNode;
 import com.nodecraft.nodesystem.nodes.math.logic.IfNode;
 import com.nodecraft.nodesystem.nodes.math.scalar_math.AbsoluteNode;
-import com.nodecraft.nodesystem.nodes.math.scalar_math.DivisionNode;
 import com.nodecraft.nodesystem.nodes.math.trigonometry.SineNode;
 import com.nodecraft.nodesystem.nodes.material.basic_assignment.BlockPaletteNode;
 import com.nodecraft.nodesystem.nodes.material.basic_assignment.CreateBlockPaletteNode;
@@ -23,22 +23,53 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Batch 10 ANY policy freeze for cleaned math/material families.
- * Broader catalog ANY cleanup continues in later batches.
+ * Node Language v1 freeze: ANY is allowlisted; cleaned families forbid ANY;
+ * BLOCK_PALETTE is a strict typed port.
  */
 class AnyAllowlistContractTest {
 
-    /** Families finished in Batch 10 — must not expose ANY. */
-    private static final Set<String> BATCH10_FORBIDDEN_PREFIXES = Set.of(
+    /**
+     * Prefixes still allowed to expose ANY until Batch 11+ language cleanup.
+     * Adding a new prefix here is an explicit architecture decision.
+     */
+    private static final Set<String> ANY_ALLOWED_PREFIXES = Set.of(
+        "variable.",
+        "math.data_tree.",
+        "math.list.",
+        "math.list_sequence.",
+        "math.sequence.",
+        "math.logic.",
+        "math.random.",
+        "math.compare.equals",
+        "math.compare.not_equals",
+        "flow.",
+        "utilities.",
+        "output.debug.",
+        "output.export.",
+        "output.execute.clear_preview",
+        "output.execute.bake_status",
+        "world.",
+        "reference.",
+        "input.values."
+    );
+
+    private static final Set<String> ANY_ALLOWED_TYPE_IDS = Set.of(
+        "math.compare.equals",
+        "math.compare.not_equals"
+    );
+
+    /** Families frozen in Batch 10 / 10.1 — must never regress to ANY. */
+    private static final Set<String> ANY_FORBIDDEN_PREFIXES = Set.of(
         "math.trigonometry.",
         "math.scalar_math.",
         "material."
     );
 
-    private static final Set<String> BATCH10_FORBIDDEN_TYPE_IDS = Set.of(
+    private static final Set<String> ANY_FORBIDDEN_TYPE_IDS = Set.of(
         "math.compare.less_than",
         "math.compare.greater_than",
         "math.compare.less_than_or_equal",
@@ -58,10 +89,10 @@ class AnyAllowlistContractTest {
     }
 
     @Test
-    void batch10CleanedFamiliesMustNotExposeAny() {
+    void frozenFamiliesMustNotExposeAny() {
         List<String> violations = new ArrayList<>();
         for (String nodeId : registry.getAllNodeIds()) {
-            if (!isBatch10Forbidden(nodeId)) {
+            if (!isForbidden(nodeId)) {
                 continue;
             }
             INode instance = tryCreate(nodeId);
@@ -74,35 +105,83 @@ class AnyAllowlistContractTest {
                 }
             }
         }
-        assertTrue(violations.isEmpty(), "Batch 10 cleaned nodes still expose ANY: " + violations);
+        assertTrue(violations.isEmpty(), "Frozen language families still expose ANY: " + violations);
     }
 
     @Test
-    void polymorphicNodesKeepAnyWhereIntended() {
+    void anyPortsOutsideAllowlistAreRejected() {
+        List<String> violations = new ArrayList<>();
+        for (String nodeId : registry.getAllNodeIds()) {
+            if (isForbidden(nodeId)) {
+                continue;
+            }
+            INode instance = tryCreate(nodeId);
+            if (instance == null) {
+                continue;
+            }
+            if (hasAnyPort(instance) && !isAllowlisted(nodeId)) {
+                violations.add(nodeId);
+            }
+        }
+        assertTrue(violations.isEmpty(),
+            "ANY ports require an explicit allowlist entry (Batch 10.1 freeze): " + violations);
+    }
+
+    @Test
+    void polymorphicCoreKeepsAny_numericDoesNot() {
         assertTrue(hasAnyPort(new EqualsNode()));
         assertTrue(hasAnyPort(new IfNode()));
         assertFalse(hasAnyPort(new LessThanNode()));
         assertFalse(hasAnyPort(new AbsoluteNode()));
-        assertFalse(hasAnyPort(new DivisionNode()));
         assertFalse(hasAnyPort(new SineNode()));
     }
 
     @Test
-    void blockPaletteLanguageIsTyped() {
+    void blockPalettePortIsStrictTyped() {
         assertEquals(NodeDataType.BLOCK_PALETTE, findPort(new CreateBlockPaletteNode(), "output_palette").getDataType());
         assertEquals(NodeDataType.BLOCK_PALETTE, findPort(new BlockPaletteNode(), "input_palette").getDataType());
         assertTrue(NodeDataType.BLOCK_PALETTE.isCompatible(BlockPaletteData.ofBlockIds(List.of("minecraft:stone"))));
-        assertTrue(NodeDataType.BLOCK_PALETTE.isCompatible(List.of("minecraft:stone")));
+        assertFalse(NodeDataType.BLOCK_PALETTE.isCompatible(List.of("minecraft:stone")));
+        assertFalse(NodeDataType.BLOCK_PALETTE.isCompatible("minecraft:stone"));
         assertFalse(NodeDataType.BLOCK_PALETTE.isCompatible(42));
     }
 
-    private static boolean isBatch10Forbidden(String nodeId) {
+    @Test
+    void legacyListToPaletteRequiresCreateBlockPalette() {
+        assertEquals(
+            TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
+            TypeConversionRegistry.classify(NodeDataType.LIST, NodeDataType.BLOCK_PALETTE)
+        );
+        assertEquals(
+            TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
+            TypeConversionRegistry.classify(NodeDataType.BLOCK_TYPE, NodeDataType.BLOCK_PALETTE)
+        );
+        TypeConversionRegistry.ConversionSuggestion suggestion =
+            TypeConversionRegistry.getSuggestedConversion(NodeDataType.LIST, NodeDataType.BLOCK_PALETTE);
+        assertNotNull(suggestion);
+        assertEquals("material.basic_assignment.create_block_palette", suggestion.nodeId());
+    }
+
+    private static boolean isForbidden(String nodeId) {
         String id = nodeId.toLowerCase(Locale.ROOT);
-        if (BATCH10_FORBIDDEN_TYPE_IDS.contains(id)) {
+        if (ANY_FORBIDDEN_TYPE_IDS.contains(id)) {
             return true;
         }
-        for (String prefix : BATCH10_FORBIDDEN_PREFIXES) {
+        for (String prefix : ANY_FORBIDDEN_PREFIXES) {
             if (id.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isAllowlisted(String nodeId) {
+        String id = nodeId.toLowerCase(Locale.ROOT);
+        if (ANY_ALLOWED_TYPE_IDS.contains(id)) {
+            return true;
+        }
+        for (String prefix : ANY_ALLOWED_PREFIXES) {
+            if (id.startsWith(prefix) || id.equals(prefix)) {
                 return true;
             }
         }

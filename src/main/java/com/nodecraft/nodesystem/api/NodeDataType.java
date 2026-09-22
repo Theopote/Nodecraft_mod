@@ -212,9 +212,7 @@ public enum NodeDataType {
         }
 
         if (this == BLOCK_PALETTE) {
-            return value instanceof com.nodecraft.nodesystem.util.BlockPaletteData
-                    || value instanceof String
-                    || value instanceof java.util.List;
+            return value instanceof com.nodecraft.nodesystem.util.BlockPaletteData;
         }
 
         if (this == GEOMETRY && value instanceof GeometryData) {

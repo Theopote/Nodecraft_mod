@@ -241,7 +241,7 @@ public class BlockPaletteNode extends BaseNode {
 
     private List<String> resolvePalette() {
         String fallback = getInputString(INPUT_FALLBACK_BLOCK_TYPE_ID, "minecraft:stone");
-        BlockPaletteData palette = BlockPaletteData.fromObject(inputValues.get(INPUT_PALETTE_ID))
+        BlockPaletteData palette = BlockPaletteData.requireTyped(inputValues.get(INPUT_PALETTE_ID))
             .withFallback(fallback);
         return new ArrayList<>(palette.blockIds());
     }

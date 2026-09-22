@@ -89,6 +89,20 @@ class TypeConversionRegistryTest {
     }
 
     @Test
+    void legacyListToBlockPaletteRequiresCreateBlockPalette() {
+        assertEquals(TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
+            TypeConversionRegistry.classify(NodeDataType.LIST, NodeDataType.BLOCK_PALETTE));
+        assertEquals(TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
+            TypeConversionRegistry.classify(NodeDataType.BLOCK_TYPE, NodeDataType.BLOCK_PALETTE));
+        assertFalse(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.LIST, NodeDataType.BLOCK_PALETTE));
+
+        TypeConversionRegistry.ConversionSuggestion suggestion =
+            TypeConversionRegistry.getSuggestedConversion(NodeDataType.LIST, NodeDataType.BLOCK_PALETTE);
+        assertNotNull(suggestion);
+        assertEquals("material.basic_assignment.create_block_palette", suggestion.nodeId());
+    }
+
+    @Test
     void unrelatedTypesAreUnsupported() {
         assertEquals(TypeConversionRegistry.ConversionPolicy.UNSUPPORTED,
             TypeConversionRegistry.classify(NodeDataType.STRING, NodeDataType.GEOMETRY));

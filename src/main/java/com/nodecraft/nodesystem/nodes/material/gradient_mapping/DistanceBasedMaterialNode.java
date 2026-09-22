@@ -220,7 +220,7 @@ public class DistanceBasedMaterialNode extends BaseNode {
     }
 
     private List<String> resolvePalette(String fallback) {
-        return new ArrayList<>(BlockPaletteData.fromObject(inputValues.get(INPUT_PALETTE_ID))
+        return new ArrayList<>(BlockPaletteData.requireTyped(inputValues.get(INPUT_PALETTE_ID))
             .withFallback(fallback)
             .blockIds());
     }

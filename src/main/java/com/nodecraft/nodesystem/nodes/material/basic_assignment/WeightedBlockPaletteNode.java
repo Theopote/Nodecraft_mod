@@ -259,7 +259,7 @@ public class WeightedBlockPaletteNode extends BaseNode {
     }
 
     private List<String> resolvePalette(String fallback) {
-        BlockPaletteData palette = BlockPaletteData.fromObject(inputValues.get(INPUT_PALETTE_ID))
+        BlockPaletteData palette = BlockPaletteData.requireTyped(inputValues.get(INPUT_PALETTE_ID))
             .withFallback(fallback);
         return new ArrayList<>(palette.blockIds());
     }
@@ -278,7 +278,7 @@ public class WeightedBlockPaletteNode extends BaseNode {
             return normalizeWeights(weights);
         }
 
-        BlockPaletteData palette = BlockPaletteData.fromObject(inputValues.get(INPUT_PALETTE_ID));
+        BlockPaletteData palette = BlockPaletteData.requireTyped(inputValues.get(INPUT_PALETTE_ID));
         List<Double> fromPalette = new ArrayList<>(palette.weights());
         while (fromPalette.size() < paletteSize) {
             fromPalette.add(1.0d);

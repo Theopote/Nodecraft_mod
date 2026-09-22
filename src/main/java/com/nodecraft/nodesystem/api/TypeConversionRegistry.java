@@ -110,6 +110,9 @@ public final class TypeConversionRegistry {
         if (isSurfaceStripToGeometryConversion(output, input)) {
             return new ConversionSuggestion("geometry.solids.surface_strip_to_lattice", "Surface Strip To Lattice");
         }
+        if (isLegacyPaletteConversion(output, input)) {
+            return new ConversionSuggestion("material.basic_assignment.create_block_palette", "Create Block Palette");
+        }
         return null;
     }
 
@@ -120,7 +123,8 @@ public final class TypeConversionRegistry {
                 || isPointToBlockCoordinateConversion(outputType, inputType)
                 || isBlockFaceToPlaneConversion(outputType, inputType)
                 || isSurfaceStripToGeometryConversion(outputType, inputType)
-                || isGeometryToPlacementConversion(outputType, inputType);
+                || isGeometryToPlacementConversion(outputType, inputType)
+                || isLegacyPaletteConversion(outputType, inputType);
     }
 
     private static boolean isBlockCoordinateToPointConversion(NodeDataType outputType, NodeDataType inputType) {
@@ -149,6 +153,14 @@ public final class TypeConversionRegistry {
     private static boolean isGeometryToPlacementConversion(NodeDataType outputType, NodeDataType inputType) {
         return outputType == NodeDataType.GEOMETRY
                 && (inputType == NodeDataType.BLOCK_LIST || inputType == NodeDataType.BLOCK_PLACEMENT_LIST);
+    }
+
+    /**
+     * Legacy list/string block-id bags require Create Block Palette before typed palette ports.
+     */
+    private static boolean isLegacyPaletteConversion(NodeDataType outputType, NodeDataType inputType) {
+        return inputType == NodeDataType.BLOCK_PALETTE
+                && (outputType == NodeDataType.LIST || outputType == NodeDataType.BLOCK_TYPE || outputType == NodeDataType.STRING);
     }
 
     private static boolean isNumericType(NodeDataType type) {

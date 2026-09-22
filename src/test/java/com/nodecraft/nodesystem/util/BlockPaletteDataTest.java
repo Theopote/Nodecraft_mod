@@ -10,10 +10,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class BlockPaletteDataTest {
 
     @Test
-    void fromObjectAcceptsLegacyStringList() {
-        BlockPaletteData palette = BlockPaletteData.fromObject(List.of("minecraft:stone", "minecraft:andesite"));
+    void fromLegacyObjectAcceptsLegacyStringList() {
+        BlockPaletteData palette = BlockPaletteData.fromLegacyObject(List.of("minecraft:stone", "minecraft:andesite"));
         assertEquals(2, palette.size());
         assertEquals("minecraft:andesite", palette.blockIdAt(1, "minecraft:dirt"));
+    }
+
+    @Test
+    void requireTypedRejectsRawLists() {
+        assertTrue(BlockPaletteData.requireTyped(List.of("minecraft:stone")).isEmpty());
+        assertEquals(1, BlockPaletteData.requireTyped(
+            BlockPaletteData.ofBlockIds(List.of("minecraft:stone"))
+        ).size());
     }
 
     @Test
