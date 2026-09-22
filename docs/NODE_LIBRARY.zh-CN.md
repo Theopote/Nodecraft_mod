@@ -506,15 +506,15 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Sine (Sin) | `math.trigonometry.sin` | 计算角度的正弦值（输入为弧度） | `SineNode` |
-| Cosine (Cos) | `math.trigonometry.cos` | 计算角度的余弦值（输入为弧度） | `CosineNode` |
-| Tangent (Tan) | `math.trigonometry.tan` | 计算角度的正切值（输入为弧度） | `TangentNode` |
+| Sine (Sin) | `math.trigonometry.sin` | Computes sine of an angle in degrees. | `SineNode` |
+| Cosine (Cos) | `math.trigonometry.cos` | Computes cosine of an angle in degrees. | `CosineNode` |
+| Tangent (Tan) | `math.trigonometry.tan` | Computes tangent of an angle in degrees. | `TangentNode` |
 | Degrees To Radians | `math.trigonometry.deg_to_rad` | 将角度从度数转换为弧度 | `DegreesToRadiansNode` |
 | Radians To Degrees | `math.trigonometry.rad_to_deg` | 将角度从弧度转换为度数 | `RadiansToDegreesNode` |
-| Arcsine (ArcSin) | `math.trigonometry.asin` | 计算输入值的反正弦值（结果以弧度为单位） | `ArcSinNode` |
-| Arccosine (ArcCos) | `math.trigonometry.acos` | 计算输入值的反余弦值（结果以弧度为单位） | `ArcCosNode` |
-| Arctangent (ArcTan) | `math.trigonometry.atan` | 计算输入值的反正切值（结果以弧度为单位） | `ArcTanNode` |
-| Atan2 | `math.trigonometry.atan2` | Computes the signed angle in radians from X and Y using atan2(Y, X). | `Atan2Node` |
+| Arcsine (ArcSin) | `math.trigonometry.asin` | Computes arcsine; result angle is in degrees. | `ArcSinNode` |
+| Arccosine (ArcCos) | `math.trigonometry.acos` | Computes arccosine; result angle is in degrees. | `ArcCosNode` |
+| Arctangent (ArcTan) | `math.trigonometry.atan` | Computes arctangent; result angle is in degrees. | `ArcTanNode` |
+| Atan2 | `math.trigonometry.atan2` | Computes the signed angle in degrees from X and Y using atan2(Y, X). | `Atan2Node` |
 | Pi | `math.trigonometry.pi` | 输出数学常数π的值 | `PiNode` |
 | E | `math.trigonometry.e` | Outputs the mathematical constant e (approximately 2.718281828...). | `ENode` |
 | Sinh | `math.trigonometry.sinh` | Computes the hyperbolic sine of the input value. | `SinhNode` |

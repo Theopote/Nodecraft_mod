@@ -18,7 +18,7 @@ class DomainRestrictedMathNodeTest {
         Map<String, Object> outputs = node.compute(Map.of("input_value", 1.0000000002d));
 
         assertFalse((Boolean) outputs.get("output_valid"));
-        assertTrue(Double.isNaN((Double) outputs.get("output_angle_rad")));
+        assertTrue(Double.isNaN((Double) outputs.get("output_angle")));
     }
 
     @Test
@@ -28,7 +28,7 @@ class DomainRestrictedMathNodeTest {
         Map<String, Object> outputs = node.compute(Map.of("input_value", 0.5d));
 
         assertTrue((Boolean) outputs.get("output_valid"));
-        assertEquals(Math.asin(0.5d), (Double) outputs.get("output_angle_rad"), 1.0e-12);
+        assertEquals(Math.toDegrees(Math.asin(0.5d)), (Double) outputs.get("output_angle"), 1.0e-12);
     }
 
     @Test
@@ -48,19 +48,32 @@ class DomainRestrictedMathNodeTest {
     void tangentMarksSingularityAsInvalid() {
         TangentNode node = new TangentNode();
 
-        Map<String, Object> outputs = node.compute(Map.of("input_angle_rad", Math.PI / 2.0d));
+        Map<String, Object> outputs = node.compute(Map.of("input_angle", 90.0d));
 
         assertEquals(false, outputs.get("output_valid"));
         assertTrue(Double.isNaN((Double) outputs.get("output_tangent")));
     }
 
     @Test
-    void sineAcceptsFiniteInput() {
+    void sineAcceptsFiniteDegreesInput() {
         SineNode node = new SineNode();
 
-        Map<String, Object> outputs = node.compute(Map.of("input_angle_rad", Math.PI / 2.0d));
+        Map<String, Object> outputs = node.compute(Map.of("input_angle", 90.0d));
 
         assertEquals(true, outputs.get("output_valid"));
         assertEquals(1.0d, (Double) outputs.get("output_sine"), 1.0e-12);
+    }
+
+    @Test
+    void atan2ReturnsDegrees() {
+        Atan2Node node = new Atan2Node();
+
+        Map<String, Object> outputs = node.compute(Map.of(
+            "input_y", 1.0d,
+            "input_x", 0.0d
+        ));
+
+        assertEquals(true, outputs.get("output_valid"));
+        assertEquals(90.0d, (Double) outputs.get("output_angle"), 1.0e-12);
     }
 }

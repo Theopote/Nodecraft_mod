@@ -72,6 +72,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V5 -> migrateV5ToV6(graph);
             case GraphFormatVersion.V6 -> migrateV6ToV7(graph);
             case GraphFormatVersion.V7 -> migrateV7ToV8(graph);
+            case GraphFormatVersion.V8 -> migrateV8ToV9(graph);
             default -> graph;
         };
     }
@@ -297,6 +298,20 @@ public final class GraphMigrationRegistry {
     private static final String LEGACY_BAKE_GEOMETRY_TO_BLOCKS_TYPE = "output.execute.bake_geometry_to_blocks";
     private static final String VOXELIZE_GEOMETRY_TYPE = "geometry.voxel.voxelize_geometry";
 
+    private static final Set<String> TRIG_DEGREES_INPUT_TYPES = Set.of(
+            "math.trigonometry.sin",
+            "math.trigonometry.cos",
+            "math.trigonometry.tan"
+    );
+    private static final Set<String> TRIG_DEGREES_OUTPUT_TYPES = Set.of(
+            "math.trigonometry.asin",
+            "math.trigonometry.acos",
+            "math.trigonometry.atan",
+            "math.trigonometry.atan2"
+    );
+    private static final String LEGACY_TRIG_ANGLE_INPUT_PORT = "input_angle_rad";
+    private static final String LEGACY_TRIG_ANGLE_OUTPUT_PORT = "output_angle_rad";
+
     /**
      * Batch 5: Combine Geometry is structural compose, not analytic boolean union.
      * Remap legacy {@code geometry.boolean.union} → {@code geometry.combine.geometry}.
@@ -376,6 +391,57 @@ public final class GraphMigrationRegistry {
                 node.typeId = VOXELIZE_GEOMETRY_TYPE;
             }
         }
+        return graph;
+    }
+
+    /**
+     * Batch 10: trigonometry freezes to degrees.
+     * <p>
+     * Pre-release policy: drop abandoned radians ports rather than remapping payloads
+     * (would silently reinterpret radians as degrees). Graphs must reconnect with degree values.
+     */
+    private static SavedGraph migrateV8ToV9(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        List<SavedConnection> kept = new ArrayList<>(graph.connections.size());
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            if (TRIG_DEGREES_INPUT_TYPES.contains(targetType)
+                    && LEGACY_TRIG_ANGLE_INPUT_PORT.equalsIgnoreCase(connection.targetPortId)) {
+                LOGGER.warn(
+                        "Dropped Sin/Cos/Tan radians angle connection {} -> {} (pre-release: "
+                                + "input_angle_rad abandoned; reconnect degrees to input_angle)",
+                        connection.sourceNodeId,
+                        connection.targetNodeId
+                );
+                continue;
+            }
+            if (TRIG_DEGREES_OUTPUT_TYPES.contains(sourceType)
+                    && LEGACY_TRIG_ANGLE_OUTPUT_PORT.equalsIgnoreCase(connection.sourcePortId)) {
+                LOGGER.warn(
+                        "Dropped inverse-trig radians angle connection {} -> {} (pre-release: "
+                                + "output_angle_rad abandoned; reconnect degrees from output_angle)",
+                        connection.sourceNodeId,
+                        connection.targetNodeId
+                );
+                continue;
+            }
+            kept.add(connection);
+        }
+        graph.connections = kept;
         return graph;
     }
 

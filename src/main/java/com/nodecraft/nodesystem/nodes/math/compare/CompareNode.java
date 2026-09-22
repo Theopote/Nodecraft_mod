@@ -36,9 +36,9 @@ public class CompareNode extends BaseNode {
         super(UUID.randomUUID(), "math.compare.compare");
 
         addInputPort(new BasePort(INPUT_A_ID, "A",
-            "First value", NodeDataType.ANY, this));
+            "First value", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_B_ID, "B",
-            "Second value", NodeDataType.ANY, this));
+            "Second value", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_MODE_ID, "Mode",
             "Comparison mode (0==, 1!=, 2>, 3<, 4>=, 5<=)", NodeDataType.INTEGER, this));
 

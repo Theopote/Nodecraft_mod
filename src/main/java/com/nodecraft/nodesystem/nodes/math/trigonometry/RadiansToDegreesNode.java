@@ -27,7 +27,7 @@ public class RadiansToDegreesNode extends BaseNode {
     public RadiansToDegreesNode() {
         super(UUID.randomUUID(), "math.trigonometry.rad_to_deg");
 
-        addInputPort(new BasePort(INPUT_RADIANS_ID, "Radians", "Angle in radians", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_RADIANS_ID, "Radians", "Angle in radians", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_DEGREES_ID, "Degrees", "Angle in degrees", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether input is a valid finite number", NodeDataType.BOOLEAN, this));
     }

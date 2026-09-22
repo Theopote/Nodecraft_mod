@@ -27,8 +27,8 @@ public class MultiplicationNode extends BaseNode {
 
     public MultiplicationNode() {
         super(UUID.randomUUID(), "math.scalar_math.multiplication");
-        addInputPort(new BasePort(INPUT_A_ID, "A", "Factor A", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_B_ID, "B", "Factor B", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_A_ID, "A", "Factor A", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_B_ID, "B", "Factor B", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_PRODUCT_ID, "Product", "Result of A * B", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether both inputs are valid numbers", NodeDataType.BOOLEAN, this));
     }

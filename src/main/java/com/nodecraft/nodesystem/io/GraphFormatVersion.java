@@ -60,8 +60,15 @@ public final class GraphFormatVersion {
      */
     public static final int V8 = 8;
 
+    /**
+     * Batch 10 math language: graph-facing trigonometry freezes to degrees.
+     * Legacy {@code input_angle_rad} / {@code output_angle_rad} connections are dropped
+     * (pre-release: no radians→degrees value preservation).
+     */
+    public static final int V9 = 9;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V8;
+    public static final int CURRENT = V9;
 
     private GraphFormatVersion() {
     }

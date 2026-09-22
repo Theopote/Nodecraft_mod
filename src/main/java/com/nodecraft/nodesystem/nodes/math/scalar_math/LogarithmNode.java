@@ -27,8 +27,8 @@ public class LogarithmNode extends BaseNode {
 
     public LogarithmNode() {
         super(UUID.randomUUID(), "math.scalar_math.logarithm");
-        addInputPort(new BasePort(INPUT_NUMBER_ID, "Number", "The number", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_BASE_ID, "Base", "The base, defaults to e", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_NUMBER_ID, "Number", "The number", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_BASE_ID, "Base", "The base, defaults to e", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_LOGARITHM_ID, "Logarithm", "Result of log base B of A", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether inputs define a valid logarithm", NodeDataType.BOOLEAN, this));
     }

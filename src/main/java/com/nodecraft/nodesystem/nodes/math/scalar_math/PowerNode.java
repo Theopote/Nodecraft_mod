@@ -27,8 +27,8 @@ public class PowerNode extends BaseNode {
 
     public PowerNode() {
         super(UUID.randomUUID(), "math.scalar_math.power");
-        addInputPort(new BasePort(INPUT_BASE_ID, "Base", "The base value", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_EXPONENT_ID, "Exponent", "The exponent value", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_BASE_ID, "Base", "The base value", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_EXPONENT_ID, "Exponent", "The exponent value", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_POWER_ID, "Power", "Result of Base ^ Exponent", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the power result is finite", NodeDataType.BOOLEAN, this));
     }

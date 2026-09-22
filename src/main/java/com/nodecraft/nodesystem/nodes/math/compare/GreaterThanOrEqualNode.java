@@ -29,8 +29,8 @@ public class GreaterThanOrEqualNode extends BaseNode {
 
     public GreaterThanOrEqualNode() {
         super(UUID.randomUUID(), "math.compare.greater_than_or_equal");
-        addInputPort(new BasePort(INPUT_A_ID, "A", "Left value", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_B_ID, "B", "Right value", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_A_ID, "A", "Left value", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_B_ID, "B", "Right value", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_RESULT_ID, "Result", "Whether A is greater than or equal to B", NodeDataType.BOOLEAN, this));
     }
 

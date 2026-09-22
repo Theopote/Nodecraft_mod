@@ -27,8 +27,8 @@ public class SubtractionNode extends BaseNode {
 
     public SubtractionNode() {
         super(UUID.randomUUID(), "math.scalar_math.subtraction");
-        addInputPort(new BasePort(INPUT_A_ID, "A", "Minuend", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_B_ID, "B", "Subtrahend", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_A_ID, "A", "Minuend", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_B_ID, "B", "Subtrahend", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_DIFFERENCE_ID, "Difference", "Result of A - B", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether both inputs are valid numbers", NodeDataType.BOOLEAN, this));
     }

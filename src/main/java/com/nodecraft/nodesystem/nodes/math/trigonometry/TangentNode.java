@@ -14,20 +14,20 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.trigonometry.tan",
     displayName = "Tangent (Tan)",
-    description = "计算角度的正切值（输入为弧度）",
+    description = "Computes tangent of an angle in degrees.",
     category = "math.trigonometry",
     order = 2
 )
 public class TangentNode extends BaseNode {
 
-    private static final String INPUT_ANGLE_ID = "input_angle_rad";
+    private static final String INPUT_ANGLE_ID = "input_angle";
     private static final String OUTPUT_TANGENT_ID = "output_tangent";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public TangentNode() {
         super(UUID.randomUUID(), "math.trigonometry.tan");
 
-        addInputPort(new BasePort(INPUT_ANGLE_ID, "Angle (rad)", "Input angle in radians", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_ANGLE_ID, "Angle", "Input angle in degrees", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_TANGENT_ID, "Tangent", "Result tan(Angle)", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether input is finite and tangent is defined", NodeDataType.BOOLEAN, this));
     }
@@ -41,13 +41,14 @@ public class TangentNode extends BaseNode {
             return;
         }
 
-        double angleRad = number.doubleValue();
-        if (!Double.isFinite(angleRad)) {
+        double angleDeg = number.doubleValue();
+        if (!Double.isFinite(angleDeg)) {
             outputValues.put(OUTPUT_TANGENT_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
 
+        double angleRad = Math.toRadians(angleDeg);
         double result = Math.tan(angleRad);
         boolean valid = Double.isFinite(result) && Math.abs(Math.cos(angleRad)) > 1.0e-12d;
         outputValues.put(OUTPUT_TANGENT_ID, valid ? result : Double.NaN);
@@ -56,7 +57,7 @@ public class TangentNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Outputs the tangent of the input angle (in radians).";
+        return "Outputs the tangent of the input angle (in degrees).";
     }
 
     @Override

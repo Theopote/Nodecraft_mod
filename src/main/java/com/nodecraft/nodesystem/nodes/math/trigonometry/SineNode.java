@@ -14,20 +14,20 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.trigonometry.sin",
     displayName = "Sine (Sin)",
-    description = "计算角度的正弦值（输入为弧度）",
+    description = "Computes sine of an angle in degrees.",
     category = "math.trigonometry",
     order = 0
 )
 public class SineNode extends BaseNode {
 
-    private static final String INPUT_ANGLE_ID = "input_angle_rad";
+    private static final String INPUT_ANGLE_ID = "input_angle";
     private static final String OUTPUT_SINE_ID = "output_sine";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SineNode() {
         super(UUID.randomUUID(), "math.trigonometry.sin");
 
-        addInputPort(new BasePort(INPUT_ANGLE_ID, "Angle (rad)", "Input angle in radians", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_ANGLE_ID, "Angle", "Input angle in degrees", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SINE_ID, "Sine", "Result sin(Angle)", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether input is a valid finite number", NodeDataType.BOOLEAN, this));
     }
@@ -41,21 +41,21 @@ public class SineNode extends BaseNode {
             return;
         }
 
-        double angleRad = number.doubleValue();
-        if (!Double.isFinite(angleRad)) {
+        double angleDeg = number.doubleValue();
+        if (!Double.isFinite(angleDeg)) {
             outputValues.put(OUTPUT_SINE_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
 
-        double result = Math.sin(angleRad);
+        double result = Math.sin(Math.toRadians(angleDeg));
         outputValues.put(OUTPUT_SINE_ID, result);
         outputValues.put(OUTPUT_VALID_ID, Double.isFinite(result));
     }
 
     @Override
     public String getDescription() {
-        return "Outputs the sine of the input angle (in radians).";
+        return "Outputs the sine of the input angle (in degrees).";
     }
 
     @Override

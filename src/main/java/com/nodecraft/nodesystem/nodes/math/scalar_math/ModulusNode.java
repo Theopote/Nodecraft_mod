@@ -27,8 +27,8 @@ public class ModulusNode extends BaseNode {
 
     public ModulusNode() {
         super(UUID.randomUUID(), "math.scalar_math.modulus");
-        addInputPort(new BasePort(INPUT_A_ID, "A", "Dividend", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_B_ID, "B", "Divisor", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_A_ID, "A", "Dividend", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_B_ID, "B", "Divisor", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_REMAINDER_ID, "Remainder", "Result of A % B", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether modulus succeeded", NodeDataType.BOOLEAN, this));
     }

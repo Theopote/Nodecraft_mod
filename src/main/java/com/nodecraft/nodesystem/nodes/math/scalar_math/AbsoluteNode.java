@@ -26,7 +26,7 @@ public class AbsoluteNode extends BaseNode {
 
     public AbsoluteNode() {
         super(UUID.randomUUID(), "math.scalar_math.absolute");
-        addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Input number", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Input number", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_ABSOLUTE_ID, "Absolute", "Result |Value|", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether input is a valid finite number", NodeDataType.BOOLEAN, this));
     }

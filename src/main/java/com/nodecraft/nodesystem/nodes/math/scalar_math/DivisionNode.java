@@ -27,8 +27,8 @@ public class DivisionNode extends BaseNode {
 
     public DivisionNode() {
         super(UUID.randomUUID(), "math.scalar_math.division");
-        addInputPort(new BasePort(INPUT_A_ID, "A", "Dividend", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_B_ID, "B", "Divisor", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_A_ID, "A", "Dividend", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_B_ID, "B", "Divisor", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_QUOTIENT_ID, "Quotient", "Result of A / B", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether division succeeded", NodeDataType.BOOLEAN, this));
     }

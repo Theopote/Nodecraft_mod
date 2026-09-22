@@ -294,6 +294,51 @@ class GraphMigrationRegistryTest {
     }
 
     @Test
+    void v8TrigRadiansPortsAreDropped() {
+        SavedGraph v8 = new SavedGraph();
+        v8.formatVersion = GraphFormatVersion.V8;
+        SavedNode sine = new SavedNode();
+        sine.nodeId = "sin";
+        sine.typeId = "math.trigonometry.sin";
+        SavedNode atan = new SavedNode();
+        atan.nodeId = "atan";
+        atan.typeId = "math.trigonometry.atan";
+        SavedNode source = new SavedNode();
+        source.nodeId = "src";
+        source.typeId = "input.numeric.number";
+        SavedNode sink = new SavedNode();
+        sink.nodeId = "sink";
+        sink.typeId = "math.scalar_math.addition";
+        v8.nodes = List.of(sine, atan, source, sink);
+
+        SavedConnection intoSin = new SavedConnection();
+        intoSin.sourceNodeId = "src";
+        intoSin.sourcePortId = "output_value";
+        intoSin.targetNodeId = "sin";
+        intoSin.targetPortId = "input_angle_rad";
+
+        SavedConnection fromAtan = new SavedConnection();
+        fromAtan.sourceNodeId = "atan";
+        fromAtan.sourcePortId = "output_angle_rad";
+        fromAtan.targetNodeId = "sink";
+        fromAtan.targetPortId = "input_a";
+
+        SavedConnection kept = new SavedConnection();
+        kept.sourceNodeId = "src";
+        kept.sourcePortId = "output_value";
+        kept.targetNodeId = "sink";
+        kept.targetPortId = "input_b";
+
+        v8.connections = new java.util.ArrayList<>(List.of(intoSin, fromAtan, kept));
+        v8.nodePositions = java.util.Map.of();
+
+        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v8);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
+        assertEquals(1, migrated.connections.size());
+        assertEquals("input_b", migrated.connections.getFirst().targetPortId);
+    }
+
+    @Test
     void futureVersionsAreLeftUntouched() {
         SavedGraph future = new SavedGraph();
         future.formatVersion = GraphFormatVersion.CURRENT + 5;

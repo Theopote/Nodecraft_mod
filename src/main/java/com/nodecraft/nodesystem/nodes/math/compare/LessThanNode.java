@@ -29,8 +29,8 @@ public class LessThanNode extends BaseNode {
 
     public LessThanNode() {
         super(UUID.randomUUID(), "math.compare.less_than");
-        addInputPort(new BasePort(INPUT_A_ID, "A", "Left value", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_B_ID, "B", "Right value", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_A_ID, "A", "Left value", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_B_ID, "B", "Right value", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_RESULT_ID, "Result", "Whether A is less than B", NodeDataType.BOOLEAN, this));
     }
 
