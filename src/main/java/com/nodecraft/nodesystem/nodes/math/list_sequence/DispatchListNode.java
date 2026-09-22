@@ -37,8 +37,8 @@ public class DispatchListNode extends BaseNode {
                 "The list to split", NodeDataType.LIST, this);
         addInputPort(listInput);
         
-        IPort conditionInput = new BasePort(INPUT_CONDITION_ID, "Condition", 
-                "Boolean list or single boolean value", NodeDataType.ANY, this);
+        IPort conditionInput = new BasePort(INPUT_CONDITION_ID, "Condition",
+                "Boolean mask list (one boolean per item)", NodeDataType.LIST, this);
         addInputPort(conditionInput);
         
         IPort trueOutput = new BasePort(OUTPUT_TRUE_LIST_ID, "True List", 

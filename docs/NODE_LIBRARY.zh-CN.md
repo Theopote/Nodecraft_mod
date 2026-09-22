@@ -391,12 +391,12 @@
 | Tree Item | `math.data_tree.item` | Gets one item from a data tree branch by path and index | `TreeItemNode` |
 | Tree Statistics | `math.data_tree.statistics` | Reports branch count, item count, depth, paths, and branch sizes for a data tree | `TreeStatisticsNode` |
 | Tree Viewer | `math.data_tree.viewer` | Outputs a readable summary of a data tree for debugging | `TreeViewerNode` |
-| Merge Trees | `math.data_tree.merge` | Merges two data trees or lists into one data tree | `MergeTreesNode` |
+| Merge Trees | `math.data_tree.merge` | Merges two data trees into one data tree. Use Graft List to convert lists first. | `MergeTreesNode` |
 | Simplify Tree | `math.data_tree.simplify` | Removes the common leading path prefix from all data tree branches | `SimplifyTreeNode` |
 | Shift Path | `math.data_tree.shift_path` | Moves data tree paths up by removing leading levels or down by adding zero levels | `ShiftPathNode` |
 | Tree Paths | `math.data_tree.paths` | Outputs data tree branch paths as strings and path index lists | `TreePathsNode` |
 | Cull Empty Branches | `math.data_tree.cull_empty` | Removes empty branches from a data tree | `CullEmptyBranchesNode` |
-| Entwine | `math.data_tree.entwine` | Combines up to four trees or lists into source-indexed data tree branches | `EntwineNode` |
+| Entwine | `math.data_tree.entwine` | Combines up to four data trees into source-indexed branches. Use Graft List to convert lists first. | `EntwineNode` |
 
 ## math.fields（17）
 

@@ -37,8 +37,8 @@ public class FilterListNode extends BaseNode {
                 "The list to filter", NodeDataType.LIST, this);
         addInputPort(listInput);
         
-        IPort conditionInput = new BasePort(INPUT_CONDITION_ID, "Condition", 
-                "Boolean list or single boolean value", NodeDataType.ANY, this);
+        IPort conditionInput = new BasePort(INPUT_CONDITION_ID, "Condition",
+                "Boolean mask list (one boolean per item)", NodeDataType.LIST, this);
         addInputPort(conditionInput);
         
         IPort listOutput = new BasePort(OUTPUT_LIST_ID, "Filtered List", 

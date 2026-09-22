@@ -30,7 +30,7 @@ public class TreeBranchNode extends BaseNode {
     public TreeBranchNode() {
         super(UUID.randomUUID(), "math.data_tree.branch");
         addInputPort(new BasePort(INPUT_TREE_ID, "Tree", "Data tree to query", NodeDataType.DATA_TREE, this));
-        addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Branch path such as 0, {0}, or {0;1}", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Branch path such as 0, {0}, or {0;1}", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_BRANCH_ID, "Branch", "Items in the selected branch", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_FOUND_ID, "Found", "Whether the branch was found", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ITEM_COUNT_ID, "Item Count", "Number of items in the branch", NodeDataType.INTEGER, this));
@@ -38,7 +38,7 @@ public class TreeBranchNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        DataTreeData tree = DataTreeNodeUtils.resolveTree(inputValues.get(INPUT_TREE_ID));
+        DataTreeData tree = DataTreeNodeUtils.requireTree(inputValues.get(INPUT_TREE_ID));
         List<Integer> path = DataTreeNodeUtils.parsePath(inputValues.get(INPUT_PATH_ID), List.of(0));
         DataTreeData.Branch branch = tree.getBranch(path);
         if (branch == null) {

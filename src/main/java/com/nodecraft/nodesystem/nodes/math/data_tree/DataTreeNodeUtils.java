@@ -5,34 +5,28 @@ import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Typed boundary helpers for data-tree nodes.
+ * <p>
+ * LIST to DATA_TREE coercion is not performed here -- use Graft List / Flatten Tree
+ * (and {@link com.nodecraft.nodesystem.api.TypeConversionRegistry} EXPLICIT policy).
+ */
 final class DataTreeNodeUtils {
     private DataTreeNodeUtils() {
     }
 
-    static DataTreeData resolveTree(Object value) {
+    static DataTreeData requireTree(Object value) {
         if (value instanceof DataTreeData tree) {
             return tree;
         }
-        if (value instanceof List<?> list) {
-            return new DataTreeData(List.of(new DataTreeData.Branch(List.of(0), new ArrayList<>(list))));
-        }
-        if (value == null) {
-            return DataTreeData.empty();
-        }
-        return new DataTreeData(List.of(new DataTreeData.Branch(List.of(0), List.of(value))));
+        return DataTreeData.empty();
     }
 
-    static List<Object> resolveList(Object value) {
+    static List<Object> requireList(Object value) {
         if (value instanceof List<?> list) {
             return new ArrayList<>(list);
         }
-        if (value instanceof DataTreeData tree) {
-            return new ArrayList<>(tree.flatten());
-        }
-        if (value == null) {
-            return List.of();
-        }
-        return List.of(value);
+        return List.of();
     }
 
     static List<Integer> parsePath(Object value, List<Integer> fallback) {

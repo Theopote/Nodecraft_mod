@@ -54,6 +54,12 @@ These must stay as explicit nodes in the graph:
   - geometry construction step
 - `GEOMETRY -> BLOCK_LIST / BLOCK_PLACEMENT_LIST`
   - voxelization / bake policy matters
+- `LIST -> DATA_TREE`
+  - branch layout policy matters; use **Graft List** (or Partition List)
+- `DATA_TREE -> LIST`
+  - flattens branch structure; use **Flatten Tree**
+- `LIST / BLOCK_TYPE / STRING -> BLOCK_PALETTE`
+  - legacy block-id bags; use **Create Block Palette**
 
 Canonical spatial chain for new graphs:
 

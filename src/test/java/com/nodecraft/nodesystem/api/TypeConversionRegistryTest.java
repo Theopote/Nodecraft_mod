@@ -103,6 +103,26 @@ class TypeConversionRegistryTest {
     }
 
     @Test
+    void listAndDataTreeRequireExplicitGraftOrFlatten() {
+        assertEquals(TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
+            TypeConversionRegistry.classify(NodeDataType.LIST, NodeDataType.DATA_TREE));
+        assertEquals(TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
+            TypeConversionRegistry.classify(NodeDataType.DATA_TREE, NodeDataType.LIST));
+        assertFalse(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.LIST, NodeDataType.DATA_TREE));
+        assertFalse(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.DATA_TREE, NodeDataType.LIST));
+
+        TypeConversionRegistry.ConversionSuggestion graft =
+            TypeConversionRegistry.getSuggestedConversion(NodeDataType.LIST, NodeDataType.DATA_TREE);
+        assertNotNull(graft);
+        assertEquals("math.data_tree.graft_list", graft.nodeId());
+
+        TypeConversionRegistry.ConversionSuggestion flatten =
+            TypeConversionRegistry.getSuggestedConversion(NodeDataType.DATA_TREE, NodeDataType.LIST);
+        assertNotNull(flatten);
+        assertEquals("math.data_tree.flatten", flatten.nodeId());
+    }
+
+    @Test
     void unrelatedTypesAreUnsupported() {
         assertEquals(TypeConversionRegistry.ConversionPolicy.UNSUPPORTED,
             TypeConversionRegistry.classify(NodeDataType.STRING, NodeDataType.GEOMETRY));

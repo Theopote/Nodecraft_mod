@@ -35,7 +35,7 @@ public class GraftListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Object> list = DataTreeNodeUtils.resolveList(inputValues.get(INPUT_LIST_ID));
+        List<Object> list = DataTreeNodeUtils.requireList(inputValues.get(INPUT_LIST_ID));
         List<DataTreeData.Branch> branches = new ArrayList<>(list.size());
         for (int i = 0; i < list.size(); i++) {
             branches.add(new DataTreeData.Branch(List.of(i), List.of(list.get(i))));

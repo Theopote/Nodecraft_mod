@@ -43,7 +43,7 @@ public class ShiftPathNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        DataTreeData tree = DataTreeNodeUtils.resolveTree(inputValues.get(INPUT_TREE_ID));
+        DataTreeData tree = DataTreeNodeUtils.requireTree(inputValues.get(INPUT_TREE_ID));
         Object shiftObj = inputValues.get(INPUT_SHIFT_ID);
         int resolvedShift = shiftObj instanceof Number number ? number.intValue() : shift;
         List<DataTreeData.Branch> branches = new ArrayList<>(tree.getBranchCount());

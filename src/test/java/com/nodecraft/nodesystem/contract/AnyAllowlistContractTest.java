@@ -33,15 +33,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AnyAllowlistContractTest {
 
     /**
-     * Prefixes still allowed to expose ANY until Batch 11+ language cleanup.
+     * Prefixes still allowed to expose ANY (polymorphic containers / flow).
      * Adding a new prefix here is an explicit architecture decision.
+     * Batch 11 removed blanket {@code math.list.} / {@code math.data_tree.} —
+     * only the polymorphic item/value type ids below remain.
      */
     private static final Set<String> ANY_ALLOWED_PREFIXES = Set.of(
         "variable.",
-        "math.data_tree.",
-        "math.list.",
-        "math.list_sequence.",
-        "math.sequence.",
         "math.logic.",
         "math.random.",
         "math.compare.equals",
@@ -59,10 +57,20 @@ class AnyAllowlistContractTest {
 
     private static final Set<String> ANY_ALLOWED_TYPE_IDS = Set.of(
         "math.compare.equals",
-        "math.compare.not_equals"
+        "math.compare.not_equals",
+        // Polymorphic list item / value containers (Batch 11)
+        "math.list.get_item",
+        "math.list.set_item",
+        "math.list.insert_item",
+        "math.list.remove_item",
+        "math.sequence.repeat",
+        "math.list.reduce",
+        "math.list.create_list",
+        // Polymorphic tree item container
+        "math.data_tree.item"
     );
 
-    /** Families frozen in Batch 10 / 10.1 — must never regress to ANY. */
+    /** Families frozen in Batch 10 / 10.1 / 11 — must never regress to ANY. */
     private static final Set<String> ANY_FORBIDDEN_PREFIXES = Set.of(
         "math.trigonometry.",
         "math.scalar_math.",
@@ -75,7 +83,13 @@ class AnyAllowlistContractTest {
         "math.compare.less_than_or_equal",
         "math.compare.greater_than_or_equal",
         "math.compare.compare",
-        "math.sequence.range"
+        "math.sequence.range",
+        // Batch 11: typed tree/list structure ports
+        "math.data_tree.merge",
+        "math.data_tree.entwine",
+        "math.data_tree.branch",
+        "math.list.filter_list",
+        "math.list.dispatch_list"
     );
 
     private static NodeRegistry registry;

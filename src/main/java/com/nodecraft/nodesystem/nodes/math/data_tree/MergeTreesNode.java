@@ -20,7 +20,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.data_tree.merge",
     displayName = "Merge Trees",
-    description = "Merges two data trees or lists into one data tree",
+    description = "Merges two data trees into one data tree. Use Graft List to convert lists first.",
     category = "math.data_tree",
     order = 8
 )
@@ -36,8 +36,8 @@ public class MergeTreesNode extends BaseNode {
 
     public MergeTreesNode() {
         super(UUID.randomUUID(), "math.data_tree.merge");
-        addInputPort(new BasePort(INPUT_A_ID, "A", "First tree or list", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_B_ID, "B", "Second tree or list", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_A_ID, "A", "First data tree", NodeDataType.DATA_TREE, this));
+        addInputPort(new BasePort(INPUT_B_ID, "B", "Second data tree", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_TREE_ID, "Tree", "Merged data tree", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_BRANCH_COUNT_ID, "Branch Count", "Number of merged branches", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_ITEM_COUNT_ID, "Item Count", "Total item count", NodeDataType.INTEGER, this));
@@ -45,8 +45,8 @@ public class MergeTreesNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        DataTreeData treeA = DataTreeNodeUtils.resolveTree(inputValues.get(INPUT_A_ID));
-        DataTreeData treeB = DataTreeNodeUtils.resolveTree(inputValues.get(INPUT_B_ID));
+        DataTreeData treeA = DataTreeNodeUtils.requireTree(inputValues.get(INPUT_A_ID));
+        DataTreeData treeB = DataTreeNodeUtils.requireTree(inputValues.get(INPUT_B_ID));
         List<DataTreeData.Branch> branches = new ArrayList<>();
         appendBranches(branches, treeA, 0);
         appendBranches(branches, treeB, 1);

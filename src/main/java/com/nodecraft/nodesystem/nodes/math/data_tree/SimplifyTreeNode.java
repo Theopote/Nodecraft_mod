@@ -37,7 +37,7 @@ public class SimplifyTreeNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        DataTreeData tree = DataTreeNodeUtils.resolveTree(inputValues.get(INPUT_TREE_ID));
+        DataTreeData tree = DataTreeNodeUtils.requireTree(inputValues.get(INPUT_TREE_ID));
         List<Integer> prefix = commonPrefix(tree);
         List<DataTreeData.Branch> branches = new ArrayList<>(tree.getBranchCount());
         for (DataTreeData.Branch branch : tree.getBranches()) {

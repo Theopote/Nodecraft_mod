@@ -113,6 +113,12 @@ public final class TypeConversionRegistry {
         if (isLegacyPaletteConversion(output, input)) {
             return new ConversionSuggestion("material.basic_assignment.create_block_palette", "Create Block Palette");
         }
+        if (isListToDataTreeConversion(output, input)) {
+            return new ConversionSuggestion("math.data_tree.graft_list", "Graft List");
+        }
+        if (isDataTreeToListConversion(output, input)) {
+            return new ConversionSuggestion("math.data_tree.flatten", "Flatten Tree");
+        }
         return null;
     }
 
@@ -124,7 +130,9 @@ public final class TypeConversionRegistry {
                 || isBlockFaceToPlaneConversion(outputType, inputType)
                 || isSurfaceStripToGeometryConversion(outputType, inputType)
                 || isGeometryToPlacementConversion(outputType, inputType)
-                || isLegacyPaletteConversion(outputType, inputType);
+                || isLegacyPaletteConversion(outputType, inputType)
+                || isListToDataTreeConversion(outputType, inputType)
+                || isDataTreeToListConversion(outputType, inputType);
     }
 
     private static boolean isBlockCoordinateToPointConversion(NodeDataType outputType, NodeDataType inputType) {
@@ -161,6 +169,20 @@ public final class TypeConversionRegistry {
     private static boolean isLegacyPaletteConversion(NodeDataType outputType, NodeDataType inputType) {
         return inputType == NodeDataType.BLOCK_PALETTE
                 && (outputType == NodeDataType.LIST || outputType == NodeDataType.BLOCK_TYPE || outputType == NodeDataType.STRING);
+    }
+
+    /**
+     * Generic lists become data trees only through Graft List / Partition List.
+     */
+    private static boolean isListToDataTreeConversion(NodeDataType outputType, NodeDataType inputType) {
+        return outputType == NodeDataType.LIST && inputType == NodeDataType.DATA_TREE;
+    }
+
+    /**
+     * Data trees become flat lists only through Flatten Tree.
+     */
+    private static boolean isDataTreeToListConversion(NodeDataType outputType, NodeDataType inputType) {
+        return outputType == NodeDataType.DATA_TREE && inputType == NodeDataType.LIST;
     }
 
     private static boolean isNumericType(NodeDataType type) {

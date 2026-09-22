@@ -17,7 +17,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.data_tree.entwine",
     displayName = "Entwine",
-    description = "Combines up to four trees or lists into source-indexed data tree branches",
+    description = "Combines up to four data trees into source-indexed branches. Use Graft List to convert lists first.",
     category = "math.data_tree",
     order = 13
 )
@@ -32,10 +32,10 @@ public class EntwineNode extends BaseNode {
 
     public EntwineNode() {
         super(UUID.randomUUID(), "math.data_tree.entwine");
-        addInputPort(new BasePort(INPUT_A_ID, "A", "First tree, list, or item", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_B_ID, "B", "Second tree, list, or item", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_C_ID, "C", "Third tree, list, or item", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_D_ID, "D", "Fourth tree, list, or item", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_A_ID, "A", "First data tree", NodeDataType.DATA_TREE, this));
+        addInputPort(new BasePort(INPUT_B_ID, "B", "Second data tree", NodeDataType.DATA_TREE, this));
+        addInputPort(new BasePort(INPUT_C_ID, "C", "Third data tree", NodeDataType.DATA_TREE, this));
+        addInputPort(new BasePort(INPUT_D_ID, "D", "Fourth data tree", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_TREE_ID, "Tree", "Entwined data tree", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_BRANCH_COUNT_ID, "Branch Count", "Number of output branches", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_ITEM_COUNT_ID, "Item Count", "Total item count", NodeDataType.INTEGER, this));
@@ -58,7 +58,7 @@ public class EntwineNode extends BaseNode {
         if (value == null) {
             return;
         }
-        DataTreeData tree = DataTreeNodeUtils.resolveTree(value);
+        DataTreeData tree = DataTreeNodeUtils.requireTree(value);
         for (DataTreeData.Branch branch : tree.getBranches()) {
             List<Integer> path = new ArrayList<>();
             path.add(sourceIndex);

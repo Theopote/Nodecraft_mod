@@ -39,7 +39,7 @@ public class TreeItemNode extends BaseNode {
     public TreeItemNode() {
         super(UUID.randomUUID(), "math.data_tree.item");
         addInputPort(new BasePort(INPUT_TREE_ID, "Tree", "Data tree to query", NodeDataType.DATA_TREE, this));
-        addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Branch path such as 0, {0}, or {0;1}", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Branch path such as 0, {0}, or {0;1}", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_INDEX_ID, "Index", "Item index inside the branch", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_ITEM_ID, "Item", "Selected item", NodeDataType.ANY, this));
         addOutputPort(new BasePort(OUTPUT_FOUND_ID, "Found", "Whether the item was found", NodeDataType.BOOLEAN, this));
@@ -47,7 +47,7 @@ public class TreeItemNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        DataTreeData tree = DataTreeNodeUtils.resolveTree(inputValues.get(INPUT_TREE_ID));
+        DataTreeData tree = DataTreeNodeUtils.requireTree(inputValues.get(INPUT_TREE_ID));
         List<Integer> path = DataTreeNodeUtils.parsePath(inputValues.get(INPUT_PATH_ID), List.of(0));
         Object indexObj = inputValues.get(INPUT_INDEX_ID);
         DataTreeData.Branch branch = tree.getBranch(path);

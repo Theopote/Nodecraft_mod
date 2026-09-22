@@ -47,7 +47,7 @@ public class PartitionListToTreeNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Object> list = DataTreeNodeUtils.resolveList(inputValues.get(INPUT_LIST_ID));
+        List<Object> list = DataTreeNodeUtils.requireList(inputValues.get(INPUT_LIST_ID));
         Object sizeObj = inputValues.get(INPUT_SIZE_ID);
         if (!(sizeObj instanceof Number number) || number.intValue() <= 0) {
             writeInvalid();

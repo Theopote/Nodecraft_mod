@@ -33,7 +33,7 @@ public class FlattenTreeNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        DataTreeData tree = DataTreeNodeUtils.resolveTree(inputValues.get(INPUT_TREE_ID));
+        DataTreeData tree = DataTreeNodeUtils.requireTree(inputValues.get(INPUT_TREE_ID));
         outputValues.put(OUTPUT_LIST_ID, tree.flatten());
         outputValues.put(OUTPUT_ITEM_COUNT_ID, tree.getItemCount());
     }
