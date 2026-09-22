@@ -187,6 +187,13 @@ public final class PreviewManager {
                 clearTrackedWorldRequestState(nodeId);
                 return nodeId + ":tracked:cleared";
             }
+            if (!isUniformTrackedWorldPayload(cells)) {
+                NodeCraft.LOGGER.warn(
+                    "PreviewManager.showPreview TRACKED_WORLD: heterogeneous BlockState payload rejected. "
+                        + "Tracked World requires uniform blockId/stateData; use Ghost preview for material/state previews."
+                );
+                return null;
+            }
             BlockState state = BlockStateResolver.resolve(cells.getFirst().blockId(), cells.getFirst().stateData());
             if (state == null) {
                 NodeCraft.LOGGER.warn("PreviewManager.showPreview TRACKED_WORLD: invalid block id {}", cells.getFirst().blockId());
@@ -567,6 +574,24 @@ public final class PreviewManager {
 
     public static PreviewRenderer.PreviewRenderSettings getSettings() {
         return RENDERER.getSettings();
+    }
+
+    /**
+     * Tracked World places a single BlockState at every position.
+     * Heterogeneous material/state payloads must use Ghost preview.
+     */
+    private static boolean isUniformTrackedWorldPayload(List<PreviewBlock> cells) {
+        PreviewBlock first = cells.getFirst();
+        String blockId = first.blockId();
+        var stateData = first.stateData();
+        for (int i = 1; i < cells.size(); i++) {
+            PreviewBlock cell = cells.get(i);
+            if (!java.util.Objects.equals(blockId, cell.blockId())
+                    || !java.util.Objects.equals(stateData, cell.stateData())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static int computeTrackedWorldRequestSignature(String worldKey, String blockId, List<BlockPos> positions) {

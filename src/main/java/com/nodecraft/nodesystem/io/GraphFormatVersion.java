@@ -54,8 +54,14 @@ public final class GraphFormatVersion {
      */
     public static final int V7 = 7;
 
+    /**
+     * Batch 9 output language: Bake Geometry To Blocks → Voxelize Geometry (PURE).
+     * {@code output.execute.bake_geometry_to_blocks} → {@code geometry.voxel.voxelize_geometry}.
+     */
+    public static final int V8 = 8;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V7;
+    public static final int CURRENT = V8;
 
     private GraphFormatVersion() {
     }

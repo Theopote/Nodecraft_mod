@@ -128,7 +128,7 @@
             { "ref": "base", "typeId": "geometry.primitives.box", "x": 0, "y": 0 },
             { "ref": "cutter", "typeId": "geometry.primitives.box", "x": 0, "y": 180 },
             { "ref": "difference", "typeId": "geometry.boolean.difference", "x": 320, "y": 80 },
-            { "ref": "bake", "typeId": "output.execute.bake_geometry_to_blocks", "x": 620, "y": 80 }
+            { "ref": "bake", "typeId": "geometry.voxel.voxelize_geometry", "x": 620, "y": 80 }
           ],
           "connections": [
             { "fromRef": "base", "fromPort": "output_geometry", "toRef": "difference", "toPort": "input_base" },

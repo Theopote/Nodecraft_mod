@@ -71,6 +71,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V4 -> migrateV4ToV5(graph);
             case GraphFormatVersion.V5 -> migrateV5ToV6(graph);
             case GraphFormatVersion.V6 -> migrateV6ToV7(graph);
+            case GraphFormatVersion.V7 -> migrateV7ToV8(graph);
             default -> graph;
         };
     }
@@ -293,6 +294,9 @@ public final class GraphMigrationRegistry {
     private static final String ROTATE_VECTOR_TYPE = "transform.orientation.rotate_vector";
     private static final String LEGACY_ROTATE_VECTOR_ANGLE_PORT = "input_angle_rad";
 
+    private static final String LEGACY_BAKE_GEOMETRY_TO_BLOCKS_TYPE = "output.execute.bake_geometry_to_blocks";
+    private static final String VOXELIZE_GEOMETRY_TYPE = "geometry.voxel.voxelize_geometry";
+
     /**
      * Batch 5: Combine Geometry is structural compose, not analytic boolean union.
      * Remap legacy {@code geometry.boolean.union} → {@code geometry.combine.geometry}.
@@ -352,6 +356,26 @@ public final class GraphMigrationRegistry {
             kept.add(connection);
         }
         graph.connections = kept;
+        return graph;
+    }
+
+    /**
+     * Batch 9: Bake Geometry To Blocks was never a world write — remap to PURE Voxelize Geometry.
+     * Ports ({@code input_geometry}, {@code output_blocks}, …) are unchanged.
+     */
+    private static SavedGraph migrateV7ToV8(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return graph;
+        }
+        for (SavedNode node : graph.nodes) {
+            if (node == null || node.typeId == null) {
+                continue;
+            }
+            if (LEGACY_BAKE_GEOMETRY_TO_BLOCKS_TYPE.equalsIgnoreCase(node.typeId)) {
+                LOGGER.debug("Migrated node type: {} -> {}", node.typeId, VOXELIZE_GEOMETRY_TYPE);
+                node.typeId = VOXELIZE_GEOMETRY_TYPE;
+            }
+        }
         return graph;
     }
 

@@ -90,7 +90,7 @@
       },
       {
         "id": "bake",
-        "type": "output.execute.bake_geometry_to_blocks",
+        "type": "geometry.voxel.voxelize_geometry",
         "position": {"x": 850, "y": 200},
         "parameters": {
           "placement_mode": "solid"

@@ -128,7 +128,7 @@
       },
       {
         "id": "node_bake",
-        "type": "output.execute.bake_geometry_to_blocks",
+        "type": "geometry.voxel.voxelize_geometry",
         "position": {"x": 900, "y": 250},
         "parameters": {
           "placement_mode": "solid"

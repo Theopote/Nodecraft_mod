@@ -111,7 +111,7 @@
             },
             {
               "ref": "bake",
-              "typeId": "output.execute.bake_geometry_to_blocks",
+              "typeId": "geometry.voxel.voxelize_geometry",
               "x": 620.0,
               "y": 80.0
             }

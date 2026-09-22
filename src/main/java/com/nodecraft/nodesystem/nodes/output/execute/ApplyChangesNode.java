@@ -103,7 +103,15 @@ public class ApplyChangesNode extends BaseCustomUINode {
 
     public ApplyChangesNode() {
         super(UUID.randomUUID(), "output.execute.apply_changes");
-        addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "Execution trigger", NodeDataType.ANY, this));
+        addInputPort(new BasePort(
+            INPUT_TRIGGER_ID,
+            "Trigger",
+            "EXEC pulse to submit world write (manual Apply also works)",
+            NodeDataType.EXEC,
+            this,
+            false,
+            false
+        ));
         addInputPort(new BasePort(INPUT_BLOCKS_ID, "Blocks", "Block coordinates to place", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified abstract geometry input", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry to voxelize and place", NodeDataType.BOX_GEOMETRY, this));
@@ -146,7 +154,8 @@ public class ApplyChangesNode extends BaseCustomUINode {
         String blockType = (blockTypeObj instanceof String) ? (String) blockTypeObj : "minecraft:stone";
 
         boolean manualTrigger = applyRequested.getAndSet(false);
-        if (triggerObj == null && !manualTrigger) {
+        boolean hasExecPulse = Boolean.TRUE.equals(triggerObj);
+        if (!hasExecPulse && !manualTrigger) {
             publishOutputs(success, operationCount, executionTime, status, "", false);
             return;
         }

@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.output.execute;
+package com.nodecraft.nodesystem.nodes.geometry.voxel;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -21,17 +21,18 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Generic geometry voxelizer for any supported GeometryData subtype.
+ * Pure Geometry → BLOCK_LIST voxelization. Does not write the Minecraft world.
+ * World writes go through Apply Changes after Material / Block State.
  */
 @NodeInfo(
-    effect = NodeEffect.WORLD_WRITE,
-    id = "output.execute.bake_geometry_to_blocks",
-    displayName = "Bake Geometry To Blocks",
-    description = "Bakes any supported geometry into Minecraft block coordinates for final execution",
-    category = "output.execute",
-    order = 2
+    effect = NodeEffect.PURE,
+    id = "geometry.voxel.voxelize_geometry",
+    displayName = "Voxelize Geometry",
+    description = "Converts geometry into Minecraft block coordinates (BLOCK_LIST). Pure conversion — does not write the world. Use Apply Changes to place.",
+    category = "geometry.voxel",
+    order = 0
 )
-public class GeometryToBlocksNode extends BaseNode {
+public class VoxelizeGeometryNode extends BaseNode {
 
     @NodeProperty(displayName = "Fill Geometry", category = "Shape", order = 1,
         description = "When disabled, only the outer shell is generated where supported")
@@ -45,8 +46,8 @@ public class GeometryToBlocksNode extends BaseNode {
     private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_COUNT_ID = "output_count";
 
-    public GeometryToBlocksNode() {
-        super(UUID.randomUUID(), "output.execute.bake_geometry_to_blocks");
+    public VoxelizeGeometryNode() {
+        super(UUID.randomUUID(), "geometry.voxel.voxelize_geometry");
 
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified geometry input", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_GEOMETRY_TREE_ID, "Geometry Tree", "Optional tree of geometry values to voxelize per branch", NodeDataType.DATA_TREE, this));
@@ -55,6 +56,11 @@ public class GeometryToBlocksNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_BLOCKS_TREE_ID, "Blocks Tree", "Voxelized blocks grouped by source geometry tree branch", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding region of the geometry", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Generated block count", NodeDataType.INTEGER, this));
+    }
+
+    @Override
+    public String getDescription() {
+        return "Converts geometry into Minecraft block coordinates (BLOCK_LIST). Pure conversion — does not write the world.";
     }
 
     @Override

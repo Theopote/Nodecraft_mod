@@ -190,7 +190,7 @@
       },
       {
         "id": "bake",
-        "type": "output.execute.bake_geometry_to_blocks",
+        "type": "geometry.voxel.voxelize_geometry",
         "position": {
           "x": 1050,
           "y": 250

@@ -111,13 +111,13 @@ public final class TrackedPreviewPlacementService {
     }
 
     private int clearTrackedPreviewInternal(World world, String nodeId) {
-        Map<BlockPos, BlockState> statesToRestore = detachTrackedPreviewState(world, nodeId);
-        if (statesToRestore == null) {
+        TrackedPreviewState detached = detachTrackedPreviewState(world, nodeId);
+        if (detached == null) {
             NodeCraft.LOGGER.debug("TrackedPreviewPlacementService.clearTrackedPreview nodeId={} had no tracked state", nodeId);
             return 0;
         }
 
-        int restoredCount = restoreDetachedPreviewBlocks(world, statesToRestore);
+        int restoredCount = restoreDetachedPreviewBlocks(world, detached);
         NodeCraft.LOGGER.debug(
                 "TrackedPreviewPlacementService.clearTrackedPreview nodeId={} restored={}",
                 nodeId, restoredCount
@@ -239,7 +239,8 @@ public final class TrackedPreviewPlacementService {
 
         for (BlockPos removedPos : removedPositions) {
             BlockState originalState = trackedOriginalStates.remove(removedPos);
-            if (originalState != null && world.setBlockState(removedPos, originalState, Block.NOTIFY_ALL)) {
+            if (originalState != null
+                    && restoreIfStillPreview(world, removedPos, originalState, previousPreviewState)) {
                 restoredCount++;
             }
         }
@@ -283,7 +284,7 @@ public final class TrackedPreviewPlacementService {
     }
 
     @Nullable
-    private Map<BlockPos, BlockState> detachTrackedPreviewState(World world, String nodeId) {
+    private TrackedPreviewState detachTrackedPreviewState(World world, String nodeId) {
         if (world == null || nodeId == null || nodeId.isEmpty()) {
             return null;
         }
@@ -301,25 +302,55 @@ public final class TrackedPreviewPlacementService {
             }
 
             removeWorldIfEmpty(world);
-            return new LinkedHashMap<>(trackedState.previousStates());
+            return new TrackedPreviewState(
+                    new LinkedHashMap<>(trackedState.previousStates()),
+                    trackedState.previewState()
+            );
         }
     }
 
-    private int restoreDetachedPreviewBlocks(World world, Map<BlockPos, BlockState> statesToRestore) {
+    /**
+     * Restores original blocks only where the world still holds the preview state.
+     * If an external player/command/mod changed the cell after preview placement,
+     * leave that external change alone (do not overwrite with the pre-preview original).
+     */
+    private int restoreDetachedPreviewBlocks(World world, TrackedPreviewState detached) {
+        Map<BlockPos, BlockState> statesToRestore = detached.previousStates();
         if (statesToRestore.isEmpty()) {
             return 0;
         }
 
+        BlockState expectedPreview = detached.previewState();
         return runOnWorldThread(world, () -> {
             assertOnServerThread(world);
             int count = 0;
             for (Map.Entry<BlockPos, BlockState> entry : statesToRestore.entrySet()) {
-                if (world.setBlockState(entry.getKey(), entry.getValue(), Block.NOTIFY_ALL)) {
+                if (restoreIfStillPreview(world, entry.getKey(), entry.getValue(), expectedPreview)) {
                     count++;
                 }
             }
             return count;
         });
+    }
+
+    /**
+     * @return true if the original state was written back
+     */
+    private static boolean restoreIfStillPreview(
+            World world,
+            BlockPos pos,
+            BlockState originalState,
+            @Nullable BlockState expectedPreviewState
+    ) {
+        BlockState current = world.getBlockState(pos);
+        if (expectedPreviewState != null && !current.equals(expectedPreviewState)) {
+            NodeCraft.LOGGER.debug(
+                    "Tracked preview restore skipped at {} — external change detected (current != previewState)",
+                    pos
+            );
+            return false;
+        }
+        return world.setBlockState(pos, originalState, Block.NOTIFY_ALL);
     }
 
     @Nullable

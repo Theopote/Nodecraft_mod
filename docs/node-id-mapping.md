@@ -17,7 +17,7 @@
 - ❌ `material.gradient_mapping.height_gradient` → ✅ `material.gradient_mapping.height_gradient_map`
 
 **Output:**
-- ❌ `output.bake.geometry_to_blocks` → ✅ `output.execute.bake_geometry_to_blocks`
+- ❌ `output.bake.geometry_to_blocks` / `output.execute.bake_geometry_to_blocks` → ✅ `geometry.voxel.voxelize_geometry` (PURE; V8)
 - ❌ `output.preview.preview_blocks` → ✅ `output.preview.block_preview`
 - ❌ `output.preview.geometry_viewer` → ✅ `output.preview.geometry_preview`
 

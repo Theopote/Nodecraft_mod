@@ -35,7 +35,7 @@
         },
         {
           "ref": "bake",
-          "typeId": "output.execute.bake_geometry_to_blocks",
+          "typeId": "geometry.voxel.voxelize_geometry",
           "offsetX": 120.0,
           "offsetY": -20.0,
           "nodeState": {

@@ -1,4 +1,4 @@
-﻿flow.control.branch|flow.control|Branch
+flow.control.branch|flow.control|Branch
 flow.control.do_once|flow.control|Do Once
 flow.control.sequence|flow.control|Sequence
 flow.loop.accumulator|flow.loop|Accumulator
@@ -281,7 +281,7 @@ output.debug.execution_timer|output.debug|Execution Timer
 output.debug.print_to_chat|output.debug|Print To Chat
 output.debug.value_monitor|output.debug|Value Monitor
 output.execute.apply_changes|output.execute|Apply Changes
-output.execute.bake_geometry_to_blocks|output.execute|Bake Geometry To Blocks
+geometry.voxel.voxelize_geometry|geometry.voxel|Voxelize Geometry
 output.execute.bake_surface_strip_to_blocks|output.execute|Bake Surface Strip To Blocks
 output.execute.clear_preview|output.execute|Clear Preview
 output.execute.merge_block_placements|output.execute|Merge Block Placements

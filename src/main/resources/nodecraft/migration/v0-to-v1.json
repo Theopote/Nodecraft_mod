@@ -160,17 +160,18 @@
     "spatial.points.scalecoordinates": "transform.basic_transforms.scale_coordinates",
     "spatial.points.snap_point_list_to_blocks": "world.selection.snap_points_to_blocks",
     "spatial.points.snap_point_to_block": "world.selection.snap_point_to_block",
-    "spatial.voxel.box_geometry_voxelizer": "output.execute.bake_geometry_to_blocks",
-    "spatial.voxel.cone_geometry_voxelizer": "output.execute.bake_geometry_to_blocks",
-    "spatial.voxel.cylinder_geometry_voxelizer": "output.execute.bake_geometry_to_blocks",
-    "spatial.voxel.ellipsoid_geometry_voxelizer": "output.execute.bake_geometry_to_blocks",
-    "spatial.voxel.geometry_to_blocks": "output.execute.bake_geometry_to_blocks",
-    "spatial.voxel.octahedron_geometry_voxelizer": "output.execute.bake_geometry_to_blocks",
-    "spatial.voxel.prism_geometry_voxelizer": "output.execute.bake_geometry_to_blocks",
-    "spatial.voxel.sphere_geometry_voxelizer": "output.execute.bake_geometry_to_blocks",
+    "spatial.voxel.box_geometry_voxelizer": "geometry.voxel.voxelize_geometry",
+    "spatial.voxel.cone_geometry_voxelizer": "geometry.voxel.voxelize_geometry",
+    "spatial.voxel.cylinder_geometry_voxelizer": "geometry.voxel.voxelize_geometry",
+    "spatial.voxel.ellipsoid_geometry_voxelizer": "geometry.voxel.voxelize_geometry",
+    "spatial.voxel.geometry_to_blocks": "geometry.voxel.voxelize_geometry",
+    "spatial.voxel.octahedron_geometry_voxelizer": "geometry.voxel.voxelize_geometry",
+    "spatial.voxel.prism_geometry_voxelizer": "geometry.voxel.voxelize_geometry",
+    "spatial.voxel.sphere_geometry_voxelizer": "geometry.voxel.voxelize_geometry",
     "spatial.voxel.surface_strip_to_blocks": "output.execute.bake_surface_strip_to_blocks",
-    "spatial.voxel.tetrahedron_geometry_voxelizer": "output.execute.bake_geometry_to_blocks",
-    "spatial.voxel.torus_geometry_voxelizer": "output.execute.bake_geometry_to_blocks",
+    "spatial.voxel.tetrahedron_geometry_voxelizer": "geometry.voxel.voxelize_geometry",
+    "spatial.voxel.torus_geometry_voxelizer": "geometry.voxel.voxelize_geometry",
+    "output.execute.bake_geometry_to_blocks": "geometry.voxel.voxelize_geometry",
     "visualization.debugging.execution_timer": "output.debug.execution_timer",
     "visualization.debugging.panel": "output.debug.data_inspector",
     "visualization.debugging.print_to_chat": "output.debug.print_to_chat",
@@ -255,7 +256,7 @@
     "output.preview.preview_blocks": {
       "blocks": "input_blocks"
     },
-    "output.execute.bake_geometry_to_blocks": {
+    "geometry.voxel.voxelize_geometry": {
       "geometry": "input_geometry",
       "blocks": "output_blocks"
     },

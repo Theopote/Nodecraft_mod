@@ -35,7 +35,15 @@ public class UndoLastBakeNode extends BaseCustomUINode {
 
     public UndoLastBakeNode() {
         super(UUID.randomUUID(), "output.execute.undo_last_bake");
-        addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "Any non-null value triggers undo", NodeDataType.ANY, this));
+        addInputPort(new BasePort(
+            INPUT_TRIGGER_ID,
+            "Trigger",
+            "EXEC pulse to undo the last bake",
+            NodeDataType.EXEC,
+            this,
+            false,
+            false
+        ));
         addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether an undo record was restored or queued", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_RESTORED_COUNT_ID, "Restored Count", "Number of blocks to restore (for sync mode) or queued (for async mode)", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_REMAINING_HISTORY_ID, "Remaining History", "Number of remaining undo records", NodeDataType.INTEGER, this));
@@ -53,7 +61,7 @@ public class UndoLastBakeNode extends BaseCustomUINode {
         String status = "No undo executed";
         String taskId = "";
 
-        if (inputValues.get(INPUT_TRIGGER_ID) != null) {
+        if (Boolean.TRUE.equals(inputValues.get(INPUT_TRIGGER_ID))) {
             if (context == null || context.getWorld() == null) {
                 status = "Missing execution context";
             } else {

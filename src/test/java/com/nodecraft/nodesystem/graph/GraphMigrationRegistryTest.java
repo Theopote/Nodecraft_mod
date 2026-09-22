@@ -267,6 +267,33 @@ class GraphMigrationRegistryTest {
     }
 
     @Test
+    void v7BakeGeometryToBlocksMigratesToVoxelizeGeometry() {
+        SavedGraph v7 = new SavedGraph();
+        v7.formatVersion = GraphFormatVersion.V7;
+        SavedNode bake = new SavedNode();
+        bake.nodeId = "bake";
+        bake.typeId = "output.execute.bake_geometry_to_blocks";
+        SavedNode preview = new SavedNode();
+        preview.nodeId = "preview";
+        preview.typeId = "output.preview.preview_blocks";
+        v7.nodes = List.of(bake, preview);
+
+        SavedConnection connection = new SavedConnection();
+        connection.sourceNodeId = "bake";
+        connection.sourcePortId = "output_blocks";
+        connection.targetNodeId = "preview";
+        connection.targetPortId = "input_blocks";
+        v7.connections = List.of(connection);
+        v7.nodePositions = java.util.Map.of();
+
+        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v7);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
+        assertEquals("geometry.voxel.voxelize_geometry", migrated.nodes.getFirst().typeId);
+        assertEquals("output_blocks", migrated.connections.getFirst().sourcePortId);
+        assertEquals("input_blocks", migrated.connections.getFirst().targetPortId);
+    }
+
+    @Test
     void futureVersionsAreLeftUntouched() {
         SavedGraph future = new SavedGraph();
         future.formatVersion = GraphFormatVersion.CURRENT + 5;

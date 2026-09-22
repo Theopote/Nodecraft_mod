@@ -34,7 +34,15 @@ public class RedoLastBakeNode extends BaseCustomUINode {
 
     public RedoLastBakeNode() {
         super(UUID.randomUUID(), "output.execute.redo_last_bake");
-        addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "Any non-null value triggers redo", NodeDataType.ANY, this));
+        addInputPort(new BasePort(
+            INPUT_TRIGGER_ID,
+            "Trigger",
+            "EXEC pulse to redo the last undone bake",
+            NodeDataType.EXEC,
+            this,
+            false,
+            false
+        ));
         addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether a redo record was applied or queued", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_REMAINING_REDO_ID, "Remaining Redo", "Number of remaining redo records", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_REMAINING_HISTORY_ID, "Remaining History", "Number of undo records after redo", NodeDataType.INTEGER, this));
@@ -50,7 +58,7 @@ public class RedoLastBakeNode extends BaseCustomUINode {
         String status = "No redo executed";
         String taskId = "";
 
-        if (inputValues.get(INPUT_TRIGGER_ID) != null) {
+        if (Boolean.TRUE.equals(inputValues.get(INPUT_TRIGGER_ID))) {
             if (context == null || context.getWorld() == null) {
                 status = "Missing execution context";
             } else if (service.getHistory(actorId).redoSize() == 0) {

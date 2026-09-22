@@ -100,7 +100,7 @@
       },
       {
         "id": "node_bake",
-        "type": "output.execute.bake_geometry_to_blocks",
+        "type": "geometry.voxel.voxelize_geometry",
         "position": {"x": 700, "y": 200},
         "parameters": {
           "placement_mode": "solid"
@@ -134,7 +134,7 @@
   },
 
   "documentation": {
-    "learning_notes": "This preset demonstrates the basic workflow in NodeCraft: get player position, create geometry, assign material, bake to blocks, and preview. Try adjusting the parameters to see how the box changes.",
+    "learning_notes": "This preset demonstrates the basic workflow in NodeCraft: get player position, create geometry, voxelize, assign material, and preview (Apply Changes writes the world). Try adjusting the parameters to see how the box changes.",
     "tips": [
       "Start with small dimensions to quickly see results",
       "Try different materials to see how they look",

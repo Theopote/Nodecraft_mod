@@ -157,7 +157,7 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("width_half", "math.scalar_math.division", -120.0f, 20.0f, null));
         nodes.add(new MockNode("minor_max", "math.scalar_math.max", 120.0f, 100.0f, null));
         nodes.add(new MockNode("torus", "geometry.primitives.torus", 0.0f, 0.0f, null));
-        nodes.add(new MockNode("bake", "output.execute.bake_geometry_to_blocks", 360.0f, 0.0f,
+        nodes.add(new MockNode("bake", "geometry.voxel.voxelize_geometry", 360.0f, 0.0f,
             createNodeState("fillGeometry", params.thickness() <= 1.2d)));
         nodes.add(new MockNode("preview", "output.preview.geometry_viewer", 720.0f, -120.0f,
             createNodeState(
@@ -192,7 +192,7 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("radius", "input.numeric.float", -520.0f, 40.0f,
             createNodeState("value", (float) params.radius(), "min", 1.0f, "max", 2048.0f, "precision", 2)));
         nodes.add(new MockNode("sphere", "geometry.primitives.sphere", -180.0f, -20.0f, null));
-        nodes.add(new MockNode("bake", "output.execute.bake_geometry_to_blocks", 120.0f, -20.0f,
+        nodes.add(new MockNode("bake", "geometry.voxel.voxelize_geometry", 120.0f, -20.0f,
             createNodeState("fillGeometry", params.thickness() >= 1.0d)));
         nodes.add(new MockNode("preview", "output.preview.geometry_viewer", 420.0f, -120.0f,
             createNodeState("previewEnabled", true, "previewColor", "#3A86FF", "transparency", 0.34f, "showOutline", true)));
@@ -220,7 +220,7 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("size_z", "input.numeric.integer", -660.0f, 380.0f,
             createNodeState("value", sizeZ, "min", 1, "max", 1024, "step", 1)));
         nodes.add(new MockNode("box", "geometry.primitives.box", -280.0f, 180.0f, null));
-        nodes.add(new MockNode("bake", "output.execute.bake_geometry_to_blocks", 80.0f, 180.0f,
+        nodes.add(new MockNode("bake", "geometry.voxel.voxelize_geometry", 80.0f, 180.0f,
             createNodeState("fillGeometry", true)));
         nodes.add(new MockNode("preview", "output.preview.geometry_viewer", 420.0f, 80.0f,
             createNodeState("previewEnabled", true, "previewColor", "#2AA876", "transparency", 0.30f, "showOutline", true)));
@@ -256,7 +256,7 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("seed_radius", "input.numeric.float", -760.0f, 40.0f,
             createNodeState("value", seedRadius, "min", 0.25f, "max", 8.0f, "precision", 2, "showLabel", false)));
         nodes.add(new MockNode("seed_sphere", "geometry.primitives.sphere", -520.0f, 40.0f, null));
-        nodes.add(new MockNode("seed_bake", "output.execute.bake_geometry_to_blocks", -260.0f, 40.0f,
+        nodes.add(new MockNode("seed_bake", "geometry.voxel.voxelize_geometry", -260.0f, 40.0f,
             createNodeState("fillGeometry", true)));
 
         nodes.add(new MockNode("helix", "geometry.curves.helix", -520.0f, 280.0f, null));
@@ -301,7 +301,7 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("tower_radius", "input.numeric.float", -640.0f, 300.0f,
             createNodeState("value", radius, "min", 1.0f, "max", 128.0f, "precision", 2)));
         nodes.add(new MockNode("tower_cylinder", "geometry.primitives.cylinder", -260.0f, 120.0f, null));
-        nodes.add(new MockNode("tower_bake", "output.execute.bake_geometry_to_blocks", 80.0f, 120.0f,
+        nodes.add(new MockNode("tower_bake", "geometry.voxel.voxelize_geometry", 80.0f, 120.0f,
             createNodeState("fillGeometry", true)));
         nodes.add(new MockNode("preview", "output.preview.geometry_viewer", 420.0f, 30.0f,
             createNodeState("previewEnabled", true, "previewColor", "#6BA368", "transparency", 0.30f, "showOutline", true)));
@@ -340,7 +340,7 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("seed_radius", "input.numeric.float", -760.0f, 20.0f,
             createNodeState("value", seedRadius, "min", 0.25f, "max", 8.0f, "precision", 2, "showLabel", false)));
         nodes.add(new MockNode("seed_sphere", "geometry.primitives.sphere", -540.0f, 20.0f, null));
-        nodes.add(new MockNode("seed_bake", "output.execute.bake_geometry_to_blocks", -280.0f, 20.0f,
+        nodes.add(new MockNode("seed_bake", "geometry.voxel.voxelize_geometry", -280.0f, 20.0f,
             createNodeState("fillGeometry", true)));
 
         nodes.add(new MockNode("along_path", "pattern.linear.along_path", 20.0f, 120.0f,
@@ -384,7 +384,7 @@ public final class AiMockPlanService {
             createNodeState("value", minorRadius, "min", 0.5f, "max", 128.0f, "precision", 2)));
 
         nodes.add(new MockNode("torus", "geometry.primitives.torus", -320.0f, 150.0f, null));
-        nodes.add(new MockNode("bake", "output.execute.bake_geometry_to_blocks", 40.0f, 150.0f,
+        nodes.add(new MockNode("bake", "geometry.voxel.voxelize_geometry", 40.0f, 150.0f,
             createNodeState("fillGeometry", true)));
         nodes.add(new MockNode("preview", "output.preview.geometry_viewer", 380.0f, 60.0f,
             createNodeState("previewEnabled", true, "previewColor", "#7FB069", "transparency", 0.30f, "showOutline", true)));
@@ -438,7 +438,7 @@ public final class AiMockPlanService {
 
         nodes.add(new MockNode("union", "geometry.combine.geometry", -320.0f, 120.0f,
             createNodeState("inputCount", 3)));
-        nodes.add(new MockNode("bake", "output.execute.bake_geometry_to_blocks", 20.0f, 120.0f,
+        nodes.add(new MockNode("bake", "geometry.voxel.voxelize_geometry", 20.0f, 120.0f,
             createNodeState("fillGeometry", true)));
         nodes.add(new MockNode("preview", "output.preview.geometry_viewer", 360.0f, 40.0f,
             createNodeState("previewEnabled", true, "previewColor", "#5AA9E6", "transparency", 0.32f, "showOutline", true)));

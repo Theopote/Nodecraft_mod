@@ -55,7 +55,7 @@
               "connectPortId": "input_geometry"
             },
             {
-              "nodeId": "output.execute.bake_geometry_to_blocks",
+              "nodeId": "geometry.voxel.voxelize_geometry",
               "order": 40,
               "reason": "烘焙为方块",
               "connectPortId": "input_geometry"
@@ -88,7 +88,7 @@
             "geometry.boolean.difference",
             "output.preview.geometry_viewer",
             "material.basic_assignment.assign_block_type",
-            "output.execute.bake_geometry_to_blocks"
+            "geometry.voxel.voxelize_geometry"
           ]
         }
       }
@@ -99,7 +99,7 @@
           "downstream": [
             "material.basic_assignment.assign_block_type",
             "output.preview.geometry_viewer",
-            "output.execute.bake_geometry_to_blocks",
+            "geometry.voxel.voxelize_geometry",
             "pattern.linear.linear_array_geometry"
           ]
         }
@@ -113,7 +113,7 @@
         "geometry.combine.geometry",
         "output.preview.geometry_viewer",
         "material.basic_assignment.assign_block_type",
-        "output.execute.bake_geometry_to_blocks"
+        "geometry.voxel.voxelize_geometry"
       ]
     },
     "point": {

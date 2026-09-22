@@ -2,7 +2,7 @@
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
 - Total nodes: **527**
-- Total categories: **58**
+- Total categories: **59**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
 ## Category Statistics
@@ -20,6 +20,7 @@
 | `geometry.profiles` | 24 |
 | `geometry.sdf` | 13 |
 | `geometry.solids` | 24 |
+| `geometry.voxel` | 1 |
 | `input.context` | 4 |
 | `input.numeric` | 8 |
 | `input.type_selectors` | 5 |
@@ -40,7 +41,7 @@
 | `math.sequence` | 3 |
 | `math.trigonometry` | 14 |
 | `output.debug` | 4 |
-| `output.execute` | 9 |
+| `output.execute` | 8 |
 | `output.export` | 4 |
 | `output.preview` | 12 |
 | `pattern.grid` | 5 |
@@ -261,6 +262,12 @@
 | Shrinkwrap Points On Surface Strip | `geometry.solids.shrinkwrap_points_surface_strip` | Projects each query point to the closest location on the surface strip triangle mesh | `ShrinkwrapPointsOnSurfaceStripNode` |
 | Shrinkwrap Points To Voxel Geometry | `geometry.solids.shrinkwrap_points_voxel_geometry` | Voxelizes geometry to blocks, then snaps each query point to the nearest voxel block center (shell when fill is off); distinct from triangle strip shrinkwrap | `ShrinkwrapPointsToVoxelGeometryNode` |
 | Prism By Profile Vector | `geometry.solids.extrude_profile` | Legacy/advanced prism construction from profile + extrusion vector. Prefer Extrude (geometry.solids.extrude) for new graphs. | `PrismByProfileVectorNode` |
+
+## geometry.voxel (1)
+
+| Node Name | Node ID | Description | Class |
+|---|---|---|---|
+| Voxelize Geometry | `geometry.voxel.voxelize_geometry` | Converts geometry into Minecraft block coordinates (BLOCK_LIST). Pure conversion — does not write the world. Use Apply Changes to place. | `VoxelizeGeometryNode` |
 
 ## input.context (4)
 
@@ -523,14 +530,13 @@
 | Execution Timer | `output.debug.execution_timer` | 测量连接到此节点的计算分支所花费的时间 | `ExecutionTimerNode` |
 | Panel | `output.debug.data_inspector` | 显示连接到其输入端口的原始数据（文本形式） | `PanelNode` |
 
-## output.execute (9)
+## output.execute (8)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Apply Changes | `output.execute.apply_changes` | Submits explicit placements, placement trees, or voxelized geometry to the world. Async mode queues a single bake task and returns its task ID. | `ApplyChangesNode` |
 | Bake Status | `output.execute.bake_status` | Polls BakePlacementService for a task ID and reports state, progress, placed, skipped, and rollback-failed counts. | `BakeStatusNode` |
 | Clear Preview | `output.execute.clear_preview` | Clears all active previews | `ClearAllPreviewsNode` |
-| Bake Geometry To Blocks | `output.execute.bake_geometry_to_blocks` | Bakes any supported geometry into Minecraft block coordinates for final execution | `GeometryToBlocksNode` |
 | Undo Last Bake | `output.execute.undo_last_bake` | Reverts the most recent recorded bake or apply-changes operation | `UndoLastBakeNode` |
 | Bake Surface Strip To Blocks | `output.execute.bake_surface_strip_to_blocks` | Bakes a surface strip into block coordinates for final execution | `SurfaceStripToBlocksNode` |
 | Redo Last Bake | `output.execute.redo_last_bake` | Reapplies the most recently undone bake or apply-changes operation | `RedoLastBakeNode` |
