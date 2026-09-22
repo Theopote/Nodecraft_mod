@@ -231,6 +231,8 @@ Applies to `geometry.primitives.*` and `geometry.profiles.*` (sample set first, 
 | Axis / Direction / Normal / X Axis | `VECTOR` |
 | Block grid | `BLOCK_POS` |
 | Ordered locations (corners, samples) | `POINT_LIST` |
+| Ordered paths (beam centerlines, multi-edge eaves) | `PATH_LIST` |
+| Ordered frames (placement layouts) | `FRAME_LIST` |
 | Ordered polygon profiles (loft sections) | `POLYGON_PROFILE_LIST` |
 
 Do **not** type locations as `VECTOR` / `VECTOR_LIST`.
@@ -502,6 +504,13 @@ Three distinct mechanisms (do not treat as one “Boolean”):
 - **Roof Generator** is the advanced specialty convenience node — do not expand it into more roof types;
   prefer composing Roof Base + future modifiers instead.
 
+**Batch 13.2 / PATH_LIST (2026-09-23):**
+
+- Multi-path architectural outputs use **`PATH_LIST`** (`ListElementKind.PATH`), not bare `LIST`.
+- First consumers: **Beam Grid** `output_center_lines`, **Floor Slab With Beams** `output_beam_center_lines`.
+- Same typed-list rules as `POINT_LIST` / `FRAME_LIST`: same kind connects; different kinds unsupported;
+  unconstrained `LIST` still bridges.
+
 ---
 
 ## Checklist for new nodes
@@ -512,7 +521,7 @@ Before merging a new or remodeled node:
 - [ ] Port ids match the table in §2 (or an existing domain convention already frozen for that family).
 - [ ] Angle ports document and emit **degrees**.
 - [ ] Spatial ports use Point / Vector / Block Position intentionally; no new Coordinate/Position-first API.
-- [ ] Geometry centers/locations are `POINT` / `POINT_LIST`; directions are `VECTOR`; no spatial `ANY`.
+- [ ] Geometry centers/locations are `POINT` / `POINT_LIST`; multi-path outputs use `PATH_LIST`; directions are `VECTOR`; no spatial `ANY`.
 - [ ] Building profiles/primitives default plane to **XZ** when unspecified.
 - [ ] Optional drives use property fallback + connection override with clear UI.
 - [ ] No `@NodeProperty` that cannot affect the node.

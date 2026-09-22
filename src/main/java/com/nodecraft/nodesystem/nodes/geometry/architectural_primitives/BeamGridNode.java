@@ -62,7 +62,7 @@ public class BeamGridNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite beam solids", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Placement frames at each beam center", NodeDataType.FRAME_LIST, this));
         addOutputPort(new BasePort(OUTPUT_CENTERS_ID, "Centers", "Beam center points", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_CENTER_LINES_ID, "Center Lines", "Beam centerline paths", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_LINES_ID, "Center Lines", "Beam centerline paths", NodeDataType.PATH_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of beams created", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when at least one beam was generated", NodeDataType.BOOLEAN, this));
     }

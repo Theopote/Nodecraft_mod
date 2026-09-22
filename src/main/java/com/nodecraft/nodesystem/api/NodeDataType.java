@@ -126,6 +126,8 @@ public enum NodeDataType {
     PLANE_LIST("plane_list", "Plane List", java.util.List.class, ListElementKind.PLANE),
     /** Ordered frames (align / path / surface placement). */
     FRAME_LIST("frame_list", "Frame List", java.util.List.class, ListElementKind.FRAME),
+    /** Ordered paths (beam centerlines, eave edges, multi-segment hosts). */
+    PATH_LIST("path_list", "Path List", java.util.List.class, ListElementKind.PATH),
     REGION_LIST("region_list", "Region List", java.util.List.class, ListElementKind.REGION),
     PLANT_STRUCTURE_LIST("plant_structure_list", "Plant Structure List", java.util.List.class, ListElementKind.PLANT_STRUCTURE);
 

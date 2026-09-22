@@ -88,7 +88,8 @@ class ArchitecturalFamilyContractTest {
         assertNotNull(registry.createNodeInstance("geometry.architectural_primitives.roof_base"));
         assertPortType(new BeamGridNode(), "input_face", NodeDataType.BOX_FACE);
         assertPortType(new BeamGridNode(), "output_frames", NodeDataType.FRAME_LIST);
-        assertPortType(new BeamGridNode(), "output_center_lines", NodeDataType.LIST);
+        assertPortType(new BeamGridNode(), "output_center_lines", NodeDataType.PATH_LIST);
+        assertPortType(new FloorSlabWithBeamsNode(), "output_beam_center_lines", NodeDataType.PATH_LIST);
         assertPortType(new FloorSlabWithBeamsNode(), "output_beam_frames", NodeDataType.FRAME_LIST);
         assertPortType(new RoofBaseNode(), "output_ridge_path", NodeDataType.PATH);
         assertPortType(new RoofGeneratorNode(), "output_ridge_path", NodeDataType.PATH);

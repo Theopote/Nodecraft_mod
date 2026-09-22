@@ -12,6 +12,7 @@ public enum ListElementKind {
     VECTOR,
     PLANE,
     FRAME,
+    PATH,
     POLYGON_PROFILE,
     REGION,
     BLOCK_INFO,

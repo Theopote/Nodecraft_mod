@@ -67,7 +67,7 @@ public class FloorSlabWithBeamsNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_SLAB_ID, "Slab Geometry", "Floor slab solid only", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_BEAMS_ID, "Beam Geometry", "Support beam grid only", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_BEAM_FRAMES_ID, "Beam Frames", "Placement frames at each beam center", NodeDataType.FRAME_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BEAM_CENTER_LINES_ID, "Beam Center Lines", "Beam centerline paths", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_BEAM_CENTER_LINES_ID, "Beam Center Lines", "Beam centerline paths", NodeDataType.PATH_LIST, this));
         addOutputPort(new BasePort(OUTPUT_TOP_FACE_ID, "Top Face", "Top face of the slab", NodeDataType.BOX_FACE, this));
         addOutputPort(new BasePort(OUTPUT_BOTTOM_FACE_ID, "Bottom Face", "Bottom face of the slab", NodeDataType.BOX_FACE, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Total geometry pieces created", NodeDataType.INTEGER, this));

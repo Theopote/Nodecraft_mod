@@ -171,6 +171,19 @@ class TypeConversionRegistryTest {
     void typedListsWithSameElementKindAreConnectable() {
         assertTrue(NodeDataType.isConnectableTo(NodeDataType.VECTOR_LIST, NodeDataType.VECTOR_LIST));
         assertTrue(NodeDataType.isConnectableTo(NodeDataType.REGION_LIST, NodeDataType.REGION_LIST));
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.PATH_LIST, NodeDataType.PATH_LIST));
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.FRAME_LIST, NodeDataType.FRAME_LIST));
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.POINT_LIST, NodeDataType.POINT_LIST));
+    }
+
+    @Test
+    void pathListDoesNotSilentlyConnectToOtherTypedLists() {
+        assertEquals(TypeConversionRegistry.ConversionPolicy.UNSUPPORTED,
+            TypeConversionRegistry.classify(NodeDataType.PATH_LIST, NodeDataType.POINT_LIST));
+        assertEquals(TypeConversionRegistry.ConversionPolicy.UNSUPPORTED,
+            TypeConversionRegistry.classify(NodeDataType.PATH_LIST, NodeDataType.FRAME_LIST));
+        assertFalse(NodeDataType.isConnectableTo(NodeDataType.PATH_LIST, NodeDataType.VECTOR_LIST));
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.LIST, NodeDataType.PATH_LIST));
     }
 
     @Test
