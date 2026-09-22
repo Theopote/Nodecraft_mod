@@ -8,9 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
-import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -20,13 +18,13 @@ import java.util.Locale;
 import java.util.UUID;
 
 /**
- * Generates architectural staircases from a line segment.
+ * Generates architectural staircases from a path run.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.architectural_primitives.staircase",
     displayName = "Staircase",
-    description = "Generates architectural staircases from a line segment",
+    description = "Generates architectural staircases from a path",
     category = "geometry.architectural_primitives",
     order = 4
 )
@@ -34,7 +32,7 @@ public class StaircaseNode extends BaseNode {
 
     private static final double EPSILON = 1.0e-9d;
 
-    private static final String INPUT_LINE_ID = "input_line";
+    private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_LAYOUT_ID = "input_layout";
     private static final String INPUT_STEP_COUNT_ID = "input_step_count";
     private static final String INPUT_FIRST_FLIGHT_STEPS_ID = "input_first_flight_steps";
@@ -57,7 +55,7 @@ public class StaircaseNode extends BaseNode {
     public StaircaseNode() {
         super(UUID.randomUUID(), "geometry.architectural_primitives.staircase");
 
-        addInputPort(new BasePort(INPUT_LINE_ID, "Line", "Straight path for straight runs; for spiral, start is the stair axis base and direction defines the entry tangent in plan", NodeDataType.LINE, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Path run for straight stairs; for spiral, start is the stair axis base and direction defines the entry tangent in plan", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_LAYOUT_ID, "Layout", "Stair layout: straight, u, double_run, switchback, or spiral", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_STEP_COUNT_ID, "Step Count", "Number of steps to generate", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_FIRST_FLIGHT_STEPS_ID, "First Flight Steps", "Optional step count used before the landing in U/double-run layouts", NodeDataType.INTEGER, this));
@@ -80,33 +78,29 @@ public class StaircaseNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Generates straight, U-shaped, double-run, switchback, or vertical spiral staircases from a path line";
+        return "Generates straight, U-shaped, double-run, switchback, or vertical spiral staircases from a path";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object lineObj = inputValues.get(INPUT_LINE_ID);
+        ArchitecturalPrimitiveSupport.LineFrame frame =
+            ArchitecturalPrimitiveSupport.resolvePathAsLineFrame(inputValues.get(INPUT_PATH_ID));
 
         GeometryData geometry = null;
         int count = 0;
         boolean valid = false;
 
-        if (lineObj instanceof LineData line) {
-            Vec3d startVec = line.getStart();
-            Vec3d endVec = line.getEnd();
-            ArchitecturalPrimitiveSupport.LineFrame frame = ArchitecturalPrimitiveSupport.resolveLineFrame(startVec, endVec);
-            if (frame != null) {
-                StairParameters parameters = resolveStairParameters();
-                List<GeometryData> steps = switch (parameters.layout()) {
-                    case "u", "double_run", "switchback" -> buildDoubleRunStairs(frame, parameters);
-                    case "spiral" -> buildSpiralStairs(frame, parameters, resolveSpiralParameters(frame, parameters));
-                    default -> buildStraightStairs(frame, parameters.stepCount(), parameters.stepRun(), parameters.stepRise(), parameters.width(), parameters.landingLength());
-                };
-                if (!steps.isEmpty()) {
-                    geometry = new CompositeGeometryData(steps);
-                    count = steps.size();
-                    valid = true;
-                }
+        if (frame != null) {
+            StairParameters parameters = resolveStairParameters();
+            List<GeometryData> steps = switch (parameters.layout()) {
+                case "u", "double_run", "switchback" -> buildDoubleRunStairs(frame, parameters);
+                case "spiral" -> buildSpiralStairs(frame, parameters, resolveSpiralParameters(frame, parameters));
+                default -> buildStraightStairs(frame, parameters.stepCount(), parameters.stepRun(), parameters.stepRise(), parameters.width(), parameters.landingLength());
+            };
+            if (!steps.isEmpty()) {
+                geometry = new CompositeGeometryData(steps);
+                count = steps.size();
+                valid = true;
             }
         }
 

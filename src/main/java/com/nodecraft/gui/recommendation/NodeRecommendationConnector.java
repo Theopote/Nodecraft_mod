@@ -59,6 +59,9 @@ final class NodeRecommendationConnector {
             score += 80;
         } else if (sourceType != null && NodeDataType.isConnectableTo(sourceType, port.dataType())) {
             score += 40;
+        } else if (sourceType != null
+                && TypeConversionRegistry.requiresExplicitConversion(sourceType, port.dataType())) {
+            score += 20;
         }
         if (port.dataType() != NodeDataType.ANY) {
             score += 10;

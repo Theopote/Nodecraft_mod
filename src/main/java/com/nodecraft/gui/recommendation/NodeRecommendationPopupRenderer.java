@@ -57,7 +57,7 @@ public final class NodeRecommendationPopupRenderer {
                 ImGui.separator();
                 renderRecommendationList();
                 ImGui.separator();
-                if (ImGui.button("取消", 320, 26)) {
+                if (ImGui.button("Cancel", 320, 26)) {
                     close();
                 }
             } finally {
@@ -72,25 +72,30 @@ public final class NodeRecommendationPopupRenderer {
 
     private void renderHeader() {
         String directionLabel = context.direction() == RecommendationDirection.DOWNSTREAM
-                ? "推荐下游节点"
-                : "推荐上游节点";
+                ? "Suggested Connections"
+                : "Suggested Upstream";
         ImGui.text(directionLabel);
         if (context.sourceDataType() != null) {
-            ImGui.textDisabled("类型: " + context.sourceDataType().getDisplayName());
+            ImGui.textDisabled("Type: " + context.sourceDataType().getDisplayName());
         }
     }
 
     private void renderRecommendationList() {
         ImGui.beginChild("RecommendationList", 320, 300, true);
         if (recommendations.isEmpty()) {
-            ImGui.textDisabled("没有匹配的推荐节点");
+            ImGui.textDisabled("No matching suggestions");
             ImGui.endChild();
             return;
         }
 
         List<NodeRecommendation> visible = new ArrayList<>(recommendations);
         for (NodeRecommendation recommendation : visible) {
-            String label = recommendation.displayName();
+            String planMark = switch (recommendation.connectionPlan()) {
+                case VIA_CONVERSION -> "↻ ";
+                case MANUAL -> "· ";
+                case DIRECT -> "→ ";
+            };
+            String label = planMark + recommendation.displayName();
             if (ImGui.selectable(label + "##rec_" + recommendation.nodeId())) {
                 applyRecommendation(recommendation);
                 close();
@@ -99,8 +104,9 @@ public final class NodeRecommendationPopupRenderer {
                 ImGui.beginTooltip();
                 ImGui.text("ID: " + recommendation.nodeId());
                 ImGui.text(recommendation.reason());
+                ImGui.textDisabled("Plan: " + recommendation.connectionPlan().name());
                 if (recommendation.connectPortId() != null) {
-                    ImGui.text("端口: " + recommendation.connectPortId());
+                    ImGui.text("Port: " + recommendation.connectPortId());
                 }
                 ImGui.endTooltip();
             }

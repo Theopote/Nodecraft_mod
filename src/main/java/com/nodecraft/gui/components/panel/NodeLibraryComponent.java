@@ -22,9 +22,11 @@ import com.nodecraft.gui.node.NodeInfo;
 import com.nodecraft.nodesystem.registry.NodeRegistry.NodeCategory;
 import com.nodecraft.gui.components.node.NodeCategoryPresentationMapper;
 import com.nodecraft.gui.components.node.NodeCategoryPresentationMapper.CategoryPresentation;
+import com.nodecraft.gui.utils.NodeFavoritesStore;
 import com.nodecraft.gui.utils.NodeIconManager;
 import com.nodecraft.gui.utils.UserPreferences;
 import com.nodecraft.gui.components.search.NodeSearchManager;
+import com.nodecraft.gui.components.search.NodeSearchMatcher;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
 import com.nodecraft.gui.recommendation.NodeRecommendation;
 import com.nodecraft.gui.recommendation.NodeRecommendationContext;
@@ -340,6 +342,7 @@ public class NodeLibraryComponent implements EditorComponent {
      */
     public void renderContent(float width, float height, float paddingX) {
         renderSearchBar();
+        renderFavoritesSection();
         renderSuggestedSection();
         ImGui.separator();
         ImGui.spacing();
@@ -489,6 +492,37 @@ public class NodeLibraryComponent implements EditorComponent {
         cachedRecommendationNodeId = selectedNodeId;
     }
 
+    private void renderFavoritesSection() {
+        if (!searchManager.getSearchTerm().isEmpty()) {
+            return;
+        }
+
+        List<NodeInfo> favorites = NodeFavoritesStore.resolveFavorites(NodeRegistry.getInstance());
+        if (favorites.isEmpty()) {
+            return;
+        }
+
+        ImGui.textColored(1.0f, 0.85f, 0.35f, 1.0f, "Favorites");
+        for (NodeInfo node : favorites) {
+            String label = "  ★ " + node.getDisplayName() + "##fav_" + node.getId();
+            if (ImGui.selectable(label)) {
+                if (selectCallback != null) {
+                    selectCallback.onNodeSelected(node.getId(), node.getDisplayName());
+                }
+            }
+            if (ImGui.isItemHovered()) {
+                ImGui.setTooltip(node.getId() + "\nRight-click a library node to toggle favorites");
+            }
+            if (ImGui.beginPopupContextItem("fav_ctx_" + node.getId())) {
+                if (ImGui.menuItem("Remove from Favorites")) {
+                    NodeFavoritesStore.remove(node.getId());
+                }
+                ImGui.endPopup();
+            }
+        }
+        ImGui.spacing();
+    }
+
     private void renderSuggestedSection() {
         if (selectedNodeId == null || !searchManager.getSearchTerm().isEmpty()) {
             return;
@@ -499,9 +533,15 @@ public class NodeLibraryComponent implements EditorComponent {
         }
 
         ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
-        ImGui.textColored(0.55f, 0.85f, 1.0f, 1.0f, "推荐下游");
+        ImGui.textColored(0.55f, 0.85f, 1.0f, 1.0f, "Suggested Connections");
         for (NodeRecommendation recommendation : cachedRecommendations) {
-            if (ImGui.selectable("  " + recommendation.displayName() + "##suggest_" + recommendation.nodeId())) {
+            String prefix = switch (recommendation.connectionPlan()) {
+                case VIA_CONVERSION -> "  ↻ ";
+                case MANUAL -> "  · ";
+                case DIRECT -> "  → ";
+            };
+            String label = prefix + recommendation.displayName() + "##suggest_" + recommendation.nodeId();
+            if (ImGui.selectable(label)) {
                 if (editor != null && cachedRecommendationContext != null) {
                     editor.applyRecommendation(cachedRecommendationContext, recommendation);
                 }
@@ -558,7 +598,6 @@ public class NodeLibraryComponent implements EditorComponent {
 
         // Normalize the search term before matching.
         String processedTerm = searchTerm.toLowerCase().trim();
-        NodeCraft.LOGGER.debug("Normalized search term: '{}'", processedTerm);
 
         Map<String, CategoryPresentation> presentationById = buildPresentationCategoryIndex();
 
@@ -568,8 +607,8 @@ public class NodeLibraryComponent implements EditorComponent {
 
         for (CategoryPresentation category : allCategories) {
             String categoryId = category.displayCategoryId();
-            String categoryName = category.displayName().toLowerCase();
-            boolean categoryMatches = categoryName.contains(processedTerm) || categoryId.toLowerCase().contains(processedTerm);
+            boolean categoryMatches = NodeSearchMatcher.matchesCategory(
+                    categoryId, category.displayName(), processedTerm);
 
             // Collect matching nodes in the current category.
             List<NodeInfo> matchingNodes = new ArrayList<>();
@@ -579,27 +618,19 @@ public class NodeLibraryComponent implements EditorComponent {
                 }
                 if (matchesNode(node, processedTerm)) {
                     matchingNodes.add(node);
-                    NodeCraft.LOGGER.debug("Node matched search term: {} ({}) in category {}",
-                            node.getDisplayName(), node.getId(), categoryId);
                 }
             }
 
             // 1. Category name matched, so keep all nodes in that category.
             if (categoryMatches) {
                 searchResults.add(new DisplayCategory(category, getVisibleNodes(category.sourceCategory().getNodes())));
-                NodeCraft.LOGGER.debug("Category matched search term '{}': {} ({}), keeping all nodes",
-                        processedTerm, category.displayName(), categoryId);
-
                 categoriesToExpand.addAll(collectSelfAndAncestorCategoryIds(categoryId, presentationById));
-
                 continue;
             }
 
             // 2. Category did not match, but some nodes did.
             if (!matchingNodes.isEmpty()) {
                 searchResults.add(new DisplayCategory(category, matchingNodes));
-                NodeCraft.LOGGER.debug("Category {} contains {} matching nodes", categoryId, matchingNodes.size());
-
                 categoriesToExpand.addAll(collectSelfAndAncestorCategoryIds(categoryId, presentationById));
             }
         }
@@ -607,10 +638,7 @@ public class NodeLibraryComponent implements EditorComponent {
         // Expand matched categories and all their ancestor chain.
         for (String categoryId : categoriesToExpand) {
             expandedCategories.put(categoryId, true);
-            NodeCraft.LOGGER.debug("Expanded category during search: {}", categoryId);
         }
-
-        NodeCraft.LOGGER.debug("Search '{}' matched {} categories", processedTerm, searchResults.size());
 
         if (!searchResults.isEmpty()) {
             // Ensure ancestor categories remain visible even when only deep child categories matched.
@@ -646,17 +674,7 @@ public class NodeLibraryComponent implements EditorComponent {
      * Returns whether a node matches the current search term.
      */
     private boolean matchesNode(NodeInfo node, String searchTerm) {
-        if (searchTerm == null || searchTerm.isEmpty() || node == null) {
-            return false;
-        }
-
-        String displayName = node.getDisplayName() != null ? node.getDisplayName().toLowerCase() : "";
-        String nodeId = node.getId() != null ? node.getId().toLowerCase() : "";
-        String description = node.getDescription() != null ? node.getDescription().toLowerCase() : "";
-
-        return displayName.contains(searchTerm) ||
-                nodeId.contains(searchTerm) ||
-                description.contains(searchTerm);
+        return NodeSearchMatcher.matchesNode(node, searchTerm);
     }
 
     /**
@@ -1020,8 +1038,19 @@ public class NodeLibraryComponent implements EditorComponent {
 
             ImGui.separator();
             ImGui.text("Category: " + displayCategory.getDisplayName());
+            ImGui.textDisabled(NodeFavoritesStore.isFavorite(node.getId())
+                    ? "Favorite · right-click to remove"
+                    : "Right-click to add to Favorites");
 
             ImGui.endTooltip();
+        }
+
+        if (ImGui.beginPopupContextItem("node_fav_ctx_" + node.getId())) {
+            boolean favorite = NodeFavoritesStore.isFavorite(node.getId());
+            if (ImGui.menuItem(favorite ? "Remove from Favorites" : "Add to Favorites")) {
+                NodeFavoritesStore.toggle(node.getId());
+            }
+            ImGui.endPopup();
         }
     }
 

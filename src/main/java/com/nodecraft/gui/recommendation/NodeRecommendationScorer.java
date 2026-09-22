@@ -2,6 +2,7 @@ package com.nodecraft.gui.recommendation;
 
 import com.nodecraft.gui.node.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.TypeConversionRegistry;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 import java.util.ArrayList;
@@ -45,7 +46,12 @@ final class NodeRecommendationScorer {
                 preferredConnectPortId);
 
         NodeRecommendation.ConnectionPlan plan = resolvePlan(sourceDataType, candidate.dataType());
-        String reason = buildReason(score, categoryId);
+        if (plan == NodeRecommendation.ConnectionPlan.VIA_CONVERSION
+                && TypeConversionRegistry.getSuggestedConversion(sourceDataType, candidate.dataType()) != null) {
+            // Keep known conversion bridges visible in the short suggested list.
+            score += 90;
+        }
+        String reason = buildReason(score, categoryId, plan, sourceDataType, candidate.dataType());
 
         return new NodeRecommendation(
                 candidate.nodeId(),
@@ -70,7 +76,7 @@ final class NodeRecommendationScorer {
         if (NodeDataType.isConnectableTo(sourceType, targetPortType)) {
             return 80;
         }
-        if (com.nodecraft.nodesystem.api.TypeConversionRegistry.requiresExplicitConversion(sourceType, targetPortType)) {
+        if (TypeConversionRegistry.requiresExplicitConversion(sourceType, targetPortType)) {
             return 40;
         }
         return 0;
@@ -192,26 +198,39 @@ final class NodeRecommendationScorer {
         if (NodeDataType.isConnectableTo(sourceType, targetPortType)) {
             return NodeRecommendation.ConnectionPlan.DIRECT;
         }
-        if (com.nodecraft.nodesystem.api.TypeConversionRegistry.requiresExplicitConversion(sourceType, targetPortType)) {
+        if (TypeConversionRegistry.requiresExplicitConversion(sourceType, targetPortType)) {
             return NodeRecommendation.ConnectionPlan.VIA_CONVERSION;
         }
         return NodeRecommendation.ConnectionPlan.MANUAL;
     }
 
-    private String buildReason(int score, String categoryId) {
+    private String buildReason(
+            int score,
+            String categoryId,
+            NodeRecommendation.ConnectionPlan plan,
+            NodeDataType sourceType,
+            NodeDataType targetType) {
+        if (plan == NodeRecommendation.ConnectionPlan.VIA_CONVERSION) {
+            TypeConversionRegistry.ConversionSuggestion conversion =
+                    TypeConversionRegistry.getSuggestedConversion(sourceType, targetType);
+            if (conversion != null) {
+                return "Via " + conversion.displayName();
+            }
+            return "Requires conversion node";
+        }
         if (score >= 1000) {
-            return "规则表 · 精确匹配";
+            return "Rule table · exact match";
         }
         if (score >= 800) {
-            return "规则表 · 分类工作流";
+            return "Rule table · category workflow";
         }
         if (score >= 600) {
-            return "规则表 · 类型默认链";
+            return "Rule table · type default chain";
         }
         if (categoryId != null) {
-            return "类型兼容 · " + categoryId;
+            return "Type compatible · " + categoryId;
         }
-        return "类型兼容";
+        return "Type compatible";
     }
 
     static List<NodeRecommendation> mergeAndSort(Map<String, NodeRecommendation> deduped, int limit) {

@@ -4,6 +4,7 @@ import com.nodecraft.gui.ai.AiNodeSchemaCatalog;
 import com.nodecraft.gui.ai.AiNodeSchemaCatalog.NodeSchema;
 import com.nodecraft.gui.ai.AiNodeSchemaCatalog.PortSchema;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.TypeConversionRegistry;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 import java.util.ArrayList;
@@ -80,7 +81,7 @@ public final class NodePortIndex {
                         inputType,
                         input.required());
                 for (NodeDataType outputType : NodeDataType.values()) {
-                    if (NodeDataType.isConnectableTo(outputType, inputType)) {
+                    if (isSuggestedCompatible(outputType, inputType)) {
                         downstream.computeIfAbsent(outputType, ignored -> new ArrayList<>()).add(candidate);
                     }
                 }
@@ -96,7 +97,7 @@ public final class NodePortIndex {
                         outputType,
                         true);
                 for (NodeDataType inputType : NodeDataType.values()) {
-                    if (NodeDataType.isConnectableTo(outputType, inputType)) {
+                    if (isSuggestedCompatible(outputType, inputType)) {
                         upstream.computeIfAbsent(inputType, ignored -> new ArrayList<>()).add(candidate);
                     }
                 }
@@ -157,6 +158,14 @@ public final class NodePortIndex {
             return NodeDataType.ANY;
         }
         return NodeDataType.fromId(typeId.toLowerCase());
+    }
+
+    /**
+     * Suggested connections include direct wires and known explicit conversion pairs.
+     */
+    public static boolean isSuggestedCompatible(NodeDataType outputType, NodeDataType inputType) {
+        return NodeDataType.isConnectableTo(outputType, inputType)
+                || TypeConversionRegistry.requiresExplicitConversion(outputType, inputType);
     }
 
     public record CandidatePort(

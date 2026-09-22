@@ -7,11 +7,13 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.components.search.NodeSearchMatcher;
 import com.nodecraft.gui.node.NodeInfo;
 import com.nodecraft.gui.preset.GraphPresetSaveDialog;
 import com.nodecraft.gui.recommendation.NodeRecommendation;
 import com.nodecraft.gui.recommendation.NodeRecommendationContext;
 import com.nodecraft.gui.recommendation.NodeRecommendations;
+import com.nodecraft.gui.utils.NodeFavoritesStore;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -233,7 +235,7 @@ public class ImGuiNodeMenus {
             
             if (ImGui.beginPopupModal("Node Search", ImGuiWindowFlags.AlwaysAutoResize)) {
                 try {
-                    ImGui.text("搜索并添加节点:");
+                    ImGui.text("Search and add node:");
                     ImGui.separator();
                     
                     // 搜索输入框
@@ -241,7 +243,7 @@ public class ImGuiNodeMenus {
                         ImGui.setKeyboardFocusHere();
                         searchFocusRequested = false;
                     }
-                    ImGui.inputText("##search", searchBuffer);
+                    ImGui.inputTextWithHint("##search", "Search nodes...", searchBuffer);
                     String filter = searchBuffer.get().toLowerCase().trim();
                     
                     ImGui.separator();
@@ -257,21 +259,52 @@ public class ImGuiNodeMenus {
                     // 排序后遍历
                     List<String> sortedIds = new ArrayList<>(allNodeIds);
                     sortedIds.sort(String::compareTo);
+
+                    Set<String> favoriteIds = new HashSet<>(NodeFavoritesStore.getFavoriteIds());
                     
                     ImGui.beginChild("NodeList", 300, 340, true);
+
+                    List<NodeInfo> favorites = NodeFavoritesStore.resolveFavorites(registry);
+                    boolean favoritesVisible = false;
+                    for (NodeInfo fav : favorites) {
+                        if (!NodeSearchMatcher.matchesNode(fav, filter)) {
+                            continue;
+                        }
+                        if (!favoritesVisible) {
+                            ImGui.textColored(1.0f, 0.85f, 0.35f, 1.0f, "★ Favorites");
+                            ImGui.separator();
+                            favoritesVisible = true;
+                        }
+                        String favLabel = "  ★ " + fav.getDisplayName();
+                        if (ImGui.selectable(favLabel + "##fav_popup_" + fav.getId())) {
+                            editor.addNode(fav.getId(), nodeSearchPosX, nodeSearchPosY);
+                            showNodeSearchPopup = false;
+                            searchBuffer.set("");
+                            ImGui.closeCurrentPopup();
+                        }
+                        if (ImGui.isItemHovered()) {
+                            ImGui.setTooltip(fav.getId());
+                        }
+                        displayedCount++;
+                    }
+                    if (favoritesVisible) {
+                        ImGui.spacing();
+                    }
+
                     for (String nodeId : sortedIds) {
                         NodeInfo info = registry.getNodeInfo(nodeId);
                         if (info == null) continue;
+                        if (favoriteIds.contains(nodeId.toLowerCase()) && filter.isEmpty()) {
+                            // Already listed under Favorites when browsing.
+                            continue;
+                        }
                         
                         String displayName = info.getDisplayName();
                         String categoryId = info.getCategoryId();
                         
-                        // 模糊搜索：匹配节点ID、显示名、分类
-                        if (!filter.isEmpty()) {
-                            boolean matches = nodeId.toLowerCase().contains(filter)
-                                || (displayName != null && displayName.toLowerCase().contains(filter))
-                                || (categoryId != null && categoryId.toLowerCase().contains(filter));
-                            if (!matches) continue;
+                        if (!NodeSearchMatcher.matches(
+                                nodeId, displayName, info.getDescription(), categoryId, filter)) {
+                            continue;
                         }
                         
                         // 分类标题
@@ -286,7 +319,9 @@ public class ImGuiNodeMenus {
                         
                         // 节点按钮
                         String label = (displayName != null ? displayName : nodeId);
-                        if (ImGui.selectable("  " + label + "##" + nodeId)) {
+                        boolean isFavorite = favoriteIds.contains(nodeId.toLowerCase());
+                        String row = (isFavorite ? "  ★ " : "  ") + label;
+                        if (ImGui.selectable(row + "##" + nodeId)) {
                             editor.addNode(nodeId, nodeSearchPosX, nodeSearchPosY);
                             showNodeSearchPopup = false;
                             searchBuffer.set("");
@@ -302,18 +337,25 @@ public class ImGuiNodeMenus {
                             }
                             ImGui.endTooltip();
                         }
+
+                        if (ImGui.beginPopupContextItem("search_fav_ctx_" + nodeId)) {
+                            if (ImGui.menuItem(isFavorite ? "Remove from Favorites" : "Add to Favorites")) {
+                                NodeFavoritesStore.toggle(nodeId);
+                            }
+                            ImGui.endPopup();
+                        }
                         
                         displayedCount++;
                     }
                     
                     if (displayedCount == 0) {
-                        ImGui.textDisabled("没有找到匹配的节点");
+                        ImGui.textDisabled("No matching nodes");
                     }
                     ImGui.endChild();
                     
                     ImGui.separator();
                     
-                    if (ImGui.button("取消", 300, 28)) {
+                    if (ImGui.button("Cancel", 300, 28)) {
                         showNodeSearchPopup = false;
                         searchBuffer.set("");
                         ImGui.closeCurrentPopup();

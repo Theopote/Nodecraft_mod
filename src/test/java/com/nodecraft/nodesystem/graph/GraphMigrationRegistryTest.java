@@ -174,8 +174,10 @@ class GraphMigrationRegistryTest {
         assertEquals("geometry.curves.path_to_points", migrated.nodes.get(1).typeId);
         assertEquals("input_path", migrated.connections.get(0).targetPortId);
         assertEquals("input_path", migrated.connections.get(1).targetPortId);
-        assertEquals("input_line", migrated.connections.get(2).targetPortId);
-        assertEquals("input_line", migrated.connections.get(3).targetPortId);
+        // Batch 13 V10: Railing / Staircase join PATH language.
+        assertEquals("input_path", migrated.connections.get(2).targetPortId);
+        assertEquals("input_path", migrated.connections.get(3).targetPortId);
+        // Unknown LINE-only nodes remain untouched.
         assertEquals("input_line", migrated.connections.get(4).targetPortId);
     }
 
@@ -336,6 +338,43 @@ class GraphMigrationRegistryTest {
         assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
         assertEquals(1, migrated.connections.size());
         assertEquals("input_b", migrated.connections.getFirst().targetPortId);
+    }
+
+    @Test
+    void v9ArchitecturalLinePortsBecomePath() {
+        SavedGraph v9 = new SavedGraph();
+        v9.formatVersion = GraphFormatVersion.V9;
+        SavedNode railing = new SavedNode();
+        railing.nodeId = "rail";
+        railing.typeId = "geometry.architectural_primitives.railing";
+        SavedNode stair = new SavedNode();
+        stair.nodeId = "stair";
+        stair.typeId = "geometry.architectural_primitives.staircase";
+        SavedNode source = new SavedNode();
+        source.nodeId = "src";
+        source.typeId = "geometry.curves.points_to_path";
+        v9.nodes = List.of(railing, stair, source);
+
+        SavedConnection toRail = new SavedConnection();
+        toRail.sourceNodeId = "src";
+        toRail.sourcePortId = "output_path";
+        toRail.targetNodeId = "rail";
+        toRail.targetPortId = "input_line";
+
+        SavedConnection toStair = new SavedConnection();
+        toStair.sourceNodeId = "src";
+        toStair.sourcePortId = "output_path";
+        toStair.targetNodeId = "stair";
+        toStair.targetPortId = "input_line";
+
+        v9.connections = new java.util.ArrayList<>(List.of(toRail, toStair));
+        v9.nodePositions = java.util.Map.of();
+
+        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v9);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
+        assertEquals(2, migrated.connections.size());
+        assertEquals("input_path", migrated.connections.get(0).targetPortId);
+        assertEquals("input_path", migrated.connections.get(1).targetPortId);
     }
 
     @Test

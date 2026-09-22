@@ -11,7 +11,14 @@ Design freeze for on-disk / embedded `SavedGraph` compatibility.
 | `V0` / `LEGACY_UNSPECIFIED` | `0` | Pre-versioning JSON / omitted field |
 | `V1` | `1` | Explicit version + V0→V1 taxonomy migration manifest |
 | `V2` | `2` | Batch A language remediation (Integer Slider `value` → `output_value`) |
-| `V3` / `CURRENT` | `3` | Batch B language remediation (Coordinate Input → Block Position Input) |
+| `V3` | `3` | Batch B language remediation (Coordinate Input → Block Position Input) |
+| `V4` | `4` | Batch 3 curves PATH language |
+| `V5` | `5` | Batch 4 solids Extrude / Surface Strip language |
+| `V6` | `6` | Batch 5 Combine Geometry canonical id |
+| `V7` | `7` | Batch 6 Rotate Vector degrees freeze |
+| `V8` | `8` | Batch 9 Voxelize Geometry rename |
+| `V9` | `9` | Batch 10 trigonometry degrees freeze |
+| `V10` / `CURRENT` | `10` | Batch 13 architectural Railing / Staircase `input_line` → `input_path` |
 
 ## Load policy
 

@@ -73,6 +73,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V6 -> migrateV6ToV7(graph);
             case GraphFormatVersion.V7 -> migrateV7ToV8(graph);
             case GraphFormatVersion.V8 -> migrateV8ToV9(graph);
+            case GraphFormatVersion.V9 -> migrateV9ToV10(graph);
             default -> graph;
         };
     }
@@ -144,7 +145,7 @@ public final class GraphMigrationRegistry {
 
     /**
      * Only these Batch 3 PATH consumers remapped legacy triple path ports → {@code input_path}.
-     * Unknown / LINE-only nodes (e.g. Railing, Staircase, future Wall From Line) are left untouched.
+     * Architectural Railing / Staircase were migrated later in V9→V10.
      */
     private static final Set<String> PATH_INPUT_MIGRATION_NODE_TYPES = Set.of(
             "geometry.curves.evaluate_curve",
@@ -442,6 +443,43 @@ public final class GraphMigrationRegistry {
             kept.add(connection);
         }
         graph.connections = kept;
+        return graph;
+    }
+
+    private static final Set<String> ARCH_PATH_INPUT_MIGRATION_NODE_TYPES = Set.of(
+            "geometry.architectural_primitives.railing",
+            "geometry.architectural_primitives.staircase"
+    );
+
+    /**
+     * Batch 13: Railing / Staircase join PATH language ({@code input_line} → {@code input_path}).
+     */
+    private static SavedGraph migrateV9ToV10(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null || connection.targetPortId == null) {
+                continue;
+            }
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            if (targetType == null || !ARCH_PATH_INPUT_MIGRATION_NODE_TYPES.contains(targetType)) {
+                continue;
+            }
+            if ("input_line".equalsIgnoreCase(connection.targetPortId)) {
+                LOGGER.debug("Migrated architectural path port: {} ({}) input_line -> input_path",
+                        connection.targetNodeId, targetType);
+                connection.targetPortId = "input_path";
+            }
+        }
         return graph;
     }
 

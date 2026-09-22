@@ -67,8 +67,13 @@ public final class GraphFormatVersion {
      */
     public static final int V9 = 9;
 
+    /**
+     * Batch 13 architectural language: Railing / Staircase {@code input_line} → {@code input_path}.
+     */
+    public static final int V10 = 10;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V9;
+    public static final int CURRENT = V10;
 
     private GraphFormatVersion() {
     }

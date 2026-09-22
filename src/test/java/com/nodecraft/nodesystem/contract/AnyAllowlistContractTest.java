@@ -75,6 +75,7 @@ class AnyAllowlistContractTest {
         "math.trigonometry.",
         "math.scalar_math.",
         "math.fields.",
+        "geometry.architectural_primitives.",
         "material."
     );
 

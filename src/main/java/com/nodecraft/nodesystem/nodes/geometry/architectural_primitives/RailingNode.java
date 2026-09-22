@@ -8,9 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
-import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -19,19 +17,19 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Generates a straight railing or balustrade along a line segment.
+ * Generates a straight railing or balustrade along a path run (first-to-last chord).
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.architectural_primitives.railing",
     displayName = "Railing",
-    description = "Generates a straight railing or balustrade along a line segment",
+    description = "Generates a straight railing or balustrade along a path",
     category = "geometry.architectural_primitives",
     order = 3
 )
 public class RailingNode extends BaseNode {
 
-    private static final String INPUT_LINE_ID = "input_line";
+    private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_POST_COUNT_ID = "input_post_count";
     private static final String INPUT_HEIGHT_ID = "input_height";
     private static final String INPUT_POST_RADIUS_ID = "input_post_radius";
@@ -46,13 +44,13 @@ public class RailingNode extends BaseNode {
     public RailingNode() {
         super(UUID.randomUUID(), "geometry.architectural_primitives.railing");
 
-        addInputPort(new BasePort(INPUT_LINE_ID, "Line", "Straight path used for the railing run", NodeDataType.LINE, this));
-        addInputPort(new BasePort(INPUT_POST_COUNT_ID, "Post Count", "Number of posts placed along the line", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Path used for the railing run (line, polyline, or curve)", NodeDataType.PATH, this));
+        addInputPort(new BasePort(INPUT_POST_COUNT_ID, "Post Count", "Number of posts placed along the path", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Railing height measured upward from the path", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_POST_RADIUS_ID, "Post Radius", "Radius of the balustrade posts", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_RAIL_COUNT_ID, "Rail Count", "Number of horizontal rails", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_RAIL_RADIUS_ID, "Rail Radius", "Radius of the horizontal rails", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Sideways offset from the line path", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Sideways offset from the path", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing the railing components", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of railing components created", NodeDataType.INTEGER, this));
@@ -61,35 +59,31 @@ public class RailingNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Generates a straight railing or balustrade along a line segment";
+        return "Generates a straight railing or balustrade along a path";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object lineObj = inputValues.get(INPUT_LINE_ID);
+        ArchitecturalPrimitiveSupport.LineFrame frame =
+            ArchitecturalPrimitiveSupport.resolvePathAsLineFrame(inputValues.get(INPUT_PATH_ID));
 
         GeometryData geometry = null;
         int count = 0;
         boolean valid = false;
 
-        if (lineObj instanceof LineData line) {
-            Vec3d startVec = line.getStart();
-            Vec3d endVec = line.getEnd();
-            ArchitecturalPrimitiveSupport.LineFrame frame = ArchitecturalPrimitiveSupport.resolveLineFrame(startVec, endVec);
-            if (frame != null) {
-                int postCount = ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_POST_COUNT_ID), 2);
-                int railCount = ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_RAIL_COUNT_ID), 2);
-                double height = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_HEIGHT_ID), 1.2d);
-                double postRadius = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_POST_RADIUS_ID), 0.05d);
-                double railRadius = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_RAIL_RADIUS_ID), postRadius * 0.65d);
-                double offset = ArchitecturalPrimitiveSupport.resolveNonNegativeDouble(inputValues.get(INPUT_OFFSET_ID), 0.0d);
+        if (frame != null) {
+            int postCount = ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_POST_COUNT_ID), 2);
+            int railCount = ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_RAIL_COUNT_ID), 2);
+            double height = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_HEIGHT_ID), 1.2d);
+            double postRadius = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_POST_RADIUS_ID), 0.05d);
+            double railRadius = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_RAIL_RADIUS_ID), postRadius * 0.65d);
+            double offset = ArchitecturalPrimitiveSupport.resolveNonNegativeDouble(inputValues.get(INPUT_OFFSET_ID), 0.0d);
 
-                List<GeometryData> railing = buildRailing(frame, postCount, railCount, height, postRadius, railRadius, offset);
-                if (!railing.isEmpty()) {
-                    geometry = new CompositeGeometryData(railing);
-                    count = railing.size();
-                    valid = true;
-                }
+            List<GeometryData> railing = buildRailing(frame, postCount, railCount, height, postRadius, railRadius, offset);
+            if (!railing.isEmpty()) {
+                geometry = new CompositeGeometryData(railing);
+                count = railing.size();
+                valid = true;
             }
         }
 

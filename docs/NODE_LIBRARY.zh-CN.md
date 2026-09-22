@@ -99,8 +99,8 @@
 | Window Array | `geometry.architectural_primitives.window_array` | Generates a rectangular array of inset window opening boxes on a box face | `WindowArrayNode` |
 | Door Array | `geometry.architectural_primitives.door_array` | Generates a rectangular array of inset door opening boxes on a box face | `DoorArrayNode` |
 | Column Grid | `geometry.architectural_primitives.column_grid` | Generates a rectangular grid of columns on a box face | `ColumnGridNode` |
-| Railing | `geometry.architectural_primitives.railing` | Generates a straight railing or balustrade along a line segment | `RailingNode` |
-| Staircase | `geometry.architectural_primitives.staircase` | Generates architectural staircases from a line segment | `StaircaseNode` |
+| Railing | `geometry.architectural_primitives.railing` | Generates a straight railing or balustrade along a path | `RailingNode` |
+| Staircase | `geometry.architectural_primitives.staircase` | Generates architectural staircases from a path | `StaircaseNode` |
 | Roof Generator | `geometry.architectural_primitives.roof_generator` | Generates configurable roof volumes from a box face footprint | `RoofGeneratorNode` |
 | Facade Panel Array | `geometry.architectural_primitives.facade_panel_array` | Generates a rectangular array of facade panels on a box face | `FacadePanelArrayNode` |
 | Arch Opening | `geometry.architectural_primitives.arch_opening` | Generates a rectangular, round, or pointed arch opening volume | `ArchOpeningNode` |

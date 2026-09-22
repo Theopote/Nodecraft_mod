@@ -416,8 +416,8 @@ Arc defaults, Curve Evaluate contract).
   (was `curve_from_points` / `divide_curve_to_points`). Graph format **V4** migrates old ids and
   remaps legacy path ports (`input_curve` / `input_polyline` / path `input_line`) → `input_path`
   **only for allowlisted PATH consumers** (not a global `input_line` rewrite).
-- In-repo presets updated to canonical ids + `input_path`. Remaining intentional `input_line`:
-  architectural Railing / Staircase only.
+- In-repo presets updated to canonical ids + `input_path`. Architectural Railing / Staircase
+  kept `input_line` until Batch 13 (**V10** remap → `input_path`).
 
 **Batch 4 P1a — Solids language freeze (2026-09-21):**
 
@@ -484,6 +484,15 @@ Three distinct mechanisms (do not treat as one “Boolean”):
 - **Field types**: `SCALAR_FIELD` / `VECTOR_FIELD` stay first-class; no `ANY` in `math.fields.*`.
 - **SDF bridges** are explicit: **Scalar Field From SDF**, **Vector Field From SDF Gradient**.
 - Contract: `FieldsFamilyContractTest`.
+
+**Batch 13 — Architectural Components language (2026-09-22):**
+
+- Core five: **Wall With Openings**, **Floor Slab With Beams**, **Roof Generator**, **Staircase**,
+  **Window Array** — footprint face ports stay `BOX_FACE`; continuous sizes stay `DOUBLE`.
+- **Railing** / **Staircase** join PATH language: `input_line` → `input_path` (graph format **V10**).
+- Spiral stair start angle remains **degrees** as `DOUBLE`.
+- No `ANY` / no leftover `LINE` ports under `geometry.architectural_primitives.*`.
+- Contract: `ArchitecturalFamilyContractTest`.
 
 ---
 

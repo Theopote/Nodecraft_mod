@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.geometry.architectural_primitives;
 
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3d;
@@ -87,6 +88,23 @@ final class ArchitecturalPrimitiveSupport {
             upAxis,
             sideAxis,
             length
+        );
+    }
+
+    /**
+     * Resolves a PATH (line / polyline / curve) into a straight run frame using first and last vertices.
+     * Multi-segment paths are treated as a chord run for railing / staircase generators.
+     */
+    static @Nullable LineFrame resolvePathAsLineFrame(@Nullable Object pathValue) {
+        List<Vector3d> points = PathUtils.resolvePath(pathValue);
+        if (points == null || points.size() < 2) {
+            return null;
+        }
+        Vector3d start = points.getFirst();
+        Vector3d end = points.getLast();
+        return resolveLineFrame(
+            new Vec3d(start.x, start.y, start.z),
+            new Vec3d(end.x, end.y, end.z)
         );
     }
 
