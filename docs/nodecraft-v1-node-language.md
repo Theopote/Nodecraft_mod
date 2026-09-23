@@ -526,6 +526,14 @@ Three distinct mechanisms (do not treat as one “Boolean”):
   - `architectural.workflow.roof_with_eave`
 - Contract: `ArchitecturalWorkflowPresetsContractTest`.
 
+**Batch 13.2 status (2026-09-23):**
+
+- **Code / contracts:** accepted (PATH_LIST, recommendation v2, workflow presets, playtest checklist).
+- **Product playtest:** pending Minecraft client — do **not** green-check Preview→Apply or 5–10 min UX from static review alone.
+- **Freeze now:** no more architectural node sprawl; no Batch 13.3 feature push until playtest (D then E, then A/B/C).
+- **Deferred:** recommendation Top-N ranking contract; Roof multi-eave/ridge `PATH_LIST` when a real consumer appears.
+- Playtest checklist: [`architecture/architectural-13.2-playtest-checklist.md`](./architecture/architectural-13.2-playtest-checklist.md).
+
 ---
 
 ## Checklist for new nodes
