@@ -23,6 +23,11 @@ def conn(fr: str, fp: str, to: str, tp: str) -> dict:
     return {"fromRef": fr, "fromPort": fp, "toRef": to, "toPort": tp}
 
 
+def local_origin_node(x: float = 220, y: float = 40) -> dict:
+    """Local authoring origin (0,0,0) — final placement uses Move Geometry + Player Position."""
+    return node("local_origin", "reference.frames.world_frame", x, y)
+
+
 def block_tail_nodes() -> list[dict]:
     return [
         node("preview_geometry", "output.preview.preview_geometry", 0, 0),
@@ -165,6 +170,7 @@ P3_PRESETS: dict[str, dict] = {
         "kind": "composite",
         "nodes": [
             node("player_pos", "input.context.player_position", 0, 40),
+            local_origin_node(),
             node("run_vector", "reference.vectors.vector", 0, 180, {"x": 16.0, "y": 0.0, "z": 0.0}),
             node("unit_distance", "input.numeric.float", 0, 320, {"value": 1.0}),
             node("path_end", "reference.points.point_along_vector", 280, 240, {"normalizeDirection": False}),
@@ -196,10 +202,10 @@ P3_PRESETS: dict[str, dict] = {
             *block_tail_nodes(),
         ],
         "connections": [
-            conn("player_pos", "output_position", "path_end", "input_point"),
+            conn("local_origin", "output_origin", "path_end", "input_point"),
             conn("run_vector", "output_vector", "path_end", "input_vector"),
             conn("unit_distance", "output_value", "path_end", "input_distance"),
-            conn("player_pos", "output_position", "point_list", "input_0"),
+            conn("local_origin", "output_origin", "point_list", "input_0"),
             conn("path_end", "output_point", "point_list", "input_1"),
             conn("point_list", "output_list", "span_path", "input_points"),
             conn("span_path", "output_path", "deck", "input_path"),
@@ -282,8 +288,6 @@ P3_PRESETS: dict[str, dict] = {
             conn("battlement_array", "output_geometry", "combine", "input_geometry_3"),
             conn("combine", "output_geometry", "move_to_pos", "input_geometry"),
             conn("player_pos", "output_position", "move_to_pos", "input_translation"),
-            conn("player_pos", "output_position", "outer", "input_start"),
-            conn("player_pos", "output_position", "inner", "input_start"),
             *block_tail_conns("move_to_pos"),
         ],
     },
@@ -326,10 +330,6 @@ P3_PRESETS: dict[str, dict] = {
             conn("center_spout", "output_geometry", "combine", "input_geometry_2"),
             conn("combine", "output_geometry", "move_to_pos", "input_geometry"),
             conn("player_pos", "output_position", "move_to_pos", "input_translation"),
-            conn("player_pos", "output_position", "outer_basin", "input_start"),
-            conn("player_pos", "output_position", "inner_hollow", "input_start"),
-            conn("player_pos", "output_position", "inner_tier", "input_start"),
-            conn("player_pos", "output_position", "center_spout", "input_start"),
             *block_tail_conns("move_to_pos"),
         ],
     },
@@ -367,7 +367,6 @@ P3_PRESETS: dict[str, dict] = {
             conn("volume", "output_box_geometry", "roof_face", "input_box_geometry"),
             conn("floor_face", "output_face", "floor", "input_face"),
             conn("column", "output_geometry", "columns", "input_geometry"),
-            conn("player_pos", "output_position", "columns", "input_center"),
             conn("column_count", "output_value", "columns", "input_count"),
             conn("column_span", "output_value", "columns", "input_total_angle"),
             conn("roof_face", "output_face", "roof", "input_face"),
@@ -426,10 +425,6 @@ P3_PRESETS: dict[str, dict] = {
             conn("balcony", "output_geometry", "combine", "input_geometry_2"),
             conn("combine", "output_geometry", "move_to_pos", "input_geometry"),
             conn("player_pos", "output_position", "move_to_pos", "input_translation"),
-            conn("player_pos", "output_position", "outer", "input_start"),
-            conn("player_pos", "output_position", "inner", "input_start"),
-            conn("player_pos", "output_position", "balcony_outer", "input_start"),
-            conn("player_pos", "output_position", "balcony_inner", "input_start"),
             *block_tail_conns("move_to_pos"),
         ],
     },
@@ -500,6 +495,8 @@ P3_PRESETS: dict[str, dict] = {
             node("frame_shape", "input.basic.text_input", 280, 1180, {"text": "box", "multiline": False}),
             node("combine_geo", "geometry.combine.geometry", 820, 360, {"inputCount": 2}),
             node("move_to_pos", "transform.basic_transforms.move_geometry", 1060, 360),
+            node("move_glass", "transform.basic_transforms.move_geometry", 1060, 520),
+            node("move_frame", "transform.basic_transforms.move_geometry", 1060, 680),
             node("preview_geometry", "output.preview.preview_geometry", 1320, 240),
             node("voxelize_glass", "geometry.voxel.voxelize_geometry", 1320, 400),
             node("voxelize_frame", "geometry.voxel.voxelize_geometry", 1320, 560),
@@ -529,8 +526,12 @@ P3_PRESETS: dict[str, dict] = {
             conn("combine_geo", "output_geometry", "move_to_pos", "input_geometry"),
             conn("player_pos", "output_position", "move_to_pos", "input_translation"),
             conn("move_to_pos", "output_geometry", "preview_geometry", "input_geometry"),
-            conn("glass_shell", "output_geometry", "voxelize_glass", "input_geometry"),
-            conn("frame_grid", "output_geometry", "voxelize_frame", "input_geometry"),
+            conn("glass_shell", "output_geometry", "move_glass", "input_geometry"),
+            conn("frame_grid", "output_geometry", "move_frame", "input_geometry"),
+            conn("player_pos", "output_position", "move_glass", "input_translation"),
+            conn("player_pos", "output_position", "move_frame", "input_translation"),
+            conn("move_glass", "output_geometry", "voxelize_glass", "input_geometry"),
+            conn("move_frame", "output_geometry", "voxelize_frame", "input_geometry"),
             conn("voxelize_glass", "output_blocks", "material_glass", "input_coordinates"),
             conn("voxelize_frame", "output_blocks", "material_frame", "input_coordinates"),
             conn("glass_block", "output_block_id", "material_glass", "input_block_type"),

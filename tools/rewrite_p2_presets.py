@@ -23,6 +23,11 @@ def conn(fr: str, fp: str, to: str, tp: str) -> dict:
     return {"fromRef": fr, "fromPort": fp, "toRef": to, "toPort": tp}
 
 
+def local_origin_node(x: float = 0, y: float = 40) -> dict:
+    """Local authoring origin (0,0,0) — final placement uses Move Geometry + Player Position."""
+    return node("local_origin", "reference.frames.world_frame", x, y)
+
+
 def block_chain(from_ref: str, from_port: str = "output_geometry") -> list[dict]:
     """Standard Preview Geometry + Voxelize → Material → Preview Blocks."""
     return [
@@ -44,6 +49,7 @@ P2_PRESETS: dict[str, dict] = {
         "kind": "composite",
         "nodes": [
             node("player_pos", "input.context.player_position", 0, 40),
+            local_origin_node(220, 40),
             node("base_height", "input.numeric.float", 0, 180, {"value": 0.6}),
             node("base_radius", "input.numeric.float", 0, 320, {"value": 0.75}),
             node("shaft_height", "input.numeric.float", 0, 460, {"value": 3.0}),
@@ -65,7 +71,7 @@ P2_PRESETS: dict[str, dict] = {
             node("preview_blocks", "output.preview.preview_blocks", 2220, 320),
         ],
         "connections": [
-            conn("player_pos", "output_position", "base", "input_base"),
+            conn("local_origin", "output_origin", "base", "input_base"),
             conn("base_height", "output_value", "base", "input_height"),
             conn("base_radius", "output_value", "base", "input_radius"),
             conn("base_shape", "output_text", "base", "input_shape"),
@@ -227,6 +233,7 @@ P2_PRESETS: dict[str, dict] = {
         "kind": "composite",
         "nodes": [
             node("player_pos", "input.context.player_position", 0, 40),
+            local_origin_node(220, 40),
             node("tangent_vector", "reference.vectors.vector", 0, 180, {"x": 2.0, "y": 0.0, "z": 0.0}),
             node("unit_distance", "input.numeric.float", 0, 320, {"value": 1.0}),
             node("path_end", "reference.points.point_along_vector", 280, 240, {"normalizeDirection": False}),
@@ -255,10 +262,10 @@ P2_PRESETS: dict[str, dict] = {
             node("preview_blocks", "output.preview.preview_blocks", 2140, 660),
         ],
         "connections": [
-            conn("player_pos", "output_position", "path_end", "input_point"),
+            conn("local_origin", "output_origin", "path_end", "input_point"),
             conn("tangent_vector", "output_vector", "path_end", "input_vector"),
             conn("unit_distance", "output_value", "path_end", "input_distance"),
-            conn("player_pos", "output_position", "point_list", "input_0"),
+            conn("local_origin", "output_origin", "point_list", "input_0"),
             conn("path_end", "output_point", "point_list", "input_1"),
             conn("point_list", "output_list", "stair_path", "input_points"),
             conn("stair_path", "output_path", "staircase", "input_path"),
@@ -273,7 +280,6 @@ P2_PRESETS: dict[str, dict] = {
             conn("layout", "output_text", "staircase", "input_layout"),
             conn("staircase", "output_geometry", "combine", "input_geometry_0"),
             conn("center_post", "output_geometry", "combine", "input_geometry_1"),
-            conn("player_pos", "output_position", "center_post", "input_start"),
             conn("combine", "output_geometry", "move_to_pos", "input_geometry"),
             conn("player_pos", "output_position", "move_to_pos", "input_translation"),
             *block_chain("move_to_pos"),

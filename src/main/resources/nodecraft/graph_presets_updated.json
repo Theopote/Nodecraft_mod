@@ -271,6 +271,12 @@
               "y": 40
             },
             {
+              "ref": "local_origin",
+              "typeId": "reference.frames.world_frame",
+              "x": 220,
+              "y": 40
+            },
+            {
               "ref": "run_vector",
               "typeId": "reference.vectors.vector",
               "x": 0,
@@ -484,8 +490,8 @@
           ],
           "connections": [
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
+              "fromRef": "local_origin",
+              "fromPort": "output_origin",
               "toRef": "path_end",
               "toPort": "input_point"
             },
@@ -502,8 +508,8 @@
               "toPort": "input_distance"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
+              "fromRef": "local_origin",
+              "fromPort": "output_origin",
               "toRef": "point_list",
               "toPort": "input_0"
             },
@@ -938,18 +944,6 @@
               "fromPort": "output_position",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "outer",
-              "toPort": "input_start"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "inner",
-              "toPort": "input_start"
             },
             {
               "fromRef": "move_to_pos",
@@ -2183,6 +2177,12 @@
               "y": 40
             },
             {
+              "ref": "local_origin",
+              "typeId": "reference.frames.world_frame",
+              "x": 220,
+              "y": 40
+            },
+            {
               "ref": "base_height",
               "typeId": "input.numeric.float",
               "x": 0,
@@ -2332,8 +2332,8 @@
           ],
           "connections": [
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
+              "fromRef": "local_origin",
+              "fromPort": "output_origin",
               "toRef": "base",
               "toPort": "input_base"
             },
@@ -2741,6 +2741,12 @@
               "y": 40
             },
             {
+              "ref": "local_origin",
+              "typeId": "reference.frames.world_frame",
+              "x": 220,
+              "y": 40
+            },
+            {
               "ref": "tangent_vector",
               "typeId": "reference.vectors.vector",
               "x": 0,
@@ -2926,8 +2932,8 @@
           ],
           "connections": [
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
+              "fromRef": "local_origin",
+              "fromPort": "output_origin",
               "toRef": "path_end",
               "toPort": "input_point"
             },
@@ -2944,8 +2950,8 @@
               "toPort": "input_distance"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
+              "fromRef": "local_origin",
+              "fromPort": "output_origin",
               "toRef": "point_list",
               "toPort": "input_0"
             },
@@ -3032,12 +3038,6 @@
               "fromPort": "output_geometry",
               "toRef": "combine",
               "toPort": "input_geometry_1"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "center_post",
-              "toPort": "input_start"
             },
             {
               "fromRef": "combine",
@@ -3969,30 +3969,6 @@
               "toPort": "input_translation"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "outer_basin",
-              "toPort": "input_start"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "inner_hollow",
-              "toPort": "input_start"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "inner_tier",
-              "toPort": "input_start"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "center_spout",
-              "toPort": "input_start"
-            },
-            {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
@@ -4187,12 +4163,6 @@
               "fromPort": "output_geometry",
               "toRef": "columns",
               "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "columns",
-              "toPort": "input_center"
             },
             {
               "fromRef": "column_count",
@@ -4899,30 +4869,6 @@
               "toPort": "input_translation"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "outer",
-              "toPort": "input_start"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "inner",
-              "toPort": "input_start"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "balcony_outer",
-              "toPort": "input_start"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "balcony_inner",
-              "toPort": "input_start"
-            },
-            {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
@@ -5280,6 +5226,18 @@
               "y": 360
             },
             {
+              "ref": "move_glass",
+              "typeId": "transform.basic_transforms.move_geometry",
+              "x": 1060,
+              "y": 520
+            },
+            {
+              "ref": "move_frame",
+              "typeId": "transform.basic_transforms.move_geometry",
+              "x": 1060,
+              "y": 680
+            },
+            {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
               "x": 1320,
@@ -5431,11 +5389,35 @@
             {
               "fromRef": "glass_shell",
               "fromPort": "output_geometry",
-              "toRef": "voxelize_glass",
+              "toRef": "move_glass",
               "toPort": "input_geometry"
             },
             {
               "fromRef": "frame_grid",
+              "fromPort": "output_geometry",
+              "toRef": "move_frame",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_glass",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_frame",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_glass",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize_glass",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "move_frame",
               "fromPort": "output_geometry",
               "toRef": "voxelize_frame",
               "toPort": "input_geometry"
