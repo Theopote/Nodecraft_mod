@@ -8,14 +8,19 @@ import org.joml.Vector3d;
 
 /**
  * Shared helpers for turning box definitions into block coordinates.
+ * <p>
+ * Continuous → block mapping follows {@link BlockSpace}: a cell is selected when its
+ * center lies inside the continuous solid.
  */
 public final class BoxBlockGenerator {
 
     private BoxBlockGenerator() {
     }
 
+    /**
+     * Discrete box around an integer cell center. Sizes are block counts along each axis.
+     */
     public static RegionData createAxisAlignedRegion(BlockPos center, int sizeX, int sizeY, int sizeZ) {
-        // 现在 sizeX/sizeY/sizeZ 直接等于几何长度
         int halfX = sizeX / 2;
         int halfY = sizeY / 2;
         int halfZ = sizeZ / 2;
@@ -61,18 +66,13 @@ public final class BoxBlockGenerator {
             }
         }
 
-        BlockPos minCorner = BlockPos.ofFloored(minX, minY, minZ);
-        BlockPos maxCorner = BlockPos.ofFloored(maxX - 1e-9d, maxY - 1e-9d, maxZ - 1e-9d);
-        return new RegionData(minCorner, maxCorner);
+        return BlockSpace.inclusiveRegionFromClosedAabb(minX, minY, minZ, maxX, maxY, maxZ);
     }
 
     public static RegionData regionFromBoundingBox(BoundingBoxData boundingBox) {
         Vector3d min = boundingBox.getMin();
         Vector3d max = boundingBox.getMax();
-
-        BlockPos minCorner = BlockPos.ofFloored(min.x, min.y, min.z);
-        BlockPos maxCorner = BlockPos.ofFloored(max.x - 1.0e-9d, max.y - 1.0e-9d, max.z - 1.0e-9d);
-        return new RegionData(minCorner, maxCorner);
+        return BlockSpace.inclusiveRegionFromClosedAabb(min.x, min.y, min.z, max.x, max.y, max.z);
     }
 
     public static void populateAxisAlignedBox(BlockPosList blocks, BlockPos minCorner, BlockPos maxCorner, boolean fillBox) {
@@ -111,6 +111,9 @@ public final class BoxBlockGenerator {
         }
     }
 
+    /**
+     * True when the <em>center</em> of cell {@code (x,y,z)} lies inside the oriented box.
+     */
     public static boolean containsOrientedBox(
         Vector3d center,
         Vector3d halfExtents,
@@ -120,7 +123,7 @@ public final class BoxBlockGenerator {
         int z
     ) {
         Matrix3d inverseRotation = new Matrix3d(orientationMatrix).transpose();
-        Vector3d local = new Vector3d(x, y, z).sub(center);
+        Vector3d local = BlockSpace.cellCenter(x, y, z).sub(center);
         inverseRotation.transform(local);
 
         return Math.abs(local.x) <= halfExtents.x

@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.BlockSpace;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -34,7 +35,8 @@ public class BlockToPointNode extends BaseNode {
     private static final String OUTPUT_Z_ID = "output_z";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
-    private boolean useBlockCenter = false;
+    /** Prefer block center when feeding geometry Center ports (see {@link BlockSpace}). */
+    private boolean useBlockCenter = true;
 
     public BlockToPointNode() {
         super(UUID.randomUUID(), "reference.points.point_from_block");
@@ -80,13 +82,14 @@ public class BlockToPointNode extends BaseNode {
             return;
         }
 
-        double offset = useBlockCenter ? 0.5D : 0.0D;
-        double x = blockPos.getX() + offset;
-        double y = blockPos.getY() + offset;
-        double z = blockPos.getZ() + offset;
+        Vector3d vector = useBlockCenter
+            ? BlockSpace.cellCenter(blockPos)
+            : BlockSpace.cellMinCorner(blockPos);
+        double x = vector.x;
+        double y = vector.y;
+        double z = vector.z;
 
         PointData point = new PointData(x, y, z);
-        Vector3d vector = new Vector3d(x, y, z);
 
         outputValues.put(OUTPUT_POINT_ID, point);
         outputValues.put(OUTPUT_VECTOR_ID, vector);

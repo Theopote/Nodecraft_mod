@@ -52,7 +52,7 @@ class PropertySupportHelpersTest {
         String[] names = EnumPropertyLabels.buildDisplayNames(
                 node, prop, GeometryViewerNode.GhostRenderMode.values());
 
-        assertEquals("Block Color", names[GeometryViewerNode.GhostRenderMode.BLOCK_COLOR.ordinal()]);
+        assertEquals("Minecraft Blocks", names[GeometryViewerNode.GhostRenderMode.BLOCK_MODEL.ordinal()]);
         assertEquals("Solid Color", names[GeometryViewerNode.GhostRenderMode.SOLID_COLOR.ordinal()]);
         assertEquals("Wireframe", names[GeometryViewerNode.GhostRenderMode.WIREFRAME.ordinal()]);
     }

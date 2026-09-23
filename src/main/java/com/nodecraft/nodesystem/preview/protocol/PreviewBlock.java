@@ -6,7 +6,10 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Objects;
 
 /**
- * One block cell in world space. Coordinates are world-space doubles; consumers snap to cells as needed.
+ * One block cell in world space.
+ * <p>
+ * Coordinates are the cell <em>min corner</em> (typically integers). Ghost rendering draws
+ * {@code [x, x+1) × [y, y+1) × [z, z+1)}. See {@link com.nodecraft.nodesystem.util.BlockSpace}.
  * Optional {@link BlockStateData} mirrors {@code BlockPlacementData} so Preview ≈ Apply Changes.
  */
 public final class PreviewBlock {

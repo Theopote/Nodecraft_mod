@@ -30,7 +30,7 @@ public class PreviewOptions {
     public String animationType; // 动画类型
     
     // ================= 方块特定属性 =================
-    public String textureMode; // 纹理模式 ("original", "solid_color", "wireframe")
+    public String textureMode; // "block_model", "solid_color", "wireframe" (legacy: "original")
     public Boolean useOriginalTexture; // 使用原始纹理
     
     // ================= 几何体特定属性 =================
@@ -169,7 +169,7 @@ public class PreviewOptions {
      * 设置为幽灵方块模式
      */
     public PreviewOptions ghostBlockMode() {
-        this.textureMode = "original";
+        this.textureMode = "block_model";
         this.useOriginalTexture = true;
         this.showOutline = false;
         return this;

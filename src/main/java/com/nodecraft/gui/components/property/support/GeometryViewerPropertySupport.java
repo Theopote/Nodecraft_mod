@@ -40,7 +40,7 @@ public final class GeometryViewerPropertySupport {
             return isGhostBackend;
         }
         if ("previewColor".equals(prop.name)) {
-            return isGhostBackend && mode != GeometryViewerNode.GhostRenderMode.BLOCK_COLOR;
+            return isGhostBackend && mode != GeometryViewerNode.GhostRenderMode.BLOCK_MODEL;
         }
         if ("transparency".equals(prop.name)) {
             return isGhostBackend;
@@ -103,7 +103,7 @@ public final class GeometryViewerPropertySupport {
             return null;
         }
         return switch (value.name()) {
-            case "BLOCK_COLOR" -> "Block Color";
+            case "BLOCK_MODEL" -> "Minecraft Blocks";
             case "SOLID_COLOR" -> "Solid Color";
             case "WIREFRAME" -> "Wireframe";
             default -> null;
@@ -135,8 +135,8 @@ public final class GeometryViewerPropertySupport {
         }
         String current = (selectedIndex >= 0 && selectedIndex < names.length) ? names[selectedIndex] : "";
         return "Current: " + current + "\n"
-                + "- Block Color: use block palette-derived color\n"
-                + "- Solid Color: use Preview Color fill (+ optional Outline)\n"
-                + "- Wireframe: render edges only";
+                + "- Minecraft Blocks: real block models / textures (stairs, glass, facing…)\n"
+                + "- Solid Color: translucent cubes using Preview Color (+ optional Outline)\n"
+                + "- Wireframe: edges only";
     }
 }

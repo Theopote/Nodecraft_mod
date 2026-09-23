@@ -360,6 +360,8 @@ public final class PreviewStyle {
             o.textureMode = textureMode;
             if ("solid_color".equals(textureMode) || "wireframe".equals(textureMode)) {
                 o.useOriginalTexture = false;
+            } else {
+                o.useOriginalTexture = true;
             }
         }
         if (durationTicks > 0) {

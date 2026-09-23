@@ -838,26 +838,12 @@ public final class GeometryVoxelizer {
     }
 
     public static RegionData createAxisAlignedRegion(BoxGeometryData geometry) {
-        Vector3d center = geometry.getCenter();
-        Vector3d halfExtents = geometry.getHalfExtents();
-
-        // Box voxelization here samples integer grid points (same convention as BoxBlockGenerator).
-        // Use ceil/floor to keep one-unit extents from expanding to two blocks.
-        final double epsilon = 1.0e-9d;
-        int minX = (int) Math.ceil(center.x - halfExtents.x - epsilon);
-        int minY = (int) Math.ceil(center.y - halfExtents.y - epsilon);
-        int minZ = (int) Math.ceil(center.z - halfExtents.z - epsilon);
-        int maxX = (int) Math.floor(center.x + halfExtents.x + epsilon);
-        int maxY = (int) Math.floor(center.y + halfExtents.y + epsilon);
-        int maxZ = (int) Math.floor(center.z + halfExtents.z + epsilon);
-
-        if (minX > maxX || minY > maxY || minZ > maxZ) {
-            return new RegionData(null, null);
-        }
-
-        BlockPos minCorner = new BlockPos(minX, minY, minZ);
-        BlockPos maxCorner = new BlockPos(maxX, maxY, maxZ);
-        return new RegionData(minCorner, maxCorner);
+        // Same contract as oriented boxes / BlockSpace: cell selected iff its center is inside
+        // the continuous solid AABB [center - half, center + half].
+        return BlockSpace.inclusiveRegionFromCenterHalfExtents(
+            geometry.getCenter(),
+            geometry.getHalfExtents()
+        );
     }
 
     public static RegionData createPrismBoundingRegion(PrismGeometryData geometry) {

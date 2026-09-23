@@ -20,6 +20,10 @@ import java.util.List;
  * <p>
  * Direction ports use {@link #resolveVector(Object)} (strict): points and block positions are
  * not treated as vectors.
+ * <p>
+ * {@link BlockPos} resolves to the cell <em>min corner</em> as continuous xyz (no +0.5).
+ * For a geometric center on a picked block, use {@link BlockSpace#cellCenter(BlockPos)}
+ * or the Block To Point node with center offset — see {@link BlockSpace}.
  */
 public final class SpatialValueResolver {
     private SpatialValueResolver() {
@@ -43,7 +47,8 @@ public final class SpatialValueResolver {
             return new Vector3d(vec3d.x, vec3d.y, vec3d.z);
         }
         if (value instanceof BlockPos blockPos) {
-            return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
+            // Cell min corner — not block center. See BlockSpace.
+            return BlockSpace.cellMinCorner(blockPos);
         }
         return null;
     }

@@ -57,7 +57,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
     private Vector3f outlineColor;
     private boolean showOutline = true;
     private float outlineLineWidth = 1.5f;
-    private String textureMode = "original"; // "original", "solid_color", "wireframe"
+    private String textureMode = "block_model"; // "block_model", "solid_color", "wireframe"
     private boolean useOriginalTexture = true;
     private float ghostOpacity = 0.5f; // 幽灵方块的透明度
     private long lastRenderInfoLogMs = 0L;
@@ -183,25 +183,102 @@ public class GhostBlockElement extends AbstractPreviewElement {
             case "wireframe":
                 renderWireframe(matrices, camera, finalOpacity, blocksSnapshot, maxRenderDistance);
                 break;
-            case "original":
+            case "block_model":
+            case "original": // legacy alias
             default:
-                renderOriginalTexture(matrices, camera, world, finalOpacity, blocksSnapshot, maxRenderDistance);
+                renderBlockModel(matrices, camera, world, finalOpacity, blocksSnapshot, maxRenderDistance);
                 break;
         }
     }
-    
+
     /**
-     * 渲染原始纹理的幽灵方块
+     * Renders real Minecraft block models (stairs, slabs, glass, facing, etc.) as a translucent ghost.
+     * Falls back to palette-colored cubes when a state cannot be resolved.
+     */
+    private void renderBlockModel(MatrixStack matrices,
+                                  Camera camera,
+                                  World world,
+                                  float opacity,
+                                  List<BlockData> blocksSnapshot,
+                                  float maxRenderDistance) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        var blockRenderManager = client.getBlockRenderManager();
+        if (blockRenderManager == null) {
+            renderPaletteColoredCubes(matrices, camera, world, opacity, blocksSnapshot, maxRenderDistance);
+            return;
+        }
+
+        Vec3d cameraPos = camera.getCameraPos();
+        DrawContext draw = beginDraw(client);
+        VertexConsumerProvider tinted = opacity < 0.999f
+            ? new AlphaMultiplyingVertexConsumerProvider(draw.provider(), opacity)
+            : draw.provider();
+        int light = LightmapTextureManager.MAX_LIGHT_COORDINATE;
+        int overlay = OverlayTexture.DEFAULT_UV;
+
+        for (BlockData blockData : blocksSnapshot) {
+            double distance = cameraPos.distanceTo(blockData.position);
+            if (distance > maxRenderDistance) {
+                continue;
+            }
+
+            BlockState blockState = getBlockState(blockData);
+            if (blockState.isAir()) {
+                continue;
+            }
+
+            try {
+                matrices.push();
+                try {
+                    matrices.translate(
+                        blockData.position.x - cameraPos.x,
+                        blockData.position.y - cameraPos.y,
+                        blockData.position.z - cameraPos.z
+                    );
+                    blockRenderManager.renderBlockAsEntity(blockState, matrices, tinted, light, overlay);
+                } catch (Exception e) {
+                    NodeCraft.LOGGER.warn("Block model ghost render failed for {}: {}", blockData.blockId, e.toString());
+                    BlockPos blockPos = new BlockPos(
+                        (int) Math.floor(blockData.position.x),
+                        (int) Math.floor(blockData.position.y),
+                        (int) Math.floor(blockData.position.z)
+                    );
+                    float[] rgb = resolveOriginalColor(world, blockPos, blockState, blockData.blockId);
+                    VertexConsumer fill = draw.provider().getBuffer(RenderLayers.debugFilledBox());
+                    // Matrix already translated to block origin — draw unit cube in local space.
+                    drawFilledAxisAlignedBox(
+                        fill,
+                        matrices.peek().getPositionMatrix(),
+                        0.0f, 0.0f, 0.0f,
+                        1.0f, 1.0f, 1.0f,
+                        rgb[0], rgb[1], rgb[2], opacity
+                    );
+                } finally {
+                    matrices.pop();
+                }
+            } catch (Exception e) {
+                NodeCraft.LOGGER.warn("Ghost block model pass failed for {}: {}", blockData.blockId, e.toString());
+            }
+        }
+        endDraw(draw);
+    }
+
+    /**
+     * Legacy palette / map-color filled cubes (not real block models).
+     */
+    private void renderPaletteColoredCubes(MatrixStack matrices,
+                                           Camera camera,
+                                           World world,
+                                           float opacity,
+                                           List<BlockData> blocksSnapshot,
+                                           float maxRenderDistance) {
+        renderOriginalTexture(matrices, camera, world, opacity, blocksSnapshot, maxRenderDistance);
+    }
+
+    /**
+     * Palette-colored ghost cubes (fallback / legacy "original" path).
      * <p>
-     * 优化说明：
-     * - 使用方块的原始颜色信息而不是完整的纹理渲染
-     * - 通过 BlockColors.getColor() 获取方块的基础颜色
-     * - 应用着色和透明度效果
-     * - 相比完整的 BlockRenderManager.renderBlock()，这种方法更高效且稳定
-     * <p>
-     * 渲染状态管理：
-     * - 假设通用状态（blend, depthTest, depthMask）已由 PreviewRenderer 设置
-     * - 此方法不需要设置任何特有状态，直接使用通用状态即可
+     * Prefer {@link #renderBlockModel} for real Minecraft block appearance.
      */
     private void renderOriginalTexture(MatrixStack matrices,
                                        Camera camera,
@@ -285,7 +362,7 @@ public class GhostBlockElement extends AbstractPreviewElement {
         float max = Math.max(r, Math.max(g, b));
         float min = Math.min(r, Math.min(g, b));
         float saturation = max - min;
-        // Treat near-white/near-gray map colors as low-information for BLOCK_COLOR preview.
+        // Treat near-white/near-gray map colors as low-information for palette fallback.
         return !(max > 0.80f && saturation < 0.08f);
     }
 

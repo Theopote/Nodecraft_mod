@@ -56,7 +56,8 @@ import java.util.UUID;
 )
 public class GeometryViewerNode extends BaseCustomUINode {
     public enum GhostRenderMode {
-        BLOCK_COLOR("original"),
+        /** Real Minecraft block models / textures (stairs, slabs, facing, glass, …). */
+        BLOCK_MODEL("block_model"),
         SOLID_COLOR("solid_color"),
         WIREFRAME("wireframe");
 
@@ -73,9 +74,11 @@ public class GeometryViewerNode extends BaseCustomUINode {
         public static GhostRenderMode fromState(@Nullable String value) {
             String mode = value != null ? value.trim().toLowerCase() : "";
             return switch (mode) {
-                case "solid_color" -> SOLID_COLOR;
+                case "solid_color", "solid" -> SOLID_COLOR;
                 case "wireframe" -> WIREFRAME;
-                default -> BLOCK_COLOR;
+                // Legacy names: BLOCK_COLOR / original meant palette cubes; now map to real models.
+                case "block_model", "block_color", "original", "blockmodel", "minecraft_blocks" -> BLOCK_MODEL;
+                default -> BLOCK_MODEL;
             };
         }
     }
@@ -109,8 +112,8 @@ public class GeometryViewerNode extends BaseCustomUINode {
     @NodeProperty(displayName = "Solid Geometry", category = "Display", order = 7)
     private boolean previewSolidGeometry = true;
 
-    @NodeProperty(displayName = "Ghost Render Mode", category = "Display", order = 8)
-    private GhostRenderMode ghostRenderMode = GhostRenderMode.BLOCK_COLOR;
+    @NodeProperty(displayName = "Render Mode", category = "Display", order = 8)
+    private GhostRenderMode ghostRenderMode = GhostRenderMode.BLOCK_MODEL;
 
     @NodeProperty(displayName = "Max Preview Blocks", category = "Performance", order = 9)
     private int maxPreviewBlocks = 20000;
@@ -346,7 +349,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
 
         String effectiveColorHex = (colorHex != null && !colorHex.isBlank()) ? colorHex.trim() : previewColor;
         String effectiveOutlineColorHex = (outlineColorHex != null && !outlineColorHex.isBlank()) ? outlineColorHex.trim() : ghostOutlineColor;
-        if (ghostRenderMode == GhostRenderMode.WIREFRAME || ghostRenderMode == GhostRenderMode.BLOCK_COLOR) {
+        if (ghostRenderMode == GhostRenderMode.WIREFRAME || ghostRenderMode == GhostRenderMode.BLOCK_MODEL) {
             // In non-solid modes, use Preview Color as line color so the visible color control remains intuitive.
             effectiveOutlineColorHex = effectiveColorHex;
         }
@@ -911,7 +914,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
     }
 
     public void setGhostRenderMode(GhostRenderMode value) {
-        GhostRenderMode sanitized = value != null ? value : GhostRenderMode.BLOCK_COLOR;
+        GhostRenderMode sanitized = value != null ? value : GhostRenderMode.BLOCK_MODEL;
         if (ghostRenderMode != sanitized) {
             ghostRenderMode = sanitized;
             markDirty();
