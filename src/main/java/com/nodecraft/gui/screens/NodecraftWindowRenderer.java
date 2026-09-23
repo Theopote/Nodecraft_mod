@@ -124,6 +124,7 @@ public class NodecraftWindowRenderer {
                 renderWindowContent(context, mouseX, mouseY, delta);
             }
         } finally {
+            // ImGui 要求无论 begin 是否成功都必须调用 end()
             ImGui.end();
         }
     }

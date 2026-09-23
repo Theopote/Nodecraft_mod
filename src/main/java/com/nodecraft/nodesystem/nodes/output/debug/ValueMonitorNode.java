@@ -97,23 +97,26 @@ public class ValueMonitorNode extends BaseCustomUINode {
                         | ImGuiWindowFlags.NoNavFocus
                 );
 
-                if (childOpen) {
-                    float contentW = ImGui.getContentRegionAvailX();
-                    // 类型标签（小字、灰）
-                    ImGui.pushStyleColor(ImGuiCol.Text, 0xFF666666);
-                    ImGui.text("[" + typeLabel + "]");
-                    ImGui.popStyleColor();
-                    ImGui.sameLine(0, ZoomHelper.applyZoom(6, zoom));
-                    ImGui.setCursorPosY(ImGui.getCursorPosY() - ZoomHelper.applyZoom(2, zoom));
+                try {
+                    if (childOpen) {
+                        float contentW = ImGui.getContentRegionAvailX();
+                        ImGui.pushStyleColor(ImGuiCol.Text, 0xFF666666);
+                        ImGui.text("[" + typeLabel + "]");
+                        ImGui.popStyleColor();
+                        ImGui.sameLine(0, ZoomHelper.applyZoom(6, zoom));
+                        ImGui.setCursorPosY(ImGui.getCursorPosY() - ZoomHelper.applyZoom(2, zoom));
 
-                    // 主内容：自动换行，突出显示
-                    ImGui.pushStyleColor(ImGuiCol.Text, 0xFFCCDDEE);
-                    String text = displayContent.isEmpty() ? "（未连接或无数据）" : displayContent;
-                    ImGui.setNextItemWidth(contentW);
-                    ImGui.textWrapped(text);
-                    ImGui.popStyleColor();
+                        ImGui.pushStyleColor(ImGuiCol.Text, 0xFFCCDDEE);
+                        String text = displayContent.isEmpty() ? "（未连接或无数据）" : displayContent;
+                        ImGui.setNextItemWidth(contentW);
+                        ImGui.textWrapped(text);
+                        ImGui.popStyleColor();
+                    }
+                } finally {
+                    if (childOpen) {
+                        ImGui.endChild();
+                    }
                 }
-                ImGui.endChild();
                 ImGui.popStyleVar(3);
                 ImGui.popStyleColor();
             } catch (Exception e) {

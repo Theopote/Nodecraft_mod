@@ -237,29 +237,32 @@ final class AiAssistantMainPanelRenderer {
         }
 
         if (ImGui.beginChild("aiChatHistory", 0.0f, historyHeight, true)) {
-            if (state.chatMessages() == null || state.chatMessages().isEmpty()) {
-                ImGui.textDisabled("No messages yet.");
-                ImGui.textDisabled("Tip: Ask AI to create or modify a node graph.");
-            } else {
-                for (AiChatMessage message : state.chatMessages()) {
-                    boolean isUser = "user".equals(message.role());
-                    ImGui.textColored(
-                            isUser ? 0.45f : 0.65f,
-                            isUser ? 0.75f : 0.85f,
-                            isUser ? 1.0f : 0.55f,
-                            1.0f,
-                            isUser ? "You" : "AI");
-                    ImGui.sameLine();
-                    ImGui.textWrapped(message.content());
-                    ImGui.spacing();
+            try {
+                if (state.chatMessages() == null || state.chatMessages().isEmpty()) {
+                    ImGui.textDisabled("No messages yet.");
+                    ImGui.textDisabled("Tip: Ask AI to create or modify a node graph.");
+                } else {
+                    for (AiChatMessage message : state.chatMessages()) {
+                        boolean isUser = "user".equals(message.role());
+                        ImGui.textColored(
+                                isUser ? 0.45f : 0.65f,
+                                isUser ? 0.75f : 0.85f,
+                                isUser ? 1.0f : 0.55f,
+                                1.0f,
+                                isUser ? "You" : "AI");
+                        ImGui.sameLine();
+                        ImGui.textWrapped(message.content());
+                        ImGui.spacing();
+                    }
+                    if (state.chatMessages().size() > updatedCount) {
+                        ImGui.setScrollHereY(1.0f);
+                        updatedCount = state.chatMessages().size();
+                    }
                 }
-                if (state.chatMessages().size() > updatedCount) {
-                    ImGui.setScrollHereY(1.0f);
-                    updatedCount = state.chatMessages().size();
-                }
+            } finally {
+                ImGui.endChild();
             }
         }
-        ImGui.endChild();
         return updatedCount;
     }
 

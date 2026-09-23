@@ -253,8 +253,11 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
                 float listHeight = ImGui.getContentRegionAvail().y - footerReserve;
                 listHeight = Math.max(160.0f, listHeight);
                 float listWidth = ImGui.getContentRegionAvail().x;
-                ImGui.beginChild("##registry_picker_list", listWidth, listHeight, false, ImGuiWindowFlags.AlwaysVerticalScrollbar);
+                boolean listChildOpen = ImGui.beginChild("##registry_picker_list", listWidth, listHeight, false, ImGuiWindowFlags.AlwaysVerticalScrollbar);
                 try {
+                    if (!listChildOpen) {
+                        return changed;
+                    }
                     if (snapshot.isEmpty()) {
                         if (!registryReady) {
                             ImGui.textDisabled(getRegistryNotReadyMessage());
@@ -277,7 +280,9 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
                         }
                     }
                 } finally {
-                    ImGui.endChild();
+                    if (listChildOpen) {
+                        ImGui.endChild();
+                    }
                 }
 
                 boolean canPrev = currentPage > 0;

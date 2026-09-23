@@ -262,7 +262,10 @@ public class ImGuiNodeMenus {
 
                     Set<String> favoriteIds = new HashSet<>(NodeFavoritesStore.getFavoriteIds());
                     
-                    ImGui.beginChild("NodeList", 300, 340, true);
+                    if (!ImGui.beginChild("NodeList", 300, 340, true)) {
+                        ImGui.textDisabled("Unable to open node list");
+                    } else {
+                    try {
 
                     List<NodeInfo> favorites = NodeFavoritesStore.resolveFavorites(registry);
                     boolean favoritesVisible = false;
@@ -351,7 +354,10 @@ public class ImGuiNodeMenus {
                     if (displayedCount == 0) {
                         ImGui.textDisabled("No matching nodes");
                     }
-                    ImGui.endChild();
+                    } finally {
+                        ImGui.endChild();
+                    }
+                    }
                     
                     ImGui.separator();
                     

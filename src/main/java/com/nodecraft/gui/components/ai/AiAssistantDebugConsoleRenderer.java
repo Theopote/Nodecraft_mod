@@ -50,13 +50,16 @@ final class AiAssistantDebugConsoleRenderer {
         if (ImGui.beginTabBar("aiDebugConsoleTabs")) {
             if (ImGui.beginTabItem("Raw Response")) {
                 if (ImGui.beginChild("aiDebugRawBody", 0.0f, 280.0f, true)) {
-                    if (state.rawResponse() == null || state.rawResponse().isBlank()) {
-                        ImGui.textDisabled("No raw response available.");
-                    } else {
-                        ImGui.textWrapped(state.rawResponse());
+                    try {
+                        if (state.rawResponse() == null || state.rawResponse().isBlank()) {
+                            ImGui.textDisabled("No raw response available.");
+                        } else {
+                            ImGui.textWrapped(state.rawResponse());
+                        }
+                    } finally {
+                        ImGui.endChild();
                     }
                 }
-                ImGui.endChild();
                 if (ImGui.button("Copy Raw Response")) {
                     actions.copyRawResponse();
                 }
@@ -65,13 +68,16 @@ final class AiAssistantDebugConsoleRenderer {
 
             if (ImGui.beginTabItem("Model Text")) {
                 if (ImGui.beginChild("aiDebugModelTextBody", 0.0f, 280.0f, true)) {
-                    if (state.modelText() == null || state.modelText().isBlank()) {
-                        ImGui.textDisabled("No extracted model text available.");
-                    } else {
-                        ImGui.textWrapped(state.modelText());
+                    try {
+                        if (state.modelText() == null || state.modelText().isBlank()) {
+                            ImGui.textDisabled("No extracted model text available.");
+                        } else {
+                            ImGui.textWrapped(state.modelText());
+                        }
+                    } finally {
+                        ImGui.endChild();
                     }
                 }
-                ImGui.endChild();
                 if (ImGui.button("Copy Model Text")) {
                     actions.copyModelText();
                 }
@@ -81,13 +87,16 @@ final class AiAssistantDebugConsoleRenderer {
             if (ImGui.beginTabItem("Request Snapshot")) {
                 ImGui.textDisabled("API key is masked for safety.");
                 if (ImGui.beginChild("aiDebugRequestSnapshotBody", 0.0f, 260.0f, true)) {
-                    if (state.requestSnapshot() == null || state.requestSnapshot().isBlank()) {
-                        ImGui.textDisabled("No request snapshot available.");
-                    } else {
-                        ImGui.textWrapped(state.requestSnapshot());
+                    try {
+                        if (state.requestSnapshot() == null || state.requestSnapshot().isBlank()) {
+                            ImGui.textDisabled("No request snapshot available.");
+                        } else {
+                            ImGui.textWrapped(state.requestSnapshot());
+                        }
+                    } finally {
+                        ImGui.endChild();
                     }
                 }
-                ImGui.endChild();
                 if (ImGui.button("Copy Request Snapshot")) {
                     actions.copyRequestSnapshot();
                 }
@@ -96,10 +105,13 @@ final class AiAssistantDebugConsoleRenderer {
 
             if (ImGui.beginTabItem("Export")) {
                 if (ImGui.beginChild("aiDebugExportBody", 0.0f, 260.0f, true)) {
-                    ImGui.textDisabled("Preview (compact):");
-                    ImGui.textWrapped(state.compactDiagnostics() == null ? "" : state.compactDiagnostics());
+                    try {
+                        ImGui.textDisabled("Preview (compact):");
+                        ImGui.textWrapped(state.compactDiagnostics() == null ? "" : state.compactDiagnostics());
+                    } finally {
+                        ImGui.endChild();
+                    }
                 }
-                ImGui.endChild();
                 if (ImGui.button("Copy Compact Export")) {
                     actions.copyCompactExport();
                 }

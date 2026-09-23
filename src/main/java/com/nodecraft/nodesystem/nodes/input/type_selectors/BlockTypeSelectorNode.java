@@ -238,8 +238,11 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
             listHeight = Math.max(160.0f, listHeight);
             float listWidth = ImGui.getContentRegionAvail().x;
             // 列表子窗口不画边框，减少一层内边距/裁剪观感
-            ImGui.beginChild("##block_picker_list", listWidth, listHeight, false, ImGuiWindowFlags.AlwaysVerticalScrollbar);
+            boolean listChildOpen = ImGui.beginChild("##block_picker_list", listWidth, listHeight, false, ImGuiWindowFlags.AlwaysVerticalScrollbar);
             try {
+                if (!listChildOpen) {
+                    return changed;
+                }
                 if (snapshot.isEmpty()) {
                     if (!blockRegistryReady) {
                         ImGui.textDisabled("Block registry not ready");
@@ -261,7 +264,9 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
                     }
                 }
             } finally {
-                ImGui.endChild();
+                if (listChildOpen) {
+                    ImGui.endChild();
+                }
             }
 
             boolean canPrev = currentPage > 0;

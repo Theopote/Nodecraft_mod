@@ -54,7 +54,8 @@ public class MinecraftClientMixin {
 
         if (currentScreen instanceof NodecraftScreen screen) {
             NodeCraft.LOGGER.info("Resolution changed, rebuilding NodeCraft window");
-            screen.publicClearAndInit();
+            // 推迟到下一 tick，避免在 ImGui 帧渲染中途重建导致 BeginChild/EndChild 栈失衡
+            client.execute(screen::publicClearAndInit);
         }
     }
 

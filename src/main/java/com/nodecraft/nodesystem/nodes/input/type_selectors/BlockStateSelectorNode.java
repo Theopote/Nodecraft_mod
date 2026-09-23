@@ -184,9 +184,12 @@ public class BlockStateSelectorNode extends BaseCustomUINode {
                 ImGui.text(String.format("Results: %d", total));
                 float footerReserve = ImGui.getFrameHeightWithSpacing();
                 float listHeight = Math.max(160.0f, ImGui.getContentRegionAvail().y - footerReserve);
-                ImGui.beginChild("##block_state_picker_list", ImGui.getContentRegionAvail().x, listHeight, false,
+                boolean listChildOpen = ImGui.beginChild("##block_state_picker_list", ImGui.getContentRegionAvail().x, listHeight, false,
                     ImGuiWindowFlags.AlwaysVerticalScrollbar);
                 try {
+                    if (!listChildOpen) {
+                        return changed;
+                    }
                     String selected = normalizeBlockId(blockId);
                     if (snapshot.isEmpty()) {
                         ImGui.textDisabled(blockRegistryReady ? "No blocks found" : "Block registry not ready");
@@ -203,7 +206,9 @@ public class BlockStateSelectorNode extends BaseCustomUINode {
                         }
                     }
                 } finally {
-                    ImGui.endChild();
+                    if (listChildOpen) {
+                        ImGui.endChild();
+                    }
                 }
 
                 boolean canPrev = currentPage > 0;

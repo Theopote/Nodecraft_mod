@@ -81,10 +81,13 @@ public final class NodeRecommendationPopupRenderer {
     }
 
     private void renderRecommendationList() {
-        ImGui.beginChild("RecommendationList", 320, 300, true);
+        if (!ImGui.beginChild("RecommendationList", 320, 300, true)) {
+            return;
+        }
+
+        try {
         if (recommendations.isEmpty()) {
             ImGui.textDisabled("No matching suggestions");
-            ImGui.endChild();
             return;
         }
 
@@ -111,7 +114,9 @@ public final class NodeRecommendationPopupRenderer {
                 ImGui.endTooltip();
             }
         }
-        ImGui.endChild();
+        } finally {
+            ImGui.endChild();
+        }
     }
 
     private void applyRecommendation(NodeRecommendation recommendation) {

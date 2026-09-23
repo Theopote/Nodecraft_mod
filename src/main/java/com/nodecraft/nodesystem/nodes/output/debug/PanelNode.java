@@ -141,27 +141,31 @@ public class PanelNode extends BaseCustomUINode {
                         | ImGuiWindowFlags.NoNavFocus
                 );
 
-                if (childOpen) {
-                    ImGui.pushStyleColor(ImGuiCol.Text, 0xFFCCCCCC);
-                    String preview = panelContent.isEmpty() ? "(无数据)" : panelContent;
-                    if (wrapText) {
-                        ImGui.textWrapped(preview);
-                    } else {
-                        String[] lines = preview.split("\n", 5);
-                        for (int i = 0; i < 4; i++) {
-                            if (i < lines.length) {
-                                String line = lines[i];
-                                if (line.length() > 50) line = line.substring(0, 47) + "...";
-                                ImGui.text(line);
-                            } else {
-                                ImGui.text("");
+                try {
+                    if (childOpen) {
+                        ImGui.pushStyleColor(ImGuiCol.Text, 0xFFCCCCCC);
+                        String preview = panelContent.isEmpty() ? "(无数据)" : panelContent;
+                        if (wrapText) {
+                            ImGui.textWrapped(preview);
+                        } else {
+                            String[] lines = preview.split("\n", 5);
+                            for (int i = 0; i < 4; i++) {
+                                if (i < lines.length) {
+                                    String line = lines[i];
+                                    if (line.length() > 50) line = line.substring(0, 47) + "...";
+                                    ImGui.text(line);
+                                } else {
+                                    ImGui.text("");
+                                }
                             }
                         }
+                        ImGui.popStyleColor();
                     }
-                    ImGui.popStyleColor();
+                } finally {
+                    if (childOpen) {
+                        ImGui.endChild();
+                    }
                 }
-
-                ImGui.endChild();
                 ImGui.popStyleVar(3);
                 ImGui.popStyleColor();
             } catch (Exception e) {

@@ -682,8 +682,11 @@ public class NodeLibraryComponent implements EditorComponent {
      */
     private void renderNodeCategories() {
         // Use zero height so the child region consumes the remaining vertical space.
-        ImGui.beginChild("##nodeListScrollingRegion", 0, 0, false, ImGuiWindowFlags.NoScrollbar);
+        if (!ImGui.beginChild("##nodeListScrollingRegion", 0, 0, false, ImGuiWindowFlags.NoScrollbar)) {
+            return;
+        }
 
+        try {
         // Show empty-state feedback when nothing can be displayed.
         if (filteredCategories.isEmpty() && !searchManager.getSearchTerm().isEmpty()) {
             searchManager.renderNoMatchesMessage();
@@ -735,7 +738,9 @@ public class NodeLibraryComponent implements EditorComponent {
         }
 
         ImGui.popStyleVar();
-        ImGui.endChild();
+        } finally {
+            ImGui.endChild();
+        }
     }
 
     private void ensureCategoryHierarchyCache() {
