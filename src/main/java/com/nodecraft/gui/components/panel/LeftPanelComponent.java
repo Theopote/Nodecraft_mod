@@ -2,6 +2,7 @@ package com.nodecraft.gui.components.panel;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.components.EditorComponent;
+import com.nodecraft.gui.layout.ImGuiChildScope;
 import imgui.ImGui;
 import imgui.flag.ImGuiTabItemFlags;
 import imgui.flag.ImGuiWindowFlags;
@@ -87,31 +88,19 @@ public class LeftPanelComponent implements EditorComponent {
     private static final int TAB_CONTENT_FLAGS = ImGuiWindowFlags.NoScrollbar;
 
     private void renderNodeLibraryTab(float width, float height, float paddingX) {
-        if (ImGui.beginChild(
-                "leftPanelNodeLibrary",
-                0,
-                0,
-                false,
-                TAB_CONTENT_FLAGS)) {
-            try {
+        try (ImGuiChildScope scope = new ImGuiChildScope(
+                "leftPanelNodeLibrary", 0, 0, false, TAB_CONTENT_FLAGS)) {
+            if (scope.isOpen()) {
                 nodeLibraryComponent.renderContent(width, height, paddingX);
-            } finally {
-                ImGui.endChild();
             }
         }
     }
 
     private void renderPresetLibraryTab() {
-        if (ImGui.beginChild(
-                "leftPanelPresetLibrary",
-                0,
-                0,
-                false,
-                TAB_CONTENT_FLAGS)) {
-            try {
+        try (ImGuiChildScope scope = new ImGuiChildScope(
+                "leftPanelPresetLibrary", 0, 0, false, TAB_CONTENT_FLAGS)) {
+            if (scope.isOpen()) {
                 presetLibraryPanel.render();
-            } finally {
-                ImGui.endChild();
             }
         }
     }

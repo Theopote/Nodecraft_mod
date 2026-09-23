@@ -1,6 +1,7 @@
 package com.nodecraft.gui.components.ai;
 
 import com.nodecraft.gui.components.ai.AiAssistantComponent.AiChatMessage;
+import com.nodecraft.gui.layout.ImGuiChildScope;
 import imgui.ImGui;
 import imgui.flag.ImGuiInputTextFlags;
 import imgui.type.ImBoolean;
@@ -236,31 +237,30 @@ final class AiAssistantMainPanelRenderer {
             }
         }
 
-        if (ImGui.beginChild("aiChatHistory", 0.0f, historyHeight, true)) {
-            try {
-                if (state.chatMessages() == null || state.chatMessages().isEmpty()) {
-                    ImGui.textDisabled("No messages yet.");
-                    ImGui.textDisabled("Tip: Ask AI to create or modify a node graph.");
-                } else {
-                    for (AiChatMessage message : state.chatMessages()) {
-                        boolean isUser = "user".equals(message.role());
-                        ImGui.textColored(
-                                isUser ? 0.45f : 0.65f,
-                                isUser ? 0.75f : 0.85f,
-                                isUser ? 1.0f : 0.55f,
-                                1.0f,
-                                isUser ? "You" : "AI");
-                        ImGui.sameLine();
-                        ImGui.textWrapped(message.content());
-                        ImGui.spacing();
-                    }
-                    if (state.chatMessages().size() > updatedCount) {
-                        ImGui.setScrollHereY(1.0f);
-                        updatedCount = state.chatMessages().size();
-                    }
+        try (ImGuiChildScope scope = new ImGuiChildScope("aiChatHistory", 0.0f, historyHeight, true, 0)) {
+            if (!scope.isOpen()) {
+                return updatedCount;
+            }
+            if (state.chatMessages() == null || state.chatMessages().isEmpty()) {
+                ImGui.textDisabled("No messages yet.");
+                ImGui.textDisabled("Tip: Ask AI to create or modify a node graph.");
+            } else {
+                for (AiChatMessage message : state.chatMessages()) {
+                    boolean isUser = "user".equals(message.role());
+                    ImGui.textColored(
+                            isUser ? 0.45f : 0.65f,
+                            isUser ? 0.75f : 0.85f,
+                            isUser ? 1.0f : 0.55f,
+                            1.0f,
+                            isUser ? "You" : "AI");
+                    ImGui.sameLine();
+                    ImGui.textWrapped(message.content());
+                    ImGui.spacing();
                 }
-            } finally {
-                ImGui.endChild();
+                if (state.chatMessages().size() > updatedCount) {
+                    ImGui.setScrollHereY(1.0f);
+                    updatedCount = state.chatMessages().size();
+                }
             }
         }
         return updatedCount;

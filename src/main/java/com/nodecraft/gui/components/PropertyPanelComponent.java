@@ -36,6 +36,7 @@ import com.nodecraft.nodesystem.util.Color;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.gui.components.ai.AiAssistantComponent;
 import com.nodecraft.gui.components.ai.AiAssistantPanel;
+import com.nodecraft.gui.layout.ImGuiChildScope;
 import com.nodecraft.gui.components.node.NodeActionPanel;
 import com.nodecraft.gui.components.node.NodeConstants;
 import com.nodecraft.gui.components.node.NodeGraphAccess;
@@ -331,43 +332,42 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     private void renderPropertiesTabContent() {
-        if (ImGui.beginChild("rightPanelPropertiesContent", 0, 0, false, ImGuiWindowFlags.AlwaysVerticalScrollbar)) {
-            try {
-                if (selectedNode != null) {
-                    if (ImGui.collapsingHeader("Basic Info")) {
-                        renderNodeInfo();
-                    }
-
-                    if (ImGui.collapsingHeader("Node Properties", ImGuiTreeNodeFlags.DefaultOpen)) {
-                        renderNodeProperties();
-                    }
-
-                    if (ImGui.collapsingHeader("Input Ports", ImGuiTreeNodeFlags.DefaultOpen)) {
-                        renderInputPorts();
-                    }
-
-                    if (ImGui.collapsingHeader("Output Ports", ImGuiTreeNodeFlags.DefaultOpen)) {
-                        renderOutputPorts();
-                    }
-
-                    if (ImGui.collapsingHeader("Actions", ImGuiTreeNodeFlags.DefaultOpen)) {
-                        renderActionButtons();
-                    }
-                } else {
-                    ImGui.text("No node selected");
+        try (ImGuiChildScope scope = new ImGuiChildScope(
+                "rightPanelPropertiesContent", 0, 0, false, ImGuiWindowFlags.AlwaysVerticalScrollbar)) {
+            if (!scope.isOpen()) {
+                return;
+            }
+            if (selectedNode != null) {
+                if (ImGui.collapsingHeader("Basic Info")) {
+                    renderNodeInfo();
                 }
-            } finally {
-                ImGui.endChild();
+
+                if (ImGui.collapsingHeader("Node Properties", ImGuiTreeNodeFlags.DefaultOpen)) {
+                    renderNodeProperties();
+                }
+
+                if (ImGui.collapsingHeader("Input Ports", ImGuiTreeNodeFlags.DefaultOpen)) {
+                    renderInputPorts();
+                }
+
+                if (ImGui.collapsingHeader("Output Ports", ImGuiTreeNodeFlags.DefaultOpen)) {
+                    renderOutputPorts();
+                }
+
+                if (ImGui.collapsingHeader("Actions", ImGuiTreeNodeFlags.DefaultOpen)) {
+                    renderActionButtons();
+                }
+            } else {
+                ImGui.text("No node selected");
             }
         }
     }
 
     private void renderAiAssistantTabContent() {
-        if (ImGui.beginChild("rightPanelAiContent", 0, 0, false, ImGuiWindowFlags.AlwaysVerticalScrollbar)) {
-            try {
+        try (ImGuiChildScope scope = new ImGuiChildScope(
+                "rightPanelAiContent", 0, 0, false, ImGuiWindowFlags.AlwaysVerticalScrollbar)) {
+            if (scope.isOpen()) {
                 aiAssistantPanel.render();
-            } finally {
-                ImGui.endChild();
             }
         }
     }

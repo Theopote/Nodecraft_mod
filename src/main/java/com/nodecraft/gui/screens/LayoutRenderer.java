@@ -6,6 +6,7 @@ import com.nodecraft.gui.components.EditorComponent;
 import com.nodecraft.gui.components.PropertyPanelComponent;
 import com.nodecraft.gui.components.panel.LeftPanelComponent;
 import com.nodecraft.gui.editor.integration.ImGuiInputAdapter;
+import com.nodecraft.gui.layout.ImGuiChildScope;
 import com.nodecraft.gui.layout.LayoutDimensions;
 import com.nodecraft.gui.layout.LayoutManager;
 import com.nodecraft.gui.layout.LayoutConfig;
@@ -50,6 +51,12 @@ public class LayoutRenderer {
     // 调试标志 - 关闭调试输出
     private boolean debugSplitter = false;
 
+    /** 分辨率/窗口尺寸变化后跳过的布局帧数，避免 ImGui child 栈在尺寸剧变时失衡。 */
+    private int skipLayoutFrames = 0;
+    private volatile boolean deferNextLayoutFrame = false;
+    private float lastLayoutContentWidth = -1f;
+    private float lastLayoutContentHeight = -1f;
+
     public LayoutRenderer(
             LayoutManager layoutManager,
             ComponentManager componentManager,
@@ -70,6 +77,38 @@ public class LayoutRenderer {
     }
 
     /**
+     * 请求跳过接下来若干帧的组件布局渲染（仍保留菜单栏等外层窗口结构）。
+     */
+    public void requestSkipLayoutFrames(int frames) {
+        if (frames > 0) {
+            skipLayoutFrames = Math.max(skipLayoutFrames, frames);
+        }
+    }
+
+    public void deferNextLayoutFrame() {
+        deferNextLayoutFrame = true;
+        requestSkipLayoutFrames(3);
+    }
+
+    /** 是否应跳过本帧 layout（不消耗计数）。 */
+    public boolean peekLayoutRenderSkip() {
+        return deferNextLayoutFrame || skipLayoutFrames > 0;
+    }
+
+    /** 消耗一次 layout 跳过计数；返回 true 表示本帧不应渲染 layout。 */
+    public boolean consumeLayoutRenderSkip() {
+        if (deferNextLayoutFrame) {
+            deferNextLayoutFrame = false;
+            return true;
+        }
+        if (skipLayoutFrames > 0) {
+            skipLayoutFrames--;
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * 渲染主窗口内的组件布局。
      * @param vanillaContext DrawContext
      * @param mouseX 鼠标 X
@@ -81,6 +120,10 @@ public class LayoutRenderer {
     }
 
     public void renderImGuiOnly(float delta) {
+        if (consumeLayoutRenderSkip()) {
+            return;
+        }
+
         try {
             // 获取可用内容区域
             final float contentStartX = ImGui.getWindowContentRegionMinX();
@@ -91,6 +134,19 @@ public class LayoutRenderer {
             // 可用于布局计算的区域 (检查确保不为负)
             final float effectiveWidth = Math.max(0f, contentWidth);
             final float effectiveHeight = Math.max(0f, contentHeight);
+
+            if (lastLayoutContentWidth >= 0f
+                    && (Math.abs(effectiveWidth - lastLayoutContentWidth) > 0.5f
+                    || Math.abs(effectiveHeight - lastLayoutContentHeight) > 0.5f)) {
+                skipLayoutFrames = Math.max(skipLayoutFrames, 1);
+            }
+            lastLayoutContentWidth = effectiveWidth;
+            lastLayoutContentHeight = effectiveHeight;
+
+            if (skipLayoutFrames > 0) {
+                skipLayoutFrames--;
+                return;
+            }
 
             // 更新记录的内容宽度
             lastContentWidth = effectiveWidth;
@@ -133,6 +189,8 @@ public class LayoutRenderer {
 
         } catch (Exception e) {
             NodeCraft.LOGGER.error("渲染组件布局时出错", e);
+        } finally {
+            ImGuiChildScope.unwindAll();
         }
     }
 
@@ -376,22 +434,20 @@ public class LayoutRenderer {
                         childFlags = imgui.flag.ImGuiWindowFlags.NoScrollbar | imgui.flag.ImGuiWindowFlags.NoScrollWithMouse;
                     }
 
-                    boolean childBegun = ImGui.beginChild(childId, dims.width(), dims.height(), hasBorder, childFlags);
-                    if (!childBegun) {
-                        NodeCraft.LOGGER.debug("Skipped child window render for component: {}",
-                                component.getComponentId());
-                        continue;
-                    }
+                    try (ImGuiChildScope childScope = new ImGuiChildScope(
+                            childId, dims.width(), dims.height(), hasBorder, childFlags)) {
+                        if (!childScope.isOpen()) {
+                            NodeCraft.LOGGER.debug("Skipped child window render for component: {}",
+                                    component.getComponentId());
+                            continue;
+                        }
 
-                    try {
                         logDetachedChildState(component.getComponentId(), dims);
                         if (hasBorder) {
                             installPanelMouseCapture(childId);
                         }
                         component.render(0, 0, ImGui.getContentRegionAvailX(),
                                 ImGui.getContentRegionAvailY(), 0, 0);
-                    } finally {
-                        ImGui.endChild();
                     }
                 } catch (Exception e) {
                     NodeCraft.LOGGER.error("渲染组件 {} 时出错: {}",
@@ -441,15 +497,11 @@ public class LayoutRenderer {
                     ImGuiWindowFlags.NoScrollWithMouse |
                     ImGuiWindowFlags.NoCollapse;
 
-            // 应用画布背景颜色（含透明度）
             float[] canvasBg = canvasComponent.getBackgroundColor();
             ImGui.pushStyleColor(ImGuiCol.ChildBg, canvasBg[0], canvasBg[1], canvasBg[2], canvasBg[3]);
-
-            // 将画布边框设为 true
-            boolean childBegun = ImGui.beginChild(childId, dims.width(), dims.height(), true, canvasFlags);
-
-            try {
-                if (!childBegun) {
+            try (ImGuiChildScope childScope = new ImGuiChildScope(
+                    childId, dims.width(), dims.height(), true, canvasFlags)) {
+                if (!childScope.isOpen()) {
                     NodeCraft.LOGGER.warn("Failed to begin canvas child window");
                     return;
                 }
@@ -458,9 +510,6 @@ public class LayoutRenderer {
                 canvasComponent.render(0, 0, ImGui.getContentRegionAvailX(),
                         ImGui.getContentRegionAvailY(), 0, 0);
             } finally {
-                if (childBegun) {
-                    ImGui.endChild();
-                }
                 ImGui.popStyleColor();
             }
         } catch (Exception e) {

@@ -1,6 +1,7 @@
 package com.nodecraft.gui.components.port;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.layout.ImGuiChildScope;
 import com.nodecraft.nodesystem.util.Vec3;
 import imgui.ImGui;
 import imgui.flag.ImGuiTableFlags;
@@ -98,12 +99,18 @@ public final class PortDataRenderer {
                 float heightLimit = ImGui.getWindowHeight() * 0.6f;
                 float childHeight = Math.min(heightLimit, size * (ImGui.getFontSize() + ImGui.getStyle().getItemSpacingY()) + ImGui.getStyle().getWindowPaddingY() * 2);
 
-                if (ImGui.beginChild("ListContent_" + label, ImGui.getContentRegionAvailX(), childHeight, false, ImGuiWindowFlags.AlwaysVerticalScrollbar)) {
-                    for (int i = 0; i < size; i++) {
-                        Object item = list.get(i);
-                        ImGui.text(String.format("[%d] %s", i, item != null ? item.toString() : "null"));
+                try (ImGuiChildScope scope = new ImGuiChildScope(
+                        "ListContent_" + label,
+                        ImGui.getContentRegionAvailX(),
+                        childHeight,
+                        false,
+                        ImGuiWindowFlags.AlwaysVerticalScrollbar)) {
+                    if (scope.isOpen()) {
+                        for (int i = 0; i < size; i++) {
+                            Object item = list.get(i);
+                            ImGui.text(String.format("[%d] %s", i, item != null ? item.toString() : "null"));
+                        }
                     }
-                    ImGui.endChild();
                 }
 
                 ImGui.separator();

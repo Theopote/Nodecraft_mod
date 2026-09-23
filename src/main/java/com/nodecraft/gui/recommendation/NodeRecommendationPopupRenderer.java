@@ -2,6 +2,7 @@ package com.nodecraft.gui.recommendation;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.editor.impl.ICanvasEditor;
+import com.nodecraft.gui.layout.ImGuiChildScope;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import imgui.ImGui;
 import imgui.ImVec2;
@@ -81,11 +82,10 @@ public final class NodeRecommendationPopupRenderer {
     }
 
     private void renderRecommendationList() {
-        if (!ImGui.beginChild("RecommendationList", 320, 300, true)) {
+        try (ImGuiChildScope scope = new ImGuiChildScope("RecommendationList", 320, 300, true, 0)) {
+        if (!scope.isOpen()) {
             return;
         }
-
-        try {
         if (recommendations.isEmpty()) {
             ImGui.textDisabled("No matching suggestions");
             return;
@@ -114,8 +114,6 @@ public final class NodeRecommendationPopupRenderer {
                 ImGui.endTooltip();
             }
         }
-        } finally {
-            ImGui.endChild();
         }
     }
 

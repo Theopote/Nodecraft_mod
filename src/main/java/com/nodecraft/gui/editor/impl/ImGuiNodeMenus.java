@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.components.search.NodeSearchMatcher;
+import com.nodecraft.gui.layout.ImGuiChildScope;
 import com.nodecraft.gui.node.NodeInfo;
 import com.nodecraft.gui.preset.GraphPresetSaveDialog;
 import com.nodecraft.gui.recommendation.NodeRecommendation;
@@ -262,10 +263,10 @@ public class ImGuiNodeMenus {
 
                     Set<String> favoriteIds = new HashSet<>(NodeFavoritesStore.getFavoriteIds());
                     
-                    if (!ImGui.beginChild("NodeList", 300, 340, true)) {
+                    try (ImGuiChildScope nodeListScope = new ImGuiChildScope("NodeList", 300, 340, true, 0)) {
+                    if (!nodeListScope.isOpen()) {
                         ImGui.textDisabled("Unable to open node list");
                     } else {
-                    try {
 
                     List<NodeInfo> favorites = NodeFavoritesStore.resolveFavorites(registry);
                     boolean favoritesVisible = false;
@@ -354,8 +355,6 @@ public class ImGuiNodeMenus {
                     if (displayedCount == 0) {
                         ImGui.textDisabled("No matching nodes");
                     }
-                    } finally {
-                        ImGui.endChild();
                     }
                     }
                     

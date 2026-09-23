@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.gui.layout.ImGuiChildScope;
 import imgui.ImGui;
 import imgui.flag.ImGuiWindowFlags;
 import imgui.flag.ImGuiCol;
@@ -128,21 +129,15 @@ public class PanelNode extends BaseCustomUINode {
                 ImGui.pushStyleVar(ImGuiStyleVar.ChildBorderSize, ZoomHelper.applyZoom(1.2f, zoom));
                 ImGui.pushStyleVar(ImGuiStyleVar.ChildRounding, ZoomHelper.applyZoom(4f, zoom));
                 ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, ZoomHelper.applyZoom(4f, zoom), ZoomHelper.applyZoom(4f, zoom));
-                boolean childOpen = ImGui.beginChild(
-                    "##panel_preview_screen",
-                    aw,
-                    screenH,
-                    true,
-                    ImGuiWindowFlags.AlwaysUseWindowPadding
+                int childFlags = ImGuiWindowFlags.AlwaysUseWindowPadding
                         | ImGuiWindowFlags.NoScrollbar
                         | ImGuiWindowFlags.NoScrollWithMouse
                         | ImGuiWindowFlags.NoMove
                         | ImGuiWindowFlags.NoNav
-                        | ImGuiWindowFlags.NoNavFocus
-                );
-
-                try {
-                    if (childOpen) {
+                        | ImGuiWindowFlags.NoNavFocus;
+                try (ImGuiChildScope scope = new ImGuiChildScope(
+                        "##panel_preview_screen", aw, screenH, true, childFlags)) {
+                    if (scope.isOpen()) {
                         ImGui.pushStyleColor(ImGuiCol.Text, 0xFFCCCCCC);
                         String preview = panelContent.isEmpty() ? "(无数据)" : panelContent;
                         if (wrapText) {
@@ -160,10 +155,6 @@ public class PanelNode extends BaseCustomUINode {
                             }
                         }
                         ImGui.popStyleColor();
-                    }
-                } finally {
-                    if (childOpen) {
-                        ImGui.endChild();
                     }
                 }
                 ImGui.popStyleVar(3);

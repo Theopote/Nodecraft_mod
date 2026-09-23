@@ -1,5 +1,6 @@
 package com.nodecraft.gui.components.ai;
 
+import com.nodecraft.gui.layout.ImGuiChildScope;
 import imgui.ImGui;
 
 final class AiAssistantDebugConsoleRenderer {
@@ -49,15 +50,13 @@ final class AiAssistantDebugConsoleRenderer {
 
         if (ImGui.beginTabBar("aiDebugConsoleTabs")) {
             if (ImGui.beginTabItem("Raw Response")) {
-                if (ImGui.beginChild("aiDebugRawBody", 0.0f, 280.0f, true)) {
-                    try {
+                try (ImGuiChildScope scope = new ImGuiChildScope("aiDebugRawBody", 0.0f, 280.0f, true, 0)) {
+                    if (scope.isOpen()) {
                         if (state.rawResponse() == null || state.rawResponse().isBlank()) {
                             ImGui.textDisabled("No raw response available.");
                         } else {
                             ImGui.textWrapped(state.rawResponse());
                         }
-                    } finally {
-                        ImGui.endChild();
                     }
                 }
                 if (ImGui.button("Copy Raw Response")) {
@@ -67,15 +66,13 @@ final class AiAssistantDebugConsoleRenderer {
             }
 
             if (ImGui.beginTabItem("Model Text")) {
-                if (ImGui.beginChild("aiDebugModelTextBody", 0.0f, 280.0f, true)) {
-                    try {
+                try (ImGuiChildScope scope = new ImGuiChildScope("aiDebugModelTextBody", 0.0f, 280.0f, true, 0)) {
+                    if (scope.isOpen()) {
                         if (state.modelText() == null || state.modelText().isBlank()) {
                             ImGui.textDisabled("No extracted model text available.");
                         } else {
                             ImGui.textWrapped(state.modelText());
                         }
-                    } finally {
-                        ImGui.endChild();
                     }
                 }
                 if (ImGui.button("Copy Model Text")) {
@@ -86,15 +83,13 @@ final class AiAssistantDebugConsoleRenderer {
 
             if (ImGui.beginTabItem("Request Snapshot")) {
                 ImGui.textDisabled("API key is masked for safety.");
-                if (ImGui.beginChild("aiDebugRequestSnapshotBody", 0.0f, 260.0f, true)) {
-                    try {
+                try (ImGuiChildScope scope = new ImGuiChildScope("aiDebugRequestSnapshotBody", 0.0f, 260.0f, true, 0)) {
+                    if (scope.isOpen()) {
                         if (state.requestSnapshot() == null || state.requestSnapshot().isBlank()) {
                             ImGui.textDisabled("No request snapshot available.");
                         } else {
                             ImGui.textWrapped(state.requestSnapshot());
                         }
-                    } finally {
-                        ImGui.endChild();
                     }
                 }
                 if (ImGui.button("Copy Request Snapshot")) {
@@ -104,12 +99,10 @@ final class AiAssistantDebugConsoleRenderer {
             }
 
             if (ImGui.beginTabItem("Export")) {
-                if (ImGui.beginChild("aiDebugExportBody", 0.0f, 260.0f, true)) {
-                    try {
+                try (ImGuiChildScope scope = new ImGuiChildScope("aiDebugExportBody", 0.0f, 260.0f, true, 0)) {
+                    if (scope.isOpen()) {
                         ImGui.textDisabled("Preview (compact):");
                         ImGui.textWrapped(state.compactDiagnostics() == null ? "" : state.compactDiagnostics());
-                    } finally {
-                        ImGui.endChild();
                     }
                 }
                 if (ImGui.button("Copy Compact Export")) {

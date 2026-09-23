@@ -1,6 +1,7 @@
 package com.nodecraft.gui.components.panel;
 
 import com.nodecraft.gui.components.EditorComponent;
+import com.nodecraft.gui.layout.ImGuiChildScope;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -303,36 +304,25 @@ public class NodeLibraryComponent implements EditorComponent {
             return;
         }
 
-        boolean nodeLibraryChildBegin;
-
         try {
-            // Clamp layout inputs to safe minimums.
             nodePanelWidth = Math.max(NodeLibraryConstants.CHILD_WINDOW_MIN_WIDTH, nodePanelWidth);
             contentHeight = Math.max(NodeLibraryConstants.CHILD_WINDOW_MIN_HEIGHT, contentHeight);
 
-            // Create the child window and disable the native scrollbar.
             int windowFlags = ImGuiWindowFlags.NoScrollbar |
                     ImGuiWindowFlags.NoMove |
                     ImGuiWindowFlags.NoResize |
                     ImGuiWindowFlags.NoCollapse |
                     ImGuiWindowFlags.NoTitleBar;
 
-            // 外层 LayoutRenderer 已提供 child 背景（ChildBg）；这里不再叠加第二层底色，避免文字发灰
-            nodeLibraryChildBegin = ImGui.beginChild("nodeLibrary", nodePanelWidth, contentHeight, true, windowFlags);
-
-            if (!nodeLibraryChildBegin) {
-                NodeCraft.LOGGER.warn("Failed to begin nodeLibrary child window");
-                return;
-            }
-
-            try {
+            try (ImGuiChildScope scope = new ImGuiChildScope(
+                    "nodeLibrary", nodePanelWidth, contentHeight, true, windowFlags)) {
+                if (!scope.isOpen()) {
+                    NodeCraft.LOGGER.warn("Failed to begin nodeLibrary child window");
+                    return;
+                }
                 renderContent(nodePanelWidth, contentHeight, windowPaddingX);
-            } finally {
-                // Only end the child window after a successful beginChild call.
-                ImGui.endChild();
             }
         } catch (Exception e) {
-            NodeCraft.LOGGER.error("Failed to render node library: {}", e.getMessage());
             NodeCraft.LOGGER.error("Failed to render node library: {}", e.getMessage(), e);
         }
     }
@@ -682,11 +672,12 @@ public class NodeLibraryComponent implements EditorComponent {
      */
     private void renderNodeCategories() {
         // Use zero height so the child region consumes the remaining vertical space.
-        if (!ImGui.beginChild("##nodeListScrollingRegion", 0, 0, false, ImGuiWindowFlags.NoScrollbar)) {
-            return;
-        }
+        try (ImGuiChildScope scope = new ImGuiChildScope(
+                "##nodeListScrollingRegion", 0, 0, false, ImGuiWindowFlags.NoScrollbar)) {
+            if (!scope.isOpen()) {
+                return;
+            }
 
-        try {
         // Show empty-state feedback when nothing can be displayed.
         if (filteredCategories.isEmpty() && !searchManager.getSearchTerm().isEmpty()) {
             searchManager.renderNoMatchesMessage();
@@ -738,8 +729,6 @@ public class NodeLibraryComponent implements EditorComponent {
         }
 
         ImGui.popStyleVar();
-        } finally {
-            ImGui.endChild();
         }
     }
 

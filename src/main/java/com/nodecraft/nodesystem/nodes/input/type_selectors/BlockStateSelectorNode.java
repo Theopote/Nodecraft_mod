@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.input.type_selectors;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
+import com.nodecraft.gui.layout.ImGuiChildScope;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -184,10 +185,13 @@ public class BlockStateSelectorNode extends BaseCustomUINode {
                 ImGui.text(String.format("Results: %d", total));
                 float footerReserve = ImGui.getFrameHeightWithSpacing();
                 float listHeight = Math.max(160.0f, ImGui.getContentRegionAvail().y - footerReserve);
-                boolean listChildOpen = ImGui.beginChild("##block_state_picker_list", ImGui.getContentRegionAvail().x, listHeight, false,
-                    ImGuiWindowFlags.AlwaysVerticalScrollbar);
-                try {
-                    if (!listChildOpen) {
+                try (ImGuiChildScope listScope = new ImGuiChildScope(
+                        "##block_state_picker_list",
+                        ImGui.getContentRegionAvail().x,
+                        listHeight,
+                        false,
+                        ImGuiWindowFlags.AlwaysVerticalScrollbar)) {
+                    if (!listScope.isOpen()) {
                         return changed;
                     }
                     String selected = normalizeBlockId(blockId);
@@ -204,10 +208,6 @@ public class BlockStateSelectorNode extends BaseCustomUINode {
                                 ImGui.setTooltip(entryId);
                             }
                         }
-                    }
-                } finally {
-                    if (listChildOpen) {
-                        ImGui.endChild();
                     }
                 }
 

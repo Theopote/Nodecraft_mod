@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.input.type_selectors;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
+import com.nodecraft.gui.layout.ImGuiChildScope;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -238,9 +239,9 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
             listHeight = Math.max(160.0f, listHeight);
             float listWidth = ImGui.getContentRegionAvail().x;
             // 列表子窗口不画边框，减少一层内边距/裁剪观感
-            boolean listChildOpen = ImGui.beginChild("##block_picker_list", listWidth, listHeight, false, ImGuiWindowFlags.AlwaysVerticalScrollbar);
-            try {
-                if (!listChildOpen) {
+            try (ImGuiChildScope listScope = new ImGuiChildScope(
+                    "##block_picker_list", listWidth, listHeight, false, ImGuiWindowFlags.AlwaysVerticalScrollbar)) {
+                if (!listScope.isOpen()) {
                     return changed;
                 }
                 if (snapshot.isEmpty()) {
@@ -262,10 +263,6 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
                             ImGui.setTooltip(blockId);
                         }
                     }
-                }
-            } finally {
-                if (listChildOpen) {
-                    ImGui.endChild();
                 }
             }
 

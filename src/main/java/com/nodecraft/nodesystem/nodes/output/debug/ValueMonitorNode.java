@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.gui.layout.ImGuiChildScope;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
 import imgui.flag.ImGuiStyleVar;
@@ -84,21 +85,15 @@ public class ValueMonitorNode extends BaseCustomUINode {
                 ImGui.pushStyleVar(ImGuiStyleVar.ChildBorderSize, ZoomHelper.applyZoom(1.2f, zoom));
                 ImGui.pushStyleVar(ImGuiStyleVar.ChildRounding, ZoomHelper.applyZoom(4f, zoom));
                 ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, ZoomHelper.applyZoom(4f, zoom), ZoomHelper.applyZoom(4f, zoom));
-                boolean childOpen = ImGui.beginChild(
-                    "##value_monitor_screen",
-                    aw,
-                    screenH,
-                    true,
-                    ImGuiWindowFlags.AlwaysUseWindowPadding
+                int childFlags = ImGuiWindowFlags.AlwaysUseWindowPadding
                         | ImGuiWindowFlags.NoScrollbar
                         | ImGuiWindowFlags.NoScrollWithMouse
                         | ImGuiWindowFlags.NoMove
                         | ImGuiWindowFlags.NoNav
-                        | ImGuiWindowFlags.NoNavFocus
-                );
-
-                try {
-                    if (childOpen) {
+                        | ImGuiWindowFlags.NoNavFocus;
+                try (ImGuiChildScope scope = new ImGuiChildScope(
+                        "##value_monitor_screen", aw, screenH, true, childFlags)) {
+                    if (scope.isOpen()) {
                         float contentW = ImGui.getContentRegionAvailX();
                         ImGui.pushStyleColor(ImGuiCol.Text, 0xFF666666);
                         ImGui.text("[" + typeLabel + "]");
@@ -111,10 +106,6 @@ public class ValueMonitorNode extends BaseCustomUINode {
                         ImGui.setNextItemWidth(contentW);
                         ImGui.textWrapped(text);
                         ImGui.popStyleColor();
-                    }
-                } finally {
-                    if (childOpen) {
-                        ImGui.endChild();
                     }
                 }
                 ImGui.popStyleVar(3);

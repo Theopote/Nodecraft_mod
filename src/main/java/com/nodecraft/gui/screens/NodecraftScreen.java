@@ -60,7 +60,7 @@ public class NodecraftScreen extends Screen {
     private LayoutConfig layoutConfig = LayoutConfig.createDefault();
     private final PanelVisibilityManager panelVisibilityManager = new PanelVisibilityManager();
     private boolean initialized = false;
-    
+
     // 用于跟踪分隔线拖拽状态，以优化布局更新
     private boolean wasDraggingSplitter = false;
     private boolean previousWorldLeftMouseDown = false;
@@ -662,5 +662,31 @@ public boolean isImGuiWantCaptureKeyboard() {
      */
     public void publicClearAndInit() {
         this.clearAndInit();
+    }
+
+    /**
+     * 窗口/分辨率变化时更新编辑器窗口尺寸并跳过节帧布局，避免 ImGui child 栈失衡。
+     */
+    public void notifyResolutionChanged() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client == null || client.getWindow() == null) {
+            return;
+        }
+
+        float screenWidth = client.getWindow().getWidth();
+        float screenHeight = client.getWindow().getHeight();
+        float minVisibleWidth = 320.0f;
+        float minVisibleHeight = 180.0f;
+        float maxX = Math.max(0.0f, screenWidth - minVisibleWidth);
+        float maxY = Math.max(0.0f, screenHeight - minVisibleHeight);
+
+        windowX = Math.max(0.0f, Math.min(windowX, maxX));
+        windowY = Math.max(0.0f, Math.min(windowY, maxY));
+        windowWidth = Math.max(EditorConstants.MIN_WINDOW_WIDTH, Math.min(windowWidth, screenWidth));
+        windowHeight = Math.max(EditorConstants.MIN_WINDOW_HEIGHT, Math.min(windowHeight, screenHeight));
+
+        if (layoutRenderer != null) {
+            layoutRenderer.deferNextLayoutFrame();
+        }
     }
 }

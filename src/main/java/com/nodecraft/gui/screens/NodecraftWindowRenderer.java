@@ -3,6 +3,7 @@ package com.nodecraft.gui.screens;
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.components.panel.CanvasComponent;
 import com.nodecraft.gui.editor.integration.ImGuiRenderer;
+import com.nodecraft.gui.layout.ImGuiChildScope;
 import com.nodecraft.gui.style.ImGuiStyleScope;
 import com.nodecraft.gui.style.MinecraftTheme;
 import com.nodecraft.gui.utils.ImGuiStyleVar;
@@ -26,6 +27,8 @@ public class NodecraftWindowRenderer {
     private final ViewportCloseDetector closeDetector;
     private final MinecraftTheme theme;
     private ImGuiStyleScope styleScope;
+    private float lastKnownScreenWidth = -1f;
+    private float lastKnownScreenHeight = -1f;
 
     public NodecraftWindowRenderer(NodecraftScreen parentScreen) {
         this.parentScreen = parentScreen;
@@ -95,6 +98,16 @@ public class NodecraftWindowRenderer {
         parentScreen.windowWidth = Math.max(minWidth, Math.min(parentScreen.windowWidth, screenWidth));
         parentScreen.windowHeight = Math.max(minHeight, Math.min(parentScreen.windowHeight, screenHeight));
 
+        LayoutRenderer layoutRenderer = parentScreen.getLayoutRenderer();
+        if (layoutRenderer != null && lastKnownScreenWidth >= 0f) {
+            if (Math.abs(screenWidth - lastKnownScreenWidth) > 0.5f
+                    || Math.abs(screenHeight - lastKnownScreenHeight) > 0.5f) {
+                layoutRenderer.deferNextLayoutFrame();
+            }
+        }
+        lastKnownScreenWidth = screenWidth;
+        lastKnownScreenHeight = screenHeight;
+
         ImGui.setNextWindowPos(parentScreen.windowX, parentScreen.windowY, ImGuiCond.Appearing);
         ImGui.setNextWindowSize(parentScreen.windowWidth, parentScreen.windowHeight, ImGuiCond.Appearing);
         ImGui.setNextWindowCollapsed(false, ImGuiCond.Appearing);
@@ -121,10 +134,17 @@ public class NodecraftWindowRenderer {
             if (windowOpened) {
                 handleWindowAssociation();
                 updateWindowDimensions();
-                renderWindowContent(context, mouseX, mouseY, delta);
+
+                boolean skipLayout = layoutRenderer != null && layoutRenderer.peekLayoutRenderSkip();
+                renderWindowContent();
+                if (!skipLayout) {
+                    renderLayoutContent(context, mouseX, mouseY, delta);
+                } else if (layoutRenderer != null) {
+                    layoutRenderer.consumeLayoutRenderSkip();
+                }
             }
         } finally {
-            // ImGui 要求无论 begin 是否成功都必须调用 end()
+            ImGuiChildScope.unwindAll();
             ImGui.end();
         }
     }
@@ -168,16 +188,15 @@ public class NodecraftWindowRenderer {
         parentScreen.windowY = ImGui.getWindowPosY();
     }
 
-    private void renderWindowContent(DrawContext context, int mouseX, int mouseY, float delta) {
-        renderWindowContent();
-
+    private void renderLayoutContent(DrawContext context, int mouseX, int mouseY, float delta) {
         LayoutRenderer layoutRenderer = parentScreen.getLayoutRenderer();
-        if (layoutRenderer != null) {
-            try {
-                layoutRenderer.render(context, mouseX, mouseY, delta);
-            } catch (Exception e) {
-                NodeCraft.LOGGER.error("渲染布局时出错: {}", e.getMessage(), e);
-            }
+        if (layoutRenderer == null) {
+            return;
+        }
+        try {
+            layoutRenderer.render(context, mouseX, mouseY, delta);
+        } catch (Exception e) {
+            NodeCraft.LOGGER.error("渲染布局时出错: {}", e.getMessage(), e);
         }
     }
 
@@ -205,14 +224,17 @@ public class NodecraftWindowRenderer {
                 | ImGuiWindowFlags.NoCollapse
                 | ImGuiWindowFlags.NoSavedSettings;
 
+            LayoutRenderer layoutRenderer = parentScreen.getLayoutRenderer();
+            boolean skipLayout = layoutRenderer != null && layoutRenderer.peekLayoutRenderSkip();
             if (ImGui.begin("NodeCraft Detached Editor", windowFlags)) {
                 renderWindowContent();
-
-                LayoutRenderer layoutRenderer = parentScreen.getLayoutRenderer();
-                if (layoutRenderer != null) {
+                if (!skipLayout && layoutRenderer != null) {
                     layoutRenderer.renderImGuiOnly(0.0f);
+                } else if (skipLayout && layoutRenderer != null) {
+                    layoutRenderer.consumeLayoutRenderSkip();
                 }
             }
+            ImGuiChildScope.unwindAll();
             ImGui.end();
 
             if (!parentScreen.isCloseRequested()) {

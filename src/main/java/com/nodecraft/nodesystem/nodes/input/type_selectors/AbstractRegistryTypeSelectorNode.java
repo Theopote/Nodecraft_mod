@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.nodes.input.type_selectors;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
+import com.nodecraft.gui.layout.ImGuiChildScope;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import imgui.ImGui;
 import imgui.flag.ImGuiInputTextFlags;
@@ -253,9 +254,9 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
                 float listHeight = ImGui.getContentRegionAvail().y - footerReserve;
                 listHeight = Math.max(160.0f, listHeight);
                 float listWidth = ImGui.getContentRegionAvail().x;
-                boolean listChildOpen = ImGui.beginChild("##registry_picker_list", listWidth, listHeight, false, ImGuiWindowFlags.AlwaysVerticalScrollbar);
-                try {
-                    if (!listChildOpen) {
+                try (ImGuiChildScope listScope = new ImGuiChildScope(
+                        "##registry_picker_list", listWidth, listHeight, false, ImGuiWindowFlags.AlwaysVerticalScrollbar)) {
+                    if (!listScope.isOpen()) {
                         return changed;
                     }
                     if (snapshot.isEmpty()) {
@@ -278,10 +279,6 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
                                 ImGui.setTooltip(entryId);
                             }
                         }
-                    }
-                } finally {
-                    if (listChildOpen) {
-                        ImGui.endChild();
                     }
                 }
 
