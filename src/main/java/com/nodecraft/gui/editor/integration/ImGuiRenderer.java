@@ -54,6 +54,8 @@ public class ImGuiRenderer {
     private final ViewportCloseDetector closeDetector = ViewportCloseDetector.getInstance();
     
     private static final String FONT_RESOURCE_PATH = "assets/nodecraft/fonts/NotoSansSC-Regular.ttf";
+    /** UI symbols used outside the bundled CJK common ranges (recommendation plan marks, etc.). */
+    private static final String UI_SYMBOL_GLYPHS = "→↻·←↑↓—–…";
     private static final float BASE_FONT_SIZE = 18.0f;
     private static final float DEFAULT_UI_SCALE = 1.0f;
     private static final float MIN_UI_SCALE = 0.85f;
@@ -169,17 +171,7 @@ public class ImGuiRenderer {
                 NodeCraft.LOGGER.info("成功预加载字体文件: {} ({} 字节)", FONT_RESOURCE_PATH, fontDataBytes.length);
             }
 
-            // 构建所有需要的字符范围
-            ImFontGlyphRangesBuilder rangesBuilder = new ImFontGlyphRangesBuilder();
-            rangesBuilder.addRanges(ImGui.getIO().getFonts().getGlyphRangesDefault());
-            rangesBuilder.addRanges(ImGui.getIO().getFonts().getGlyphRangesChineseSimplifiedCommon());
-            
-            // 添加自定义常用UI文本，确保它们也被包含
-            rangesBuilder.addText("节点编辑器属性面板画布工具栏状态栏保存打开新建编辑删除复制粘贴撤销重做缩放重置视图");
-            rangesBuilder.addText("输入输出类型名称描述参数变量函数方法值配置设置选项开关按钮滑块下拉菜单颜色选择器");
-            rangesBuilder.addText("错误警告信息成功失败加载保存网络连接断开重试取消确认");
-            
-            chineseGlyphRanges = rangesBuilder.buildRanges();
+            chineseGlyphRanges = buildFontGlyphRanges();
 
             // 配置基础字体设置
             baseFontConfig = new ImFontConfig();
@@ -197,6 +189,24 @@ public class ImGuiRenderer {
             NodeCraft.LOGGER.error("预加载字体数据时发生未知错误", e);
             return false;
         }
+    }
+
+    /**
+     * Builds the atlas glyph ranges shared by bundled and system font loading paths.
+     */
+    private static short[] buildFontGlyphRanges() {
+        ImFontGlyphRangesBuilder rangesBuilder = new ImFontGlyphRangesBuilder();
+        ImFontAtlas fonts = ImGui.getIO().getFonts();
+        rangesBuilder.addRanges(fonts.getGlyphRangesDefault());
+        rangesBuilder.addRanges(fonts.getGlyphRangesChineseSimplifiedCommon());
+        rangesBuilder.addText(UI_SYMBOL_GLYPHS);
+
+        // 添加自定义常用UI文本，确保它们也被包含
+        rangesBuilder.addText("节点编辑器属性面板画布工具栏状态栏保存打开新建编辑删除复制粘贴撤销重做缩放重置视图");
+        rangesBuilder.addText("输入输出类型名称描述参数变量函数方法值配置设置选项开关按钮滑块下拉菜单颜色选择器");
+        rangesBuilder.addText("错误警告信息成功失败加载保存网络连接断开重试取消确认");
+
+        return rangesBuilder.buildRanges();
     }
 
     /**
@@ -251,7 +261,7 @@ public class ImGuiRenderer {
                 }
 
                 ImFontConfig config = getImFontConfig();
-                config.setGlyphRanges(io.getFonts().getGlyphRangesChineseFull());
+                config.setGlyphRanges(chineseGlyphRanges);
                 io.getFonts().addFontFromFileTTF(fontPath, fontSize, config);
                 NodeCraft.LOGGER.info("已加载系统字体: {}", fontPath);
                 return true;
