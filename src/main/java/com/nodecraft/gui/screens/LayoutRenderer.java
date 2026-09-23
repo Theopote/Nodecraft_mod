@@ -376,20 +376,14 @@ public class LayoutRenderer {
                         childFlags = imgui.flag.ImGuiWindowFlags.NoScrollbar | imgui.flag.ImGuiWindowFlags.NoScrollWithMouse;
                     }
 
-                    // 非画布组件可以有滚动条，根据类型决定是否有边框
-                    boolean childBegun;
-                    try {
-                        childBegun = ImGui.beginChild(childId, dims.width(), dims.height(), hasBorder, childFlags);
-                    } finally {
+                    boolean childBegun = ImGui.beginChild(childId, dims.width(), dims.height(), hasBorder, childFlags);
+                    if (!childBegun) {
+                        NodeCraft.LOGGER.debug("Skipped child window render for component: {}",
+                                component.getComponentId());
+                        continue;
                     }
 
                     try {
-                        if (!childBegun) {
-                            NodeCraft.LOGGER.debug("Skipped child window render for component: {}",
-                                    component.getComponentId());
-                            continue;
-                        }
-
                         logDetachedChildState(component.getComponentId(), dims);
                         if (hasBorder) {
                             installPanelMouseCapture(childId);
@@ -460,13 +454,14 @@ public class LayoutRenderer {
                     return;
                 }
 
-                // 使用全尺寸进行渲染
                 logDetachedChildState(canvasComponent.getComponentId(), dims);
                 canvasComponent.render(0, 0, ImGui.getContentRegionAvailX(),
                         ImGui.getContentRegionAvailY(), 0, 0);
             } finally {
-                ImGui.endChild();
-                ImGui.popStyleColor(); // 恢复 ChildBg
+                if (childBegun) {
+                    ImGui.endChild();
+                }
+                ImGui.popStyleColor();
             }
         } catch (Exception e) {
             NodeCraft.LOGGER.error("渲染画布组件时出错: {}", e.getMessage(), e);
