@@ -19,6 +19,7 @@ public class CustomUIRenderer {
     private java.util.UUID lastCustomUIHoveredNodeId = null;
     private boolean lastCustomUIWasHoveredEmpty = false;
     private boolean lastCustomUIHasActiveWidget = false;
+    private boolean lastCustomUIHasHoveredWidget = false;
     
     public CustomUIRenderer(ICanvasEditor editor) {
         this.editor = editor;
@@ -46,6 +47,14 @@ public class CustomUIRenderer {
         lastCustomUIHoveredNodeId = null;
         lastCustomUIWasHoveredEmpty = false;
         lastCustomUIHasActiveWidget = false;
+        lastCustomUIHasHoveredWidget = false;
+    }
+
+    /**
+     * 鼠标是否悬停在指定节点自定义 UI 的控件上（非空白区域）。
+     */
+    public boolean isCustomUIWidgetHovered(UUID nodeId) {
+        return nodeId != null && nodeId.equals(lastCustomUIHoveredNodeId) && lastCustomUIHasHoveredWidget;
     }
 
     /**
@@ -230,6 +239,13 @@ public class CustomUIRenderer {
                         lastCustomUIHoveredNodeId = info.nodeId;
                         lastCustomUIWasHoveredEmpty = true;
                         lastCustomUIHasActiveWidget = false;
+                        lastCustomUIHasHoveredWidget = false;
+                    } else {
+                        // 鼠标悬停在控件上（尚未激活）→ 阻止点击穿透到节点主体
+                        lastCustomUIHoveredNodeId = info.nodeId;
+                        lastCustomUIWasHoveredEmpty = false;
+                        lastCustomUIHasActiveWidget = false;
+                        lastCustomUIHasHoveredWidget = true;
                     }
                 }
 

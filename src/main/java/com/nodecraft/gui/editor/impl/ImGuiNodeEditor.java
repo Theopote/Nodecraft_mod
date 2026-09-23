@@ -286,6 +286,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
             // 获取当前鼠标位置
             ImVec2 mousePos = ImGui.getIO().getMousePos();
+            boolean mouseOverCanvas = isMouseOverCanvas(mousePos, canvasPos, canvasWidth, canvasHeight);
             if (handleSubgraphNavigationClick(canvasPos, mousePos)) {
                 return;
             }
@@ -301,7 +302,8 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             renderer.calculatePortPositions(canvasPos, document.getGraph(), document.getNodePositions(), portScreenPositions);
 
             boolean subgraphDoubleClickConsumed = false;
-            if (ImGui.isMouseDoubleClicked(ImGuiMouseButton.Left)
+            if (mouseOverCanvas
+                    && ImGui.isMouseDoubleClicked(ImGuiMouseButton.Left)
                     && !interaction.isCreatingConnection()
                     && !interaction.isBoxSelecting()
                     && document.getGraph() != null) {
@@ -327,7 +329,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             // 4. 渲染节点（包含节点主体、标题和自定义UI）。
             // 节点渲染会设置 ImGui.invisibleButton，并更新 ImGui.isItemActive() 状态。
             // 在渲染前，在主窗口上下文里预先计算本帧点击目标节点（坐标在此处是正确的）。
-            if (ImGuiInputAdapter.isMouseClicked(ImGuiMouseButton.Left) && !subgraphDoubleClickConsumed) {
+            if (mouseOverCanvas
+                    && ImGuiInputAdapter.isMouseClicked(ImGuiMouseButton.Left)
+                    && !subgraphDoubleClickConsumed) {
                 UUID clickTargetNodeId = getNodeIdUnderMouse(mousePos.x, mousePos.y);
                 if (clickTargetNodeId == null) {
                     Map.Entry<UUID, String> clickedPort = interaction.getClickedPort(mousePos, portScreenPositions);
@@ -387,7 +391,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 // 注意：不能用 WantCaptureMouse（鼠标在画布窗口本身上时也为 true，会破坏框选）。
                 // 只在特定 popup 打开时跳过，避免菜单点击误清除选择集。
                 boolean anyEditorPopupOpen = ImGui.isPopupOpen("NodeContextMenu") || ImGui.isPopupOpen("Node Search");
-                if (ImGuiInputAdapter.isMouseClicked(ImGuiMouseButton.Left) && !anyEditorPopupOpen) {
+                if (mouseOverCanvas
+                        && ImGuiInputAdapter.isMouseClicked(ImGuiMouseButton.Left)
+                        && !anyEditorPopupOpen) {
                 NodeCraft.LOGGER.debug("左键点击检测 - 鼠标位置: ({}, {})", mousePos.x, mousePos.y);
 
                 // 检查点击是否在画布区域内
@@ -597,6 +603,14 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         ImGui.endPopup();
     }
 
+    private static boolean isMouseOverCanvas(ImVec2 mousePos, ImVec2 canvasPos, float canvasWidth, float canvasHeight) {
+        if (mousePos == null || canvasPos == null || !ImGui.isWindowHovered()) {
+            return false;
+        }
+        return mousePos.x >= canvasPos.x && mousePos.x <= canvasPos.x + canvasWidth
+                && mousePos.y >= canvasPos.y && mousePos.y <= canvasPos.y + canvasHeight;
+    }
+
     private boolean isMouseOverNodeHeader(UUID nodeId, ImVec2 mousePos, ImVec2 canvasPos) {
         NodePosition position = document.getNodePositions().get(nodeId);
         if (position == null || mousePos == null || canvasPos == null) {
@@ -758,7 +772,14 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             return null;
         }
 
-        ImVec2 canvasWindowPos = ImGui.getWindowPos(); // Get ImGui window position
+        ImVec2 canvasWindowPos = ImGui.getWindowPos();
+        float canvasWindowWidth = ImGui.getWindowWidth();
+        float canvasWindowHeight = ImGui.getWindowHeight();
+        if (mouseX < canvasWindowPos.x || mouseX > canvasWindowPos.x + canvasWindowWidth
+                || mouseY < canvasWindowPos.y || mouseY > canvasWindowPos.y + canvasWindowHeight) {
+            return null;
+        }
+
         List<INode> nodes = document.getGraph().getNodes();
 
         // Keep hit-testing in the same layering order as rendering:

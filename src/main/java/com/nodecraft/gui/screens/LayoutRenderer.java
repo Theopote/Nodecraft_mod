@@ -126,11 +126,10 @@ public class LayoutRenderer {
             // 处理分隔线拖拽（在组件渲染前处理拖拽，确保布局正确）
             handleSplitterDragging(contentStartX, contentWidth);
 
-            // 拖拽时也保持完整渲染，避免内容临时消失。
-            renderNonCanvasComponents(componentsToRender, delta);
-
-            // 最后渲染画布组件，使其始终显示在最上层
+            // 先渲染画布，再渲染侧栏/属性面板，使面板在 ImGui 命中测试层级上位于画布之上。
+            // 节点 invisibleButton 使用屏幕坐标，可能延伸到侧栏区域；若画布后渲染会抢走侧栏点击。
             renderCanvasComponent(delta);
+            renderNonCanvasComponents(componentsToRender, delta);
 
         } catch (Exception e) {
             NodeCraft.LOGGER.error("渲染组件布局时出错", e);
@@ -392,6 +391,9 @@ public class LayoutRenderer {
                         }
 
                         logDetachedChildState(component.getComponentId(), dims);
+                        if (hasBorder) {
+                            installPanelMouseCapture(childId);
+                        }
                         component.render(0, 0, ImGui.getContentRegionAvailX(),
                                 ImGui.getContentRegionAvailY(), 0, 0);
                     } finally {
@@ -403,6 +405,19 @@ public class LayoutRenderer {
                 }
             }
         }
+    }
+
+    /**
+     * 在侧栏/属性面板 child 底部铺一层可重叠的 invisibleButton，
+     * 让空白区域也能捕获鼠标，避免点击穿透到画布节点。
+     */
+    private static void installPanelMouseCapture(String childId) {
+        float width = Math.max(1.0f, ImGui.getContentRegionAvailX());
+        float height = Math.max(1.0f, ImGui.getContentRegionAvailY());
+        ImGui.setCursorPos(0.0f, 0.0f);
+        ImGui.invisibleButton("##panel_mouse_capture_" + childId, width, height);
+        ImGui.setItemAllowOverlap();
+        ImGui.setCursorPos(0.0f, 0.0f);
     }
 
     /**
