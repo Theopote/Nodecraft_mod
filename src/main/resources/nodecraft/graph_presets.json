@@ -949,7 +949,7 @@
         {
           "id": "architectural.residential.mini_building_v1",
           "displayName": "Mini Building (Component Chain)",
-          "description": "Floor Slab → Wall Along Path → Window Array → Roof Base → Voxelize → Preview using Architectural Component Protocol v1.",
+          "description": "Floor Slab → Wall Along Path → Window Array → Roof Base → Preview Geometry, Voxelize → Assign Block Type → Preview Blocks → Apply Changes.",
           "kind": "composite",
           "nodes": [
             {
@@ -1036,16 +1036,28 @@
               "y": 240
             },
             {
+              "ref": "material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1480,
+              "y": 240
+            },
+            {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1480,
+              "x": 1720,
               "y": 180
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1480,
+              "x": 1720,
               "y": 340
+            },
+            {
+              "ref": "apply_changes",
+              "typeId": "output.execute.apply_changes",
+              "x": 1720,
+              "y": 500
             }
           ],
           "connections": [
@@ -1136,8 +1148,20 @@
             {
               "fromRef": "voxelize",
               "fromPort": "output_blocks",
+              "toRef": "material",
+              "toPort": "input_coordinates"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
               "toRef": "preview_blocks",
-              "toPort": "input_blocks"
+              "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "apply_changes",
+              "toPort": "input_block_placements"
             }
           ]
         },
@@ -1653,79 +1677,108 @@
         {
           "id": "building_elements.roofs.gable_roof",
           "displayName": "Gable Roof",
-          "description": "A classic gable (pitched) roof with adjustable pitch and overhang.",
+          "description": "Building volume top face → Roof Base (Gable) → Preview Geometry, Voxelize → Assign Block Type → Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
-              "ref": "input_pos",
+              "ref": "player_pos",
               "typeId": "input.context.player_position",
-              "x": 50,
-              "y": 200
+              "x": 0,
+              "y": 40
             },
             {
-              "ref": "roof_profile",
-              "typeId": "geometry.profiles.polygon_profile",
-              "x": 250,
-              "y": 200
+              "ref": "volume",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 0,
+              "y": 200,
+              "state": {
+                "sizeX": 10.0,
+                "sizeY": 4.0,
+                "sizeZ": 8.0
+              }
             },
             {
-              "ref": "extrude_roof",
-              "typeId": "geometry.solids.extrude",
-              "x": 450,
-              "y": 200
+              "ref": "roof_face",
+              "typeId": "reference.points.get_box_face",
+              "x": 280,
+              "y": 200,
+              "state": {
+                "defaultFaceName": "top"
+              }
             },
             {
-              "ref": "orient_roof",
-              "typeId": "transform.basic_transforms.rotate_geometry_axis",
-              "x": 650,
-              "y": 200
+              "ref": "roof_height",
+              "typeId": "input.numeric.float",
+              "x": 280,
+              "y": 380,
+              "state": {
+                "value": 2.5
+              }
+            },
+            {
+              "ref": "roof",
+              "typeId": "geometry.architectural_primitives.roof_base",
+              "x": 560,
+              "y": 260
             },
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 850,
-              "y": 200
+              "x": 820,
+              "y": 260
             },
             {
-              "ref": "assign_material",
-              "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1050,
-              "y": 200
+              "ref": "preview_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 1100,
+              "y": 120
             },
             {
-              "ref": "bake",
+              "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1250,
-              "y": 200
+              "x": 1100,
+              "y": 320
             },
             {
-              "ref": "preview",
+              "ref": "material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1360,
+              "y": 320
+            },
+            {
+              "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1450,
-              "y": 200
+              "x": 1620,
+              "y": 320
             }
           ],
           "connections": [
             {
-              "fromRef": "roof_profile",
-              "fromPort": "output_profile",
-              "toRef": "extrude_roof",
-              "toPort": "input_profile"
+              "fromRef": "volume",
+              "fromPort": "output_box_geometry",
+              "toRef": "roof_face",
+              "toPort": "input_box_geometry"
             },
             {
-              "fromRef": "extrude_roof",
-              "fromPort": "output_geometry",
-              "toRef": "orient_roof",
-              "toPort": "input_geometry"
+              "fromRef": "roof_face",
+              "fromPort": "output_face",
+              "toRef": "roof",
+              "toPort": "input_face"
             },
             {
-              "fromRef": "orient_roof",
+              "fromRef": "roof_height",
+              "fromPort": "output_value",
+              "toRef": "roof",
+              "toPort": "input_height"
+            },
+            {
+              "fromRef": "roof",
               "fromPort": "output_geometry",
               "toRef": "move_to_pos",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "input_pos",
+              "fromRef": "player_pos",
               "fromPort": "output_position",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
@@ -1733,20 +1786,26 @@
             {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
-              "toRef": "assign_material",
+              "toRef": "preview_geometry",
               "toPort": "input_geometry"
             },
             {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
-              "toRef": "bake",
+              "toRef": "voxelize",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "bake",
+              "fromRef": "voxelize",
               "fromPort": "output_blocks",
-              "toRef": "preview",
-              "toPort": "input_blocks"
+              "toRef": "material",
+              "toPort": "input_coordinates"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
             }
           ]
         },
@@ -1901,130 +1960,232 @@
         {
           "id": "building_elements.stairs.straight_staircase",
           "displayName": "Straight Staircase",
-          "description": "A simple straight staircase connecting two levels.",
+          "description": "Player Position → Path → Staircase (straight layout) → Preview Geometry, Voxelize → Assign Block Type → Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
-              "ref": "input_pos",
+              "ref": "player_pos",
               "typeId": "input.context.player_position",
-              "x": 50,
-              "y": 200
+              "x": 0,
+              "y": 40
             },
             {
-              "ref": "steps_line",
+              "ref": "run_vector",
+              "typeId": "reference.vectors.vector",
+              "x": 0,
+              "y": 220,
+              "state": {
+                "x": 12.0,
+                "y": 3.0,
+                "z": 0.0
+              }
+            },
+            {
+              "ref": "unit_distance",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 400,
+              "state": {
+                "value": 1.0
+              }
+            },
+            {
+              "ref": "path_end",
+              "typeId": "reference.points.point_along_vector",
+              "x": 280,
+              "y": 280,
+              "state": {
+                "normalizeDirection": false
+              }
+            },
+            {
+              "ref": "point_list",
+              "typeId": "math.list.create_list",
+              "x": 280,
+              "y": 80,
+              "state": {
+                "inputCount": 2
+              }
+            },
+            {
+              "ref": "stair_path",
               "typeId": "geometry.curves.points_to_path",
-              "x": 250,
-              "y": 200
+              "x": 560,
+              "y": 80
             },
             {
-              "ref": "divide_steps",
-              "typeId": "geometry.curves.path_to_points",
-              "x": 450,
-              "y": 200
+              "ref": "step_count",
+              "typeId": "input.numeric.integer",
+              "x": 560,
+              "y": 280,
+              "state": {
+                "value": 12
+              }
             },
             {
-              "ref": "step_box",
-              "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 450,
-              "y": 350
+              "ref": "step_run",
+              "typeId": "input.numeric.float",
+              "x": 560,
+              "y": 420,
+              "state": {
+                "value": 1.0
+              }
             },
             {
-              "ref": "array_steps",
-              "typeId": "pattern.linear.curve_array_geometry",
-              "x": 650,
-              "y": 275
+              "ref": "step_rise",
+              "typeId": "input.numeric.float",
+              "x": 560,
+              "y": 560,
+              "state": {
+                "value": 0.25
+              }
             },
             {
-              "ref": "union_steps",
-              "typeId": "geometry.combine.geometry",
-              "x": 850,
-              "y": 275
+              "ref": "step_width",
+              "typeId": "input.numeric.float",
+              "x": 560,
+              "y": 700,
+              "state": {
+                "value": 1.2
+              }
             },
             {
-              "ref": "assign_material",
-              "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1050,
-              "y": 275
+              "ref": "layout",
+              "typeId": "input.basic.text_input",
+              "x": 560,
+              "y": 840,
+              "state": {
+                "text": "straight",
+                "multiline": false
+              }
             },
             {
-              "ref": "move_to_pos",
-              "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1250,
-              "y": 275
+              "ref": "staircase",
+              "typeId": "geometry.architectural_primitives.staircase",
+              "x": 860,
+              "y": 280
             },
             {
-              "ref": "bake",
+              "ref": "preview_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 1160,
+              "y": 120
+            },
+            {
+              "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1450,
-              "y": 275
+              "x": 1160,
+              "y": 320
             },
             {
-              "ref": "preview",
+              "ref": "material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1420,
+              "y": 320
+            },
+            {
+              "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1650,
-              "y": 275
+              "x": 1680,
+              "y": 320
             }
           ],
           "connections": [
             {
-              "fromRef": "steps_line",
-              "fromPort": "output_polyline",
-              "toRef": "divide_steps",
-              "toPort": "input_path"
-            },
-            {
-              "fromRef": "steps_line",
-              "fromPort": "output_polyline",
-              "toRef": "array_steps",
-              "toPort": "input_path"
-            },
-            {
-              "fromRef": "divide_steps",
-              "fromPort": "output_count",
-              "toRef": "array_steps",
-              "toPort": "input_count"
-            },
-            {
-              "fromRef": "step_box",
-              "fromPort": "output_geometry",
-              "toRef": "array_steps",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "array_steps",
-              "fromPort": "output_geometry",
-              "toRef": "union_steps",
-              "toPort": "input_geometry_0"
-            },
-            {
-              "fromRef": "union_steps",
-              "fromPort": "output_geometry",
-              "toRef": "assign_material",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "union_steps",
-              "fromPort": "output_geometry",
-              "toRef": "move_to_pos",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "input_pos",
+              "fromRef": "player_pos",
               "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
+              "toRef": "path_end",
+              "toPort": "input_point"
             },
             {
-              "fromRef": "move_to_pos",
+              "fromRef": "run_vector",
+              "fromPort": "output_vector",
+              "toRef": "path_end",
+              "toPort": "input_vector"
+            },
+            {
+              "fromRef": "unit_distance",
+              "fromPort": "output_value",
+              "toRef": "path_end",
+              "toPort": "input_distance"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "point_list",
+              "toPort": "input_0"
+            },
+            {
+              "fromRef": "path_end",
+              "fromPort": "output_point",
+              "toRef": "point_list",
+              "toPort": "input_1"
+            },
+            {
+              "fromRef": "point_list",
+              "fromPort": "output_list",
+              "toRef": "stair_path",
+              "toPort": "input_points"
+            },
+            {
+              "fromRef": "stair_path",
+              "fromPort": "output_path",
+              "toRef": "staircase",
+              "toPort": "input_path"
+            },
+            {
+              "fromRef": "step_count",
+              "fromPort": "output_value",
+              "toRef": "staircase",
+              "toPort": "input_step_count"
+            },
+            {
+              "fromRef": "step_run",
+              "fromPort": "output_value",
+              "toRef": "staircase",
+              "toPort": "input_step_run"
+            },
+            {
+              "fromRef": "step_rise",
+              "fromPort": "output_value",
+              "toRef": "staircase",
+              "toPort": "input_step_rise"
+            },
+            {
+              "fromRef": "step_width",
+              "fromPort": "output_value",
+              "toRef": "staircase",
+              "toPort": "input_width"
+            },
+            {
+              "fromRef": "layout",
+              "fromPort": "output_text",
+              "toRef": "staircase",
+              "toPort": "input_layout"
+            },
+            {
+              "fromRef": "staircase",
               "fromPort": "output_geometry",
-              "toRef": "bake",
+              "toRef": "preview_geometry",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "bake",
+              "fromRef": "staircase",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize",
               "fromPort": "output_blocks",
-              "toRef": "preview",
-              "toPort": "input_blocks"
+              "toRef": "material",
+              "toPort": "input_coordinates"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
             }
           ]
         },

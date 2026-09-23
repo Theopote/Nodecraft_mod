@@ -48,6 +48,24 @@ class PresetSemanticAuditTest {
             "quickstart.garden_wall",
             "quickstart.simple_tower");
 
+    /** P1 architectural workflow + building elements promoted to v2 block chain. */
+    private static final Set<String> P1_CANONICAL_IDS = Set.of(
+            "architectural.residential.mini_building_v1",
+            "building_elements.roofs.gable_roof",
+            "building_elements.stairs.straight_staircase");
+
+    private static final Set<String> CANONICAL_IDS;
+    static {
+        Set<String> all = new LinkedHashSet<>(P0_CANONICAL_IDS);
+        all.addAll(P1_CANONICAL_IDS);
+        CANONICAL_IDS = Set.copyOf(all);
+    }
+
+    private static final Set<String> BUILD_WITH_APPLY_IDS = Set.of(
+            "architectural.residential.mini_building_v1");
+
+    private static final String APPLY_CHANGES = "output.execute.apply_changes";
+
     private static final Set<String> SINK_TYPE_IDS = Set.of(
             "output.preview.preview_blocks",
             "output.preview.preview_geometry",
@@ -72,34 +90,12 @@ class PresetSemanticAuditTest {
 
     @Test
     void p0CanonicalPresetsPassSemanticContract() {
-        for (String resourcePath : RESOURCE_PATHS) {
-            GraphPresetRules rules = loadRules(resourcePath);
-            List<String> errors = new ArrayList<>();
-            Set<String> found = new HashSet<>();
+        auditCanonicalPresetIds(P0_CANONICAL_IDS);
+    }
 
-            for (GraphPresetRules.PresetCategory category : rules.categories) {
-                if (category == null || category.presets == null) {
-                    continue;
-                }
-                for (GraphPresetRules.GraphPresetDefinition preset : category.presets) {
-                    if (preset == null || !P0_CANONICAL_IDS.contains(preset.id)) {
-                        continue;
-                    }
-                    found.add(preset.id);
-                    errors.addAll(auditCanonicalPreset(preset));
-                }
-            }
-
-            for (String requiredId : P0_CANONICAL_IDS) {
-                if (!found.contains(requiredId)) {
-                    errors.add(resourcePath + " missing P0 preset " + requiredId);
-                }
-            }
-
-            assertTrue(
-                    errors.isEmpty(),
-                    resourcePath + System.lineSeparator() + String.join(System.lineSeparator(), errors));
-        }
+    @Test
+    void p1CanonicalPresetsPassSemanticContract() {
+        auditCanonicalPresetIds(P1_CANONICAL_IDS);
     }
 
     @Test
@@ -116,8 +112,7 @@ class PresetSemanticAuditTest {
                     if (preset == null || !"composite".equalsIgnoreCase(preset.kind)) {
                         continue;
                     }
-                    // Soft rollout: only enforce dead-material for P0 until showcase rebuild.
-                    if (!P0_CANONICAL_IDS.contains(preset.id)) {
+                    if (!CANONICAL_IDS.contains(preset.id)) {
                         continue;
                     }
                     errors.addAll(findDeadMaterialBranches(preset));
@@ -131,17 +126,49 @@ class PresetSemanticAuditTest {
     }
 
     @Test
-    void graphPresetsJsonMatchesUpdatedCopyForP0() {
+    void graphPresetsJsonMatchesUpdatedCopyForCanonicalPresets() {
         GraphPresetRules primary = loadRules("/nodecraft/graph_presets.json");
         GraphPresetRules updated = loadRules("/nodecraft/graph_presets_updated.json");
-        for (String presetId : P0_CANONICAL_IDS) {
+        for (String presetId : CANONICAL_IDS) {
             GraphPresetRules.GraphPresetDefinition a = findPreset(primary, presetId);
             GraphPresetRules.GraphPresetDefinition b = findPreset(updated, presetId);
             assertNotNull(a, "primary missing " + presetId);
             assertNotNull(b, "updated missing " + presetId);
             assertTrue(
                     GSON.toJson(a).equals(GSON.toJson(b)),
-                    "P0 preset diverged between graph_presets.json and graph_presets_updated.json: " + presetId);
+                    "Canonical preset diverged between graph_presets.json and graph_presets_updated.json: "
+                            + presetId);
+        }
+    }
+
+    private static void auditCanonicalPresetIds(Set<String> presetIds) {
+        for (String resourcePath : RESOURCE_PATHS) {
+            GraphPresetRules rules = loadRules(resourcePath);
+            List<String> errors = new ArrayList<>();
+            Set<String> found = new HashSet<>();
+
+            for (GraphPresetRules.PresetCategory category : rules.categories) {
+                if (category == null || category.presets == null) {
+                    continue;
+                }
+                for (GraphPresetRules.GraphPresetDefinition preset : category.presets) {
+                    if (preset == null || !presetIds.contains(preset.id)) {
+                        continue;
+                    }
+                    found.add(preset.id);
+                    errors.addAll(auditCanonicalPreset(preset));
+                }
+            }
+
+            for (String requiredId : presetIds) {
+                if (!found.contains(requiredId)) {
+                    errors.add(resourcePath + " missing canonical preset " + requiredId);
+                }
+            }
+
+            assertTrue(
+                    errors.isEmpty(),
+                    resourcePath + System.lineSeparator() + String.join(System.lineSeparator(), errors));
         }
     }
 
@@ -150,8 +177,17 @@ class PresetSemanticAuditTest {
         Map<String, String> typeByRef = typeByRef(preset);
         Set<String> types = new LinkedHashSet<>(typeByRef.values());
 
-        if (!types.contains(PREVIEW_GEOMETRY) && !types.contains(PREVIEW_BLOCKS)) {
-            errors.add(preset.id + ": missing Preview Geometry / Preview Blocks sink");
+        if (!types.contains(PREVIEW_GEOMETRY)) {
+            errors.add(preset.id + ": missing Preview Geometry sink");
+        }
+        if (!types.contains(PREVIEW_BLOCKS)) {
+            errors.add(preset.id + ": missing Preview Blocks sink");
+        }
+        if (BUILD_WITH_APPLY_IDS.contains(preset.id) && !types.contains(APPLY_CHANGES)) {
+            errors.add(preset.id + ": missing Apply Changes sink for build workflow");
+        }
+        if (BUILD_WITH_APPLY_IDS.contains(preset.id)) {
+            errors.addAll(requireApplyChangesConsumesPlacements(preset, typeByRef));
         }
 
         boolean hasMaterial = types.stream().anyMatch(MATERIAL_TYPE_IDS::contains);
@@ -176,6 +212,46 @@ class PresetSemanticAuditTest {
         // here so semantic failures surface with the same resource load.
         errors.addAll(validatePortsExist(preset, typeByRef));
         return errors;
+    }
+
+    private static List<String> requireApplyChangesConsumesPlacements(
+            GraphPresetRules.GraphPresetDefinition preset,
+            Map<String, String> typeByRef) {
+        List<String> errors = new ArrayList<>();
+        for (Map.Entry<String, String> entry : typeByRef.entrySet()) {
+            if (!APPLY_CHANGES.equals(entry.getValue())) {
+                continue;
+            }
+            boolean placementsUsed = hasIncomingConnection(
+                    preset,
+                    entry.getKey(),
+                    "input_block_placements",
+                    "input_block_placements_tree");
+            if (!placementsUsed) {
+                errors.add(preset.id + ": Apply Changes node '" + entry.getKey()
+                        + "' is not fed block placements from the material chain");
+            }
+        }
+        return errors;
+    }
+
+    private static boolean hasIncomingConnection(
+            GraphPresetRules.GraphPresetDefinition preset,
+            String targetRef,
+            String... targetPorts) {
+        if (preset.connections == null) {
+            return false;
+        }
+        Set<String> allowedPorts = Set.of(targetPorts);
+        for (GraphPresetRules.PresetConnection connection : preset.connections) {
+            if (connection == null) {
+                continue;
+            }
+            if (targetRef.equals(connection.toRef) && allowedPorts.contains(connection.toPort)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static List<String> findDeadMaterialBranches(GraphPresetRules.GraphPresetDefinition preset) {
