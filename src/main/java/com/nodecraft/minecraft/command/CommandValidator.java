@@ -394,72 +394,72 @@ public class CommandValidator {
             CommandParam currentParam = params.get(currentParamIndex);
             
             // 添加一些基于当前参数类型的示例值
-            if (currentParam.name.equals("player")) {
-                suggestions.addAll(Arrays.asList("Player1", "Player2", "@p", "@a", "@r"));
-            } else if (currentParam.name.equals("block") || currentParam.name.equals("item")) {
-                // 集成BlockRegistry和ItemRegistry来获取实际的方块和物品ID
-                if (currentParam.name.equals("block")) {
-                    // 获取方块ID
-                    List<String> blockIds = BlockRegistry.getInstance().getBlockIds();
-                    if (!blockIds.isEmpty()) {
-                        String currentInput = argParts[currentParamIndex];
-                        List<String> filteredBlocks = new ArrayList<>();
-                        
-                        // 根据用户输入过滤方块ID
-                        for (String blockId : blockIds) {
-                            if (blockId.contains(currentInput)) {
-                                filteredBlocks.add(blockId);
-                                // 限制最多10个建议
-                                if (filteredBlocks.size() >= 10) {
-                                    break;
+            switch (currentParam.name) {
+                case "player" -> suggestions.addAll(Arrays.asList("Player1", "Player2", "@p", "@a", "@r"));
+                case "block", "item" -> {
+                    // 集成BlockRegistry和ItemRegistry来获取实际的方块和物品ID
+                    if (currentParam.name.equals("block")) {
+                        // 获取方块ID
+                        List<String> blockIds = BlockRegistry.getInstance().getBlockIds();
+                        if (!blockIds.isEmpty()) {
+                            String currentInput = argParts[currentParamIndex];
+                            List<String> filteredBlocks = new ArrayList<>();
+
+                            // 根据用户输入过滤方块ID
+                            for (String blockId : blockIds) {
+                                if (blockId.contains(currentInput)) {
+                                    filteredBlocks.add(blockId);
+                                    // 限制最多10个建议
+                                    if (filteredBlocks.size() >= 10) {
+                                        break;
+                                    }
                                 }
                             }
-                        }
-                        
-                        // 如果没有匹配项，则添加前10个方块
-                        if (filteredBlocks.isEmpty()) {
-                            suggestions.addAll(blockIds.subList(0, Math.min(10, blockIds.size())));
+
+                            // 如果没有匹配项，则添加前10个方块
+                            if (filteredBlocks.isEmpty()) {
+                                suggestions.addAll(blockIds.subList(0, Math.min(10, blockIds.size())));
+                            } else {
+                                suggestions.addAll(filteredBlocks);
+                            }
                         } else {
-                            suggestions.addAll(filteredBlocks);
+                            suggestions.addAll(Arrays.asList("minecraft:stone", "minecraft:dirt", "minecraft:oak_log"));
                         }
                     } else {
-                        suggestions.addAll(Arrays.asList("minecraft:stone", "minecraft:dirt", "minecraft:oak_log"));
-                    }
-                } else {
-                    // 获取物品ID
-                    List<String> itemIds = ItemRegistry.getInstance().getItemIds();
-                    if (!itemIds.isEmpty()) {
-                        String currentInput = argParts[currentParamIndex];
-                        List<String> filteredItems = new ArrayList<>();
-                        
-                        // 根据用户输入过滤物品ID
-                        for (String itemId : itemIds) {
-                            if (itemId.contains(currentInput)) {
-                                filteredItems.add(itemId);
-                                // 限制最多10个建议
-                                if (filteredItems.size() >= 10) {
-                                    break;
+                        // 获取物品ID
+                        List<String> itemIds = ItemRegistry.getInstance().getItemIds();
+                        if (!itemIds.isEmpty()) {
+                            String currentInput = argParts[currentParamIndex];
+                            List<String> filteredItems = new ArrayList<>();
+
+                            // 根据用户输入过滤物品ID
+                            for (String itemId : itemIds) {
+                                if (itemId.contains(currentInput)) {
+                                    filteredItems.add(itemId);
+                                    // 限制最多10个建议
+                                    if (filteredItems.size() >= 10) {
+                                        break;
+                                    }
                                 }
                             }
-                        }
-                        
-                        // 如果没有匹配项，则添加前10个物品
-                        if (filteredItems.isEmpty()) {
-                            suggestions.addAll(itemIds.subList(0, Math.min(10, itemIds.size())));
+
+                            // 如果没有匹配项，则添加前10个物品
+                            if (filteredItems.isEmpty()) {
+                                suggestions.addAll(itemIds.subList(0, Math.min(10, itemIds.size())));
+                            } else {
+                                suggestions.addAll(filteredItems);
+                            }
                         } else {
-                            suggestions.addAll(filteredItems);
+                            suggestions.addAll(Arrays.asList("minecraft:apple", "minecraft:diamond", "minecraft:iron_ingot"));
                         }
-                    } else {
-                        suggestions.addAll(Arrays.asList("minecraft:apple", "minecraft:diamond", "minecraft:iron_ingot"));
                     }
                 }
-            } else if (currentParam.name.equals("pos") || currentParam.name.equals("location")) {
-                suggestions.addAll(Arrays.asList("~ ~ ~", "~1 ~2 ~3", "0 64 0"));
-            } else if (currentParam.name.equals("entity")) {
-                suggestions.addAll(Arrays.asList("minecraft:zombie", "minecraft:skeleton", "minecraft:creeper"));
-            } else {
-                // 为其他类型添加一些基本建议
-                suggestions.add(currentParam.name + " (" + currentParam.description + ")");
+                case "pos", "location" -> suggestions.addAll(Arrays.asList("~ ~ ~", "~1 ~2 ~3", "0 64 0"));
+                case "entity" ->
+                        suggestions.addAll(Arrays.asList("minecraft:zombie", "minecraft:skeleton", "minecraft:creeper"));
+                default ->
+                    // 为其他类型添加一些基本建议
+                        suggestions.add(currentParam.name + " (" + currentParam.description + ")");
             }
             
             // 过滤建议，只保留与部分输入匹配的建议

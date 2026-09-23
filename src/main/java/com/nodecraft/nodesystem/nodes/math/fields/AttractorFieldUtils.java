@@ -48,23 +48,27 @@ final class AttractorFieldUtils {
         if (source == null || dest == null) {
             return false;
         }
-        if (source instanceof Vector3d center) {
-            dest.set(center);
-            return true;
-        }
-        if (source instanceof SphereData sphere) {
-            dest.set(sphere.getCenter());
-            return true;
-        }
-        if (source instanceof BoxGeometryData box) {
-            dest.set(box.getCenter());
-            return true;
-        }
-        if (source instanceof SdfGeometryData sdfGeometry) {
-            Vector3d min = sdfGeometry.getMin();
-            Vector3d max = sdfGeometry.getMax();
-            dest.set(min).add(max).mul(0.5d);
-            return true;
+        switch (source) {
+            case Vector3d center -> {
+                dest.set(center);
+                return true;
+            }
+            case SphereData sphere -> {
+                dest.set(sphere.getCenter());
+                return true;
+            }
+            case BoxGeometryData box -> {
+                dest.set(box.getCenter());
+                return true;
+            }
+            case SdfGeometryData sdfGeometry -> {
+                Vector3d min = sdfGeometry.getMin();
+                Vector3d max = sdfGeometry.getMax();
+                dest.set(min).add(max).mul(0.5d);
+                return true;
+            }
+            default -> {
+            }
         }
         try {
             Method getCenter = source.getClass().getMethod("getCenter");

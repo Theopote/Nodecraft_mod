@@ -65,9 +65,8 @@ public class SortListNode extends BaseNode {
         
         List<Object> resultList = new ArrayList<>();
         
-        if (inputObj instanceof List) {
-            List<?> inputList = (List<?>) inputObj;
-            
+        if (inputObj instanceof List<?> inputList) {
+
             resultList.addAll(inputList);
             
             if (resultList.isEmpty()) {
@@ -95,7 +94,7 @@ public class SortListNode extends BaseNode {
             return;
         }
         
-        Comparator<Object> comparator = null;
+        Comparator<Object> comparator;
         
         switch (sortType) {
             case NUMERIC:
@@ -120,27 +119,23 @@ public class SortListNode extends BaseNode {
                     comparator = createLengthComparator();
                 } else {
                     try {
-                        comparator = new Comparator<Object>() {
-                            @SuppressWarnings("unchecked")
-                            @Override
-                            public int compare(Object o1, Object o2) {
-                                if (o1 == null && o2 == null) return 0;
-                                if (o1 == null) return descending ? 1 : -1;
-                                if (o2 == null) return descending ? -1 : 1;
-                                
-                                if (o1 instanceof Comparable && o2 instanceof Comparable) {
-                                    try {
-                                        int result = ((Comparable<Object>) o1).compareTo(o2);
-                                        return descending ? -result : result;
-                                    } catch (ClassCastException ex) {
-                                        // Mixed comparable types (e.g., Integer vs String): fall back to text order.
-                                        int result = o1.toString().compareTo(o2.toString());
-                                        return descending ? -result : result;
-                                    }
-                                } else {
+                        comparator = (o1, o2) -> {
+                            if (o1 == null && o2 == null) return 0;
+                            if (o1 == null) return descending ? 1 : -1;
+                            if (o2 == null) return descending ? -1 : 1;
+
+                            if (o1 instanceof Comparable && o2 instanceof Comparable) {
+                                try {
+                                    int result = ((Comparable<Object>) o1).compareTo(o2);
+                                    return descending ? -result : result;
+                                } catch (ClassCastException ex) {
+                                    // Mixed comparable types (e.g., Integer vs String): fall back to text order.
                                     int result = o1.toString().compareTo(o2.toString());
                                     return descending ? -result : result;
                                 }
+                            } else {
+                                int result = o1.toString().compareTo(o2.toString());
+                                return descending ? -result : result;
                             }
                         };
                     } catch (Exception e) {
@@ -186,16 +181,13 @@ public class SortListNode extends BaseNode {
     }
     
     private Comparator<Object> createTextComparator() {
-        return new Comparator<Object>() {
-            @Override
-            public int compare(Object o1, Object o2) {
-                if (o1 == null && o2 == null) return 0;
-                if (o1 == null) return descending ? 1 : -1;
-                if (o2 == null) return descending ? -1 : 1;
-                
-                int result = o1.toString().compareTo(o2.toString());
-                return descending ? -result : result;
-            }
+        return (o1, o2) -> {
+            if (o1 == null && o2 == null) return 0;
+            if (o1 == null) return descending ? 1 : -1;
+            if (o2 == null) return descending ? -1 : 1;
+
+            int result = o1.toString().compareTo(o2.toString());
+            return descending ? -result : result;
         };
     }
     
@@ -266,7 +258,7 @@ public class SortListNode extends BaseNode {
     public void setNodeState(Object state) {
         if (state instanceof java.util.Map) {
             java.util.Map<?, ?> stateMap = (java.util.Map<?, ?>) state;
-            
+
             if (stateMap.containsKey("descending")) {
                 Object desc = stateMap.get("descending");
                 if (desc instanceof Boolean) {
