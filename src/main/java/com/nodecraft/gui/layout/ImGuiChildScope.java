@@ -4,7 +4,10 @@ import imgui.ImGui;
 
 /**
  * RAII wrapper for {@link ImGui#beginChild} / {@link ImGui#endChild}.
- * Tracks nested depth so callers can unwind leaked children before {@link ImGui#end()}.
+ * <p>
+ * Dear ImGui requires {@code EndChild()} for every {@code BeginChild()},
+ * even when {@code BeginChild()} returns false (clipped/collapsed).
+ * Tracked depth lets callers unwind leaked children before {@link ImGui#end()}.
  */
 public final class ImGuiChildScope implements AutoCloseable {
 
@@ -14,10 +17,9 @@ public final class ImGuiChildScope implements AutoCloseable {
     private boolean closed;
 
     public ImGuiChildScope(String id, float width, float height, boolean border, int flags) {
+        // Always pair with endChild — return value only gates content submission.
         open = ImGui.beginChild(id, width, height, border, flags);
-        if (open) {
-            trackedDepth++;
-        }
+        trackedDepth++;
     }
 
     public static int trackedDepth() {
@@ -42,13 +44,14 @@ public final class ImGuiChildScope implements AutoCloseable {
         }
     }
 
+    /** {@code true} if content may be submitted; always call {@link #close()} either way. */
     public boolean isOpen() {
         return open;
     }
 
     @Override
     public void close() {
-        if (open && !closed) {
+        if (!closed) {
             closed = true;
             ImGui.endChild();
             trackedDepth = Math.max(0, trackedDepth - 1);
