@@ -54,10 +54,32 @@ class PresetSemanticAuditTest {
             "building_elements.roofs.gable_roof",
             "building_elements.stairs.straight_staircase");
 
+    /** P2 building element components — explicit params + v2 preview/material chain. */
+    private static final Set<String> P2_CANONICAL_IDS = Set.of(
+            "building_elements.columns.classical_column",
+            "building_elements.doors.simple_door",
+            "building_elements.windows.modern_window",
+            "building_elements.windows.arched_window",
+            "building_elements.stairs.spiral_staircase");
+
+    /** P3 showcase / style presets — architectural chains + dual-material merge where needed. */
+    private static final Set<String> P3_CANONICAL_IDS = Set.of(
+            "architectural.residential.medieval_cottage",
+            "architectural.residential.simple_house",
+            "architectural.infrastructure.stone_bridge",
+            "architectural.infrastructure.watchtower",
+            "decorative.fountain_circular",
+            "decorative.gazebo",
+            "styles.fantasy.wizard_tower",
+            "styles.medieval.castle_keep",
+            "styles.modern.glass_box_building");
+
     private static final Set<String> CANONICAL_IDS;
     static {
         Set<String> all = new LinkedHashSet<>(P0_CANONICAL_IDS);
         all.addAll(P1_CANONICAL_IDS);
+        all.addAll(P2_CANONICAL_IDS);
+        all.addAll(P3_CANONICAL_IDS);
         CANONICAL_IDS = Set.copyOf(all);
     }
 
@@ -96,6 +118,16 @@ class PresetSemanticAuditTest {
     @Test
     void p1CanonicalPresetsPassSemanticContract() {
         auditCanonicalPresetIds(P1_CANONICAL_IDS);
+    }
+
+    @Test
+    void p2CanonicalPresetsPassSemanticContract() {
+        auditCanonicalPresetIds(P2_CANONICAL_IDS);
+    }
+
+    @Test
+    void p3CanonicalPresetsPassSemanticContract() {
+        auditCanonicalPresetIds(P3_CANONICAL_IDS);
     }
 
     @Test
