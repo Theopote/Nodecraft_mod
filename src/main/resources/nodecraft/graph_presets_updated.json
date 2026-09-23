@@ -8,66 +8,129 @@
         {
           "id": "composite.textured_box",
           "displayName": "Textured Box",
-          "description": "Box -> Assign Block Type -> Geometry Viewer",
+          "description": "Box geometry with Preview Geometry plus Voxelize → Assign Block Type → Preview Blocks. Shows Geometry Preview vs Block Preview.",
           "kind": "composite",
           "nodes": [
             {
               "ref": "box",
               "typeId": "geometry.primitives.box",
               "x": 0,
-              "y": 0
+              "y": 120,
+              "state": {
+                "sizeX": 4.0,
+                "sizeY": 4.0,
+                "sizeZ": 4.0
+              }
+            },
+            {
+              "ref": "voxelize",
+              "typeId": "geometry.voxel.voxelize_geometry",
+              "x": 300,
+              "y": 40
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 300,
-              "y": 0
+              "x": 560,
+              "y": 40
             },
             {
-              "ref": "viewer",
-              "typeId": "output.preview.geometry_viewer",
-              "x": 600,
-              "y": 0
+              "ref": "preview_blocks",
+              "typeId": "output.preview.preview_blocks",
+              "x": 860,
+              "y": 40
+            },
+            {
+              "ref": "preview_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 560,
+              "y": 240
             }
           ],
           "connections": [
             {
               "fromRef": "box",
               "fromPort": "output_geometry",
-              "toRef": "material",
+              "toRef": "preview_geometry",
               "toPort": "input_geometry"
             },
             {
+              "fromRef": "box",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize",
+              "fromPort": "output_blocks",
+              "toRef": "material",
+              "toPort": "input_coordinates"
+            },
+            {
               "fromRef": "material",
-              "fromPort": "output_positions",
-              "toRef": "viewer",
-              "toPort": "input_blocks"
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
             }
           ]
         },
         {
           "id": "composite.array_transform_deform",
           "displayName": "Array Transform",
-          "description": "Box -> Linear Array -> Transform Geometry",
+          "description": "Box → Linear Array → Transform → Preview Geometry, with optional Voxelize → Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
               "ref": "box",
               "typeId": "geometry.primitives.box",
               "x": 0,
-              "y": 0
+              "y": 120,
+              "state": {
+                "sizeX": 2.0,
+                "sizeY": 2.0,
+                "sizeZ": 2.0
+              }
             },
             {
               "ref": "array",
               "typeId": "pattern.linear.linear_array_geometry",
-              "x": 300,
-              "y": 0
+              "x": 280,
+              "y": 120,
+              "state": {
+                "count": 4,
+                "distance": 3.0
+              }
             },
             {
               "ref": "transform",
               "typeId": "transform.basic_transforms.transform_geometry",
-              "x": 600,
-              "y": 0
+              "x": 560,
+              "y": 120,
+              "state": {
+                "translationX": 0.0,
+                "translationY": 0.0,
+                "translationZ": 0.0,
+                "rotationY": 0.0,
+                "scale": 1.0
+              }
+            },
+            {
+              "ref": "preview_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 860,
+              "y": 40
+            },
+            {
+              "ref": "voxelize",
+              "typeId": "geometry.voxel.voxelize_geometry",
+              "x": 860,
+              "y": 220
+            },
+            {
+              "ref": "preview_blocks",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1140,
+              "y": 220
             }
           ],
           "connections": [
@@ -82,38 +145,78 @@
               "fromPort": "output_geometry",
               "toRef": "transform",
               "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "transform",
+              "fromPort": "output_geometry",
+              "toRef": "preview_geometry",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "transform",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize",
+              "fromPort": "output_blocks",
+              "toRef": "preview_blocks",
+              "toPort": "input_blocks"
             }
           ]
         },
         {
           "id": "composite.boolean_cut_bake",
-          "displayName": "Boolean Cut Bake",
-          "description": "Box A + Box B -> Difference -> Bake Geometry To Blocks",
+          "displayName": "Boolean Cut + Voxelize",
+          "description": "Box A + Box B → Difference → Preview Geometry and Voxelize → Preview Blocks. Demonstrates boolean cut without legacy Bake naming.",
           "kind": "composite",
           "nodes": [
             {
               "ref": "base",
               "typeId": "geometry.primitives.box",
               "x": 0,
-              "y": 0
+              "y": 40,
+              "state": {
+                "sizeX": 8.0,
+                "sizeY": 4.0,
+                "sizeZ": 6.0
+              }
             },
             {
               "ref": "cutter",
               "typeId": "geometry.primitives.box",
               "x": 0,
-              "y": 180
+              "y": 260,
+              "state": {
+                "sizeX": 3.0,
+                "sizeY": 5.0,
+                "sizeZ": 3.0
+              }
             },
             {
               "ref": "difference",
               "typeId": "geometry.boolean.difference",
               "x": 320,
-              "y": 80
+              "y": 140
             },
             {
-              "ref": "bake",
+              "ref": "preview_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 620,
+              "y": 40
+            },
+            {
+              "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
               "x": 620,
-              "y": 80
+              "y": 240
+            },
+            {
+              "ref": "preview_blocks",
+              "typeId": "output.preview.preview_blocks",
+              "x": 920,
+              "y": 240
             }
           ],
           "connections": [
@@ -132,8 +235,20 @@
             {
               "fromRef": "difference",
               "fromPort": "output_geometry",
-              "toRef": "bake",
+              "toRef": "preview_geometry",
               "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "difference",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize",
+              "fromPort": "output_blocks",
+              "toRef": "preview_blocks",
+              "toPort": "input_blocks"
             }
           ]
         }
@@ -2442,196 +2557,238 @@
         {
           "id": "quickstart.basic_box",
           "displayName": "Basic Box",
-          "description": "A simple box structure. Perfect for beginners to learn the basics of NodeCraft.",
+          "description": "Player Position → Box → Preview Geometry, and Voxelize → Assign Block Type → Preview Blocks. Canonical NodeCraft v1 quickstart chain.",
           "kind": "composite",
           "nodes": [
             {
-              "ref": "node_player_pos",
+              "ref": "player_pos",
               "typeId": "input.context.player_position",
-              "x": 100,
-              "y": 200
+              "x": 0,
+              "y": 140
             },
             {
-              "ref": "node_box",
+              "ref": "box",
               "typeId": "geometry.primitives.box",
-              "x": 300,
-              "y": 200
+              "x": 280,
+              "y": 140,
+              "state": {
+                "sizeX": 5.0,
+                "sizeY": 5.0,
+                "sizeZ": 5.0
+              }
             },
             {
-              "ref": "node_material",
-              "typeId": "material.basic_assignment.assign_block_type",
-              "x": 500,
-              "y": 200
+              "ref": "preview_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 580,
+              "y": 40
             },
             {
-              "ref": "node_bake",
+              "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 700,
-              "y": 200
+              "x": 580,
+              "y": 240
             },
             {
-              "ref": "node_preview",
+              "ref": "material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 860,
+              "y": 240
+            },
+            {
+              "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 900,
-              "y": 200
+              "x": 1140,
+              "y": 240
             }
           ],
           "connections": [
             {
-              "fromRef": "node_player_pos",
+              "fromRef": "player_pos",
               "fromPort": "output_position",
-              "toRef": "node_box",
+              "toRef": "box",
               "toPort": "input_center"
             },
             {
-              "fromRef": "node_box",
+              "fromRef": "box",
               "fromPort": "output_geometry",
-              "toRef": "node_material",
+              "toRef": "preview_geometry",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "node_box",
+              "fromRef": "box",
               "fromPort": "output_geometry",
-              "toRef": "node_bake",
+              "toRef": "voxelize",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "node_bake",
+              "fromRef": "voxelize",
               "fromPort": "output_blocks",
-              "toRef": "node_preview",
-              "toPort": "input_blocks"
+              "toRef": "material",
+              "toPort": "input_coordinates"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
             }
           ]
         },
         {
           "id": "quickstart.basic_sphere",
           "displayName": "Basic Sphere",
-          "description": "A simple sphere structure. Great for domes, planets, or decorative elements.",
+          "description": "Player Position → Sphere → Preview Geometry, and Voxelize → Assign Block Type → Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
-              "ref": "input_pos",
+              "ref": "player_pos",
               "typeId": "input.context.player_position",
-              "x": 50,
-              "y": 200
+              "x": 0,
+              "y": 140
             },
             {
               "ref": "sphere",
               "typeId": "geometry.primitives.sphere",
-              "x": 250,
-              "y": 200
+              "x": 280,
+              "y": 140,
+              "state": {
+                "radius": 5.0
+              }
             },
             {
-              "ref": "assign_material",
-              "typeId": "material.basic_assignment.assign_block_type",
-              "x": 450,
-              "y": 200
+              "ref": "preview_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 580,
+              "y": 40
             },
             {
-              "ref": "move_to_pos",
-              "typeId": "transform.basic_transforms.move_geometry",
-              "x": 650,
-              "y": 200
-            },
-            {
-              "ref": "bake",
+              "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 850,
-              "y": 200
+              "x": 580,
+              "y": 240
             },
             {
-              "ref": "preview",
+              "ref": "material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 860,
+              "y": 240
+            },
+            {
+              "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1050,
-              "y": 200
+              "x": 1140,
+              "y": 240
             }
           ],
           "connections": [
             {
-              "fromRef": "sphere",
-              "fromPort": "output_geometry",
-              "toRef": "assign_material",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "sphere",
-              "fromPort": "output_geometry",
-              "toRef": "move_to_pos",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "input_pos",
+              "fromRef": "player_pos",
               "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
+              "toRef": "sphere",
+              "toPort": "input_center"
             },
             {
-              "fromRef": "move_to_pos",
+              "fromRef": "sphere",
               "fromPort": "output_geometry",
-              "toRef": "bake",
+              "toRef": "preview_geometry",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "bake",
+              "fromRef": "sphere",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize",
               "fromPort": "output_blocks",
-              "toRef": "preview",
-              "toPort": "input_blocks"
+              "toRef": "material",
+              "toPort": "input_coordinates"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
             }
           ]
         },
         {
           "id": "quickstart.garden_wall",
           "displayName": "Garden Wall with Gate",
-          "description": "A simple wall segment with an arched gateway opening, perfect for gardens and courtyards.",
+          "description": "Wall Box − Gate Cutter → Move to player → Preview Geometry, and Voxelize → Assign Block Type → Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
-              "ref": "input_pos",
+              "ref": "player_pos",
               "typeId": "input.context.player_position",
-              "x": 50,
-              "y": 200
+              "x": 0,
+              "y": 40
             },
             {
               "ref": "wall_box",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 250,
-              "y": 200
+              "x": 0,
+              "y": 200,
+              "state": {
+                "sizeX": 12.0,
+                "sizeY": 4.0,
+                "sizeZ": 1.0,
+                "cornerX": 0.0,
+                "cornerY": 0.0,
+                "cornerZ": 0.0
+              }
             },
             {
               "ref": "gate_box",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 250,
-              "y": 350
+              "x": 0,
+              "y": 400,
+              "state": {
+                "sizeX": 3.0,
+                "sizeY": 3.0,
+                "sizeZ": 2.0,
+                "cornerX": 4.5,
+                "cornerY": 0.0,
+                "cornerZ": -0.5
+              }
             },
             {
               "ref": "cut_gate",
               "typeId": "geometry.boolean.difference",
-              "x": 450,
-              "y": 275
-            },
-            {
-              "ref": "assign_material",
-              "typeId": "material.basic_assignment.assign_block_type",
-              "x": 650,
-              "y": 275
+              "x": 320,
+              "y": 280
             },
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 850,
-              "y": 275
+              "x": 580,
+              "y": 280
             },
             {
-              "ref": "bake",
+              "ref": "preview_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 860,
+              "y": 120
+            },
+            {
+              "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1050,
-              "y": 275
+              "x": 860,
+              "y": 320
             },
             {
-              "ref": "preview",
+              "ref": "material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1140,
+              "y": 320
+            },
+            {
+              "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1250,
-              "y": 275
+              "x": 1420,
+              "y": 320
             }
           ],
           "connections": [
@@ -2650,17 +2807,11 @@
             {
               "fromRef": "cut_gate",
               "fromPort": "output_geometry",
-              "toRef": "assign_material",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "cut_gate",
-              "fromPort": "output_geometry",
               "toRef": "move_to_pos",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "input_pos",
+              "fromRef": "player_pos",
               "fromPort": "output_position",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
@@ -2668,108 +2819,156 @@
             {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
-              "toRef": "bake",
+              "toRef": "preview_geometry",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "bake",
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize",
               "fromPort": "output_blocks",
-              "toRef": "preview",
-              "toPort": "input_blocks"
+              "toRef": "material",
+              "toPort": "input_coordinates"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
             }
           ]
         },
         {
           "id": "quickstart.simple_tower",
           "displayName": "Simple Tower",
-          "description": "A cylindrical tower with windows. Great for castles and fortifications.",
+          "description": "Outer − Inner Cylinder → Move to player → Preview Geometry, and Voxelize → Assign Block Type → Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
-              "ref": "node_player_pos",
+              "ref": "player_pos",
               "typeId": "input.context.player_position",
-              "x": 100,
-              "y": 200
+              "x": 0,
+              "y": 40
             },
             {
-              "ref": "node_cylinder",
+              "ref": "outer",
               "typeId": "geometry.primitives.cylinder",
-              "x": 300,
-              "y": 200
+              "x": 0,
+              "y": 200,
+              "state": {
+                "startX": 0.0,
+                "startY": 0.0,
+                "startZ": 0.0,
+                "endX": 0.0,
+                "endY": 12.0,
+                "endZ": 0.0,
+                "radius": 4.0
+              }
             },
             {
-              "ref": "node_inner_cylinder",
+              "ref": "inner",
               "typeId": "geometry.primitives.cylinder",
-              "x": 300,
-              "y": 350
+              "x": 0,
+              "y": 400,
+              "state": {
+                "startX": 0.0,
+                "startY": 0.0,
+                "startZ": 0.0,
+                "endX": 0.0,
+                "endY": 12.0,
+                "endZ": 0.0,
+                "radius": 3.0
+              }
             },
             {
-              "ref": "node_hollow",
+              "ref": "hollow",
               "typeId": "geometry.boolean.difference",
-              "x": 500,
-              "y": 250
+              "x": 320,
+              "y": 280
             },
             {
-              "ref": "node_material",
-              "typeId": "material.basic_assignment.assign_block_type",
-              "x": 700,
-              "y": 250
+              "ref": "move_to_pos",
+              "typeId": "transform.basic_transforms.move_geometry",
+              "x": 580,
+              "y": 280
             },
             {
-              "ref": "node_bake",
+              "ref": "preview_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 860,
+              "y": 120
+            },
+            {
+              "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 900,
-              "y": 250
+              "x": 860,
+              "y": 320
             },
             {
-              "ref": "node_preview",
+              "ref": "material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1140,
+              "y": 320
+            },
+            {
+              "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1100,
-              "y": 250
+              "x": 1420,
+              "y": 320
             }
           ],
           "connections": [
             {
-              "fromRef": "node_player_pos",
-              "fromPort": "output_position",
-              "toRef": "node_cylinder",
-              "toPort": "input_start"
-            },
-            {
-              "fromRef": "node_player_pos",
-              "fromPort": "output_position",
-              "toRef": "node_inner_cylinder",
-              "toPort": "input_start"
-            },
-            {
-              "fromRef": "node_cylinder",
+              "fromRef": "outer",
               "fromPort": "output_geometry",
-              "toRef": "node_hollow",
+              "toRef": "hollow",
               "toPort": "input_base"
             },
             {
-              "fromRef": "node_inner_cylinder",
+              "fromRef": "inner",
               "fromPort": "output_geometry",
-              "toRef": "node_hollow",
+              "toRef": "hollow",
               "toPort": "input_cutter"
             },
             {
-              "fromRef": "node_hollow",
+              "fromRef": "hollow",
               "fromPort": "output_geometry",
-              "toRef": "node_material",
+              "toRef": "move_to_pos",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "node_hollow",
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
-              "toRef": "node_bake",
+              "toRef": "preview_geometry",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "node_bake",
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize",
               "fromPort": "output_blocks",
-              "toRef": "node_preview",
-              "toPort": "input_blocks"
+              "toRef": "material",
+              "toPort": "input_coordinates"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
             }
           ]
         }

@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.pattern.linear;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
@@ -16,7 +17,9 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
@@ -39,6 +42,12 @@ public class LinearArrayGeometryNode extends BaseNode {
     private static final String OUTPUT_GEOMETRY_TREE_ID = "output_geometry_tree";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
+
+    @NodeProperty(displayName = "Distance", category = "Array", order = 1)
+    private double distance = 1.0d;
+
+    @NodeProperty(displayName = "Count", category = "Array", order = 2)
+    private int count = 1;
 
     public LinearArrayGeometryNode() {
         super(UUID.randomUUID(), "pattern.linear.linear_array_geometry");
@@ -72,16 +81,19 @@ public class LinearArrayGeometryNode extends BaseNode {
         if (direction == null) {
             direction = new Vector3d(1.0d, 0.0d, 0.0d);
         }
-        double distance = getInputDouble(INPUT_DISTANCE_ID, 1.0d);
-        int count = GenerationLimits.clampGeometryInstanceCount(getInputInteger(INPUT_COUNT_ID, 1));
-        if (count == 0 || !isFinite(direction) || direction.lengthSquared() <= 1.0e-12d || !Double.isFinite(distance)) {
+        double resolvedDistance = getInputDouble(INPUT_DISTANCE_ID, distance);
+        int resolvedCount = GenerationLimits.clampGeometryInstanceCount(getInputInteger(INPUT_COUNT_ID, count));
+        if (resolvedCount == 0
+                || !isFinite(direction)
+                || direction.lengthSquared() <= 1.0e-12d
+                || !Double.isFinite(resolvedDistance)) {
             writeResult(List.of(), false);
             return;
         }
 
-        direction.normalize().mul(distance);
-        List<GeometryData> copies = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
+        direction.normalize().mul(resolvedDistance);
+        List<GeometryData> copies = new ArrayList<>(resolvedCount);
+        for (int i = 0; i < resolvedCount; i++) {
             if (i == 0) {
                 copies.add(geometry);
                 continue;
@@ -123,5 +135,26 @@ public class LinearArrayGeometryNode extends BaseNode {
             branches.add(new DataTreeData.Branch(List.of(i), List.of(copies.get(i))));
         }
         return new DataTreeData(branches);
+    }
+
+    @Override
+    public Object getNodeState() {
+        Map<String, Object> state = new HashMap<>();
+        state.put("distance", distance);
+        state.put("count", count);
+        return state;
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (!(state instanceof Map<?, ?> map)) {
+            return;
+        }
+        if (map.get("distance") instanceof Number value) {
+            distance = value.doubleValue();
+        }
+        if (map.get("count") instanceof Number value) {
+            count = value.intValue();
+        }
     }
 }

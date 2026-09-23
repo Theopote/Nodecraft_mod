@@ -3,7 +3,6 @@ package com.nodecraft.gui.components.property.renderers;
 import com.nodecraft.gui.components.PropertyPanelComponent;
 import com.nodecraft.gui.components.property.core.PropertyDescriptor;
 import com.nodecraft.gui.components.property.core.PropertyRenderer;
-import com.nodecraft.gui.components.property.core.PropertyValueFormatters;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.datatypes.LSystemRule;
 import imgui.ImGui;
@@ -35,19 +34,19 @@ public final class LSystemRulePropertyRenderer {
             String contextKey = panel.getTempValueKey(node, prop.name + "_context");
             String probabilityKey = panel.getTempValueKey(node, prop.name + "_probability");
 
-            ImString symbol = panel.getOrCreateTempValue(symbolKey, () -> new ImString(rule.getSymbol(), 64));
-            ImString production = panel.getOrCreateTempValue(productionKey, () -> new ImString(rule.getProduction(), 256));
+            ImString symbol = panel.getOrCreateTempValue(symbolKey, () -> new ImString(rule.symbol(), 64));
+            ImString production = panel.getOrCreateTempValue(productionKey, () -> new ImString(rule.production(), 256));
             ImString context = panel.getOrCreateTempValue(
                     contextKey,
-                    () -> new ImString(rule.getContext() != null ? rule.getContext() : "", 128)
+                    () -> new ImString(rule.context() != null ? rule.context() : "", 128)
             );
-            float[] probability = panel.getOrCreateTempValue(probabilityKey, () -> new float[]{rule.getProbability()});
+            float[] probability = panel.getOrCreateTempValue(probabilityKey, () -> new float[]{rule.probability()});
 
             if (!panel.isPropertyBeingEdited(node, prop.name)) {
-                symbol.set(rule.getSymbol());
-                production.set(rule.getProduction());
-                context.set(rule.getContext() != null ? rule.getContext() : "");
-                probability[0] = rule.getProbability();
+                symbol.set(rule.symbol());
+                production.set(rule.production());
+                context.set(rule.context() != null ? rule.context() : "");
+                probability[0] = rule.probability();
             }
 
             if (isReadOnly) {

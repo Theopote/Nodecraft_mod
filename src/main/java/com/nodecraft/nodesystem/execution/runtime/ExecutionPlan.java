@@ -21,7 +21,7 @@ public record ExecutionPlan(
         mode = mode != null ? mode : ExecutionMode.MANUAL;
         options = options != null ? options : IncrementalExecutionOptions.defaults();
         if (scopeNodeIds != null) {
-            scopeNodeIds = Collections.unmodifiableSet(new HashSet<>(scopeNodeIds));
+            scopeNodeIds = Set.copyOf(scopeNodeIds);
         }
     }
 

@@ -48,8 +48,8 @@ public final class LSystemStringExpander {
         }
 
         List<LSystemRule> sorted = new ArrayList<>(rules == null ? List.of() : rules);
-        sorted.removeIf(r -> r == null || r.getSymbol() == null || r.getSymbol().isEmpty());
-        sorted.sort(Comparator.comparingInt((LSystemRule r) -> r.getSymbol().length()).reversed());
+        sorted.removeIf(r -> r == null || r.symbol() == null || r.symbol().isEmpty());
+        sorted.sort(Comparator.comparingInt((LSystemRule r) -> r.symbol().length()).reversed());
         if (sorted.isEmpty()) {
             return new ExpandResult(axiom, false, 0);
         }
@@ -83,7 +83,7 @@ public final class LSystemStringExpander {
             LSystemRule chosen = null;
             int matchLen = 0;
             for (LSystemRule rule : sortedRules) {
-                String sym = rule.getSymbol();
+                String sym = rule.symbol();
                 if (sym.isEmpty()) {
                     continue;
                 }
@@ -103,7 +103,7 @@ public final class LSystemStringExpander {
             }
             List<LSystemRule> candidates = new ArrayList<>();
             for (LSystemRule rule : sortedRules) {
-                if (rule.getSymbol().equals(chosen.getSymbol())) {
+                if (rule.symbol().equals(chosen.symbol())) {
                     candidates.add(rule);
                 }
             }
@@ -125,25 +125,25 @@ public final class LSystemStringExpander {
             return "";
         }
         if (candidates.size() == 1) {
-            return candidates.getFirst().getProduction() != null ? candidates.getFirst().getProduction() : "";
+            return candidates.getFirst().production() != null ? candidates.getFirst().production() : "";
         }
         double total = 0.0d;
         for (LSystemRule r : candidates) {
-            total += Math.max(0.0d, r.getProbability());
+            total += Math.max(0.0d, r.probability());
         }
         if (total <= 1.0e-12d) {
             LSystemRule r = candidates.getFirst();
-            return r.getProduction() != null ? r.getProduction() : "";
+            return r.production() != null ? r.production() : "";
         }
         double pick = random.nextDouble() * total;
         double acc = 0.0d;
         for (LSystemRule r : candidates) {
-            acc += Math.max(0.0d, r.getProbability());
+            acc += Math.max(0.0d, r.probability());
             if (pick <= acc) {
-                return r.getProduction() != null ? r.getProduction() : "";
+                return r.production() != null ? r.production() : "";
             }
         }
         LSystemRule last = candidates.getLast();
-        return last.getProduction() != null ? last.getProduction() : "";
+        return last.production() != null ? last.production() : "";
     }
 }

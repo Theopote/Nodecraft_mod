@@ -4,6 +4,7 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
 import com.nodecraft.gui.layout.GraphNodeAutoLayout;
 import com.nodecraft.nodesystem.api.INode;
+import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -73,6 +74,8 @@ public final class GraphPresetApplier {
             createdNodeIds.add(created.getId());
         }
 
+        int declaredConnections = countDeclaredConnections(preset);
+        int connectedCount = 0;
         if (preset.connections != null) {
             for (GraphPresetRules.PresetConnection connection : preset.connections) {
                 if (connection == null) {
@@ -81,12 +84,19 @@ public final class GraphPresetApplier {
                 UUID sourceNodeId = refToNodeId.get(connection.fromRef);
                 UUID targetNodeId = refToNodeId.get(connection.toRef);
                 if (sourceNodeId == null || targetNodeId == null) {
-                    NodeCraft.LOGGER.warn(
-                            "Skipping preset connection with unknown node reference in {}: {} -> {}",
-                            preset.id,
+                    String detail = String.format(
+                            "Unknown node reference: %s -> %s",
                             connection.fromRef,
                             connection.toRef);
-                    continue;
+                    NodeCraft.LOGGER.error(
+                            "Preset apply failed for {} — {}. Declared {} connections, created {} before failure.",
+                            preset.id,
+                            detail,
+                            declaredConnections,
+                            connectedCount);
+                    rollback(editor, createdNodeIds);
+                    return ApplyResult.failure(formatConnectionFailure(
+                            preset, declaredConnections, connectedCount, detail));
                 }
 
                 boolean connected = editor.connectPorts(
@@ -95,25 +105,64 @@ public final class GraphPresetApplier {
                         targetNodeId,
                         connection.toPort);
                 if (!connected) {
-                    NodeCraft.LOGGER.warn(
-                            "Skipping invalid preset connection in {}: {}.{} -> {}.{}",
-                            preset.id,
+                    String detail = String.format(
+                            "%s.%s -> %s.%s",
                             connection.fromRef,
                             connection.fromPort,
                             connection.toRef,
                             connection.toPort);
+                    NodeCraft.LOGGER.error(
+                            "Preset apply failed for {} — connection refused: {}. Declared {} connections, created {} before failure.",
+                            preset.id,
+                            detail,
+                            declaredConnections,
+                            connectedCount);
+                    rollback(editor, createdNodeIds);
+                    return ApplyResult.failure(formatConnectionFailure(
+                            preset, declaredConnections, connectedCount, detail));
                 }
+                connectedCount++;
             }
         }
 
         editor.clearSelectedNodes();
         editor.getSelectedNodeIds().addAll(createdNodeIds);
         if (!createdNodeIds.isEmpty()) {
-            editor.setSelectedNodeId(createdNodeIds.get(0));
+            editor.setSelectedNodeId(createdNodeIds.getFirst());
         }
 
-        NodeCraft.LOGGER.info("Applied graph preset {} ({} nodes)", preset.displayName, createdNodeIds.size());
+        NodeCraft.LOGGER.info(
+                "Applied graph preset {} ({} nodes, {} connections)",
+                preset.displayName,
+                createdNodeIds.size(),
+                connectedCount);
         return ApplyResult.success("已添加预设: " + preset.displayName, createdNodeIds);
+    }
+
+    private static int countDeclaredConnections(GraphPresetRules.GraphPresetDefinition preset) {
+        if (preset.connections == null) {
+            return 0;
+        }
+        int count = 0;
+        for (GraphPresetRules.PresetConnection connection : preset.connections) {
+            if (connection != null) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static String formatConnectionFailure(
+            GraphPresetRules.GraphPresetDefinition preset,
+            int declaredConnections,
+            int connectedCount,
+            String failedConnection) {
+        return String.format(
+                "预设加载失败: %s — 连接未完整创建 (期望 %d, 实际 %d). FAILED: %s",
+                preset.displayName != null ? preset.displayName : preset.id,
+                declaredConnections,
+                connectedCount,
+                failedConnection);
     }
 
     private static void rollback(ImGuiNodeEditor editor, List<UUID> createdNodeIds) {
@@ -150,6 +199,10 @@ public final class GraphPresetApplier {
         }
 
         List<GraphNodeAutoLayout.Arranged> arranged = GraphNodeAutoLayout.autoLayout(refs, edges);
+        return getStringLayoutPositionMap(preset, arranged);
+    }
+
+    private static @NonNull Map<String, LayoutPosition> getStringLayoutPositionMap(GraphPresetRules.GraphPresetDefinition preset, List<GraphNodeAutoLayout.Arranged> arranged) {
         Map<String, LayoutPosition> positionsByRef = new HashMap<>();
         for (GraphNodeAutoLayout.Arranged item : arranged) {
             positionsByRef.put(item.ref(), new LayoutPosition(item.offsetX(), item.offsetY()));
