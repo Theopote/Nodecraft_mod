@@ -224,13 +224,18 @@ class GeometryCurvesFamilyContractTest {
     @Test
     void pathQueryOpsExposeParameterOutputs() {
         assertPortType("geometry.curves.closest_point_on_path", "output_parameter", false, NodeDataType.DOUBLE);
-        assertPortType("geometry.curves.path_parameter_at_point", "output_parameter", false, NodeDataType.DOUBLE);
+    }
+
+    @Test
+    void pathParameterAtPointIsRetiredInFavorOfClosestPointOnPath() {
+        assertThrows(com.nodecraft.core.exception.NodeValidationException.class,
+            () -> NodeRegistry.getInstance().createNodeInstance("geometry.curves.path_parameter_at_point"));
     }
 
     @Test
     void joinReverseSplitTrimSmokeWithLinePath() {
         LineData line = sampleLine10Blocks();
-        LineData lineB = new LineData(new Vec3d(0, 0, 10), new Vec3d(10, 0, 10));
+        LineData lineB = new LineData(new Vec3d(10, 64, 0), new Vec3d(10, 64, 10));
 
         BaseNode join = node("geometry.curves.join_paths");
         join.setInput("input_path_a", line);

@@ -154,14 +154,35 @@ public final class PathUtils {
         return PathData.fromPolyline(polyline);
     }
 
-    public static @Nullable List<Vector3d> joinPaths(@Nullable List<Vector3d> first,
-                                                       @Nullable List<Vector3d> second) {
+    /**
+     * Joins two paths only when Path A end and Path B start are within tolerance.
+     * Does not reverse paths or bridge disconnected endpoints.
+     */
+    public static @Nullable List<Vector3d> joinPathsStrict(@Nullable List<Vector3d> first,
+                                                           @Nullable List<Vector3d> second,
+                                                           double tolerance) {
         if (first == null || second == null || first.size() < 2 || second.size() < 2) {
             return null;
         }
+        if (!Double.isFinite(tolerance) || tolerance < 0.0d) {
+            return null;
+        }
+
+        Vector3d endA = first.getLast();
+        Vector3d startB = second.getFirst();
+        if (endA.distance(startB) > tolerance) {
+            return null;
+        }
+
         List<Vector3d> joined = new ArrayList<>(first.size() + second.size());
         appendVerticesFar(joined, first);
-        appendVerticesFar(joined, second);
+        int startIndex = endA.distance(startB) <= tolerance ? 1 : 0;
+        for (int i = startIndex; i < second.size(); i++) {
+            Vector3d point = second.get(i);
+            if (joined.isEmpty() || joined.getLast().distanceSquared(point) > EPS * EPS) {
+                joined.add(new Vector3d(point));
+            }
+        }
         return joined.size() >= 2 ? joined : null;
     }
 
@@ -176,24 +197,131 @@ public final class PathUtils {
         return reversed;
     }
 
+    /**
+     * Extracts a directed sub-path between normalized arc-length parameters.
+     * Open paths require start &lt; end after clamping; closed paths allow seam wrap when start &gt; end.
+     */
     public static @Nullable List<Vector3d> trimPathByParameter(@Nullable List<Vector3d> verts,
                                                                double startT,
                                                                double endT) {
-        PathSegment segment = resolveParameterSegment(verts, startT, endT);
-        return segment == null ? null : segment.points();
+        if (verts == null || verts.size() < 2) {
+            return null;
+        }
+        if (!Double.isFinite(startT) || !Double.isFinite(endT)) {
+            return null;
+        }
+
+        double t0 = clamp01(startT);
+        double t1 = clamp01(endT);
+        if (Math.abs(t1 - t0) <= EPS) {
+            return null;
+        }
+
+        boolean closed = isClosed(verts);
+        List<Vector3d> unique = closed ? verts.subList(0, verts.size() - 1) : verts;
+        if (unique.size() < 2) {
+            return null;
+        }
+        double[] cumulative = buildCumulative(unique, closed);
+        if (cumulative == null) {
+            return null;
+        }
+        double total = cumulative[cumulative.length - 1];
+        if (total <= EPS) {
+            return null;
+        }
+
+        if (closed) {
+            if (t0 < t1) {
+                return extractDirectedSegment(unique, closed, cumulative, t0 * total, t1 * total);
+            }
+            List<Vector3d> head = extractDirectedSegment(unique, closed, cumulative, t0 * total, total);
+            List<Vector3d> tail = extractDirectedSegment(unique, closed, cumulative, 0.0d, t1 * total);
+            return mergeSegments(head, tail);
+        }
+
+        if (t0 >= t1) {
+            return null;
+        }
+        return extractDirectedSegment(unique, false, cumulative, t0 * total, t1 * total);
     }
 
     public static @Nullable PathSplitResult splitPathByParameter(@Nullable List<Vector3d> verts, double parameter) {
-        PathSegment segment = resolveParameterSegment(verts, 0.0d, parameter);
-        if (segment == null) {
+        if (!Double.isFinite(parameter)) {
             return null;
         }
-        List<Vector3d> pathA = segment.points();
-        PathSegment tail = resolveParameterSegment(verts, parameter, 1.0d);
-        if (tail == null) {
+        double clamped = clamp01(parameter);
+        List<Vector3d> pathA = trimPathByParameter(verts, 0.0d, clamped);
+        List<Vector3d> pathB = trimPathByParameter(verts, clamped, 1.0d);
+        if (pathA == null || pathB == null) {
             return null;
         }
-        return new PathSplitResult(pathA, tail.points());
+        return new PathSplitResult(pathA, pathB);
+    }
+
+    /**
+     * Decomposes a path into per-segment vertex pairs (open: n-1 segments; closed: n segments).
+     */
+    public static List<List<Vector3d>> explodePath(@Nullable List<Vector3d> verts) {
+        if (verts == null || verts.size() < 2) {
+            return List.of();
+        }
+
+        boolean closed = isClosed(verts);
+        List<Vector3d> unique = closed ? verts.subList(0, verts.size() - 1) : verts;
+        if (unique.size() < 2) {
+            return List.of();
+        }
+
+        int segCount = closed ? unique.size() : unique.size() - 1;
+        List<List<Vector3d>> segments = new ArrayList<>(segCount);
+        for (int i = 0; i < segCount; i++) {
+            Vector3d a = unique.get(i);
+            Vector3d b = unique.get((i + 1) % unique.size());
+            if (a.distanceSquared(b) <= EPS * EPS) {
+                continue;
+            }
+            segments.add(List.of(new Vector3d(a), new Vector3d(b)));
+        }
+        return segments;
+    }
+
+    /**
+     * Linearly extends an open path along start/end tangents. Closed paths are rejected.
+     */
+    public static @Nullable List<Vector3d> extendPath(@Nullable List<Vector3d> verts,
+                                                      double startLength,
+                                                      double endLength) {
+        if (verts == null || verts.size() < 2) {
+            return null;
+        }
+        if (!Double.isFinite(startLength) || !Double.isFinite(endLength)) {
+            return null;
+        }
+        if (startLength < 0.0d || endLength < 0.0d) {
+            return null;
+        }
+        if (isClosed(verts)) {
+            return null;
+        }
+
+        Vector3d startTangent = findStartTangent(verts);
+        Vector3d endTangent = findEndTangent(verts);
+        if (startTangent == null || endTangent == null) {
+            return null;
+        }
+
+        List<Vector3d> extended = new ArrayList<>(verts.size() + 2);
+        if (startLength > 0.0d) {
+            Vector3d startPoint = verts.getFirst();
+            extended.add(new Vector3d(startPoint).sub(new Vector3d(startTangent).mul(startLength)));
+        }
+        appendVerticesFar(extended, verts);
+        if (endLength > 0.0d) {
+            Vector3d endPoint = verts.getLast();
+            extended.add(new Vector3d(endPoint).add(new Vector3d(endTangent).mul(endLength)));
+        }
+        return extended.size() >= 2 ? extended : null;
     }
 
     public static @Nullable ClosestPointResult closestPointOnPath(@Nullable List<Vector3d> verts,
@@ -258,39 +386,15 @@ public final class PathUtils {
     public record PathSplitResult(List<Vector3d> pathA, List<Vector3d> pathB) {
     }
 
-    private static @Nullable PathSegment resolveParameterSegment(@Nullable List<Vector3d> verts,
-                                                                 double startT,
-                                                                 double endT) {
-        if (verts == null || verts.size() < 2) {
-            return null;
-        }
-        double t0 = clamp01(startT);
-        double t1 = clamp01(endT);
-        if (t1 < t0) {
-            double swap = t0;
-            t0 = t1;
-            t1 = swap;
-        }
-        if (t1 - t0 <= EPS) {
+    private static @Nullable List<Vector3d> extractDirectedSegment(List<Vector3d> unique,
+                                                                 boolean closed,
+                                                                 double[] cumulative,
+                                                                 double dist0,
+                                                                 double dist1) {
+        if (dist1 - dist0 <= EPS) {
             return null;
         }
 
-        boolean closed = isClosed(verts);
-        List<Vector3d> unique = closed ? verts.subList(0, verts.size() - 1) : verts;
-        if (unique.size() < 2) {
-            return null;
-        }
-        double[] cumulative = buildCumulative(unique, closed);
-        if (cumulative == null) {
-            return null;
-        }
-        double total = cumulative[cumulative.length - 1];
-        if (total <= EPS) {
-            return null;
-        }
-
-        double dist0 = t0 * total;
-        double dist1 = t1 * total;
         List<Vector3d> samples = new ArrayList<>();
         samples.add(sampleAtDistance(unique, closed, cumulative, dist0));
 
@@ -312,7 +416,51 @@ public final class PathUtils {
         if (samples.getLast().distanceSquared(endPoint) > EPS * EPS) {
             samples.add(endPoint);
         }
-        return samples.size() >= 2 ? new PathSegment(samples) : null;
+        return samples.size() >= 2 ? samples : null;
+    }
+
+    private static @Nullable List<Vector3d> mergeSegments(@Nullable List<Vector3d> first,
+                                                          @Nullable List<Vector3d> second) {
+        if (first == null || second == null) {
+            return null;
+        }
+        if (first.isEmpty()) {
+            return second.size() >= 2 ? second : null;
+        }
+        if (second.isEmpty()) {
+            return first.size() >= 2 ? first : null;
+        }
+
+        List<Vector3d> merged = new ArrayList<>(first.size() + second.size());
+        appendVerticesFar(merged, first);
+        int startIndex = merged.getLast().distanceSquared(second.getFirst()) <= EPS * EPS ? 1 : 0;
+        for (int i = startIndex; i < second.size(); i++) {
+            Vector3d point = second.get(i);
+            if (merged.isEmpty() || merged.getLast().distanceSquared(point) > EPS * EPS) {
+                merged.add(new Vector3d(point));
+            }
+        }
+        return merged.size() >= 2 ? merged : null;
+    }
+
+    private static @Nullable Vector3d findStartTangent(List<Vector3d> verts) {
+        for (int i = 0; i < verts.size() - 1; i++) {
+            Vector3d dir = new Vector3d(verts.get(i + 1)).sub(verts.get(i));
+            if (dir.lengthSquared() > EPS * EPS) {
+                return dir.normalize();
+            }
+        }
+        return null;
+    }
+
+    private static @Nullable Vector3d findEndTangent(List<Vector3d> verts) {
+        for (int i = verts.size() - 1; i > 0; i--) {
+            Vector3d dir = new Vector3d(verts.get(i)).sub(verts.get(i - 1));
+            if (dir.lengthSquared() > EPS * EPS) {
+                return dir.normalize();
+            }
+        }
+        return null;
     }
 
     private static void appendVerticesFar(List<Vector3d> target, List<Vector3d> points) {
@@ -340,9 +488,6 @@ public final class PathUtils {
         double tClamped = Math.max(0.0d, Math.min(1.0d, t));
         Vector3d closest = new Vector3d(a).lerp(b, tClamped);
         return new SegmentClosest(closest, p.distanceSquared(closest), tClamped);
-    }
-
-    private record PathSegment(List<Vector3d> points) {
     }
 
     private record SegmentClosest(Vector3d closest, double distSq, double t) {

@@ -11,13 +11,22 @@ Path operations consume and emit **PATH** where possible. LINE, POLYLINE, and CU
 | Resample Polyline / Rebuild By Length | **Resample Path** | `geometry.curves.resample_path` |
 | Offset Polyline In Plane | *(deleted — use Offset Path In Plane)* | `geometry.curves.offset_curve_plane` |
 
+## Core semantics (v1 closure)
+
+- **PATH is directional** — use **Reverse Path** explicitly; nodes do not auto-reverse.
+- **Parameter** = normalized arc-length: `0.0` = path start, `1.0` = path end.
+- **Join Paths** connects only when Path A end ≈ Path B start (within Join Tolerance). No bridging disconnected endpoints.
+- **Trim Path** preserves parameter direction. Open path: `Start < End` required. Closed path: `Start > End` wraps across the seam.
+- **PATH_LIST** is the standard output for collections of paths (e.g. Tween Paths, Explode Path).
+- **Resample Path** accepts **Count** or **Spacing** only; **ORIGINAL** is invalid on this node.
+
 ## Responsibility layers
 
 | Layer | Nodes |
 |-------|-------|
 | Construct | Points To Path, Line, Arc, Bezier, … |
-| Query | Path Length, Evaluate Path |
-| Modify | Join / Reverse / Split / Trim Path, Offset Path In Plane, Fillet Path Corners, Blend/Tween Paths |
+| Query | Path Length, Evaluate Path, Closest Point On Path |
+| Modify | Join / Reverse / Split / Trim / Explode / Extend Path, Offset Path In Plane, Fillet Path Corners, Blend/Tween Paths |
 | Sample | **Resample Path only** |
 | Frames | Path Frames (parallel transport; no hidden resample) |
 | Extract | Extract Path Points |
@@ -46,20 +55,29 @@ Single evaluator: `geometry.curves.evaluate_curve` (display **Evaluate Path**).
 
 Primary output: **Path** (`output_path`). Secondary: Points, Count, Length, Valid.
 
-## Path modify ops (P2)
+Modes **Count** and **Spacing** only. **ORIGINAL** → `Valid = false` (no silent fallback).
+
+## Path modify ops
 
 | Node | id | Role |
 |------|-----|------|
-| Join Paths | `geometry.curves.join_paths` | Concatenate Path A + Path B |
+| Join Paths | `geometry.curves.join_paths` | Join when A.end meets B.start (no bridge, no auto-reverse) |
 | Reverse Path | `geometry.curves.reverse_path` | Flip path direction |
 | Split Path | `geometry.curves.split_path` | Split at normalized parameter |
-| Trim Path | `geometry.curves.trim_path` | Sub-path between Start/End parameters |
+| Trim Path | `geometry.curves.trim_path` | Directed sub-path between Start/End parameters |
+| Explode Path | `geometry.curves.explode_path` | Decompose into per-segment **PATH_LIST** |
+| Extend Path | `geometry.curves.extend_path` | Tangent linear extension (open paths only) |
 | Closest Point On Path | `geometry.curves.closest_point_on_path` | Project query point onto path |
-| Path Parameter At Point | `geometry.curves.path_parameter_at_point` | Normalized t for closest projection |
+
+Direction mismatch for join? **Reverse Path** → **Join Paths**.
+
+Open-path trim with `Start > End`? **Reverse Path** → **Trim Path**, or use closed-path seam wrap.
 
 `reference.points.project_to_polyline` is retired — migrated to Closest Point On Path.
 
 Use **Join Paths** after **Blend Paths** instead of a built-in joined output.
+
+**Explode Path** suits edge-based workflows (building footprint → segment paths for Wall Along Path / Beam Along Path).
 
 ## Tween / Blend outputs
 
@@ -75,12 +93,19 @@ Use **Join Paths** after **Blend Paths** instead of a built-in joined output.
 | `geometry.curves.resample_polyline_length` | → `geometry.curves.resample_path` |
 | `geometry.curves.offset_polyline_plane` | → `geometry.curves.offset_curve_plane` |
 
-## Id rename / retire (V14→V16)
+## Id rename / retire (V14→V17)
 
 | Legacy id | Canonical id |
 |-----------|--------------|
 | `geometry.curves.polyline_length` | `geometry.curves.path_length` |
 | `reference.points.project_to_polyline` | `geometry.curves.closest_point_on_path` |
+| `geometry.curves.path_parameter_at_point` | `geometry.curves.closest_point_on_path` |
+
+## Port changes (V16→V17)
+
+| Node | Change |
+|------|--------|
+| Path Parameter At Point | type id → Closest Point On Path; `output_parameter` / `output_distance` / `output_valid` wires preserved |
 
 ## Port changes (V15→V16)
 
@@ -96,3 +121,10 @@ Use **Join Paths** after **Blend Paths** instead of a built-in joined output.
 | Tween Paths | `output_paths` PATH_LIST replaces legacy LIST/TREE outputs |
 | Blend Paths | `output_path` PATH; dropped Joined Polyline / Curve outputs |
 | Fillet Path Corners | added `output_path` PATH (polyline kept for compatibility) |
+
+## Known limitations
+
+- PATH operations on curves use sampled representation, not exact CAD/NURBS solvers.
+- **Extend Path** is tangent linear extension only.
+- **Shatter Path** not yet implemented (awaiting Numeric/List language).
+- **Path Frames** axis outputs not yet trimmed.

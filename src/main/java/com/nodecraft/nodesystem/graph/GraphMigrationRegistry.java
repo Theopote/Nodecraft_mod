@@ -80,6 +80,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V13 -> migrateV13ToV14(graph);
             case GraphFormatVersion.V14 -> migrateV14ToV15(graph);
             case GraphFormatVersion.V15 -> migrateV15ToV16(graph);
+            case GraphFormatVersion.V16 -> migrateV16ToV17(graph);
             default -> graph;
         };
     }
@@ -927,6 +928,27 @@ public final class GraphMigrationRegistry {
             String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
             if (FILLET_POLYLINE_TYPE.equals(sourceType) && "output_polyline".equalsIgnoreCase(connection.sourcePortId)) {
                 connection.sourcePortId = "output_path";
+            }
+        }
+        return graph;
+    }
+
+    private static final String LEGACY_PATH_PARAMETER_AT_POINT_TYPE = "geometry.curves.path_parameter_at_point";
+
+    /**
+     * Path Parameter At Point → Closest Point On Path (port ids unchanged for parameter/distance/valid).
+     */
+    private static SavedGraph migrateV16ToV17(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return graph;
+        }
+        for (SavedNode node : graph.nodes) {
+            if (node == null || node.typeId == null) {
+                continue;
+            }
+            if (LEGACY_PATH_PARAMETER_AT_POINT_TYPE.equalsIgnoreCase(node.typeId)) {
+                LOGGER.debug("Migrated node type: {} -> {}", node.typeId, CLOSEST_POINT_ON_PATH_TYPE);
+                node.typeId = CLOSEST_POINT_ON_PATH_TYPE;
             }
         }
         return graph;

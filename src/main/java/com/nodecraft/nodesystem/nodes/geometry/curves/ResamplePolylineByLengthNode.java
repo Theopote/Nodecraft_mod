@@ -17,6 +17,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @NodeInfo(
@@ -89,10 +90,12 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
             return;
         }
 
-        SamplingMode mode = SamplingMode.fromObject(inputValues.get(INPUT_MODE_ID), samplingMode);
-        if (mode == SamplingMode.ORIGINAL) {
-            mode = SamplingMode.COUNT;
+        SamplingMode mode = resolveResampleMode(inputValues.get(INPUT_MODE_ID));
+        if (mode == null) {
+            writeInvalid();
+            return;
         }
+
         int count = inputValues.get(INPUT_COUNT_ID) instanceof Number n ? n.intValue() : defaultCount;
         double spacing = inputValues.get(INPUT_SPACING_ID) instanceof Number n ? n.doubleValue() : defaultSpacing;
 
@@ -115,6 +118,28 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
         outputValues.put(OUTPUT_COUNT_ID, samples.size());
         outputValues.put(OUTPUT_LENGTH_ID, sample.totalLength());
         outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    private @Nullable SamplingMode resolveResampleMode(@Nullable Object rawMode) {
+        if (rawMode == null) {
+            return isResampleModeAllowed(samplingMode) ? samplingMode : null;
+        }
+        if (rawMode instanceof SamplingMode mode) {
+            return isResampleModeAllowed(mode) ? mode : null;
+        }
+        if (rawMode instanceof String text) {
+            try {
+                SamplingMode mode = SamplingMode.valueOf(text.trim().toUpperCase(Locale.ROOT));
+                return isResampleModeAllowed(mode) ? mode : null;
+            } catch (IllegalArgumentException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isResampleModeAllowed(SamplingMode mode) {
+        return mode == SamplingMode.COUNT || mode == SamplingMode.SPACING;
     }
 
     private void writeInvalid() {

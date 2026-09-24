@@ -107,8 +107,13 @@ public final class GraphFormatVersion {
      */
     public static final int V16 = 16;
 
+    /**
+     * Path language v1 closure: Path Parameter At Point → Closest Point On Path.
+     */
+    public static final int V17 = 17;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V16;
+    public static final int CURRENT = V17;
 
     private GraphFormatVersion() {
     }
