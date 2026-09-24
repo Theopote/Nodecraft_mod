@@ -82,7 +82,6 @@ NodeCraft 是一个架构设计优秀、功能完善的 Minecraft 节点编辑�
 ✅ Data Tree 系统
    - 分支化数据结构
    - 保留层次信息
-   - 类似 Grasshopper
 ```
 
 **不足**:

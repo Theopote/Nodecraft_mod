@@ -46,7 +46,6 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
     private static final String INPUT_RADIUS_ID = "input_radius";
 
     private static final String OUTPUT_PATH_ID = "output_path";
-    private static final String OUTPUT_POLYLINE_ID = "output_polyline";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public PolylineCornerFilletNode() {
@@ -65,11 +64,8 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
         addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path",
             "Fillet path with circular arcs replacing sharp corners",
             NodeDataType.PATH, this));
-        addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline",
-            "Fillet polyline (same geometry as Path output)",
-            NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
-            "True when a filleted polyline was produced",
+            "True when a filleted path was produced",
             NodeDataType.BOOLEAN, this));
     }
 
@@ -144,13 +140,11 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
         }
 
         outputValues.put(OUTPUT_PATH_ID, PathData.fromPolyline(polyline));
-        outputValues.put(OUTPUT_POLYLINE_ID, polyline);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private void writeInvalid() {
         outputValues.put(OUTPUT_PATH_ID, null);
-        outputValues.put(OUTPUT_POLYLINE_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 

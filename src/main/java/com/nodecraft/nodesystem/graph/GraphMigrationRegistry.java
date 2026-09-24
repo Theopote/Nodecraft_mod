@@ -79,6 +79,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V12 -> migrateV12ToV13(graph);
             case GraphFormatVersion.V13 -> migrateV13ToV14(graph);
             case GraphFormatVersion.V14 -> migrateV14ToV15(graph);
+            case GraphFormatVersion.V15 -> migrateV15ToV16(graph);
             default -> graph;
         };
     }
@@ -176,6 +177,7 @@ public final class GraphMigrationRegistry {
             "transform.orientation.project_curve_to_plane",
             "reference.points.project_to_polyline",
             "reference.points.closest_point_to_object",
+            "geometry.curves.closest_point_on_path",
             "output.preview.preview_curves",
             "math.fields.curve_attractor_field",
             "transform.deformations.curve_attract"
@@ -862,6 +864,69 @@ public final class GraphMigrationRegistry {
             if (LEGACY_POLYLINE_LENGTH_TYPE.equalsIgnoreCase(node.typeId)) {
                 LOGGER.debug("Migrated node type: {} -> {}", node.typeId, PATH_LENGTH_TYPE);
                 node.typeId = PATH_LENGTH_TYPE;
+            }
+        }
+        return graph;
+    }
+
+    private static final String CLOSEST_POINT_ON_PATH_TYPE = "geometry.curves.closest_point_on_path";
+    private static final String LEGACY_PROJECT_TO_POLYLINE_TYPE = "reference.points.project_to_polyline";
+
+    private static final Set<String> PROJECT_TO_POLYLINE_LEGACY_OUTPUT_PORTS = Set.of(
+            "output_vector",
+            "output_segment_index",
+            "output_segment_t"
+    );
+
+    /**
+     * Project Point To Polyline → Closest Point On Path; drop Fillet legacy polyline output wires.
+     */
+    private static SavedGraph migrateV15ToV16(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                if (LEGACY_PROJECT_TO_POLYLINE_TYPE.equalsIgnoreCase(node.typeId)) {
+                    LOGGER.debug("Migrated node type: {} -> {}", node.typeId, CLOSEST_POINT_ON_PATH_TYPE);
+                    node.typeId = CLOSEST_POINT_ON_PATH_TYPE;
+                }
+            }
+        }
+
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+
+            if (CLOSEST_POINT_ON_PATH_TYPE.equals(sourceType)
+                    && PROJECT_TO_POLYLINE_LEGACY_OUTPUT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped Closest Point On Path legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+            return false;
+        });
+
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            if (FILLET_POLYLINE_TYPE.equals(sourceType) && "output_polyline".equalsIgnoreCase(connection.sourcePortId)) {
+                connection.sourcePortId = "output_path";
             }
         }
         return graph;

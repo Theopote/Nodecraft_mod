@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**540**
+- **节点总数**：**539**
 - **分类总数**：**59**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -52,7 +52,7 @@
 | `pattern.voronoi_3d` | 1 |
 | `reference.frames` | 7 |
 | `reference.planes` | 6 |
-| `reference.points` | 19 |
+| `reference.points` | 18 |
 | `reference.vectors` | 18 |
 | `transform.basic_transforms` | 15 |
 | `transform.deformations` | 10 |
@@ -661,7 +661,7 @@
 | Box Face To Plane | `reference.planes.block_face_plane` | Explicitly converts a box face into its supporting plane and related face frame data | `BoxFaceToPlaneNode` |
 | Offset Plane | `reference.planes.offset_plane` | Offsets a plane along its normal by a signed distance | `OffsetPlaneNode` |
 
-## reference.points（19）
+## reference.points（18）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -682,7 +682,6 @@
 | Get Face Edge | `reference.points.get_face_edge` | Gets a single edge from a face by index | `GetFaceEdgeNode` |
 | Deconstruct Box Face | `reference.points.deconstruct_face` | Extracts corners, edges, plane, center, and normal from a box face | `DeconstructBoxFaceNode` |
 | Deconstruct Face Edge | `reference.points.deconstruct_edge` | Extracts endpoints, midpoint, direction, vector, and length from a face edge | `DeconstructFaceEdgeNode` |
-| Project Point To Polyline | `reference.points.project_to_polyline` | Projects a point onto the closest location on a polyline or line segment | `ProjectPointToPolylineNode` |
 | Closest Point To Object | `reference.points.closest_point_to_object` | Finds the nearest point from a query point to a curve, path, surface strip, or voxelized geometry | `ClosestPointToObjectNode` |
 
 ## reference.vectors（18）

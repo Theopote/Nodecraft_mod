@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -55,11 +56,11 @@ class GeometryCurvesFamilyContractTest {
             "geometry.curves.tween_curves",
             "geometry.curves.blend_curves",
             "geometry.curves.path_length",
+            "geometry.curves.closest_point_on_path",
             "geometry.curves.fillet_polyline_corners",
             "pattern.linear.curve_array_geometry",
             "geometry.architectural_primitives.array_along_curve",
             "transform.orientation.project_curve_to_plane",
-            "reference.points.project_to_polyline",
             "reference.points.closest_point_to_object",
             "output.preview.preview_curves",
             "math.fields.curve_attractor_field",
@@ -172,8 +173,8 @@ class GeometryCurvesFamilyContractTest {
         assertPortType("pattern.linear.curve_array_geometry", "input_path", true, NodeDataType.PATH);
         assertPortType("geometry.architectural_primitives.array_along_curve", "input_path", true, NodeDataType.PATH);
         assertPortType("transform.orientation.project_curve_to_plane", "input_path", true, NodeDataType.PATH);
-        assertPortType("reference.points.project_to_polyline", "input_path", true, NodeDataType.PATH);
         assertPortType("reference.points.closest_point_to_object", "input_path", true, NodeDataType.PATH);
+        assertPortType("geometry.curves.closest_point_on_path", "input_path", true, NodeDataType.PATH);
         assertPortType("output.preview.preview_curves", "input_path", true, NodeDataType.PATH);
         assertPortType("math.fields.curve_attractor_field", "input_path", true, NodeDataType.PATH);
         assertPortType("transform.deformations.curve_attract", "input_path", true, NodeDataType.PATH);
@@ -205,6 +206,13 @@ class GeometryCurvesFamilyContractTest {
         assertPortType("geometry.curves.split_path", "output_path_a", false, NodeDataType.PATH);
         assertPortType("geometry.curves.split_path", "output_path_b", false, NodeDataType.PATH);
         assertPortType("geometry.curves.fillet_polyline_corners", "output_path", false, NodeDataType.PATH);
+        assertFalse(hasOutputPort("geometry.curves.fillet_polyline_corners", "output_polyline"));
+    }
+
+    @Test
+    void projectPointToPolylineIsRetiredInFavorOfClosestPointOnPath() {
+        assertThrows(com.nodecraft.core.exception.NodeValidationException.class,
+            () -> NodeRegistry.getInstance().createNodeInstance("reference.points.project_to_polyline"));
     }
 
     @Test
@@ -357,7 +365,6 @@ class GeometryCurvesFamilyContractTest {
         fillet.processNode(null);
         assertEquals(Boolean.TRUE, fillet.getOutput("output_valid"));
         assertInstanceOf(PathData.class, fillet.getOutput("output_path"));
-        assertInstanceOf(PolylineData.class, fillet.getOutput("output_polyline"));
     }
 
     @Test

@@ -57,6 +57,8 @@ Primary output: **Path** (`output_path`). Secondary: Points, Count, Length, Vali
 | Closest Point On Path | `geometry.curves.closest_point_on_path` | Project query point onto path |
 | Path Parameter At Point | `geometry.curves.path_parameter_at_point` | Normalized t for closest projection |
 
+`reference.points.project_to_polyline` is retired — migrated to Closest Point On Path.
+
 Use **Join Paths** after **Blend Paths** instead of a built-in joined output.
 
 ## Tween / Blend outputs
@@ -73,11 +75,19 @@ Use **Join Paths** after **Blend Paths** instead of a built-in joined output.
 | `geometry.curves.resample_polyline_length` | → `geometry.curves.resample_path` |
 | `geometry.curves.offset_polyline_plane` | → `geometry.curves.offset_curve_plane` |
 
-## Id rename (V14→V15)
+## Id rename / retire (V14→V16)
 
 | Legacy id | Canonical id |
 |-----------|--------------|
 | `geometry.curves.polyline_length` | `geometry.curves.path_length` |
+| `reference.points.project_to_polyline` | `geometry.curves.closest_point_on_path` |
+
+## Port changes (V15→V16)
+
+| Node | Change |
+|------|--------|
+| Fillet Path Corners | `output_path` only; `output_polyline` removed (wires remapped to `output_path`) |
+| Closest Point On Path | drops legacy `output_vector` / segment index ports from Project Point To Polyline |
 
 ## Port changes (V13→V14)
 

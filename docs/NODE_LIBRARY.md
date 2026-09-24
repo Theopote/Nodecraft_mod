@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **540**
+- Total nodes: **539**
 - Total categories: **59**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -52,7 +52,7 @@
 | `pattern.voronoi_3d` | 1 |
 | `reference.frames` | 7 |
 | `reference.planes` | 6 |
-| `reference.points` | 19 |
+| `reference.points` | 18 |
 | `reference.vectors` | 18 |
 | `transform.basic_transforms` | 15 |
 | `transform.deformations` | 10 |
@@ -661,7 +661,7 @@
 | Box Face To Plane | `reference.planes.block_face_plane` | Explicitly converts a box face into its supporting plane and related face frame data | `BoxFaceToPlaneNode` |
 | Offset Plane | `reference.planes.offset_plane` | Offsets a plane along its normal by a signed distance | `OffsetPlaneNode` |
 
-## reference.points (19)
+## reference.points (18)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -682,7 +682,6 @@
 | Get Face Edge | `reference.points.get_face_edge` | Gets a single edge from a face by index | `GetFaceEdgeNode` |
 | Deconstruct Box Face | `reference.points.deconstruct_face` | Extracts corners, edges, plane, center, and normal from a box face | `DeconstructBoxFaceNode` |
 | Deconstruct Face Edge | `reference.points.deconstruct_edge` | Extracts endpoints, midpoint, direction, vector, and length from a face edge | `DeconstructFaceEdgeNode` |
-| Project Point To Polyline | `reference.points.project_to_polyline` | Projects a point onto the closest location on a polyline or line segment | `ProjectPointToPolylineNode` |
 | Closest Point To Object | `reference.points.closest_point_to_object` | Finds the nearest point from a query point to a curve, path, surface strip, or voxelized geometry | `ClosestPointToObjectNode` |
 
 ## reference.vectors (18)

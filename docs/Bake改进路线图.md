@@ -5,7 +5,7 @@
 > [`architecture/docs-authority.md`](./architecture/docs-authority.md)
 >（例如 Geometry Viewer → `output.preview.geometry_viewer`）。
 
-本文档基于 Grasshopper/Dynamo 风格工作流的建筑设计建议，描述 NodeCraft 在**体素化预览**与**永久放置**方面的改进规划。
+本文档学习 Grasshopper/Dynamo 风格工作流的建筑设计建议，描述 NodeCraft 在**体素化预览**与**永久放置**方面的改进规划。
 
 ---
 

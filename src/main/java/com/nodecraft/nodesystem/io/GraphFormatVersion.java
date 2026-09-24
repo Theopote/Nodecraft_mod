@@ -101,8 +101,14 @@ public final class GraphFormatVersion {
      */
     public static final int V15 = 15;
 
+    /**
+     * Closest Point On Path canonical id replaces Project Point To Polyline;
+     * Fillet Path Corners drops legacy polyline output port.
+     */
+    public static final int V16 = 16;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V15;
+    public static final int CURRENT = V16;
 
     private GraphFormatVersion() {
     }
