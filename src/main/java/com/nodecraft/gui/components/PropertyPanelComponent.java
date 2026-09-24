@@ -56,13 +56,11 @@ import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
 import imgui.ImGui;
 import imgui.ImVec4;
-import imgui.flag.ImGuiInputTextFlags;
 import imgui.flag.ImGuiTableFlags;
 import imgui.flag.ImGuiTableColumnFlags; // 添加 ImGuiTableColumnFlags 导入
 import imgui.flag.ImGuiCol;
 import imgui.flag.ImGuiTreeNodeFlags;
 import imgui.flag.ImGuiWindowFlags;
-import imgui.type.ImString;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -445,7 +443,7 @@ public class PropertyPanelComponent implements EditorComponent {
         if (ImGui.beginTable("propertiesTable_" + categoryInternalName, 2,
                 ImGuiTableFlags.Resizable | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersOuter)) {
             try {
-                ImGui.tableSetupColumn("Property", ImGuiTableColumnFlags.WidthFixed, ImGui.getContentRegionAvailX() * 0.32f);
+                ImGui.tableSetupColumn("Property", ImGuiTableColumnFlags.WidthFixed, ImGui.getContentRegionAvailX() * 0.42f);
                 ImGui.tableSetupColumn("Value", ImGuiTableColumnFlags.WidthStretch);
                 ImGui.tableHeadersRow();
 
