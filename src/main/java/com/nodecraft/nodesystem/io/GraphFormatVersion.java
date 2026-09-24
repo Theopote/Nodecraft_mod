@@ -90,8 +90,19 @@ public final class GraphFormatVersion {
      */
     public static final int V13 = 13;
 
+    /**
+     * Curve path P2: Tween PATH_LIST output, Blend PATH output, Join/Reverse/Split/Trim
+     * path ops, Closest Point On Path, Fillet PATH output.
+     */
+    public static final int V14 = 14;
+
+    /**
+     * Path Length canonical id: {@code geometry.curves.polyline_length} → {@code geometry.curves.path_length}.
+     */
+    public static final int V15 = 15;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V13;
+    public static final int CURRENT = V15;
 
     private GraphFormatVersion() {
     }

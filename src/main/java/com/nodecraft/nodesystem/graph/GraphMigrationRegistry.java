@@ -77,6 +77,8 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V10 -> migrateV10ToV11(graph);
             case GraphFormatVersion.V11 -> migrateV11ToV12(graph);
             case GraphFormatVersion.V12 -> migrateV12ToV13(graph);
+            case GraphFormatVersion.V13 -> migrateV13ToV14(graph);
+            case GraphFormatVersion.V14 -> migrateV14ToV15(graph);
             default -> graph;
         };
     }
@@ -162,6 +164,7 @@ public final class GraphMigrationRegistry {
             "geometry.curves.blend_curves",
             "geometry.curves.resample_polyline_length",
             "geometry.curves.polyline_length",
+            "geometry.curves.path_length",
             "geometry.curves.offset_polyline_plane",
             "geometry.curves.fillet_polyline_corners",
             "geometry.solids.sweep",
@@ -774,6 +777,91 @@ public final class GraphMigrationRegistry {
             }
             if (OFFSET_CURVE_PLANE_TYPE.equals(sourceType) && "output_polyline".equalsIgnoreCase(connection.sourcePortId)) {
                 connection.sourcePortId = "output_path";
+            }
+        }
+        return graph;
+    }
+
+    private static final String TWEEN_CURVES_TYPE = "geometry.curves.tween_curves";
+    private static final String BLEND_CURVES_TYPE = "geometry.curves.blend_curves";
+    private static final String FILLET_POLYLINE_TYPE = "geometry.curves.fillet_polyline_corners";
+
+    private static final Set<String> TWEEN_LEGACY_OUTPUT_PORTS = Set.of(
+            "output_curves",
+            "output_curves_tree",
+            "output_polylines",
+            "output_polylines_tree",
+            "output_point_rows",
+            "output_point_rows_tree",
+            "output_first_polyline"
+    );
+
+    /**
+     * Curve path P2: Tween emits PATH_LIST; Blend/Fillet emit PATH; Join Paths replaces Blend joined output.
+     */
+    private static SavedGraph migrateV13ToV14(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+
+            if (TWEEN_CURVES_TYPE.equals(sourceType) && TWEEN_LEGACY_OUTPUT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped Tween Paths legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+            if (BLEND_CURVES_TYPE.equals(sourceType)
+                    && ("output_joined_polyline".equals(sourcePort) || "output_curve".equals(sourcePort))) {
+                LOGGER.debug("Dropped Blend Paths legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+            return false;
+        });
+
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            if (BLEND_CURVES_TYPE.equals(sourceType) && "output_polyline".equalsIgnoreCase(connection.sourcePortId)) {
+                connection.sourcePortId = "output_path";
+            }
+            if (FILLET_POLYLINE_TYPE.equals(sourceType) && "output_polyline".equalsIgnoreCase(connection.sourcePortId)) {
+                connection.sourcePortId = "output_path";
+            }
+        }
+        return graph;
+    }
+
+    private static final String PATH_LENGTH_TYPE = "geometry.curves.path_length";
+    private static final String LEGACY_POLYLINE_LENGTH_TYPE = "geometry.curves.polyline_length";
+
+    /**
+     * Path Length canonical id rename.
+     */
+    private static SavedGraph migrateV14ToV15(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return graph;
+        }
+        for (SavedNode node : graph.nodes) {
+            if (node == null || node.typeId == null) {
+                continue;
+            }
+            if (LEGACY_POLYLINE_LENGTH_TYPE.equalsIgnoreCase(node.typeId)) {
+                LOGGER.debug("Migrated node type: {} -> {}", node.typeId, PATH_LENGTH_TYPE);
+                node.typeId = PATH_LENGTH_TYPE;
             }
         }
         return graph;

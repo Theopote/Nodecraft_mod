@@ -5,29 +5,22 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.DataTreeData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
-import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.GenerationLimits;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Creates intermediate sampled curves between two compatible paths.
- */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.curves.tween_curves",
-    displayName = "Tween Curves",
-    description = "Creates evenly spaced intermediate curves between two curve, polyline, or line inputs",
+    displayName = "Tween Paths",
+    description = "Creates evenly spaced intermediate paths between two path inputs.",
     category = "geometry.curves",
     order = 23
 )
@@ -36,11 +29,11 @@ public class TweenCurvesNode extends AbstractCurveNode {
     private static final double EPS = 1.0e-9d;
 
     @NodeProperty(displayName = "Default Count", category = "Tween", order = 1,
-        description = "Number of intermediate curves generated when Count input is not connected")
+        description = "Number of intermediate paths when Count input is not connected")
     private int defaultCount = 1;
 
     @NodeProperty(displayName = "Default Samples", category = "Tween", order = 2,
-        description = "Number of sample points used on each tween curve")
+        description = "Number of sample points used on each tween path")
     private int defaultSamples = 32;
 
     @NodeProperty(displayName = "Reverse A", category = "Tween", order = 3)
@@ -50,7 +43,7 @@ public class TweenCurvesNode extends AbstractCurveNode {
     private boolean reverseB = false;
 
     @NodeProperty(displayName = "Include Inputs", category = "Tween", order = 5,
-        description = "When enabled, Curve A and Curve B are included at the start and end of the output lists")
+        description = "When enabled, Path A and Path B are included at the start and end of the output list")
     private boolean includeInputs = false;
 
     private static final String INPUT_PATH_A_ID = "input_path_a";
@@ -58,13 +51,7 @@ public class TweenCurvesNode extends AbstractCurveNode {
     private static final String INPUT_COUNT_ID = "input_count";
     private static final String INPUT_SAMPLES_ID = "input_samples";
 
-    private static final String OUTPUT_CURVES_ID = "output_curves";
-    private static final String OUTPUT_CURVES_TREE_ID = "output_curves_tree";
-    private static final String OUTPUT_POLYLINES_ID = "output_polylines";
-    private static final String OUTPUT_POLYLINES_TREE_ID = "output_polylines_tree";
-    private static final String OUTPUT_POINT_ROWS_ID = "output_point_rows";
-    private static final String OUTPUT_POINT_ROWS_TREE_ID = "output_point_rows_tree";
-    private static final String OUTPUT_FIRST_POLYLINE_ID = "output_first_polyline";
+    private static final String OUTPUT_PATHS_ID = "output_paths";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
@@ -76,33 +63,21 @@ public class TweenCurvesNode extends AbstractCurveNode {
         addInputPort(new BasePort(INPUT_PATH_B_ID, "Path B",
             "Second path to tween to (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count",
-            "Number of intermediate curves to generate", NodeDataType.INTEGER, this));
+            "Number of intermediate paths to generate", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SAMPLES_ID, "Samples",
-            "Sample point count per tween curve", NodeDataType.INTEGER, this));
+            "Sample point count per tween path", NodeDataType.INTEGER, this));
 
-        addOutputPort(new BasePort(OUTPUT_CURVES_ID, "Curves",
-            "Generated tween curves as Curve list", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_CURVES_TREE_ID, "Curves Tree",
-            "Generated tween curves keyed by tween index", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_POLYLINES_ID, "Polylines",
-            "Generated tween curves as Polyline list", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_POLYLINES_TREE_ID, "Polyline Tree",
-            "Generated tween polylines keyed by tween index", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_POINT_ROWS_ID, "Point Rows",
-            "Generated tween points; each row is one tween curve", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_POINT_ROWS_TREE_ID, "Point Row Tree",
-            "Tween curve point rows keyed by tween index", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_FIRST_POLYLINE_ID, "First Polyline",
-            "First generated tween polyline for single-curve workflows", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_PATHS_ID, "Paths",
+            "Generated tween paths", NodeDataType.PATH_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
-            "Generated curve count", NodeDataType.INTEGER, this));
+            "Number of generated paths", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
-            "True when tween curves were generated", NodeDataType.BOOLEAN, this));
+            "True when tween paths were generated", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Creates evenly spaced intermediate curves between two curve, polyline, or line inputs";
+        return "Creates evenly spaced intermediate paths between two path inputs.";
     }
 
     @Override
@@ -123,35 +98,27 @@ public class TweenCurvesNode extends AbstractCurveNode {
             return;
         }
 
-        List<Curve> curves = new ArrayList<>(count + (includeInputs ? 2 : 0));
-        List<PolylineData> polylines = new ArrayList<>(count + (includeInputs ? 2 : 0));
-        List<List<Vector3d>> pointRows = new ArrayList<>(count + (includeInputs ? 2 : 0));
+        List<PathData> paths = new ArrayList<>(count + (includeInputs ? 2 : 0));
 
         if (includeInputs) {
-            appendTweenRow(sampledA.points, sampledA.closed, curves, polylines, pointRows);
+            appendTweenPath(sampledA.points, sampledA.closed, paths);
         }
         for (int i = 1; i <= count; i++) {
             double t = i / (double) (count + 1);
             List<Vector3d> row = interpolateRows(sampledA.points, sampledB.points, t);
-            appendTweenRow(row, sampledA.closed, curves, polylines, pointRows);
+            appendTweenPath(row, sampledA.closed, paths);
         }
         if (includeInputs) {
-            appendTweenRow(sampledB.points, sampledB.closed, curves, polylines, pointRows);
+            appendTweenPath(sampledB.points, sampledB.closed, paths);
         }
 
-        if (polylines.isEmpty()) {
+        if (paths.isEmpty()) {
             writeInvalid();
             return;
         }
 
-        outputValues.put(OUTPUT_CURVES_ID, List.copyOf(curves));
-        outputValues.put(OUTPUT_CURVES_TREE_ID, buildValueTree(curves));
-        outputValues.put(OUTPUT_POLYLINES_ID, List.copyOf(polylines));
-        outputValues.put(OUTPUT_POLYLINES_TREE_ID, buildValueTree(polylines));
-        outputValues.put(OUTPUT_POINT_ROWS_ID, List.copyOf(pointRows));
-        outputValues.put(OUTPUT_POINT_ROWS_TREE_ID, buildPointRowTree(pointRows));
-        outputValues.put(OUTPUT_FIRST_POLYLINE_ID, polylines.getFirst());
-        outputValues.put(OUTPUT_COUNT_ID, polylines.size());
+        outputValues.put(OUTPUT_PATHS_ID, List.copyOf(paths));
+        outputValues.put(OUTPUT_COUNT_ID, paths.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
@@ -276,47 +243,27 @@ public class TweenCurvesNode extends AbstractCurveNode {
         return out;
     }
 
-    private void appendTweenRow(List<Vector3d> row,
-                                boolean closed,
-                                List<Curve> curves,
-                                List<PolylineData> polylines,
-                                List<List<Vector3d>> pointRows) {
-        List<Vec3d> vecs = PathUtils.toVec3dList(row, closed);
-        PolylineData polyline = PathUtils.createPolylineOrNull(vecs);
-        if (polyline == null) {
-            return;
+    private void appendTweenPath(List<Vector3d> row, boolean closed, List<PathData> paths) {
+        PathData path = PathUtils.toPathData(closed && !row.isEmpty()
+            ? appendClosingVertex(row) : row);
+        if (path != null) {
+            paths.add(path);
         }
-        curves.add(buildLinearCurve(vecs));
-        polylines.add(polyline);
-        pointRows.add(List.copyOf(row));
+    }
+
+    private static List<Vector3d> appendClosingVertex(List<Vector3d> row) {
+        List<Vector3d> copy = new ArrayList<>(row.size() + 1);
+        copy.addAll(row);
+        if (!copy.isEmpty()) {
+            copy.add(new Vector3d(copy.getFirst()));
+        }
+        return copy;
     }
 
     private void writeInvalid() {
-        outputValues.put(OUTPUT_CURVES_ID, List.of());
-        outputValues.put(OUTPUT_CURVES_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_POLYLINES_ID, List.of());
-        outputValues.put(OUTPUT_POLYLINES_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_POINT_ROWS_ID, List.of());
-        outputValues.put(OUTPUT_POINT_ROWS_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_FIRST_POLYLINE_ID, null);
+        outputValues.put(OUTPUT_PATHS_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private DataTreeData buildValueTree(List<?> values) {
-        List<DataTreeData.Branch> branches = new ArrayList<>(values.size());
-        for (int i = 0; i < values.size(); i++) {
-            branches.add(new DataTreeData.Branch(List.of(i), List.of(values.get(i))));
-        }
-        return new DataTreeData(branches);
-    }
-
-    private DataTreeData buildPointRowTree(List<List<Vector3d>> pointRows) {
-        List<DataTreeData.Branch> branches = new ArrayList<>(pointRows.size());
-        for (int i = 0; i < pointRows.size(); i++) {
-            branches.add(new DataTreeData.Branch(List.of(i), new ArrayList<>(pointRows.get(i))));
-        }
-        return new DataTreeData(branches);
     }
 
     private record ResampledPath(List<Vector3d> points, boolean closed) {

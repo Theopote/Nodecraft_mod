@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -44,6 +45,7 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
     private static final String INPUT_PLANE_ID = "input_plane";
     private static final String INPUT_RADIUS_ID = "input_radius";
 
+    private static final String OUTPUT_PATH_ID = "output_path";
     private static final String OUTPUT_POLYLINE_ID = "output_polyline";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
@@ -60,8 +62,11 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
             "Fillet radius (must be positive)",
             NodeDataType.DOUBLE, this));
 
+        addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path",
+            "Fillet path with circular arcs replacing sharp corners",
+            NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline",
-            "New polyline with circular fillets replacing sharp corners",
+            "Fillet polyline (same geometry as Path output)",
             NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when a filleted polyline was produced",
@@ -138,11 +143,13 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
             return;
         }
 
+        outputValues.put(OUTPUT_PATH_ID, PathData.fromPolyline(polyline));
         outputValues.put(OUTPUT_POLYLINE_ID, polyline);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private void writeInvalid() {
+        outputValues.put(OUTPUT_PATH_ID, null);
         outputValues.put(OUTPUT_POLYLINE_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
     }

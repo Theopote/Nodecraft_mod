@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**534**
+- **节点总数**：**540**
 - **分类总数**：**59**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -15,7 +15,7 @@
 | `geometry.architectural_primitives` | 20 |
 | `geometry.boolean` | 2 |
 | `geometry.combine` | 1 |
-| `geometry.curves` | 21 |
+| `geometry.curves` | 27 |
 | `geometry.primitives` | 29 |
 | `geometry.profiles` | 24 |
 | `geometry.sdf` | 13 |
@@ -130,7 +130,7 @@
 |---|---|---|---|
 | Combine Geometry | `geometry.combine.geometry` | Structural grouping of geometries into a composite. Bake/voxelize merges blocks (set union); not an analytic BRep union or SDF smooth union. | `GeometryUnionNode` |
 
-## geometry.curves（21）
+## geometry.curves（27）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -140,6 +140,10 @@
 | Face Edge To Path | `geometry.curves.edge_to_curve` | Converts a face edge into line, polyline, and point outputs for path workflows | `FaceEdgeToPathNode` |
 | Bezier | `geometry.curves.bezier` | Builds a sampled Bezier curve from an ordered list of control points | `BezierNode` |
 | Box Face Boundary Path | `geometry.curves.face_boundary_curve` | Builds a closed boundary path from a box face for preview and downstream path workflows | `BoxFaceBoundaryPathNode` |
+| Join Paths | `geometry.curves.join_paths` | Joins two paths end-to-end into one continuous path. | `JoinPathsNode` |
+| Reverse Path | `geometry.curves.reverse_path` | Reverses the direction of a path. | `ReversePathNode` |
+| Split Path | `geometry.curves.split_path` | Splits a path at a normalized parameter into two path segments. | `SplitPathNode` |
+| Trim Path | `geometry.curves.trim_path` | Extracts a sub-path between two normalized parameters. | `TrimPathNode` |
 | Interpolate Spline | `geometry.curves.interpolate_spline` | Builds a Catmull-Rom interpolation spline that passes through all resolved input points | `InterpolateSplineNode` |
 | B-Spline | `geometry.curves.b_spline` | Builds a sampled clamped uniform B-spline from an ordered control point list | `BSplineNode` |
 | Fillet Path Corners | `geometry.curves.fillet_polyline_corners` | Fillets interior corners of an open path with circular arcs in the work plane | `PolylineCornerFilletNode` |
@@ -149,12 +153,14 @@
 | Resample Path | `geometry.curves.resample_path` | Resamples a path along arc length by Count or Spacing. Primary output is PATH. | `ResamplePolylineByLengthNode` |
 | Path Length | `geometry.curves.polyline_length` | Computes the total length of a line, polyline, or curve path | `PolylineLengthNode` |
 | Evaluate Path | `geometry.curves.evaluate_curve` | Evaluates a path at normalized parameter t and outputs point and tangent. | `CurveEvaluateNode` |
+| Closest Point On Path | `geometry.curves.closest_point_on_path` | Finds the closest point on a path to a query point. | `ClosestPointOnPathNode` |
 | Parabola On Plane | `geometry.curves.parabola_curve` | Builds a sampled parabola on a plane from vertex, curvature, x-range, and segment count | `ParabolaOnPlaneNode` |
+| Path Parameter At Point | `geometry.curves.path_parameter_at_point` | Returns the normalized path parameter for the closest point to a query point. | `PathParameterAtPointNode` |
 | Helix Curve | `geometry.curves.helix` | Builds a sampled helix from center, axis, radius, pitch, turns, and segment count. | `HelixCurveNode` |
 | Infinity Curve On Plane | `geometry.curves.infinity_curve` | Builds a sampled figure-eight (lemniscate-like) curve on a plane | `InfinityCurveOnPlaneNode` |
 | Voxelize Path | `geometry.curves.voxelize_curve` | Converts a path directly into voxel block coordinates using cylindrical path segments. | `VoxelizeCurveNode` |
-| Blend Curves | `geometry.curves.blend_curves` | Creates a smooth transition curve between two curve, polyline, or line endpoints | `BlendCurvesNode` |
-| Tween Curves | `geometry.curves.tween_curves` | Creates evenly spaced intermediate curves between two curve, polyline, or line inputs | `TweenCurvesNode` |
+| Blend Paths | `geometry.curves.blend_curves` | Creates a smooth transition path between two path endpoints. | `BlendCurvesNode` |
+| Tween Paths | `geometry.curves.tween_curves` | Creates evenly spaced intermediate paths between two path inputs. | `TweenCurvesNode` |
 
 ## geometry.primitives（29）
 

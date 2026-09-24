@@ -54,7 +54,7 @@ class GeometryCurvesFamilyContractTest {
             "geometry.curves.rainbow_curve_offset",
             "geometry.curves.tween_curves",
             "geometry.curves.blend_curves",
-            "geometry.curves.polyline_length",
+            "geometry.curves.path_length",
             "geometry.curves.fillet_polyline_corners",
             "pattern.linear.curve_array_geometry",
             "geometry.architectural_primitives.array_along_curve",
@@ -181,9 +181,67 @@ class GeometryCurvesFamilyContractTest {
     }
 
     @Test
-    void blendCurvesStartAndEndOutputsArePoints() {
+    void blendPathsEmitPathWithoutJoinedPolyline() {
+        assertPortType("geometry.curves.blend_curves", "output_path", false, NodeDataType.PATH);
         assertPortType("geometry.curves.blend_curves", "output_start_point", false, NodeDataType.POINT);
         assertPortType("geometry.curves.blend_curves", "output_end_point", false, NodeDataType.POINT);
+        assertFalse(hasOutputPort("geometry.curves.blend_curves", "output_joined_polyline"));
+        assertFalse(hasOutputPort("geometry.curves.blend_curves", "output_curve"));
+    }
+
+    @Test
+    void tweenPathsEmitPathListWithoutLegacyOutputs() {
+        assertPortType("geometry.curves.tween_curves", "output_paths", false, NodeDataType.PATH_LIST);
+        assertFalse(hasOutputPort("geometry.curves.tween_curves", "output_first_polyline"));
+        assertFalse(hasOutputPort("geometry.curves.tween_curves", "output_polylines"));
+        assertFalse(hasOutputPort("geometry.curves.tween_curves", "output_curves"));
+    }
+
+    @Test
+    void pathModifyOpsUsePathPorts() {
+        assertPortType("geometry.curves.join_paths", "output_path", false, NodeDataType.PATH);
+        assertPortType("geometry.curves.reverse_path", "output_path", false, NodeDataType.PATH);
+        assertPortType("geometry.curves.trim_path", "output_path", false, NodeDataType.PATH);
+        assertPortType("geometry.curves.split_path", "output_path_a", false, NodeDataType.PATH);
+        assertPortType("geometry.curves.split_path", "output_path_b", false, NodeDataType.PATH);
+        assertPortType("geometry.curves.fillet_polyline_corners", "output_path", false, NodeDataType.PATH);
+    }
+
+    @Test
+    void pathQueryOpsExposeParameterOutputs() {
+        assertPortType("geometry.curves.closest_point_on_path", "output_parameter", false, NodeDataType.DOUBLE);
+        assertPortType("geometry.curves.path_parameter_at_point", "output_parameter", false, NodeDataType.DOUBLE);
+    }
+
+    @Test
+    void joinReverseSplitTrimSmokeWithLinePath() {
+        LineData line = sampleLine10Blocks();
+        LineData lineB = new LineData(new Vec3d(0, 0, 10), new Vec3d(10, 0, 10));
+
+        BaseNode join = node("geometry.curves.join_paths");
+        join.setInput("input_path_a", line);
+        join.setInput("input_path_b", lineB);
+        join.processNode(null);
+        assertEquals(Boolean.TRUE, join.getOutput("output_valid"));
+        assertInstanceOf(PathData.class, join.getOutput("output_path"));
+
+        BaseNode reverse = node("geometry.curves.reverse_path");
+        reverse.setInput("input_path", line);
+        reverse.processNode(null);
+        assertEquals(Boolean.TRUE, reverse.getOutput("output_valid"));
+
+        BaseNode trim = node("geometry.curves.trim_path");
+        trim.setInput("input_path", line);
+        trim.setInput("input_start", 0.25d);
+        trim.setInput("input_end", 0.75d);
+        trim.processNode(null);
+        assertEquals(Boolean.TRUE, trim.getOutput("output_valid"));
+
+        BaseNode split = node("geometry.curves.split_path");
+        split.setInput("input_path", line);
+        split.setInput("input_parameter", 0.5d);
+        split.processNode(null);
+        assertEquals(Boolean.TRUE, split.getOutput("output_valid"));
     }
 
     @Test
@@ -273,12 +331,14 @@ class GeometryCurvesFamilyContractTest {
         tween.setInput("input_path_b", lineB);
         tween.processNode(null);
         assertEquals(Boolean.TRUE, tween.getOutput("output_valid"));
+        assertTrue(((List<?>) tween.getOutput("output_paths")).size() >= 1);
 
         BaseNode blend = node("geometry.curves.blend_curves");
         blend.setInput("input_path_a", line);
         blend.setInput("input_path_b", lineB);
         blend.processNode(null);
         assertEquals(Boolean.TRUE, blend.getOutput("output_valid"));
+        assertInstanceOf(PathData.class, blend.getOutput("output_path"));
 
         PolylineData elbow = new PolylineData(List.of(
                 new Vec3d(0, 64, 0),
@@ -290,6 +350,7 @@ class GeometryCurvesFamilyContractTest {
         fillet.setInput("input_radius", 1.0d);
         fillet.processNode(null);
         assertEquals(Boolean.TRUE, fillet.getOutput("output_valid"));
+        assertInstanceOf(PathData.class, fillet.getOutput("output_path"));
         assertInstanceOf(PolylineData.class, fillet.getOutput("output_polyline"));
     }
 

@@ -5,28 +5,24 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PointData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
-import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.curves.blend_curves",
-    displayName = "Blend Curves",
-    description = "Creates a smooth transition curve between two curve, polyline, or line endpoints",
+    displayName = "Blend Paths",
+    description = "Creates a smooth transition path between two path endpoints.",
     category = "geometry.curves",
     order = 22
 )
@@ -63,9 +59,7 @@ public class BlendCurvesNode extends AbstractCurveNode {
     private static final String INPUT_LENGTH_B_ID = "input_length_b";
     private static final String INPUT_SEGMENTS_ID = "input_segments";
 
-    private static final String OUTPUT_CURVE_ID = "output_curve";
-    private static final String OUTPUT_POLYLINE_ID = "output_polyline";
-    private static final String OUTPUT_JOINED_POLYLINE_ID = "output_joined_polyline";
+    private static final String OUTPUT_PATH_ID = "output_path";
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_START_POINT_ID = "output_start_point";
     private static final String OUTPUT_END_POINT_ID = "output_end_point";
@@ -78,22 +72,25 @@ public class BlendCurvesNode extends AbstractCurveNode {
             "First path to blend from (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_PATH_B_ID, "Path B",
             "Second path to blend to (line, polyline, or curve)", NodeDataType.PATH, this));
-        addInputPort(new BasePort(INPUT_LENGTH_A_ID, "Length A", "Tangent handle length from curve A endpoint", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_LENGTH_B_ID, "Length B", "Tangent handle length toward curve B endpoint", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_LENGTH_A_ID, "Length A", "Tangent handle length from path A endpoint", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_LENGTH_B_ID, "Length B", "Tangent handle length toward path B endpoint", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Number of segments used to sample the blend", NodeDataType.INTEGER, this));
 
-        addOutputPort(new BasePort(OUTPUT_CURVE_ID, "Blend Curve", "Sampled blend curve", NodeDataType.CURVE, this));
-        addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Blend Polyline", "Sampled blend polyline", NodeDataType.POLYLINE, this));
-        addOutputPort(new BasePort(OUTPUT_JOINED_POLYLINE_ID, "Joined Polyline", "Curve A, blend, and curve B as one sampled polyline", NodeDataType.POLYLINE, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Blend points as point list", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_START_POINT_ID, "Start Point", "Blend start point", NodeDataType.POINT, this));
-        addOutputPort(new BasePort(OUTPUT_END_POINT_ID, "End Point", "Blend end point", NodeDataType.POINT, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the blend was generated", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path",
+            "Sampled blend path", NodeDataType.PATH, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points",
+            "Blend points as point list", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_START_POINT_ID, "Start Point",
+            "Blend start point", NodeDataType.POINT, this));
+        addOutputPort(new BasePort(OUTPUT_END_POINT_ID, "End Point",
+            "Blend end point", NodeDataType.POINT, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
+            "True when the blend was generated", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Creates a smooth transition curve between two curve, polyline, or line endpoints";
+        return "Creates a smooth transition path between two path endpoints.";
     }
 
     @Override
@@ -121,17 +118,13 @@ public class BlendCurvesNode extends AbstractCurveNode {
             ? sampleLinear(start, end, segments)
             : sampleHermite(start, end, tangentA.mul(lengthA), tangentB.mul(lengthB), segments);
 
-        PolylineData blendPolyline = toPolyline(blendPoints);
-        Curve blendCurve = buildLinearCurve(toVec3dList(blendPoints));
-        PolylineData joinedPolyline = toPolyline(buildJoinedPoints(pointsA, blendPoints, pointsB));
-        if (blendPolyline == null || joinedPolyline == null) {
+        PathData blendPath = PathUtils.toPathData(blendPoints);
+        if (blendPath == null) {
             writeInvalid();
             return;
         }
 
-        outputValues.put(OUTPUT_CURVE_ID, blendCurve);
-        outputValues.put(OUTPUT_POLYLINE_ID, blendPolyline);
-        outputValues.put(OUTPUT_JOINED_POLYLINE_ID, joinedPolyline);
+        outputValues.put(OUTPUT_PATH_ID, blendPath);
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(blendPoints));
         outputValues.put(OUTPUT_START_POINT_ID, new PointData(start));
         outputValues.put(OUTPUT_END_POINT_ID, new PointData(end));
@@ -304,37 +297,6 @@ public class BlendCurvesNode extends AbstractCurveNode {
         return points;
     }
 
-    private List<Vector3d> buildJoinedPoints(List<Vector3d> pointsA, List<Vector3d> blendPoints, List<Vector3d> pointsB) {
-        List<Vector3d> joined = new ArrayList<>(pointsA.size() + blendPoints.size() + pointsB.size());
-        appendAllFar(joined, pointsA);
-        appendAllFar(joined, blendPoints);
-        appendAllFar(joined, pointsB);
-        return joined;
-    }
-
-    private void appendAllFar(List<Vector3d> target, List<Vector3d> points) {
-        for (Vector3d point : points) {
-            if (target.isEmpty() || target.getLast().distanceSquared(point) > EPS * EPS) {
-                target.add(new Vector3d(point));
-            }
-        }
-    }
-
-    private @Nullable PolylineData toPolyline(List<Vector3d> points) {
-        if (points.size() < 2) {
-            return null;
-        }
-        return PathUtils.createPolylineOrNull(toVec3dList(points));
-    }
-
-    private List<Vec3d> toVec3dList(List<Vector3d> points) {
-        List<Vec3d> out = new ArrayList<>(points.size());
-        for (Vector3d point : points) {
-            out.add(new Vec3d(point.x, point.y, point.z));
-        }
-        return out;
-    }
-
     private int getInputInt(String portId, int fallback) {
         Object value = inputValues.get(portId);
         return value instanceof Number number ? number.intValue() : fallback;
@@ -346,9 +308,7 @@ public class BlendCurvesNode extends AbstractCurveNode {
     }
 
     private void writeInvalid() {
-        outputValues.put(OUTPUT_CURVE_ID, null);
-        outputValues.put(OUTPUT_POLYLINE_ID, null);
-        outputValues.put(OUTPUT_JOINED_POLYLINE_ID, null);
+        outputValues.put(OUTPUT_PATH_ID, null);
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_START_POINT_ID, null);
         outputValues.put(OUTPUT_END_POINT_ID, null);
