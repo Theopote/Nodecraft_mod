@@ -175,28 +175,37 @@ public class CustomUIRenderer {
                 ImGui.beginGroup();
                 imgui.ImGui imguiInstance = new imgui.ImGui();
 
+                // 必须用 ImGui.pushClipRect（而非 DrawList），才会裁剪鼠标命中测试。
+                // DrawList 版只裁剪绘制：控件垂直略溢出时，节点外同水平范围内仍会点到按钮。
                 float clipPadding = Math.max(2.0f * info.zoom, 2.0f);
-                ImGui.getWindowDrawList().pushClipRect(
+                ImGui.pushClipRect(
                     clipMinX,
                     clipMinY,
                     clipMaxX,
                     clipMaxY + clipPadding,
                     true);
-
-                if (info.customUINode != null) {
-                    try {
-                        // 关键：使用窗口级字体缩放，让控件文字与控件尺寸同步缩放。
-                        // 仅在当前自定义UI渲染段内生效，结束后恢复为 1.0。
-                        imguiInstance.setWindowFontScale(zoom);
-                        info.customUINode.renderCustomUI(info.width, info.height, zoom);
-                    } catch (Exception e) {
-                        NodeCraft.LOGGER.error("自定义UI渲染失败 (节点: {}): {}", info.nodeId, e.getMessage(), e);
-                    } finally {
-                        imguiInstance.setWindowFontScale(1.0f);
+                boolean widgetHoveredBeforeGroupEnd = false;
+                boolean widgetActiveBeforeGroupEnd = false;
+                try {
+                    if (info.customUINode != null) {
+                        try {
+                            // 关键：使用窗口级字体缩放，让控件文字与控件尺寸同步缩放。
+                            // 仅在当前自定义UI渲染段内生效，结束后恢复为 1.0。
+                            imguiInstance.setWindowFontScale(zoom);
+                            info.customUINode.renderCustomUI(info.width, info.height, zoom);
+                        } catch (Exception e) {
+                            NodeCraft.LOGGER.error("自定义UI渲染失败 (节点: {}): {}", info.nodeId, e.getMessage(), e);
+                        } finally {
+                            imguiInstance.setWindowFontScale(1.0f);
+                        }
                     }
+                    // 必须在 endGroup 之前采样：EndGroup 会把整块区域合成一个可悬停 Item，
+                    // 若在其后用 isAnyItemHovered，空白区也会被误判为「悬停在控件上」，导致无法点选节点。
+                    widgetHoveredBeforeGroupEnd = ImGui.isAnyItemHovered();
+                    widgetActiveBeforeGroupEnd = ImGui.isAnyItemActive();
+                } finally {
+                    ImGui.popClipRect();
                 }
-
-                ImGui.getWindowDrawList().popClipRect();
                 ImGui.endGroup();
 
                 // === 自定义UI区域的鼠标事件处理 ===
@@ -208,8 +217,6 @@ public class CustomUIRenderer {
                         info.screenY + scaledHeight,
                         true
                 );
-                boolean isAnyItemActiveInWindow = ImGui.isAnyItemActive();
-                boolean isAnyItemHoveredInWindow = ImGui.isAnyItemHovered();
 
                 // 检查此节点是否正在被拖动
                 // 如果正在拖动，忽略控件的 active 状态，因为那只是拖动时鼠标经过控件导致的误激活
@@ -229,19 +236,20 @@ public class CustomUIRenderer {
                     // 无论是否有控件交互，都要捕获鼠标以防止父窗口被拖动
                     ImGui.getIO().setWantCaptureMouse(true);
 
-                    if (isAnyItemActiveInWindow) {
+                    if (widgetActiveBeforeGroupEnd) {
                         // 有控件正在被交互（如拖拽滑块），记录活跃状态
                         lastCustomUIHasActiveWidget = true;
                         lastCustomUIHoveredNodeId = info.nodeId;
                         lastCustomUIWasHoveredEmpty = false;
-                    } else if (!isAnyItemHoveredInWindow) {
-                        // 鼠标在子窗口空白区域 → 允许通过此区域拖动节点
+                        lastCustomUIHasHoveredWidget = true;
+                    } else if (!widgetHoveredBeforeGroupEnd) {
+                        // 鼠标在子窗口空白区域 → 允许通过此区域拖动/选中节点
                         lastCustomUIHoveredNodeId = info.nodeId;
                         lastCustomUIWasHoveredEmpty = true;
                         lastCustomUIHasActiveWidget = false;
                         lastCustomUIHasHoveredWidget = false;
                     } else {
-                        // 鼠标悬停在控件上（尚未激活）→ 阻止点击穿透到节点主体
+                        // 鼠标悬停在真正的控件上（尚未激活）
                         lastCustomUIHoveredNodeId = info.nodeId;
                         lastCustomUIWasHoveredEmpty = false;
                         lastCustomUIHasActiveWidget = false;
@@ -288,16 +296,17 @@ public class CustomUIRenderer {
             float expandedClipMaxX = Math.max(originalClipMax.x, info.screenX + info.width + bounds.marginRight);
             float expandedClipMaxY = Math.max(originalClipMax.y, info.screenY + info.height + bounds.marginBottom);
 
-            ImGui.getWindowDrawList().pushClipRect(
+            ImGui.pushClipRect(
                     expandedClipMinX, expandedClipMinY,
                     expandedClipMaxX, expandedClipMaxY,
                     false
             );
-
-            uiInteracted = info.customUINode.renderWithViewPortAwareness(
-                    renderInfo, bounds.minWidth, bounds.minHeight);
-
-            ImGui.getWindowDrawList().popClipRect();
+            try {
+                uiInteracted = info.customUINode.renderWithViewPortAwareness(
+                        renderInfo, bounds.minWidth, bounds.minHeight);
+            } finally {
+                ImGui.popClipRect();
+            }
 
         } catch (Exception e) {
             NodeCraft.LOGGER.warn("防裁剪渲染失败", e);

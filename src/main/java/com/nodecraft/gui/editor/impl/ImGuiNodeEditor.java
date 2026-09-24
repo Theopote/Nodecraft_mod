@@ -428,10 +428,16 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                         } else {
                             NodeCraft.LOGGER.debug("框选已启动，跳过画布平移");
                         }
-                    } else {
-                        if (nodeUnderMouse != null) {
-                            NodeCraft.LOGGER.debug("鼠标点击在节点上，不清除选择 - 节点ID: {}", nodeUnderMouse);
+                    } else if (nodeUnderMouse != null && !isMouseOnPort) {
+                        // 单击选中放在与框选相同的检测路径上（getNodeIdUnderMouse），
+                        // 不依赖节点渲染中的 isWindowHovered / invisibleButton 激活状态。
+                        interaction.handleClickOnNodeBody(nodeUnderMouse, ImGui.getIO().getKeyCtrl());
+                        if (!renderer.isCustomUIWidgetBlockingNodeDrag(nodeUnderMouse)) {
+                            interaction.tryStartNodeDraggingFromNodeBody(nodeUnderMouse);
                         }
+                        ImGui.getIO().setWantCaptureMouse(true);
+                        NodeCraft.LOGGER.debug("鼠标点击选中节点: {}", nodeUnderMouse);
+                    } else {
                         if (isMouseOnPort) {
                             NodeCraft.LOGGER.debug("鼠标点击在端口上，不清除选择");
                         }
@@ -604,7 +610,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     }
 
     private static boolean isMouseOverCanvas(ImVec2 mousePos, ImVec2 canvasPos, float canvasWidth, float canvasHeight) {
-        if (mousePos == null || canvasPos == null || !ImGui.isWindowHovered()) {
+        // 只用几何范围判断，不依赖 isWindowHovered。
+        // 节点/自定义 UI 提交大量 Item 后，HoveredWindow 判定会抖动，导致单击选中被误判为未悬停画布。
+        if (mousePos == null || canvasPos == null) {
             return false;
         }
         return mousePos.x >= canvasPos.x && mousePos.x <= canvasPos.x + canvasWidth

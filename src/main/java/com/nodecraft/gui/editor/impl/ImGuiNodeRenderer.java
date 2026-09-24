@@ -378,10 +378,18 @@ public class ImGuiNodeRenderer {
 
         boolean nodeHasCustomUI = customUIRenderer.hasCustomUI(node);
 
-        // 节点主体交互区域：先提交 invisibleButton 并允许后续自定义 UI 控件覆盖命中测试
+        // 节点主体交互区域：不要覆盖自定义 UI 区域。
+        // 若 invisibleButton 盖住 Select Block 等控件，ImGui 会优先命中主体按钮，
+        // 导致底部自定义 UI「点不开」；而控件在垂直方向略微溢出时，又会出现
+        // 「节点外、但按钮水平范围内」仍能点到选择按钮的错觉。
+        float nodeBodyInteractionHeight = finalNodeHeightScaled;
+        if (nodeHasCustomUI && !compactRerouteNode) {
+            float customUIStartY = computeCustomUIStartY(
+                    nodeScreenY, node, baseTextLineHeight, canvasZoom, hasAnyPorts, baseItemSpacingY);
+            nodeBodyInteractionHeight = Math.max(0.0f, customUIStartY - nodeScreenY);
+        }
         ImGui.setCursorScreenPos(nodeScreenX, nodeScreenY);
-        ImGui.invisibleButton("node_interaction_area_" + nodeId, finalNodeWidthScaled, finalNodeHeightScaled);
-        ImGui.setItemAllowOverlap();
+        ImGui.invisibleButton("node_interaction_area_" + nodeId, finalNodeWidthScaled, nodeBodyInteractionHeight);
 
         if (nodeHasCustomUI && !compactRerouteNode) {
             customUIRenderer.resetCustomUIInteractionState();
@@ -576,17 +584,24 @@ public class ImGuiNodeRenderer {
         }
     }
 
+    private static float computeCustomUIStartY(float nodeScreenY, INode node, float baseTextLineHeight,
+                                               float canvasZoom, boolean hasAnyPorts, float baseItemSpacingY) {
+        float customUIStartY = nodeScreenY + (baseTextLineHeight + 2 * NodeRenderConstants.NODE_VERTICAL_PADDING) * canvasZoom;
+        if (hasAnyPorts) {
+            float unscaledPortsRegionHeight = getUnscaledPortsRegionHeight(node, baseTextLineHeight, baseItemSpacingY);
+            customUIStartY += (unscaledPortsRegionHeight + NodeRenderConstants.NODE_VERTICAL_PADDING) * canvasZoom;
+        }
+        return customUIStartY;
+    }
+
     private void renderCustomUI(INode node, UUID nodeId, float nodeScreenX, float nodeScreenY, float finalNodeWidthScaled,
                                 float baseTextLineHeight, float canvasZoom, boolean hasAnyPorts, float baseItemSpacingY) {
         
         float customUIUnscaledHeight = customUIRenderer.getCustomUIHeight(node);
 
         if (customUIUnscaledHeight > 0) {
-            float customUIStartY = nodeScreenY + (baseTextLineHeight + 2 * NodeRenderConstants.NODE_VERTICAL_PADDING) * canvasZoom;
-            if (hasAnyPorts) {
-                float unscaledPortsRegionHeight = getUnscaledPortsRegionHeight(node, baseTextLineHeight, baseItemSpacingY);
-                customUIStartY += (unscaledPortsRegionHeight + NodeRenderConstants.NODE_VERTICAL_PADDING) * canvasZoom;
-            }
+            float customUIStartY = computeCustomUIStartY(
+                    nodeScreenY, node, baseTextLineHeight, canvasZoom, hasAnyPorts, baseItemSpacingY);
 
             // 注意：在新的统一缩放架构中，我们传递逻辑尺寸但保持屏幕坐标
             // CustomUIRenderer 会在内部应用缩放变换
@@ -795,37 +810,29 @@ public class ImGuiNodeRenderer {
                                          boolean nodeHasCustomUI,
                                          float nodeScreenX, float nodeScreenY,
                                          float nodeWidthScaled, float nodeHeightScaled) {
-        if (!ImGui.isWindowHovered()) {
-            return;
-        }
+        // 不在此处用 isWindowHovered 短路：自定义 UI Item 会影响 Hovered 判定。
+        // 单击选中已在 ImGuiNodeEditor 与框选相同的 getNodeIdUnderMouse 路径处理；
+        // 这里只负责端口连线与拖拽生命周期。
 
         ImGuiNodeInteraction interaction = editor.getInteraction();
         ImVec2 mousePos = ImGui.getIO().getMousePos();
 
-        // 检查鼠标是否在节点矩形区域内（基于位置，不依赖 ImGui 的 isItemActive）
         boolean isMouseInNodeBounds = mousePos.x >= nodeScreenX && mousePos.x <= nodeScreenX + nodeWidthScaled &&
                                      mousePos.y >= nodeScreenY && mousePos.y <= nodeScreenY + nodeHeightScaled;
 
-        // 检查自定义UI区域的交互状态
         boolean isCustomUIWidgetActive = isIsCustomUIWidgetActive(nodeId, nodeHasCustomUI, isMouseInNodeBounds);
 
-        // 检查是否是首次点击 (鼠标刚按下左键)
         if (ImGuiInputAdapter.isMouseClicked(ImGuiMouseButton.Left)) {
-            // 重叠场景下，只允许最上层节点处理本次点击。
-            // pendingClickTargetNodeId 在主窗口上下文里预先算好，坐标始终正确。
             UUID clickTarget = interaction.getPendingClickTargetNodeId();
             if (!nodeId.equals(clickTarget)) {
                 return;
             }
 
-            // 首先检查鼠标是否在端口区域 - 如果是，优先处理端口连接
             boolean isMouseOnPort = interaction.isMouseOverAnyPortOfNode(nodeId, mousePos, editor.getPortScreenPositions());
 
-            if (isMouseOnPort) { // 鼠标点击在端口上：尝试启动连接
-                // 更新悬停端口状态 (如果之前没有更新的话)
+            if (isMouseOnPort) {
                 interaction.updateHoveredPort(mousePos, editor.getPortScreenPositions(), editor.getCurrentGraph());
 
-                // 尝试启动连接创建
                 UUID currentHoveredNodeId = interaction.getHoveredNodeId();
                 String currentHoveredPortId = interaction.getHoveredPortId();
                 boolean currentIsHoveredPortOutput = interaction.isHoveredPortOutput();
@@ -834,31 +841,31 @@ public class ImGuiNodeRenderer {
                     interaction.tryStartConnectionCreation(currentHoveredNodeId, currentHoveredPortId, currentIsHoveredPortOutput, editor.getPortScreenPositions());
                     NodeCraft.LOGGER.debug("从节点内部端口区域启动连接创建: NodeId={}, PortId={}", currentHoveredNodeId, currentHoveredPortId);
                 }
-            } else if (isMouseInNodeBounds && !isCustomUIWidgetActive
-                    && !(nodeHasCustomUI && customUIRenderer.isCustomUIWidgetHovered(nodeId))) {
-                // 此处已确认是最上层节点（pendingClickTargetNodeId），直接用 isMouseInNodeBounds 判定。
-                // 不使用 isInvisibleButtonActive（canDragNode 的依赖），因为 ImGui 的 InvisibleButton
-                // 在重叠时给"先渲染的节点"优先级，而我们需要让"z 序最高的节点"响应。
-                interaction.handleClickOnNodeBody(nodeId, ImGui.getIO().getKeyCtrl());
-                interaction.tryStartNodeDraggingFromNodeBody(nodeId);
+            } else if (isMouseInNodeBounds) {
+                // 选中由 Editor 主路径负责；这里仅在非控件区域补启拖拽（防主路径漏启）。
+                boolean overCustomUIWidget = nodeHasCustomUI && customUIRenderer.isCustomUIWidgetHovered(nodeId);
+                if (!isCustomUIWidgetActive && !overCustomUIWidget && !interaction.isDraggingNode()) {
+                    interaction.tryStartNodeDraggingFromNodeBody(nodeId);
+                }
                 ImGui.getIO().setWantCaptureMouse(true);
             }
         }
 
-        // 拖动位移已在 ImGuiNodeEditor 渲染前统一处理，
-        // 这里仅保留拖拽状态的生命周期控制（开始/结束）。
-        boolean isDragging = interaction.isDraggingNode();
         if (ImGui.isItemDeactivated()) {
-            // 如果这个 invisible button 刚刚失去激活状态 (鼠标抬起)
             interaction.clearNodeBodyActive(nodeId);
-            // 此时拖拽状态应该由 ImGuiNodeInteraction 内部在鼠标释放时统一处理
-            interaction.tryStopNodeDragging(); // 尝试停止拖拽
+            interaction.tryStopNodeDragging();
         }
 
-        // 额外检查：如果正在拖动节点且鼠标释放，确保停止拖动
         if (interaction.isDraggingNode() && ImGuiInputAdapter.isMouseReleased(ImGuiMouseButton.Left)) {
             interaction.tryStopNodeDragging();
         }
+    }
+
+    /**
+     * 自定义 UI 控件是否应阻止节点拖拽（仍允许选中）。
+     */
+    public boolean isCustomUIWidgetBlockingNodeDrag(UUID nodeId) {
+        return customUIRenderer.isCustomUIWidgetHovered(nodeId) || customUIRenderer.isCustomUIWidgetActive();
     }
 
     private boolean isIsCustomUIWidgetActive(UUID nodeId, boolean nodeHasCustomUI, boolean isMouseInNodeBounds) {

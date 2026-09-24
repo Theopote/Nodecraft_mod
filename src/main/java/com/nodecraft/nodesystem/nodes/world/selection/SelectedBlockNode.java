@@ -25,6 +25,7 @@ import com.nodecraft.nodesystem.preview.protocol.PreviewStyle;
 import com.nodecraft.nodesystem.visual.SelectionVisualFeedback;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
+import imgui.flag.ImGuiTreeNodeFlags;
 import imgui.type.ImInt;
 import org.jetbrains.annotations.Nullable;
 import java.util.List;
@@ -1071,43 +1072,91 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     
     @Override
     protected float calculateUIHeight() {
-        float buttonHeight = 22f;
-        float smallGap = 4f;
+        // 与 renderCustomUIScaled 布局保持一致；展开区高度必须计入，否则会被节点裁剪
+        float buttonHeight = ImGui.getFrameHeight();
+        float textLine = Math.max(ImGui.getTextLineHeightWithSpacing(), 18f);
+        float headerHeight = buttonHeight;
+        float smallGap = getSmallPadding();
         float baseHeight = 0f;
 
         baseHeight += smallGap;
-        baseHeight += buttonHeight; // pick button
 
-        // Source mode combo + active label (+ optional warning)
-        baseHeight += smallGap;
+        // Source Mode 标签 + combo
+        baseHeight += textLine;
         baseHeight += ImGui.getFrameHeight();
         baseHeight += smallGap;
-        baseHeight += 18f;
+        // Active 行
+        baseHeight += textLine;
+        if ((sourceMode == SourceMode.PICKED && hasCompleteCoordinateConnections())
+                || (sourceMode == SourceMode.COORDINATES && hasPickedBlock)) {
+            baseHeight += textLine;
+        }
         baseHeight += smallGap;
-        baseHeight += 18f;
+
+        // 拾取按钮
+        baseHeight += buttonHeight;
 
         NodeEditorInteractionManager interactionManager = NodeEditorInteractionManager.getInstance();
         if (interactionManager.isPendingBlockPick(getId().toString())) {
             baseHeight += smallGap;
-            baseHeight += 30f;
+            baseHeight += textLine * 2;
         }
 
         if (inputValidationError != null && !inputValidationError.isEmpty()) {
             baseHeight += smallGap;
-            baseHeight += 18f;
+            baseHeight += textLine;
         }
         if (hasInputValidationWarning && inputValidationWarning != null && !inputValidationWarning.isEmpty()) {
             baseHeight += smallGap;
-            baseHeight += 18f;
+            baseHeight += textLine;
         }
 
-        if (hasPickedBlock || hasInputBlock || resolveActiveSource() != ActiveSource.NONE) {
+        ActiveBlock activeBlock = resolveActiveBlock();
+        if (resolveActiveSource() != ActiveSource.NONE && activeBlock != null) {
             baseHeight += smallGap;
-            baseHeight += buttonHeight;
+            baseHeight += headerHeight; // 「已选方块信息」折叠头
+            if (infoSectionExpanded) {
+                baseHeight += smallGap;
+                // 来源 / 名称 / ID / 位置
+                baseHeight += textLine * 4;
+                BlockStateData activeState = activeBlock.state();
+                if (activeState != null && !activeState.isEmpty()) {
+                    baseHeight += textLine; // 状态树节点行
+                    if (blockStateTreeExpanded) {
+                        baseHeight += textLine * activeState.size();
+                    }
+                }
+                if (checkHasBlockEntity(activeBlock.blockId(), activeBlock.position())) {
+                    baseHeight += textLine;
+                }
+                baseHeight += smallGap;
+                baseHeight += 1f; // separator
+                baseHeight += smallGap;
+                baseHeight += buttonHeight; // 区内清除按钮
+                baseHeight += smallGap;
+            }
+        }
+
+        // Advanced Settings
+        baseHeight += headerHeight;
+        if (settingsSectionExpanded) {
+            baseHeight += smallGap;
+            baseHeight += textLine * 2; // 状态说明（可能换行）
+            baseHeight += smallGap;
+            baseHeight += textLine; // 方块预览
+            baseHeight += textLine; // 包含流体
+            baseHeight += textLine; // 最大距离标签
+            baseHeight += 2f;
+            baseHeight += ImGui.getFrameHeight(); // 滑条
+            baseHeight += smallGap;
+        }
+
+        if (hasPickedBlock || hasInputBlock) {
+            baseHeight += smallGap;
+            baseHeight += buttonHeight; // 底部 Clear Selection
         }
 
         baseHeight += smallGap;
-
         return baseHeight;
     }
 
@@ -1264,13 +1313,14 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             ActiveSource activeSource = resolveActiveSource();
             ActiveBlock activeBlock = resolveActiveBlock();
             if (activeSource != ActiveSource.NONE && activeBlock != null) {
-                // 默认展开状态显示区
+                // 默认展开状态显示区；展开变化必须 syncExpandableUiState → markDirty，节点高度才会跟着变
                 String headerText = activeSource == ActiveSource.PICKED
                     ? "已选方块信息##info"
                     : "输入坐标方块##info";
-                boolean infoExpandedNow = ImGui.collapsingHeader(headerText);
-                infoSectionExpanded = infoExpandedNow;
-                if (infoExpandedNow) {
+                int infoHeaderFlags = infoSectionExpanded ? ImGuiTreeNodeFlags.DefaultOpen : 0;
+                boolean infoExpandedNow = ImGui.collapsingHeader(headerText, infoHeaderFlags);
+                infoSectionExpanded = syncExpandableUiState(infoSectionExpanded, infoExpandedNow);
+                if (infoSectionExpanded) {
                     ImGui.indent(); // 缩进内容
                     addVerticalSpacing(getSmallPadding(), zoom);
                     
@@ -1362,9 +1412,10 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             }
 
             // === 3. 高级设置区 ===
-            boolean settingsExpandedNow = ImGui.collapsingHeader("Advanced Settings##settings");
-            settingsSectionExpanded = settingsExpandedNow;
-            if (settingsExpandedNow) {
+            int settingsHeaderFlags = settingsSectionExpanded ? ImGuiTreeNodeFlags.DefaultOpen : 0;
+            boolean settingsExpandedNow = ImGui.collapsingHeader("Advanced Settings##settings", settingsHeaderFlags);
+            settingsSectionExpanded = syncExpandableUiState(settingsSectionExpanded, settingsExpandedNow);
+            if (settingsSectionExpanded) {
                 addVerticalSpacing(getSmallPadding(), zoom);
                 
                 // 输入端口 / Source Mode 状态说明
