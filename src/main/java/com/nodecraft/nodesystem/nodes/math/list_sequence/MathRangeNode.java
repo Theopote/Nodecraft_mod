@@ -19,8 +19,8 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "math.sequence.range",
-    displayName = "Range",
-    description = "Generates a numeric sequence from Start to End using Step.",
+    displayName = "Number Sequence",
+    description = "Generates a discrete numeric sequence from Start to End using Step. Not a continuous domain — use Domain Input for intervals.",
     category = "math.sequence",
     order = 1
 )

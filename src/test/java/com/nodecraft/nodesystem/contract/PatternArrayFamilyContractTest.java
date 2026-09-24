@@ -126,7 +126,7 @@ class PatternArrayFamilyContractTest {
 
         assertEquals(Boolean.TRUE, pathFrames.getOutput("output_valid"));
         @SuppressWarnings("unchecked")
-        List<PointData> origins = assertInstanceOf(List.class, pathFrames.getOutput("output_origins"));
+        List<PointData> origins = assertInstanceOf(List.class, pathFrames.getOutput("output_points"));
         assertFalse(origins.isEmpty());
         PointData first = origins.getFirst();
         assertEquals(1.8d, first.getPosition().x, 1.0e-9d);

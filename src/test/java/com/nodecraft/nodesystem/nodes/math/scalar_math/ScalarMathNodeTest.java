@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.math.scalar_math;
 
+import com.nodecraft.nodesystem.datatypes.NumericRangeData;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -41,8 +42,7 @@ class ScalarMathNodeTest {
 
         Map<String, Object> outputs = node.compute(Map.of(
             "input_value", Double.POSITIVE_INFINITY,
-            "input_min", 0.0d,
-            "input_max", 1.0d
+            "input_domain", new NumericRangeData(0.0d, 1.0d)
         ));
 
         assertFalse((Boolean) outputs.get("output_valid"));
@@ -67,10 +67,8 @@ class ScalarMathNodeTest {
 
         Map<String, Object> outputs = node.compute(Map.of(
             "input_value", 0.5d,
-            "input_in_min", 0.0d,
-            "input_in_max", 1.0d,
-            "input_out_min", 0.0d,
-            "input_out_max", 10.0d
+            "input_source", new NumericRangeData(0.0d, 1.0d),
+            "input_target", new NumericRangeData(0.0d, 10.0d)
         ));
 
         assertTrue((Boolean) outputs.get("output_valid"));
@@ -83,10 +81,8 @@ class ScalarMathNodeTest {
 
         Map<String, Object> outputs = node.compute(Map.of(
             "input_value", 0.5d,
-            "input_in_min", 1.0d,
-            "input_in_max", 1.0d,
-            "input_out_min", 0.0d,
-            "input_out_max", 10.0d
+            "input_source", new NumericRangeData(1.0d, 1.0d),
+            "input_target", new NumericRangeData(0.0d, 10.0d)
         ));
 
         assertFalse((Boolean) outputs.get("output_valid"));

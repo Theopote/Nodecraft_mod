@@ -75,6 +75,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V8 -> migrateV8ToV9(graph);
             case GraphFormatVersion.V9 -> migrateV9ToV10(graph);
             case GraphFormatVersion.V10 -> migrateV10ToV11(graph);
+            case GraphFormatVersion.V11 -> migrateV11ToV12(graph);
             default -> graph;
         };
     }
@@ -554,6 +555,165 @@ public final class GraphMigrationRegistry {
             }
         }
         return graph;
+    }
+
+    private static final String DOMAIN_INPUT_TYPE = "input.numeric.range";
+    private static final String REMAP_TYPE = "math.scalar_math.remap";
+    private static final String CLAMP_TYPE = "math.scalar_math.clamp";
+    private static final String GRAPH_MAPPER_TYPE = "math.scalar_math.graph_mapper";
+    private static final String RANDOM_NUMBER_TYPE = "math.random.random_number";
+    private static final String RANDOM_NUMBERS_TYPE = "math.random.random_numbers";
+    private static final String CIRCULAR_ANGLE_TYPE = "input.numeric.angle_picker";
+    private static final String FRAME_ALONG_PATH_TYPE = "geometry.curves.frame_along_path";
+    private static final String PATH_INSTANCES_TYPE = "pattern.linear.path_instances";
+    private static final String ARC_TYPE = "geometry.curves.arc";
+    private static final String BEZIER_TYPE = "geometry.curves.bezier";
+
+    /**
+     * Batch 14 numeric domain + path sampling language.
+     */
+    private static SavedGraph migrateV11ToV12(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                if (FRAME_ALONG_PATH_TYPE.equalsIgnoreCase(node.typeId)) {
+                    LOGGER.debug("Migrated node type: {} -> {}", node.typeId, PATH_INSTANCES_TYPE);
+                    node.typeId = PATH_INSTANCES_TYPE;
+                }
+                migrateDomainInputNodeState(node);
+            }
+        }
+
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            String targetPort = connection.targetPortId == null ? "" : connection.targetPortId.toLowerCase(Locale.ROOT);
+
+            if (CIRCULAR_ANGLE_TYPE.equals(sourceType) && "output_radians".equals(sourcePort)) {
+                LOGGER.debug("Dropped Circular Angle radians output connection from {}", connection.sourceNodeId);
+                return true;
+            }
+            if (PATH_INSTANCES_TYPE.equals(targetType) && "input_path_points".equals(targetPort)) {
+                LOGGER.debug("Dropped Path Frames legacy input_path_points on {}", connection.targetNodeId);
+                return true;
+            }
+            if (REMAP_TYPE.equals(targetType) && (targetPort.startsWith("input_in_") || targetPort.startsWith("input_out_"))) {
+                LOGGER.debug("Dropped Remap legacy range port {} on {}", connection.targetPortId, connection.targetNodeId);
+                return true;
+            }
+            if (CLAMP_TYPE.equals(targetType) && ("input_min".equals(targetPort) || "input_max".equals(targetPort))) {
+                LOGGER.debug("Dropped Clamp legacy min/max port {} on {}", connection.targetPortId, connection.targetNodeId);
+                return true;
+            }
+            if (GRAPH_MAPPER_TYPE.equals(targetType) && (targetPort.startsWith("input_in_") || targetPort.startsWith("input_out_"))) {
+                LOGGER.debug("Dropped Graph Mapper legacy range port {} on {}", connection.targetPortId, connection.targetNodeId);
+                return true;
+            }
+            if (RANDOM_NUMBER_TYPE.equals(targetType) && "input_count".equals(targetPort)) {
+                LOGGER.debug("Dropped Random Number legacy count port on {} (use Random Numbers)", connection.targetNodeId);
+                return true;
+            }
+            return false;
+        });
+
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            if (DOMAIN_INPUT_TYPE.equals(sourceType)) {
+                connection.sourcePortId = migrateDomainOutputPort(connection.sourcePortId);
+            }
+            if (REMAP_TYPE.equals(targetType)) {
+                connection.targetPortId = migrateRemapInputPort(connection.targetPortId);
+            }
+            if (GRAPH_MAPPER_TYPE.equals(targetType)) {
+                connection.targetPortId = migrateGraphMapperInputPort(connection.targetPortId);
+            }
+            if (CLAMP_TYPE.equals(targetType) && "input_min".equalsIgnoreCase(connection.targetPortId)) {
+                connection.targetPortId = "input_domain";
+            }
+            if (RANDOM_NUMBER_TYPE.equals(targetType)) {
+                if ("input_min".equalsIgnoreCase(connection.targetPortId) || "input_max".equalsIgnoreCase(connection.targetPortId)) {
+                    connection.targetPortId = "input_domain";
+                }
+            }
+            if (ARC_TYPE.equals(targetType) && "input_resolution".equalsIgnoreCase(connection.targetPortId)) {
+                connection.targetPortId = "input_samples";
+            }
+            if (BEZIER_TYPE.equals(targetType) && "input_resolution".equalsIgnoreCase(connection.targetPortId)) {
+                connection.targetPortId = "input_samples";
+            }
+            if (PATH_INSTANCES_TYPE.equals(targetType) && "output_origins".equalsIgnoreCase(connection.sourcePortId)) {
+                connection.sourcePortId = "output_points";
+            }
+        }
+        return graph;
+    }
+
+    private static void migrateDomainInputNodeState(SavedNode node) {
+        if (!DOMAIN_INPUT_TYPE.equalsIgnoreCase(node.typeId) || !(node.state instanceof Map<?, ?> state)) {
+            return;
+        }
+        Map<String, Object> migrated = new HashMap<>();
+        for (Map.Entry<?, ?> entry : state.entrySet()) {
+            if (!(entry.getKey() instanceof String key)) {
+                continue;
+            }
+            if ("min".equals(key) && entry.getValue() != null) {
+                migrated.put("start", entry.getValue());
+            } else if ("max".equals(key) && entry.getValue() != null) {
+                migrated.put("end", entry.getValue());
+            } else {
+                migrated.put(key, entry.getValue());
+            }
+        }
+        node.state = migrated;
+    }
+
+    private static String migrateDomainOutputPort(@Nullable String portId) {
+        if (portId == null) {
+            return null;
+        }
+        return switch (portId.toLowerCase(Locale.ROOT)) {
+            case "output_range" -> "output_domain";
+            case "output_min" -> "output_start";
+            case "output_max" -> "output_end";
+            default -> portId;
+        };
+    }
+
+    private static String migrateRemapInputPort(@Nullable String portId) {
+        if (portId == null) {
+            return null;
+        }
+        return switch (portId.toLowerCase(Locale.ROOT)) {
+            case "input_in_min", "input_in_max" -> "input_source";
+            case "input_out_min", "input_out_max" -> "input_target";
+            default -> portId;
+        };
+    }
+
+    private static String migrateGraphMapperInputPort(@Nullable String portId) {
+        return migrateRemapInputPort(portId);
     }
 
     private static void applyNodeTypeMigration(SavedGraph graph, GraphMigrationManifest manifest) {

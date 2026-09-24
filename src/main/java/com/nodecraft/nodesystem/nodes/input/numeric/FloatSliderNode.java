@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import imgui.ImGui;
+import imgui.type.ImDouble;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -19,7 +20,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "input.numeric.float_slider",
     displayName = "Float Slider",
-    description = "输出一个可通过滑动条调节的浮点数。",
+    description = "有界参数探索：精确 double 输入 + 滑动条快速调节。Min/Max 必须设置。",
     category = "input.numeric",
     order = 3
 )
@@ -60,7 +61,7 @@ public class FloatSliderNode extends BaseCustomUINode {
 
     @Override
     public String getDescription() {
-        return "输出一个可通过滑动条调节的浮点数。";
+        return "有界参数探索：精确 double 输入 + 滑动条快速调节。";
     }
 
     @Override
@@ -96,9 +97,9 @@ public class FloatSliderNode extends BaseCustomUINode {
             if (showValueInput) {
                 ImGui.setCursorPosX(baseCursorX + edgeMargin);
                 l.setItemWidth(Math.max(availableWidth / Math.max(zoom, 0.001f), 1.0f));
-                float[] inputValue = {(float) currentValue};
-                if (ImGui.dragFloat("##float_value", inputValue, getDragSpeed(), (float) minValue, (float) maxValue, formatString)) {
-                    setCurrentValue(inputValue[0]);
+                ImDouble inputValue = new ImDouble(currentValue);
+                if (ImGui.inputDouble("##float_value", inputValue, 0.0, 0.0, formatString)) {
+                    setCurrentValue(inputValue.get());
                     changed = true;
                 }
                 l.popItemWidth();

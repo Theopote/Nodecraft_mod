@@ -35,8 +35,6 @@ public class XYSliderNode extends BaseCustomUINode {
     private static final String OUTPUT_VECTOR_ID = "output_vector";
     private static final String OUTPUT_X_ID = "output_x";
     private static final String OUTPUT_Y_ID = "output_y";
-    private static final String OUTPUT_NORMALIZED_X_ID = "output_normalized_x";
-    private static final String OUTPUT_NORMALIZED_Y_ID = "output_normalized_y";
     private static final String OUTPUT_UV_ID = "output_uv";
 
     @NodeProperty(displayName = "X", category = "Value", order = 1)
@@ -76,8 +74,6 @@ public class XYSliderNode extends BaseCustomUINode {
         addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "2D value as Vector3d(x,y,0)", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_X_ID, "X", "Current X value", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Current Y value", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_NORMALIZED_X_ID, "Normalized X", "X normalized to 0..1", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_NORMALIZED_Y_ID, "Normalized Y", "Y normalized to 0..1", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_UV_ID, "UV", "Normalized UV pair [x, y]", NodeDataType.LIST, this));
         normalizeRanges();
         updateOutput();
@@ -281,8 +277,6 @@ public class XYSliderNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_VECTOR_ID, new Vector3d(x, y, 0.0d));
         outputValues.put(OUTPUT_X_ID, x);
         outputValues.put(OUTPUT_Y_ID, y);
-        outputValues.put(OUTPUT_NORMALIZED_X_ID, nx);
-        outputValues.put(OUTPUT_NORMALIZED_Y_ID, ny);
         outputValues.put(OUTPUT_UV_ID, List.of(nx, ny));
         syncOutputPorts();
     }

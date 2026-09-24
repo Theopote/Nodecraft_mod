@@ -20,23 +20,23 @@ import java.util.function.DoubleConsumer;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "input.numeric.range",
-    displayName = "Range Input",
-    description = "Defines a numeric interval and outputs min/max/span plus a range object.",
+    displayName = "Domain Input",
+    description = "Defines a directed numeric domain (Start→End) and outputs domain, start, end, and directed span.",
     category = "input.numeric",
     order = 9
 )
 public class RangeInputNode extends BaseCustomUINode {
 
-    private static final String OUTPUT_RANGE_ID = "output_range";
-    private static final String OUTPUT_MIN_ID = "output_min";
-    private static final String OUTPUT_MAX_ID = "output_max";
+    private static final String OUTPUT_DOMAIN_ID = "output_domain";
+    private static final String OUTPUT_START_ID = "output_start";
+    private static final String OUTPUT_END_ID = "output_end";
     private static final String OUTPUT_SPAN_ID = "output_span";
 
-    @NodeProperty(displayName = "Min", category = "Value", order = 1)
-    private double min = 0.0d;
+    @NodeProperty(displayName = "Start", category = "Value", order = 1)
+    private double start = 0.0d;
 
-    @NodeProperty(displayName = "Max", category = "Value", order = 2)
-    private double max = 1.0d;
+    @NodeProperty(displayName = "End", category = "Value", order = 2)
+    private double end = 1.0d;
 
     @NodeProperty(displayName = "Precision", category = "UI", order = 10,
         description = "Decimal places shown in the node panel inputs")
@@ -44,16 +44,16 @@ public class RangeInputNode extends BaseCustomUINode {
 
     public RangeInputNode() {
         super(UUID.randomUUID(), "input.numeric.range");
-        addOutputPort(new BasePort(OUTPUT_RANGE_ID, "Range", "Numeric range object", NodeDataType.NUMERIC_RANGE, this));
-        addOutputPort(new BasePort(OUTPUT_MIN_ID, "Min", "Lower bound", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_MAX_ID, "Max", "Upper bound", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_SPAN_ID, "Span", "Range span (max - min)", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_DOMAIN_ID, "Domain", "Directed numeric domain (Start→End)", NodeDataType.NUMERIC_RANGE, this));
+        addOutputPort(new BasePort(OUTPUT_START_ID, "Start", "Domain start value", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_END_ID, "End", "Domain end value", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_SPAN_ID, "Span", "Directed span (End - Start)", NodeDataType.DOUBLE, this));
         updateOutput();
     }
 
     @Override
     public String getDescription() {
-        return "Defines a numeric interval and outputs min/max/span plus a range object.";
+        return "Defines a directed numeric domain (Start→End). Use with Remap, Clamp, and Random nodes.";
     }
 
     @Override
@@ -85,9 +85,9 @@ public class RangeInputNode extends BaseCustomUINode {
 
             l.addVerticalSpacing(getMediumPadding());
 
-            changed |= renderBoundInput("Min", availableWidth, l, min, this::setMin, baseCursorX, edgeMargin);
+            changed |= renderBoundInput("Start", availableWidth, l, start, this::setStart, baseCursorX, edgeMargin);
             l.addVerticalSpacing(getSmallPadding());
-            changed |= renderBoundInput("Max", availableWidth, l, max, this::setMax, baseCursorX, edgeMargin);
+            changed |= renderBoundInput("End", availableWidth, l, end, this::setEnd, baseCursorX, edgeMargin);
 
             l.addVerticalSpacing(getSmallPadding());
             return changed;
@@ -118,38 +118,60 @@ public class RangeInputNode extends BaseCustomUINode {
     }
 
     private void updateOutput() {
-        double resolvedMin = Math.min(min, max);
-        double resolvedMax = Math.max(min, max);
-        NumericRangeData range = new NumericRangeData(resolvedMin, resolvedMax);
-        outputValues.put(OUTPUT_RANGE_ID, range);
-        outputValues.put(OUTPUT_MIN_ID, range.min());
-        outputValues.put(OUTPUT_MAX_ID, range.max());
-        outputValues.put(OUTPUT_SPAN_ID, range.span());
+        NumericRangeData domain = new NumericRangeData(start, end);
+        outputValues.put(OUTPUT_DOMAIN_ID, domain);
+        outputValues.put(OUTPUT_START_ID, domain.start());
+        outputValues.put(OUTPUT_END_ID, domain.end());
+        outputValues.put(OUTPUT_SPAN_ID, domain.span());
         syncOutputPorts();
     }
 
+    public double getStart() {
+        return start;
+    }
+
+    public void setStart(double start) {
+        if (Double.compare(this.start, start) != 0) {
+            this.start = start;
+            updateOutput();
+            markDirty();
+        }
+    }
+
+    /** @deprecated Use {@link #getStart()}. */
+    @Deprecated
     public double getMin() {
-        return min;
+        return start;
     }
 
+    /** @deprecated Use {@link #setStart(double)}. */
+    @Deprecated
     public void setMin(double min) {
-        if (Double.compare(this.min, min) != 0) {
-            this.min = min;
+        setStart(min);
+    }
+
+    public double getEnd() {
+        return end;
+    }
+
+    public void setEnd(double end) {
+        if (Double.compare(this.end, end) != 0) {
+            this.end = end;
             updateOutput();
             markDirty();
         }
     }
 
+    /** @deprecated Use {@link #getEnd()}. */
+    @Deprecated
     public double getMax() {
-        return max;
+        return end;
     }
 
+    /** @deprecated Use {@link #setEnd(double)}. */
+    @Deprecated
     public void setMax(double max) {
-        if (Double.compare(this.max, max) != 0) {
-            this.max = max;
-            updateOutput();
-            markDirty();
-        }
+        setEnd(max);
     }
 
     public int getPrecision() {
@@ -168,8 +190,8 @@ public class RangeInputNode extends BaseCustomUINode {
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
-        state.put("min", min);
-        state.put("max", max);
+        state.put("start", start);
+        state.put("end", end);
         state.put("precision", precision);
         return state;
     }
@@ -179,11 +201,15 @@ public class RangeInputNode extends BaseCustomUINode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("min") instanceof Number n) {
-            min = n.doubleValue();
+        if (map.get("start") instanceof Number n) {
+            start = n.doubleValue();
+        } else if (map.get("min") instanceof Number n) {
+            start = n.doubleValue();
         }
-        if (map.get("max") instanceof Number n) {
-            max = n.doubleValue();
+        if (map.get("end") instanceof Number n) {
+            end = n.doubleValue();
+        } else if (map.get("max") instanceof Number n) {
+            end = n.doubleValue();
         }
         if (map.get("precision") instanceof Number precisionValue) {
             precision = Math.max(0, Math.min(6, precisionValue.intValue()));

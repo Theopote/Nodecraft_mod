@@ -3,43 +3,48 @@ package com.nodecraft.nodesystem.nodes.geometry.curves;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
-import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.PathSamplingUtils;
+import com.nodecraft.nodesystem.util.SamplingMode;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Resamples a polyline at uniform arc-length spacing or into a fixed number of evenly spaced samples.
- */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.curves.resample_polyline_length",
-    displayName = "Resample Polyline By Length",
-    description = "Resamples a polyline along its arc length using spacing, or using a total point count (count wins when both are provided)",
+    displayName = "Resample Path",
+    description = "Resamples a path along arc length using explicit sampling mode (Original, Count, or Spacing).",
     category = "geometry.curves",
     order = 12
 )
 public class ResamplePolylineByLengthNode extends AbstractCurveNode {
 
-    private static final double EPS = 1.0e-9d;
+    @NodeProperty(displayName = "Sampling Mode", category = "Sampling", order = 1)
+    private SamplingMode samplingMode = SamplingMode.COUNT;
+
+    @NodeProperty(displayName = "Default Count", category = "Sampling", order = 2)
+    private int defaultCount = 10;
+
+    @NodeProperty(displayName = "Default Spacing", category = "Sampling", order = 3)
+    private double defaultSpacing = 1.0d;
 
     private static final String INPUT_PATH_ID = "input_path";
-    private static final String INPUT_SPACING_ID = "input_spacing";
+    private static final String INPUT_MODE_ID = "input_mode";
     private static final String INPUT_COUNT_ID = "input_count";
+    private static final String INPUT_SPACING_ID = "input_spacing";
 
     private static final String OUTPUT_POLYLINE_ID = "output_polyline";
     private static final String OUTPUT_POINTS_ID = "output_points";
+    private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_LENGTH_ID = "output_length";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
@@ -49,19 +54,24 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
             "Path to resample (line, polyline, or curve)",
             NodeDataType.PATH, this));
+        addInputPort(new BasePort(INPUT_MODE_ID, "Mode",
+            "Sampling mode: Original, Count, or Spacing", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing",
-            "Target distance between samples along the path (must be > 0 when used)",
+            "Target distance between samples when Mode=Spacing",
             NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count",
-            "Target number of samples along the path (>= 2). When set, overrides spacing",
+            "Target sample count when Mode=Count (>= 2)",
             NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline",
-            "Resampled polyline (closed when the input polyline is closed)",
+            "Resampled polyline (closed when the input path is closed)",
             NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points",
             "Resampled points as point list",
             NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
+            "Number of resampled points",
+            NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length",
             "Total path length used for sampling",
             NodeDataType.DOUBLE, this));
@@ -72,75 +82,24 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> verts = resolveVertices();
+        List<Vector3d> verts = resolvePathVertices(INPUT_PATH_ID);
         if (verts == null || verts.size() < 2) {
             writeInvalid();
             return;
         }
 
-        boolean closed = PathUtils.isClosed(verts);
-        List<Vector3d> unique = closed ? verts.subList(0, verts.size() - 1) : verts;
-        if (unique.size() < 2) {
+        SamplingMode mode = SamplingMode.fromObject(inputValues.get(INPUT_MODE_ID), samplingMode);
+        int count = inputValues.get(INPUT_COUNT_ID) instanceof Number n ? n.intValue() : defaultCount;
+        double spacing = inputValues.get(INPUT_SPACING_ID) instanceof Number n ? n.doubleValue() : defaultSpacing;
+
+        PathSamplingUtils.PathSampleResult sample = PathSamplingUtils.sample(verts, mode, count, spacing);
+        if (!sample.valid() || sample.points().isEmpty()) {
             writeInvalid();
             return;
         }
 
-        double[] cumulative = PathUtils.buildCumulative(unique, closed);
-        if (cumulative == null) {
-            writeInvalid();
-            return;
-        }
-        double total = cumulative[cumulative.length - 1];
-        if (total <= EPS) {
-            writeInvalid();
-            return;
-        }
-
-        Object spacingObj = inputValues.get(INPUT_SPACING_ID);
-        Object countObj = inputValues.get(INPUT_COUNT_ID);
-
-        int count = countObj instanceof Number n ? n.intValue() : -1;
-        if (count >= 2) {
-            count = GenerationLimits.clampPositiveCount(count);
-        }
-        double spacing = spacingObj instanceof Number s ? s.doubleValue() : 0.0d;
-
-        List<Double> sampleDistances;
-        if (count >= 2) {
-            sampleDistances = new ArrayList<>(count);
-            for (int i = 0; i < count; i++) {
-                sampleDistances.add(total * i / (double) (count - 1));
-            }
-        } else if (spacing > EPS) {
-            sampleDistances = new ArrayList<>();
-            int maxInstances = GenerationLimits.clampSpacingInstanceCount(total, spacing);
-            int emitted = 0;
-            for (double d = 0.0d; d <= total + EPS && emitted < maxInstances; d += spacing) {
-                sampleDistances.add(Math.min(d, total));
-                emitted++;
-            }
-            if (emitted < maxInstances
-                && (sampleDistances.isEmpty() || sampleDistances.getLast() < total - EPS)) {
-                sampleDistances.add(total);
-            }
-        } else {
-            writeInvalid();
-            return;
-        }
-
-        List<Vector3d> samples = new ArrayList<>(sampleDistances.size());
-        for (double d : sampleDistances) {
-            samples.add(PathUtils.sampleAtDistance(unique, closed, cumulative, d));
-        }
-
-        if (closed && samples.size() >= 2) {
-            while (samples.size() >= 2
-                && samples.getFirst().distance(samples.getLast()) < 1.0e-6d) {
-                samples.removeLast();
-            }
-        }
-
-        List<Vec3d> polyPts = PathUtils.toVec3dList(samples, closed);
+        List<Vector3d> samples = sample.points();
+        List<Vec3d> polyPts = PathUtils.toVec3dList(samples, sample.closed());
         PolylineData polyline = PathUtils.createPolylineOrNull(polyPts);
         if (polyline == null) {
             writeInvalid();
@@ -149,18 +108,16 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
 
         outputValues.put(OUTPUT_POLYLINE_ID, polyline);
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(samples));
-        outputValues.put(OUTPUT_LENGTH_ID, total);
+        outputValues.put(OUTPUT_COUNT_ID, samples.size());
+        outputValues.put(OUTPUT_LENGTH_ID, sample.totalLength());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private void writeInvalid() {
         outputValues.put(OUTPUT_POLYLINE_ID, null);
         outputValues.put(OUTPUT_POINTS_ID, List.of());
+        outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_LENGTH_ID, 0.0d);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private List<Vector3d> resolveVertices() {
-        return resolvePathVertices(INPUT_PATH_ID);
     }
 }

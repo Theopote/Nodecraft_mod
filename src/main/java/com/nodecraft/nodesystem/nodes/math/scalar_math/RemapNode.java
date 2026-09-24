@@ -5,7 +5,9 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.NumericRangeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.NumericDomainResolver;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -16,42 +18,38 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.scalar_math.remap",
     displayName = "Remap",
-    description = "Maps a value from an input range to an output range.",
+    description = "Maps a value from a source domain to a target domain.",
     category = "math.scalar_math",
     order = 11
 )
 public class RemapNode extends BaseNode {
 
     private static final String INPUT_VALUE_ID = "input_value";
-    private static final String INPUT_IN_MIN_ID = "input_in_min";
-    private static final String INPUT_IN_MAX_ID = "input_in_max";
-    private static final String INPUT_OUT_MIN_ID = "input_out_min";
-    private static final String INPUT_OUT_MAX_ID = "input_out_max";
+    private static final String INPUT_SOURCE_ID = "input_source";
+    private static final String INPUT_TARGET_ID = "input_target";
     private static final String INPUT_CLAMP_ID = "input_clamp";
     private static final String OUTPUT_RESULT_ID = "output_result";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
-    private double defaultInMin = 0.0;
-    private double defaultInMax = 1.0;
-    private double defaultOutMin = 0.0;
-    private double defaultOutMax = 1.0;
+    private double defaultSourceStart = 0.0;
+    private double defaultSourceEnd = 1.0;
+    private double defaultTargetStart = 0.0;
+    private double defaultTargetEnd = 1.0;
     private boolean defaultClamp = true;
 
     public RemapNode() {
         super(UUID.randomUUID(), "math.scalar_math.remap");
         addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Value to remap", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_IN_MIN_ID, "In Min", "Input range minimum", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_IN_MAX_ID, "In Max", "Input range maximum", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_OUT_MIN_ID, "Out Min", "Output range minimum", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_OUT_MAX_ID, "Out Max", "Output range maximum", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_CLAMP_ID, "Clamp", "Clamp result to output range", NodeDataType.BOOLEAN, this));
+        addInputPort(new BasePort(INPUT_SOURCE_ID, "Source", "Source domain (Start→End)", NodeDataType.NUMERIC_RANGE, this));
+        addInputPort(new BasePort(INPUT_TARGET_ID, "Target", "Target domain (Start→End)", NodeDataType.NUMERIC_RANGE, this));
+        addInputPort(new BasePort(INPUT_CLAMP_ID, "Clamp", "Clamp result to target bounds", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_RESULT_ID, "Result", "The remapped value", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether inputs are finite and the input range is distinct", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether inputs are finite and source domain is non-degenerate", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Maps a value from an input range to an output range.";
+        return "Maps a value from a source domain to a target domain. Supports reversed domains (e.g. 0→1 to 100→0).";
     }
 
     @Override
@@ -62,10 +60,6 @@ public class RemapNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object valueObj = inputValues.get(INPUT_VALUE_ID);
-        Object inMinObj = inputValues.get(INPUT_IN_MIN_ID);
-        Object inMaxObj = inputValues.get(INPUT_IN_MAX_ID);
-        Object outMinObj = inputValues.get(INPUT_OUT_MIN_ID);
-        Object outMaxObj = inputValues.get(INPUT_OUT_MAX_ID);
         Object clampObj = inputValues.get(INPUT_CLAMP_ID);
 
         if (!(valueObj instanceof Number valueNumber)) {
@@ -81,71 +75,117 @@ public class RemapNode extends BaseNode {
             return;
         }
 
-        double inMin = inMinObj instanceof Number number ? number.doubleValue() : defaultInMin;
-        double inMax = inMaxObj instanceof Number ? ((Number) inMaxObj).doubleValue() : defaultInMax;
-        double outMin = outMinObj instanceof Number ? ((Number) outMinObj).doubleValue() : defaultOutMin;
-        double outMax = outMaxObj instanceof Number ? ((Number) outMaxObj).doubleValue() : defaultOutMax;
+        NumericRangeData source = NumericDomainResolver.resolveDomain(
+            inputValues.get(INPUT_SOURCE_ID), defaultSourceStart, defaultSourceEnd);
+        NumericRangeData target = NumericDomainResolver.resolveDomain(
+            inputValues.get(INPUT_TARGET_ID), defaultTargetStart, defaultTargetEnd);
         boolean clamp = clampObj instanceof Boolean ? (Boolean) clampObj : defaultClamp;
 
-        if (!Double.isFinite(inMin) || !Double.isFinite(inMax)
-            || !Double.isFinite(outMin) || !Double.isFinite(outMax)) {
+        if (!Double.isFinite(source.start()) || !Double.isFinite(source.end())
+            || !Double.isFinite(target.start()) || !Double.isFinite(target.end())) {
             outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
-        if (Math.abs(inMax - inMin) <= 1.0e-12d) {
+        if (Math.abs(source.delta()) <= 1.0e-12d) {
             outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
 
-        double normalizedValue = (value - inMin) / (inMax - inMin);
-        double result = outMin + normalizedValue * (outMax - outMin);
+        double t = source.normalizedParameter(value);
+        double result = target.lerp(t);
 
         if (clamp) {
-            double minOut = Math.min(outMin, outMax);
-            double maxOut = Math.max(outMin, outMax);
-            result = Math.max(minOut, Math.min(maxOut, result));
+            result = Math.max(target.lower(), Math.min(target.upper(), result));
         }
 
         outputValues.put(OUTPUT_RESULT_ID, result);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
+    public double getDefaultSourceStart() {
+        return defaultSourceStart;
+    }
+
+    public void setDefaultSourceStart(double value) {
+        this.defaultSourceStart = value;
+        markDirty();
+    }
+
+    public double getDefaultSourceEnd() {
+        return defaultSourceEnd;
+    }
+
+    public void setDefaultSourceEnd(double value) {
+        this.defaultSourceEnd = value;
+        markDirty();
+    }
+
+    public double getDefaultTargetStart() {
+        return defaultTargetStart;
+    }
+
+    public void setDefaultTargetStart(double value) {
+        this.defaultTargetStart = value;
+        markDirty();
+    }
+
+    public double getDefaultTargetEnd() {
+        return defaultTargetEnd;
+    }
+
+    public void setDefaultTargetEnd(double value) {
+        this.defaultTargetEnd = value;
+        markDirty();
+    }
+
+    /** @deprecated Use {@link #getDefaultSourceStart()}. */
+    @Deprecated
     public double getDefaultInMin() {
-        return defaultInMin;
+        return defaultSourceStart;
     }
 
+    /** @deprecated Use {@link #setDefaultSourceStart(double)}. */
+    @Deprecated
     public void setDefaultInMin(double value) {
-        this.defaultInMin = value;
-        markDirty();
+        setDefaultSourceStart(value);
     }
 
+    /** @deprecated Use {@link #getDefaultSourceEnd()}. */
+    @Deprecated
     public double getDefaultInMax() {
-        return defaultInMax;
+        return defaultSourceEnd;
     }
 
+    /** @deprecated Use {@link #setDefaultSourceEnd(double)}. */
+    @Deprecated
     public void setDefaultInMax(double value) {
-        this.defaultInMax = value;
-        markDirty();
+        setDefaultSourceEnd(value);
     }
 
+    /** @deprecated Use {@link #getDefaultTargetStart()}. */
+    @Deprecated
     public double getDefaultOutMin() {
-        return defaultOutMin;
+        return defaultTargetStart;
     }
 
+    /** @deprecated Use {@link #setDefaultTargetStart(double)}. */
+    @Deprecated
     public void setDefaultOutMin(double value) {
-        this.defaultOutMin = value;
-        markDirty();
+        setDefaultTargetStart(value);
     }
 
+    /** @deprecated Use {@link #getDefaultTargetEnd()}. */
+    @Deprecated
     public double getDefaultOutMax() {
-        return defaultOutMax;
+        return defaultTargetEnd;
     }
 
+    /** @deprecated Use {@link #setDefaultTargetEnd(double)}. */
+    @Deprecated
     public void setDefaultOutMax(double value) {
-        this.defaultOutMax = value;
-        markDirty();
+        setDefaultTargetEnd(value);
     }
 
     public boolean getDefaultClamp() {
@@ -160,10 +200,10 @@ public class RemapNode extends BaseNode {
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
-        state.put("defaultInMin", getDefaultInMin());
-        state.put("defaultInMax", getDefaultInMax());
-        state.put("defaultOutMin", getDefaultOutMin());
-        state.put("defaultOutMax", getDefaultOutMax());
+        state.put("defaultSourceStart", getDefaultSourceStart());
+        state.put("defaultSourceEnd", getDefaultSourceEnd());
+        state.put("defaultTargetStart", getDefaultTargetStart());
+        state.put("defaultTargetEnd", getDefaultTargetEnd());
         state.put("defaultClamp", getDefaultClamp());
         return state;
     }
@@ -171,21 +211,29 @@ public class RemapNode extends BaseNode {
     @Override
     public void setNodeState(Object state) {
         if (state instanceof Map<?, ?> stateMap) {
-            Object obj = stateMap.get("defaultInMin");
+            Object obj = stateMap.get("defaultSourceStart");
             if (obj instanceof Number) {
-                setDefaultInMin(((Number) obj).doubleValue());
+                setDefaultSourceStart(((Number) obj).doubleValue());
+            } else if (stateMap.get("defaultInMin") instanceof Number n) {
+                setDefaultSourceStart(n.doubleValue());
             }
-            obj = stateMap.get("defaultInMax");
+            obj = stateMap.get("defaultSourceEnd");
             if (obj instanceof Number) {
-                setDefaultInMax(((Number) obj).doubleValue());
+                setDefaultSourceEnd(((Number) obj).doubleValue());
+            } else if (stateMap.get("defaultInMax") instanceof Number n) {
+                setDefaultSourceEnd(n.doubleValue());
             }
-            obj = stateMap.get("defaultOutMin");
+            obj = stateMap.get("defaultTargetStart");
             if (obj instanceof Number) {
-                setDefaultOutMin(((Number) obj).doubleValue());
+                setDefaultTargetStart(((Number) obj).doubleValue());
+            } else if (stateMap.get("defaultOutMin") instanceof Number n) {
+                setDefaultTargetStart(n.doubleValue());
             }
-            obj = stateMap.get("defaultOutMax");
+            obj = stateMap.get("defaultTargetEnd");
             if (obj instanceof Number) {
-                setDefaultOutMax(((Number) obj).doubleValue());
+                setDefaultTargetEnd(((Number) obj).doubleValue());
+            } else if (stateMap.get("defaultOutMax") instanceof Number n) {
+                setDefaultTargetEnd(n.doubleValue());
             }
             obj = stateMap.get("defaultClamp");
             if (obj instanceof Boolean) {

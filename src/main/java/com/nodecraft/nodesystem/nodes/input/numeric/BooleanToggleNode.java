@@ -43,10 +43,6 @@ public class BooleanToggleNode extends BaseCustomUINode {
         description = "值为 false 时显示的标签文本")
     private String falseLabel = "OFF";
 
-    @NodeProperty(displayName = "显示状态文本", category = "UI设置", order = 10,
-        description = "是否在开关下方显示启用状态文本")
-    private boolean showStateText = true;
-
     public BooleanToggleNode() {
         super(UUID.randomUUID(), "input.basic.boolean_toggle");
         IPort valueOutput = new BasePort(OUTPUT_VALUE_ID, "Value", "当前布尔值", NodeDataType.BOOLEAN, this);
@@ -149,16 +145,6 @@ public class BooleanToggleNode extends BaseCustomUINode {
             ImGui.text(currentLabel);
             ImGui.popStyleColor();
 
-            if (false) {
-                l.addVerticalSpacing(getSmallPadding());
-                String stateText = value ? "● 已启用" : "● 已禁用";
-                float stateWidth = ImGui.calcTextSize(stateText).x;
-                setCenterX(availableWidth, stateWidth);
-                ImGui.pushStyleColor(ImGuiCol.Text, 0.55f, 0.55f, 0.55f, 1.0f);
-                ImGui.text(stateText);
-                ImGui.popStyleColor();
-            }
-
             l.addVerticalSpacing(getSmallPadding());
             return interacted || changed;
         });
@@ -211,25 +197,12 @@ public class BooleanToggleNode extends BaseCustomUINode {
         }
     }
 
-    public boolean isShowStateText() {
-        return showStateText;
-    }
-
-    public void setShowStateText(boolean showStateText) {
-        if (this.showStateText != showStateText) {
-            this.showStateText = showStateText;
-            invalidateCache();
-            markDirty();
-        }
-    }
-
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
         state.put("value", getValue());
         state.put("trueLabel", getTrueLabel());
         state.put("falseLabel", getFalseLabel());
-        state.put("showStateText", isShowStateText());
         return state;
     }
 
@@ -241,9 +214,6 @@ public class BooleanToggleNode extends BaseCustomUINode {
             }
             if (stateMap.get("falseLabel") instanceof String label) {
                 setFalseLabel(label);
-            }
-            if (stateMap.get("showStateText") instanceof Boolean showState) {
-                setShowStateText(showState);
             }
             if (stateMap.containsKey("value")) {
                 Object valueObj = stateMap.get("value");

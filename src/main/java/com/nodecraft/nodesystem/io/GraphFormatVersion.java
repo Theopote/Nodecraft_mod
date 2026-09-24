@@ -78,8 +78,14 @@ public final class GraphFormatVersion {
      */
     public static final int V11 = 11;
 
+    /**
+     * Numeric domain language: directed Domain Input, Remap Source/Target, Random Number split,
+     * Path Frames sampling mode, Curve Frame Along Path merged into Path Frames.
+     */
+    public static final int V12 = 12;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V11;
+    public static final int CURRENT = V12;
 
     private GraphFormatVersion() {
     }

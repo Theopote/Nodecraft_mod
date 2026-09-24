@@ -52,8 +52,8 @@ class PlacementFamilyContractTest {
 
     @Test
     void pathAndArrayEmitTypedFrames() {
-        assertPortType("geometry.curves.frame_along_path", "output_frames", false, NodeDataType.FRAME_LIST);
-        assertPortType("geometry.curves.frame_along_path", "output_planes", false, NodeDataType.PLANE_LIST);
+        assertPortType("pattern.linear.path_instances", "output_frames", false, NodeDataType.FRAME_LIST);
+        assertPortType("pattern.linear.path_instances", "output_points", false, NodeDataType.POINT_LIST);
         assertPortType("pattern.linear.curve_array_geometry", "input_pivot", true, NodeDataType.POINT);
         assertPortType("pattern.linear.curve_array_geometry", "output_frames", false, NodeDataType.FRAME_LIST);
         assertPortType("pattern.radial.polar_array_geometry", "input_center", true, NodeDataType.POINT);

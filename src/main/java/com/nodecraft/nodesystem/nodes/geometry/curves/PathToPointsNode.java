@@ -17,8 +17,8 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.curves.path_to_points",
-    displayName = "Path To Points",
-    description = "Extracts an ordered point list from a line, polyline, or curve",
+    displayName = "Extract Path Points",
+    description = "Extracts existing vertices/sample points from a path. Does not resample — use Resample Path for that.",
     category = "geometry.curves",
     order = 1
 )

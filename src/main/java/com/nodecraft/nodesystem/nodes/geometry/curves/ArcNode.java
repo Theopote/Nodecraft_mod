@@ -34,8 +34,8 @@ public class ArcNode extends AbstractCurveNode {
     @NodeProperty(displayName = "Default Radius", category = "Arc", order = 1)
     private double defaultRadius = 4.0d;
 
-    @NodeProperty(displayName = "Default Resolution", category = "Arc", order = 2)
-    private int defaultResolution = 24;
+    @NodeProperty(displayName = "Default Samples", category = "Arc", order = 2)
+    private int defaultSamples = 24;
 
     @NodeProperty(displayName = "Default Plane", category = "Arc", order = 3,
         description = "Fallback plane when Plane and Normal ports are unconnected")
@@ -59,7 +59,7 @@ public class ArcNode extends AbstractCurveNode {
     private static final String INPUT_RADIUS_ID = "input_radius";
     private static final String INPUT_START_ANGLE_ID = "input_start_angle";
     private static final String INPUT_END_ANGLE_ID = "input_end_angle";
-    private static final String INPUT_RESOLUTION_ID = "input_resolution";
+    private static final String INPUT_SAMPLES_ID = "input_samples";
 
     private static final String OUTPUT_CURVE_ID = "output_curve";
     private static final String OUTPUT_POLYLINE_ID = "output_polyline";
@@ -77,7 +77,7 @@ public class ArcNode extends AbstractCurveNode {
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Arc radius", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_START_ANGLE_ID, "Start Angle", "Start angle in degrees", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_END_ANGLE_ID, "End Angle", "End angle in degrees", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_RESOLUTION_ID, "Resolution", "Number of samples along the arc", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_SAMPLES_ID, "Samples", "Number of sample points along the arc", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_CURVE_ID, "Curve", "Sampled curve representation of the arc", NodeDataType.CURVE, this));
         addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Polyline approximation of the arc", NodeDataType.POLYLINE, this));
@@ -99,7 +99,7 @@ public class ArcNode extends AbstractCurveNode {
         double radius = readDoubleInput(INPUT_RADIUS_ID, defaultRadius);
         double startDegrees = readDoubleInput(INPUT_START_ANGLE_ID, 0.0d);
         double endDegrees = readDoubleInput(INPUT_END_ANGLE_ID, 90.0d);
-        int resolution = GenerationLimits.clampSegments(2, readIntInput(INPUT_RESOLUTION_ID, defaultResolution));
+        int samples = GenerationLimits.clampSegments(2, readIntInput(INPUT_SAMPLES_ID, defaultSamples));
 
         if (normal == null || normal.lengthSquared() <= EPSILON) {
             writeInvalid();
@@ -123,11 +123,11 @@ public class ArcNode extends AbstractCurveNode {
             return;
         }
 
-        List<Vec3d> sampledPoints = new ArrayList<>(resolution);
-        List<Vector3d> sampledVectors = new ArrayList<>(resolution);
+        List<Vec3d> sampledPoints = new ArrayList<>(samples);
+        List<Vector3d> sampledVectors = new ArrayList<>(samples);
 
-        for (int i = 0; i < resolution; i++) {
-            double t = (double) i / (double) (resolution - 1);
+        for (int i = 0; i < samples; i++) {
+            double t = (double) i / (double) (samples - 1);
             double angleRadians = Math.toRadians(startDegrees) + sweepRadians * t;
             Vector3d point = new Vector3d(center)
                 .add(new Vector3d(basis.xAxis()).mul(Math.cos(angleRadians) * radius))
@@ -160,16 +160,28 @@ public class ArcNode extends AbstractCurveNode {
         }
     }
 
-    public int getDefaultResolution() {
-        return defaultResolution;
+    public int getDefaultSamples() {
+        return defaultSamples;
     }
 
-    public void setDefaultResolution(int defaultResolution) {
-        int resolved = GenerationLimits.clampSegments(2, defaultResolution);
-        if (this.defaultResolution != resolved) {
-            this.defaultResolution = resolved;
+    public void setDefaultSamples(int defaultSamples) {
+        int resolved = GenerationLimits.clampSegments(2, defaultSamples);
+        if (this.defaultSamples != resolved) {
+            this.defaultSamples = resolved;
             markDirty();
         }
+    }
+
+    /** @deprecated Use {@link #getDefaultSamples()}. */
+    @Deprecated
+    public int getDefaultResolution() {
+        return defaultSamples;
+    }
+
+    /** @deprecated Use {@link #setDefaultSamples(int)}. */
+    @Deprecated
+    public void setDefaultResolution(int defaultResolution) {
+        setDefaultSamples(defaultResolution);
     }
 
     public PlaneProjectionUtils.DefaultPlane getDefaultPlane() {
@@ -220,7 +232,7 @@ public class ArcNode extends AbstractCurveNode {
     public Object getNodeState() {
         return new java.util.HashMap<String, Object>() {{
             put("defaultRadius", defaultRadius);
-            put("defaultResolution", defaultResolution);
+            put("defaultSamples", defaultSamples);
             put("defaultPlane", defaultPlane.name());
             put("centerX", centerX);
             put("centerY", centerY);
@@ -236,8 +248,10 @@ public class ArcNode extends AbstractCurveNode {
         if (map.get("defaultRadius") instanceof Number value) {
             setDefaultRadius(value.doubleValue());
         }
-        if (map.get("defaultResolution") instanceof Number value) {
-            setDefaultResolution(value.intValue());
+        if (map.get("defaultSamples") instanceof Number value) {
+            setDefaultSamples(value.intValue());
+        } else if (map.get("defaultResolution") instanceof Number value) {
+            setDefaultSamples(value.intValue());
         }
         if (map.get("defaultPlane") instanceof String value) {
             try {

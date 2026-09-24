@@ -121,6 +121,21 @@ class GeometrySampleLanguageContractTest {
     }
 
     @Test
+    void pathSamplingNodesExposeExplicitMode() {
+        assertPortType("geometry.curves.resample_polyline_length", "input_mode", true, NodeDataType.STRING);
+        assertPortType("pattern.linear.path_instances", "input_mode", true, NodeDataType.STRING);
+        assertPortType("geometry.curves.voxelize_curve", "input_mode", true, NodeDataType.STRING);
+    }
+
+    @Test
+    void evaluatePathUsesNormalizedParameter() {
+        assertPortType("geometry.curves.evaluate_path", "input_path", true, NodeDataType.PATH);
+        assertPortType("geometry.curves.evaluate_path", "input_parameter", true, NodeDataType.DOUBLE);
+        assertPortType("geometry.curves.evaluate_path", "output_point", false, NodeDataType.POINT);
+        assertPortType("geometry.curves.evaluate_path", "output_tangent", false, NodeDataType.VECTOR);
+    }
+
+    @Test
     void torusAxisRejectsPointLikeValuesAtPortLayer() {
         assertFalse(NodeDataType.isConnectableTo(NodeDataType.POINT, NodeDataType.VECTOR));
         assertTrue(NodeDataType.isConnectableTo(NodeDataType.VECTOR, NodeDataType.VECTOR));

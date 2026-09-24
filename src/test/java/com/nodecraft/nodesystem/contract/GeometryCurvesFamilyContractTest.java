@@ -36,7 +36,7 @@ class GeometryCurvesFamilyContractTest {
     private static final Set<String> CANONICAL_CHAIN_IDS = Set.of(
             "geometry.curves.rebuild_curve_length",
             "geometry.curves.evaluate_curve",
-            "geometry.curves.frame_along_path",
+            "geometry.curves.evaluate_path",
             "geometry.curves.offset_curve_plane",
             "geometry.curves.tween_curves",
             "geometry.curves.fillet_polyline_corners",
@@ -48,7 +48,7 @@ class GeometryCurvesFamilyContractTest {
     private static final Set<String> PATH_CONSUMER_IDS = Set.of(
             "geometry.curves.evaluate_curve",
             "geometry.curves.rebuild_curve_length",
-            "geometry.curves.frame_along_path",
+            "pattern.linear.path_instances",
             "geometry.curves.offset_curve_plane",
             "geometry.curves.path_to_points",
             "geometry.curves.voxelize_curve",
@@ -155,6 +155,7 @@ class GeometryCurvesFamilyContractTest {
         assertFalse(hasInputPort("geometry.solids.sweep_from_points", "input_path_points"));
         assertPortType("pattern.linear.along_path", "input_path", true, NodeDataType.PATH);
         assertPortType("pattern.linear.path_instances", "input_path", true, NodeDataType.PATH);
+        assertFalse(hasInputPort("pattern.linear.path_instances", "input_path_points"));
         assertPortType("pattern.linear.curve_array_geometry", "input_path", true, NodeDataType.PATH);
         assertPortType("geometry.architectural_primitives.array_along_curve", "input_path", true, NodeDataType.PATH);
         assertPortType("transform.orientation.project_curve_to_plane", "input_path", true, NodeDataType.PATH);
@@ -215,8 +216,10 @@ class GeometryCurvesFamilyContractTest {
         assertEquals(Boolean.TRUE, rebuild.getOutput("output_valid"));
         assertTrue(((List<?>) rebuild.getOutput("output_points")).size() >= 2);
 
-        BaseNode frame = node("geometry.curves.frame_along_path");
+        BaseNode frame = node("pattern.linear.path_instances");
         frame.setInput("input_path", line);
+        frame.setInput("input_mode", "COUNT");
+        frame.setInput("input_count", 5);
         frame.processNode(null);
         assertEquals(Boolean.TRUE, frame.getOutput("output_valid"));
         assertTrue((Integer) frame.getOutput("output_count") >= 2);
@@ -240,7 +243,7 @@ class GeometryCurvesFamilyContractTest {
 
         assertValidWithPath("geometry.curves.evaluate_curve", line);
         assertValidWithPath("geometry.curves.rebuild_curve_length", line);
-        assertValidWithPath("geometry.curves.frame_along_path", line);
+        assertValidWithPath("pattern.linear.path_instances", line);
         assertValidWithPath("geometry.curves.rainbow_curve_offset", line);
         assertValidWithPath("geometry.curves.voxelize_curve", line);
 

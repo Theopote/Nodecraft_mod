@@ -13,8 +13,9 @@ import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
-import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.PathSamplingUtils;
+import com.nodecraft.nodesystem.util.SamplingMode;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
@@ -39,16 +40,23 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
     @NodeProperty(displayName = "Default Radius", category = "Voxelize", order = 1)
     private double defaultRadius = 1.0d;
 
-    @NodeProperty(displayName = "Default Spacing", category = "Voxelize", order = 2)
+    @NodeProperty(displayName = "Sampling Mode", category = "Voxelize", order = 2)
+    private SamplingMode samplingMode = SamplingMode.ORIGINAL;
+
+    @NodeProperty(displayName = "Default Spacing", category = "Voxelize", order = 3)
     private double defaultSpacing = 0.0d;
 
-    @NodeProperty(displayName = "Fill Tube", category = "Voxelize", order = 3)
+    @NodeProperty(displayName = "Default Count", category = "Voxelize", order = 4)
+    private int defaultCount = 10;
+
+    @NodeProperty(displayName = "Fill Tube", category = "Voxelize", order = 5)
     private boolean fillTube = true;
 
-    @NodeProperty(displayName = "Cap Ends", category = "Voxelize", order = 4)
+    @NodeProperty(displayName = "Cap Ends", category = "Voxelize", order = 6)
     private boolean capEnds = true;
 
     private static final String INPUT_PATH_ID = "input_path";
+    private static final String INPUT_MODE_ID = "input_mode";
     private static final String INPUT_RADIUS_ID = "input_radius";
     private static final String INPUT_SPACING_ID = "input_spacing";
     private static final String INPUT_COUNT_ID = "input_count";
@@ -69,9 +77,10 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
 
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
             "Path to voxelize (line, polyline, or curve)", NodeDataType.PATH, this));
+        addInputPort(new BasePort(INPUT_MODE_ID, "Mode", "Sampling mode: Original, Count, or Spacing", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Tube radius in blocks/meters", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing", "Optional path rebuild spacing before voxelization", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Optional rebuild sample count; overrides spacing", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing", "Arc-length spacing when Mode=Spacing", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Sample count when Mode=Count (>= 2)", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Voxelized curve block coordinates", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BLOCKS_TREE_ID, "Blocks Tree", "Voxelized blocks grouped as one branch for this curve", NodeDataType.DATA_TREE, this));
@@ -213,61 +222,21 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
         if (verts == null || verts.size() < 2) {
             return null;
         }
-        boolean closed = PathUtils.isClosed(verts);
-        List<Vector3d> unique = closed ? verts.subList(0, verts.size() - 1) : verts;
-        if (unique.size() < 2) {
-            return null;
-        }
 
-        double[] cumulative = PathUtils.buildCumulative(unique, closed);
-        if (cumulative == null) {
-            return null;
-        }
-        double total = cumulative[cumulative.length - 1];
-        if (total <= EPS) {
-            return null;
-        }
-
-        int count = inputValues.get(INPUT_COUNT_ID) instanceof Number number ? number.intValue() : -1;
+        SamplingMode mode = SamplingMode.fromObject(inputValues.get(INPUT_MODE_ID), samplingMode);
+        int count = inputValues.get(INPUT_COUNT_ID) instanceof Number number ? number.intValue() : defaultCount;
         double spacing = getInputDouble(INPUT_SPACING_ID, defaultSpacing);
-        if (count < 2 && spacing <= EPS) {
-            List<Vector3d> copied = new ArrayList<>(verts.size());
-            for (Vector3d vert : verts) {
-                copied.add(new Vector3d(vert));
-            }
-            return new SampledPath(List.copyOf(copied), closed, total);
-        }
 
-        List<Double> distances = buildSampleDistances(total, count, spacing);
-        if (distances.isEmpty()) {
+        PathSamplingUtils.PathSampleResult sample = PathSamplingUtils.sample(verts, mode, count, spacing);
+        if (!sample.valid() || sample.points().isEmpty()) {
             return null;
         }
-        List<Vector3d> samples = new ArrayList<>(distances.size() + (closed ? 1 : 0));
-        for (double distance : distances) {
-            samples.add(PathUtils.sampleAtDistance(unique, closed, cumulative, distance));
-        }
-        if (closed && !samples.isEmpty()) {
+
+        List<Vector3d> samples = new ArrayList<>(sample.points());
+        if (sample.closed() && !samples.isEmpty()) {
             samples.add(new Vector3d(samples.getFirst()));
         }
-        return new SampledPath(List.copyOf(samples), closed, total);
-    }
-
-    private List<Double> buildSampleDistances(double total, int count, double spacing) {
-        List<Double> distances = new ArrayList<>();
-        if (count >= 2) {
-            count = GenerationLimits.clampPositiveCount(count);
-            for (int i = 0; i < count; i++) {
-                distances.add(total * i / (double) (count - 1));
-            }
-        } else if (spacing > EPS) {
-            for (double distance = 0.0d; distance <= total + EPS; distance += spacing) {
-                distances.add(Math.min(distance, total));
-            }
-            if (!distances.isEmpty() && distances.getLast() < total - EPS) {
-                distances.add(total);
-            }
-        }
-        return distances;
+        return new SampledPath(List.copyOf(samples), sample.closed(), sample.totalLength());
     }
 
     private List<GeometryData> buildSegmentGeometry(List<Vector3d> sampledPoints, boolean closed, double radius) {

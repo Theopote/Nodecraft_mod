@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import imgui.ImGui;
+import imgui.type.ImDouble;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -19,7 +20,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "input.numeric.float",
     displayName = "Float Input",
-    description = "允许用户手动输入浮点数值",
+    description = "精确浮点值输入。Min/Max 可选。需要快速有界探索时使用 Float Slider。",
     category = "input.numeric",
     order = 1
 )
@@ -59,7 +60,7 @@ public class FloatInputNode extends BaseCustomUINode {
 
     @Override
     public String getDescription() {
-        return "允许用户手动输入浮点数值。";
+        return "精确浮点值输入。Min/Max 可选。";
     }
 
     @Override
@@ -94,24 +95,17 @@ public class FloatInputNode extends BaseCustomUINode {
             l.pushFramePadding(4.0f, 3.0f);
             l.setItemWidth(inputWidthPx / Math.max(zoom, 0.001f));
 
-            float[] inputValue = {(float) value};
-            boolean hasBounds = Double.isFinite(minValue) && Double.isFinite(maxValue);
-            float actualDragSpeed = dragSpeed > 0 ? dragSpeed : (float) Math.pow(10, -getSafePrecision());
-            boolean dragged;
-            if (hasBounds) {
-                dragged = ImGui.dragFloat(
-                    "##float_drag",
-                    inputValue,
-                    actualDragSpeed,
-                    (float) minValue,
-                    (float) maxValue,
-                    formatString
-                );
-            } else {
-                dragged = ImGui.dragFloat("##float_drag", inputValue, actualDragSpeed, 0f, 0f, formatString);
-            }
-            if (dragged) {
-                setValue(inputValue[0]);
+            ImDouble inputValue = new ImDouble(value);
+            boolean changedInput = ImGui.inputDouble("##float_input", inputValue, 0.0, 0.0, formatString);
+            if (changedInput) {
+                double next = inputValue.get();
+                if (Double.isFinite(minValue)) {
+                    next = Math.max(minValue, next);
+                }
+                if (Double.isFinite(maxValue)) {
+                    next = Math.min(maxValue, next);
+                }
+                setValue(next);
                 changed = true;
             }
 

@@ -4,14 +4,13 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
-import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.PathSamplingUtils;
+import com.nodecraft.nodesystem.util.SamplingMode;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -21,26 +20,28 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Rebuilds a path into near-uniform arc-length samples from Curve/Polyline/Line inputs.
- */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.curves.rebuild_curve_length",
     displayName = "Curve Rebuild By Length",
-    description = "Rebuilds a curve/path to uniform arc-length samples using spacing, or using a total point count (count wins when both are provided)",
+    description = "Rebuilds a curve/path using explicit sampling mode (Count or Spacing).",
     category = "geometry.curves",
     order = 13
 )
 public class CurveRebuildByLengthNode extends AbstractCurveNode {
 
-    private static final double EPS = 1.0e-9d;
+    @NodeProperty(displayName = "Sampling Mode", category = "Rebuild", order = 1)
+    private SamplingMode samplingMode = SamplingMode.SPACING;
 
-    @NodeProperty(displayName = "Default Spacing", category = "Rebuild", order = 1,
-        description = "Target distance between samples when Spacing port is unconnected (Minecraft-friendly 1 block)")
+    @NodeProperty(displayName = "Default Spacing", category = "Rebuild", order = 2,
+        description = "Target distance between samples when Mode=Spacing")
     private double defaultSpacing = 1.0d;
 
+    @NodeProperty(displayName = "Default Count", category = "Rebuild", order = 3)
+    private int defaultCount = 10;
+
     private static final String INPUT_PATH_ID = "input_path";
+    private static final String INPUT_MODE_ID = "input_mode";
     private static final String INPUT_SPACING_ID = "input_spacing";
     private static final String INPUT_COUNT_ID = "input_count";
 
@@ -55,10 +56,12 @@ public class CurveRebuildByLengthNode extends AbstractCurveNode {
 
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
             "Path to rebuild by arc length (line, polyline, or curve)", NodeDataType.PATH, this));
+        addInputPort(new BasePort(INPUT_MODE_ID, "Mode",
+            "Sampling mode: Count or Spacing", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing",
-            "Target distance between samples along the path (> 0 when used)", NodeDataType.DOUBLE, this));
+            "Target distance between samples when Mode=Spacing", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count",
-            "Target number of samples along the path (>= 2). When set, overrides spacing", NodeDataType.INTEGER, this));
+            "Target sample count when Mode=Count (>= 2)", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_CURVE_ID, "Curve",
             "Rebuilt sampled curve as a linear control path", NodeDataType.CURVE, this));
@@ -74,84 +77,39 @@ public class CurveRebuildByLengthNode extends AbstractCurveNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> verts = resolveVertices();
+        List<Vector3d> verts = resolvePathVertices(INPUT_PATH_ID);
         if (verts == null || verts.size() < 2) {
             writeInvalid();
             return;
         }
 
-        boolean closed = PathUtils.isClosed(verts);
-        List<Vector3d> unique = closed ? verts.subList(0, verts.size() - 1) : verts;
-        if (unique.size() < 2) {
+        SamplingMode mode = SamplingMode.fromObject(inputValues.get(INPUT_MODE_ID), samplingMode);
+        int count = inputValues.get(INPUT_COUNT_ID) instanceof Number n ? n.intValue() : defaultCount;
+        double spacing = inputValues.get(INPUT_SPACING_ID) instanceof Number n ? n.doubleValue() : defaultSpacing;
+
+        PathSamplingUtils.PathSampleResult sample = PathSamplingUtils.sample(verts, mode, count, spacing);
+        if (!sample.valid() || sample.points().isEmpty()) {
             writeInvalid();
             return;
         }
 
-        double[] cumulative = PathUtils.buildCumulative(unique, closed);
-        if (cumulative == null) {
-            writeInvalid();
-            return;
-        }
-        double total = cumulative[cumulative.length - 1];
-        if (total <= EPS) {
-            writeInvalid();
-            return;
+        List<Vector3d> samples = sample.points();
+        List<Vec3d> polyPts = new ArrayList<>(samples.size());
+        for (Vector3d point : samples) {
+            polyPts.add(new Vec3d(point.x, point.y, point.z));
         }
 
-        Object countObj = inputValues.get(INPUT_COUNT_ID);
-        int count = countObj instanceof Number n ? n.intValue() : -1;
-        if (count >= 2) {
-            count = GenerationLimits.clampPositiveCount(count);
-        }
-        double spacing = readDoubleInput(INPUT_SPACING_ID, defaultSpacing);
-
-        List<Double> sampleDistances = new ArrayList<>();
-        if (count >= 2) {
-            for (int i = 0; i < count; i++) {
-                sampleDistances.add(total * i / (double) (count - 1));
-            }
-        } else if (spacing > EPS) {
-            int maxInstances = GenerationLimits.clampSpacingInstanceCount(total, spacing);
-            int emitted = 0;
-            for (double d = 0.0d; d <= total + EPS && emitted < maxInstances; d += spacing) {
-                sampleDistances.add(Math.min(d, total));
-                emitted++;
-            }
-            if (emitted < maxInstances
-                && (sampleDistances.isEmpty() || sampleDistances.get(sampleDistances.size() - 1) < total - EPS)) {
-                sampleDistances.add(total);
-            }
-        } else {
-            writeInvalid();
-            return;
-        }
-
-        List<Vector3d> samples = new ArrayList<>(sampleDistances.size());
-        for (double d : sampleDistances) {
-            samples.add(PathUtils.sampleAtDistance(unique, closed, cumulative, d));
-        }
-
-        if (closed && samples.size() >= 2) {
-            while (samples.size() >= 2 && samples.get(0).distance(samples.get(samples.size() - 1)) < 1.0e-6d) {
-                samples.remove(samples.size() - 1);
-            }
-        }
-
-        List<Vec3d> rebuilt = PathUtils.toVec3dList(samples, closed);
-        PolylineData polyline = PathUtils.createPolylineOrNull(rebuilt);
+        Curve curve = buildLinearCurve(polyPts);
+        PolylineData polyline = PathUtils.createPolylineOrNull(polyPts);
         if (polyline == null) {
             writeInvalid();
             return;
         }
 
-        Curve curve = new Curve(Curve.CurveType.LINEAR, 2);
-        for (Vec3d point : rebuilt) {
-            curve.addControlPoint(point);
-        }
         outputValues.put(OUTPUT_CURVE_ID, curve);
         outputValues.put(OUTPUT_POLYLINE_ID, polyline);
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(samples));
-        outputValues.put(OUTPUT_LENGTH_ID, total);
+        outputValues.put(OUTPUT_LENGTH_ID, sample.totalLength());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
@@ -161,9 +119,5 @@ public class CurveRebuildByLengthNode extends AbstractCurveNode {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_LENGTH_ID, 0.0d);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private List<Vector3d> resolveVertices() {
-        return resolvePathVertices(INPUT_PATH_ID);
     }
 }

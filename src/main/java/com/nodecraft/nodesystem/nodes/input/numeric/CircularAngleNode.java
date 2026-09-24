@@ -12,6 +12,7 @@ import imgui.ImDrawList;
 import imgui.ImGui;
 import imgui.ImVec2;
 import imgui.flag.ImGuiCol;
+import imgui.type.ImDouble;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -22,7 +23,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "input.numeric.angle_picker",
     displayName = "Circular Angle Picker",
-    description = "通过圆形表盘选择角度，同时输出度和弧度。",
+    description = "通过圆形表盘选择角度（度）。需要弧度时使用 Degrees To Radians。",
     category = "input.numeric",
     order = 5
 )
@@ -30,7 +31,6 @@ public class CircularAngleNode extends BaseCustomUINode {
 
     private static final float DIAL_SIZE = 92.0f;
     private static final String OUTPUT_ANGLE_ID = "output_angle";
-    private static final String OUTPUT_RADIANS_ID = "output_radians";
 
     @NodeProperty(displayName = "角度", category = "角度", order = 1,
         description = "当前角度，范围为 0 到 360 度")
@@ -54,16 +54,14 @@ public class CircularAngleNode extends BaseCustomUINode {
 
     public CircularAngleNode() {
         super(UUID.randomUUID(), "input.numeric.angle_picker");
-        IPort angleOutput = new BasePort(OUTPUT_ANGLE_ID, "Degrees", "当前角度（度）", NodeDataType.DOUBLE, this);
-        IPort radiansOutput = new BasePort(OUTPUT_RADIANS_ID, "Radians", "当前角度（弧度）", NodeDataType.DOUBLE, this);
+        IPort angleOutput = new BasePort(OUTPUT_ANGLE_ID, "Angle", "当前角度（度）", NodeDataType.DOUBLE, this);
         addOutputPort(angleOutput);
-        addOutputPort(radiansOutput);
         updateOutput();
     }
 
     @Override
     public String getDescription() {
-        return "通过圆形表盘选择角度，同时输出度和弧度。";
+        return "通过圆形表盘选择角度（度）。需要弧度时使用 Degrees To Radians。";
     }
 
     @Override
@@ -161,11 +159,10 @@ public class CircularAngleNode extends BaseCustomUINode {
                 float inputWidth = Math.min(l.toPixels(140.0f), availableWidth - l.toPixels(8.0f));
                 setCenterX(availableWidth, inputWidth);
                 l.setItemWidth(inputWidth / Math.max(zoom, 0.001f));
-                float[] angleInput = {(float) angle};
+                ImDouble angleInput = new ImDouble(angle);
                 String format = "%." + getSafePrecision() + "f°";
-                float step = (float) Math.pow(10.0, -getSafePrecision());
-                if (ImGui.dragFloat("##angle_input", angleInput, step, 0.0f, 360.0f, format)) {
-                    setAngle(angleInput[0]);
+                if (ImGui.inputDouble("##angle_input", angleInput, 0.0, 0.0, format)) {
+                    setAngle(angleInput.get());
                     changed = true;
                 }
                 l.popItemWidth();
@@ -234,7 +231,6 @@ public class CircularAngleNode extends BaseCustomUINode {
 
     private void updateOutput() {
         outputValues.put(OUTPUT_ANGLE_ID, angle);
-        outputValues.put(OUTPUT_RADIANS_ID, Math.toRadians(angle));
         syncOutputPorts();
     }
 

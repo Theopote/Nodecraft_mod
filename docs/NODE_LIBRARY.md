@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **535**
+- Total nodes: **537**
 - Total categories: **59**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -36,7 +36,7 @@
 | `math.fields` | 17 |
 | `math.list` | 22 |
 | `math.logic` | 6 |
-| `math.random` | 4 |
+| `math.random` | 5 |
 | `math.scalar_math` | 23 |
 | `math.sequence` | 3 |
 | `math.trigonometry` | 14 |
@@ -50,7 +50,7 @@
 | `pattern.radial` | 4 |
 | `pattern.surface_volume_distribution` | 9 |
 | `pattern.voronoi_3d` | 1 |
-| `reference.frames` | 6 |
+| `reference.frames` | 7 |
 | `reference.planes` | 6 |
 | `reference.points` | 19 |
 | `reference.vectors` | 18 |
@@ -135,9 +135,10 @@
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Points To Path | `geometry.curves.points_to_path` | Builds a line or polyline from an ordered point list | `PointsToPathNode` |
-| Path To Points | `geometry.curves.path_to_points` | Extracts an ordered point list from a line, polyline, or curve | `PathToPointsNode` |
+| Extract Path Points | `geometry.curves.path_to_points` | Extracts existing vertices/sample points from a path. Does not resample — use Resample Path for that. | `PathToPointsNode` |
 | Arc | `geometry.curves.arc` | Builds a sampled circular arc from a center point, plane, radius, and start/end angles | `ArcNode` |
 | Face Edge To Path | `geometry.curves.edge_to_curve` | Converts a face edge into line, polyline, and point outputs for path workflows | `FaceEdgeToPathNode` |
+| Evaluate Path | `geometry.curves.evaluate_path` | Evaluates a path at a normalized parameter t in [0..1]. | `EvaluatePathNode` |
 | Bezier | `geometry.curves.bezier` | Builds a sampled Bezier curve from an ordered list of control points | `BezierNode` |
 | Box Face Boundary Path | `geometry.curves.face_boundary_curve` | Builds a closed boundary path from a box face for preview and downstream path workflows | `BoxFaceBoundaryPathNode` |
 | Interpolate Spline | `geometry.curves.interpolate_spline` | Builds a Catmull-Rom interpolation spline that passes through all resolved input points | `InterpolateSplineNode` |
@@ -146,11 +147,10 @@
 | Offset Path In Plane | `geometry.curves.offset_curve_plane` | Offsets a path (line, polyline, or curve) in a work plane by signed distance, with optional resampling. | `OffsetCurveInPlaneNode` |
 | NURBS Curve | `geometry.curves.nurbs` | Builds a sampled clamped uniform NURBS curve from control points and optional per-point weights | `NurbsCurveNode` |
 | Rainbow Curve Offset | `geometry.curves.rainbow_curve_offset` | Generates multiple parallel offset polylines around a space curve using path frames. | `RainbowCurveOffsetNode` |
-| Resample Polyline By Length | `geometry.curves.resample_polyline_length` | Resamples a polyline along its arc length using spacing, or using a total point count (count wins when both are provided) | `ResamplePolylineByLengthNode` |
+| Resample Path | `geometry.curves.resample_polyline_length` | Resamples a path along arc length using explicit sampling mode (Original, Count, or Spacing). | `ResamplePolylineByLengthNode` |
 | Polyline Length | `geometry.curves.polyline_length` | Computes the total length of a line, polyline, or curve path | `PolylineLengthNode` |
-| Curve Rebuild By Length | `geometry.curves.rebuild_curve_length` | Rebuilds a curve/path to uniform arc-length samples using spacing, or using a total point count (count wins when both are provided) | `CurveRebuildByLengthNode` |
+| Curve Rebuild By Length | `geometry.curves.rebuild_curve_length` | Rebuilds a curve/path using explicit sampling mode (Count or Spacing). | `CurveRebuildByLengthNode` |
 | Curve Evaluate | `geometry.curves.evaluate_curve` | Evaluates a curve/path at normalized parameter t and outputs point, tangent, normal, and binormal | `CurveEvaluateNode` |
-| Curve Frame Along Path | `geometry.curves.frame_along_path` | Generates local frames along a curve/path using count or spacing, outputting origins, axes, and planes per sample | `CurveFrameAlongPathNode` |
 | Parabola On Plane | `geometry.curves.parabola_curve` | Builds a sampled parabola on a plane from vertex, curvature, x-range, and segment count | `ParabolaOnPlaneNode` |
 | Helix Curve | `geometry.curves.helix` | Builds a sampled helix from center, axis, radius, pitch, turns, and segment count. | `HelixCurveNode` |
 | Infinity Curve On Plane | `geometry.curves.infinity_curve` | Builds a sampled figure-eight (lemniscate-like) curve on a plane | `InfinityCurveOnPlaneNode` |
@@ -289,13 +289,13 @@
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Integer Input | `input.numeric.integer` | 允许手动输入整数值的节点 | `IntegerInputNode` |
-| Float Input | `input.numeric.float` | 允许用户手动输入浮点数值 | `FloatInputNode` |
+| Float Input | `input.numeric.float` | 精确浮点值输入。Min/Max 可选。需要快速有界探索时使用 Float Slider。 | `FloatInputNode` |
 | Integer Slider | `input.numeric.integer_slider` | 输出一个可通过滑动条调节的整数值 | `IntegerSliderNode` |
-| Float Slider | `input.numeric.float_slider` | 输出一个可通过滑动条调节的浮点数。 | `FloatSliderNode` |
+| Float Slider | `input.numeric.float_slider` | 有界参数探索：精确 double 输入 + 滑动条快速调节。Min/Max 必须设置。 | `FloatSliderNode` |
 | Angle Slider | `input.numeric.angle` | 输出一个可通过滑动条调节的角度值（度）。需要弧度时使用 Degrees To Radians。 | `AngleSliderNode` |
-| Circular Angle Picker | `input.numeric.angle_picker` | 通过圆形表盘选择角度，同时输出度和弧度。 | `CircularAngleNode` |
+| Circular Angle Picker | `input.numeric.angle_picker` | 通过圆形表盘选择角度（度）。需要弧度时使用 Degrees To Radians。 | `CircularAngleNode` |
 | XY Slider | `input.numeric.xy_slider` | Provides a two-dimensional slider pad that outputs X and Y values from one draggable handle | `XYSliderNode` |
-| Range Input | `input.numeric.range` | Defines a numeric interval and outputs min/max/span plus a range object. | `RangeInputNode` |
+| Domain Input | `input.numeric.range` | Defines a directed numeric domain (Start→End) and outputs domain, start, end, and directed span. | `RangeInputNode` |
 
 ## input.type_selectors (5)
 
@@ -464,12 +464,13 @@
 | NOT | `math.logic.not` | Returns the negated boolean value of the input. | `NotNode` |
 | XOR | `math.logic.xor` | Returns true only when exactly one input evaluates to true. | `XorNode` |
 
-## math.random (4)
+## math.random (5)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Random Number | `math.random.random_number` | Generates random numbers within a specified range. | `RandomNumberNode` |
+| Random Number | `math.random.random_number` | Generates a single random double within a domain. | `RandomNumberNode` |
 | Noise | `math.random.noise` | Samples coherent noise from a 3D position and seed. | `NoiseNode` |
+| Random Numbers | `math.random.random_numbers` | Generates a list of random doubles within a domain. | `RandomNumbersNode` |
 | Random List Item | `math.random.random_list_item` | Randomly selects one or more items from a list. | `RandomListItemNode` |
 | Random Vector | `math.random.random_vector` | Generates random vectors within a specified bounding box. | `RandomVectorNode` |
 
@@ -487,8 +488,8 @@
 | Absolute (Abs) | `math.scalar_math.absolute` | Returns the absolute value of the input. | `AbsoluteNode` |
 | Min | `math.scalar_math.min` | Returns the minimum of two values. | `MinNode` |
 | Max | `math.scalar_math.max` | Returns the maximum of two values. | `MaxNode` |
-| Clamp | `math.scalar_math.clamp` | Restricts a value to the specified minimum and maximum values. | `ClampNode` |
-| Remap | `math.scalar_math.remap` | Maps a value from an input range to an output range. | `RemapNode` |
+| Clamp | `math.scalar_math.clamp` | Restricts a value to a domain's bounds (uses lower..upper, direction ignored). | `ClampNode` |
+| Remap | `math.scalar_math.remap` | Maps a value from a source domain to a target domain. | `RemapNode` |
 | Floor | `math.scalar_math.floor` | Rounds a value down to the nearest integer. | `FloorNode` |
 | Ceiling | `math.scalar_math.ceiling` | Rounds a value up to the nearest integer. | `CeilingNode` |
 | Round | `math.scalar_math.round` | Rounds a value to the nearest integer. | `RoundNode` |
@@ -505,7 +506,7 @@
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Range | `math.sequence.range` | Generates a numeric sequence from Start to End using Step. | `MathRangeNode` |
+| Number Sequence | `math.sequence.range` | Generates a discrete numeric sequence from Start to End using Step. Not a continuous domain — use Domain Input for intervals. | `MathRangeNode` |
 | Repeat | `math.sequence.repeat` | Repeats a single data item or list multiple times | `RepeatNode` |
 | Data Series | `math.sequence.series` | Generates a series of numbers with constant increment | `DataSeriesNode` |
 
@@ -593,7 +594,7 @@
 | Linear Array | `pattern.linear.linear_array` | 将坐标列表沿直线方向重复排列 | `LinearArrayNode` |
 | Along Path | `pattern.linear.along_path` | Repeats a block pattern at each resolved path point from a path or point list | `AlongPathNode` |
 | Staggered Array | `pattern.linear.staggered_array` | Repeats coordinates in rows and applies an alternating offset for brick-like staggering | `StaggeredArrayNode` |
-| Path Frames | `pattern.linear.path_instances` | Generates continuous parallel-transport frames along a path (FRAME_LIST + origins/axes). | `PathInstancesNode` |
+| Path Frames | `pattern.linear.path_instances` | Generates parallel-transport frames along a path using explicit sampling mode. | `PathInstancesNode` |
 | Instance on Points | `pattern.linear.instance_on_points` | Instances a block or block-placement template at each input point. | `InstanceOnPointsNode` |
 | Linear Array Geometry | `pattern.linear.linear_array_geometry` | Creates repeated geometry copies along a direction vector | `LinearArrayGeometryNode` |
 | Curve Array Geometry | `pattern.linear.curve_array_geometry` | Creates repeated geometry copies along a curve using parallel-transport frames and placement | `CurveArrayGeometryNode` |
@@ -634,7 +635,7 @@
 |---|---|---|---|
 | Voronoi 3D Lloyd Relax (Grid) | `pattern.voronoi_3d.lloyd_relax` | Approximate 3D Lloyd relaxation: grid cell centers vote for nearest site; sites move to cell centroids (repeat). Not an exact Voronoi diagram. | `Voronoi3DLloydRelaxNode` |
 
-## reference.frames (6)
+## reference.frames (7)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -644,6 +645,7 @@
 | Transform Frame | `reference.frames.transform_frame` | Applies translation, Euler rotation (degrees), and positive uniform scale to a frame | `TransformFrameNode` |
 | Construct Frame | `reference.frames.construct_frame` | Packs origin point and X/Y/Z axes into an orthonormal right-handed FRAME | `ConstructFrameNode` |
 | Deconstruct Frame | `reference.frames.deconstruct_frame` | Splits a FRAME into origin point, X/Y/Z axes, and plane | `DeconstructFrameNode` |
+| Deconstruct Frames | `reference.frames.deconstruct_frames` | Splits a FRAME_LIST into origins, axes, and planes | `DeconstructFramesNode` |
 
 ## reference.planes (6)
 

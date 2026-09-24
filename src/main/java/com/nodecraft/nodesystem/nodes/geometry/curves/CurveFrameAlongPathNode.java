@@ -28,14 +28,11 @@ import java.util.UUID;
 /**
  * Samples a path and generates local frames (origin + axes) along it.
  */
-@NodeInfo(
-    effect = NodeEffect.PURE,
-    id = "geometry.curves.frame_along_path",
-    displayName = "Curve Frame Along Path",
-    description = "Generates local frames along a curve/path using count or spacing, outputting origins, axes, and planes per sample",
-    category = "geometry.curves",
-    order = 15
-)
+/**
+ * @deprecated Merged into {@link com.nodecraft.nodesystem.nodes.pattern.linear.PathInstancesNode}.
+ * Graph migration V11→V12 remaps saved graphs automatically.
+ */
+@Deprecated
 public class CurveFrameAlongPathNode extends AbstractCurveNode {
 
     private static final double EPS = 1.0e-9d;

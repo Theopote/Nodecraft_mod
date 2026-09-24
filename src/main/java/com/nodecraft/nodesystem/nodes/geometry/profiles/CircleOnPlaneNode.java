@@ -44,10 +44,10 @@ public class CircleOnPlaneNode extends BaseNode {
     private static final String OUTPUT_SEGMENTS_ID = "output_segments";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
-    @NodeProperty(displayName = "Radius", category = "Size", order = 1)
+    @NodeProperty(displayName = "Default Radius", category = "Size", order = 1)
     private double radius = 5.0d;
 
-    @NodeProperty(displayName = "Segments", category = "Resolution", order = 2)
+    @NodeProperty(displayName = "Default Segments", category = "Resolution", order = 2)
     private int segments = 32;
 
     public CircleOnPlaneNode() {

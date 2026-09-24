@@ -115,6 +115,27 @@ class MathLanguageContractTest {
     }
 
     @Test
+    void inputAngleNodesForbidRadiansOutput() {
+        List<String> violations = new ArrayList<>();
+        for (String nodeId : registry.getAllNodeIds()) {
+            if (!nodeId.startsWith("input.numeric.")) {
+                continue;
+            }
+            INode instance = tryCreate(nodeId);
+            if (instance == null) {
+                continue;
+            }
+            for (IPort port : instance.getOutputPorts()) {
+                String id = port.getId().toLowerCase(Locale.ROOT);
+                if (id.contains("radian") || id.endsWith("_rad")) {
+                    violations.add(nodeId + "#" + port.getId());
+                }
+            }
+        }
+        assertTrue(violations.isEmpty(), "Input angle nodes must not expose radians: " + violations);
+    }
+
+    @Test
     void scalarNumericNodesRejectAnyPorts() {
         assertNoAnyPorts(new AbsoluteNode());
         assertNoAnyPorts(new PowerNode());

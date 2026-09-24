@@ -6,7 +6,9 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.NumericRangeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.NumericDomainResolver;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -67,10 +69,12 @@ public class GraphMapperNode extends BaseNode {
     private double bezierY2 = 1.0d;
 
     private static final String INPUT_VALUE_ID = "input_value";
-    private static final String INPUT_IN_MIN_ID = "input_in_min";
-    private static final String INPUT_IN_MAX_ID = "input_in_max";
-    private static final String INPUT_OUT_MIN_ID = "input_out_min";
-    private static final String INPUT_OUT_MAX_ID = "input_out_max";
+    private static final String INPUT_SOURCE_ID = "input_source";
+    private static final String INPUT_TARGET_ID = "input_target";
+    private double defaultSourceStart = 0.0d;
+    private double defaultSourceEnd = 1.0d;
+    private double defaultTargetStart = 0.0d;
+    private double defaultTargetEnd = 1.0d;
     private static final String INPUT_EXPONENT_ID = "input_exponent";
     private static final String INPUT_GAUSSIAN_CENTER_ID = "input_gaussian_center";
     private static final String INPUT_GAUSSIAN_WIDTH_ID = "input_gaussian_width";
@@ -84,15 +88,13 @@ public class GraphMapperNode extends BaseNode {
         super(UUID.randomUUID(), "math.scalar_math.graph_mapper");
 
         addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Input value to map", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_IN_MIN_ID, "In Min", "Input domain minimum", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_IN_MAX_ID, "In Max", "Input domain maximum", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_OUT_MIN_ID, "Out Min", "Output range minimum", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_OUT_MAX_ID, "Out Max", "Output range maximum", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_SOURCE_ID, "Source", "Source domain (Start→End)", NodeDataType.NUMERIC_RANGE, this));
+        addInputPort(new BasePort(INPUT_TARGET_ID, "Target", "Target domain (Start→End)", NodeDataType.NUMERIC_RANGE, this));
         addInputPort(new BasePort(INPUT_EXPONENT_ID, "Exponent", "Optional exponent or exponential strength", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_GAUSSIAN_CENTER_ID, "Gaussian Center", "Optional Gaussian center in normalized 0..1 space", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_GAUSSIAN_WIDTH_ID, "Gaussian Width", "Optional Gaussian width in normalized 0..1 space", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_RESULT_ID, "Result", "Mapped value remapped to Out Min..Out Max", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_RESULT_ID, "Result", "Mapped value remapped to target domain", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_T_ID, "T", "Normalized input parameter", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_MAPPED_ID, "Mapped 0..1", "Graph function output before output-range remapping", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when mapping succeeded", NodeDataType.BOOLEAN, this));
@@ -111,20 +113,21 @@ public class GraphMapperNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         double value = getInputDouble(INPUT_VALUE_ID, 0.0d);
-        double inMin = getInputDouble(INPUT_IN_MIN_ID, 0.0d);
-        double inMax = getInputDouble(INPUT_IN_MAX_ID, 1.0d);
-        double outMin = getInputDouble(INPUT_OUT_MIN_ID, 0.0d);
-        double outMax = getInputDouble(INPUT_OUT_MAX_ID, 1.0d);
+        NumericRangeData source = NumericDomainResolver.resolveDomain(
+            inputValues.get(INPUT_SOURCE_ID), defaultSourceStart, defaultSourceEnd);
+        NumericRangeData target = NumericDomainResolver.resolveDomain(
+            inputValues.get(INPUT_TARGET_ID), defaultTargetStart, defaultTargetEnd);
         double exponent = getInputDouble(INPUT_EXPONENT_ID, defaultExponent);
         double center = getInputDouble(INPUT_GAUSSIAN_CENTER_ID, gaussianCenter);
         double width = getInputDouble(INPUT_GAUSSIAN_WIDTH_ID, gaussianWidth);
 
-        if (!allFinite(value, inMin, inMax, outMin, outMax, exponent, center, width) || Math.abs(inMax - inMin) <= EPS) {
+        if (!allFinite(value, source.start(), source.end(), target.start(), target.end(), exponent, center, width)
+            || Math.abs(source.delta()) <= EPS) {
             writeInvalid();
             return;
         }
 
-        double t = (value - inMin) / (inMax - inMin);
+        double t = source.normalizedParameter(value);
         if (clampInput) {
             t = clamp01(t);
         }
@@ -134,7 +137,7 @@ public class GraphMapperNode extends BaseNode {
             writeInvalid();
             return;
         }
-        double result = outMin + mapped * (outMax - outMin);
+        double result = target.lerp(mapped);
 
         outputValues.put(OUTPUT_RESULT_ID, result);
         outputValues.put(OUTPUT_T_ID, t);

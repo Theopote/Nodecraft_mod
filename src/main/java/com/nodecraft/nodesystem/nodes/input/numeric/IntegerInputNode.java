@@ -45,14 +45,6 @@ public class IntegerInputNode extends BaseCustomUINode {
         description = "输入框点击增减按钮时每次变化的值")
     private int step = 1;
 
-    @NodeProperty(displayName = "显示范围", category = "UI设置", order = 10,
-        description = "是否显示范围信息")
-    private boolean showRange = false;
-
-    @NodeProperty(displayName = "显示标签", category = "UI设置", order = 11,
-        description = "是否显示当前值标签")
-    private boolean showLabel = true;
-
     public IntegerInputNode() {
         super(UUID.randomUUID(), "input.numeric.integer");
         IPort valueOutput = new BasePort(OUTPUT_VALUE_ID, "Value", "当前整数值", NodeDataType.INTEGER, this);
@@ -109,19 +101,6 @@ public class IntegerInputNode extends BaseCustomUINode {
             l.addVerticalSpacing(getSmallPadding());
             return changed;
         });
-    }
-
-    private String getRangeText() {
-        if (minValue == Integer.MIN_VALUE && maxValue == Integer.MAX_VALUE) {
-            return "范围: 无限制";
-        }
-        if (minValue == Integer.MIN_VALUE) {
-            return "最大值: " + maxValue;
-        }
-        if (maxValue == Integer.MAX_VALUE) {
-            return "最小值: " + minValue;
-        }
-        return "范围: " + minValue + " - " + maxValue;
     }
 
     private void normalizeRange() {
@@ -192,30 +171,6 @@ public class IntegerInputNode extends BaseCustomUINode {
         }
     }
 
-    public boolean isShowRange() {
-        return showRange;
-    }
-
-    public void setShowRange(boolean showRange) {
-        if (this.showRange != showRange) {
-            this.showRange = showRange;
-            invalidateCache();
-            markDirty();
-        }
-    }
-
-    public boolean isShowLabel() {
-        return showLabel;
-    }
-
-    public void setShowLabel(boolean showLabel) {
-        if (this.showLabel != showLabel) {
-            this.showLabel = showLabel;
-            invalidateCache();
-            markDirty();
-        }
-    }
-
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
@@ -223,8 +178,6 @@ public class IntegerInputNode extends BaseCustomUINode {
         state.put("min", minValue);
         state.put("max", maxValue);
         state.put("step", step);
-        state.put("showRange", showRange);
-        state.put("showLabel", showLabel);
         return state;
     }
 
@@ -240,13 +193,6 @@ public class IntegerInputNode extends BaseCustomUINode {
             if (stateMap.get("step") instanceof Number stepValue) {
                 this.step = Math.max(1, stepValue.intValue());
             }
-            if (stateMap.get("showRange") instanceof Boolean showRange) {
-                this.showRange = showRange;
-            }
-            if (stateMap.get("showLabel") instanceof Boolean showLabel) {
-                this.showLabel = showLabel;
-            }
-
             normalizeRange();
 
             Object valueObj = stateMap.get("value");

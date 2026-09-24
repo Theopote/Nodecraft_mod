@@ -28,11 +28,11 @@ import java.util.UUID;
 )
 public class BezierNode extends AbstractCurveNode {
 
-    @NodeProperty(displayName = "Default Resolution", category = "Bezier", order = 1)
-    private int defaultResolution = 32;
+    @NodeProperty(displayName = "Default Samples", category = "Bezier", order = 1)
+    private int defaultSamples = 32;
 
     private static final String INPUT_CONTROL_POINTS_ID = "input_control_points";
-    private static final String INPUT_RESOLUTION_ID = "input_resolution";
+    private static final String INPUT_SAMPLES_ID = "input_samples";
 
     private static final String OUTPUT_CURVE_ID = "output_curve";
     private static final String OUTPUT_POLYLINE_ID = "output_polyline";
@@ -46,7 +46,7 @@ public class BezierNode extends AbstractCurveNode {
         super(UUID.randomUUID(), "geometry.curves.bezier");
 
         addInputPort(new BasePort(INPUT_CONTROL_POINTS_ID, "Control Points", "Ordered control points for the Bezier curve", NodeDataType.POINT_LIST, this));
-        addInputPort(new BasePort(INPUT_RESOLUTION_ID, "Resolution", "Number of sampled points along the curve", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_SAMPLES_ID, "Samples", "Number of sample points along the curve", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_CURVE_ID, "Curve", "Bezier curve representation", NodeDataType.CURVE, this));
         addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Sampled polyline approximation", NodeDataType.POLYLINE, this));
@@ -65,14 +65,14 @@ public class BezierNode extends AbstractCurveNode {
             controlPoints.add(new Vec3d(point.x, point.y, point.z));
         }
 
-        int resolution = GenerationLimits.clampSegments(2, getInputInt(INPUT_RESOLUTION_ID, defaultResolution));
+        int samples = GenerationLimits.clampSegments(2, getInputInt(INPUT_SAMPLES_ID, defaultSamples));
         if (controlPoints.size() < 3) {
             writeInvalid();
             outputValues.put(OUTPUT_CONTROL_COUNT_ID, controlPoints.size());
             return;
         }
 
-        Curve curve = new Curve(Curve.CurveType.BEZIER, resolution);
+        Curve curve = new Curve(Curve.CurveType.BEZIER, samples);
         for (Vec3d controlPoint : controlPoints) {
             curve.addControlPoint(controlPoint);
         }
@@ -94,14 +94,14 @@ public class BezierNode extends AbstractCurveNode {
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
-    public int getDefaultResolution() {
-        return defaultResolution;
+    public int getDefaultSamples() {
+        return defaultSamples;
     }
 
-    public void setDefaultResolution(int defaultResolution) {
-        int resolved = GenerationLimits.clampSegments(2, defaultResolution);
-        if (this.defaultResolution != resolved) {
-            this.defaultResolution = resolved;
+    public void setDefaultSamples(int defaultSamples) {
+        int resolved = GenerationLimits.clampSegments(2, defaultSamples);
+        if (this.defaultSamples != resolved) {
+            this.defaultSamples = resolved;
             markDirty();
         }
     }
@@ -109,7 +109,7 @@ public class BezierNode extends AbstractCurveNode {
     @Override
     public Object getNodeState() {
         return new java.util.HashMap<String, Object>() {{
-            put("defaultResolution", defaultResolution);
+            put("defaultSamples", defaultSamples);
         }};
     }
 
@@ -118,8 +118,10 @@ public class BezierNode extends AbstractCurveNode {
         if (!(state instanceof java.util.Map<?, ?> map)) {
             return;
         }
-        if (map.get("defaultResolution") instanceof Number value) {
-            setDefaultResolution(value.intValue());
+        if (map.get("defaultSamples") instanceof Number value) {
+            setDefaultSamples(value.intValue());
+        } else if (map.get("defaultResolution") instanceof Number value) {
+            setDefaultSamples(value.intValue());
         }
     }
 
