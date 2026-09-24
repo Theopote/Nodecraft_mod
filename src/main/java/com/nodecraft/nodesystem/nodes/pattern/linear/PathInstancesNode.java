@@ -10,8 +10,6 @@ import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.PathFrameUtils;
-import com.nodecraft.nodesystem.util.PathSamplingUtils;
-import com.nodecraft.nodesystem.util.SamplingMode;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -25,23 +23,13 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "pattern.linear.path_instances",
     displayName = "Path Frames",
-    description = "Generates parallel-transport frames along a path using explicit sampling mode.",
+    description = "Generates parallel-transport frames at path vertices.",
     category = "pattern.linear",
     order = 4
 )
 public class PathInstancesNode extends BaseNode {
 
     private static final double EPSILON = 1.0e-9d;
-
-    @NodeProperty(displayName = "Sampling Mode", category = "Sampling", order = 1,
-        description = "Original = path vertices; Count = uniform samples; Spacing = arc-length spacing")
-    private SamplingMode samplingMode = SamplingMode.ORIGINAL;
-
-    @NodeProperty(displayName = "Default Spacing", category = "Sampling", order = 2)
-    private double defaultSpacing = 1.0d;
-
-    @NodeProperty(displayName = "Default Count", category = "Sampling", order = 3)
-    private int defaultCount = 10;
 
     @NodeProperty(displayName = "Deduplicate Near Duplicates", category = "Instances", order = 10,
         description = "When true, skips consecutive samples closer than Epsilon.")
@@ -51,9 +39,6 @@ public class PathInstancesNode extends BaseNode {
     private double deduplicateEpsilon = 1.0e-6d;
 
     private static final String INPUT_PATH_ID = "input_path";
-    private static final String INPUT_MODE_ID = "input_mode";
-    private static final String INPUT_COUNT_ID = "input_count";
-    private static final String INPUT_SPACING_ID = "input_spacing";
     private static final String INPUT_UP_VECTOR_ID = "input_up_vector";
 
     private static final String OUTPUT_FRAMES_ID = "output_frames";
@@ -66,13 +51,7 @@ public class PathInstancesNode extends BaseNode {
     public PathInstancesNode() {
         super(UUID.randomUUID(), "pattern.linear.path_instances");
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
-            "Path to sample (line, polyline, or curve)", NodeDataType.PATH, this));
-        addInputPort(new BasePort(INPUT_MODE_ID, "Mode",
-            "Sampling mode: Original, Count, or Spacing", NodeDataType.STRING, this));
-        addInputPort(new BasePort(INPUT_COUNT_ID, "Count",
-            "Sample count when Mode=Count (>= 2)", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing",
-            "Arc-length spacing when Mode=Spacing (> 0)", NodeDataType.DOUBLE, this));
+            "Path to frame (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_UP_VECTOR_ID, "Up Vector", "Reference up vector for frame construction", NodeDataType.VECTOR, this));
 
         addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Parallel-transport frames along the path", NodeDataType.FRAME_LIST, this));
@@ -85,7 +64,7 @@ public class PathInstancesNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Generates parallel-transport frames along a path using explicit sampling mode.";
+        return "Generates parallel-transport frames at path vertices.";
     }
 
     @Override
@@ -96,17 +75,8 @@ public class PathInstancesNode extends BaseNode {
             return;
         }
 
-        SamplingMode mode = SamplingMode.fromObject(inputValues.get(INPUT_MODE_ID), samplingMode);
-        int count = inputValues.get(INPUT_COUNT_ID) instanceof Number n ? n.intValue() : defaultCount;
-        double spacing = inputValues.get(INPUT_SPACING_ID) instanceof Number n ? n.doubleValue() : defaultSpacing;
-
-        PathSamplingUtils.PathSampleResult sample = PathSamplingUtils.sample(verts, mode, count, spacing);
-        if (!sample.valid() || sample.points().isEmpty()) {
-            writeInvalid();
-            return;
-        }
-
-        List<Vector3d> samples = new ArrayList<>(sample.points());
+        boolean closed = PathUtils.isClosed(verts);
+        List<Vector3d> samples = new ArrayList<>(verts);
         if (deduplicateNearDuplicates) {
             samples = deduplicateContinuous(samples, Math.max(EPSILON, deduplicateEpsilon));
         }
@@ -115,29 +85,14 @@ public class PathInstancesNode extends BaseNode {
             return;
         }
 
-        boolean closed = sample.closed();
         List<Vector3d> unique = closed && samples.size() > 1 && samples.getFirst().equals(samples.getLast())
             ? samples.subList(0, samples.size() - 1) : samples;
         double[] cumulative = PathUtils.buildCumulative(unique, closed);
-        double total = sample.totalLength();
+        double total = cumulative != null && cumulative.length > 0 ? cumulative[cumulative.length - 1] : 0.0d;
 
-        List<Vector3d> tangents;
-        if (mode == SamplingMode.ORIGINAL) {
-            tangents = new ArrayList<>(samples.size());
-            for (int i = 0; i < samples.size(); i++) {
-                tangents.add(computeTangent(samples, i));
-            }
-        } else if (cumulative != null) {
-            tangents = PathSamplingUtils.tangentsAtDistances(unique, closed, cumulative, total, sample.distances());
-        } else {
-            writeInvalid();
-            return;
-        }
-
-        if (tangents.size() != samples.size()) {
-            int limit = Math.min(samples.size(), tangents.size());
-            samples = samples.subList(0, limit);
-            tangents = tangents.subList(0, limit);
+        List<Vector3d> tangents = new ArrayList<>(samples.size());
+        for (int i = 0; i < samples.size(); i++) {
+            tangents.add(computeTangent(samples, i));
         }
 
         Vector3d up = resolveUp(inputValues.get(INPUT_UP_VECTOR_ID));
@@ -207,17 +162,6 @@ public class PathInstancesNode extends BaseNode {
         return new Vector3d(0.0d, 1.0d, 0.0d);
     }
 
-    public SamplingMode getSamplingMode() {
-        return samplingMode;
-    }
-
-    public void setSamplingMode(SamplingMode samplingMode) {
-        if (this.samplingMode != samplingMode) {
-            this.samplingMode = samplingMode;
-            markDirty();
-        }
-    }
-
     public boolean isDeduplicateNearDuplicates() {
         return deduplicateNearDuplicates;
     }
@@ -243,9 +187,6 @@ public class PathInstancesNode extends BaseNode {
     @Override
     public Object getNodeState() {
         return Map.of(
-            "samplingMode", samplingMode.name(),
-            "defaultSpacing", defaultSpacing,
-            "defaultCount", defaultCount,
             "deduplicateNearDuplicates", deduplicateNearDuplicates,
             "deduplicateEpsilon", deduplicateEpsilon
         );
@@ -255,15 +196,6 @@ public class PathInstancesNode extends BaseNode {
     public void setNodeState(Object state) {
         if (!(state instanceof Map<?, ?> map)) {
             return;
-        }
-        if (map.get("samplingMode") instanceof String value) {
-            setSamplingMode(SamplingMode.fromObject(value, SamplingMode.ORIGINAL));
-        }
-        if (map.get("defaultSpacing") instanceof Number value) {
-            defaultSpacing = value.doubleValue();
-        }
-        if (map.get("defaultCount") instanceof Number value) {
-            defaultCount = value.intValue();
         }
         if (map.get("deduplicateNearDuplicates") instanceof Boolean value) {
             setDeduplicateNearDuplicates(value);

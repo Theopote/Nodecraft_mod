@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **537**
+- Total nodes: **534**
 - Total categories: **59**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -15,7 +15,7 @@
 | `geometry.architectural_primitives` | 20 |
 | `geometry.boolean` | 2 |
 | `geometry.combine` | 1 |
-| `geometry.curves` | 24 |
+| `geometry.curves` | 21 |
 | `geometry.primitives` | 29 |
 | `geometry.profiles` | 24 |
 | `geometry.sdf` | 13 |
@@ -130,7 +130,7 @@
 |---|---|---|---|
 | Combine Geometry | `geometry.combine.geometry` | Structural grouping of geometries into a composite. Bake/voxelize merges blocks (set union); not an analytic BRep union or SDF smooth union. | `GeometryUnionNode` |
 
-## geometry.curves (24)
+## geometry.curves (21)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -138,26 +138,23 @@
 | Extract Path Points | `geometry.curves.path_to_points` | Extracts existing vertices/sample points from a path. Does not resample — use Resample Path for that. | `PathToPointsNode` |
 | Arc | `geometry.curves.arc` | Builds a sampled circular arc from a center point, plane, radius, and start/end angles | `ArcNode` |
 | Face Edge To Path | `geometry.curves.edge_to_curve` | Converts a face edge into line, polyline, and point outputs for path workflows | `FaceEdgeToPathNode` |
-| Evaluate Path | `geometry.curves.evaluate_path` | Evaluates a path at a normalized parameter t in [0..1]. | `EvaluatePathNode` |
 | Bezier | `geometry.curves.bezier` | Builds a sampled Bezier curve from an ordered list of control points | `BezierNode` |
 | Box Face Boundary Path | `geometry.curves.face_boundary_curve` | Builds a closed boundary path from a box face for preview and downstream path workflows | `BoxFaceBoundaryPathNode` |
 | Interpolate Spline | `geometry.curves.interpolate_spline` | Builds a Catmull-Rom interpolation spline that passes through all resolved input points | `InterpolateSplineNode` |
 | B-Spline | `geometry.curves.b_spline` | Builds a sampled clamped uniform B-spline from an ordered control point list | `BSplineNode` |
 | Fillet Path Corners | `geometry.curves.fillet_polyline_corners` | Fillets interior corners of an open path with circular arcs in the work plane | `PolylineCornerFilletNode` |
-| Offset Path In Plane | `geometry.curves.offset_curve_plane` | Offsets a path (line, polyline, or curve) in a work plane by signed distance, with optional resampling. | `OffsetCurveInPlaneNode` |
+| Offset Path In Plane | `geometry.curves.offset_curve_plane` | Offsets a path (line, polyline, or curve) in a work plane by signed distance. | `OffsetCurveInPlaneNode` |
 | NURBS Curve | `geometry.curves.nurbs` | Builds a sampled clamped uniform NURBS curve from control points and optional per-point weights | `NurbsCurveNode` |
 | Rainbow Curve Offset | `geometry.curves.rainbow_curve_offset` | Generates multiple parallel offset polylines around a space curve using path frames. | `RainbowCurveOffsetNode` |
-| Resample Path | `geometry.curves.resample_polyline_length` | Resamples a path along arc length using explicit sampling mode (Original, Count, or Spacing). | `ResamplePolylineByLengthNode` |
-| Polyline Length | `geometry.curves.polyline_length` | Computes the total length of a line, polyline, or curve path | `PolylineLengthNode` |
-| Curve Rebuild By Length | `geometry.curves.rebuild_curve_length` | Rebuilds a curve/path using explicit sampling mode (Count or Spacing). | `CurveRebuildByLengthNode` |
-| Curve Evaluate | `geometry.curves.evaluate_curve` | Evaluates a curve/path at normalized parameter t and outputs point, tangent, normal, and binormal | `CurveEvaluateNode` |
+| Resample Path | `geometry.curves.resample_path` | Resamples a path along arc length by Count or Spacing. Primary output is PATH. | `ResamplePolylineByLengthNode` |
+| Path Length | `geometry.curves.polyline_length` | Computes the total length of a line, polyline, or curve path | `PolylineLengthNode` |
+| Evaluate Path | `geometry.curves.evaluate_curve` | Evaluates a path at normalized parameter t and outputs point and tangent. | `CurveEvaluateNode` |
 | Parabola On Plane | `geometry.curves.parabola_curve` | Builds a sampled parabola on a plane from vertex, curvature, x-range, and segment count | `ParabolaOnPlaneNode` |
 | Helix Curve | `geometry.curves.helix` | Builds a sampled helix from center, axis, radius, pitch, turns, and segment count. | `HelixCurveNode` |
 | Infinity Curve On Plane | `geometry.curves.infinity_curve` | Builds a sampled figure-eight (lemniscate-like) curve on a plane | `InfinityCurveOnPlaneNode` |
-| Voxelize Curve | `geometry.curves.voxelize_curve` | Converts a curve, polyline, or line directly into voxel block coordinates using cylindrical path segments | `VoxelizeCurveNode` |
+| Voxelize Path | `geometry.curves.voxelize_curve` | Converts a path directly into voxel block coordinates using cylindrical path segments. | `VoxelizeCurveNode` |
 | Blend Curves | `geometry.curves.blend_curves` | Creates a smooth transition curve between two curve, polyline, or line endpoints | `BlendCurvesNode` |
 | Tween Curves | `geometry.curves.tween_curves` | Creates evenly spaced intermediate curves between two curve, polyline, or line inputs | `TweenCurvesNode` |
-| Offset Polyline In Plane | `geometry.curves.offset_polyline_plane` | Legacy polyline offset in a plane. Prefer Offset Path In Plane for line/polyline/curve paths. | `PolylineOffsetInPlaneNode` |
 
 ## geometry.primitives (29)
 
@@ -594,7 +591,7 @@
 | Linear Array | `pattern.linear.linear_array` | 将坐标列表沿直线方向重复排列 | `LinearArrayNode` |
 | Along Path | `pattern.linear.along_path` | Repeats a block pattern at each resolved path point from a path or point list | `AlongPathNode` |
 | Staggered Array | `pattern.linear.staggered_array` | Repeats coordinates in rows and applies an alternating offset for brick-like staggering | `StaggeredArrayNode` |
-| Path Frames | `pattern.linear.path_instances` | Generates parallel-transport frames along a path using explicit sampling mode. | `PathInstancesNode` |
+| Path Frames | `pattern.linear.path_instances` | Generates parallel-transport frames at path vertices. | `PathInstancesNode` |
 | Instance on Points | `pattern.linear.instance_on_points` | Instances a block or block-placement template at each input point. | `InstanceOnPointsNode` |
 | Linear Array Geometry | `pattern.linear.linear_array_geometry` | Creates repeated geometry copies along a direction vector | `LinearArrayGeometryNode` |
 | Curve Array Geometry | `pattern.linear.curve_array_geometry` | Creates repeated geometry copies along a curve using parallel-transport frames and placement | `CurveArrayGeometryNode` |

@@ -33,19 +33,14 @@ A **Domain** is a directed interval **Start → End**, not unordered bounds.
 
 ## Path Sampling
 
-Explicit **Sampling Mode** — no hidden Count-vs-Spacing precedence:
-
-- **Original** — path vertices / internal samples
-- **Count** — uniform arc-length by count
-- **Spacing** — fixed arc-length spacing
-
-### Path nodes
+Explicit **Count** or **Spacing** arc-length sampling lives on **Resample Path** only.
+See `docs/node-language-v1-curve-path.md` for curve/path node roles.
 
 | Node | Role |
 |------|------|
 | Extract Path Points | Extract existing vertices (no resample) |
-| Resample Path | Resample by mode |
-| Path Frames | Frames along path (sole frame producer) |
+| Resample Path | Resample by Count or Spacing → PATH |
+| Path Frames | Frames at path vertices (sole frame producer) |
 | Evaluate Path | Point + tangent at normalized t ∈ [0..1] |
 
 ## Input node semantics

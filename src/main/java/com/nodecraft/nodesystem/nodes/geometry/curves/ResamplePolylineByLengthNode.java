@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
@@ -20,9 +21,9 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "geometry.curves.resample_polyline_length",
+    id = "geometry.curves.resample_path",
     displayName = "Resample Path",
-    description = "Resamples a path along arc length using explicit sampling mode (Original, Count, or Spacing).",
+    description = "Resamples a path along arc length by Count or Spacing. Primary output is PATH.",
     category = "geometry.curves",
     order = 12
 )
@@ -42,20 +43,20 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
     private static final String INPUT_COUNT_ID = "input_count";
     private static final String INPUT_SPACING_ID = "input_spacing";
 
-    private static final String OUTPUT_POLYLINE_ID = "output_polyline";
+    private static final String OUTPUT_PATH_ID = "output_path";
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_LENGTH_ID = "output_length";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ResamplePolylineByLengthNode() {
-        super(UUID.randomUUID(), "geometry.curves.resample_polyline_length");
+        super(UUID.randomUUID(), "geometry.curves.resample_path");
 
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
             "Path to resample (line, polyline, or curve)",
             NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_MODE_ID, "Mode",
-            "Sampling mode: Original, Count, or Spacing", NodeDataType.STRING, this));
+            "Sampling mode: Count or Spacing", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing",
             "Target distance between samples when Mode=Spacing",
             NodeDataType.DOUBLE, this));
@@ -63,9 +64,9 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
             "Target sample count when Mode=Count (>= 2)",
             NodeDataType.INTEGER, this));
 
-        addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline",
-            "Resampled polyline (closed when the input path is closed)",
-            NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path",
+            "Resampled path (closed when the input path is closed)",
+            NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points",
             "Resampled points as point list",
             NodeDataType.POINT_LIST, this));
@@ -89,6 +90,9 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
         }
 
         SamplingMode mode = SamplingMode.fromObject(inputValues.get(INPUT_MODE_ID), samplingMode);
+        if (mode == SamplingMode.ORIGINAL) {
+            mode = SamplingMode.COUNT;
+        }
         int count = inputValues.get(INPUT_COUNT_ID) instanceof Number n ? n.intValue() : defaultCount;
         double spacing = inputValues.get(INPUT_SPACING_ID) instanceof Number n ? n.doubleValue() : defaultSpacing;
 
@@ -106,7 +110,7 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
             return;
         }
 
-        outputValues.put(OUTPUT_POLYLINE_ID, polyline);
+        outputValues.put(OUTPUT_PATH_ID, PathData.fromPolyline(polyline));
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(samples));
         outputValues.put(OUTPUT_COUNT_ID, samples.size());
         outputValues.put(OUTPUT_LENGTH_ID, sample.totalLength());
@@ -114,7 +118,7 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
     }
 
     private void writeInvalid() {
-        outputValues.put(OUTPUT_POLYLINE_ID, null);
+        outputValues.put(OUTPUT_PATH_ID, null);
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_LENGTH_ID, 0.0d);

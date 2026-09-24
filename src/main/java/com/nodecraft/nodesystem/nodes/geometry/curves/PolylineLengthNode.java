@@ -17,7 +17,7 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.curves.polyline_length",
-    displayName = "Polyline Length",
+    displayName = "Path Length",
     description = "Computes the total length of a line, polyline, or curve path",
     category = "geometry.curves",
     order = 13

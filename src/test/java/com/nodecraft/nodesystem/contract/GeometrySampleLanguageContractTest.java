@@ -121,18 +121,19 @@ class GeometrySampleLanguageContractTest {
     }
 
     @Test
-    void pathSamplingNodesExposeExplicitMode() {
-        assertPortType("geometry.curves.resample_polyline_length", "input_mode", true, NodeDataType.STRING);
-        assertPortType("pattern.linear.path_instances", "input_mode", true, NodeDataType.STRING);
-        assertPortType("geometry.curves.voxelize_curve", "input_mode", true, NodeDataType.STRING);
+    void onlyResamplePathExposesSamplingMode() {
+        assertPortType("geometry.curves.resample_path", "input_mode", true, NodeDataType.STRING);
+        assertFalse(hasInputPort("pattern.linear.path_instances", "input_mode"));
+        assertFalse(hasInputPort("geometry.curves.voxelize_curve", "input_mode"));
+        assertFalse(hasInputPort("geometry.curves.offset_curve_plane", "input_count"));
     }
 
     @Test
     void evaluatePathUsesNormalizedParameter() {
-        assertPortType("geometry.curves.evaluate_path", "input_path", true, NodeDataType.PATH);
-        assertPortType("geometry.curves.evaluate_path", "input_parameter", true, NodeDataType.DOUBLE);
-        assertPortType("geometry.curves.evaluate_path", "output_point", false, NodeDataType.POINT);
-        assertPortType("geometry.curves.evaluate_path", "output_tangent", false, NodeDataType.VECTOR);
+        assertPortType("geometry.curves.evaluate_curve", "input_path", true, NodeDataType.PATH);
+        assertPortType("geometry.curves.evaluate_curve", "input_t", true, NodeDataType.DOUBLE);
+        assertPortType("geometry.curves.evaluate_curve", "output_point", false, NodeDataType.POINT);
+        assertPortType("geometry.curves.evaluate_curve", "output_tangent", false, NodeDataType.VECTOR);
     }
 
     @Test
@@ -149,5 +150,11 @@ class GeometrySampleLanguageContractTest {
         assertNotNull(port, typeId + " missing port " + portId);
         assertEquals(expected, port.getDataType(), typeId + "." + portId);
         assertFalse(port.getDataType() == NodeDataType.ANY, typeId + "." + portId + " must not be ANY");
+    }
+
+    private static boolean hasInputPort(String typeId, String portId) {
+        INode node = NodeRegistry.getInstance().createNodeInstance(typeId);
+        assertNotNull(node, typeId);
+        return node.getInputPorts().stream().anyMatch(port -> port.getId().equals(portId));
     }
 }

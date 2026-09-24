@@ -76,6 +76,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V9 -> migrateV9ToV10(graph);
             case GraphFormatVersion.V10 -> migrateV10ToV11(graph);
             case GraphFormatVersion.V11 -> migrateV11ToV12(graph);
+            case GraphFormatVersion.V12 -> migrateV12ToV13(graph);
             default -> graph;
         };
     }
@@ -664,6 +665,115 @@ public final class GraphMigrationRegistry {
             }
             if (PATH_INSTANCES_TYPE.equals(targetType) && "output_origins".equalsIgnoreCase(connection.sourcePortId)) {
                 connection.sourcePortId = "output_points";
+            }
+        }
+        return graph;
+    }
+
+    private static final String RESAMPLE_PATH_TYPE = "geometry.curves.resample_path";
+    private static final String LEGACY_RESAMPLE_POLYLINE_TYPE = "geometry.curves.resample_polyline_length";
+    private static final String LEGACY_REBUILD_CURVE_TYPE = "geometry.curves.rebuild_curve_length";
+    private static final String LEGACY_EVALUATE_PATH_TYPE = "geometry.curves.evaluate_path";
+    private static final String EVALUATE_CURVE_TYPE = "geometry.curves.evaluate_curve";
+    private static final String LEGACY_OFFSET_POLYLINE_TYPE = "geometry.curves.offset_polyline_plane";
+    private static final String OFFSET_CURVE_PLANE_TYPE = "geometry.curves.offset_curve_plane";
+    private static final String VOXELIZE_CURVE_TYPE = "geometry.curves.voxelize_curve";
+
+    /**
+     * Curve path language: merge resample/rebuild, consolidate evaluate, remove hidden sampling
+     * from Path Frames / Voxelize / Offset, delete Offset Polyline.
+     */
+    private static SavedGraph migrateV12ToV13(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                if (LEGACY_RESAMPLE_POLYLINE_TYPE.equalsIgnoreCase(node.typeId)
+                        || LEGACY_REBUILD_CURVE_TYPE.equalsIgnoreCase(node.typeId)) {
+                    LOGGER.debug("Migrated node type: {} -> {}", node.typeId, RESAMPLE_PATH_TYPE);
+                    node.typeId = RESAMPLE_PATH_TYPE;
+                } else if (LEGACY_EVALUATE_PATH_TYPE.equalsIgnoreCase(node.typeId)) {
+                    LOGGER.debug("Migrated node type: {} -> {}", node.typeId, EVALUATE_CURVE_TYPE);
+                    node.typeId = EVALUATE_CURVE_TYPE;
+                } else if (LEGACY_OFFSET_POLYLINE_TYPE.equalsIgnoreCase(node.typeId)) {
+                    LOGGER.debug("Migrated node type: {} -> {}", node.typeId, OFFSET_CURVE_PLANE_TYPE);
+                    node.typeId = OFFSET_CURVE_PLANE_TYPE;
+                }
+            }
+        }
+
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            String targetPort = connection.targetPortId == null ? "" : connection.targetPortId.toLowerCase(Locale.ROOT);
+
+            if (EVALUATE_CURVE_TYPE.equals(sourceType)
+                    && ("output_normal".equals(sourcePort) || "output_binormal".equals(sourcePort))) {
+                LOGGER.debug("Dropped Evaluate Path frame output connection from {}", connection.sourceNodeId);
+                return true;
+            }
+            if (EVALUATE_CURVE_TYPE.equals(targetType) && "input_up_vector".equals(targetPort)) {
+                LOGGER.debug("Dropped Evaluate Path up-vector input on {}", connection.targetNodeId);
+                return true;
+            }
+            if (RESAMPLE_PATH_TYPE.equals(sourceType) && "output_curve".equals(sourcePort)) {
+                LOGGER.debug("Dropped Resample Path legacy curve output from {}", connection.sourceNodeId);
+                return true;
+            }
+            if (PATH_INSTANCES_TYPE.equals(targetType)
+                    && ("input_mode".equals(targetPort) || "input_count".equals(targetPort) || "input_spacing".equals(targetPort))) {
+                LOGGER.debug("Dropped Path Frames sampling port {} on {}", connection.targetPortId, connection.targetNodeId);
+                return true;
+            }
+            if (VOXELIZE_CURVE_TYPE.equals(targetType)
+                    && ("input_mode".equals(targetPort) || "input_count".equals(targetPort) || "input_spacing".equals(targetPort))) {
+                LOGGER.debug("Dropped Voxelize Path sampling port {} on {}", connection.targetPortId, connection.targetNodeId);
+                return true;
+            }
+            if (OFFSET_CURVE_PLANE_TYPE.equals(targetType)
+                    && ("input_count".equals(targetPort) || "input_spacing".equals(targetPort))) {
+                LOGGER.debug("Dropped Offset Path resample port {} on {}", connection.targetPortId, connection.targetNodeId);
+                return true;
+            }
+            if (OFFSET_CURVE_PLANE_TYPE.equals(sourceType)
+                    && ("output_polyline".equals(sourcePort) || "output_points".equals(sourcePort) || "output_length".equals(sourcePort))) {
+                LOGGER.debug("Dropped Offset Path legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+            return false;
+        });
+
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+
+            if (RESAMPLE_PATH_TYPE.equals(sourceType) && "output_polyline".equalsIgnoreCase(connection.sourcePortId)) {
+                connection.sourcePortId = "output_path";
+            }
+            if (EVALUATE_CURVE_TYPE.equals(targetType) && "input_parameter".equalsIgnoreCase(connection.targetPortId)) {
+                connection.targetPortId = "input_t";
+            }
+            if (OFFSET_CURVE_PLANE_TYPE.equals(sourceType) && "output_polyline".equalsIgnoreCase(connection.sourcePortId)) {
+                connection.sourcePortId = "output_path";
             }
         }
         return graph;

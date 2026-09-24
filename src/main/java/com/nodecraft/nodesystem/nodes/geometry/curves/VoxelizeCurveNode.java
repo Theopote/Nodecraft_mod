@@ -14,8 +14,6 @@ import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.BlockPosList;
-import com.nodecraft.nodesystem.util.PathSamplingUtils;
-import com.nodecraft.nodesystem.util.SamplingMode;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
@@ -28,8 +26,8 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.curves.voxelize_curve",
-    displayName = "Voxelize Curve",
-    description = "Converts a curve, polyline, or line directly into voxel block coordinates using cylindrical path segments",
+    displayName = "Voxelize Path",
+    description = "Converts a path directly into voxel block coordinates using cylindrical path segments.",
     category = "geometry.curves",
     order = 21
 )
@@ -40,26 +38,14 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
     @NodeProperty(displayName = "Default Radius", category = "Voxelize", order = 1)
     private double defaultRadius = 1.0d;
 
-    @NodeProperty(displayName = "Sampling Mode", category = "Voxelize", order = 2)
-    private SamplingMode samplingMode = SamplingMode.ORIGINAL;
-
-    @NodeProperty(displayName = "Default Spacing", category = "Voxelize", order = 3)
-    private double defaultSpacing = 0.0d;
-
-    @NodeProperty(displayName = "Default Count", category = "Voxelize", order = 4)
-    private int defaultCount = 10;
-
-    @NodeProperty(displayName = "Fill Tube", category = "Voxelize", order = 5)
+    @NodeProperty(displayName = "Fill Tube", category = "Voxelize", order = 2)
     private boolean fillTube = true;
 
-    @NodeProperty(displayName = "Cap Ends", category = "Voxelize", order = 6)
+    @NodeProperty(displayName = "Cap Ends", category = "Voxelize", order = 3)
     private boolean capEnds = true;
 
     private static final String INPUT_PATH_ID = "input_path";
-    private static final String INPUT_MODE_ID = "input_mode";
     private static final String INPUT_RADIUS_ID = "input_radius";
-    private static final String INPUT_SPACING_ID = "input_spacing";
-    private static final String INPUT_COUNT_ID = "input_count";
 
     private static final String OUTPUT_BLOCKS_ID = "output_blocks";
     private static final String OUTPUT_BLOCKS_TREE_ID = "output_blocks_tree";
@@ -77,17 +63,14 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
 
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
             "Path to voxelize (line, polyline, or curve)", NodeDataType.PATH, this));
-        addInputPort(new BasePort(INPUT_MODE_ID, "Mode", "Sampling mode: Original, Count, or Spacing", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Tube radius in blocks/meters", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing", "Arc-length spacing when Mode=Spacing", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Sample count when Mode=Count (>= 2)", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Voxelized curve block coordinates", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BLOCKS_TREE_ID, "Blocks Tree", "Voxelized blocks grouped as one branch for this curve", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite cylinder geometry used for voxelization", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_SEGMENT_GEOMETRY_TREE_ID, "Segment Geometry Tree", "Cylinder segment geometry keyed by path segment index", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Sampled path used for voxelization", NodeDataType.POLYLINE, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled path points as point list", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Path polyline used for voxelization", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Path points as point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding region of the generated curve blocks", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Source path length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Generated block count", NodeDataType.INTEGER, this));
@@ -96,20 +79,22 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
 
     @Override
     public String getDescription() {
-        return "Converts a curve, polyline, or line directly into voxel block coordinates using cylindrical path segments";
+        return "Converts a path directly into voxel block coordinates using cylindrical path segments.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> verts = resolveVertices();
-        SampledPath sampled = samplePath(verts);
+        List<Vector3d> verts = resolvePathVertices(INPUT_PATH_ID);
         double radius = Math.max(0.0d, getInputDouble(INPUT_RADIUS_ID, defaultRadius));
-        if (sampled == null || sampled.points().size() < 2 || radius <= EPS) {
+        if (verts == null || verts.size() < 2 || radius <= EPS) {
             writeInvalid();
             return;
         }
 
-        List<GeometryData> cylinders = buildSegmentGeometry(sampled.points(), sampled.closed(), radius);
+        boolean closed = PathUtils.isClosed(verts);
+        double length = computeLength(verts, closed);
+
+        List<GeometryData> cylinders = buildSegmentGeometry(verts, closed, radius);
         if (cylinders.isEmpty()) {
             writeInvalid();
             return;
@@ -119,8 +104,8 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
         BlockPosList blocks = GeometryVoxelizer.voxelize(geometry, fillTube);
         RegionData region = GeometryVoxelizer.createBoundingRegion(geometry);
         PolylineData polyline = PathUtils.createPolylineOrNull(PathUtils.toVec3dList(
-            sampled.closed() ? sampled.points().subList(0, sampled.points().size() - 1) : sampled.points(),
-            sampled.closed()
+            closed ? verts.subList(0, verts.size() - 1) : verts,
+            closed
         ));
         if (polyline == null || blocks.isEmpty()) {
             writeInvalid();
@@ -132,11 +117,20 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_SEGMENT_GEOMETRY_TREE_ID, buildSegmentTree(cylinders));
         outputValues.put(OUTPUT_POLYLINE_ID, polyline);
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(sampled.points()));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(verts));
         outputValues.put(OUTPUT_REGION_ID, region);
-        outputValues.put(OUTPUT_LENGTH_ID, sampled.length());
+        outputValues.put(OUTPUT_LENGTH_ID, length);
         outputValues.put(OUTPUT_COUNT_ID, blocks.size());
         outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    private static double computeLength(List<Vector3d> verts, boolean closed) {
+        List<Vector3d> unique = closed ? verts.subList(0, verts.size() - 1) : verts;
+        double[] cumulative = PathUtils.buildCumulative(unique, closed);
+        if (cumulative == null || cumulative.length == 0) {
+            return 0.0d;
+        }
+        return cumulative[cumulative.length - 1];
     }
 
     public double getDefaultRadius() {
@@ -147,18 +141,6 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
         double resolved = Math.max(0.0d, defaultRadius);
         if (Double.compare(this.defaultRadius, resolved) != 0) {
             this.defaultRadius = resolved;
-            markDirty();
-        }
-    }
-
-    public double getDefaultSpacing() {
-        return defaultSpacing;
-    }
-
-    public void setDefaultSpacing(double defaultSpacing) {
-        double resolved = Math.max(0.0d, defaultSpacing);
-        if (Double.compare(this.defaultSpacing, resolved) != 0) {
-            this.defaultSpacing = resolved;
             markDirty();
         }
     }
@@ -189,7 +171,6 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
     public Object getNodeState() {
         return java.util.Map.of(
             "defaultRadius", defaultRadius,
-            "defaultSpacing", defaultSpacing,
             "fillTube", fillTube,
             "capEnds", capEnds
         );
@@ -203,40 +184,12 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
         if (map.get("defaultRadius") instanceof Number value) {
             setDefaultRadius(value.doubleValue());
         }
-        if (map.get("defaultSpacing") instanceof Number value) {
-            setDefaultSpacing(value.doubleValue());
-        }
         if (map.get("fillTube") instanceof Boolean value) {
             setFillTube(value);
         }
         if (map.get("capEnds") instanceof Boolean value) {
             setCapEnds(value);
         }
-    }
-
-    private @Nullable List<Vector3d> resolveVertices() {
-        return resolvePathVertices(INPUT_PATH_ID);
-    }
-
-    private @Nullable SampledPath samplePath(@Nullable List<Vector3d> verts) {
-        if (verts == null || verts.size() < 2) {
-            return null;
-        }
-
-        SamplingMode mode = SamplingMode.fromObject(inputValues.get(INPUT_MODE_ID), samplingMode);
-        int count = inputValues.get(INPUT_COUNT_ID) instanceof Number number ? number.intValue() : defaultCount;
-        double spacing = getInputDouble(INPUT_SPACING_ID, defaultSpacing);
-
-        PathSamplingUtils.PathSampleResult sample = PathSamplingUtils.sample(verts, mode, count, spacing);
-        if (!sample.valid() || sample.points().isEmpty()) {
-            return null;
-        }
-
-        List<Vector3d> samples = new ArrayList<>(sample.points());
-        if (sample.closed() && !samples.isEmpty()) {
-            samples.add(new Vector3d(samples.getFirst()));
-        }
-        return new SampledPath(List.copyOf(samples), sample.closed(), sample.totalLength());
     }
 
     private List<GeometryData> buildSegmentGeometry(List<Vector3d> sampledPoints, boolean closed, double radius) {
@@ -287,8 +240,5 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
             branches.add(new DataTreeData.Branch(List.of(i), List.of(segments.get(i))));
         }
         return new DataTreeData(branches);
-    }
-
-    private record SampledPath(List<Vector3d> points, boolean closed, double length) {
     }
 }

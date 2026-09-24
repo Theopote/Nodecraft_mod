@@ -84,8 +84,14 @@ public final class GraphFormatVersion {
      */
     public static final int V12 = 12;
 
+    /**
+     * Curve path language: Resample Path canonical id, Evaluate Path consolidation,
+     * sampling mode only on Resample Path, Offset Path simplified, legacy nodes removed.
+     */
+    public static final int V13 = 13;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V12;
+    public static final int CURRENT = V13;
 
     private GraphFormatVersion() {
     }

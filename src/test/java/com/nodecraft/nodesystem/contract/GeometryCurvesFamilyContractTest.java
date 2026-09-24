@@ -34,9 +34,8 @@ class GeometryCurvesFamilyContractTest {
 
     /** Canonical path-operation chain nodes from Batch 3 acceptance scope. */
     private static final Set<String> CANONICAL_CHAIN_IDS = Set.of(
-            "geometry.curves.rebuild_curve_length",
+            "geometry.curves.resample_path",
             "geometry.curves.evaluate_curve",
-            "geometry.curves.evaluate_path",
             "geometry.curves.offset_curve_plane",
             "geometry.curves.tween_curves",
             "geometry.curves.fillet_polyline_corners",
@@ -47,7 +46,7 @@ class GeometryCurvesFamilyContractTest {
 
     private static final Set<String> PATH_CONSUMER_IDS = Set.of(
             "geometry.curves.evaluate_curve",
-            "geometry.curves.rebuild_curve_length",
+            "geometry.curves.resample_path",
             "pattern.linear.path_instances",
             "geometry.curves.offset_curve_plane",
             "geometry.curves.path_to_points",
@@ -55,9 +54,7 @@ class GeometryCurvesFamilyContractTest {
             "geometry.curves.rainbow_curve_offset",
             "geometry.curves.tween_curves",
             "geometry.curves.blend_curves",
-            "geometry.curves.resample_polyline_length",
             "geometry.curves.polyline_length",
-            "geometry.curves.offset_polyline_plane",
             "geometry.curves.fillet_polyline_corners",
             "pattern.linear.curve_array_geometry",
             "geometry.architectural_primitives.array_along_curve",
@@ -116,12 +113,27 @@ class GeometryCurvesFamilyContractTest {
     }
 
     @Test
-    void curveEvaluateIsContractSampleForPathOutputs() {
+    void evaluatePathIsContractSampleForPathOutputs() {
         assertPortType("geometry.curves.evaluate_curve", "input_path", true, NodeDataType.PATH);
+        assertPortType("geometry.curves.evaluate_curve", "input_t", true, NodeDataType.DOUBLE);
         assertPortType("geometry.curves.evaluate_curve", "output_point", false, NodeDataType.POINT);
         assertPortType("geometry.curves.evaluate_curve", "output_tangent", false, NodeDataType.VECTOR);
-        assertPortType("geometry.curves.evaluate_curve", "output_normal", false, NodeDataType.VECTOR);
-        assertPortType("geometry.curves.evaluate_curve", "output_binormal", false, NodeDataType.VECTOR);
+        assertFalse(hasOutputPort("geometry.curves.evaluate_curve", "output_normal"));
+        assertFalse(hasOutputPort("geometry.curves.evaluate_curve", "output_binormal"));
+        assertFalse(hasInputPort("geometry.curves.evaluate_curve", "input_up_vector"));
+    }
+
+    @Test
+    void resamplePathEmitsPathOutput() {
+        assertPortType("geometry.curves.resample_path", "output_path", false, NodeDataType.PATH);
+        assertPortType("geometry.curves.resample_path", "input_mode", true, NodeDataType.STRING);
+    }
+
+    @Test
+    void offsetPathEmitsPathWithoutHiddenResample() {
+        assertPortType("geometry.curves.offset_curve_plane", "output_path", false, NodeDataType.PATH);
+        assertFalse(hasInputPort("geometry.curves.offset_curve_plane", "input_count"));
+        assertFalse(hasInputPort("geometry.curves.offset_curve_plane", "input_spacing"));
     }
 
     @Test
@@ -156,6 +168,7 @@ class GeometryCurvesFamilyContractTest {
         assertPortType("pattern.linear.along_path", "input_path", true, NodeDataType.PATH);
         assertPortType("pattern.linear.path_instances", "input_path", true, NodeDataType.PATH);
         assertFalse(hasInputPort("pattern.linear.path_instances", "input_path_points"));
+        assertFalse(hasInputPort("pattern.linear.path_instances", "input_mode"));
         assertPortType("pattern.linear.curve_array_geometry", "input_path", true, NodeDataType.PATH);
         assertPortType("geometry.architectural_primitives.array_along_curve", "input_path", true, NodeDataType.PATH);
         assertPortType("transform.orientation.project_curve_to_plane", "input_path", true, NodeDataType.PATH);
@@ -207,19 +220,19 @@ class GeometryCurvesFamilyContractTest {
     }
 
     @Test
-    void rebuildAndFrameDefaultSpacingProduceValidOutput() {
+    void resampleAndPathFramesProduceValidOutput() {
         LineData line = sampleLine10Blocks();
 
-        BaseNode rebuild = node("geometry.curves.rebuild_curve_length");
-        rebuild.setInput("input_path", line);
-        rebuild.processNode(null);
-        assertEquals(Boolean.TRUE, rebuild.getOutput("output_valid"));
-        assertTrue(((List<?>) rebuild.getOutput("output_points")).size() >= 2);
+        BaseNode resample = node("geometry.curves.resample_path");
+        resample.setInput("input_path", line);
+        resample.setInput("input_mode", "COUNT");
+        resample.setInput("input_count", 5);
+        resample.processNode(null);
+        assertEquals(Boolean.TRUE, resample.getOutput("output_valid"));
+        assertInstanceOf(PathData.class, resample.getOutput("output_path"));
 
         BaseNode frame = node("pattern.linear.path_instances");
         frame.setInput("input_path", line);
-        frame.setInput("input_mode", "COUNT");
-        frame.setInput("input_count", 5);
         frame.processNode(null);
         assertEquals(Boolean.TRUE, frame.getOutput("output_valid"));
         assertTrue((Integer) frame.getOutput("output_count") >= 2);
@@ -242,7 +255,7 @@ class GeometryCurvesFamilyContractTest {
         LineData lineB = new LineData(new Vec3d(0, 0, 10), new Vec3d(10, 0, 10));
 
         assertValidWithPath("geometry.curves.evaluate_curve", line);
-        assertValidWithPath("geometry.curves.rebuild_curve_length", line);
+        assertValidWithPath("geometry.curves.resample_path", line);
         assertValidWithPath("pattern.linear.path_instances", line);
         assertValidWithPath("geometry.curves.rainbow_curve_offset", line);
         assertValidWithPath("geometry.curves.voxelize_curve", line);
@@ -253,6 +266,7 @@ class GeometryCurvesFamilyContractTest {
         offset.setInput("input_offset", 1.0d);
         offset.processNode(null);
         assertEquals(Boolean.TRUE, offset.getOutput("output_valid"));
+        assertInstanceOf(PathData.class, offset.getOutput("output_path"));
 
         BaseNode tween = node("geometry.curves.tween_curves");
         tween.setInput("input_path_a", line);
@@ -323,5 +337,11 @@ class GeometryCurvesFamilyContractTest {
         INode node = NodeRegistry.getInstance().createNodeInstance(typeId);
         assertInstanceOf(INode.class, node);
         return node.getInputPorts().stream().anyMatch(port -> port.getId().equals(portId));
+    }
+
+    private static boolean hasOutputPort(String typeId, String portId) {
+        INode node = NodeRegistry.getInstance().createNodeInstance(typeId);
+        assertInstanceOf(INode.class, node);
+        return node.getOutputPorts().stream().anyMatch(port -> port.getId().equals(portId));
     }
 }

@@ -4,30 +4,24 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PointData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Evaluates point and frame vectors on a path at a normalized parameter.
+ * Evaluates point and tangent on a path at a normalized parameter.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.curves.evaluate_curve",
-    displayName = "Curve Evaluate",
-    description = "Evaluates a curve/path at normalized parameter t and outputs point, tangent, normal, and binormal",
+    displayName = "Evaluate Path",
+    description = "Evaluates a path at normalized parameter t and outputs point and tangent.",
     category = "geometry.curves",
     order = 14
 )
@@ -43,12 +37,9 @@ public class CurveEvaluateNode extends AbstractCurveNode {
 
     private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_T_ID = "input_t";
-    private static final String INPUT_UP_VECTOR_ID = "input_up_vector";
 
     private static final String OUTPUT_POINT_ID = "output_point";
     private static final String OUTPUT_TANGENT_ID = "output_tangent";
-    private static final String OUTPUT_NORMAL_ID = "output_normal";
-    private static final String OUTPUT_BINORMAL_ID = "output_binormal";
     private static final String OUTPUT_LENGTH_ID = "output_length";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
@@ -59,17 +50,11 @@ public class CurveEvaluateNode extends AbstractCurveNode {
             "Path to evaluate (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_T_ID, "t",
             "Normalized parameter along path (0..1)", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_UP_VECTOR_ID, "Up Vector",
-            "Reference up vector used to derive the normal direction", NodeDataType.VECTOR, this));
 
         addOutputPort(new BasePort(OUTPUT_POINT_ID, "Point",
             "Evaluated point on path", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_TANGENT_ID, "Tangent",
             "Unit tangent direction at t", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_NORMAL_ID, "Normal",
-            "Unit normal direction derived from up-vector framing", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_BINORMAL_ID, "Binormal",
-            "Unit binormal vector completing the local frame", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length",
             "Total path length used for parameterization", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
@@ -78,7 +63,7 @@ public class CurveEvaluateNode extends AbstractCurveNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> verts = resolveVertices();
+        List<Vector3d> verts = resolvePathVertices(INPUT_PATH_ID);
         if (verts == null || verts.size() < 2) {
             writeInvalid();
             return;
@@ -121,35 +106,8 @@ public class CurveEvaluateNode extends AbstractCurveNode {
         }
         tangent.normalize();
 
-        Vector3d up = resolveUpVector(inputValues.get(INPUT_UP_VECTOR_ID));
-        Vector3d binormal = new Vector3d(tangent).cross(up);
-        if (binormal.lengthSquared() <= EPS) {
-            Vector3d fallbackUp = Math.abs(tangent.y) < 0.9d
-                ? new Vector3d(0.0d, 1.0d, 0.0d)
-                : new Vector3d(1.0d, 0.0d, 0.0d);
-            binormal = new Vector3d(tangent).cross(fallbackUp);
-            if (binormal.lengthSquared() <= EPS) {
-                fallbackUp = new Vector3d(0.0d, 0.0d, 1.0d);
-                binormal = new Vector3d(tangent).cross(fallbackUp);
-            }
-        }
-        if (binormal.lengthSquared() <= EPS) {
-            writeInvalid();
-            return;
-        }
-        binormal.normalize();
-
-        Vector3d normal = new Vector3d(binormal).cross(tangent);
-        if (normal.lengthSquared() <= EPS) {
-            writeInvalid();
-            return;
-        }
-        normal.normalize();
-
         outputValues.put(OUTPUT_POINT_ID, new PointData(point.x, point.y, point.z));
         outputValues.put(OUTPUT_TANGENT_ID, tangent);
-        outputValues.put(OUTPUT_NORMAL_ID, normal);
-        outputValues.put(OUTPUT_BINORMAL_ID, binormal);
         outputValues.put(OUTPUT_LENGTH_ID, total);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
@@ -200,23 +158,8 @@ public class CurveEvaluateNode extends AbstractCurveNode {
     private void writeInvalid() {
         outputValues.put(OUTPUT_POINT_ID, null);
         outputValues.put(OUTPUT_TANGENT_ID, null);
-        outputValues.put(OUTPUT_NORMAL_ID, null);
-        outputValues.put(OUTPUT_BINORMAL_ID, null);
         outputValues.put(OUTPUT_LENGTH_ID, 0.0d);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private List<Vector3d> resolveVertices() {
-        return resolvePathVertices(INPUT_PATH_ID);
-    }
-
-    private Vector3d resolveUpVector(Object value) {
-        if (value instanceof Vector3d vector) {
-            if (vector.lengthSquared() > EPS) {
-                return new Vector3d(vector).normalize();
-            }
-        }
-        return new Vector3d(0.0d, 1.0d, 0.0d);
     }
 
     private double getInputDouble(String portId, double fallback) {
