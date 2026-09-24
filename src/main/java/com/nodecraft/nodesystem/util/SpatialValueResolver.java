@@ -21,9 +21,9 @@ import java.util.List;
  * Direction ports use {@link #resolveVector(Object)} (strict): points and block positions are
  * not treated as vectors.
  * <p>
- * {@link BlockPos} resolves to the cell <em>min corner</em> as continuous xyz (no +0.5).
- * For a geometric center on a picked block, use {@link BlockSpace#cellCenter(BlockPos)}
- * or the Block To Point node with center offset — see {@link BlockSpace}.
+ * <b>Spatial Convention v1:</b> {@link BlockPos} / {@link Coordinate} resolve to the block
+ * <em>cell center</em> ({@code +0.5}). See {@link BlockSpace}. Cell-corner continuous xyz is only
+ * via {@link BlockSpace#cellMinCorner(BlockPos)} for AABB/render — never as a POINT role.
  */
 public final class SpatialValueResolver {
     private SpatialValueResolver() {
@@ -35,7 +35,8 @@ public final class SpatialValueResolver {
             return pointData.getPosition();
         }
         if (value instanceof Coordinate coordinate) {
-            return new Vector3d(coordinate.getX(), coordinate.getY(), coordinate.getZ());
+            // Coordinate is a block-grid alias → canonical Point is cell center.
+            return BlockSpace.cellCenter(coordinate.getX(), coordinate.getY(), coordinate.getZ());
         }
         if (value instanceof Vector3 vector) {
             return new Vector3d(vector.getX(), vector.getY(), vector.getZ());
@@ -47,8 +48,8 @@ public final class SpatialValueResolver {
             return new Vector3d(vec3d.x, vec3d.y, vec3d.z);
         }
         if (value instanceof BlockPos blockPos) {
-            // Cell min corner — not block center. See BlockSpace.
-            return BlockSpace.cellMinCorner(blockPos);
+            // Canonical BlockPos → Point = cell center (never the min corner).
+            return BlockSpace.cellCenter(blockPos);
         }
         return null;
     }
@@ -81,7 +82,7 @@ public final class SpatialValueResolver {
     /**
      * Resolves a collection of point-like entries into continuous locations for algorithms.
      * Accepts {@link PointData}, {@link Vector3d}, legacy position/vector wrappers, and
-     * {@link BlockPos} (integer corner as continuous xyz). Unknown entries are skipped.
+     * {@link BlockPos} (canonical cell center). Unknown entries are skipped.
      */
     public static List<Vector3d> resolvePointList(@Nullable Object value) {
         if (!(value instanceof Collection<?> collection)) {
@@ -139,10 +140,14 @@ public final class SpatialValueResolver {
         if (value instanceof BlockPos blockPos) {
             return blockPos;
         }
+        if (value instanceof Coordinate coordinate) {
+            return new BlockPos(coordinate.getX(), coordinate.getY(), coordinate.getZ());
+        }
         Vector3d resolved = resolvePoint(value);
         if (resolved == null) {
             return null;
         }
-        return BlockPos.ofFloored(resolved.x, resolved.y, resolved.z);
+        // Point → BlockPos is floor snap (cell containing the point).
+        return BlockSpace.pointToBlockFloor(resolved);
     }
 }

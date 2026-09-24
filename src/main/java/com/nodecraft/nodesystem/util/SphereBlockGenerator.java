@@ -17,19 +17,15 @@ public final class SphereBlockGenerator {
 
     public static RegionData createBoundingRegion(SphereData geometry) {
         Vector3d center = geometry.getCenter();
-        double radius = Math.max(1.0d, geometry.getRadius());
-
-        BlockPos minCorner = BlockPos.ofFloored(
+        double radius = Math.max(0.0d, geometry.getRadius());
+        return BlockSpace.inclusiveRegionFromClosedAabb(
             center.x - radius,
             center.y - radius,
-            center.z - radius
-        );
-        BlockPos maxCorner = BlockPos.ofFloored(
+            center.z - radius,
             center.x + radius,
             center.y + radius,
             center.z + radius
         );
-        return new RegionData(minCorner, maxCorner);
     }
 
     public static void populateSphere(BlockPosList blocks, RegionData region, SphereData geometry, boolean fillSolid) {
@@ -52,14 +48,15 @@ public final class SphereBlockGenerator {
         }
 
         Vector3d center = geometry.getCenter();
-        double radius = Math.max(1.0d, geometry.getRadius());
+        double radius = Math.max(0.0d, geometry.getRadius());
         double shellThreshold = Math.max(0.0d, radius - Math.max(0.0d, shellThickness));
         boolean fillSolid = voxelMode == null || voxelMode == VoxelMode.SOLID;
 
         for (int x = minCorner.getX(); x <= maxCorner.getX(); x++) {
             for (int y = minCorner.getY(); y <= maxCorner.getY(); y++) {
                 for (int z = minCorner.getZ(); z <= maxCorner.getZ(); z++) {
-                    double distance = center.distance(x + 0.5d, y + 0.5d, z + 0.5d);
+                    Vector3d sample = BlockSpace.voxelSamplePoint(x, y, z);
+                    double distance = center.distance(sample.x, sample.y, sample.z);
                     if (distance > radius) {
                         continue;
                     }

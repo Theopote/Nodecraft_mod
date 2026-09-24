@@ -27,8 +27,16 @@ class SpatialValueResolverStrictVectorTest {
     }
 
     @Test
-    void resolvePointStillAcceptsPointAndBlockPos() {
+    void resolvePointMapsBlockPosToCellCenter() {
+        Vector3d resolved = SpatialValueResolver.resolvePoint(new BlockPos(4, 5, 6));
+        assertNotNull(resolved);
+        assertEquals(4.5d, resolved.x, 1e-12);
+        assertEquals(5.5d, resolved.y, 1e-12);
+        assertEquals(6.5d, resolved.z, 1e-12);
+    }
+
+    @Test
+    void resolvePointStillAcceptsPointData() {
         assertNotNull(SpatialValueResolver.resolvePoint(new PointData(new Vector3d(4, 5, 6))));
-        assertNotNull(SpatialValueResolver.resolvePoint(new BlockPos(4, 5, 6)));
     }
 }

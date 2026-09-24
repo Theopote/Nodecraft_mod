@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.selection;
 
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.util.BlockSpace;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.Vector3;
 import net.minecraft.util.math.BlockPos;
@@ -27,10 +28,10 @@ final class WorldSelectionResolveUtils {
             return new Vector3d(vector.getX(), vector.getY(), vector.getZ());
         }
         if (value instanceof BlockPos blockPos) {
-            return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
+            return BlockSpace.cellCenter(blockPos);
         }
         if (value instanceof Coordinate coordinate) {
-            return new Vector3d(coordinate.getX(), coordinate.getY(), coordinate.getZ());
+            return BlockSpace.cellCenter(coordinate.getX(), coordinate.getY(), coordinate.getZ());
         }
         return null;
     }
@@ -44,7 +45,7 @@ final class WorldSelectionResolveUtils {
         }
         Vector3d vector = resolveVector3d(value);
         if (vector != null) {
-            return BlockPos.ofFloored(vector.x, vector.y, vector.z);
+            return BlockSpace.pointToBlockFloor(vector);
         }
         return null;
     }

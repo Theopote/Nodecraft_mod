@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.reference.points;
 
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.util.BlockSpace;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Vector3d;
@@ -23,7 +24,7 @@ final class PointUtils {
             return new Vector3d(vector.x, vector.y, vector.z);
         }
         if (value instanceof BlockPos blockPos) {
-            return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
+            return BlockSpace.cellCenter(blockPos);
         }
         return null;
     }

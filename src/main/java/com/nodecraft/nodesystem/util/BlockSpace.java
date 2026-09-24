@@ -6,22 +6,25 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 /**
- * Frozen coordinate contract between continuous geometry and Minecraft block cells.
+ * NodeCraft Spatial Convention v1 — frozen coordinate contract.
  * <p>
- * <b>Block cell</b> — integer {@link BlockPos} {@code (n)}; world AABB {@code [n, n+1)}.
+ * <b>POINT</b> — continuous world geometry coordinates, e.g. {@code (10.5, 64.5, 20.5)}.
+ * Used for sphere/box centers, pivots, frame origins.
  * <p>
- * <b>Block center</b> — continuous point {@code (n + 0.5, n + 0.5, n + 0.5)}.
- * Prefer this when a picked block is used as the center of a box/sphere/etc.
+ * <b>BLOCK_POS</b> — Minecraft voxel <em>cell index</em> {@code (10, 64, 20)}, meaning the unit cell
+ * {@code [10,11) × [64,65) × [20,21)}. Not a geometric point.
  * <p>
- * <b>Continuous geometry</b> — doubles in world space. Snap only when entering
- * {@code BLOCK_LIST} / Apply / preview block payloads.
+ * <b>Canonical BlockPos → Point</b> — always the cell center:
+ * {@code POINT = BLOCK_POS + (0.5, 0.5, 0.5)}. Never map to the cell corner as a POINT.
  * <p>
- * <b>PreviewBlock / placement</b> — store <em>cell min corner</em> (integer), matching Ghost draw
- * of {@code [p, p+1]}.
+ * <b>Point → BlockPos</b> — explicit snap only ({@link #pointToBlockFloor},
+ * {@link #pointToBlockNearest}, {@link #pointToBlockCeil}).
  * <p>
- * <b>Voxelization</b> — a cell is selected when its <em>center</em> lies inside the continuous solid
- * (closed bounds). For an axis-aligned solid AABB {@code [min, max]} this is equivalent to
- * inclusive cells {@code [floor(min), floor(max - eps)]}.
+ * <b>PreviewBlock / Apply</b> — store cell indices (min corner integers). Ghost draws
+ * {@code [n, n+1]} without adding 0.5.
+ * <p>
+ * <b>Voxelization</b> — a cell is included when {@link #voxelSamplePoint(BlockPos)}
+ * (the cell center) lies inside the continuous solid.
  */
 public final class BlockSpace {
 
@@ -29,6 +32,13 @@ public final class BlockSpace {
     private static final double BOUNDARY_EPS = 1.0e-9d;
 
     private BlockSpace() {
+    }
+
+    // --- Cell geometry -------------------------------------------------------
+
+    /** Alias of {@link #cellCenter(BlockPos)} — Spatial Convention v1 name. */
+    public static Vector3d blockCenter(BlockPos cell) {
+        return cellCenter(cell);
     }
 
     /** Continuous center of the block cell at {@code cell}. */
@@ -44,10 +54,34 @@ public final class BlockSpace {
         return new Vector3d(x + CELL_CENTER_OFFSET, y + CELL_CENTER_OFFSET, z + CELL_CENTER_OFFSET);
     }
 
-    /** Cell min corner as continuous xyz (no +0.5). */
+    /**
+     * Sample point used by voxelizers for membership tests — the cell center.
+     * Same as {@link #cellCenter(BlockPos)}.
+     */
+    public static Vector3d voxelSamplePoint(BlockPos cell) {
+        return cellCenter(cell);
+    }
+
+    public static Vector3d voxelSamplePoint(int x, int y, int z) {
+        return cellCenter(x, y, z);
+    }
+
+    /** Alias of {@link #cellMinCorner(BlockPos)}. */
+    public static Vector3d blockCellMin(BlockPos cell) {
+        return cellMinCorner(cell);
+    }
+
+    /** Cell min corner as continuous xyz (no +0.5). For AABB/render only — not a POINT role. */
     public static Vector3d cellMinCorner(BlockPos cell) {
         return new Vector3d(cell.getX(), cell.getY(), cell.getZ());
     }
+
+    /** Exclusive max corner of the cell AABB: {@code (x+1, y+1, z+1)}. */
+    public static Vector3d blockCellMax(BlockPos cell) {
+        return new Vector3d(cell.getX() + 1.0d, cell.getY() + 1.0d, cell.getZ() + 1.0d);
+    }
+
+    // --- Point → Block snap --------------------------------------------------
 
     /** Snap a continuous point to the cell that contains it ({@code floor}). */
     public static BlockPos cellContaining(double x, double y, double z) {
@@ -57,6 +91,28 @@ public final class BlockSpace {
     public static BlockPos cellContaining(Vector3d point) {
         return cellContaining(point.x, point.y, point.z);
     }
+
+    public static BlockPos pointToBlockFloor(Vector3d point) {
+        return cellContaining(point);
+    }
+
+    public static BlockPos pointToBlockNearest(Vector3d point) {
+        return new BlockPos(
+            (int) Math.round(point.x),
+            (int) Math.round(point.y),
+            (int) Math.round(point.z)
+        );
+    }
+
+    public static BlockPos pointToBlockCeil(Vector3d point) {
+        return new BlockPos(
+            (int) Math.ceil(point.x - BOUNDARY_EPS),
+            (int) Math.ceil(point.y - BOUNDARY_EPS),
+            (int) Math.ceil(point.z - BOUNDARY_EPS)
+        );
+    }
+
+    // --- Continuous AABB → inclusive cells -----------------------------------
 
     /**
      * Inclusive block region covering every cell whose center lies in the closed continuous AABB
@@ -113,11 +169,9 @@ public final class BlockSpace {
         Vector3d center,
         Vector3d halfExtents
     ) {
-        double cx = x + CELL_CENTER_OFFSET;
-        double cy = y + CELL_CENTER_OFFSET;
-        double cz = z + CELL_CENTER_OFFSET;
-        return Math.abs(cx - center.x) <= halfExtents.x + BOUNDARY_EPS
-            && Math.abs(cy - center.y) <= halfExtents.y + BOUNDARY_EPS
-            && Math.abs(cz - center.z) <= halfExtents.z + BOUNDARY_EPS;
+        Vector3d sample = voxelSamplePoint(x, y, z);
+        return Math.abs(sample.x - center.x) <= halfExtents.x + BOUNDARY_EPS
+            && Math.abs(sample.y - center.y) <= halfExtents.y + BOUNDARY_EPS
+            && Math.abs(sample.z - center.z) <= halfExtents.z + BOUNDARY_EPS;
     }
 }
