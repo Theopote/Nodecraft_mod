@@ -208,6 +208,12 @@ class GeometryCurvesFamilyContractTest {
     }
 
     @Test
+    void pathLengthUsesCanonicalId() {
+        assertPortType("geometry.curves.path_length", "input_path", true, NodeDataType.PATH);
+        assertPortType("geometry.curves.path_length", "output_length", false, NodeDataType.DOUBLE);
+    }
+
+    @Test
     void pathQueryOpsExposeParameterOutputs() {
         assertPortType("geometry.curves.closest_point_on_path", "output_parameter", false, NodeDataType.DOUBLE);
         assertPortType("geometry.curves.path_parameter_at_point", "output_parameter", false, NodeDataType.DOUBLE);

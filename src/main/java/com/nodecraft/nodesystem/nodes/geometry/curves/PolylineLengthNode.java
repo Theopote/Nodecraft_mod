@@ -16,7 +16,7 @@ import java.util.UUID;
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "geometry.curves.polyline_length",
+    id = "geometry.curves.path_length",
     displayName = "Path Length",
     description = "Computes the total length of a line, polyline, or curve path",
     category = "geometry.curves",
@@ -30,7 +30,7 @@ public class PolylineLengthNode extends AbstractCurveNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public PolylineLengthNode() {
-        super(UUID.randomUUID(), "geometry.curves.polyline_length");
+        super(UUID.randomUUID(), "geometry.curves.path_length");
 
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
             "Path to measure (line, polyline, or curve)",

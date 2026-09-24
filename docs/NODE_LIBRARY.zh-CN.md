@@ -151,7 +151,7 @@
 | NURBS Curve | `geometry.curves.nurbs` | Builds a sampled clamped uniform NURBS curve from control points and optional per-point weights | `NurbsCurveNode` |
 | Rainbow Curve Offset | `geometry.curves.rainbow_curve_offset` | Generates multiple parallel offset polylines around a space curve using path frames. | `RainbowCurveOffsetNode` |
 | Resample Path | `geometry.curves.resample_path` | Resamples a path along arc length by Count or Spacing. Primary output is PATH. | `ResamplePolylineByLengthNode` |
-| Path Length | `geometry.curves.polyline_length` | Computes the total length of a line, polyline, or curve path | `PolylineLengthNode` |
+| Path Length | `geometry.curves.path_length` | Computes the total length of a line, polyline, or curve path | `PolylineLengthNode` |
 | Evaluate Path | `geometry.curves.evaluate_curve` | Evaluates a path at normalized parameter t and outputs point and tangent. | `CurveEvaluateNode` |
 | Closest Point On Path | `geometry.curves.closest_point_on_path` | Finds the closest point on a path to a query point. | `ClosestPointOnPathNode` |
 | Parabola On Plane | `geometry.curves.parabola_curve` | Builds a sampled parabola on a plane from vertex, curvature, x-range, and segment count | `ParabolaOnPlaneNode` |
