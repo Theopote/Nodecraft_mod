@@ -1,7 +1,11 @@
 package com.nodecraft.nodesystem.contract;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.datatypes.PathData;
+import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
+import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
@@ -11,6 +15,9 @@ import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.math.FieldMath;
 import com.nodecraft.nodesystem.math.RandomOps;
 import com.nodecraft.nodesystem.nodes.math.fields.AttractorFieldBlendNode;
+import com.nodecraft.nodesystem.nodes.math.fields.CurveAttractorFieldNode;
+import com.nodecraft.nodesystem.nodes.math.fields.PointAttractorFieldNode;
+import com.nodecraft.nodesystem.nodes.math.fields.RepulsorFieldNode;
 import com.nodecraft.nodesystem.nodes.math.fields.ScalarFieldBinaryOpNode;
 import com.nodecraft.nodesystem.nodes.math.fields.ScalarFieldConstantNode;
 import com.nodecraft.nodesystem.nodes.math.fields.ScalarFieldNoiseNode;
@@ -18,9 +25,13 @@ import com.nodecraft.nodesystem.nodes.math.fields.ScalarFieldSamplePointNode;
 import com.nodecraft.nodesystem.nodes.math.fields.ScalarFieldSamplePointsNode;
 import com.nodecraft.nodesystem.nodes.math.fields.VectorFieldConstantNode;
 import com.nodecraft.nodesystem.nodes.math.fields.VectorFieldSamplePointNode;
+import com.nodecraft.nodesystem.nodes.math.fields.VectorFieldFromSdfGradientNode;
 import com.nodecraft.nodesystem.nodes.math.fields.VectorFieldSamplePointsNode;
+import com.nodecraft.nodesystem.nodes.math.fields.VolumeAttractorFieldNode;
+import com.nodecraft.nodesystem.nodes.math.fields.VortexFieldNode;
 import com.nodecraft.nodesystem.nodes.math.random.NoiseNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import net.minecraft.util.math.Vec3d;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -329,6 +340,224 @@ class FieldLanguageContractTest {
     }
 
     @Test
+    void sdfGradientInvalidStepFallsBackToPropertyDefault() {
+        SignedDistanceFieldData plane = point -> point.x;
+        Vector3d sampleAt = new Vector3d(0.5d, 0.0d, 0.0d);
+
+        VectorFieldFromSdfGradientNode node = new VectorFieldFromSdfGradientNode();
+        node.setNodeState(Map.of("step", 0.5d));
+
+        Vector3d explicit = sampleVectorField(node.compute(Map.of(
+                "input_sdf", plane,
+                "input_step", 0.5d
+        )).get("output_field"), sampleAt);
+        Vector3d fallback = sampleVectorField(node.compute(Map.of(
+                "input_sdf", plane,
+                "input_step", 0.0d
+        )).get("output_field"), sampleAt);
+        Vector3d fromNaN = sampleVectorField(node.compute(Map.of(
+                "input_sdf", plane,
+                "input_step", Double.NaN
+        )).get("output_field"), sampleAt);
+
+        assertEquals(explicit.x, fallback.x, 1.0e-9d);
+        assertEquals(explicit.y, fallback.y, 1.0e-9d);
+        assertEquals(explicit.z, fallback.z, 1.0e-9d);
+        assertEquals(explicit.x, fromNaN.x, 1.0e-9d);
+    }
+
+    @Test
+    void sdfGradientTinyStepIsHonoredNotReplacedByPropertyDefault() {
+        SignedDistanceFieldData wavy = point -> Math.sin(20.0d * point.x);
+        Vector3d sampleAt = new Vector3d(0.15d, 0.07d, 0.0d);
+
+        Vector3d tiny = sampleSdfGradientField(wavy, 1.0e-6d, sampleAt);
+        Vector3d propertyDefault = sampleVectorField(new VectorFieldFromSdfGradientNode().compute(Map.of(
+                "input_sdf", wavy
+        )).get("output_field"), sampleAt);
+
+        assertTrue(Double.isFinite(tiny.x) && Double.isFinite(tiny.y) && Double.isFinite(tiny.z));
+        assertFalse(vectorsEqual(tiny, propertyDefault),
+                "Tiny port step must be used instead of property default 0.25");
+    }
+
+    @Test
+    void pointAttractorInvalidRadiusFallsBackToPropertyDefault() {
+        Vector3d center = new Vector3d(0.0d, 0.0d, 0.0d);
+        Vector3d sampleAt = new Vector3d(4.0d, 0.0d, 0.0d);
+
+        Vector3d baseline = samplePointAttractor(Map.of("input_center", center), sampleAt);
+        Vector3d withZeroRadius = samplePointAttractor(Map.of(
+                "input_center", center,
+                "input_radius", 0.0d
+        ), sampleAt);
+        Vector3d withCustomRadius = samplePointAttractor(Map.of(
+                "input_center", center,
+                "input_radius", 4.0d
+        ), sampleAt);
+
+        assertEquals(baseline.x, withZeroRadius.x, 1.0e-9d);
+        assertNotEquals(baseline.x, withCustomRadius.x, 1.0e-9d);
+    }
+
+    @Test
+    void pointAttractorInvalidStrengthFallsBackToPropertyDefault() {
+        Vector3d center = new Vector3d(0.0d, 0.0d, 0.0d);
+        Vector3d sampleAt = new Vector3d(4.0d, 0.0d, 0.0d);
+
+        Vector3d baseline = samplePointAttractor(Map.of("input_center", center), sampleAt);
+        Vector3d withNaNStrength = samplePointAttractor(Map.of(
+                "input_center", center,
+                "input_strength", Double.NaN
+        ), sampleAt);
+        Vector3d withDoubleStrength = samplePointAttractor(Map.of(
+                "input_center", center,
+                "input_strength", 2.0d
+        ), sampleAt);
+
+        assertEquals(baseline.x, withNaNStrength.x, 1.0e-9d);
+        assertEquals(baseline.x * 2.0d, withDoubleStrength.x, 1.0e-9d);
+    }
+
+    @Test
+    void pointAttractorInvalidExponentFallsBackToPropertyDefault() {
+        Vector3d center = new Vector3d(0.0d, 0.0d, 0.0d);
+        Vector3d sampleAt = new Vector3d(4.0d, 0.0d, 0.0d);
+
+        Vector3d baseline = samplePointAttractor(Map.of("input_center", center), sampleAt);
+        Vector3d withInvalidExponent = samplePointAttractor(Map.of(
+                "input_center", center,
+                "input_exponent", -1.0d
+        ), sampleAt);
+        Vector3d withCustomExponent = samplePointAttractor(Map.of(
+                "input_center", center,
+                "input_exponent", 1.0d
+        ), sampleAt);
+
+        assertEquals(baseline.x, withInvalidExponent.x, 1.0e-9d);
+        assertNotEquals(baseline.x, withCustomExponent.x, 1.0e-9d);
+    }
+
+    @Test
+    void vortexInvalidRadiusFallsBackToPropertyDefault() {
+        Vector3d origin = new Vector3d(0.0d, 0.0d, 0.0d);
+        Vector3d axis = new Vector3d(0.0d, 1.0d, 0.0d);
+        Vector3d sampleAt = new Vector3d(2.0d, 0.0d, 0.0d);
+
+        Vector3d baseline = sampleVortexField(Map.of(
+                "input_origin", origin,
+                "input_axis", axis
+        ), sampleAt);
+        Vector3d withZeroRadius = sampleVortexField(Map.of(
+                "input_origin", origin,
+                "input_axis", axis,
+                "input_radius", 0.0d
+        ), sampleAt);
+        Vector3d withCustomRadius = sampleVortexField(Map.of(
+                "input_origin", origin,
+                "input_axis", axis,
+                "input_radius", 2.0d
+        ), sampleAt);
+
+        assertEquals(baseline.z, withZeroRadius.z, 1.0e-9d);
+        assertNotEquals(baseline.z, withCustomRadius.z, 1.0e-9d);
+    }
+
+    @Test
+    void repulsorInvalidStrengthFallsBackToPropertyDefault() {
+        VectorFieldData source = (point, dest) -> dest.set(1.0d, 0.0d, 0.0d);
+        Vector3d sampleAt = new Vector3d();
+
+        Vector3d baseline = sampleRepulsorField(Map.of("input_field", source), sampleAt);
+        Vector3d withNaNStrength = sampleRepulsorField(Map.of(
+                "input_field", source,
+                "input_strength", Double.NaN
+        ), sampleAt);
+        Vector3d withDoubleStrength = sampleRepulsorField(Map.of(
+                "input_field", source,
+                "input_strength", 2.0d
+        ), sampleAt);
+
+        assertEquals(baseline.x, withNaNStrength.x, 1.0e-9d);
+        assertEquals(baseline.x * 2.0d, withDoubleStrength.x, 1.0e-9d);
+    }
+
+    @Test
+    void curveAttractorInvalidRadiusFallsBackToPropertyDefault() {
+        PathData path = PathData.fromPolyline(new PolylineData(List.of(
+                new Vec3d(0.0d, 0.0d, 0.0d),
+                new Vec3d(10.0d, 0.0d, 0.0d)
+        )));
+        Vector3d sampleAt = new Vector3d(5.0d, 2.0d, 0.0d);
+
+        Vector3d baseline = sampleCurveAttractor(Map.of("input_path", path), sampleAt);
+        Vector3d withZeroRadius = sampleCurveAttractor(Map.of(
+                "input_path", path,
+                "input_radius", 0.0d
+        ), sampleAt);
+        Vector3d withCustomRadius = sampleCurveAttractor(Map.of(
+                "input_path", path,
+                "input_radius", 2.0d
+        ), sampleAt);
+
+        assertEquals(baseline.y, withZeroRadius.y, 1.0e-9d);
+        assertNotEquals(baseline.y, withCustomRadius.y, 1.0e-9d);
+    }
+
+    @Test
+    void volumeAttractorInvalidStrengthAndRadiusFallBackToPropertyDefaults() {
+        VolumeAttractorFieldNode node = new VolumeAttractorFieldNode();
+        node.setNodeState(Map.of("pullMode", VolumeAttractorFieldNode.PullMode.CENTER_PULL.name()));
+
+        Vector3d center = new Vector3d(0.0d, 0.0d, 0.0d);
+        Vector3d sampleAt = new Vector3d(4.0d, 0.0d, 0.0d);
+
+        Vector3d baseline = sampleVolumeAttractor(node, Map.of("input_center", center), sampleAt);
+        Vector3d withInvalid = sampleVolumeAttractor(node, Map.of(
+                "input_center", center,
+                "input_strength", Double.NaN,
+                "input_radius", 0.0d
+        ), sampleAt);
+        Vector3d withOverrides = sampleVolumeAttractor(node, Map.of(
+                "input_center", center,
+                "input_strength", 2.0d,
+                "input_radius", 4.0d
+        ), sampleAt);
+
+        assertEquals(baseline.x, withInvalid.x, 1.0e-9d);
+        assertNotEquals(baseline.x, withOverrides.x, 1.0e-9d);
+    }
+
+    @Test
+    void volumeAttractorInvalidSdfStepFallsBackToPropertyDefault() {
+        SignedDistanceFieldData wavy = point -> Math.sin(20.0d * point.x);
+        Vector3d sampleAt = new Vector3d(0.15d, 0.0d, 0.05d);
+
+        VolumeAttractorFieldNode node = new VolumeAttractorFieldNode();
+        node.setNodeState(Map.of(
+                "pullMode", VolumeAttractorFieldNode.PullMode.SURFACE_PULL.name(),
+                "sdfStep", 0.5d
+        ));
+
+        Vector3d explicit = sampleVolumeAttractor(node, Map.of(
+                "input_sdf", wavy,
+                "input_sdf_step", 0.5d
+        ), sampleAt);
+        Vector3d fallback = sampleVolumeAttractor(node, Map.of(
+                "input_sdf", wavy,
+                "input_sdf_step", 0.0d
+        ), sampleAt);
+        Vector3d tiny = sampleVolumeAttractor(node, Map.of(
+                "input_sdf", wavy,
+                "input_sdf_step", 1.0e-6d
+        ), sampleAt);
+
+        assertEquals(explicit.x, fallback.x, 1.0e-9d);
+        assertEquals(explicit.y, fallback.y, 1.0e-9d);
+        assertFalse(vectorsEqual(explicit, tiny));
+    }
+
+    @Test
     void currentGraphFormatIsV30() {
         assertEquals(30, GraphFormatVersion.V30);
         assertEquals(GraphFormatVersion.V30, GraphFormatVersion.CURRENT);
@@ -357,6 +586,55 @@ class FieldLanguageContractTest {
         assertFalse(hasWire(migrated, "ssp", "output_values", "sort", "input_list"));
         assertTrue(hasWire(migrated, "ssp", "output_values", "clist", "input_0"));
         assertTrue(hasWire(migrated, "field", "output_field", "ssp", "input_field"));
+    }
+
+    private static Vector3d sampleSdfGradientField(SignedDistanceFieldData sdf, double step, Vector3d point) {
+        VectorFieldFromSdfGradientNode node = new VectorFieldFromSdfGradientNode();
+        Object fieldObj = node.compute(Map.of(
+                "input_sdf", sdf,
+                "input_step", step
+        )).get("output_field");
+        return sampleVectorField(fieldObj, point);
+    }
+
+    private static Vector3d samplePointAttractor(Map<String, Object> inputs, Vector3d point) {
+        return sampleNodeField(new PointAttractorFieldNode(), inputs, point);
+    }
+
+    private static Vector3d sampleVortexField(Map<String, Object> inputs, Vector3d point) {
+        return sampleNodeField(new VortexFieldNode(), inputs, point);
+    }
+
+    private static Vector3d sampleRepulsorField(Map<String, Object> inputs, Vector3d point) {
+        return sampleNodeField(new RepulsorFieldNode(), inputs, point);
+    }
+
+    private static Vector3d sampleCurveAttractor(Map<String, Object> inputs, Vector3d point) {
+        return sampleNodeField(new CurveAttractorFieldNode(), inputs, point);
+    }
+
+    private static Vector3d sampleVolumeAttractor(VolumeAttractorFieldNode node, Map<String, Object> inputs,
+                                                   Vector3d point) {
+        return sampleNodeField(node, inputs, point);
+    }
+
+    private static Vector3d sampleNodeField(BaseNode node, Map<String, Object> inputs, Vector3d point) {
+        Object fieldObj = node.compute(inputs).get("output_field");
+        assertNotNull(fieldObj, node.getTypeId() + " should emit output_field");
+        return sampleVectorField(fieldObj, point);
+    }
+
+    private static Vector3d sampleVectorField(Object fieldObj, Vector3d point) {
+        assertInstanceOf(VectorFieldData.class, fieldObj);
+        Vector3d out = new Vector3d();
+        ((VectorFieldData) fieldObj).sampleVector(point, out);
+        return out;
+    }
+
+    private static boolean vectorsEqual(Vector3d a, Vector3d b) {
+        return Math.abs(a.x - b.x) <= 1.0e-9d
+                && Math.abs(a.y - b.y) <= 1.0e-9d
+                && Math.abs(a.z - b.z) <= 1.0e-9d;
     }
 
     private static SavedNode savedNode(String id, String typeId) {

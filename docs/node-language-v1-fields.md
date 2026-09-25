@@ -111,4 +111,5 @@ No node deletion. No type-id changes.
 ## Contracts
 
 - `FieldsFamilyContractTest` — spatial roles, typed ports, no `ANY`.
-- `FieldLanguageContractTest` — v1 semantics, noise kernel, Valid/finite sampling, V30 migration.
+- `FieldLanguageContractTest` — v1 semantics, noise kernel, Valid/finite sampling, V30 migration,
+  SDF Step / Attractor parameter resolver fallbacks (invalid port → property default; tiny Step honored).
