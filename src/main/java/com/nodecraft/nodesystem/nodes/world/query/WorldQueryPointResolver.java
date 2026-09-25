@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.query;
 
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.util.BlockSpace;
 import com.nodecraft.nodesystem.util.Vector3;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -26,7 +27,8 @@ final class WorldQueryPointResolver {
             return new Vector3d(vector.getX(), vector.getY(), vector.getZ());
         }
         if (value instanceof BlockPos pos) {
-            return new Vector3d(pos.getX(), pos.getY(), pos.getZ());
+            // Spatial Convention v1: BlockPos as continuous location = cell center, not min corner.
+            return BlockSpace.cellCenter(pos);
         }
         return null;
     }

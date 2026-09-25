@@ -15,6 +15,7 @@ import com.nodecraft.nodesystem.datatypes.TwistedSdfData;
 import com.nodecraft.nodesystem.datatypes.VoxelizedGeometrySdfData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.BlockSpace;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SdfBoundsEstimator;
@@ -286,13 +287,17 @@ public class TwistGeometryNode extends BaseNode {
             return new Vector3d(vector.x, vector.y, vector.z);
         }
         if (value instanceof BlockPos blockPos) {
-            return new Vector3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
+            // Spatial Convention v1: BlockPos as continuous location = cell center, not min corner.
+            return BlockSpace.cellCenter(blockPos);
         }
         return null;
     }
 
     private static @Nullable Vector3d resolveDirection(@Nullable Object value) {
-        Vector3d direction = resolvePoint(value);
+        if (!(value instanceof Vector3d vector)) {
+            return null;
+        }
+        Vector3d direction = new Vector3d(vector);
         return isUsableDirection(direction) ? direction.normalize() : null;
     }
 
