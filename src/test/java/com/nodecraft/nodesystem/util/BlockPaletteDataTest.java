@@ -25,10 +25,10 @@ class BlockPaletteDataTest {
     }
 
     @Test
-    void withFallbackFillsEmptyPalette() {
-        BlockPaletteData palette = BlockPaletteData.empty().withFallback("minecraft:cobblestone");
-        assertEquals(1, palette.size());
-        assertEquals("minecraft:cobblestone", palette.blockIds().getFirst());
+    void emptyPaletteStaysEmpty() {
+        BlockPaletteData palette = BlockPaletteData.empty();
+        assertTrue(palette.isEmpty());
+        assertEquals(0, palette.size());
     }
 
     @Test

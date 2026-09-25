@@ -105,6 +105,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V36 -> migrateV36ToV37(graph);
             case GraphFormatVersion.V37 -> migrateV37ToV38(graph);
             case GraphFormatVersion.V38 -> migrateV38ToV39(graph);
+            case GraphFormatVersion.V39 -> migrateV39ToV40(graph);
             default -> graph;
         };
     }
@@ -2247,6 +2248,27 @@ public final class GraphMigrationRegistry {
     private static final String CRACK_PATTERN_TYPE = "material.surface_aging.crack_pattern";
     private static final String CRACK_LEGACY_INTERVAL_PORT = "input_interval";
 
+    private static final Set<String> BASIC_ASSIGNMENT_ASSIGNMENT_TYPES = Set.of(
+            "material.basic_assignment.assign_block_type",
+            "material.basic_assignment.block_palette",
+            "material.basic_assignment.weighted_palette"
+    );
+
+    private static final Set<String> BASIC_ASSIGNMENT_DECONSTRUCT_OUTPUT_PORTS = Set.of(
+            "output_positions",
+            "output_block_ids",
+            "output_positions_tree",
+            "output_block_ids_tree"
+    );
+
+    private static final String CREATE_BLOCK_PALETTE_TYPE = "material.basic_assignment.create_block_palette";
+    private static final String WEIGHTED_PALETTE_TYPE = "material.basic_assignment.weighted_palette";
+    private static final String BLOCK_PALETTE_TYPE = "material.basic_assignment.block_palette";
+    private static final String CREATE_BLOCK_IDS_PORT = "input_block_ids";
+    private static final String CREATE_WEIGHTS_PORT = "input_weights";
+    private static final String WEIGHTED_WEIGHTS_PORT = "input_weights";
+    private static final String FALLBACK_BLOCK_TYPE_PORT = "input_fallback_block_type";
+
     /**
      * Type Selectors v1: Block Type {@code BLOCK_TYPE} port; remove Block State Selector.
      */
@@ -2697,6 +2719,74 @@ public final class GraphMigrationRegistry {
             if (CRACK_PATTERN_TYPE.equals(targetType)
                     && CRACK_LEGACY_INTERVAL_PORT.equals(targetPort)) {
                 LOGGER.debug("Dropped Surface Aging v1 legacy Crack interval wire {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
+
+            return false;
+        });
+
+        return graph;
+    }
+
+    /**
+     * Basic Assignment v1: drop deconstruct outputs; drop fallback ports; tighten LIST ports.
+     */
+    private static SavedGraph migrateV39ToV40(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            String targetPort = connection.targetPortId == null ? "" : connection.targetPortId.toLowerCase(Locale.ROOT);
+
+            if (sourceType != null
+                    && BASIC_ASSIGNMENT_ASSIGNMENT_TYPES.contains(sourceType)
+                    && BASIC_ASSIGNMENT_DECONSTRUCT_OUTPUT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped Basic Assignment v1 deconstruct output wire {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId);
+                return true;
+            }
+
+            if ((BLOCK_PALETTE_TYPE.equals(targetType) || WEIGHTED_PALETTE_TYPE.equals(targetType))
+                    && FALLBACK_BLOCK_TYPE_PORT.equals(targetPort)) {
+                LOGGER.debug("Dropped Basic Assignment v1 fallback wire {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
+
+            if (CREATE_BLOCK_PALETTE_TYPE.equals(targetType)
+                    && (CREATE_BLOCK_IDS_PORT.equals(targetPort) || CREATE_WEIGHTS_PORT.equals(targetPort))
+                    && !isDeclaredConnectionStillCompatible(sourceType, connection.sourcePortId,
+                    targetType, connection.targetPortId)) {
+                LOGGER.debug("Dropped Basic Assignment v1 incompatible Create Palette wire {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
+
+            if (WEIGHTED_PALETTE_TYPE.equals(targetType)
+                    && WEIGHTED_WEIGHTS_PORT.equals(targetPort)
+                    && !isDeclaredConnectionStillCompatible(sourceType, connection.sourcePortId,
+                    targetType, connection.targetPortId)) {
+                LOGGER.debug("Dropped Basic Assignment v1 incompatible Weighted Palette weights wire {}#{} → {}#{}",
                         connection.sourceNodeId, connection.sourcePortId,
                         connection.targetNodeId, connection.targetPortId);
                 return true;

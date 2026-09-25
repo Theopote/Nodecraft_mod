@@ -19,6 +19,7 @@ Related architecture:
 - [`../node-language-v1-gradient-mapping.md`](../node-language-v1-gradient-mapping.md) — Gradient Mapping v1 (PASSED / FROZEN, V37)
 - [`../node-language-v1-pattern-mapping.md`](../node-language-v1-pattern-mapping.md) — Pattern Mapping v1 (PASSED / FROZEN, V38)
 - [`../node-language-v1-surface-aging.md`](../node-language-v1-surface-aging.md) — Surface Aging v1 (PASSED / FROZEN, V39)
+- [`../node-language-v1-basic-assignment.md`](../node-language-v1-basic-assignment.md) — Basic Assignment v1 (PASSED / FROZEN, V40)
 - [`../type-conversion-guidelines.md`](../type-conversion-guidelines.md) — Port connectability vs explicit conversion
 - [`../architecture/execution-runtime-2.0.md`](../architecture/execution-runtime-2.0.md) — Runtime 2.0 design freeze
 - [`../architecture/node-catalog.md`](../architecture/node-catalog.md) — Build-time NodeCatalog (Phase C)

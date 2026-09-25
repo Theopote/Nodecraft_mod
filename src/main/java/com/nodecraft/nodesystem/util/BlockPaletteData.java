@@ -7,7 +7,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Canonical Material palette payload: ordered weighted block entries.
+ * Canonical Material palette payload: ordered weighted block entries (blockId + weight only).
  * <p>
  * Prefer this over raw {@code List<String>} on palette ports.
  */
@@ -44,6 +44,11 @@ public final class BlockPaletteData {
         return new BlockPaletteData(entries);
     }
 
+    /**
+     * @deprecated Use {@link com.nodecraft.nodesystem.nodes.material.basic_assignment.BasicAssignmentUtils#buildPalette}
+     * with validated weights instead.
+     */
+    @Deprecated
     public static BlockPaletteData ofBlockIdsAndWeights(List<String> blockIds, @Nullable List<Double> weights) {
         if (blockIds == null || blockIds.isEmpty()) {
             return empty();
@@ -54,10 +59,9 @@ public final class BlockPaletteData {
             if (blockId == null || blockId.isBlank()) {
                 continue;
             }
-            double weight = 1.0d;
-            if (weights != null && i < weights.size() && weights.get(i) != null) {
-                weight = weights.get(i);
-            }
+            double weight = weights != null && i < weights.size() && weights.get(i) != null
+                ? weights.get(i)
+                : 1.0d;
             entries.add(new BlockPaletteEntry(blockId, weight));
         }
         return new BlockPaletteData(entries);
@@ -129,16 +133,6 @@ public final class BlockPaletteData {
             weights.add(entry.weight());
         }
         return Collections.unmodifiableList(weights);
-    }
-
-    public BlockPaletteData withFallback(String fallbackBlockId) {
-        if (!isEmpty()) {
-            return this;
-        }
-        if (fallbackBlockId == null || fallbackBlockId.isBlank()) {
-            return empty();
-        }
-        return ofBlockIds(List.of(fallbackBlockId));
     }
 
     public String blockIdAt(int index, String fallback) {

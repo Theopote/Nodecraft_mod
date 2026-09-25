@@ -7,10 +7,12 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
+import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -20,7 +22,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "material.basic_assignment.create_block_palette",
     displayName = "Create Block Palette",
-    description = "Builds a BLOCK_PALETTE from block ids and optional weights",
+    description = "Builds a BLOCK_PALETTE from STRING_LIST block ids and optional DOUBLE_LIST weights",
     category = "material.basic_assignment",
     order = 0
 )
@@ -35,12 +37,14 @@ public class CreateBlockPaletteNode extends BaseNode {
 
     private static final String OUTPUT_PALETTE_ID = "output_palette";
     private static final String OUTPUT_SIZE_ID = "output_size";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public CreateBlockPaletteNode() {
         super(UUID.randomUUID(), "material.basic_assignment.create_block_palette");
 
-        addInputPort(new BasePort(INPUT_BLOCK_IDS_ID, "Block IDs", "Ordered block id list", NodeDataType.LIST, this));
-        addInputPort(new BasePort(INPUT_WEIGHTS_ID, "Weights", "Optional weights aligned with Block IDs", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_BLOCK_IDS_ID, "Block IDs", "Ordered block id STRING_LIST", NodeDataType.STRING_LIST, this));
+        addInputPort(new BasePort(INPUT_WEIGHTS_ID, "Weights", "Optional weights aligned with Block IDs", NodeDataType.DOUBLE_LIST, this));
         addInputPort(new BasePort(INPUT_BLOCK_A_ID, "Block A", "Optional first block type", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_BLOCK_B_ID, "Block B", "Optional second block type", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_BLOCK_C_ID, "Block C", "Optional third block type", NodeDataType.BLOCK_TYPE, this));
@@ -48,53 +52,64 @@ public class CreateBlockPaletteNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_PALETTE_ID, "Palette", "Typed block palette", NodeDataType.BLOCK_PALETTE, this));
         addOutputPort(new BasePort(OUTPUT_SIZE_ID, "Size", "Number of palette entries", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when inputs are usable", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Validation error when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
     public String getDescription() {
-        return "Builds a BLOCK_PALETTE from block ids and optional weights.";
+        return "Builds a BLOCK_PALETTE from STRING_LIST block ids and optional DOUBLE_LIST weights.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<String> blockIds = new ArrayList<>();
-        Object listObj = inputValues.get(INPUT_BLOCK_IDS_ID);
-        if (listObj instanceof List<?> list) {
-            for (Object entry : list) {
-                if (entry instanceof String blockId && !blockId.isBlank()) {
-                    blockIds.add(blockId);
-                }
-            }
+        BasicAssignmentUtils.ParseResult<String> blockIdsResult =
+            BasicAssignmentUtils.parseStringList(inputValues.get(INPUT_BLOCK_IDS_ID), "Block IDs");
+        if (!blockIdsResult.valid()) {
+            emitFail(blockIdsResult.error());
+            return;
         }
+
+        List<String> blockIds = new ArrayList<>(blockIdsResult.values());
         appendBlock(blockIds, INPUT_BLOCK_A_ID);
         appendBlock(blockIds, INPUT_BLOCK_B_ID);
         appendBlock(blockIds, INPUT_BLOCK_C_ID);
         appendBlock(blockIds, INPUT_BLOCK_D_ID);
 
-        List<Double> weights = new ArrayList<>();
         Object weightsObj = inputValues.get(INPUT_WEIGHTS_ID);
-        if (weightsObj instanceof List<?> list) {
-            for (Object entry : list) {
-                if (entry instanceof Number number) {
-                    weights.add(number.doubleValue());
-                } else {
-                    weights.add(1.0d);
-                }
+        List<Double> weights = null;
+        if (weightsObj != null) {
+            BasicAssignmentUtils.ParseResult<Double> weightsResult =
+                BasicAssignmentUtils.parseDoubleList(weightsObj, "Weights");
+            if (!weightsResult.valid()) {
+                emitFail(weightsResult.error());
+                return;
+            }
+            weights = weightsResult.values();
+            BasicAssignmentUtils.Validation weightsOk =
+                BasicAssignmentUtils.validateWeights(weights, blockIds.size());
+            if (!weightsOk.valid()) {
+                emitFail(weightsOk.message());
+                return;
             }
         }
 
-        BlockPaletteData palette = weights.isEmpty()
-            ? BlockPaletteData.ofBlockIds(blockIds)
-            : BlockPaletteData.ofBlockIdsAndWeights(blockIds, weights);
-
-        outputValues.put(OUTPUT_PALETTE_ID, palette);
-        outputValues.put(OUTPUT_SIZE_ID, palette.size());
+        BlockPaletteData palette = BasicAssignmentUtils.buildPalette(blockIds, weights);
+        emitOk(palette);
     }
 
     private void appendBlock(List<String> blockIds, String portId) {
-        Object value = inputValues.get(portId);
-        if (value instanceof String blockId && !blockId.isBlank()) {
-            blockIds.add(blockId);
+        String blockId = MaterialMappingSupport.optionalBlockType(inputValues.get(portId));
+        if (blockId != null) {
+            blockIds.add(blockId.toLowerCase(Locale.ROOT));
         }
+    }
+
+    private void emitFail(String message) {
+        outputValues.putAll(BasicAssignmentUtils.createPaletteFailResult(message));
+    }
+
+    private void emitOk(BlockPaletteData palette) {
+        outputValues.putAll(BasicAssignmentUtils.createPaletteOkResult(palette));
     }
 }

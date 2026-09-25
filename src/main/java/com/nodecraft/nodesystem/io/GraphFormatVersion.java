@@ -248,8 +248,14 @@ public final class GraphFormatVersion {
      */
     public static final int V39 = 39;
 
+    /**
+     * Basic Assignment v1: four PURE material entry nodes; BLOCK_PALETTE contract;
+     * RandomOps weighted pick; drop deconstruct outputs; no hidden stone defaults.
+     */
+    public static final int V40 = 40;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V39;
+    public static final int CURRENT = V40;
 
     private GraphFormatVersion() {
     }

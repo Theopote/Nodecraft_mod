@@ -61,7 +61,7 @@ class SurfaceAgingLanguageContractTest {
     void currentGraphFormatIsV39() {
         assertEquals(38, GraphFormatVersion.V38);
         assertEquals(39, GraphFormatVersion.V39);
-        assertEquals(GraphFormatVersion.V39, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V40, GraphFormatVersion.CURRENT);
     }
 
     @Test
