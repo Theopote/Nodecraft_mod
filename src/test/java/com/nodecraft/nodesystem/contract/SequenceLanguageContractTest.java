@@ -133,7 +133,8 @@ class SequenceLanguageContractTest {
         assertEquals(28, GraphFormatVersion.V28);
         assertEquals(29, GraphFormatVersion.V29);
         assertEquals(30, GraphFormatVersion.V30);
-        assertEquals(GraphFormatVersion.V30, GraphFormatVersion.CURRENT);
+        assertEquals(31, GraphFormatVersion.V31);
+        assertEquals(GraphFormatVersion.V31, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -156,7 +157,7 @@ class SequenceLanguageContractTest {
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v27);
         assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(GraphFormatVersion.V30, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.V31, migrated.formatVersion);
 
         assertEquals(4, migrated.nodes.size());
         assertEquals(2, migrated.connections.size());
