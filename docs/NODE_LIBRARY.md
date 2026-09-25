@@ -464,12 +464,12 @@
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| If | `math.logic.if` | Chooses between true and false values based on a condition. | `IfNode` |
+| If | `math.logic.if` | Selects True Value when Condition is true; otherwise selects False Value. | `IfNode` |
 | Switch | `math.logic.switch` | Selects one of multiple inputs by index, with a default fallback. | `SelectItemNode` |
-| AND | `math.logic.and` | Returns true only when both inputs evaluate to true. | `AndNode` |
-| OR | `math.logic.or` | Returns true when either input evaluates to true. | `OrNode` |
-| NOT | `math.logic.not` | Returns the negated boolean value of the input. | `NotNode` |
-| XOR | `math.logic.xor` | Returns true only when exactly one input evaluates to true. | `XorNode` |
+| AND | `math.logic.and` | Returns true only when both boolean inputs are true. | `AndNode` |
+| OR | `math.logic.or` | Returns true when either boolean input is true. | `OrNode` |
+| NOT | `math.logic.not` | Returns the logical negation of the boolean input. | `NotNode` |
+| XOR | `math.logic.xor` | Returns true when exactly one boolean input is true. | `XorNode` |
 
 ## math.random (5)
 

@@ -17,7 +17,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.logic.xor",
     displayName = "XOR",
-    description = "Returns true only when exactly one input evaluates to true.",
+    description = "Returns true when exactly one boolean input is true.",
     category = "math.logic",
     order = 5
 )
@@ -36,7 +36,7 @@ public class XorNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Returns true only when exactly one input evaluates to true.";
+        return "Returns true when exactly one boolean input is true.";
     }
 
     @Override
@@ -46,17 +46,8 @@ public class XorNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        boolean result = toBoolean(inputValues.get(INPUT_A_ID)) ^ toBoolean(inputValues.get(INPUT_B_ID));
+        boolean result = LogicUtils.booleanValue(inputValues.get(INPUT_A_ID))
+            ^ LogicUtils.booleanValue(inputValues.get(INPUT_B_ID));
         outputValues.put(OUTPUT_RESULT_ID, result);
-    }
-
-    private boolean toBoolean(@Nullable Object value) {
-        if (value instanceof Boolean bool) {
-            return bool;
-        }
-        if (value instanceof Number number) {
-            return number.doubleValue() != 0.0d;
-        }
-        return value != null && Boolean.parseBoolean(value.toString());
     }
 }

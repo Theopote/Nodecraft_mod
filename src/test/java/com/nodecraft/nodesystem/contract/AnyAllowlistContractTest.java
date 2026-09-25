@@ -6,7 +6,10 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.TypeConversionRegistry;
 import com.nodecraft.nodesystem.nodes.math.compare.EqualsNode;
 import com.nodecraft.nodesystem.nodes.math.compare.LessThanNode;
+import com.nodecraft.nodesystem.nodes.math.logic.AndNode;
 import com.nodecraft.nodesystem.nodes.math.logic.IfNode;
+import com.nodecraft.nodesystem.nodes.math.logic.OrNode;
+import com.nodecraft.nodesystem.nodes.math.logic.XorNode;
 import com.nodecraft.nodesystem.nodes.math.scalar_math.AbsoluteNode;
 import com.nodecraft.nodesystem.nodes.math.trigonometry.SineNode;
 import com.nodecraft.nodesystem.nodes.material.basic_assignment.BlockPaletteNode;
@@ -46,7 +49,6 @@ class AnyAllowlistContractTest {
      */
     private static final Set<String> ANY_ALLOWED_PREFIXES = Set.of(
         "variable.",
-        "math.logic.",
         "math.random.random_list_item",
         "math.random.random_vector",
         "math.random.noise",
@@ -65,6 +67,9 @@ class AnyAllowlistContractTest {
     private static final Set<String> ANY_ALLOWED_TYPE_IDS = Set.of(
         "math.compare.equals",
         "math.compare.not_equals",
+        // Polymorphic value selectors (Logic v1)
+        "math.logic.if",
+        "math.logic.switch",
         // Polymorphic list item / value containers (Batch 11)
         "math.list.get_item",
         "math.list.set_item",
@@ -164,6 +169,9 @@ class AnyAllowlistContractTest {
     void polymorphicCoreKeepsAny_numericDoesNot() {
         assertTrue(hasAnyPort(new EqualsNode()));
         assertTrue(hasAnyPort(new IfNode()));
+        assertFalse(hasAnyPort(new AndNode()));
+        assertFalse(hasAnyPort(new OrNode()));
+        assertFalse(hasAnyPort(new XorNode()));
         assertFalse(hasAnyPort(new LessThanNode()));
         assertFalse(hasAnyPort(new AbsoluteNode()));
         assertFalse(hasAnyPort(new SineNode()));

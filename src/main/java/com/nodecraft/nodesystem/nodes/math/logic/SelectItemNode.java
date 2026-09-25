@@ -63,21 +63,7 @@ public class SelectItemNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object indexObj = inputValues.get(INPUT_INDEX_ID);
-        int index = 0;
-
-        switch (indexObj) {
-            case Number value -> index = value.intValue();
-            case String value -> {
-                try {
-                    index = Integer.parseInt(value);
-                } catch (NumberFormatException ignored) {
-                    index = -1;
-                }
-            }
-            case Boolean value -> index = value ? 0 : 1;
-            case null, default -> index = -1;
-        }
+        int index = LogicUtils.switchIndex(inputValues.get(INPUT_INDEX_ID));
 
         Object result = switch (index) {
             case 0 -> inputValues.get(INPUT_ITEM_0_ID);

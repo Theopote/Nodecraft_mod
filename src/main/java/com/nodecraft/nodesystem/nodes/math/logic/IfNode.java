@@ -17,7 +17,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.logic.if",
     displayName = "If",
-    description = "Chooses between true and false values based on a condition.",
+    description = "Selects True Value when Condition is true; otherwise selects False Value.",
     category = "math.logic",
     order = 0
 )
@@ -44,7 +44,7 @@ public class IfNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Chooses between true and false values based on a condition.";
+        return "Selects True Value when Condition is true; otherwise selects False Value.";
     }
 
     @Override
@@ -54,23 +54,10 @@ public class IfNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object conditionObj = inputValues.get(INPUT_CONDITION_ID);
-        boolean condition = false;
-
-        if (conditionObj instanceof Boolean value) {
-            condition = value;
-        } else if (conditionObj instanceof Number value) {
-            condition = value.doubleValue() != 0.0;
-        } else if (conditionObj instanceof String value) {
-            condition = !value.isEmpty() && Boolean.parseBoolean(value);
-        } else if (conditionObj != null) {
-            condition = true;
-        }
-
+        boolean condition = LogicUtils.booleanValue(inputValues.get(INPUT_CONDITION_ID));
         Object result = condition
             ? inputValues.get(INPUT_TRUE_VALUE_ID)
             : inputValues.get(INPUT_FALSE_VALUE_ID);
-
         outputValues.put(OUTPUT_RESULT_ID, result);
     }
 }

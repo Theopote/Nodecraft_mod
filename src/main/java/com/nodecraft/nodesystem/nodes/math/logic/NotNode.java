@@ -17,7 +17,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.logic.not",
     displayName = "NOT",
-    description = "Returns the negated boolean value of the input.",
+    description = "Returns the logical negation of the boolean input.",
     category = "math.logic",
     order = 4
 )
@@ -34,7 +34,7 @@ public class NotNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Returns the negated boolean value of the input.";
+        return "Returns the logical negation of the boolean input.";
     }
 
     @Override
@@ -44,16 +44,6 @@ public class NotNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        outputValues.put(OUTPUT_RESULT_ID, !toBoolean(inputValues.get(INPUT_VALUE_ID)));
-    }
-
-    private boolean toBoolean(@Nullable Object value) {
-        if (value instanceof Boolean bool) {
-            return bool;
-        }
-        if (value instanceof Number number) {
-            return number.doubleValue() != 0.0d;
-        }
-        return value != null && Boolean.parseBoolean(value.toString());
+        outputValues.put(OUTPUT_RESULT_ID, !LogicUtils.booleanValue(inputValues.get(INPUT_VALUE_ID)));
     }
 }
