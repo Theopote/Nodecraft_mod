@@ -1503,19 +1503,21 @@ public final class GraphMigrationRegistry {
             "math.list.reduce"
     );
 
-    private static final Set<String> LIST_V23_STATE_STRIP_KEYS = Set.of(
-            "preserveOrder",
-            "preserveInput",
-            "allowNegativeIndex",
-            "clampToList",
-            "expandList",
-            "useDefaultValue",
-            "defaultValue"
+    /** Node-specific legacy state keys stripped during V22→V23 (never global key names). */
+    private static final Map<String, Set<String>> LIST_V23_STATE_STRIP_BY_TYPE = Map.ofEntries(
+            Map.entry("math.list.shuffle_list", Set.of("preserveInput")),
+            Map.entry("math.list.deduplicate_list", Set.of("preserveOrder")),
+            Map.entry("math.list.sub_list", Set.of("allowNegativeIndex", "clampToList")),
+            Map.entry("math.list.set_item", Set.of("expandList", "allowNegativeIndex")),
+            Map.entry("math.list.insert_item", Set.of("allowNegativeIndex", "append")),
+            Map.entry("math.list.remove_item", Set.of("allowNegativeIndex")),
+            Map.entry("math.list.get_item", Set.of("allowNegativeIndex")),
+            Map.entry("math.list.dispatch_list", Set.of("useDefaultValue", "defaultValue"))
     );
 
     /**
      * List typed boundary: drop LIST→typed wires; Filter/Dispatch mask must be BOOLEAN_LIST;
-     * remove generic Sort/Reduce.
+     * remove generic Sort/Reduce and orphan wires to deleted nodes.
      */
     private static SavedGraph migrateV22ToV23(SavedGraph graph) {
         if (graph.nodes == null) {
@@ -1527,7 +1529,11 @@ public final class GraphMigrationRegistry {
                 && LIST_V23_DELETED_NODE_TYPES.contains(node.typeId.toLowerCase(Locale.ROOT)));
 
         for (SavedNode node : graph.nodes) {
-            if (node == null || !(node.state instanceof Map<?, ?> state)) {
+            if (node == null || node.typeId == null || !(node.state instanceof Map<?, ?> state)) {
+                continue;
+            }
+            Set<String> stripKeys = LIST_V23_STATE_STRIP_BY_TYPE.get(node.typeId.toLowerCase(Locale.ROOT));
+            if (stripKeys == null || stripKeys.isEmpty()) {
                 continue;
             }
             Map<String, Object> cleaned = new HashMap<>();
@@ -1535,7 +1541,7 @@ public final class GraphMigrationRegistry {
                 if (!(entry.getKey() instanceof String key)) {
                     continue;
                 }
-                if (LIST_V23_STATE_STRIP_KEYS.contains(key)) {
+                if (stripKeys.contains(key)) {
                     continue;
                 }
                 cleaned.put(key, entry.getValue());
@@ -1562,7 +1568,12 @@ public final class GraphMigrationRegistry {
             }
             String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
             String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
-            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            if (sourceType == null || targetType == null) {
+                LOGGER.debug("Dropped orphan connection after List V23 node removal: {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
             String targetPort = connection.targetPortId == null ? "" : connection.targetPortId.toLowerCase(Locale.ROOT);
 
             NodeDataType sourceDataType = resolveDeclaredPortType(sourceType, connection.sourcePortId, true);

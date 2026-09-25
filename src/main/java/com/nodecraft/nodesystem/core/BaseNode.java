@@ -1,8 +1,10 @@
 package com.nodecraft.nodesystem.core;
 
 import com.nodecraft.nodesystem.api.INode;
+import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.IPort;
+import com.nodecraft.nodesystem.api.PortTypeResolver;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 
 import java.util.ArrayList;
@@ -188,7 +190,8 @@ public abstract class BaseNode implements INode {
             if (!port.getId().equals(portId)) {
                 continue;
             }
-            if (port.getDataType().isCompatible(value)) {
+            NodeDataType effective = PortTypeResolver.resolveEffectiveType(port);
+            if (effective.isCompatible(value)) {
                 inputValues.put(portId, value);
             }
             return;

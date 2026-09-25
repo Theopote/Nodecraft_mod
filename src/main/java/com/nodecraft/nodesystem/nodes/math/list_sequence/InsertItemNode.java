@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -22,8 +21,6 @@ import java.util.UUID;
     category = "math.list"
 )
 public class InsertItemNode extends BaseNode {
-
-    private boolean append = true;
 
     private static final String LIST_T = "T";
     private static final String INPUT_LIST_ID = "input_list";
@@ -53,31 +50,21 @@ public class InsertItemNode extends BaseNode {
         Object indexObj = inputValues.get(INPUT_INDEX_ID);
         Object valueObj = inputValues.get(INPUT_VALUE_ID);
 
-        if (!(inputObj instanceof List<?> inputList)) {
+        if (!(inputObj instanceof List<?> inputList) || !(indexObj instanceof Number number)) {
             writeInvalid();
             return;
         }
 
         List<Object> result = new ArrayList<>(inputList);
         int size = result.size();
-        int index = size;
-        if (indexObj instanceof Number number) {
-            index = number.intValue();
-            if (index < 0) {
-                index = size + index;
-            }
-        } else if (!append) {
-            writeInvalid();
-            return;
+        int index = number.intValue();
+        if (index < 0) {
+            index = size + index;
         }
 
         if (index < 0 || index > size) {
-            if (append) {
-                index = size;
-            } else {
-                writeInvalid();
-                return;
-            }
+            writeInvalid();
+            return;
         }
 
         result.add(index, valueObj);
@@ -90,33 +77,13 @@ public class InsertItemNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
-    public boolean isAppend() {
-        return append;
-    }
-
-    public void setAppend(boolean append) {
-        if (this.append != append) {
-            this.append = append;
-            markDirty();
-        }
-    }
-
     @Override
     public Object getNodeState() {
-        Map<String, Object> state = new HashMap<>();
-        state.put("append", isAppend());
-        return state;
+        return Map.of();
     }
 
     @Override
     public void setNodeState(Object state) {
-        if (!(state instanceof Map<?, ?> stateMap)) {
-            return;
-        }
-        Object appendValue = stateMap.get("append");
-        if (appendValue instanceof Boolean value) {
-            setAppend(value);
-        }
-        // Legacy allowNegativeIndex ignored — negatives always supported.
+        // Legacy allowNegativeIndex / append ignored.
     }
 }
