@@ -166,9 +166,9 @@ material.block_state.apply_block_state|material.block_state|Apply Block State
 material.block_state.build_block_state|material.block_state|Build Block State
 material.block_state.orient_block_state|material.block_state|Orient Block State
 material.block_state.stair_shape|material.block_state|Stair Shape
-material.directional_mapping.slab_stair_autofill|material.directional_mapping|Slab / Stair Auto-Fill
-material.directional_mapping.slope_map|material.directional_mapping|Slope Map
-material.directional_mapping.top_side_bottom_map|material.directional_mapping|Top / Side / Bottom Map
+material.directional_mapping.slab_stair_autofill|material.directional_mapping|Slab / Stair Adapt
+material.directional_mapping.slope_map|material.directional_mapping|Surface Slope Map
+material.directional_mapping.top_side_bottom_map|material.directional_mapping|Column Layer Map
 material.gradient_mapping.distance_material|material.gradient_mapping|Distance-Based Material
 material.gradient_mapping.gradient_ramp_map|material.gradient_mapping|Gradient Ramp Map
 material.gradient_mapping.height_gradient_map|material.gradient_mapping|Height Gradient Map

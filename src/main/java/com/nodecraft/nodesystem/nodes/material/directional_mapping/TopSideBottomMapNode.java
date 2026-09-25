@@ -7,7 +7,6 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
-import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -24,8 +23,8 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "material.directional_mapping.top_side_bottom_map",
-    displayName = "Top / Side / Bottom Map",
-    description = "Voxel column map: highest / lowest / middle blocks per X/Z column. Remaps blockId only; preserves stateData. Geometry inputs are voxelized first.",
+    displayName = "Column Layer Map",
+    description = "Column stratification map: highest / lowest / middle blocks per X/Z column. Remaps blockId only; preserves stateData.",
     category = "material.directional_mapping",
     order = 0
 )
@@ -42,9 +41,9 @@ public class TopSideBottomMapNode extends BaseNode {
     private static final String INPUT_SIDE_ID = "input_side";
     private static final String INPUT_BOTTOM_ID = "input_bottom";
 
-    private static final String OUTPUT_POSITIONS_ID = "output_positions";
-    private static final String OUTPUT_BLOCK_IDS_ID = "output_block_ids";
     private static final String OUTPUT_PLACEMENTS_ID = "output_placements";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public TopSideBottomMapNode() {
         super(UUID.randomUUID(), "material.directional_mapping.top_side_bottom_map");
@@ -62,32 +61,47 @@ public class TopSideBottomMapNode extends BaseNode {
         addInputPort(new BasePort(INPUT_SIDE_ID, "Side", "Block used for interior column blocks", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_BOTTOM_ID, "Bottom", "Block used for the lowest block in each X/Z column", NodeDataType.BLOCK_TYPE, this));
 
-        addOutputPort(new BasePort(OUTPUT_POSITIONS_ID, "Positions", "Resolved block positions", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCK_IDS_ID, "Block IDs", "Block IDs aligned with the positions list", NodeDataType.BLOCK_INFO_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Canonical material payload", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when inputs are sufficient and mapping succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Validation error when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
     public String getDescription() {
-        return "Voxel column map: highest / lowest / middle blocks per X/Z column. Remaps blockId only; preserves stateData.";
+        return "Column stratification map: highest / lowest / middle blocks per X/Z column. Remaps blockId only; preserves stateData.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        String top = getInputString(INPUT_TOP_ID, "minecraft:grass_block");
-        String side = getInputString(INPUT_SIDE_ID, "minecraft:dirt");
-        String bottom = getInputString(INPUT_BOTTOM_ID, "minecraft:stone");
+        String topMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_TOP_ID));
+        String sideMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_SIDE_ID));
+        String bottomMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_BOTTOM_ID));
 
-        List<BlockPlacementData> sources = MaterialMappingSupport.resolveSourcePlacements(
-            inputValues.get(INPUT_PLACEMENTS_ID),
-            inputValues.get(INPUT_COORDINATES_ID),
-            inputValues.get(INPUT_GEOMETRY_ID),
-            inputValues.get(INPUT_BOX_GEOMETRY_ID),
-            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-            inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-            inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-            side
-        );
+        List<BlockPlacementData> fromPlacements = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
+        boolean placementSource = !fromPlacements.isEmpty();
+
+        List<BlockPlacementData> sources = placementSource
+            ? fromPlacements
+            : MaterialMappingSupport.resolveSourcePlacements(
+                null,
+                inputValues.get(INPUT_COORDINATES_ID),
+                inputValues.get(INPUT_GEOMETRY_ID),
+                inputValues.get(INPUT_BOX_GEOMETRY_ID),
+                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
+                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
+                inputValues.get(INPUT_TORUS_GEOMETRY_ID),
+                MaterialMappingSupport.firstMappedBlockType(topMapped, sideMapped, bottomMapped)
+            );
+
+        if (!placementSource && sources.isEmpty() && hasNonPlacementSource()) {
+            emitInvalid("Explicit block material required for geometry or coordinates input");
+            return;
+        }
+
+        if (sources.isEmpty()) {
+            emitSuccess(List.of());
+            return;
+        }
 
         Map<Long, Integer> minYByColumn = new HashMap<>();
         Map<Long, Integer> maxYByColumn = new HashMap<>();
@@ -101,10 +115,7 @@ public class TopSideBottomMapNode extends BaseNode {
             maxYByColumn.merge(key, pos.getY(), Math::max);
         }
 
-        BlockPosList outputPositions = new BlockPosList();
-        List<String> blockIds = new ArrayList<>(sources.size());
         List<BlockPlacementData> placements = new ArrayList<>(sources.size());
-
         for (BlockPlacementData source : sources) {
             BlockPos pos = source.pos();
             if (pos == null) {
@@ -114,28 +125,41 @@ public class TopSideBottomMapNode extends BaseNode {
             int minY = minYByColumn.getOrDefault(key, pos.getY());
             int maxY = maxYByColumn.getOrDefault(key, pos.getY());
 
-            String blockId;
+            String roleMapped;
             if (pos.getY() == maxY) {
-                blockId = top;
+                roleMapped = topMapped;
             } else if (pos.getY() == minY) {
-                blockId = bottom;
+                roleMapped = bottomMapped;
             } else {
-                blockId = side;
+                roleMapped = sideMapped;
             }
 
-            outputPositions.add(pos);
-            blockIds.add(blockId);
+            String blockId = MaterialMappingSupport.resolveMaterialTarget(roleMapped, source.blockId());
             placements.add(MaterialMappingSupport.remapBlockId(source, blockId));
         }
 
-        outputValues.put(OUTPUT_POSITIONS_ID, outputPositions);
-        outputValues.put(OUTPUT_BLOCK_IDS_ID, blockIds);
-        outputValues.put(OUTPUT_PLACEMENTS_ID, placements);
+        emitSuccess(placements);
     }
 
-    private String getInputString(String portId, String fallback) {
-        Object value = inputValues.get(portId);
-        return (value instanceof String text && !text.isEmpty()) ? text : fallback;
+    private boolean hasNonPlacementSource() {
+        return inputValues.get(INPUT_COORDINATES_ID) != null
+            || inputValues.get(INPUT_GEOMETRY_ID) != null
+            || inputValues.get(INPUT_BOX_GEOMETRY_ID) != null
+            || inputValues.get(INPUT_CYLINDER_GEOMETRY_ID) != null
+            || inputValues.get(INPUT_SPHERE_GEOMETRY_ID) != null
+            || inputValues.get(INPUT_TORUS_GEOMETRY_ID) != null;
+    }
+
+    private void emitInvalid(String message) {
+        outputValues.put(OUTPUT_PLACEMENTS_ID, List.of());
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, message);
+    }
+
+    private void emitSuccess(List<BlockPlacementData> placements) {
+        outputValues.put(OUTPUT_PLACEMENTS_ID, placements);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     private long columnKey(int x, int z) {

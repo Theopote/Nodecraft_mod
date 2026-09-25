@@ -7,7 +7,6 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
-import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -21,8 +20,8 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "material.directional_mapping.slope_map",
-    displayName = "Slope Map",
-    description = "Voxel material map: assigns flat/slope/steep by 4-neighbor column height grade. Remaps blockId only; preserves stateData.",
+    displayName = "Surface Slope Map",
+    description = "Surface material map: assigns flat/slope/steep by 4-neighbor column height grade on column-top voxels only. Remaps blockId only; preserves stateData.",
     category = "material.directional_mapping",
     order = 1
 )
@@ -38,9 +37,9 @@ public class SlopeMapNode extends BaseNode {
     private static final String INPUT_FLAT_ID = "input_flat";
     private static final String INPUT_SLOPE_ID = "input_slope";
     private static final String INPUT_STEEP_ID = "input_steep";
-    private static final String OUTPUT_POSITIONS_ID = "output_positions";
-    private static final String OUTPUT_BLOCK_IDS_ID = "output_block_ids";
     private static final String OUTPUT_PLACEMENTS_ID = "output_placements";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public SlopeMapNode() {
         super(UUID.randomUUID(), "material.directional_mapping.slope_map");
@@ -56,32 +55,47 @@ public class SlopeMapNode extends BaseNode {
         addInputPort(new BasePort(INPUT_FLAT_ID, "Flat", "Material for low slope", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_SLOPE_ID, "Slope", "Material for medium slope", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_STEEP_ID, "Steep", "Material for steep slope", NodeDataType.BLOCK_TYPE, this));
-        addOutputPort(new BasePort(OUTPUT_POSITIONS_ID, "Positions", "Resolved block positions", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCK_IDS_ID, "Block IDs", "Block IDs aligned with the positions list", NodeDataType.BLOCK_INFO_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Canonical material payload", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when inputs are sufficient and mapping succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Validation error when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
     public String getDescription() {
-        return "Voxel material map: assigns flat/slope/steep by 4-neighbor column height grade. Remaps blockId only; preserves stateData.";
+        return "Surface material map: assigns flat/slope/steep by 4-neighbor column height grade on column-top voxels only.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        String flat = getInputString(INPUT_FLAT_ID, "minecraft:grass_block");
-        String slope = getInputString(INPUT_SLOPE_ID, "minecraft:dirt");
-        String steep = getInputString(INPUT_STEEP_ID, "minecraft:stone");
+        String flatMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_FLAT_ID));
+        String slopeMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_SLOPE_ID));
+        String steepMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_STEEP_ID));
 
-        List<BlockPlacementData> sources = MaterialMappingSupport.resolveSourcePlacements(
-            inputValues.get(INPUT_PLACEMENTS_ID),
-            inputValues.get(INPUT_COORDINATES_ID),
-            inputValues.get(INPUT_GEOMETRY_ID),
-            inputValues.get(INPUT_BOX_GEOMETRY_ID),
-            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-            inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-            inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-            flat
-        );
+        List<BlockPlacementData> fromPlacements = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
+        boolean placementSource = !fromPlacements.isEmpty();
+
+        List<BlockPlacementData> sources = placementSource
+            ? fromPlacements
+            : MaterialMappingSupport.resolveSourcePlacements(
+                null,
+                inputValues.get(INPUT_COORDINATES_ID),
+                inputValues.get(INPUT_GEOMETRY_ID),
+                inputValues.get(INPUT_BOX_GEOMETRY_ID),
+                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
+                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
+                inputValues.get(INPUT_TORUS_GEOMETRY_ID),
+                MaterialMappingSupport.firstMappedBlockType(flatMapped, slopeMapped, steepMapped)
+            );
+
+        if (!placementSource && sources.isEmpty() && hasNonPlacementSource()) {
+            emitInvalid("Explicit block material required for geometry or coordinates input");
+            return;
+        }
+
+        if (sources.isEmpty()) {
+            emitSuccess(List.of());
+            return;
+        }
 
         Map<Long, Integer> topYByColumn = new HashMap<>();
         for (BlockPlacementData placement : sources) {
@@ -92,8 +106,6 @@ public class SlopeMapNode extends BaseNode {
             topYByColumn.merge(columnKey(pos.getX(), pos.getZ()), pos.getY(), Math::max);
         }
 
-        BlockPosList out = new BlockPosList();
-        List<String> ids = new ArrayList<>(sources.size());
         List<BlockPlacementData> placements = new ArrayList<>(sources.size());
         for (BlockPlacementData source : sources) {
             BlockPos pos = source.pos();
@@ -101,15 +113,18 @@ public class SlopeMapNode extends BaseNode {
                 continue;
             }
             int columnTop = topYByColumn.getOrDefault(columnKey(pos.getX(), pos.getZ()), pos.getY());
+            if (pos.getY() != columnTop) {
+                placements.add(source);
+                continue;
+            }
+
             int grade = maxNeighborGrade(topYByColumn, pos.getX(), pos.getZ(), columnTop);
-            String id = grade <= 0 ? flat : (grade == 1 ? slope : steep);
-            out.add(pos);
-            ids.add(id);
-            placements.add(MaterialMappingSupport.remapBlockId(source, id));
+            String roleMapped = grade <= 0 ? flatMapped : (grade == 1 ? slopeMapped : steepMapped);
+            String blockId = MaterialMappingSupport.resolveMaterialTarget(roleMapped, source.blockId());
+            placements.add(MaterialMappingSupport.remapBlockId(source, blockId));
         }
-        outputValues.put(OUTPUT_POSITIONS_ID, out);
-        outputValues.put(OUTPUT_BLOCK_IDS_ID, ids);
-        outputValues.put(OUTPUT_PLACEMENTS_ID, placements);
+
+        emitSuccess(placements);
     }
 
     /**
@@ -136,8 +151,24 @@ public class SlopeMapNode extends BaseNode {
         return (((long) x) << 32) ^ (z & 0xffffffffL);
     }
 
-    private String getInputString(String portId, String fallback) {
-        Object value = inputValues.get(portId);
-        return (value instanceof String text && !text.isBlank()) ? text : fallback;
+    private boolean hasNonPlacementSource() {
+        return inputValues.get(INPUT_COORDINATES_ID) != null
+            || inputValues.get(INPUT_GEOMETRY_ID) != null
+            || inputValues.get(INPUT_BOX_GEOMETRY_ID) != null
+            || inputValues.get(INPUT_CYLINDER_GEOMETRY_ID) != null
+            || inputValues.get(INPUT_SPHERE_GEOMETRY_ID) != null
+            || inputValues.get(INPUT_TORUS_GEOMETRY_ID) != null;
+    }
+
+    private void emitInvalid(String message) {
+        outputValues.put(OUTPUT_PLACEMENTS_ID, List.of());
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, message);
+    }
+
+    private void emitSuccess(List<BlockPlacementData> placements) {
+        outputValues.put(OUTPUT_PLACEMENTS_ID, placements);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 }

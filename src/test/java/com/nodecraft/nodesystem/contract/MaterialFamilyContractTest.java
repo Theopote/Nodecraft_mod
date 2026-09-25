@@ -106,7 +106,9 @@ class MaterialFamilyContractTest {
 
         BlockPosList positions = new BlockPosList();
         // Flat column at (0,0) height 5, neighbor only at -X with height 7 → grade 2 → steep
+        // Interior voxel at Y=4 must preserve source blockId (surface-only remap).
         positions.add(new BlockPos(0, 5, 0));
+        positions.add(new BlockPos(0, 4, 0));
         positions.add(new BlockPos(-1, 7, 0));
 
         slope.setInput("input_coordinates", positions);
@@ -117,12 +119,20 @@ class MaterialFamilyContractTest {
 
         @SuppressWarnings("unchecked")
         List<BlockPlacementData> out = assertInstanceOf(List.class, slope.getOutput("output_placements"));
-        assertEquals(2, out.size());
-        BlockPlacementData atOrigin = out.stream()
-            .filter(p -> p.pos().getX() == 0 && p.pos().getZ() == 0)
+        assertEquals(3, out.size());
+        BlockPlacementData atOriginTop = out.stream()
+            .filter(p -> p.pos().getX() == 0 && p.pos().getZ() == 0 && p.pos().getY() == 5)
             .findFirst()
             .orElseThrow();
-        assertEquals("minecraft:stone", atOrigin.blockId());
+        assertEquals("minecraft:stone", atOriginTop.blockId());
+
+        BlockPlacementData atOriginInterior = out.stream()
+            .filter(p -> p.pos().getX() == 0 && p.pos().getZ() == 0 && p.pos().getY() == 4)
+            .findFirst()
+            .orElseThrow();
+        // Geometry path uses flat as fallback blockId for all generated placements; interior
+        // voxels preserve that source id instead of remapping by slope grade.
+        assertEquals("minecraft:grass_block", atOriginInterior.blockId());
     }
 
     @Test

@@ -122,8 +122,13 @@ Orient Block State ────────────────────�
 Apply Block State  →  Stair Shape  →  Preview / Apply Changes
 ```
 
-Slab / stair geometry adaptation belongs upstream in
-`material.directional_mapping.slab_stair_autofill` (may change `blockId`).
+Slab / stair **blockId** adaptation belongs upstream in
+`material.directional_mapping.slab_stair_autofill` (blockId only — no state writes).
+Orientation and stair shape state belong on the Block State chain:
+
+```
+Slab/Stair Adapt → Orient Block State → Apply Block State → Stair Shape
+```
 
 ## Graph migration (V34→V35)
 

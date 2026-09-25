@@ -345,9 +345,9 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Top / Side / Bottom Map | `material.directional_mapping.top_side_bottom_map` | Voxel column map: highest / lowest / middle blocks per X/Z column. Remaps blockId only; preserves stateData. Geometry inputs are voxelized first. | `TopSideBottomMapNode` |
-| Slope Map | `material.directional_mapping.slope_map` | Voxel material map: assigns flat/slope/steep by 4-neighbor column height grade. Remaps blockId only; preserves stateData. | `SlopeMapNode` |
-| Slab / Stair Auto-Fill | `material.directional_mapping.slab_stair_autofill` | Adapts block types to surface normals for slab or stair transitions (remaps blockId only) | `SlabStairAutofillNode` |
+| Column Layer Map | `material.directional_mapping.top_side_bottom_map` | Column stratification map: highest / lowest / middle blocks per X/Z column. Remaps blockId only; preserves stateData. | `TopSideBottomMapNode` |
+| Surface Slope Map | `material.directional_mapping.slope_map` | Surface material map: assigns flat/slope/steep by 4-neighbor column height grade on column-top voxels only. Remaps blockId only; preserves stateData. | `SlopeMapNode` |
+| Slab / Stair Adapt | `material.directional_mapping.slab_stair_autofill` | Adapts block types to surface normals (blockId only). Use Orient Block State and Stair Shape for state properties. | `SlabStairAutofillNode` |
 
 ## material.gradient_mapping（5）
 

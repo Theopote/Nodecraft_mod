@@ -101,6 +101,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V32 -> migrateV32ToV33(graph);
             case GraphFormatVersion.V33 -> migrateV33ToV34(graph);
             case GraphFormatVersion.V34 -> migrateV34ToV35(graph);
+            case GraphFormatVersion.V35 -> migrateV35ToV36(graph);
             default -> graph;
         };
     }
@@ -2183,6 +2184,17 @@ public final class GraphMigrationRegistry {
             "output_block_ids"
     );
 
+    private static final Set<String> DIRECTIONAL_MAPPING_TYPES = Set.of(
+            "material.directional_mapping.top_side_bottom_map",
+            "material.directional_mapping.slope_map",
+            "material.directional_mapping.slab_stair_autofill"
+    );
+
+    private static final Set<String> DIRECTIONAL_MAPPING_DECONSTRUCT_OUTPUT_PORTS = Set.of(
+            "output_positions",
+            "output_block_ids"
+    );
+
     /**
      * Type Selectors v1: Block Type {@code BLOCK_TYPE} port; remove Block State Selector.
      */
@@ -2433,6 +2445,43 @@ public final class GraphMigrationRegistry {
                 return true;
             }
 
+            return false;
+        });
+
+        return graph;
+    }
+
+    /**
+     * Directional Mapping v1: drop deconstruct outputs from the three directional_mapping nodes.
+     */
+    private static SavedGraph migrateV35ToV36(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            if (sourceType == null || !DIRECTIONAL_MAPPING_TYPES.contains(sourceType)) {
+                return false;
+            }
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            if (DIRECTIONAL_MAPPING_DECONSTRUCT_OUTPUT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped Directional Mapping v1 deconstruct output wire {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId);
+                return true;
+            }
             return false;
         });
 

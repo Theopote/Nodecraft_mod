@@ -225,7 +225,8 @@ class RandomLanguageContractTest {
         assertEquals(33, GraphFormatVersion.V33);
         assertEquals(34, GraphFormatVersion.V34);
         assertEquals(35, GraphFormatVersion.V35);
-        assertEquals(GraphFormatVersion.V35, GraphFormatVersion.CURRENT);
+        assertEquals(36, GraphFormatVersion.V36);
+        assertEquals(GraphFormatVersion.V36, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -248,7 +249,7 @@ class RandomLanguageContractTest {
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v28);
         assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(GraphFormatVersion.V35, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.V36, migrated.formatVersion);
 
         assertEquals(4, migrated.nodes.size());
         assertEquals(1, migrated.connections.size());
@@ -288,7 +289,7 @@ class RandomLanguageContractTest {
         v28.nodePositions = Map.of();
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v28);
-        assertEquals(GraphFormatVersion.V35, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.V36, migrated.formatVersion);
 
         assertFalse(hasWire(migrated, "text", "output_text", "rli", "input_list"));
         assertTrue(hasWire(migrated, "clist", "output_list", "rli", "input_list"));

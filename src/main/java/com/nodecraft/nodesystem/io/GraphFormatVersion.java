@@ -223,8 +223,14 @@ public final class GraphFormatVersion {
      */
     public static final int V35 = 35;
 
+    /**
+     * Directional Mapping v1: blockId-only remap; surface slope; slab/stair adapt;
+     * drop deconstruct outputs; no hidden vanilla material fallbacks.
+     */
+    public static final int V36 = 36;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V35;
+    public static final int CURRENT = V36;
 
     private GraphFormatVersion() {
     }

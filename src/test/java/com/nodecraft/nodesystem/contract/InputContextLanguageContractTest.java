@@ -48,7 +48,8 @@ class InputContextLanguageContractTest {
         assertEquals(33, GraphFormatVersion.V33);
         assertEquals(34, GraphFormatVersion.V34);
         assertEquals(35, GraphFormatVersion.V35);
-        assertEquals(GraphFormatVersion.V35, GraphFormatVersion.CURRENT);
+        assertEquals(36, GraphFormatVersion.V36);
+        assertEquals(GraphFormatVersion.V36, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -172,7 +173,7 @@ class InputContextLanguageContractTest {
         v31.nodePositions = Map.of();
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v31);
-        assertEquals(GraphFormatVersion.V35, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.V36, migrated.formatVersion);
         assertEquals("input.context.player_raycast",
                 migrated.nodes.stream().filter(n -> "look".equals(n.nodeId)).findFirst().orElseThrow().typeId);
         assertFalse(hasWire(migrated, "look", "output_hit_position", "construct", "input_x"));

@@ -79,7 +79,8 @@ class BlockStateLanguageContractTest {
     void currentGraphFormatIsV35() {
         assertEquals(34, GraphFormatVersion.V34);
         assertEquals(35, GraphFormatVersion.V35);
-        assertEquals(GraphFormatVersion.V35, GraphFormatVersion.CURRENT);
+        assertEquals(36, GraphFormatVersion.V36);
+        assertEquals(GraphFormatVersion.V36, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -349,7 +350,7 @@ class BlockStateLanguageContractTest {
         v34.nodePositions = Map.of();
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v34);
-        assertEquals(GraphFormatVersion.V35, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.V36, migrated.formatVersion);
 
         assertFalse(migrated.nodes.stream().anyMatch(n -> "auto".equals(n.nodeId)));
         assertEquals("material.block_state.apply_block_state", findNode(migrated, "assign").typeId);
