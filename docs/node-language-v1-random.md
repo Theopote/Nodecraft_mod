@@ -1,8 +1,11 @@
 # Node Language v1 — Random
 
+**Status: PASSED / FROZEN** (HEAD `13b0f798`, Graph **V29**)
+
 Freeze for `math.random.*` deterministic seeded procedural variation.
 Shared implementation: `com.nodecraft.nodesystem.math.RandomOps`.
-Graph schema: **V29** drops Random Vector `input_count` and `output_random_vector` wires.
+Graph schema: **V29** drops Random Vector `input_count` / `output_random_vector` wires and
+incompatible List Item / Random Numbers type-tightening wires.
 
 Related: [`node-language-v1-sequence.md`](./node-language-v1-sequence.md) (INTEGER Count),
 [`node-language-v1-logic.md`](./node-language-v1-logic.md) (no truthy coercion),
@@ -61,6 +64,7 @@ Item = first selected; Items = full selection (kept even when Count=1).
 
 Deterministic 3D **value noise** (lattice hash + smoothstep + trilinear), roughly `[-1, 1]`.
 Non-finite X/Y/Z → `NaN`. Nearby coordinates produce smoothly related values (not hash jumps).
+`long` lattice; fractional cell not in `[0,1)` (e.g. `1e20`) → `NaN` (no silent overflow).
 
 ## Graph migration (V28→V29)
 
@@ -81,8 +85,7 @@ For type tightening (declared-type compatibility via `NodeDataType.isConnectable
 - `math.random.random_numbers`
   - Drop wires **from** `output_values` incompatible with `DOUBLE_LIST` (e.g. → `STRING_LIST`)
 
-## Noise lattice safety
+## Retained P2 (not a freeze blocker)
 
-`valueNoise3` uses `long` lattice coordinates. If the fractional cell is not in `[0,1)`
-(e.g. coordinates beyond safe long range such as `1e20`), the result is `NaN` —
-never an unbounded fade overflow.
+`sampleDouble` on `[-Double.MAX_VALUE, Double.MAX_VALUE]` yields `NaN` when `hi - lo` overflows.
+Safe and explicit; overflow-safe wide-domain sampling can wait.

@@ -3,7 +3,7 @@
 Design freeze: player-facing and AI-facing **graph language** for ports, numeric types,
 angles, and spatial concepts.
 
-Last updated: 2026-09-21
+Last updated: 2026-09-25
 
 ## Authority
 
@@ -16,9 +16,22 @@ Last updated: 2026-09-21
 | Compare exact / strict equality | [`node-language-v1-compare.md`](./node-language-v1-compare.md) + `CompareUtils` |
 | Logic boolean / If / Switch (no coercion) | [`node-language-v1-logic.md`](./node-language-v1-logic.md) + `LogicUtils` |
 | Sequence range / series / repeat | [`node-language-v1-sequence.md`](./node-language-v1-sequence.md) + `SequenceOps` |
-| Random seeded / Noise / List&lt;T&gt; pick | [`node-language-v1-random.md`](./node-language-v1-random.md) + `RandomOps` |
+| Random seeded / Noise / List&lt;T&gt; pick | [`node-language-v1-random.md`](./node-language-v1-random.md) + `RandomOps` **(PASSED / FROZEN, V29)** |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
+
+### Math foundation freezes (current)
+
+| Family | Status | Graph |
+|--------|--------|-------|
+| Scalar Math v1 | FROZEN | V25 |
+| Trigonometry v1 | FROZEN | V26 |
+| Compare v1 | FROZEN | V27 |
+| Logic v1 | FROZEN | (no bump) |
+| Sequence v1 | FROZEN | V28 |
+| Random v1 | **PASSED / FROZEN** | V29 |
+| List / Collection v1 | FROZEN | V23 |
+| Data Tree v1 | FROZEN | V24 |
 
 If a node’s current implementation disagrees with this freeze, **treat the gap as debt to
 remediate** (with graph/preset migration). Do not copy the gap into new nodes.
