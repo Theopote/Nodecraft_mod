@@ -133,7 +133,13 @@ public class BrickPatternMapNode extends BaseNode {
             return;
         }
 
-        BlockPos origin = PatternMaterialUtils.resolveOrigin(inputValues.get(INPUT_PATTERN_ORIGIN_ID));
+        PatternMaterialUtils.OriginResult originResult =
+            PatternMaterialUtils.resolveOrigin(inputValues.get(INPUT_PATTERN_ORIGIN_ID));
+        if (!originResult.valid()) {
+            emitFail(originResult.error());
+            return;
+        }
+        BlockPos origin = originResult.origin();
         BrickPatternMapping.Axis axis = resolveBrickAxis(sources, origin);
 
         List<BlockPlacementData> placements = new ArrayList<>(sources.size());

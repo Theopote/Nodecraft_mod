@@ -27,9 +27,11 @@ Related: [`node-language-v1-gradient-mapping.md`](./node-language-v1-gradient-ma
 6. **No deconstruct outputs** — `BLOCK_PLACEMENT_LIST` + `Valid` / `Error` only.
 7. **Fail-closed integers** — Stripe Width / Brick Length / Course Height / Grid Size
    `>= 1`; Line Width satisfies `1 ≤ width ≤ Grid Size`. No silent clamps.
-8. **Pattern Origin** — `input_pattern_origin : BLOCK_POS`; missing → `(0,0,0)`
-   (preserves pre-V38 world-anchored look). All pattern math uses relative
-   `(dx,dy,dz)`.
+8. **Pattern Origin** — `input_pattern_origin : BLOCK_POS`:
+   - missing (`null`) → `(0,0,0)`, `Valid=true` (preserves pre-V38 world-anchored look)
+   - `BlockPos` → use it
+   - any other runtime type (`POINT`, `VECTOR`, …) → `Valid=false`
+   All pattern math uses relative `(dx,dy,dz)`.
 
 ## Inventory (4)
 

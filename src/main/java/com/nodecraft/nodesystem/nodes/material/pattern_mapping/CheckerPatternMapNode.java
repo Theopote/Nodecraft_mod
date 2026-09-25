@@ -107,7 +107,16 @@ public class CheckerPatternMapNode extends BaseNode {
             return;
         }
 
-        BlockPos origin = PatternMaterialUtils.resolveOrigin(inputValues.get(INPUT_PATTERN_ORIGIN_ID));
+        BlockPos origin;
+        {
+            PatternMaterialUtils.OriginResult originResult =
+                PatternMaterialUtils.resolveOrigin(inputValues.get(INPUT_PATTERN_ORIGIN_ID));
+            if (!originResult.valid()) {
+                emitFail(originResult.error());
+                return;
+            }
+            origin = originResult.origin();
+        }
         List<BlockPlacementData> placements = new ArrayList<>(sources.size());
         for (BlockPlacementData source : sources) {
             BlockPos pos = source.pos();

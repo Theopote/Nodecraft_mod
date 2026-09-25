@@ -29,6 +29,20 @@ public final class PatternMaterialUtils {
 
     private static final BlockPos WORLD_ORIGIN = new BlockPos(0, 0, 0);
 
+    /**
+     * Result of resolving Pattern Origin: missing → world origin; {@link BlockPos} → use it;
+     * any other runtime type → invalid.
+     */
+    public record OriginResult(boolean valid, BlockPos origin, String error) {
+        public static OriginResult ok(BlockPos origin) {
+            return new OriginResult(true, origin != null ? origin : WORLD_ORIGIN, "");
+        }
+
+        public static OriginResult fail(String error) {
+            return new OriginResult(false, WORLD_ORIGIN, error == null ? "" : error);
+        }
+    }
+
     private PatternMaterialUtils() {
     }
 
@@ -41,13 +55,21 @@ public final class PatternMaterialUtils {
     }
 
     /**
-     * Resolves Pattern Origin. Missing / non-{@link BlockPos} → world origin {@code (0,0,0)}.
+     * Resolves Pattern Origin.
+     * <ul>
+     *   <li>{@code null} (missing) → {@code (0,0,0)}, valid</li>
+     *   <li>{@link BlockPos} → that position, valid</li>
+     *   <li>any other type → invalid ({@code BLOCK_POS} only)</li>
+     * </ul>
      */
-    public static BlockPos resolveOrigin(@Nullable Object value) {
-        if (value instanceof BlockPos pos) {
-            return pos;
+    public static OriginResult resolveOrigin(@Nullable Object value) {
+        if (value == null) {
+            return OriginResult.ok(WORLD_ORIGIN);
         }
-        return WORLD_ORIGIN;
+        if (value instanceof BlockPos pos) {
+            return OriginResult.ok(pos);
+        }
+        return OriginResult.fail("Pattern Origin must be BLOCK_POS");
     }
 
     public static Relative relative(BlockPos pos, BlockPos origin) {

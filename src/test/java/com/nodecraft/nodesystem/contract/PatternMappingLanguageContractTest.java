@@ -14,10 +14,12 @@ import com.nodecraft.nodesystem.nodes.material.pattern_mapping.BrickPatternMapNo
 import com.nodecraft.nodesystem.nodes.material.pattern_mapping.CheckerPatternMapNode;
 import com.nodecraft.nodesystem.nodes.material.pattern_mapping.GridPatternMapNode;
 import com.nodecraft.nodesystem.nodes.material.pattern_mapping.StripePatternMapNode;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import net.minecraft.util.math.BlockPos;
+import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -192,6 +194,47 @@ class PatternMappingLanguageContractTest {
     }
 
     @Test
+    void patternOriginMissingDefaultsToWorldOriginWhileWrongTypesFailClosed() {
+        List<BlockPlacementData> placements = List.of(
+                new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks", null)
+        );
+
+        CheckerPatternMapNode missing = new CheckerPatternMapNode();
+        missing.compute(Map.of(
+                "input_placements", placements,
+                "input_primary", "minecraft:dirt",
+                "input_secondary", "minecraft:cobblestone"
+        ));
+        assertTrue((Boolean) missing.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> missingOut = assertInstanceOf(List.class, missing.getOutput("output_placements"));
+        assertEquals("minecraft:dirt", missingOut.getFirst().blockId());
+
+        CheckerProbe pointOrigin = new CheckerProbe();
+        pointOrigin.putInput("input_placements", placements);
+        pointOrigin.putInput("input_primary", "minecraft:dirt");
+        pointOrigin.putInput("input_secondary", "minecraft:cobblestone");
+        pointOrigin.putInput("input_pattern_origin", new PointData(0, 0, 0));
+        pointOrigin.processNode(null);
+        assertFalse((Boolean) pointOrigin.getOutput("output_valid"));
+        assertTrue(((String) pointOrigin.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("block_pos"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> pointOut = assertInstanceOf(List.class, pointOrigin.getOutput("output_placements"));
+        assertTrue(pointOut.isEmpty());
+
+        CheckerProbe vectorOrigin = new CheckerProbe();
+        vectorOrigin.putInput("input_placements", placements);
+        vectorOrigin.putInput("input_primary", "minecraft:dirt");
+        vectorOrigin.putInput("input_secondary", "minecraft:cobblestone");
+        vectorOrigin.putInput("input_pattern_origin", new Vector3d(0, 0, 0));
+        vectorOrigin.processNode(null);
+        assertFalse((Boolean) vectorOrigin.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> vectorOut = assertInstanceOf(List.class, vectorOrigin.getOutput("output_placements"));
+        assertTrue(vectorOut.isEmpty());
+    }
+
+    @Test
     void checkerIs3dAndGridIgnoresY() {
         CheckerPatternMapNode checker = new CheckerPatternMapNode();
         checker.setInput("input_placements", List.of(
@@ -286,6 +329,13 @@ class PatternMappingLanguageContractTest {
         assertFalse(hasWire(migrated, "stripe", "output_block_ids", "preview", "input_block_placements"));
         assertFalse(hasWire(migrated, "brick", "output_positions", "preview", "input_block_placements"));
         assertFalse(hasWire(migrated, "grid", "output_block_ids", "preview", "input_block_placements"));
+    }
+
+    /** Bypasses port type checks so wrong-type Pattern Origin can be exercised. */
+    private static final class CheckerProbe extends CheckerPatternMapNode {
+        void putInput(String portId, Object value) {
+            inputValues.put(portId, value);
+        }
     }
 
     private static void assertNotEqualsIds(String a, String b) {
