@@ -104,31 +104,42 @@ public final class RandomOps {
     /**
      * Deterministic 3D value noise with smooth interpolation.
      * Output roughly in {@code [-1, 1]}. Non-finite position → {@link Double#NaN}.
+     * Coordinates whose lattice cell cannot be represented safely in {@code long}
+     * (including values that overflow {@link Long#MAX_VALUE}) → {@link Double#NaN}.
      */
     public static double valueNoise3(double x, double y, double z, int seed) {
         if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)) {
             return Double.NaN;
         }
 
-        int x0 = floor(x);
-        int y0 = floor(y);
-        int z0 = floor(z);
-        double fx = x - x0;
-        double fy = y - y0;
-        double fz = z - z0;
+        long x0 = floorToLong(x);
+        long y0 = floorToLong(y);
+        long z0 = floorToLong(z);
+
+        // Reject saturated / non-representable lattice cells so fade stays in [0,1].
+        if (x0 == Long.MAX_VALUE || y0 == Long.MAX_VALUE || z0 == Long.MAX_VALUE) {
+            return Double.NaN;
+        }
+
+        double fx = x - (double) x0;
+        double fy = y - (double) y0;
+        double fz = z - (double) z0;
+        if (!isUnitFraction(fx) || !isUnitFraction(fy) || !isUnitFraction(fz)) {
+            return Double.NaN;
+        }
 
         double u = fade(fx);
         double v = fade(fy);
         double w = fade(fz);
 
         double n000 = latticeValue(x0, y0, z0, seed);
-        double n100 = latticeValue(x0 + 1, y0, z0, seed);
-        double n010 = latticeValue(x0, y0 + 1, z0, seed);
-        double n110 = latticeValue(x0 + 1, y0 + 1, z0, seed);
-        double n001 = latticeValue(x0, y0, z0 + 1, seed);
-        double n101 = latticeValue(x0 + 1, y0, z0 + 1, seed);
-        double n011 = latticeValue(x0, y0 + 1, z0 + 1, seed);
-        double n111 = latticeValue(x0 + 1, y0 + 1, z0 + 1, seed);
+        double n100 = latticeValue(x0 + 1L, y0, z0, seed);
+        double n010 = latticeValue(x0, y0 + 1L, z0, seed);
+        double n110 = latticeValue(x0 + 1L, y0 + 1L, z0, seed);
+        double n001 = latticeValue(x0, y0, z0 + 1L, seed);
+        double n101 = latticeValue(x0 + 1L, y0, z0 + 1L, seed);
+        double n011 = latticeValue(x0, y0 + 1L, z0 + 1L, seed);
+        double n111 = latticeValue(x0 + 1L, y0 + 1L, z0 + 1L, seed);
 
         double nx00 = lerp(n000, n100, u);
         double nx10 = lerp(n010, n110, u);
@@ -138,12 +149,17 @@ public final class RandomOps {
         double nxy0 = lerp(nx00, nx10, v);
         double nxy1 = lerp(nx01, nx11, v);
 
-        return lerp(nxy0, nxy1, w);
+        double result = lerp(nxy0, nxy1, w);
+        return Double.isFinite(result) ? result : Double.NaN;
     }
 
-    private static int floor(double v) {
-        int i = (int) v;
-        return v < i ? i - 1 : i;
+    /** Floor toward −∞ into a long (out-of-range doubles saturate on cast). */
+    private static long floorToLong(double v) {
+        return (long) Math.floor(v);
+    }
+
+    private static boolean isUnitFraction(double f) {
+        return Double.isFinite(f) && f >= 0.0d && f < 1.0d;
     }
 
     /** Perlin quintic fade: 6t^5 - 15t^4 + 10t^3 */
@@ -156,27 +172,31 @@ public final class RandomOps {
     }
 
     /** Stable lattice hash mapped to roughly [-1, 1]. */
-    private static double latticeValue(int x, int y, int z, int seed) {
+    private static double latticeValue(long x, long y, long z, int seed) {
         int h = hash3(x, y, z, seed);
         // Use upper 24 bits for uniform [0,1) then map to [-1,1]
         int bits = (h >>> 8) & 0xFFFFFF;
         return (bits / (double) 0xFFFFFF) * 2.0d - 1.0d;
     }
 
-    private static int hash3(int x, int y, int z, int seed) {
+    private static int hash3(long x, long y, long z, int seed) {
         int h = seed;
-        h ^= x * 0x27d4eb2d;
+        h ^= mixLong(x) * 0x27d4eb2d;
         h = Integer.rotateLeft(h, 13);
         h *= 0x165667b1;
-        h ^= y * 0x85ebca6b;
+        h ^= mixLong(y) * 0x85ebca6b;
         h = Integer.rotateLeft(h, 17);
         h *= 0xc2b2ae35;
-        h ^= z * 0x27d4eb2d;
+        h ^= mixLong(z) * 0x27d4eb2d;
         h ^= h >>> 16;
         h *= 0x85ebca6b;
         h ^= h >>> 13;
         h *= 0xc2b2ae35;
         h ^= h >>> 16;
         return h;
+    }
+
+    private static int mixLong(long v) {
+        return Long.hashCode(v);
     }
 }

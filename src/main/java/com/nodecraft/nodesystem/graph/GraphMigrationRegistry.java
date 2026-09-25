@@ -1880,6 +1880,7 @@ public final class GraphMigrationRegistry {
 
     private static final String SERIES_TYPE = "math.sequence.series";
     private static final String RANDOM_VECTOR_TYPE = "math.random.random_vector";
+    private static final String RANDOM_LIST_ITEM_TYPE = "math.random.random_list_item";
 
     /**
      * Sequence v1: drop Number Series Sum output wires (reduction belongs on Sum Numbers).
@@ -1915,9 +1916,8 @@ public final class GraphMigrationRegistry {
     }
 
     /**
-     * Random v1: Random Vector is now a single VECTOR node (no Count; output renamed).
-     * Drop wires to {@code input_count} and from {@code output_random_vector} —
-     * do not guess whether the old ANY output was a vector or vector list.
+     * Random v1: Random Vector schema cleanup + drop type-tightening incompatibilities
+     * for Random List Item (ANY→LIST&lt;T&gt;) and Random Numbers (LIST→DOUBLE_LIST).
      */
     private static SavedGraph migrateV28ToV29(SavedGraph graph) {
         if (graph.connections == null || graph.nodes == null) {
@@ -1950,10 +1950,52 @@ public final class GraphMigrationRegistry {
                 LOGGER.debug("Dropped Random Vector input_count wire to {}", connection.targetNodeId);
                 return true;
             }
+
+            // Random List Item / Random Numbers: drop wires incompatible with V29 declared types
+            if (isRandomV29TypeTightenedEndpoint(sourceType, sourcePort, targetType, targetPort)
+                    && !isDeclaredConnectionStillCompatible(sourceType, connection.sourcePortId,
+                    targetType, connection.targetPortId)) {
+                LOGGER.debug("Dropped Random v1 type-incompatible wire {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
             return false;
         });
 
         return graph;
+    }
+
+    private static boolean isRandomV29TypeTightenedEndpoint(
+            @Nullable String sourceType,
+            String sourcePort,
+            @Nullable String targetType,
+            String targetPort
+    ) {
+        if (RANDOM_LIST_ITEM_TYPE.equals(targetType) && "input_list".equals(targetPort)) {
+            return true;
+        }
+        if (RANDOM_LIST_ITEM_TYPE.equals(sourceType)
+                && ("output_items".equals(sourcePort) || "output_item".equals(sourcePort))) {
+            return true;
+        }
+        return RANDOM_NUMBERS_TYPE.equals(sourceType) && "output_values".equals(sourcePort);
+    }
+
+    private static boolean isDeclaredConnectionStillCompatible(
+            @Nullable String sourceType,
+            @Nullable String sourcePortId,
+            @Nullable String targetType,
+            @Nullable String targetPortId
+    ) {
+        NodeDataType sourceDataType = resolveDeclaredPortType(sourceType, sourcePortId, true);
+        NodeDataType targetDataType = resolveDeclaredPortType(targetType, targetPortId, false);
+        if (sourceDataType == null || targetDataType == null) {
+            // Cannot verify — keep wire rather than drop blindly (pre-release orphan cleanup
+            // already covers missing nodes elsewhere).
+            return true;
+        }
+        return NodeDataType.isConnectableTo(sourceDataType, targetDataType);
     }
 
     private static NodeDataType resolveDeclaredPortType(@Nullable String typeId, @Nullable String portId,

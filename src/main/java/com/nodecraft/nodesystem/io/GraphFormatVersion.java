@@ -182,7 +182,7 @@ public final class GraphFormatVersion {
 
     /**
      * Random v1: Random Vector becomes single VECTOR (drop Count + old ANY output wires);
-     * Random Numbers / List Item type tightening (port ids unchanged).
+     * drop Random List Item / Random Numbers wires incompatible with LIST&lt;T&gt; / DOUBLE_LIST.
      */
     public static final int V29 = 29;
 

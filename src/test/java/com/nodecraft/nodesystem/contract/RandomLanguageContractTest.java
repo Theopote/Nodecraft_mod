@@ -201,6 +201,11 @@ class RandomLanguageContractTest {
                 "input_x", Double.NaN, "input_y", 0.0d, "input_z", 0.0d, "input_seed", 0
         )).get("output_noise");
         assertTrue(Double.isNaN(nanOut));
+
+        double hugeOut = (Double) node.compute(Map.of(
+                "input_x", 1e20d, "input_y", 0.0d, "input_z", 0.0d, "input_seed", 0
+        )).get("output_noise");
+        assertTrue(Double.isNaN(hugeOut));
     }
 
     @Test
@@ -248,6 +253,47 @@ class RandomLanguageContractTest {
         assertTrue(hasWire(migrated, "construct", "output_vector", "rv", "input_min_corner"));
         assertFalse(hasWire(migrated, "rv", "output_random_vector", "sink", "input_0"));
         assertFalse(hasWire(migrated, "count", "output_value", "rv", "input_count"));
+    }
+
+    @Test
+    void v28ToV29DropsIncompatibleRandomListItemAndNumbersWires() {
+        SavedGraph v28 = new SavedGraph();
+        v28.formatVersion = GraphFormatVersion.V28;
+
+        SavedNode listItem = savedNode("rli", "math.random.random_list_item");
+        SavedNode numbers = savedNode("rns", "math.random.random_numbers");
+        SavedNode text = savedNode("text", "input.basic.text_input");
+        SavedNode createList = savedNode("clist", "math.list.create_list");
+        SavedNode sortText = savedNode("sort", "math.list.sort_text");
+        SavedNode equals = savedNode("eq", "math.compare.equals");
+        SavedNode sinkList = savedNode("sink", "math.list.create_list");
+
+        v28.nodes = new ArrayList<>(List.of(listItem, numbers, text, createList, sortText, equals, sinkList));
+        v28.connections = new ArrayList<>(List.of(
+                // STRING → LIST input: was ANY-legal in V28, illegal in V29
+                wire("text", "output_text", "rli", "input_list"),
+                // LIST → LIST input: keep
+                wire("clist", "output_list", "rli", "input_list"),
+                // LIST items → STRING_LIST: drop
+                wire("rli", "output_items", "sort", "input_list"),
+                // Item (ANY/T) → Equals: keep
+                wire("rli", "output_item", "eq", "input_a"),
+                // DOUBLE_LIST → STRING_LIST: drop
+                wire("rns", "output_values", "sort", "input_list"),
+                // DOUBLE_LIST → LIST: keep
+                wire("rns", "output_values", "sink", "input_0")
+        ));
+        v28.nodePositions = Map.of();
+
+        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v28);
+        assertEquals(GraphFormatVersion.V29, migrated.formatVersion);
+
+        assertFalse(hasWire(migrated, "text", "output_text", "rli", "input_list"));
+        assertTrue(hasWire(migrated, "clist", "output_list", "rli", "input_list"));
+        assertFalse(hasWire(migrated, "rli", "output_items", "sort", "input_list"));
+        assertTrue(hasWire(migrated, "rli", "output_item", "eq", "input_a"));
+        assertFalse(hasWire(migrated, "rns", "output_values", "sort", "input_list"));
+        assertTrue(hasWire(migrated, "rns", "output_values", "sink", "input_0"));
     }
 
     private static IPort findPort(Object node, String portId) {

@@ -101,6 +101,26 @@ class RandomOpsTest {
     }
 
     @Test
+    void valueNoiseHugeFiniteCoordinateIsNaNOrBounded() {
+        double huge = RandomOps.valueNoise3(1e20d, 0.0d, 0.0d, 0);
+        assertTrue(Double.isNaN(huge) || (Double.isFinite(huge) && huge >= -1.0d && huge <= 1.0d),
+                "huge finite coords must not silently overflow, got " + huge);
+        // Current policy: lattice overflow / non-unit fraction → NaN
+        assertTrue(Double.isNaN(huge));
+
+        double hugeNeg = RandomOps.valueNoise3(-1e20d, 0.0d, 0.0d, 0);
+        assertTrue(Double.isNaN(hugeNeg));
+
+        double max = RandomOps.valueNoise3(Double.MAX_VALUE, 0.0d, 0.0d, 0);
+        assertTrue(Double.isNaN(max));
+
+        // Still coherent / finite for large-but-safe world-scale coords
+        double world = RandomOps.valueNoise3(1e6d, 2e6d, 3e6d, 0);
+        assertTrue(Double.isFinite(world));
+        assertTrue(world >= -1.0d && world <= 1.0d);
+    }
+
+    @Test
     void resolveVectorAcceptsJomlAndLegacyVec3d() {
         Vector3d joml = RandomOps.resolveVector(new Vector3d(1, 2, 3), RandomOps.defaultMinCorner());
         assertEquals(1.0d, joml.x, 0.0d);

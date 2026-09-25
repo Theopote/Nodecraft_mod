@@ -71,3 +71,18 @@ For `math.random.random_vector`:
 
 Do **not** remap old multi-vector graphs to Random Vectors (pre-release: cannot know runtime type).
 New single-vector output port id: `output_vector`.
+
+For type tightening (declared-type compatibility via `NodeDataType.isConnectableTo`):
+
+- `math.random.random_list_item`
+  - Drop wires **to** `input_list` whose source is not list-connectable (e.g. STRING→LIST)
+  - Drop wires **from** `output_items` / `output_item` whose target is not connectable
+  - Valid `LIST`→`input_list` and `output_item`→`ANY` consumers are kept
+- `math.random.random_numbers`
+  - Drop wires **from** `output_values` incompatible with `DOUBLE_LIST` (e.g. → `STRING_LIST`)
+
+## Noise lattice safety
+
+`valueNoise3` uses `long` lattice coordinates. If the fractional cell is not in `[0,1)`
+(e.g. coordinates beyond safe long range such as `1e20`), the result is `NaN` —
+never an unbounded fade overflow.
