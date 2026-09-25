@@ -17,6 +17,7 @@ import com.nodecraft.nodesystem.nodes.math.fields.ScalarFieldSamplePointNode;
 import com.nodecraft.nodesystem.nodes.math.fields.ScalarFieldSamplePointsNode;
 import com.nodecraft.nodesystem.nodes.math.fields.VectorFieldConstantNode;
 import com.nodecraft.nodesystem.nodes.math.fields.VectorFieldSamplePointNode;
+import com.nodecraft.nodesystem.nodes.math.fields.VectorFieldSamplePointsNode;
 import com.nodecraft.nodesystem.nodes.math.random.NoiseNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.joml.Vector3d;
@@ -112,6 +113,80 @@ class FieldLanguageContractTest {
     }
 
     @Test
+    void scalarFieldNoiseIgnoresNonIntegerDoubleSeed() {
+        ScalarFieldNoiseNode node = new ScalarFieldNoiseNode();
+        Map<String, Object> withDouble = Map.of(
+                "input_seed", 1.9d,
+                "input_scale", 1.0d,
+                "input_amplitude", 1.0d
+        );
+        Map<String, Object> withZero = Map.of(
+                "input_seed", 0,
+                "input_scale", 1.0d,
+                "input_amplitude", 1.0d
+        );
+        ScalarFieldData a = (ScalarFieldData) node.compute(withDouble).get("output_field");
+        ScalarFieldData b = (ScalarFieldData) node.compute(withZero).get("output_field");
+        assertEquals(a.sampleScalar(new Vector3d()), b.sampleScalar(new Vector3d()), 0.0d);
+    }
+
+    @Test
+    void scalarFieldNoiseAcceptsNegativeFiniteScale() {
+        ScalarFieldNoiseNode node = new ScalarFieldNoiseNode();
+        ScalarFieldData neg = (ScalarFieldData) node.compute(Map.of(
+                "input_seed", 42,
+                "input_scale", -2.0d,
+                "input_amplitude", 1.0d
+        )).get("output_field");
+        ScalarFieldData pos = (ScalarFieldData) node.compute(Map.of(
+                "input_seed", 42,
+                "input_scale", 2.0d,
+                "input_amplitude", 1.0d
+        )).get("output_field");
+        assertTrue(Double.isFinite(neg.sampleScalar(new Vector3d(1.0d, 2.0d, 3.0d))));
+        assertFalse(Double.isNaN(neg.sampleScalar(new Vector3d(1.0d, 2.0d, 3.0d))));
+        assertEquals(
+                neg.sampleScalar(new Vector3d(1.0d, 2.0d, 3.0d)),
+                pos.sampleScalar(new Vector3d(-1.0d, -2.0d, -3.0d)),
+                0.0d);
+    }
+
+    @Test
+    void samplingPortsFollowScalarVectorSymmetry() {
+        assertEquals(NodeDataType.POINT,
+                new ScalarFieldSamplePointNode().getInputPorts().stream()
+                        .filter(p -> "input_point".equals(p.getId())).findFirst().orElseThrow().getDataType());
+        assertEquals(NodeDataType.DOUBLE,
+                new ScalarFieldSamplePointNode().getOutputPorts().stream()
+                        .filter(p -> "output_value".equals(p.getId())).findFirst().orElseThrow().getDataType());
+
+        assertEquals(NodeDataType.POINT,
+                new VectorFieldSamplePointNode().getInputPorts().stream()
+                        .filter(p -> "input_point".equals(p.getId())).findFirst().orElseThrow().getDataType());
+        assertEquals(NodeDataType.VECTOR,
+                new VectorFieldSamplePointNode().getOutputPorts().stream()
+                        .filter(p -> "output_vector".equals(p.getId())).findFirst().orElseThrow().getDataType());
+
+        assertEquals(NodeDataType.POINT_LIST,
+                new VectorFieldSamplePointsNode().getInputPorts().stream()
+                        .filter(p -> "input_points".equals(p.getId())).findFirst().orElseThrow().getDataType());
+        assertEquals(NodeDataType.VECTOR_LIST,
+                new VectorFieldSamplePointsNode().getOutputPorts().stream()
+                        .filter(p -> "output_vectors".equals(p.getId())).findFirst().orElseThrow().getDataType());
+    }
+
+    @Test
+    void scalarSamplePointAcceptsFiniteFieldValue() {
+        ScalarFieldData field = point -> 3.5d;
+        Map<String, Object> outputs = new ScalarFieldSamplePointNode().compute(Map.of(
+                "input_field", field,
+                "input_point", new Vector3d(1.0d, 0.0d, 0.0d)
+        ));
+        assertTrue((Boolean) outputs.get("output_valid"));
+        assertEquals(3.5d, (Double) outputs.get("output_value"), 0.0d);
+    }
+
+    @Test
     void scalarSamplePointRejectsNonFiniteFieldValue() {
         ScalarFieldData divField = point -> FieldMath.combineScalars(1.0d, 0.0d, FieldMath.ScalarCombineOp.DIV);
         ScalarFieldSamplePointNode node = new ScalarFieldSamplePointNode();
@@ -143,6 +218,34 @@ class FieldLanguageContractTest {
     }
 
     @Test
+    void vectorSamplePointsFailClosedOnSingleNaN() {
+        com.nodecraft.nodesystem.datatypes.VectorFieldData field =
+                (point, dest) -> dest.set(point.x > 0.0d ? 1.0d : Double.NaN, 0.0d, 0.0d);
+        Map<String, Object> outputs = new VectorFieldSamplePointsNode().compute(Map.of(
+                "input_field", field,
+                "input_points", List.of(new Vector3d(1.0d, 0.0d, 0.0d), new Vector3d(-1.0d, 0.0d, 0.0d))
+        ));
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertTrue(((List<?>) outputs.get("output_vectors")).isEmpty());
+        assertEquals(0, outputs.get("output_count"));
+    }
+
+    @Test
+    void vectorSamplePointAcceptsFiniteComponents() {
+        com.nodecraft.nodesystem.datatypes.VectorFieldData field =
+                (point, dest) -> dest.set(1.0d, 2.0d, 3.0d);
+        Map<String, Object> outputs = new VectorFieldSamplePointNode().compute(Map.of(
+                "input_field", field,
+                "input_point", new Vector3d()
+        ));
+        assertTrue((Boolean) outputs.get("output_valid"));
+        Vector3d out = (Vector3d) outputs.get("output_vector");
+        assertEquals(1.0d, out.x, 0.0d);
+        assertEquals(2.0d, out.y, 0.0d);
+        assertEquals(3.0d, out.z, 0.0d);
+    }
+
+    @Test
     void scalarSamplePointsFailClosedOnSingleNaN() {
         ScalarFieldData field = point -> point.x > 0.0d ? 1.0d : Double.NaN;
         ScalarFieldSamplePointsNode node = new ScalarFieldSamplePointsNode();
@@ -163,6 +266,28 @@ class FieldLanguageContractTest {
                 "input_y", Double.NaN,
                 "input_z", 0.0d
         )).get("output_field"));
+    }
+
+    @Test
+    void blendIgnoresExactZeroWeight() {
+        com.nodecraft.nodesystem.datatypes.VectorFieldData unitX =
+                (point, dest) -> dest.set(1.0d, 0.0d, 0.0d);
+        com.nodecraft.nodesystem.datatypes.VectorFieldData unitY =
+                (point, dest) -> dest.set(0.0d, 1.0d, 0.0d);
+        AttractorFieldBlendNode blend = new AttractorFieldBlendNode();
+        Object fieldObj = blend.compute(Map.of(
+                "input_field_a", unitX,
+                "input_weight_a", 1.0d,
+                "input_field_b", unitY,
+                "input_weight_b", 0.0d
+        )).get("output_field");
+        assertTrue(fieldObj instanceof com.nodecraft.nodesystem.datatypes.VectorFieldData);
+        com.nodecraft.nodesystem.datatypes.VectorFieldData field =
+                (com.nodecraft.nodesystem.datatypes.VectorFieldData) fieldObj;
+        Vector3d out = new Vector3d();
+        field.sampleVector(new Vector3d(), out);
+        assertEquals(1.0d, out.x, 0.0d);
+        assertEquals(0.0d, out.y, 0.0d);
     }
 
     @Test

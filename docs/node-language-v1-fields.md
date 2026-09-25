@@ -1,6 +1,6 @@
 # Node Language v1 — Fields
 
-**Status: PASSED / FROZEN** (Graph **V30**)
+**Status: CODE PASS / CONTRACT NOT FROZEN** (HEAD `88b27c86`, Graph **V30**)
 
 Language unification for `math.fields.*` (17 nodes). Field math inherits frozen Scalar Math and Random
 semantics; sampling nodes enforce a finite **Valid** boundary.
