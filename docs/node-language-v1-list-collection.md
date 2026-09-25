@@ -23,9 +23,20 @@ Freeze against Graph **V23**.
 
 ## List&lt;T&gt; preservation
 
-Ports may call `BasePort.bindListType("T")`. `PortTypeResolver.resolveEffectiveType` remaps `LIST` → e.g. `POINT_LIST` when an inbound typed list binds `T` on the same node.
+Ports may call `BasePort.bindListType("T")` / `bindListElementType("T")`.
+`PortTypeResolver.resolveEffectiveType` remaps `LIST` / `ANY` → e.g. `POINT_LIST` / `POINT`
+when an inbound typed list binds `T` on the same node.
+
+Connection checks are **order-independent**: a candidate edge that would bind `T` is only
+accepted if every existing connection in that type-variable group remains legal under the
+resulting effective types (`PortTypeResolver.validateTypeVariableGroup`).
+
+`BasePort.setValue` and `BaseNode.setInput` both validate against the **effective** type.
 
 Reference: Reverse / Sub / Filter / Dispatch / Shuffle / Deduplicate / Insert / Set / Remove.
+
+Insert Item: `0 ≤ index ≤ size` after negative-from-end normalization; otherwise `Valid=false`
+(no append fallback).
 
 ## Numeric / mask contracts
 
@@ -41,10 +52,12 @@ Reference: Reverse / Sub / Filter / Dispatch / Shuffle / Deduplicate / Insert / 
 
 - Drops unconstrained `LIST` → typed `*_LIST` wires
 - Filter/Dispatch mask: keep only `BOOLEAN_LIST` sources
-- Removes `math.list.sort_list` / `math.list.reduce`
-- Strips legacy state keys (`preserveOrder`, `preserveInput`, `expandList`, …)
+- Removes `math.list.sort_list` / `math.list.reduce` **and orphan wires** to those nodes
+- Strips legacy state keys **per node type** (e.g. Shuffle `preserveInput`, Dispatch `defaultValue`) — never global key names
 
-## Deferred (P2)
+## Deferred (List v1.1)
 
+- Remove Item dual mode → Remove at Index / Remove Matching
+- Set Item `wrapIndex` → strict index language only
 - As / Validate List bridges
 - `INTEGER_LIST` / `TREE_PATH`
