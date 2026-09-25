@@ -12,6 +12,10 @@ A **Domain** is a directed interval **Start → End**, not unordered bounds.
 
 - Outputs: `Domain`, `Start`, `End`, `Span` (directed delta).
 - Does **not** force-sort Start/End.
+- Runtime and persisted state reject non-finite Start/End.
+- `output_span` uses `NumericInputUtils.safeDirectedSpan` (overflow → `NaN`, not `-Infinity`).
+
+See [`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.md) for full Input Numeric v1 rules.
 
 ### Number Sequence vs Domain
 
@@ -47,9 +51,11 @@ See `docs/node-language-v1-curve-path.md` for curve/path node roles.
 
 | Node | Purpose |
 |------|---------|
-| Float Input | Precise value; optional Min/Max |
-| Float Slider | Bounded exploration; Min/Max required |
+| Number Input | Precise value; optional Min/Max (`input.numeric.float`) |
+| Number Slider | Bounded exploration; finite Min/Max required (`input.numeric.float_slider`) |
 | Angle Slider / Circular Angle Picker | Degrees only; use Degrees To Radians for rad |
+
+Full inventory and freeze: [`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.md).
 
 ## Property = Default, Port = Override
 

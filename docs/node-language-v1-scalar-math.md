@@ -5,6 +5,7 @@ Shared implementation: `com.nodecraft.nodesystem.math.ScalarMathOps`.
 Graph schema: **V25** drops deleted Fraction / Graph Mapper ports (see migration below).
 
 Related: [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) (directed Domain),
+[`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.md) (Number Input / sliders / constants),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md) (DOUBLE language).
 
 ## Finite-result contract

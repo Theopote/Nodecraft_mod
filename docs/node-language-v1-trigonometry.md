@@ -5,7 +5,8 @@ Shared implementation: `com.nodecraft.nodesystem.math.TrigMathOps`.
 Graph schema: **V26** remaps Pi/E and deletes deg↔rad converters (see migration below).
 
 Related: [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md) (§3 degrees),
-[`node-language-v1-scalar-math.md`](./node-language-v1-scalar-math.md) (finite-result contract).
+[`node-language-v1-scalar-math.md`](./node-language-v1-scalar-math.md) (finite-result contract),
+[`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.md) (Pi / E constants).
 
 ## Degrees-only graph language
 
@@ -72,7 +73,7 @@ Sin, Cos, Tan, ArcSin, ArcCos, ArcTan, Atan2, Sinh, Cosh, Tanh.
 | `math.trigonometry.pi` | `input.numeric.pi` |
 | `math.trigonometry.e` | `input.numeric.e` |
 
-Port ids unchanged (`output_pi`, `output_e`).
+Port ids: `output_value` (V31 remaps legacy `output_pi` / `output_e` on load).
 
 ## Graph migration (V25→V26)
 

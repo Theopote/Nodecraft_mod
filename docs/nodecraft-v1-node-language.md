@@ -18,6 +18,7 @@ Last updated: 2026-09-25
 | Sequence range / series / repeat | [`node-language-v1-sequence.md`](./node-language-v1-sequence.md) + `SequenceOps` |
 | Random seeded / Noise / List&lt;T&gt; pick | [`node-language-v1-random.md`](./node-language-v1-random.md) + `RandomOps` **(PASSED / FROZEN, V29)** |
 | Field scalar/vector / sampling Valid | [`node-language-v1-fields.md`](./node-language-v1-fields.md) + `FieldMath` / `FieldSampleUtils` **(PASSED / FROZEN, V30)** |
+| Input numeric sources / sliders / constants | [`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.md) + `NumericInputUtils` **(PASSED / FROZEN, V31)** |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 
@@ -32,6 +33,7 @@ Last updated: 2026-09-25
 | Sequence v1 | FROZEN | V28 |
 | Random v1 | **PASSED / FROZEN** | V29 |
 | Fields v1 | **PASSED / FROZEN** | V30 |
+| Input Numeric v1 | **PASSED / FROZEN** | V31 |
 | List / Collection v1 | FROZEN | V23 |
 | Data Tree v1 | FROZEN | V24 |
 
@@ -192,6 +194,10 @@ These violated the freeze at audit time. Batch A items below are remediated in c
 | Selected Block: pick silently overrides connected X/Y/Z | §5 | Fixed — Source Mode + Active Source |
 | Selected Block Position / Center types | §4 | Fixed — `BLOCK_POS` / `POINT` |
 | Float / Integer slider dead UI properties | Dead properties | Fixed |
+| Input numeric precision quantizes graph doubles | Input Numeric v1 | Fixed (UI-only; see [`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.md)) |
+| XY Slider `output_vector` (wrong VECTOR semantic) | Input Numeric v1 | Fixed (removed; UV → `DOUBLE_LIST`, V31) |
+| Pi/E legacy ports `output_pi` / `output_e` | Input Numeric v1 | Fixed (`output_value`, V31) |
+| Persisted NaN/Infinity in input node state | Input Numeric v1 | Fixed (`setNodeState` sanitize-before-assign) |
 
 ---
 
@@ -507,6 +513,14 @@ Three distinct mechanisms (do not treat as one “Boolean”):
 - **Field types**: `SCALAR_FIELD` / `VECTOR_FIELD` stay first-class; no `ANY` in `math.fields.*`.
 - **SDF bridges** are explicit: **Scalar Field From SDF**, **Vector Field From SDF Gradient**.
 - **PASSED / FROZEN** (V30): `FieldsFamilyContractTest`, `FieldLanguageContractTest`, `FieldMathTest` — see [`node-language-v1-fields.md`](./node-language-v1-fields.md).
+
+**Input Numeric v1 (2026-09-25):**
+
+- Ten nodes under `input.numeric.*` (Integer / Number Input & Slider, angles, XY, Domain, Pi, E).
+- Finite graph outputs; precision UI-only; Number Input / Number Slider display rename (ids unchanged).
+- XY Slider: `output_uv` → `DOUBLE_LIST`; `output_vector` removed.
+- Pi / E → `output_value`; graph format **V31**.
+- **PASSED / FROZEN**: `InputNumericLanguageContractTest`, `NumericDomainLanguageContractTest` — see [`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.md).
 
 **Batch 13 — Architectural Components language (2026-09-22):**
 
