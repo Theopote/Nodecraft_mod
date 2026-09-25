@@ -48,7 +48,8 @@ public class SlerpVectorsNode extends BaseNode {
         addInputPort(new BasePort(INPUT_T_ID, "T", "Interpolation parameter", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_RESULT_ID, "Result", "Slerp result vector", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_ANGLE_ID, "Angle (rad)", "Unsigned angle between normalized A and B", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_ANGLE_ID, "Angle",
+            "Unsigned angle in degrees between normalized A and B", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether slerp input is valid", NodeDataType.BOOLEAN, this));
     }
 

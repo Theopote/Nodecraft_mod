@@ -100,7 +100,10 @@ class PointVectorLanguageContractTest {
     @Test
     void slerpVectorsAngleOutputIsDegrees() {
         SlerpVectorsNode node = new SlerpVectorsNode();
-        assertNotNull(findPort(node, "output_angle"));
+        IPort anglePort = findPort(node, "output_angle");
+        assertEquals("Angle", anglePort.getDisplayName());
+        assertTrue(anglePort.getDescription().toLowerCase(java.util.Locale.ROOT).contains("degrees"));
+        assertFalse(anglePort.getDisplayName().toLowerCase(java.util.Locale.ROOT).contains("rad"));
         assertFalse(hasPort(node, "output_angle_radians"));
 
         node.setInput("input_a", new Vector3d(1, 0, 0));
