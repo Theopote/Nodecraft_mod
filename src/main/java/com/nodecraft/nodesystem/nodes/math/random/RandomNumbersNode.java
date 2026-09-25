@@ -64,7 +64,9 @@ public class RandomNumbersNode extends BaseNode {
 
         List<Double> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            values.add(RandomOps.sampleDouble(domain.lower(), domain.upper(), random));
+            if (domain != null) {
+                values.add(RandomOps.sampleDouble(domain.lower(), domain.upper(), random));
+            }
         }
         outputValues.put(OUTPUT_VALUES_ID, Collections.unmodifiableList(values));
     }

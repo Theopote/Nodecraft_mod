@@ -52,7 +52,10 @@ public class RandomNumberNode extends BaseNode {
         NumericRangeData domain = NumericDomainResolver.resolveDomain(
             inputValues.get(INPUT_DOMAIN_ID), defaultStart, defaultEnd);
         int seed = RandomOps.resolveSeed(inputValues.get(INPUT_SEED_ID));
-        double value = RandomOps.sampleDouble(domain.lower(), domain.upper(), RandomOps.rng(seed));
+        double value = 0;
+        if (domain != null) {
+            value = RandomOps.sampleDouble(domain.lower(), domain.upper(), RandomOps.rng(seed));
+        }
         outputValues.put(OUTPUT_RANDOM_ID, value);
     }
 }
