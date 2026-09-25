@@ -133,6 +133,14 @@ class InputValuesLanguageContractTest {
         node.processNode(null);
         assertFalse((Boolean) node.getOutput("output_valid"));
         assertEquals("", node.getOutput("output_value"));
+        assertEquals(List.of(), node.getOutput("output_options"));
+
+        // Mixed list must fail-closed (no silent String filtering).
+        putInput(node, "input_options", List.of("A", 1, "B"));
+        node.processNode(null);
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertEquals("", node.getOutput("output_value"));
+        assertEquals(List.of(), node.getOutput("output_options"));
 
         node.setInput("input_options", List.of("X", "Y"));
         node.setInput("input_index", 99);

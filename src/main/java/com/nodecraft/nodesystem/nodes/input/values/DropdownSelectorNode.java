@@ -121,15 +121,16 @@ public class DropdownSelectorNode extends BaseNode {
     }
 
     /**
-     * Port override accepts only {@link String} list elements (no {@code String.valueOf} coercion).
-     * When the port is unconnected, falls back to the Options property CSV.
+     * Port override accepts only a homogeneous {@link String} list (no {@code String.valueOf}
+     * coercion, no silent filtering of non-String elements). Any non-String element invalidates
+     * the whole options input. When the port is unconnected, falls back to the Options CSV.
      */
     private List<String> resolveOptions(Object value) {
         if (value instanceof List<?> list) {
             List<String> out = new ArrayList<>();
             for (Object item : list) {
                 if (!(item instanceof String text)) {
-                    continue;
+                    return List.of();
                 }
                 String trimmed = text.trim();
                 if (!trimmed.isEmpty()) {

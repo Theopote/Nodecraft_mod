@@ -1,6 +1,6 @@
 # Node Language v1 — Input Values
 
-**Status: PASSED / FROZEN** (HEAD `681b6c49` + V34 working tree, Graph **V34**)
+**Status: PASSED / FROZEN** (HEAD `b7bee1c9`, Graph **V34**)
 
 Language unification for exactly **6** `input.values.*` value-source nodes: typed ports,
 no graph-facing `ANY` / unconstrained `LIST`, no hidden coercion, and `Valid` where needed.
@@ -20,7 +20,8 @@ Related: [`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.
    `DOUBLE` (no new `FLOAT` ports).
 2. **No graph-facing `ANY` / unconstrained `LIST`** on these six nodes.
 3. **No hidden coercion** — Value List index override accepts `Integer` only (not
-   `Number.intValue`); options accept only `String` list elements (no `String.valueOf`).
+   `Number.intValue`); options accept only homogeneous `String` lists (no `String.valueOf`,
+   no silent filtering of non-String elements — any foreign element fails the whole list).
 4. **`Valid=true` ⇒ finite / parseable / non-empty** — Gradient numeric outputs finite;
    File Path syntax parseable; Value List options non-empty after resolve.
 
@@ -68,7 +69,7 @@ Legacy persisted state may still coerce string/number on restore (acceptable).
 | Port | Type | Notes |
 |------|------|-------|
 | `input_index` | `INTEGER` | Override; `Integer` only |
-| `input_options` | `STRING_LIST` | Port override; String elements only |
+| `input_options` | `STRING_LIST` | Homogeneous Strings only; any non-String → empty / `Valid=false` |
 | `output_index` | `INTEGER` | Clamped into `[0, size-1]` when non-empty |
 | `output_value` | `STRING` | Selected option text |
 | `output_options` | `STRING_LIST` | Resolved options |
