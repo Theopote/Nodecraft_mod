@@ -236,8 +236,14 @@ public final class GraphFormatVersion {
      */
     public static final int V37 = 37;
 
+    /**
+     * Pattern Mapping v1: four PURE role-based pattern nodes; Pattern Origin;
+     * no hidden vanilla defaults; fail-closed integer params; drop deconstruct outputs.
+     */
+    public static final int V38 = 38;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V37;
+    public static final int CURRENT = V38;
 
     private GraphFormatVersion() {
     }

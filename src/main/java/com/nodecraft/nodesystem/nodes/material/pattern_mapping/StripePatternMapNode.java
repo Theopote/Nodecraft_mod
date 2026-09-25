@@ -8,29 +8,25 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
-import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "material.pattern_mapping.stripe_pattern_map",
     displayName = "Stripe Pattern Map",
-    description = "Assigns alternating stripe materials along a selected axis.",
+    description = "Assigns alternating stripe materials along a selected axis relative to Pattern Origin. Remaps blockId only; preserves stateData.",
     category = "material.pattern_mapping",
     order = 1
 )
 public class StripePatternMapNode extends BaseNode {
-
-    @Override
-    public String getDescription() {
-        return "Assigns alternating stripe materials along a selected axis.";
-    }
 
     public enum StripeAxis {X, Y, Z}
 
@@ -49,10 +45,11 @@ public class StripePatternMapNode extends BaseNode {
     private static final String INPUT_TORUS_GEOMETRY_ID = "input_torus_geometry";
     private static final String INPUT_PRIMARY_ID = "input_primary";
     private static final String INPUT_SECONDARY_ID = "input_secondary";
+    private static final String INPUT_PATTERN_ORIGIN_ID = "input_pattern_origin";
 
-    private static final String OUTPUT_POSITIONS_ID = "output_positions";
-    private static final String OUTPUT_BLOCK_IDS_ID = "output_block_ids";
     private static final String OUTPUT_PLACEMENTS_ID = "output_placements";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public StripePatternMapNode() {
         super(UUID.randomUUID(), "material.pattern_mapping.stripe_pattern_map");
@@ -67,53 +64,135 @@ public class StripePatternMapNode extends BaseNode {
         addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry data to materialize", NodeDataType.TORUS_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_PRIMARY_ID, "Primary", "Primary stripe block type", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_SECONDARY_ID, "Secondary", "Secondary stripe block type", NodeDataType.BLOCK_TYPE, this));
-        addOutputPort(new BasePort(OUTPUT_POSITIONS_ID, "Positions", "Resolved block positions", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCK_IDS_ID, "Block IDs", "Block IDs aligned with the positions list", NodeDataType.BLOCK_INFO_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Position and block pairs for baking", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addInputPort(new BasePort(INPUT_PATTERN_ORIGIN_ID, "Pattern Origin",
+            "BLOCK_POS origin for pattern phase; missing defaults to (0,0,0)", NodeDataType.BLOCK_POS, this));
+
+        addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Canonical material payload", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when stripe width and inputs are usable", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Validation error when Valid is false", NodeDataType.STRING, this));
+    }
+
+    @Override
+    public String getDescription() {
+        return "Assigns alternating stripe materials along a selected axis relative to Pattern Origin. Remaps blockId only; preserves stateData.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        String primary = getInputString(INPUT_PRIMARY_ID, "minecraft:stone_bricks");
-        String secondary = getInputString(INPUT_SECONDARY_ID, "minecraft:smooth_stone");
-        List<BlockPlacementData> sources = MaterialMappingSupport.resolveSourcePlacements(
-            inputValues.get(INPUT_PLACEMENTS_ID),
-            inputValues.get(INPUT_COORDINATES_ID),
-            inputValues.get(INPUT_GEOMETRY_ID),
-            inputValues.get(INPUT_BOX_GEOMETRY_ID),
-            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-            inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-            inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-            primary
-        );
-        int width = Math.max(1, stripeWidth);
+        PatternMaterialUtils.Validation widthOk = PatternMaterialUtils.requirePositiveInt(stripeWidth, "Stripe Width");
+        if (!widthOk.valid()) {
+            emitFail(widthOk.message());
+            return;
+        }
 
-        BlockPosList outPos = new BlockPosList();
-        List<String> ids = new ArrayList<>();
-        List<BlockPlacementData> placements = new ArrayList<>();
+        String primaryMapped = PatternMaterialUtils.optionalRole(inputValues.get(INPUT_PRIMARY_ID));
+        String secondaryMapped = PatternMaterialUtils.optionalRole(inputValues.get(INPUT_SECONDARY_ID));
+
+        List<BlockPlacementData> fromPlacements = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
+        boolean placementSource = !fromPlacements.isEmpty();
+
+        List<BlockPlacementData> sources = placementSource
+            ? fromPlacements
+            : MaterialMappingSupport.resolveSourcePlacements(
+                null,
+                inputValues.get(INPUT_COORDINATES_ID),
+                inputValues.get(INPUT_GEOMETRY_ID),
+                inputValues.get(INPUT_BOX_GEOMETRY_ID),
+                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
+                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
+                inputValues.get(INPUT_TORUS_GEOMETRY_ID),
+                MaterialMappingSupport.firstMappedBlockType(primaryMapped, secondaryMapped)
+            );
+
+        if (!placementSource
+            && sources.isEmpty()
+            && PatternMaterialUtils.hasNonPlacementSource(
+                inputValues.get(INPUT_COORDINATES_ID),
+                inputValues.get(INPUT_GEOMETRY_ID),
+                inputValues.get(INPUT_BOX_GEOMETRY_ID),
+                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
+                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
+                inputValues.get(INPUT_TORUS_GEOMETRY_ID)
+            )
+            && primaryMapped == null
+            && secondaryMapped == null) {
+            emitFail("Primary or Secondary material required for geometry or coordinates input");
+            return;
+        }
+
+        BlockPos origin = PatternMaterialUtils.resolveOrigin(inputValues.get(INPUT_PATTERN_ORIGIN_ID));
+        List<BlockPlacementData> placements = new ArrayList<>(sources.size());
         for (BlockPlacementData source : sources) {
             BlockPos pos = source.pos();
             if (pos == null) {
                 continue;
             }
+            PatternMaterialUtils.Relative rel = PatternMaterialUtils.relative(pos, origin);
             int value = switch (axis) {
-                case X -> pos.getX();
-                case Y -> pos.getY();
-                case Z -> pos.getZ();
+                case X -> rel.dx();
+                case Y -> rel.dy();
+                case Z -> rel.dz();
             };
-            String id = Math.floorDiv(value, width) % 2 == 0 ? primary : secondary;
-            outPos.add(pos);
-            ids.add(id);
-            placements.add(MaterialMappingSupport.remapBlockId(source, id));
+            boolean primaryCell = Math.floorDiv(value, stripeWidth) % 2 == 0;
+            String mapped = primaryCell ? primaryMapped : secondaryMapped;
+            String blockId = PatternMaterialUtils.pickRole(mapped, source.blockId());
+            placements.add(MaterialMappingSupport.remapBlockId(source, blockId));
         }
-        outputValues.put(OUTPUT_POSITIONS_ID, outPos);
-        outputValues.put(OUTPUT_BLOCK_IDS_ID, ids);
-        outputValues.put(OUTPUT_PLACEMENTS_ID, placements);
+        emitOk(placements);
     }
 
-    private String getInputString(String portId, String fallback) {
-        Object value = inputValues.get(portId);
-        return (value instanceof String text && !text.isBlank()) ? text : fallback;
+    private void emitFail(String message) {
+        outputValues.putAll(PatternMaterialUtils.failResult(message));
+    }
+
+    private void emitOk(List<BlockPlacementData> placements) {
+        outputValues.putAll(PatternMaterialUtils.okResult(placements));
+    }
+
+    public int getStripeWidth() {
+        return stripeWidth;
+    }
+
+    public void setStripeWidth(int stripeWidth) {
+        if (this.stripeWidth != stripeWidth) {
+            this.stripeWidth = stripeWidth;
+            markDirty();
+        }
+    }
+
+    public StripeAxis getAxis() {
+        return axis;
+    }
+
+    public void setAxis(StripeAxis axis) {
+        if (this.axis != axis) {
+            this.axis = axis == null ? StripeAxis.X : axis;
+            markDirty();
+        }
+    }
+
+    @Override
+    public Object getNodeState() {
+        Map<String, Object> state = new HashMap<>();
+        state.put("stripeWidth", stripeWidth);
+        state.put("axis", axis.name());
+        return state;
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (!(state instanceof Map<?, ?> map)) {
+            return;
+        }
+        if (map.get("stripeWidth") instanceof Number value) {
+            this.stripeWidth = value.intValue();
+        }
+        if (map.get("axis") instanceof String name) {
+            try {
+                this.axis = StripeAxis.valueOf(name);
+            } catch (IllegalArgumentException ignored) {
+                // keep current
+            }
+        }
     }
 }
-

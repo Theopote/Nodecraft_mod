@@ -89,7 +89,7 @@ class CompareLanguageContractTest {
         assertEquals(34, GraphFormatVersion.V34);
         assertEquals(35, GraphFormatVersion.V35);
         assertEquals(36, GraphFormatVersion.V36);
-        assertEquals(GraphFormatVersion.V37, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V38, GraphFormatVersion.CURRENT);
     }
 
     @Test

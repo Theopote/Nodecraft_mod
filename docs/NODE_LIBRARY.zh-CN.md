@@ -363,10 +363,10 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Checker Pattern Map | `material.pattern_mapping.checker_pattern_map` | Assigns alternating block types across voxelized blocks using a checker pattern. Remaps blockId only; preserves stateData. | `CheckerPatternMapNode` |
-| Stripe Pattern Map | `material.pattern_mapping.stripe_pattern_map` | Assigns alternating stripe materials along a selected axis. | `StripePatternMapNode` |
-| Brick Pattern Map | `material.pattern_mapping.brick_pattern_map` | Assigns two materials using a staggered brick-like pattern in X/Z. | `BrickPatternMapNode` |
-| Grid Pattern Map | `material.pattern_mapping.grid_pattern_map` | Assigns frame/fill materials using a regular X/Z grid interval. | `GridPatternMapNode` |
+| Checker Pattern Map | `material.pattern_mapping.checker_pattern_map` | Assigns alternating block types with a 3D checker (parity of relative X+Y+Z). Remaps blockId only; preserves stateData. | `CheckerPatternMapNode` |
+| Stripe Pattern Map | `material.pattern_mapping.stripe_pattern_map` | Assigns alternating stripe materials along a selected axis relative to Pattern Origin. Remaps blockId only; preserves stateData. | `StripePatternMapNode` |
+| Brick Pattern Map | `material.pattern_mapping.brick_pattern_map` | Assigns two materials using a staggered brick pattern relative to Pattern Origin. Remaps blockId only; preserves stateData. | `BrickPatternMapNode` |
+| Grid Pattern Map | `material.pattern_mapping.grid_pattern_map` | Assigns frame/fill materials using an X/Z grid relative to Pattern Origin (Y extruded). Remaps blockId only; preserves stateData. | `GridPatternMapNode` |
 
 ## material.surface_aging（3）
 

@@ -25,6 +25,7 @@ Last updated: 2026-09-25
 | Block state / placement state only | [`node-language-v1-block-state.md`](./node-language-v1-block-state.md) + `BlockStateValidationUtils` **(PASSED / FROZEN, V35)** |
 | Directional mapping / blockId remap | [`node-language-v1-directional-mapping.md`](./node-language-v1-directional-mapping.md) + `MaterialMappingSupport` **(PASSED / FROZEN, V36)** |
 | Gradient mapping / scalar→palette | [`node-language-v1-gradient-mapping.md`](./node-language-v1-gradient-mapping.md) + `GradientMaterialUtils` **(PASSED / FROZEN, V37)** |
+| Pattern mapping / role-based patterns | [`node-language-v1-pattern-mapping.md`](./node-language-v1-pattern-mapping.md) + `PatternMaterialUtils` **(PASSED / FROZEN, V38)** |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 
@@ -46,6 +47,7 @@ Last updated: 2026-09-25
 | Block State v1 | **PASSED / FROZEN** | V35 |
 | Directional Mapping v1 | **PASSED / FROZEN** | V36 |
 | Gradient Mapping v1 | **PASSED / FROZEN** | V37 |
+| Pattern Mapping v1 | **PASSED / FROZEN** | V38 |
 | List / Collection v1 | FROZEN | V23 |
 | Data Tree v1 | FROZEN | V24 |
 

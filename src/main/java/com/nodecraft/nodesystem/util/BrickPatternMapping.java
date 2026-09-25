@@ -4,6 +4,7 @@ import net.minecraft.util.math.BlockPos;
 
 /**
  * Shared brick running-bond indexing for {@code BrickPatternMapNode}.
+ * Callers must validate {@code brickLength >= 1} and {@code courseHeight >= 1}.
  */
 public final class BrickPatternMapping {
 
@@ -43,13 +44,27 @@ public final class BrickPatternMapping {
         return spanZ > spanX ? Axis.Z : Axis.X;
     }
 
+    /**
+     * Running-bond brick index for relative voxel coordinates.
+     *
+     * @throws IllegalArgumentException if {@code brickLength} or {@code courseHeight} is &lt; 1
+     */
+    public static int brickIndex(int dx, int dy, int dz, int brickLength, int courseHeight, Axis axis) {
+        if (brickLength < 1 || courseHeight < 1) {
+            throw new IllegalArgumentException("brickLength and courseHeight must be at least 1");
+        }
+        int course = Math.floorDiv(dy, courseHeight);
+        int stagger = (course & 1) == 0 ? 0 : brickLength / 2;
+        int along = axis == Axis.Z ? dz : dx;
+        return Math.floorDiv(along + stagger, brickLength);
+    }
+
+    /**
+     * @deprecated Prefer {@link #brickIndex(int, int, int, int, int, Axis)} with relative coords.
+     */
+    @Deprecated
     public static int brickIndex(BlockPos pos, int brickLength, int courseHeight, Axis axis) {
-        int length = Math.max(1, brickLength);
-        int height = Math.max(1, courseHeight);
-        int course = Math.floorDiv(pos.getY(), height);
-        int stagger = (course & 1) == 0 ? 0 : length / 2;
-        int along = axis == Axis.Z ? pos.getZ() : pos.getX();
-        return Math.floorDiv(along + stagger, length);
+        return brickIndex(pos.getX(), pos.getY(), pos.getZ(), brickLength, courseHeight, axis);
     }
 
     public static boolean isPrimaryBrick(int brickIndex) {

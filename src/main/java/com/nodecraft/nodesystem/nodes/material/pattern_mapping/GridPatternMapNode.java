@@ -8,29 +8,25 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
-import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "material.pattern_mapping.grid_pattern_map",
     displayName = "Grid Pattern Map",
-    description = "Assigns frame/fill materials using a regular X/Z grid interval.",
+    description = "Assigns frame/fill materials using an X/Z grid relative to Pattern Origin (Y extruded). Remaps blockId only; preserves stateData.",
     category = "material.pattern_mapping",
     order = 3
 )
 public class GridPatternMapNode extends BaseNode {
-
-    @Override
-    public String getDescription() {
-        return "Assigns frame/fill materials using a regular X/Z grid interval.";
-    }
 
     @NodeProperty(displayName = "Grid Size", category = "Pattern", order = 1)
     private int gridSize = 4;
@@ -47,9 +43,11 @@ public class GridPatternMapNode extends BaseNode {
     private static final String INPUT_TORUS_GEOMETRY_ID = "input_torus_geometry";
     private static final String INPUT_FRAME_ID = "input_frame";
     private static final String INPUT_FILL_ID = "input_fill";
-    private static final String OUTPUT_POSITIONS_ID = "output_positions";
-    private static final String OUTPUT_BLOCK_IDS_ID = "output_block_ids";
+    private static final String INPUT_PATTERN_ORIGIN_ID = "input_pattern_origin";
+
     private static final String OUTPUT_PLACEMENTS_ID = "output_placements";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public GridPatternMapNode() {
         super(UUID.randomUUID(), "material.pattern_mapping.grid_pattern_map");
@@ -64,52 +62,128 @@ public class GridPatternMapNode extends BaseNode {
         addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry data to materialize", NodeDataType.TORUS_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_FRAME_ID, "Frame", "Grid line block type", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_FILL_ID, "Fill", "Grid cell fill block type", NodeDataType.BLOCK_TYPE, this));
-        addOutputPort(new BasePort(OUTPUT_POSITIONS_ID, "Positions", "Resolved block positions", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCK_IDS_ID, "Block IDs", "Block IDs aligned with the positions list", NodeDataType.BLOCK_INFO_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Position and block pairs for baking", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addInputPort(new BasePort(INPUT_PATTERN_ORIGIN_ID, "Pattern Origin",
+            "BLOCK_POS origin for pattern phase; missing defaults to (0,0,0)", NodeDataType.BLOCK_POS, this));
+
+        addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Canonical material payload", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when grid size/line width and inputs are usable", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Validation error when Valid is false", NodeDataType.STRING, this));
+    }
+
+    @Override
+    public String getDescription() {
+        return "Assigns frame/fill materials using an X/Z grid relative to Pattern Origin (Y extruded). Remaps blockId only; preserves stateData.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        String frame = getInputString(INPUT_FRAME_ID, "minecraft:stone_bricks");
-        String fill = getInputString(INPUT_FILL_ID, "minecraft:quartz_block");
-        List<BlockPlacementData> sources = MaterialMappingSupport.resolveSourcePlacements(
-            inputValues.get(INPUT_PLACEMENTS_ID),
-            inputValues.get(INPUT_COORDINATES_ID),
-            inputValues.get(INPUT_GEOMETRY_ID),
-            inputValues.get(INPUT_BOX_GEOMETRY_ID),
-            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-            inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-            inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-            fill
-        );
-        int size = Math.max(1, gridSize);
-        int width = Math.max(1, Math.min(size, lineWidth));
+        PatternMaterialUtils.Validation params = PatternMaterialUtils.requireLineWidth(lineWidth, gridSize);
+        if (!params.valid()) {
+            emitFail(params.message());
+            return;
+        }
 
-        BlockPosList outPos = new BlockPosList();
-        List<String> ids = new ArrayList<>();
-        List<BlockPlacementData> placements = new ArrayList<>();
+        String frameMapped = PatternMaterialUtils.optionalRole(inputValues.get(INPUT_FRAME_ID));
+        String fillMapped = PatternMaterialUtils.optionalRole(inputValues.get(INPUT_FILL_ID));
+
+        List<BlockPlacementData> fromPlacements = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
+        boolean placementSource = !fromPlacements.isEmpty();
+
+        List<BlockPlacementData> sources = placementSource
+            ? fromPlacements
+            : MaterialMappingSupport.resolveSourcePlacements(
+                null,
+                inputValues.get(INPUT_COORDINATES_ID),
+                inputValues.get(INPUT_GEOMETRY_ID),
+                inputValues.get(INPUT_BOX_GEOMETRY_ID),
+                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
+                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
+                inputValues.get(INPUT_TORUS_GEOMETRY_ID),
+                MaterialMappingSupport.firstMappedBlockType(frameMapped, fillMapped)
+            );
+
+        if (!placementSource
+            && sources.isEmpty()
+            && PatternMaterialUtils.hasNonPlacementSource(
+                inputValues.get(INPUT_COORDINATES_ID),
+                inputValues.get(INPUT_GEOMETRY_ID),
+                inputValues.get(INPUT_BOX_GEOMETRY_ID),
+                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
+                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
+                inputValues.get(INPUT_TORUS_GEOMETRY_ID)
+            )
+            && frameMapped == null
+            && fillMapped == null) {
+            emitFail("Frame or Fill material required for geometry or coordinates input");
+            return;
+        }
+
+        BlockPos origin = PatternMaterialUtils.resolveOrigin(inputValues.get(INPUT_PATTERN_ORIGIN_ID));
+        List<BlockPlacementData> placements = new ArrayList<>(sources.size());
         for (BlockPlacementData source : sources) {
             BlockPos pos = source.pos();
             if (pos == null) {
                 continue;
             }
-            int gx = Math.floorMod(pos.getX(), size);
-            int gz = Math.floorMod(pos.getZ(), size);
-            boolean onLine = gx < width || gz < width;
-            String id = onLine ? frame : fill;
-            outPos.add(pos);
-            ids.add(id);
-            placements.add(MaterialMappingSupport.remapBlockId(source, id));
+            PatternMaterialUtils.Relative rel = PatternMaterialUtils.relative(pos, origin);
+            int gx = Math.floorMod(rel.dx(), gridSize);
+            int gz = Math.floorMod(rel.dz(), gridSize);
+            boolean onLine = gx < lineWidth || gz < lineWidth;
+            String mapped = onLine ? frameMapped : fillMapped;
+            String blockId = PatternMaterialUtils.pickRole(mapped, source.blockId());
+            placements.add(MaterialMappingSupport.remapBlockId(source, blockId));
         }
-        outputValues.put(OUTPUT_POSITIONS_ID, outPos);
-        outputValues.put(OUTPUT_BLOCK_IDS_ID, ids);
-        outputValues.put(OUTPUT_PLACEMENTS_ID, placements);
+        emitOk(placements);
     }
 
-    private String getInputString(String portId, String fallback) {
-        Object value = inputValues.get(portId);
-        return (value instanceof String text && !text.isBlank()) ? text : fallback;
+    private void emitFail(String message) {
+        outputValues.putAll(PatternMaterialUtils.failResult(message));
+    }
+
+    private void emitOk(List<BlockPlacementData> placements) {
+        outputValues.putAll(PatternMaterialUtils.okResult(placements));
+    }
+
+    public int getGridSize() {
+        return gridSize;
+    }
+
+    public void setGridSize(int gridSize) {
+        if (this.gridSize != gridSize) {
+            this.gridSize = gridSize;
+            markDirty();
+        }
+    }
+
+    public int getLineWidth() {
+        return lineWidth;
+    }
+
+    public void setLineWidth(int lineWidth) {
+        if (this.lineWidth != lineWidth) {
+            this.lineWidth = lineWidth;
+            markDirty();
+        }
+    }
+
+    @Override
+    public Object getNodeState() {
+        Map<String, Object> state = new HashMap<>();
+        state.put("gridSize", gridSize);
+        state.put("lineWidth", lineWidth);
+        return state;
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (!(state instanceof Map<?, ?> map)) {
+            return;
+        }
+        if (map.get("gridSize") instanceof Number value) {
+            this.gridSize = value.intValue();
+        }
+        if (map.get("lineWidth") instanceof Number value) {
+            this.lineWidth = value.intValue();
+        }
     }
 }
-

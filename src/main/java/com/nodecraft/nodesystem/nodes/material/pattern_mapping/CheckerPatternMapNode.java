@@ -7,7 +7,6 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
-import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -17,13 +16,13 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Applies a two-material checker pattern. Remaps blockId only; preserves stateData.
+ * Applies a 3D two-material checker pattern. Remaps blockId only; preserves stateData.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "material.pattern_mapping.checker_pattern_map",
     displayName = "Checker Pattern Map",
-    description = "Assigns alternating block types across voxelized blocks using a checker pattern. Remaps blockId only; preserves stateData.",
+    description = "Assigns alternating block types with a 3D checker (parity of relative X+Y+Z). Remaps blockId only; preserves stateData.",
     category = "material.pattern_mapping",
     order = 0
 )
@@ -38,10 +37,11 @@ public class CheckerPatternMapNode extends BaseNode {
     private static final String INPUT_TORUS_GEOMETRY_ID = "input_torus_geometry";
     private static final String INPUT_PRIMARY_ID = "input_primary";
     private static final String INPUT_SECONDARY_ID = "input_secondary";
+    private static final String INPUT_PATTERN_ORIGIN_ID = "input_pattern_origin";
 
-    private static final String OUTPUT_POSITIONS_ID = "output_positions";
-    private static final String OUTPUT_BLOCK_IDS_ID = "output_block_ids";
     private static final String OUTPUT_PLACEMENTS_ID = "output_placements";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public CheckerPatternMapNode() {
         super(UUID.randomUUID(), "material.pattern_mapping.checker_pattern_map");
@@ -55,59 +55,79 @@ public class CheckerPatternMapNode extends BaseNode {
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Legacy cylinder geometry (voxelized first)", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Legacy sphere geometry (voxelized first)", NodeDataType.SPHERE, this));
         addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Legacy torus geometry (voxelized first)", NodeDataType.TORUS_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_PRIMARY_ID, "Primary", "Primary block type for alternating cells", NodeDataType.BLOCK_TYPE, this));
-        addInputPort(new BasePort(INPUT_SECONDARY_ID, "Secondary", "Secondary block type for alternating cells", NodeDataType.BLOCK_TYPE, this));
+        addInputPort(new BasePort(INPUT_PRIMARY_ID, "Primary", "Primary block type for even-parity cells", NodeDataType.BLOCK_TYPE, this));
+        addInputPort(new BasePort(INPUT_SECONDARY_ID, "Secondary", "Secondary block type for odd-parity cells", NodeDataType.BLOCK_TYPE, this));
+        addInputPort(new BasePort(INPUT_PATTERN_ORIGIN_ID, "Pattern Origin",
+            "BLOCK_POS origin for pattern phase; missing defaults to (0,0,0)", NodeDataType.BLOCK_POS, this));
 
-        addOutputPort(new BasePort(OUTPUT_POSITIONS_ID, "Positions", "Resolved block positions", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCK_IDS_ID, "Block IDs", "Block IDs aligned with the positions list", NodeDataType.BLOCK_INFO_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Canonical material payload", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when pattern inputs are usable", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Validation error when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
     public String getDescription() {
-        return "Assigns alternating block types across voxelized blocks using a checker pattern. Remaps blockId only; preserves stateData.";
+        return "Assigns alternating block types with a 3D checker (parity of relative X+Y+Z). Remaps blockId only; preserves stateData.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        String primary = getInputString(INPUT_PRIMARY_ID, "minecraft:stone");
-        String secondary = getInputString(INPUT_SECONDARY_ID, "minecraft:polished_andesite");
+        String primaryMapped = PatternMaterialUtils.optionalRole(inputValues.get(INPUT_PRIMARY_ID));
+        String secondaryMapped = PatternMaterialUtils.optionalRole(inputValues.get(INPUT_SECONDARY_ID));
 
-        List<BlockPlacementData> sources = MaterialMappingSupport.resolveSourcePlacements(
-            inputValues.get(INPUT_PLACEMENTS_ID),
-            inputValues.get(INPUT_COORDINATES_ID),
-            inputValues.get(INPUT_GEOMETRY_ID),
-            inputValues.get(INPUT_BOX_GEOMETRY_ID),
-            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-            inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-            inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-            primary
-        );
+        List<BlockPlacementData> fromPlacements = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
+        boolean placementSource = !fromPlacements.isEmpty();
 
-        BlockPosList outputPositions = new BlockPosList();
-        List<String> blockIds = new ArrayList<>(sources.size());
+        List<BlockPlacementData> sources = placementSource
+            ? fromPlacements
+            : MaterialMappingSupport.resolveSourcePlacements(
+                null,
+                inputValues.get(INPUT_COORDINATES_ID),
+                inputValues.get(INPUT_GEOMETRY_ID),
+                inputValues.get(INPUT_BOX_GEOMETRY_ID),
+                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
+                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
+                inputValues.get(INPUT_TORUS_GEOMETRY_ID),
+                MaterialMappingSupport.firstMappedBlockType(primaryMapped, secondaryMapped)
+            );
+
+        if (!placementSource
+            && sources.isEmpty()
+            && PatternMaterialUtils.hasNonPlacementSource(
+                inputValues.get(INPUT_COORDINATES_ID),
+                inputValues.get(INPUT_GEOMETRY_ID),
+                inputValues.get(INPUT_BOX_GEOMETRY_ID),
+                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
+                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
+                inputValues.get(INPUT_TORUS_GEOMETRY_ID)
+            )
+            && primaryMapped == null
+            && secondaryMapped == null) {
+            emitFail("Primary or Secondary material required for geometry or coordinates input");
+            return;
+        }
+
+        BlockPos origin = PatternMaterialUtils.resolveOrigin(inputValues.get(INPUT_PATTERN_ORIGIN_ID));
         List<BlockPlacementData> placements = new ArrayList<>(sources.size());
-
         for (BlockPlacementData source : sources) {
             BlockPos pos = source.pos();
             if (pos == null) {
                 continue;
             }
-            boolean primaryCell = ((pos.getX() + pos.getY() + pos.getZ()) & 1) == 0;
-            String blockId = primaryCell ? primary : secondary;
-
-            outputPositions.add(pos);
-            blockIds.add(blockId);
+            PatternMaterialUtils.Relative rel = PatternMaterialUtils.relative(pos, origin);
+            boolean primaryCell = ((rel.dx() + rel.dy() + rel.dz()) & 1) == 0;
+            String mapped = primaryCell ? primaryMapped : secondaryMapped;
+            String blockId = PatternMaterialUtils.pickRole(mapped, source.blockId());
             placements.add(MaterialMappingSupport.remapBlockId(source, blockId));
         }
-
-        outputValues.put(OUTPUT_POSITIONS_ID, outputPositions);
-        outputValues.put(OUTPUT_BLOCK_IDS_ID, blockIds);
-        outputValues.put(OUTPUT_PLACEMENTS_ID, placements);
+        emitOk(placements);
     }
 
-    private String getInputString(String portId, String fallback) {
-        Object value = inputValues.get(portId);
-        return (value instanceof String text && !text.isEmpty()) ? text : fallback;
+    private void emitFail(String message) {
+        outputValues.putAll(PatternMaterialUtils.failResult(message));
+    }
+
+    private void emitOk(List<BlockPlacementData> placements) {
+        outputValues.putAll(PatternMaterialUtils.okResult(placements));
     }
 }

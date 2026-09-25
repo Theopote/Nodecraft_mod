@@ -64,10 +64,10 @@ class GradientMappingLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV37() {
+    void currentGraphFormatIsAtLeastV37() {
         assertEquals(36, GraphFormatVersion.V36);
         assertEquals(37, GraphFormatVersion.V37);
-        assertEquals(GraphFormatVersion.V37, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V38, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -326,7 +326,7 @@ class GradientMappingLanguageContractTest {
         v36.nodePositions = Map.of();
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v36);
-        assertEquals(GraphFormatVersion.V37, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
 
         assertTrue(hasWire(migrated, "height", "output_placements", "preview", "input_block_placements"));
         assertFalse(hasWire(migrated, "height", "output_positions", "preview", "input_block_placements"));

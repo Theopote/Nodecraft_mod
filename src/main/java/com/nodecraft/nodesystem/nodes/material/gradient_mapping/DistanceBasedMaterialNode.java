@@ -151,7 +151,10 @@ public class DistanceBasedMaterialNode extends BaseNode {
                 continue;
             }
             Vector3d sample = new Vector3d(pos.getX() + 0.5d, pos.getY() + 0.5d, pos.getZ() + 0.5d);
-            double distance = reference.distance().applyAsDouble(sample);
+            double distance = 0;
+            if (reference.distance() != null) {
+                distance = reference.distance().applyAsDouble(sample);
+            }
             if (!Double.isFinite(distance)) {
                 emitFail("Distance sample produced a non-finite value");
                 return;
