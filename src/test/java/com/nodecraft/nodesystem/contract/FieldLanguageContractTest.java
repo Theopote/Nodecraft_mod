@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.contract;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
+import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
@@ -28,12 +29,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Field v1 language fence: inherited Scalar/Random semantics, finite Valid sampling, typed lists.
@@ -55,7 +52,7 @@ class FieldLanguageContractTest {
         List<String> ids = registry.getAllNodeIds().stream()
                 .filter(id -> id.toLowerCase(Locale.ROOT).startsWith("math.fields."))
                 .sorted()
-                .collect(Collectors.toList());
+                .toList();
         assertEquals(17, ids.size(), "Expected 17 field nodes: " + ids);
     }
 
@@ -80,7 +77,7 @@ class FieldLanguageContractTest {
                 "input_scale", 1.0d,
                 "input_amplitude", 1.0d
         )).get("output_field");
-        assertTrue(fieldObj instanceof ScalarFieldData);
+        assertInstanceOf(ScalarFieldData.class, fieldObj);
         ScalarFieldData field = (ScalarFieldData) fieldObj;
 
         double fromField = field.sampleScalar(new Vector3d(1.0d, 2.0d, 3.0d));
@@ -281,7 +278,7 @@ class FieldLanguageContractTest {
                 "input_field_b", unitY,
                 "input_weight_b", 0.0d
         )).get("output_field");
-        assertTrue(fieldObj instanceof com.nodecraft.nodesystem.datatypes.VectorFieldData);
+        assertInstanceOf(VectorFieldData.class, fieldObj);
         com.nodecraft.nodesystem.datatypes.VectorFieldData field =
                 (com.nodecraft.nodesystem.datatypes.VectorFieldData) fieldObj;
         Vector3d out = new Vector3d();
@@ -299,7 +296,7 @@ class FieldLanguageContractTest {
                 "input_field_a", unitX,
                 "input_weight_a", 5.0e-10d
         )).get("output_field");
-        assertTrue(fieldObj instanceof com.nodecraft.nodesystem.datatypes.VectorFieldData);
+        assertInstanceOf(VectorFieldData.class, fieldObj);
         com.nodecraft.nodesystem.datatypes.VectorFieldData field =
                 (com.nodecraft.nodesystem.datatypes.VectorFieldData) fieldObj;
         Vector3d out = new Vector3d();
@@ -314,7 +311,7 @@ class FieldLanguageContractTest {
         Object one = new ScalarFieldConstantNode().compute(Map.of("input_value", 1.0d)).get("output_field");
         Object zero = new ScalarFieldConstantNode().compute(Map.of("input_value", 0.0d)).get("output_field");
         Object fieldObj = op.compute(Map.of("input_a", one, "input_b", zero)).get("output_field");
-        assertTrue(fieldObj instanceof ScalarFieldData);
+        assertInstanceOf(ScalarFieldData.class, fieldObj);
         ScalarFieldData field = (ScalarFieldData) fieldObj;
         assertTrue(Double.isNaN(field.sampleScalar(new Vector3d())));
     }
