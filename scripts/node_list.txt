@@ -182,7 +182,6 @@ material.pattern_mapping.stripe_pattern_map|material.pattern_mapping|Stripe Patt
 material.surface_aging.crack_pattern|material.surface_aging|Crack Pattern
 material.surface_aging.moss_growth|material.surface_aging|Moss Growth
 material.surface_aging.weathering|material.surface_aging|Weathering
-math.compare.compare|math.compare|Compare
 math.compare.equals|math.compare|Equals (==)
 math.compare.greater_than_or_equal|math.compare|Greater Than or Equal (>=)
 math.compare.greater_than|math.compare|Greater Than (>)

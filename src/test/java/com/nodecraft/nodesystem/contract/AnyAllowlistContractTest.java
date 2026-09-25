@@ -91,7 +91,6 @@ class AnyAllowlistContractTest {
         "math.compare.greater_than",
         "math.compare.less_than_or_equal",
         "math.compare.greater_than_or_equal",
-        "math.compare.compare",
         "math.sequence.range",
         // Batch 11: typed tree/list structure ports
         "math.data_tree.merge",

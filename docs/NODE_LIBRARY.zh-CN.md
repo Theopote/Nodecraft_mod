@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**543**
+- **节点总数**：**542**
 - **分类总数**：**59**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -31,7 +31,7 @@
 | `material.gradient_mapping` | 5 |
 | `material.pattern_mapping` | 4 |
 | `material.surface_aging` | 3 |
-| `math.compare` | 7 |
+| `math.compare` | 6 |
 | `math.data_tree` | 14 |
 | `math.fields` | 17 |
 | `math.list` | 23 |
@@ -380,11 +380,10 @@
 | Moss Growth | `material.surface_aging.moss_growth` | Applies moss material preferentially to upward-facing/exposed blocks. | `MossGrowthNode` |
 | Crack Pattern | `material.surface_aging.crack_pattern` | Adds deterministic crack lines by replacing sparse diagonal bands. | `CrackPatternNode` |
 
-## math.compare（7）
+## math.compare（6）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Compare | `math.compare.compare` | Compares two values and outputs equality and ordering relations. | `CompareNode` |
 | Equals (==) | `math.compare.equals` | Returns true when A equals B. | `EqualsNode` |
 | Not Equals (!=) | `math.compare.not_equals` | Returns true when A does not equal B. | `NotEqualsNode` |
 | Less Than (<) | `math.compare.less_than` | Returns true when A is less than B. | `LessThanNode` |

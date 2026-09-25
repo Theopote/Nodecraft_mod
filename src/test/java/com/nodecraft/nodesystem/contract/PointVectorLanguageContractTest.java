@@ -63,9 +63,9 @@ class PointVectorLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV26() {
-        assertEquals(26, GraphFormatVersion.V26);
-        assertEquals(GraphFormatVersion.V26, GraphFormatVersion.CURRENT);
+    void currentGraphFormatIsV27() {
+        assertEquals(27, GraphFormatVersion.V27);
+        assertEquals(GraphFormatVersion.V27, GraphFormatVersion.CURRENT);
     }
 
     @Test

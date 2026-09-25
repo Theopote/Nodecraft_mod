@@ -4,91 +4,84 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
+/**
+ * Shared comparison for Compare v1 nodes.
+ * <p>
+ * Numeric ordering is exact (no epsilon). Non-finite operands fail closed to {@code false}.
+ * Generic equality accepts ANY types but never coerces across unrelated types.
+ */
 final class CompareUtils {
-    private static final double EPSILON = 1.0e-10d;
 
     private CompareUtils() {
     }
 
-    static Relation compare(@Nullable Object left, @Nullable Object right) {
-        Integer ordering = compareOrder(left, right);
-        boolean equal = ordering != null
-            ? ordering == 0
-            : equalValues(left, right);
-        return new Relation(
-            equal,
-            ordering != null && ordering > 0,
-            ordering != null && ordering < 0
-        );
-    }
-
-    static boolean equalValues(@Nullable Object left, @Nullable Object right) {
+    static boolean genericEqual(@Nullable Object left, @Nullable Object right) {
         if (left == null || right == null) {
             return left == right;
         }
-
-        Double leftNumber = resolveNumber(left);
-        Double rightNumber = resolveNumber(right);
-        if (leftNumber != null && rightNumber != null) {
-            return compareNumbers(leftNumber, rightNumber) == 0;
+        if (left instanceof Number leftNumber && right instanceof Number rightNumber) {
+            return numericEqual(leftNumber.doubleValue(), rightNumber.doubleValue());
         }
-
-        if (left instanceof String || right instanceof String) {
-            return Objects.toString(left, "").equals(Objects.toString(right, ""));
+        if (left instanceof String leftString && right instanceof String rightString) {
+            return leftString.equals(rightString);
         }
-        return Objects.equals(left, right);
+        if (left instanceof Boolean leftBoolean && right instanceof Boolean rightBoolean) {
+            return leftBoolean.equals(rightBoolean);
+        }
+        if (left.getClass() == right.getClass()) {
+            return Objects.equals(left, right);
+        }
+        return false;
     }
 
-    static boolean modeResult(Relation relation, int mode) {
-        return switch (mode) {
-            case 0 -> relation.equal();
-            case 1 -> !relation.equal();
-            case 2 -> relation.greater();
-            case 3 -> relation.less();
-            case 4 -> relation.greater() || relation.equal();
-            case 5 -> relation.less() || relation.equal();
-            default -> relation.equal();
-        };
+    static boolean numericEqual(double a, double b) {
+        if (!Double.isFinite(a) || !Double.isFinite(b)) {
+            return false;
+        }
+        return a == b;
     }
 
-    private static @Nullable Integer compareOrder(@Nullable Object left, @Nullable Object right) {
-        if (left == null || right == null) {
+    static boolean numericLess(@Nullable Object left, @Nullable Object right) {
+        Double a = asFiniteDouble(left);
+        Double b = asFiniteDouble(right);
+        if (a == null || b == null) {
+            return false;
+        }
+        return a < b;
+    }
+
+    static boolean numericLessOrEqual(@Nullable Object left, @Nullable Object right) {
+        Double a = asFiniteDouble(left);
+        Double b = asFiniteDouble(right);
+        if (a == null || b == null) {
+            return false;
+        }
+        return a <= b;
+    }
+
+    static boolean numericGreater(@Nullable Object left, @Nullable Object right) {
+        Double a = asFiniteDouble(left);
+        Double b = asFiniteDouble(right);
+        if (a == null || b == null) {
+            return false;
+        }
+        return a > b;
+    }
+
+    static boolean numericGreaterOrEqual(@Nullable Object left, @Nullable Object right) {
+        Double a = asFiniteDouble(left);
+        Double b = asFiniteDouble(right);
+        if (a == null || b == null) {
+            return false;
+        }
+        return a >= b;
+    }
+
+    private static @Nullable Double asFiniteDouble(@Nullable Object value) {
+        if (!(value instanceof Number number)) {
             return null;
         }
-
-        Double leftNumber = resolveNumber(left);
-        Double rightNumber = resolveNumber(right);
-        if (leftNumber != null && rightNumber != null) {
-            return compareNumbers(leftNumber, rightNumber);
-        }
-
-        if (left instanceof String leftString && right instanceof String rightString) {
-            return Integer.signum(leftString.compareTo(rightString));
-        }
-        return null;
-    }
-
-    private static @Nullable Double resolveNumber(Object value) {
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        if (value instanceof String string) {
-            try {
-                return Double.parseDouble(string);
-            } catch (NumberFormatException ignored) {
-                return null;
-            }
-        }
-        return null;
-    }
-
-    private static int compareNumbers(double left, double right) {
-        if (Double.isFinite(left) && Double.isFinite(right) && Math.abs(left - right) < EPSILON) {
-            return 0;
-        }
-        return Integer.signum(Double.compare(left, right));
-    }
-
-    record Relation(boolean equal, boolean greater, boolean less) {
+        double d = number.doubleValue();
+        return Double.isFinite(d) ? d : null;
     }
 }

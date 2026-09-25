@@ -10,9 +10,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
-/**
- * Compares two values for equality.
- */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "math.compare.equals",
@@ -49,6 +46,6 @@ public class EqualsNode extends BaseNode {
         Object valA = inputValues.get(INPUT_A_ID);
         Object valB = inputValues.get(INPUT_B_ID);
 
-        outputValues.put(OUTPUT_RESULT_ID, CompareUtils.equalValues(valA, valB));
+        outputValues.put(OUTPUT_RESULT_ID, CompareUtils.genericEqual(valA, valB));
     }
 }

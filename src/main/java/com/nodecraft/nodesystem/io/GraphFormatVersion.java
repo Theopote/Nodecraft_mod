@@ -170,8 +170,13 @@ public final class GraphFormatVersion {
      */
     public static final int V26 = 26;
 
+    /**
+     * Compare v1: delete composite {@code math.compare.compare}; drop orphan wires.
+     */
+    public static final int V27 = 27;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V26;
+    public static final int CURRENT = V27;
 
     private GraphFormatVersion() {
     }

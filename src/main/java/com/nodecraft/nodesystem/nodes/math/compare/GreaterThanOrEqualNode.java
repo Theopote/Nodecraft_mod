@@ -49,7 +49,6 @@ public class GreaterThanOrEqualNode extends BaseNode {
         Object valA = inputValues.get(INPUT_A_ID);
         Object valB = inputValues.get(INPUT_B_ID);
 
-        CompareUtils.Relation relation = CompareUtils.compare(valA, valB);
-        outputValues.put(OUTPUT_RESULT_ID, relation.greater() || relation.equal());
+        outputValues.put(OUTPUT_RESULT_ID, CompareUtils.numericGreaterOrEqual(valA, valB));
     }
 }

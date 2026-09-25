@@ -13,6 +13,7 @@ Last updated: 2026-09-21
 | Port connectability / conversion policy | [`type-conversion-guidelines.md`](./type-conversion-guidelines.md) + `TypeConversionRegistry` |
 | Scalar Math Valid / finite / zero / Round | [`node-language-v1-scalar-math.md`](./node-language-v1-scalar-math.md) + `ScalarMathOps` |
 | Trigonometry degrees / domains / Expression | [`node-language-v1-trigonometry.md`](./node-language-v1-trigonometry.md) + `TrigMathOps` |
+| Compare exact / strict equality | [`node-language-v1-compare.md`](./node-language-v1-compare.md) + `CompareUtils` |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 

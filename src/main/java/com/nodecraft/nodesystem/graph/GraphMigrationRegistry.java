@@ -92,6 +92,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V23 -> migrateV23ToV24(graph);
             case GraphFormatVersion.V24 -> migrateV24ToV25(graph);
             case GraphFormatVersion.V25 -> migrateV25ToV26(graph);
+            case GraphFormatVersion.V26 -> migrateV26ToV27(graph);
             default -> graph;
         };
     }
@@ -1818,6 +1819,53 @@ public final class GraphMigrationRegistry {
             String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
             if (sourceType == null || targetType == null) {
                 LOGGER.debug("Dropped orphan connection after Trigonometry V26 node removal: {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
+            return false;
+        });
+
+        return graph;
+    }
+
+    private static final Set<String> COMPARE_V27_DELETED_NODE_TYPES = Set.of(
+            "math.compare.compare"
+    );
+
+    /**
+     * Compare v1: delete composite Compare node; drop orphan wires (no remap).
+     */
+    private static SavedGraph migrateV26ToV27(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return graph;
+        }
+
+        graph.nodes = new ArrayList<>(graph.nodes);
+        graph.nodes.removeIf(node -> node != null && node.typeId != null
+                && COMPARE_V27_DELETED_NODE_TYPES.contains(node.typeId.toLowerCase(Locale.ROOT)));
+
+        if (graph.connections == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            if (sourceType == null || targetType == null) {
+                LOGGER.debug("Dropped orphan connection after Compare V27 node removal: {}#{} → {}#{}",
                         connection.sourceNodeId, connection.sourcePortId,
                         connection.targetNodeId, connection.targetPortId);
                 return true;
