@@ -17,11 +17,12 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.data_tree.cull_empty",
     displayName = "Cull Empty Branches",
-    description = "Removes empty branches from a data tree",
+    description = "Removes empty branches from a data tree (preserves T).",
     category = "math.data_tree",
     order = 12
 )
 public class CullEmptyBranchesNode extends BaseNode {
+    private static final String LIST_T = "T";
     private static final String INPUT_TREE_ID = "input_tree";
     private static final String OUTPUT_TREE_ID = "output_tree";
     private static final String OUTPUT_REMOVED_COUNT_ID = "output_removed_count";
@@ -29,15 +30,20 @@ public class CullEmptyBranchesNode extends BaseNode {
 
     public CullEmptyBranchesNode() {
         super(UUID.randomUUID(), "math.data_tree.cull_empty");
-        addInputPort(new BasePort(INPUT_TREE_ID, "Tree", "Data tree to clean", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_TREE_ID, "Tree", "Tree without empty branches", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_REMOVED_COUNT_ID, "Removed Count", "Number of removed empty branches", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_BRANCH_COUNT_ID, "Branch Count", "Number of remaining branches", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_TREE_ID, "Tree", "Data tree to clean",
+                NodeDataType.DATA_TREE, this).bindListType(LIST_T));
+        addOutputPort(new BasePort(OUTPUT_TREE_ID, "Tree", "Tree without empty branches",
+                NodeDataType.DATA_TREE, this).bindListType(LIST_T));
+        addOutputPort(new BasePort(OUTPUT_REMOVED_COUNT_ID, "Removed Count",
+                "Number of removed empty branches", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_BRANCH_COUNT_ID, "Branch Count",
+                "Number of remaining branches", NodeDataType.INTEGER, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        DataTreeData tree = DataTreeNodeUtils.requireTree(inputValues.get(INPUT_TREE_ID));
+        Object treeValue = inputValues.get(INPUT_TREE_ID);
+        DataTreeData tree = DataTreeNodeUtils.requireTree(treeValue);
         List<DataTreeData.Branch> branches = new ArrayList<>();
         int removed = 0;
         for (DataTreeData.Branch branch : tree.getBranches()) {
@@ -47,7 +53,8 @@ public class CullEmptyBranchesNode extends BaseNode {
                 branches.add(branch);
             }
         }
-        DataTreeData culled = new DataTreeData(branches);
+        DataTreeData culled = new DataTreeData(branches,
+                DataTreeNodeUtils.resolveElementKindFromTreePort(this, INPUT_TREE_ID, treeValue));
         outputValues.put(OUTPUT_TREE_ID, culled);
         outputValues.put(OUTPUT_REMOVED_COUNT_ID, removed);
         outputValues.put(OUTPUT_BRANCH_COUNT_ID, culled.getBranchCount());

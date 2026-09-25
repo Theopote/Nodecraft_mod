@@ -4,15 +4,21 @@ import com.nodecraft.nodesystem.core.BasePort;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
- * Resolves effective port types for list type-variable binding without mutating
+ * Resolves effective port types for list/tree type-variable binding without mutating
  * {@link IPort#getDataType() declared} types.
  * <p>
  * Connection checks are order-independent: a candidate edge that would bind {@code T}
  * is only accepted if every existing connection in that type-variable group remains legal
  * under the resulting binding.
+ * <p>
+ * {@link NodeDataType#DATA_TREE} ports participate in the same {@code T} group as list
+ * ports via {@link IPort#getListTypeVariable()}; their declared type stays {@code DATA_TREE}
+ * while kind flows to remapped list/element ports.
  */
 public final class PortTypeResolver {
 
@@ -106,6 +112,7 @@ public final class PortTypeResolver {
         if (declared.isListType()) {
             return NodeDataType.forListElementKind(boundKind);
         }
+        // DATA_TREE (and other non-list carriers) keep declared type; kind is metadata for T.
         return declared;
     }
 
@@ -118,19 +125,24 @@ public final class PortTypeResolver {
         if (variable != null && !variable.isBlank()
                 && variable.equals(candidateInput.getListTypeVariable())
                 && !candidateInput.isListElementBinding()) {
-            NodeDataType sourceType = resolveEffectiveType(candidateOutput);
-            if (sourceType != null && sourceType.isListType()) {
-                ListElementKind kind = sourceType.getListElementKind();
-                if (kind != ListElementKind.UNCONSTRAINED && kind != ListElementKind.NONE) {
-                    return kind;
-                }
+            ListElementKind fromCandidate = kindFromSourcePort(candidateOutput, new HashSet<>());
+            if (isConstrained(fromCandidate)) {
+                return fromCandidate;
             }
         }
         return resolveBoundElementKind(node, variable);
     }
 
     private static ListElementKind resolveBoundElementKind(INode node, String variable) {
+        return resolveBoundElementKind(node, variable, new HashSet<>());
+    }
+
+    private static ListElementKind resolveBoundElementKind(INode node, String variable, Set<String> visiting) {
         if (node == null || variable == null || variable.isBlank()) {
+            return null;
+        }
+        String visitKey = node.getId() + "#" + variable;
+        if (!visiting.add(visitKey)) {
             return null;
         }
         for (IPort peer : allPorts(node)) {
@@ -141,16 +153,49 @@ public final class PortTypeResolver {
                 continue;
             }
             for (IPort source : connectedSources(peer)) {
-                NodeDataType sourceType = resolveEffectiveType(source);
-                if (sourceType != null && sourceType.isListType()) {
-                    ListElementKind kind = sourceType.getListElementKind();
-                    if (kind != ListElementKind.UNCONSTRAINED && kind != ListElementKind.NONE) {
-                        return kind;
-                    }
+                ListElementKind kind = kindFromSourcePort(source, visiting);
+                if (isConstrained(kind)) {
+                    return kind;
                 }
             }
         }
         return null;
+    }
+
+    /**
+     * Kind carried by a source output: typed list kind, or the producer's shared T when DATA_TREE.
+     */
+    private static ListElementKind kindFromSourcePort(IPort source, Set<String> visiting) {
+        if (source == null) {
+            return null;
+        }
+        NodeDataType declared = source.getDataType();
+        if (declared != null && declared.isListType()) {
+            ListElementKind declaredKind = declared.getListElementKind();
+            if (isConstrained(declaredKind)) {
+                return declaredKind;
+            }
+            String srcVar = source.getListTypeVariable();
+            if (srcVar != null && !srcVar.isBlank() && source.getNode() != null) {
+                ListElementKind fromProducer = resolveBoundElementKind(source.getNode(), srcVar, visiting);
+                if (isConstrained(fromProducer)) {
+                    return fromProducer;
+                }
+            }
+        }
+        if (declared == NodeDataType.DATA_TREE) {
+            String srcVar = source.getListTypeVariable();
+            if (srcVar != null && !srcVar.isBlank() && source.getNode() != null) {
+                return resolveBoundElementKind(source.getNode(), srcVar, visiting);
+            }
+        }
+        return null;
+    }
+
+    private static boolean isConstrained(ListElementKind kind) {
+        return kind != null
+                && kind != ListElementKind.UNCONSTRAINED
+                && kind != ListElementKind.NONE;
     }
 
     private static Collection<IPort> connectedSources(IPort inputPort) {

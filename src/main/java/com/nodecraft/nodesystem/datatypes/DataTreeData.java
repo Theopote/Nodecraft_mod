@@ -1,32 +1,63 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.api.ListElementKind;
+
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
- * Lightweight hierarchical list data for parameterized modeling workflows.
- * A branch path is an ordered integer address such as {0} or {2;4;1}.
+ * Hierarchical list data with unique branch paths and optional element kind.
+ * <p>
+ * Construction merges duplicate paths by appending items in encounter order
+ * (one path = one branch). Element kind preserves {@code DataTree&lt;T&gt;} across
+ * Graft / Flatten without exploding into per-kind tree port types.
  */
 public class DataTreeData {
+    private final ListElementKind elementKind;
     private final List<Branch> branches;
 
     public DataTreeData(List<Branch> branches) {
+        this(branches, ListElementKind.UNCONSTRAINED);
+    }
+
+    public DataTreeData(List<Branch> branches, ListElementKind elementKind) {
         Objects.requireNonNull(branches, "Data tree branches cannot be null");
-        List<Branch> copied = new ArrayList<>(branches.size());
+        this.elementKind = elementKind == null ? ListElementKind.UNCONSTRAINED : elementKind;
+
+        Map<List<Integer>, List<Object>> merged = new LinkedHashMap<>();
         for (Branch branch : branches) {
-            copied.add(new Branch(branch.path(), branch.items()));
+            Objects.requireNonNull(branch, "Branch cannot be null");
+            List<Integer> path = List.copyOf(branch.path());
+            List<Object> items = merged.computeIfAbsent(path, ignored -> new ArrayList<>());
+            items.addAll(branch.items());
         }
-        copied.sort(Comparator.comparing(Branch::pathKey));
-        this.branches = List.copyOf(copied);
+
+        List<Branch> canonical = new ArrayList<>(merged.size());
+        for (Map.Entry<List<Integer>, List<Object>> entry : merged.entrySet()) {
+            canonical.add(new Branch(entry.getKey(), entry.getValue()));
+        }
+        canonical.sort(Comparator.comparing(Branch::pathKey));
+        this.branches = List.copyOf(canonical);
     }
 
     public static DataTreeData empty() {
-        return new DataTreeData(List.of());
+        return new DataTreeData(List.of(), ListElementKind.UNCONSTRAINED);
+    }
+
+    public static DataTreeData empty(ListElementKind elementKind) {
+        return new DataTreeData(List.of(), elementKind);
     }
 
     public static DataTreeData fromBranches(List<List<Integer>> paths, List<List<?>> items) {
+        return fromBranches(paths, items, ListElementKind.UNCONSTRAINED);
+    }
+
+    public static DataTreeData fromBranches(List<List<Integer>> paths, List<List<?>> items,
+                                           ListElementKind elementKind) {
         if (paths.size() != items.size()) {
             throw new IllegalArgumentException("Data tree paths and item lists must have the same size");
         }
@@ -34,7 +65,18 @@ public class DataTreeData {
         for (int i = 0; i < paths.size(); i++) {
             branches.add(new Branch(paths.get(i), new ArrayList<>(items.get(i))));
         }
-        return new DataTreeData(branches);
+        return new DataTreeData(branches, elementKind);
+    }
+
+    /**
+     * Rebuilds a tree preserving {@link #getElementKind()} while applying a new branch set.
+     */
+    public DataTreeData withBranches(List<Branch> newBranches) {
+        return new DataTreeData(newBranches, elementKind);
+    }
+
+    public ListElementKind getElementKind() {
+        return elementKind;
     }
 
     public List<Branch> getBranches() {
@@ -56,6 +98,10 @@ public class DataTreeData {
             }
         }
         return null;
+    }
+
+    public Branch getBranch(TreePathData path) {
+        return path == null ? null : getBranch(path.indices());
     }
 
     public int getBranchCount() {
@@ -86,6 +132,14 @@ public class DataTreeData {
         return List.copyOf(paths);
     }
 
+    public List<TreePathData> getTreePaths() {
+        List<TreePathData> paths = new ArrayList<>(branches.size());
+        for (Branch branch : branches) {
+            paths.add(new TreePathData(branch.path()));
+        }
+        return List.copyOf(paths);
+    }
+
     public String describe() {
         StringBuilder builder = new StringBuilder();
         builder.append("Data Tree: ")
@@ -94,6 +148,9 @@ public class DataTreeData {
             .append(getItemCount())
             .append(" items, depth ")
             .append(getMaxDepth());
+        if (elementKind != ListElementKind.UNCONSTRAINED && elementKind != ListElementKind.NONE) {
+            builder.append(", kind ").append(elementKind);
+        }
         for (Branch branch : branches) {
             builder.append('\n')
                 .append(formatPath(branch.path()))
@@ -104,7 +161,13 @@ public class DataTreeData {
         return builder.toString();
     }
 
+    /**
+     * Debug / legacy string parse only. Graph nodes must accept {@link TreePathData}.
+     */
     public static List<Integer> parsePath(Object value) {
+        if (value instanceof TreePathData treePath) {
+            return treePath.indices();
+        }
         if (value instanceof Number number) {
             return List.of(number.intValue());
         }

@@ -89,6 +89,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V20 -> migrateV20ToV21(graph);
             case GraphFormatVersion.V21 -> migrateV21ToV22(graph);
             case GraphFormatVersion.V22 -> migrateV22ToV23(graph);
+            case GraphFormatVersion.V23 -> migrateV23ToV24(graph);
             default -> graph;
         };
     }
@@ -1594,6 +1595,110 @@ public final class GraphMigrationRegistry {
                 if (sourceDataType == null || sourceDataType != NodeDataType.BOOLEAN_LIST) {
                     LOGGER.debug("Dropped non-BOOLEAN_LIST mask wire to {}#{}",
                             connection.targetNodeId, connection.targetPortId);
+                    return true;
+                }
+            }
+
+            return false;
+        });
+
+        return graph;
+    }
+
+    private static final Map<String, Set<String>> DATA_TREE_V24_STATE_STRIP_BY_TYPE = Map.ofEntries(
+            Map.entry("math.data_tree.item", Set.of("allowNegativeIndex", "wrapIndex")),
+            Map.entry("math.data_tree.merge", Set.of("preserveSourceIndex")),
+            Map.entry("math.data_tree.partition_list", Set.of("dropRemainder"))
+    );
+
+    /**
+     * Data Tree v1: TREE_PATH ports, unique-path trees, Merge/Entwine/Partition/Statistics cleanup.
+     */
+    private static SavedGraph migrateV23ToV24(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return graph;
+        }
+
+        for (SavedNode node : graph.nodes) {
+            if (node == null || node.typeId == null || !(node.state instanceof Map<?, ?> state)) {
+                continue;
+            }
+            Set<String> stripKeys = DATA_TREE_V24_STATE_STRIP_BY_TYPE.get(node.typeId.toLowerCase(Locale.ROOT));
+            if (stripKeys == null || stripKeys.isEmpty()) {
+                continue;
+            }
+            Map<String, Object> cleaned = new HashMap<>();
+            for (Map.Entry<?, ?> entry : state.entrySet()) {
+                if (!(entry.getKey() instanceof String key)) {
+                    continue;
+                }
+                if (stripKeys.contains(key)) {
+                    continue;
+                }
+                cleaned.put(key, entry.getValue());
+            }
+            node.state = cleaned;
+        }
+
+        if (graph.connections == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            if (sourceType == null || targetType == null) {
+                LOGGER.debug("Dropped orphan connection after Data Tree V24: {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
+
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            String targetPort = connection.targetPortId == null ? "" : connection.targetPortId.toLowerCase(Locale.ROOT);
+
+            // Legacy STRING (or non-TREE_PATH) into path ports
+            if (("math.data_tree.branch".equals(targetType) || "math.data_tree.item".equals(targetType))
+                    && "input_path".equals(targetPort)) {
+                NodeDataType sourceDataType = resolveDeclaredPortType(sourceType, connection.sourcePortId, true);
+                if (sourceDataType != NodeDataType.TREE_PATH) {
+                    LOGGER.debug("Dropped non-TREE_PATH wire to {}#{}", connection.targetNodeId, targetPort);
+                    return true;
+                }
+            }
+
+            // Removed ports
+            if ("math.data_tree.paths".equals(sourceType) && "output_path_strings".equals(sourcePort)) {
+                return true;
+            }
+            if ("math.data_tree.paths".equals(sourceType) && "output_branch_count".equals(sourcePort)) {
+                return true;
+            }
+            if ("math.data_tree.statistics".equals(sourceType) && "output_paths".equals(sourcePort)) {
+                return true;
+            }
+            if ("math.data_tree.partition_list".equals(sourceType) && "output_remainder".equals(sourcePort)) {
+                return true;
+            }
+
+            // Simplify removed_prefix is now TREE_PATH (was LIST of ints / generic LIST)
+            if ("math.data_tree.simplify".equals(sourceType) && "output_removed_prefix".equals(sourcePort)) {
+                NodeDataType targetDataType = resolveDeclaredPortType(targetType, connection.targetPortId, false);
+                if (targetDataType != null && targetDataType != NodeDataType.TREE_PATH
+                        && targetDataType != NodeDataType.ANY) {
+                    LOGGER.debug("Dropped Simplify Removed Prefix wire incompatible with TREE_PATH");
                     return true;
                 }
             }

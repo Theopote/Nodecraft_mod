@@ -7,6 +7,7 @@ package com.nodecraft.nodesystem.api;
 public enum ListElementKind {
     NONE,
     UNCONSTRAINED,
+    INTEGER,
     DOUBLE,
     BOOLEAN,
     STRING,
@@ -16,6 +17,7 @@ public enum ListElementKind {
     PLANE,
     FRAME,
     PATH,
+    TREE_PATH,
     POLYGON_PROFILE,
     REGION,
     BLOCK_INFO,

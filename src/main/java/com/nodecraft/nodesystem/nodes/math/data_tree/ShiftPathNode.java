@@ -20,11 +20,13 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.data_tree.shift_path",
     displayName = "Shift Path",
-    description = "Moves data tree paths up by removing leading levels or down by adding zero levels",
+    description = "Moves data tree paths up by removing leading levels or down by adding zero levels. Colliding paths merge items.",
     category = "math.data_tree",
     order = 10
 )
 public class ShiftPathNode extends BaseNode {
+    private static final String LIST_T = "T";
+
     @NodeProperty(displayName = "Shift", category = "Path", order = 1)
     private int shift = 1;
 
@@ -35,22 +37,28 @@ public class ShiftPathNode extends BaseNode {
 
     public ShiftPathNode() {
         super(UUID.randomUUID(), "math.data_tree.shift_path");
-        addInputPort(new BasePort(INPUT_TREE_ID, "Tree", "Data tree to shift", NodeDataType.DATA_TREE, this));
-        addInputPort(new BasePort(INPUT_SHIFT_ID, "Shift", "Positive removes leading path levels; negative adds zero levels", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_TREE_ID, "Tree", "Shifted data tree", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_BRANCH_COUNT_ID, "Branch Count", "Number of output branches", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_TREE_ID, "Tree", "Data tree to shift",
+                NodeDataType.DATA_TREE, this).bindListType(LIST_T));
+        addInputPort(new BasePort(INPUT_SHIFT_ID, "Shift",
+                "Positive removes leading path levels; negative adds zero levels", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_TREE_ID, "Tree", "Shifted data tree",
+                NodeDataType.DATA_TREE, this).bindListType(LIST_T));
+        addOutputPort(new BasePort(OUTPUT_BRANCH_COUNT_ID, "Branch Count", "Number of output branches",
+                NodeDataType.INTEGER, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        DataTreeData tree = DataTreeNodeUtils.requireTree(inputValues.get(INPUT_TREE_ID));
+        Object treeValue = inputValues.get(INPUT_TREE_ID);
+        DataTreeData tree = DataTreeNodeUtils.requireTree(treeValue);
         Object shiftObj = inputValues.get(INPUT_SHIFT_ID);
         int resolvedShift = shiftObj instanceof Number number ? number.intValue() : shift;
         List<DataTreeData.Branch> branches = new ArrayList<>(tree.getBranchCount());
         for (DataTreeData.Branch branch : tree.getBranches()) {
             branches.add(new DataTreeData.Branch(shiftPath(branch.path(), resolvedShift), branch.items()));
         }
-        DataTreeData shifted = new DataTreeData(branches);
+        DataTreeData shifted = new DataTreeData(branches,
+                DataTreeNodeUtils.resolveElementKindFromTreePort(this, INPUT_TREE_ID, treeValue));
         outputValues.put(OUTPUT_TREE_ID, shifted);
         outputValues.put(OUTPUT_BRANCH_COUNT_ID, shifted.getBranchCount());
     }

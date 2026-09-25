@@ -60,4 +60,4 @@ Insert Item: `0 ≤ index ≤ size` after negative-from-end normalization; other
 - Remove Item dual mode → Remove at Index / Remove Matching
 - Set Item `wrapIndex` → strict index language only
 - As / Validate List bridges
-- `INTEGER_LIST` / `TREE_PATH`
+- See [`node-language-v1-data-tree.md`](node-language-v1-data-tree.md) for Data Tree / TREE_PATH (Graph V24)

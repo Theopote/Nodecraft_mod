@@ -15,20 +15,24 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.data_tree.flatten",
     displayName = "Flatten Tree",
-    description = "Flattens all data tree branches into a single list",
+    description = "Flattens all data tree branches into a single list (preserves element type T).",
     category = "math.data_tree",
     order = 2
 )
 public class FlattenTreeNode extends BaseNode {
+    private static final String LIST_T = "T";
     private static final String INPUT_TREE_ID = "input_tree";
     private static final String OUTPUT_LIST_ID = "output_list";
     private static final String OUTPUT_ITEM_COUNT_ID = "output_item_count";
 
     public FlattenTreeNode() {
         super(UUID.randomUUID(), "math.data_tree.flatten");
-        addInputPort(new BasePort(INPUT_TREE_ID, "Tree", "Data tree to flatten", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_LIST_ID, "List", "Flattened list", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_ITEM_COUNT_ID, "Item Count", "Total item count", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_TREE_ID, "Tree", "Data tree to flatten",
+                NodeDataType.DATA_TREE, this).bindListType(LIST_T));
+        addOutputPort(new BasePort(OUTPUT_LIST_ID, "List", "Flattened list",
+                NodeDataType.LIST, this).bindListType(LIST_T));
+        addOutputPort(new BasePort(OUTPUT_ITEM_COUNT_ID, "Item Count", "Total item count",
+                NodeDataType.INTEGER, this));
     }
 
     @Override

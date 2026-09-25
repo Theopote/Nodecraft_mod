@@ -115,12 +115,18 @@ public enum NodeDataType {
     FILE_PATH("file_path", "File Path", String.class),
 
     LIST("list", "List", java.util.List.class, ListElementKind.UNCONSTRAINED),
+    /** Ordered integers (counts, branch sizes, index bags). */
+    INTEGER_LIST("integer_list", "Integer List", java.util.List.class, ListElementKind.INTEGER),
     /** Ordered doubles (sequences, distances, numeric map results). */
     DOUBLE_LIST("double_list", "Double List", java.util.List.class, ListElementKind.DOUBLE),
     /** Ordered booleans (dispatch masks, per-item predicates). */
     BOOLEAN_LIST("boolean_list", "Boolean List", java.util.List.class, ListElementKind.BOOLEAN),
     /** Ordered strings (text sort / join sources). */
     STRING_LIST("string_list", "String List", java.util.List.class, ListElementKind.STRING),
+    /** Data tree branch address (ordered integer path). */
+    TREE_PATH("tree_path", "Tree Path", TreePathData.class),
+    /** Ordered tree paths. */
+    TREE_PATH_LIST("tree_path_list", "Tree Path List", java.util.List.class, ListElementKind.TREE_PATH),
     DATA_TREE("data_tree", "Data Tree", DataTreeData.class),
     COORDINATE_LIST("coordinate_list", "Coordinate List", java.util.List.class, ListElementKind.BLOCK_POS),
     BLOCK_INFO_LIST("block_info_list", "Block Info List", java.util.List.class, ListElementKind.BLOCK_INFO),
@@ -199,6 +205,7 @@ public enum NodeDataType {
         }
         return switch (kind) {
             case NONE, UNCONSTRAINED -> ANY;
+            case INTEGER -> INTEGER;
             case DOUBLE -> DOUBLE;
             case BOOLEAN -> BOOLEAN;
             case STRING -> STRING;
@@ -208,6 +215,7 @@ public enum NodeDataType {
             case PLANE -> PLANE;
             case FRAME -> FRAME;
             case PATH -> PATH;
+            case TREE_PATH -> TREE_PATH;
             case POLYGON_PROFILE -> POLYGON_PROFILE;
             case REGION -> REGION;
             case BLOCK_INFO -> BLOCK_INFO;
@@ -316,6 +324,8 @@ public enum NodeDataType {
         }
         return switch (kind) {
             case NONE, UNCONSTRAINED -> true;
+            case INTEGER -> value instanceof Integer || value instanceof Long || value instanceof Short
+                    || value instanceof Byte;
             case DOUBLE -> value instanceof Number;
             case BOOLEAN -> value instanceof Boolean;
             case STRING -> value instanceof String;
@@ -328,6 +338,7 @@ public enum NodeDataType {
                     || value instanceof LineData
                     || value instanceof PolylineData
                     || value instanceof Curve;
+            case TREE_PATH -> value instanceof TreePathData;
             case POLYGON_PROFILE -> value instanceof PolygonProfileData;
             case REGION -> value instanceof RegionData;
             case BLOCK_INFO -> true;

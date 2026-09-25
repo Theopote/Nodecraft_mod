@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **544**
+- Total nodes: **545**
 - Total categories: **59**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -32,7 +32,7 @@
 | `material.pattern_mapping` | 4 |
 | `material.surface_aging` | 3 |
 | `math.compare` | 7 |
-| `math.data_tree` | 13 |
+| `math.data_tree` | 14 |
 | `math.fields` | 17 |
 | `math.list` | 23 |
 | `math.logic` | 6 |
@@ -390,23 +390,24 @@
 | Greater Than (>) | `math.compare.greater_than` | Returns true when A is greater than B. | `GreaterThanNode` |
 | Greater Than or Equal (>=) | `math.compare.greater_than_or_equal` | Returns true when A is greater than or equal to B. | `GreaterThanOrEqualNode` |
 
-## math.data_tree (13)
+## math.data_tree (14)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Graft List | `math.data_tree.graft_list` | Converts each list item into its own data tree branch | `GraftListNode` |
-| Flatten Tree | `math.data_tree.flatten` | Flattens all data tree branches into a single list | `FlattenTreeNode` |
-| Partition List To Tree | `math.data_tree.partition_list` | Splits a list into fixed-size data tree branches | `PartitionListToTreeNode` |
-| Tree Branch | `math.data_tree.branch` | Gets one branch from a data tree by path | `TreeBranchNode` |
-| Tree Item | `math.data_tree.item` | Gets one item from a data tree branch by path and index | `TreeItemNode` |
-| Tree Statistics | `math.data_tree.statistics` | Reports branch count, item count, depth, paths, and branch sizes for a data tree | `TreeStatisticsNode` |
+| Construct Tree Path | `math.data_tree.tree_path` | Builds a TREE_PATH from an ordered list of integer indices. | `ConstructTreePathNode` |
+| Graft List | `math.data_tree.graft_list` | Converts each list item into its own data tree branch (preserves element type T). | `GraftListNode` |
+| Flatten Tree | `math.data_tree.flatten` | Flattens all data tree branches into a single list (preserves element type T). | `FlattenTreeNode` |
+| Partition List To Tree | `math.data_tree.partition_list` | Splits a list into fixed-size data tree branches (keeps incomplete last branch; preserves T). | `PartitionListToTreeNode` |
+| Tree Branch | `math.data_tree.branch` | Gets one branch from a data tree by TREE_PATH (preserves T). Missing path → Found=false. | `TreeBranchNode` |
+| Tree Item | `math.data_tree.item` | Gets one item from a data tree branch by TREE_PATH and index (negatives from end; OOR → Found=false). | `TreeItemNode` |
+| Tree Statistics | `math.data_tree.statistics` | Reports branch count, item count, depth, and branch sizes for a data tree. | `TreeStatisticsNode` |
 | Tree Viewer | `math.data_tree.viewer` | Outputs a readable summary of a data tree for debugging | `TreeViewerNode` |
-| Merge Trees | `math.data_tree.merge` | Merges two data trees into one data tree. Use Graft List to convert lists first. | `MergeTreesNode` |
-| Simplify Tree | `math.data_tree.simplify` | Removes the common leading path prefix from all data tree branches | `SimplifyTreeNode` |
-| Shift Path | `math.data_tree.shift_path` | Moves data tree paths up by removing leading levels or down by adding zero levels | `ShiftPathNode` |
-| Tree Paths | `math.data_tree.paths` | Outputs data tree branch paths as strings and path index lists | `TreePathsNode` |
-| Cull Empty Branches | `math.data_tree.cull_empty` | Removes empty branches from a data tree | `CullEmptyBranchesNode` |
-| Entwine | `math.data_tree.entwine` | Combines up to four data trees into source-indexed branches. Use Graft List to convert lists first. | `EntwineNode` |
+| Merge Trees | `math.data_tree.merge` | Merges two data trees by concatenating items on matching paths (preserves T). | `MergeTreesNode` |
+| Simplify Tree | `math.data_tree.simplify` | Removes the common leading path prefix from all data tree branches (preserves T). | `SimplifyTreeNode` |
+| Shift Path | `math.data_tree.shift_path` | Moves data tree paths up by removing leading levels or down by adding zero levels. Colliding paths merge items. | `ShiftPathNode` |
+| Tree Paths | `math.data_tree.paths` | Outputs all branch paths as a TREE_PATH_LIST. | `TreePathsNode` |
+| Cull Empty Branches | `math.data_tree.cull_empty` | Removes empty branches from a data tree (preserves T). | `CullEmptyBranchesNode` |
+| Entwine | `math.data_tree.entwine` | Combines up to four data trees under source-index path prefixes (preserves T). | `EntwineNode` |
 
 ## math.fields (17)
 

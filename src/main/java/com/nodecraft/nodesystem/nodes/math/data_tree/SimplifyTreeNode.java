@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
+import com.nodecraft.nodesystem.datatypes.TreePathData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 
@@ -17,11 +18,12 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.data_tree.simplify",
     displayName = "Simplify Tree",
-    description = "Removes the common leading path prefix from all data tree branches",
+    description = "Removes the common leading path prefix from all data tree branches (preserves T).",
     category = "math.data_tree",
     order = 9
 )
 public class SimplifyTreeNode extends BaseNode {
+    private static final String LIST_T = "T";
     private static final String INPUT_TREE_ID = "input_tree";
     private static final String OUTPUT_TREE_ID = "output_tree";
     private static final String OUTPUT_REMOVED_PREFIX_ID = "output_removed_prefix";
@@ -29,15 +31,20 @@ public class SimplifyTreeNode extends BaseNode {
 
     public SimplifyTreeNode() {
         super(UUID.randomUUID(), "math.data_tree.simplify");
-        addInputPort(new BasePort(INPUT_TREE_ID, "Tree", "Data tree to simplify", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_TREE_ID, "Tree", "Simplified data tree", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_REMOVED_PREFIX_ID, "Removed Prefix", "Common path prefix removed from every branch", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BRANCH_COUNT_ID, "Branch Count", "Number of output branches", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_TREE_ID, "Tree", "Data tree to simplify",
+                NodeDataType.DATA_TREE, this).bindListType(LIST_T));
+        addOutputPort(new BasePort(OUTPUT_TREE_ID, "Tree", "Simplified data tree",
+                NodeDataType.DATA_TREE, this).bindListType(LIST_T));
+        addOutputPort(new BasePort(OUTPUT_REMOVED_PREFIX_ID, "Removed Prefix",
+                "Common path prefix removed from every branch", NodeDataType.TREE_PATH, this));
+        addOutputPort(new BasePort(OUTPUT_BRANCH_COUNT_ID, "Branch Count", "Number of output branches",
+                NodeDataType.INTEGER, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        DataTreeData tree = DataTreeNodeUtils.requireTree(inputValues.get(INPUT_TREE_ID));
+        Object treeValue = inputValues.get(INPUT_TREE_ID);
+        DataTreeData tree = DataTreeNodeUtils.requireTree(treeValue);
         List<Integer> prefix = commonPrefix(tree);
         List<DataTreeData.Branch> branches = new ArrayList<>(tree.getBranchCount());
         for (DataTreeData.Branch branch : tree.getBranches()) {
@@ -47,9 +54,10 @@ public class SimplifyTreeNode extends BaseNode {
                 : List.copyOf(path.subList(prefix.size(), path.size()));
             branches.add(new DataTreeData.Branch(simplifiedPath, branch.items()));
         }
-        DataTreeData simplified = new DataTreeData(branches);
+        DataTreeData simplified = new DataTreeData(branches,
+                DataTreeNodeUtils.resolveElementKindFromTreePort(this, INPUT_TREE_ID, treeValue));
         outputValues.put(OUTPUT_TREE_ID, simplified);
-        outputValues.put(OUTPUT_REMOVED_PREFIX_ID, prefix);
+        outputValues.put(OUTPUT_REMOVED_PREFIX_ID, new TreePathData(prefix));
         outputValues.put(OUTPUT_BRANCH_COUNT_ID, simplified.getBranchCount());
     }
 

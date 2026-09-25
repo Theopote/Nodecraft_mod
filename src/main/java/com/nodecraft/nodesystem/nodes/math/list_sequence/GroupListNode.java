@@ -1,9 +1,11 @@
 package com.nodecraft.nodesystem.nodes.math.list_sequence;
 
 import com.nodecraft.nodesystem.api.IPort;
+import com.nodecraft.nodesystem.api.ListElementKind;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.PortTypeResolver;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
@@ -37,7 +39,7 @@ public class GroupListNode extends BaseNode {
         super(UUID.randomUUID(), "math.list.group_list");
 
         IPort listInput = new BasePort(INPUT_LIST_ID, "List",
-                "The list to group", NodeDataType.LIST, this);
+                "The list to group", NodeDataType.LIST, this).bindListType("T");
         addInputPort(listInput);
 
         IPort keysInput = new BasePort(INPUT_KEYS_ID, "Keys",
@@ -45,7 +47,8 @@ public class GroupListNode extends BaseNode {
         addInputPort(keysInput);
 
         IPort treeOutput = new BasePort(OUTPUT_TREE_ID, "Tree",
-                "Grouped items as a data tree (one branch per unique key)", NodeDataType.DATA_TREE, this);
+                "Grouped items as a data tree (one branch per unique key)", NodeDataType.DATA_TREE, this)
+                .bindListType("T");
         addOutputPort(treeOutput);
 
         IPort keysOutput = new BasePort(OUTPUT_KEYS_ID, "Unique Keys",
@@ -95,9 +98,21 @@ public class GroupListNode extends BaseNode {
             branches.add(new DataTreeData.Branch(List.of(i), groups.get(key)));
         }
 
-        outputValues.put(OUTPUT_TREE_ID, new DataTreeData(branches));
+        outputValues.put(OUTPUT_TREE_ID, new DataTreeData(branches, resolveListElementKind()));
         outputValues.put(OUTPUT_KEYS_ID, uniqueKeys);
         outputValues.put(OUTPUT_COUNT_ID, uniqueKeys.size());
+    }
+
+    private ListElementKind resolveListElementKind() {
+        for (IPort port : getInputPorts()) {
+            if (port != null && INPUT_LIST_ID.equals(port.getId())) {
+                NodeDataType effective = PortTypeResolver.resolveEffectiveType(port);
+                if (effective != null && effective.isListType()) {
+                    return effective.getListElementKind();
+                }
+            }
+        }
+        return ListElementKind.UNCONSTRAINED;
     }
 
     public boolean isSkipInvalidKeys() {

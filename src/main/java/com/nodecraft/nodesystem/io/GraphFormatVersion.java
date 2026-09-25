@@ -151,8 +151,14 @@ public final class GraphFormatVersion {
      */
     public static final int V23 = 23;
 
+    /**
+     * Data Tree v1: DataTree&lt;T&gt;, TREE_PATH / TREE_PATH_LIST, unique-path invariant,
+     * Merge vs Entwine separation, fail-closed path/index language.
+     */
+    public static final int V24 = 24;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V23;
+    public static final int CURRENT = V24;
 
     private GraphFormatVersion() {
     }
