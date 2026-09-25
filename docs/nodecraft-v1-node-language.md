@@ -16,6 +16,7 @@ Last updated: 2026-09-21
 | Compare exact / strict equality | [`node-language-v1-compare.md`](./node-language-v1-compare.md) + `CompareUtils` |
 | Logic boolean / If / Switch (no coercion) | [`node-language-v1-logic.md`](./node-language-v1-logic.md) + `LogicUtils` |
 | Sequence range / series / repeat | [`node-language-v1-sequence.md`](./node-language-v1-sequence.md) + `SequenceOps` |
+| Random seeded / Noise / List&lt;T&gt; pick | [`node-language-v1-random.md`](./node-language-v1-random.md) + `RandomOps` |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 

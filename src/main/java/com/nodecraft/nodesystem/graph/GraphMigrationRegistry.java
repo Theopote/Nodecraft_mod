@@ -94,6 +94,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V25 -> migrateV25ToV26(graph);
             case GraphFormatVersion.V26 -> migrateV26ToV27(graph);
             case GraphFormatVersion.V27 -> migrateV27ToV28(graph);
+            case GraphFormatVersion.V28 -> migrateV28ToV29(graph);
             default -> graph;
         };
     }
@@ -1878,6 +1879,7 @@ public final class GraphMigrationRegistry {
     }
 
     private static final String SERIES_TYPE = "math.sequence.series";
+    private static final String RANDOM_VECTOR_TYPE = "math.random.random_vector";
 
     /**
      * Sequence v1: drop Number Series Sum output wires (reduction belongs on Sum Numbers).
@@ -1904,6 +1906,48 @@ public final class GraphMigrationRegistry {
             String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
             if (SERIES_TYPE.equals(sourceType) && "output_sum".equals(sourcePort)) {
                 LOGGER.debug("Dropped Number Series output_sum wire from {}", connection.sourceNodeId);
+                return true;
+            }
+            return false;
+        });
+
+        return graph;
+    }
+
+    /**
+     * Random v1: Random Vector is now a single VECTOR node (no Count; output renamed).
+     * Drop wires to {@code input_count} and from {@code output_random_vector} —
+     * do not guess whether the old ANY output was a vector or vector list.
+     */
+    private static SavedGraph migrateV28ToV29(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            String targetPort = connection.targetPortId == null ? "" : connection.targetPortId.toLowerCase(Locale.ROOT);
+
+            if (RANDOM_VECTOR_TYPE.equals(sourceType) && "output_random_vector".equals(sourcePort)) {
+                LOGGER.debug("Dropped Random Vector output_random_vector wire from {}", connection.sourceNodeId);
+                return true;
+            }
+            if (RANDOM_VECTOR_TYPE.equals(targetType) && "input_count".equals(targetPort)) {
+                LOGGER.debug("Dropped Random Vector input_count wire to {}", connection.targetNodeId);
                 return true;
             }
             return false;

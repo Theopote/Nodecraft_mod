@@ -7,7 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.NumericRangeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.math.RandomOps;
 import com.nodecraft.nodesystem.util.NumericDomainResolver;
 import org.jetbrains.annotations.Nullable;
 
@@ -21,7 +21,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.random.random_numbers",
     displayName = "Random Numbers",
-    description = "Generates a list of random doubles within a domain.",
+    description = "Generates a deterministic list of random doubles within a domain.",
     category = "math.random",
     order = 1
 )
@@ -40,27 +40,22 @@ public class RandomNumbersNode extends BaseNode {
         super(UUID.randomUUID(), "math.random.random_numbers");
         addInputPort(new BasePort(INPUT_DOMAIN_ID, "Domain", "Domain to sample (uses lower..upper bounds)", NodeDataType.NUMERIC_RANGE, this));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Number of random values to generate", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional seed for the random generator", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALUES_ID, "Values", "List of random doubles", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Deterministic seed (missing ≡ 0)", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALUES_ID, "Values", "List of random doubles", NodeDataType.DOUBLE_LIST, this));
     }
 
     @Override
     public String getDescription() {
-        return "Generates a list of random doubles within a domain.";
+        return "Generates a deterministic list of random doubles within a domain.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        int count = GenerationLimits.clampNonNegativeCount(getValueAsInt(inputValues.get(INPUT_COUNT_ID), defaultCount));
+        int count = RandomOps.resolveCount(inputValues.get(INPUT_COUNT_ID), defaultCount);
         NumericRangeData domain = NumericDomainResolver.resolveDomain(
             inputValues.get(INPUT_DOMAIN_ID), defaultStart, defaultEnd);
-        double min = domain.lower();
-        double max = domain.upper();
-        Object seedVal = inputValues.get(INPUT_SEED_ID);
-
-        Random random = seedVal instanceof Number
-            ? new Random(((Number) seedVal).longValue())
-            : new Random();
+        int seed = RandomOps.resolveSeed(inputValues.get(INPUT_SEED_ID));
+        Random random = RandomOps.rng(seed);
 
         if (count <= 0) {
             outputValues.put(OUTPUT_VALUES_ID, Collections.emptyList());
@@ -69,18 +64,8 @@ public class RandomNumbersNode extends BaseNode {
 
         List<Double> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            values.add(min + random.nextDouble() * (max - min));
+            values.add(RandomOps.sampleDouble(domain.lower(), domain.upper(), random));
         }
         outputValues.put(OUTPUT_VALUES_ID, Collections.unmodifiableList(values));
-    }
-
-    private int getValueAsInt(Object value, int defaultValue) {
-        if (value instanceof Number number) {
-            double doubleVal = number.doubleValue();
-            if (doubleVal >= Integer.MIN_VALUE && doubleVal <= Integer.MAX_VALUE) {
-                return (int) Math.round(doubleVal);
-            }
-        }
-        return defaultValue;
     }
 }

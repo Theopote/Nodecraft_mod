@@ -7,17 +7,17 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.NumericRangeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.RandomOps;
 import com.nodecraft.nodesystem.util.NumericDomainResolver;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Random;
 import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "math.random.random_number",
     displayName = "Random Number",
-    description = "Generates a single random double within a domain.",
+    description = "Generates a single deterministic random double within a domain.",
     category = "math.random",
     order = 0
 )
@@ -33,13 +33,13 @@ public class RandomNumberNode extends BaseNode {
     public RandomNumberNode() {
         super(UUID.randomUUID(), "math.random.random_number");
         addInputPort(new BasePort(INPUT_DOMAIN_ID, "Domain", "Domain to sample (uses lower..upper bounds)", NodeDataType.NUMERIC_RANGE, this));
-        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional seed for the random generator", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Deterministic seed (missing ≡ 0)", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_RANDOM_ID, "Random", "Single random value", NodeDataType.DOUBLE, this));
     }
 
     @Override
     public String getDescription() {
-        return "Generates a single random double within a domain. Use Random Numbers for multiple values.";
+        return "Generates a single deterministic random double within a domain. Use Random Numbers for multiple values.";
     }
 
     @Override
@@ -51,14 +51,8 @@ public class RandomNumberNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         NumericRangeData domain = NumericDomainResolver.resolveDomain(
             inputValues.get(INPUT_DOMAIN_ID), defaultStart, defaultEnd);
-        double min = domain.lower();
-        double max = domain.upper();
-        Object seedVal = inputValues.get(INPUT_SEED_ID);
-
-        Random random = seedVal instanceof Number
-            ? new Random(((Number) seedVal).longValue())
-            : new Random();
-
-        outputValues.put(OUTPUT_RANDOM_ID, min + random.nextDouble() * (max - min));
+        int seed = RandomOps.resolveSeed(inputValues.get(INPUT_SEED_ID));
+        double value = RandomOps.sampleDouble(domain.lower(), domain.upper(), RandomOps.rng(seed));
+        outputValues.put(OUTPUT_RANDOM_ID, value);
     }
 }

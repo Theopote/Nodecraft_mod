@@ -1,71 +1,322 @@
 package com.nodecraft.nodesystem.contract;
 
-import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.IPort;
-import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.datatypes.NumericRangeData;
+import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
+import com.nodecraft.nodesystem.io.GraphFormatVersion;
+import com.nodecraft.nodesystem.io.SavedConnection;
+import com.nodecraft.nodesystem.io.SavedGraph;
+import com.nodecraft.nodesystem.io.SavedNode;
+import com.nodecraft.nodesystem.nodes.math.random.NoiseNode;
+import com.nodecraft.nodesystem.nodes.math.random.RandomListItemNode;
 import com.nodecraft.nodesystem.nodes.math.random.RandomNumberNode;
 import com.nodecraft.nodesystem.nodes.math.random.RandomNumbersNode;
+import com.nodecraft.nodesystem.nodes.math.random.RandomVectorNode;
+import com.nodecraft.nodesystem.nodes.math.random.RandomVectorsNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Random v1 language fence: deterministic seeded RNG, stable types, strict ports, coherent noise.
+ */
 class RandomLanguageContractTest {
 
+    private static NodeRegistry registry;
+
     @BeforeAll
-    static void init() {
-        NodeRegistry registry = NodeRegistry.getInstance();
+    static void ensureRegistry() {
+        registry = NodeRegistry.getInstance();
         if (!registry.isInitialized()) {
             registry.initialize();
         }
     }
 
     @Test
-    void randomNumberOutputsDoubleOnly() {
-        RandomNumberNode node = new RandomNumberNode();
-        IPort output = node.getOutputPorts().stream()
-            .filter(p -> "output_random".equals(p.getId()))
-            .findFirst()
-            .orElseThrow();
-        assertEquals(NodeDataType.DOUBLE, output.getDataType());
-
-        var outputs = node.compute(java.util.Map.of(
-            "input_domain", new NumericRangeData(0.0d, 1.0d)
-        ));
-        assertInstanceOf(Double.class, outputs.get("output_random"));
+    void exactlySixRandomNodesRegistered() {
+        List<String> ids = registry.getAllNodeIds().stream()
+                .filter(id -> id.toLowerCase(Locale.ROOT).startsWith("math.random."))
+                .sorted()
+                .collect(Collectors.toList());
+        assertEquals(6, ids.size(), "Expected 6 random nodes: " + ids);
+        assertTrue(ids.contains("math.random.random_vectors"));
     }
 
     @Test
-    void randomNumbersOutputsListOnly() {
+    void randomNumbersOutputIsDoubleList() {
         RandomNumbersNode node = new RandomNumbersNode();
-        IPort output = node.getOutputPorts().stream()
-            .filter(p -> "output_values".equals(p.getId()))
-            .findFirst()
-            .orElseThrow();
-        assertEquals(NodeDataType.LIST, output.getDataType());
-
-        var outputs = node.compute(java.util.Map.of(
-            "input_domain", new NumericRangeData(0.0d, 1.0d),
-            "input_count", 5
-        ));
-        assertInstanceOf(java.util.List.class, outputs.get("output_values"));
-        assertEquals(5, ((java.util.List<?>) outputs.get("output_values")).size());
+        assertEquals(NodeDataType.DOUBLE_LIST, findPort(node, "output_values").getDataType());
     }
 
     @Test
-    void randomNumberMustNotExposeAnyOrCount() {
-        BaseNode node = (BaseNode) NodeRegistry.getInstance().createNodeInstance("math.random.random_number");
-        for (IPort port : node.getInputPorts()) {
-            assertFalse("input_count".equals(port.getId()));
-            assertFalse(port.getDataType() == NodeDataType.ANY, port.getId());
+    void randomVectorIsSingleVectorWithoutCount() {
+        RandomVectorNode node = new RandomVectorNode();
+        assertNull(findPortOrNull(node, "input_count"));
+        assertNull(findPortOrNull(node, "output_random_vector"));
+        assertEquals(NodeDataType.VECTOR, findPort(node, "output_vector").getDataType());
+
+        Map<String, Object> outputs = node.compute(Map.of(
+                "input_min_corner", new Vector3d(0, 0, 0),
+                "input_max_corner", new Vector3d(1, 1, 1),
+                "input_seed", 0
+        ));
+        assertInstanceOf(Vector3d.class, outputs.get("output_vector"));
+    }
+
+    @Test
+    void randomVectorsOutputIsVectorList() {
+        RandomVectorsNode node = new RandomVectorsNode();
+        assertEquals(NodeDataType.VECTOR_LIST, findPort(node, "output_vectors").getDataType());
+
+        @SuppressWarnings("unchecked")
+        List<Vector3d> vectors = (List<Vector3d>) node.compute(Map.of(
+                "input_min_corner", new Vector3d(0, 0, 0),
+                "input_max_corner", new Vector3d(1, 1, 1),
+                "input_count", 3,
+                "input_seed", 0
+        )).get("output_vectors");
+        assertEquals(3, vectors.size());
+        for (Vector3d v : vectors) {
+            assertTrue(Double.isFinite(v.x) && Double.isFinite(v.y) && Double.isFinite(v.z));
         }
-        for (IPort port : node.getOutputPorts()) {
-            assertFalse(port.getDataType() == NodeDataType.ANY, port.getId());
+    }
+
+    @Test
+    void missingSeedEqualsSeedZeroAndIsDeterministic() {
+        RandomNumberNode node = new RandomNumberNode();
+        NumericRangeData domain = new NumericRangeData(0.0d, 1.0d);
+
+        Object missingA = node.compute(Map.of("input_domain", domain)).get("output_random");
+        Object missingB = node.compute(Map.of("input_domain", domain)).get("output_random");
+        Object seeded = node.compute(Map.of(
+                "input_domain", domain,
+                "input_seed", 0
+        )).get("output_random");
+
+        assertEquals(missingA, missingB);
+        assertEquals(missingA, seeded);
+
+        RandomNumbersNode numbers = new RandomNumbersNode();
+        Object listA = numbers.compute(Map.of(
+                "input_domain", domain,
+                "input_count", 10,
+                "input_seed", 0
+        )).get("output_values");
+        Object listB = numbers.compute(Map.of(
+                "input_domain", domain,
+                "input_count", 10,
+                "input_seed", 0
+        )).get("output_values");
+        assertEquals(listA, listB);
+    }
+
+    @Test
+    void strictCountSeedAndAllowDuplicates() {
+        RandomNumbersNode numbers = new RandomNumbersNode();
+        // Count 1.9 is ignored → property default 10
+        @SuppressWarnings("unchecked")
+        List<Double> fromDoubleCount = (List<Double>) numbers.compute(Map.of(
+                "input_domain", new NumericRangeData(0.0d, 1.0d),
+                "input_count", 1.9d,
+                "input_seed", 0
+        )).get("output_values");
+        assertEquals(10, fromDoubleCount.size());
+
+        RandomNumberNode number = new RandomNumberNode();
+        Object withStringSeed = number.compute(Map.of(
+                "input_domain", new NumericRangeData(0.0d, 1.0d),
+                "input_seed", "1"
+        )).get("output_random");
+        Object withZeroSeed = number.compute(Map.of(
+                "input_domain", new NumericRangeData(0.0d, 1.0d),
+                "input_seed", 0
+        )).get("output_random");
+        assertEquals(withZeroSeed, withStringSeed);
+
+        RandomListItemNode listItem = new RandomListItemNode();
+        Map<String, Object> outputs = listItem.compute(Map.of(
+                "input_list", List.of("A", "B", "C"),
+                "input_count", 2,
+                "input_allow_duplicates", 1,
+                "input_seed", 0
+        ));
+        // AllowDuplicates=1 is not Boolean → false → unique picks, size 2
+        assertEquals(2, ((List<?>) outputs.get("output_items")).size());
+        assertEquals(2, ((List<?>) outputs.get("output_items")).stream().distinct().count());
+    }
+
+    @Test
+    void randomListItemBindsListTypeVariable() {
+        RandomListItemNode node = new RandomListItemNode();
+        assertEquals(NodeDataType.LIST, findPort(node, "input_list").getDataType());
+        assertEquals("T", findPort(node, "input_list").getListTypeVariable());
+        assertEquals("T", findPort(node, "output_item").getListTypeVariable());
+        assertTrue(findPort(node, "output_item").isListElementBinding());
+        assertEquals("T", findPort(node, "output_items").getListTypeVariable());
+        assertFalse(findPort(node, "output_items").isListElementBinding());
+
+        // Non-list is not auto-wrapped
+        Map<String, Object> wrapped = node.compute(Map.of(
+                "input_list", "Stone",
+                "input_count", 1,
+                "input_seed", 0
+        ));
+        assertNull(wrapped.get("output_item"));
+        assertTrue(((List<?>) wrapped.get("output_items")).isEmpty());
+    }
+
+    @Test
+    void noiseIsDeterministicCoherentAndRejectsNonFinite() {
+        NoiseNode node = new NoiseNode();
+        Object a = node.compute(Map.of(
+                "input_x", 1.0d, "input_y", 2.0d, "input_z", 3.0d, "input_seed", 0
+        )).get("output_noise");
+        Object b = node.compute(Map.of(
+                "input_x", 1.0d, "input_y", 2.0d, "input_z", 3.0d, "input_seed", 0
+        )).get("output_noise");
+        assertEquals(a, b);
+        assertTrue(Double.isFinite((Double) a));
+
+        double nearby = (Double) node.compute(Map.of(
+                "input_x", 1.001d, "input_y", 2.0d, "input_z", 3.0d, "input_seed", 0
+        )).get("output_noise");
+        assertTrue(Math.abs((Double) a - nearby) < 0.5d);
+
+        double nanOut = (Double) node.compute(Map.of(
+                "input_x", Double.NaN, "input_y", 0.0d, "input_z", 0.0d, "input_seed", 0
+        )).get("output_noise");
+        assertTrue(Double.isNaN(nanOut));
+    }
+
+    @Test
+    void numericRandomOutputsAreFiniteOnFiniteDomains() {
+        RandomNumberNode node = new RandomNumberNode();
+        for (int i = 0; i < 20; i++) {
+            double v = (Double) node.compute(Map.of(
+                    "input_domain", new NumericRangeData(-10.0d, 10.0d),
+                    "input_seed", i
+            )).get("output_random");
+            assertTrue(Double.isFinite(v));
         }
+    }
+
+    @Test
+    void currentGraphFormatIsV29() {
+        assertEquals(29, GraphFormatVersion.V29);
+        assertEquals(GraphFormatVersion.V29, GraphFormatVersion.CURRENT);
+    }
+
+    @Test
+    void v28ToV29DropsRandomVectorCountAndOldOutputWires() {
+        SavedGraph v28 = new SavedGraph();
+        v28.formatVersion = GraphFormatVersion.V28;
+
+        SavedNode vector = savedNode("rv", "math.random.random_vector");
+        SavedNode sink = savedNode("sink", "math.list.create_list");
+        SavedNode countSrc = savedNode("count", "input.numeric.integer");
+        SavedNode construct = savedNode("cv", "reference.vectors.construct_vector");
+
+        v28.nodes = new ArrayList<>(List.of(vector, sink, countSrc, construct));
+        v28.connections = new ArrayList<>(List.of(
+                wire("rv", "output_random_vector", "sink", "input_0"),
+                wire("count", "output_value", "rv", "input_count"),
+                wire("construct", "output_vector", "rv", "input_min_corner")
+        ));
+        v28.nodePositions = Map.of();
+
+        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v28);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.V29, migrated.formatVersion);
+
+        assertEquals(4, migrated.nodes.size());
+        assertEquals(1, migrated.connections.size());
+        assertTrue(hasWire(migrated, "construct", "output_vector", "rv", "input_min_corner"));
+        assertFalse(hasWire(migrated, "rv", "output_random_vector", "sink", "input_0"));
+        assertFalse(hasWire(migrated, "count", "output_value", "rv", "input_count"));
+    }
+
+    private static IPort findPort(Object node, String portId) {
+        IPort port = findPortOrNull(node, portId);
+        if (port == null) {
+            throw new AssertionError("missing port " + portId);
+        }
+        return port;
+    }
+
+    private static IPort findPortOrNull(Object node, String portId) {
+        Iterable<IPort> inputs;
+        Iterable<IPort> outputs;
+        if (node instanceof RandomNumberNode n) {
+            inputs = n.getInputPorts();
+            outputs = n.getOutputPorts();
+        } else if (node instanceof RandomNumbersNode n) {
+            inputs = n.getInputPorts();
+            outputs = n.getOutputPorts();
+        } else if (node instanceof RandomListItemNode n) {
+            inputs = n.getInputPorts();
+            outputs = n.getOutputPorts();
+        } else if (node instanceof RandomVectorNode n) {
+            inputs = n.getInputPorts();
+            outputs = n.getOutputPorts();
+        } else if (node instanceof RandomVectorsNode n) {
+            inputs = n.getInputPorts();
+            outputs = n.getOutputPorts();
+        } else if (node instanceof NoiseNode n) {
+            inputs = n.getInputPorts();
+            outputs = n.getOutputPorts();
+        } else {
+            return null;
+        }
+        for (IPort port : inputs) {
+            if (portId.equals(port.getId())) {
+                return port;
+            }
+        }
+        for (IPort port : outputs) {
+            if (portId.equals(port.getId())) {
+                return port;
+            }
+        }
+        return null;
+    }
+
+    private static SavedNode savedNode(String id, String typeId) {
+        SavedNode node = new SavedNode();
+        node.nodeId = id;
+        node.typeId = typeId;
+        return node;
+    }
+
+    private static SavedConnection wire(String sourceNode, String sourcePort, String targetNode, String targetPort) {
+        SavedConnection connection = new SavedConnection();
+        connection.sourceNodeId = sourceNode;
+        connection.sourcePortId = sourcePort;
+        connection.targetNodeId = targetNode;
+        connection.targetPortId = targetPort;
+        return connection;
+    }
+
+    private static boolean hasWire(SavedGraph graph, String sourceNode, String sourcePort,
+                                   String targetNode, String targetPort) {
+        return graph.connections.stream().anyMatch(c ->
+                sourceNode.equals(c.sourceNodeId)
+                        && sourcePort.equalsIgnoreCase(c.sourcePortId)
+                        && targetNode.equals(c.targetNodeId)
+                        && targetPort.equalsIgnoreCase(c.targetPortId));
     }
 }

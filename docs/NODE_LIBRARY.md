@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **542**
+- Total nodes: **543**
 - Total categories: **59**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -36,7 +36,7 @@
 | `math.fields` | 17 |
 | `math.list` | 23 |
 | `math.logic` | 6 |
-| `math.random` | 5 |
+| `math.random` | 6 |
 | `math.scalar_math` | 23 |
 | `math.sequence` | 3 |
 | `math.trigonometry` | 10 |
@@ -471,15 +471,16 @@
 | NOT | `math.logic.not` | Returns the logical negation of the boolean input. | `NotNode` |
 | XOR | `math.logic.xor` | Returns true when exactly one boolean input is true. | `XorNode` |
 
-## math.random (5)
+## math.random (6)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Random Number | `math.random.random_number` | Generates a single random double within a domain. | `RandomNumberNode` |
-| Noise | `math.random.noise` | Samples coherent noise from a 3D position and seed. | `NoiseNode` |
-| Random Numbers | `math.random.random_numbers` | Generates a list of random doubles within a domain. | `RandomNumbersNode` |
-| Random List Item | `math.random.random_list_item` | Randomly selects one or more items from a list. | `RandomListItemNode` |
-| Random Vector | `math.random.random_vector` | Generates random vectors within a specified bounding box. | `RandomVectorNode` |
+| Random Number | `math.random.random_number` | Generates a single deterministic random double within a domain. | `RandomNumberNode` |
+| Random Numbers | `math.random.random_numbers` | Generates a deterministic list of random doubles within a domain. | `RandomNumbersNode` |
+| Random List Item | `math.random.random_list_item` | Deterministically selects one or more items from a list. | `RandomListItemNode` |
+| Random Vector | `math.random.random_vector` | Generates a single deterministic random vector within a bounding box. | `RandomVectorNode` |
+| Random Vectors | `math.random.random_vectors` | Generates a deterministic list of random vectors within a bounding box. | `RandomVectorsNode` |
+| Noise | `math.random.noise` | Samples coherent 3D value noise from a position and seed. | `NoiseNode` |
 
 ## math.scalar_math (23)
 

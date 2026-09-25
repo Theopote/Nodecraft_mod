@@ -50,8 +50,6 @@ class AnyAllowlistContractTest {
     private static final Set<String> ANY_ALLOWED_PREFIXES = Set.of(
         "variable.",
         "math.random.random_list_item",
-        "math.random.random_vector",
-        "math.random.noise",
         "math.compare.equals",
         "math.compare.not_equals",
         "flow.",

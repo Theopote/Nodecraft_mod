@@ -180,8 +180,14 @@ public final class GraphFormatVersion {
      */
     public static final int V28 = 28;
 
+    /**
+     * Random v1: Random Vector becomes single VECTOR (drop Count + old ANY output wires);
+     * Random Numbers / List Item type tightening (port ids unchanged).
+     */
+    public static final int V29 = 29;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V28;
+    public static final int CURRENT = V29;
 
     private GraphFormatVersion() {
     }
