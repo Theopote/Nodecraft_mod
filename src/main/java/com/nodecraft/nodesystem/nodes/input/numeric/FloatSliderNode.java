@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.NumericInputUtils;
 import imgui.ImGui;
 import imgui.type.ImDouble;
 import org.jetbrains.annotations.Nullable;
@@ -19,7 +20,7 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "input.numeric.float_slider",
-    displayName = "Float Slider",
+    displayName = "Number Slider",
     description = "有界参数探索：精确 double 输入 + 滑动条快速调节。Min/Max 必须设置。",
     category = "input.numeric",
     order = 3
@@ -108,9 +109,9 @@ public class FloatSliderNode extends BaseCustomUINode {
 
             ImGui.setCursorPosX(baseCursorX + edgeMargin);
             l.setItemWidth(Math.max(availableWidth / Math.max(zoom, 0.001f), 1.0f));
-            float[] sliderValue = {(float) currentValue};
-            if (ImGui.sliderFloat("##float_slider", sliderValue, (float) minValue, (float) maxValue, formatString)) {
-                setCurrentValue(sliderValue[0]);
+            float[] sliderT = {(float) NumericInputUtils.normalizedInRange(currentValue, minValue, maxValue)};
+            if (ImGui.sliderFloat("##float_slider", sliderT, 0.0f, 1.0f, formatString)) {
+                setCurrentValue(NumericInputUtils.lerpFromNormalized(sliderT[0], minValue, maxValue));
                 changed = true;
             }
             l.popItemWidth();
@@ -120,30 +121,26 @@ public class FloatSliderNode extends BaseCustomUINode {
     }
 
     private void refreshFormatting() {
-        formatString = "%." + Math.max(0, Math.min(6, decimalPlaces)) + "f";
+        formatString = NumericInputUtils.formatString(decimalPlaces, 6);
     }
 
     private void normalizeRange() {
+        minValue = NumericInputUtils.sanitizeFiniteBound(minValue, 0.0d);
+        maxValue = NumericInputUtils.sanitizeFiniteBound(maxValue, 100.0d);
         if (Double.compare(minValue, maxValue) > 0) {
             double temp = minValue;
             minValue = maxValue;
             maxValue = temp;
         }
-        currentValue = clampAndRound(currentValue);
+        currentValue = clampValue(currentValue);
     }
 
-    private double clampAndRound(double value) {
-        double clamped = Math.max(minValue, Math.min(maxValue, value));
-        double multiplier = Math.pow(10.0, Math.max(0, Math.min(6, decimalPlaces)));
-        return Math.round(clamped * multiplier) / multiplier;
-    }
-
-    private float getDragSpeed() {
-        double range = Math.abs(maxValue - minValue);
-        if (range <= 0.0) {
-            return 0.1f;
-        }
-        return (float) Math.max(range / 200.0, Math.pow(10.0, -Math.max(0, Math.min(6, decimalPlaces))));
+    private double clampValue(double value) {
+        return NumericInputUtils.clampFiniteRange(
+                NumericInputUtils.acceptFiniteOrKeep(value, currentValue),
+                minValue,
+                maxValue
+        );
     }
 
     private void updateOutput() {
@@ -156,7 +153,7 @@ public class FloatSliderNode extends BaseCustomUINode {
     }
 
     public void setCurrentValue(double currentValue) {
-        double normalized = clampAndRound(currentValue);
+        double normalized = clampValue(currentValue);
         if (Double.compare(this.currentValue, normalized) != 0) {
             this.currentValue = normalized;
             updateOutput();
@@ -169,8 +166,9 @@ public class FloatSliderNode extends BaseCustomUINode {
     }
 
     public void setMinValue(double minValue) {
-        if (Double.compare(this.minValue, minValue) != 0) {
-            this.minValue = minValue;
+        double sanitized = NumericInputUtils.sanitizeFiniteBound(minValue, this.minValue);
+        if (Double.compare(this.minValue, sanitized) != 0) {
+            this.minValue = sanitized;
             normalizeRange();
             updateOutput();
             invalidateCache();
@@ -183,8 +181,9 @@ public class FloatSliderNode extends BaseCustomUINode {
     }
 
     public void setMaxValue(double maxValue) {
-        if (Double.compare(this.maxValue, maxValue) != 0) {
-            this.maxValue = maxValue;
+        double sanitized = NumericInputUtils.sanitizeFiniteBound(maxValue, this.maxValue);
+        if (Double.compare(this.maxValue, sanitized) != 0) {
+            this.maxValue = sanitized;
             normalizeRange();
             updateOutput();
             invalidateCache();
@@ -201,8 +200,6 @@ public class FloatSliderNode extends BaseCustomUINode {
         if (this.decimalPlaces != normalized) {
             this.decimalPlaces = normalized;
             refreshFormatting();
-            currentValue = clampAndRound(currentValue);
-            updateOutput();
             invalidateCache();
             markDirty();
         }
@@ -240,10 +237,10 @@ public class FloatSliderNode extends BaseCustomUINode {
             refreshFormatting();
 
             if (map.get("minValue") instanceof Number min) {
-                this.minValue = min.doubleValue();
+                this.minValue = NumericInputUtils.sanitizeFiniteBound(min.doubleValue(), this.minValue);
             }
             if (map.get("maxValue") instanceof Number max) {
-                this.maxValue = max.doubleValue();
+                this.maxValue = NumericInputUtils.sanitizeFiniteBound(max.doubleValue(), this.maxValue);
             }
             if (map.get("showValueInput") instanceof Boolean value) {
                 this.showValueInput = value;

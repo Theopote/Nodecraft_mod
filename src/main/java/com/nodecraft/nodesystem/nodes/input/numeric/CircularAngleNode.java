@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.NumericInputUtils;
 import imgui.ImDrawList;
 import imgui.ImGui;
 import imgui.ImVec2;
@@ -215,13 +216,10 @@ public class CircularAngleNode extends BaseCustomUINode {
     }
 
     public void setAngle(double newAngle) {
-        double normalized = newAngle % 360.0;
-        if (normalized < 0.0) {
-            normalized += 360.0;
+        if (!Double.isFinite(newAngle)) {
+            return;
         }
-        double multiplier = Math.pow(10.0, getSafePrecision());
-        normalized = Math.round(normalized * multiplier) / multiplier;
-
+        double normalized = NumericInputUtils.wrapDegrees360(newAngle);
         if (Double.compare(this.angle, normalized) != 0) {
             this.angle = normalized;
             updateOutput();
@@ -246,7 +244,6 @@ public class CircularAngleNode extends BaseCustomUINode {
         int normalized = Math.max(0, Math.min(5, precision));
         if (this.precision != normalized) {
             this.precision = normalized;
-            setAngle(angle);
             invalidateCache();
             markDirty();
         }
@@ -323,7 +320,7 @@ public class CircularAngleNode extends BaseCustomUINode {
                 }
             }
 
-            setAngle(angle);
+            setAngle(this.angle);
             invalidateCache();
             markDirty();
         } else if (state instanceof Number number) {

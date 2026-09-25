@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.NumericInputUtils;
 import imgui.ImGui;
 import org.jetbrains.annotations.Nullable;
 
@@ -105,9 +106,9 @@ public class AngleSliderNode extends BaseCustomUINode {
             }
 
             l.setItemWidth(Math.max(availableWidth / Math.max(zoom, 0.001f), 1.0f));
-            float[] angleValue = {(float) currentAngle};
-            if (ImGui.sliderFloat("##angle_slider", angleValue, (float) minAngle, (float) maxAngle, "%.1f°")) {
-                setCurrentAngle(angleValue[0]);
+            float[] sliderT = {(float) NumericInputUtils.normalizedInRange(currentAngle, minAngle, maxAngle)};
+            if (ImGui.sliderFloat("##angle_slider", sliderT, 0.0f, 1.0f, "%.1f°")) {
+                setCurrentAngle(NumericInputUtils.lerpFromNormalized(sliderT[0], minAngle, maxAngle));
                 changed = true;
             }
             l.popItemWidth();
@@ -118,12 +119,22 @@ public class AngleSliderNode extends BaseCustomUINode {
     }
 
     private void normalizeRange() {
+        minAngle = NumericInputUtils.sanitizeFiniteBound(minAngle, 0.0d);
+        maxAngle = NumericInputUtils.sanitizeFiniteBound(maxAngle, 360.0d);
         if (Double.compare(minAngle, maxAngle) > 0) {
             double temp = minAngle;
             minAngle = maxAngle;
             maxAngle = temp;
         }
-        currentAngle = Math.max(minAngle, Math.min(maxAngle, currentAngle));
+        currentAngle = clampAngle(currentAngle);
+    }
+
+    private double clampAngle(double angle) {
+        return NumericInputUtils.clampFiniteRange(
+                NumericInputUtils.acceptFiniteOrKeep(angle, currentAngle),
+                minAngle,
+                maxAngle
+        );
     }
 
     private void updateOutput() {
@@ -137,7 +148,7 @@ public class AngleSliderNode extends BaseCustomUINode {
     }
 
     public void setCurrentAngle(double currentAngle) {
-        double normalized = Math.max(minAngle, Math.min(maxAngle, currentAngle));
+        double normalized = clampAngle(currentAngle);
         if (Double.compare(this.currentAngle, normalized) != 0) {
             this.currentAngle = normalized;
             updateOutput();
@@ -150,8 +161,9 @@ public class AngleSliderNode extends BaseCustomUINode {
     }
 
     public void setMinAngle(double minAngle) {
-        if (Double.compare(this.minAngle, minAngle) != 0) {
-            this.minAngle = minAngle;
+        double sanitized = NumericInputUtils.sanitizeFiniteBound(minAngle, this.minAngle);
+        if (Double.compare(this.minAngle, sanitized) != 0) {
+            this.minAngle = sanitized;
             normalizeRange();
             updateOutput();
             invalidateCache();
@@ -164,8 +176,9 @@ public class AngleSliderNode extends BaseCustomUINode {
     }
 
     public void setMaxAngle(double maxAngle) {
-        if (Double.compare(this.maxAngle, maxAngle) != 0) {
-            this.maxAngle = maxAngle;
+        double sanitized = NumericInputUtils.sanitizeFiniteBound(maxAngle, this.maxAngle);
+        if (Double.compare(this.maxAngle, sanitized) != 0) {
+            this.maxAngle = sanitized;
             normalizeRange();
             updateOutput();
             invalidateCache();
@@ -204,10 +217,10 @@ public class AngleSliderNode extends BaseCustomUINode {
                 this.showRangeInputs = value;
             }
             if (map.get("minAngle") instanceof Number value) {
-                this.minAngle = value.doubleValue();
+                this.minAngle = NumericInputUtils.sanitizeFiniteBound(value.doubleValue(), this.minAngle);
             }
             if (map.get("maxAngle") instanceof Number value) {
-                this.maxAngle = value.doubleValue();
+                this.maxAngle = NumericInputUtils.sanitizeFiniteBound(value.doubleValue(), this.maxAngle);
             }
 
             Object angleValue = map.get("angle");

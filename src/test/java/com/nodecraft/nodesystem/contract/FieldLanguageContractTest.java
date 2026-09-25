@@ -558,9 +558,9 @@ class FieldLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV30() {
-        assertEquals(30, GraphFormatVersion.V30);
-        assertEquals(GraphFormatVersion.V30, GraphFormatVersion.CURRENT);
+    void currentGraphFormatIsV31() {
+        assertEquals(31, GraphFormatVersion.V31);
+        assertEquals(GraphFormatVersion.V31, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -582,7 +582,7 @@ class FieldLanguageContractTest {
         v29.nodePositions = Map.of();
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v29);
-        assertEquals(GraphFormatVersion.V30, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.V31, migrated.formatVersion);
         assertFalse(hasWire(migrated, "ssp", "output_values", "sort", "input_list"));
         assertTrue(hasWire(migrated, "ssp", "output_values", "clist", "input_0"));
         assertTrue(hasWire(migrated, "field", "output_field", "ssp", "input_field"));

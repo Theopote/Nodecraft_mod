@@ -96,6 +96,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V27 -> migrateV27ToV28(graph);
             case GraphFormatVersion.V28 -> migrateV28ToV29(graph);
             case GraphFormatVersion.V29 -> migrateV29ToV30(graph);
+            case GraphFormatVersion.V30 -> migrateV30ToV31(graph);
             default -> graph;
         };
     }
@@ -1996,6 +1997,64 @@ public final class GraphMigrationRegistry {
                     && !isDeclaredConnectionStillCompatible(sourceType, connection.sourcePortId,
                     nodeTypeBySavedId.get(connection.targetNodeId), connection.targetPortId)) {
                 LOGGER.debug("Dropped Field v1 type-incompatible wire {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
+            return false;
+        });
+
+        return graph;
+    }
+
+    private static final String XY_SLIDER_TYPE = "input.numeric.xy_slider";
+    private static final String NUMERIC_OUTPUT_VALUE_PORT = "output_value";
+
+    /**
+     * Input Numeric v1: drop XY Slider {@code output_vector}; tighten {@code output_uv} to DOUBLE_LIST;
+     * remap Pi/E legacy ports to {@code output_value}.
+     */
+    private static SavedGraph migrateV30ToV31(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null || connection.sourcePortId == null) {
+                continue;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            if (NUMERIC_PI_TYPE.equals(sourceType) && "output_pi".equalsIgnoreCase(connection.sourcePortId)) {
+                connection.sourcePortId = NUMERIC_OUTPUT_VALUE_PORT;
+            } else if (NUMERIC_E_TYPE.equals(sourceType) && "output_e".equalsIgnoreCase(connection.sourcePortId)) {
+                connection.sourcePortId = NUMERIC_OUTPUT_VALUE_PORT;
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+
+            if (XY_SLIDER_TYPE.equals(sourceType) && "output_vector".equals(sourcePort)) {
+                LOGGER.debug("Dropped XY Slider legacy output_vector wire from {}", connection.sourceNodeId);
+                return true;
+            }
+            if (XY_SLIDER_TYPE.equals(sourceType) && "output_uv".equals(sourcePort)
+                    && !isDeclaredConnectionStillCompatible(sourceType, connection.sourcePortId,
+                    nodeTypeBySavedId.get(connection.targetNodeId), connection.targetPortId)) {
+                LOGGER.debug("Dropped Input Numeric v1 type-incompatible wire {}#{} → {}#{}",
                         connection.sourceNodeId, connection.sourcePortId,
                         connection.targetNodeId, connection.targetPortId);
                 return true;

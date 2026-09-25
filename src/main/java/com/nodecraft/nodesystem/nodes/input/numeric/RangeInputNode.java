@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.NumericRangeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.NumericInputUtils;
 import imgui.ImGui;
 import imgui.type.ImDouble;
 import org.jetbrains.annotations.Nullable;
@@ -122,7 +123,7 @@ public class RangeInputNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_DOMAIN_ID, domain);
         outputValues.put(OUTPUT_START_ID, domain.start());
         outputValues.put(OUTPUT_END_ID, domain.end());
-        outputValues.put(OUTPUT_SPAN_ID, domain.span());
+        outputValues.put(OUTPUT_SPAN_ID, NumericInputUtils.safeDirectedSpan(start, end));
         syncOutputPorts();
     }
 
@@ -131,6 +132,9 @@ public class RangeInputNode extends BaseCustomUINode {
     }
 
     public void setStart(double start) {
+        if (!Double.isFinite(start)) {
+            return;
+        }
         if (Double.compare(this.start, start) != 0) {
             this.start = start;
             updateOutput();
@@ -155,6 +159,9 @@ public class RangeInputNode extends BaseCustomUINode {
     }
 
     public void setEnd(double end) {
+        if (!Double.isFinite(end)) {
+            return;
+        }
         if (Double.compare(this.end, end) != 0) {
             this.end = end;
             updateOutput();
@@ -213,6 +220,12 @@ public class RangeInputNode extends BaseCustomUINode {
         }
         if (map.get("precision") instanceof Number precisionValue) {
             precision = Math.max(0, Math.min(6, precisionValue.intValue()));
+        }
+        if (!Double.isFinite(start)) {
+            start = 0.0d;
+        }
+        if (!Double.isFinite(end)) {
+            end = 1.0d;
         }
         updateOutput();
         invalidateCache();

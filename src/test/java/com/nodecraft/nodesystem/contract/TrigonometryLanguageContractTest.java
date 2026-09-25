@@ -162,7 +162,8 @@ class TrigonometryLanguageContractTest {
         assertEquals(28, GraphFormatVersion.V28);
         assertEquals(29, GraphFormatVersion.V29);
         assertEquals(30, GraphFormatVersion.V30);
-        assertEquals(GraphFormatVersion.V30, GraphFormatVersion.CURRENT);
+        assertEquals(31, GraphFormatVersion.V31);
+        assertEquals(GraphFormatVersion.V31, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -187,7 +188,7 @@ class TrigonometryLanguageContractTest {
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v25);
         assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(GraphFormatVersion.V30, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.V31, migrated.formatVersion);
 
         assertEquals(4, migrated.nodes.size());
         assertEquals(3, migrated.connections.size());
@@ -199,7 +200,7 @@ class TrigonometryLanguageContractTest {
         assertEquals("input.numeric.pi", migratedPi.typeId);
 
         assertFalse(migrated.nodes.stream().anyMatch(n -> "deg_rad".equals(n.nodeId)));
-        assertTrue(hasWire(migrated, "pi", "output_pi", "sin", "input_angle"));
+        assertTrue(hasWire(migrated, "pi", "output_value", "sin", "input_angle"));
         assertTrue(hasWire(migrated, "float_a", "output_value", "add", "input_a"));
         assertTrue(hasWire(migrated, "float_a", "output_value", "add", "input_b"));
         assertFalse(hasWire(migrated, "deg_rad", "output_radians", "sin", "input_angle"));

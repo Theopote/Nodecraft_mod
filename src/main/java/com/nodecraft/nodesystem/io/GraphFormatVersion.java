@@ -192,8 +192,14 @@ public final class GraphFormatVersion {
      */
     public static final int V30 = 30;
 
+    /**
+     * Input Numeric v1: XY Slider drops {@code output_vector}, {@code output_uv} → DOUBLE_LIST;
+     * Pi/E {@code output_value}; finite-value semantics; drop incompatible wires.
+     */
+    public static final int V31 = 31;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V30;
+    public static final int CURRENT = V31;
 
     private GraphFormatVersion() {
     }

@@ -20,19 +20,19 @@ import java.util.UUID;
 )
 public class ENode extends BaseNode {
 
-    private static final String OUTPUT_E_ID = "output_e";
+    private static final String OUTPUT_VALUE_ID = "output_value";
 
     public ENode() {
         super(UUID.randomUUID(), "input.numeric.e");
 
-        addOutputPort(new BasePort(OUTPUT_E_ID, "E", "The value of e", NodeDataType.DOUBLE, this));
-        outputValues.put(OUTPUT_E_ID, Math.E);
+        addOutputPort(new BasePort(OUTPUT_VALUE_ID, "Value", "The value of e", NodeDataType.DOUBLE, this));
+        outputValues.put(OUTPUT_VALUE_ID, Math.E);
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        if (!outputValues.containsKey(OUTPUT_E_ID)) {
-            outputValues.put(OUTPUT_E_ID, Math.E);
+        if (!outputValues.containsKey(OUTPUT_VALUE_ID)) {
+            outputValues.put(OUTPUT_VALUE_ID, Math.E);
         }
     }
 

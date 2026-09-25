@@ -7,13 +7,13 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.NumericInputUtils;
 import imgui.ImDrawList;
 import imgui.ImGui;
 import imgui.ImVec2;
 import imgui.flag.ImGuiCol;
 import imgui.type.ImDouble;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
 import java.util.HashMap;
 import java.util.List;
@@ -32,7 +32,6 @@ public class XYSliderNode extends BaseCustomUINode {
 
     private static final float PAD_SIZE = 132.0f;
 
-    private static final String OUTPUT_VECTOR_ID = "output_vector";
     private static final String OUTPUT_X_ID = "output_x";
     private static final String OUTPUT_Y_ID = "output_y";
     private static final String OUTPUT_UV_ID = "output_uv";
@@ -71,10 +70,9 @@ public class XYSliderNode extends BaseCustomUINode {
 
     public XYSliderNode() {
         super(UUID.randomUUID(), "input.numeric.xy_slider");
-        addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "2D value as Vector3d(x,y,0)", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_X_ID, "X", "Current X value", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Current Y value", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_UV_ID, "UV", "Normalized UV pair [x, y]", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_UV_ID, "UV", "Normalized UV pair [x, y]", NodeDataType.DOUBLE_LIST, this));
         normalizeRanges();
         updateOutput();
     }
@@ -211,6 +209,9 @@ public class XYSliderNode extends BaseCustomUINode {
     }
 
     private void setValues(double newX, double newY) {
+        if (!Double.isFinite(newX) || !Double.isFinite(newY)) {
+            return;
+        }
         double normalizedX = clampAndSnap(newX, minX, maxX);
         double normalizedY = clampAndSnap(newY, minY, maxY);
         if (Double.compare(x, normalizedX) != 0 || Double.compare(y, normalizedY) != 0) {
@@ -222,25 +223,11 @@ public class XYSliderNode extends BaseCustomUINode {
     }
 
     private double clampAndSnap(double value, double min, double max) {
-        double clamped = Math.max(min, Math.min(max, value));
-        if (Double.isFinite(step) && step > 0.0d) {
-            clamped = min + Math.round((clamped - min) / step) * step;
-            clamped = Math.max(min, Math.min(max, clamped));
-        }
-        return roundForPrecision(clamped);
-    }
-
-    private double roundForPrecision(double value) {
-        double multiplier = Math.pow(10.0d, getSafePrecision());
-        return Math.round(value * multiplier) / multiplier;
+        return NumericInputUtils.snapToStep(value, min, max, step);
     }
 
     private double normalized(double value, double min, double max) {
-        double range = max - min;
-        if (Math.abs(range) <= 1.0e-12d) {
-            return 0.0d;
-        }
-        return clamp01((value - min) / range);
+        return NumericInputUtils.normalizedInRange(value, min, max);
     }
 
     private double clamp01(double value) {
@@ -274,7 +261,6 @@ public class XYSliderNode extends BaseCustomUINode {
     private void updateOutput() {
         double nx = normalized(x, minX, maxX);
         double ny = normalized(y, minY, maxY);
-        outputValues.put(OUTPUT_VECTOR_ID, new Vector3d(x, y, 0.0d));
         outputValues.put(OUTPUT_X_ID, x);
         outputValues.put(OUTPUT_Y_ID, y);
         outputValues.put(OUTPUT_UV_ID, List.of(nx, ny));
@@ -375,8 +361,6 @@ public class XYSliderNode extends BaseCustomUINode {
         int safePrecision = Math.max(0, Math.min(6, precision));
         if (this.precision != safePrecision) {
             this.precision = safePrecision;
-            normalizeRanges();
-            updateOutput();
             invalidateCache();
             markDirty();
         }

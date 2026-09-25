@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.NumericInputUtils;
 import imgui.ImGui;
 import imgui.type.ImDouble;
 import org.jetbrains.annotations.Nullable;
@@ -19,8 +20,8 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "input.numeric.float",
-    displayName = "Float Input",
-    description = "精确浮点值输入。Min/Max 可选。需要快速有界探索时使用 Float Slider。",
+    displayName = "Number Input",
+    description = "精确浮点值输入。Min/Max 可选。需要快速有界探索时使用 Number Slider。",
     category = "input.numeric",
     order = 1
 )
@@ -98,14 +99,7 @@ public class FloatInputNode extends BaseCustomUINode {
             ImDouble inputValue = new ImDouble(value);
             boolean changedInput = ImGui.inputDouble("##float_input", inputValue, 0.0, 0.0, formatString);
             if (changedInput) {
-                double next = inputValue.get();
-                if (Double.isFinite(minValue)) {
-                    next = Math.max(minValue, next);
-                }
-                if (Double.isFinite(maxValue)) {
-                    next = Math.min(maxValue, next);
-                }
-                setValue(next);
+                setValue(inputValue.get());
                 changed = true;
             }
 
@@ -121,13 +115,12 @@ public class FloatInputNode extends BaseCustomUINode {
     }
 
     private void refreshPrecisionState() {
-        formatString = "%." + getSafePrecision() + "f";
+        formatString = NumericInputUtils.formatString(precision, 6);
     }
 
     public void setValue(double value) {
-        double clampedValue = Math.max(minValue, Math.min(maxValue, value));
-        double multiplier = Math.pow(10, getSafePrecision());
-        clampedValue = Math.round(clampedValue * multiplier) / multiplier;
+        double accepted = NumericInputUtils.acceptFiniteOrKeep(value, this.value);
+        double clampedValue = NumericInputUtils.clampOptionalBounds(accepted, minValue, maxValue);
         if (Double.compare(this.value, clampedValue) != 0) {
             this.value = clampedValue;
             updateOutput();
@@ -149,8 +142,9 @@ public class FloatInputNode extends BaseCustomUINode {
     }
 
     public void setMinValue(double minValue) {
-        if (Double.compare(this.minValue, minValue) != 0) {
-            this.minValue = minValue;
+        double sanitized = NumericInputUtils.sanitizeOptionalBound(minValue, this.minValue);
+        if (Double.compare(this.minValue, sanitized) != 0) {
+            this.minValue = sanitized;
             if (Double.compare(this.minValue, this.maxValue) > 0) {
                 double tmp = this.minValue;
                 this.minValue = this.maxValue;
@@ -167,8 +161,9 @@ public class FloatInputNode extends BaseCustomUINode {
     }
 
     public void setMaxValue(double maxValue) {
-        if (Double.compare(this.maxValue, maxValue) != 0) {
-            this.maxValue = maxValue;
+        double sanitized = NumericInputUtils.sanitizeOptionalBound(maxValue, this.maxValue);
+        if (Double.compare(this.maxValue, sanitized) != 0) {
+            this.maxValue = sanitized;
             if (Double.compare(this.minValue, this.maxValue) > 0) {
                 double tmp = this.minValue;
                 this.minValue = this.maxValue;
@@ -189,7 +184,6 @@ public class FloatInputNode extends BaseCustomUINode {
         if (this.precision != normalized) {
             this.precision = normalized;
             refreshPrecisionState();
-            setValue(this.value);
             invalidateCache();
             markDirty();
         }
@@ -227,10 +221,10 @@ public class FloatInputNode extends BaseCustomUINode {
             refreshPrecisionState();
 
             if (stateMap.get("min") instanceof Number min) {
-                this.minValue = min.doubleValue();
+                this.minValue = NumericInputUtils.sanitizeOptionalBound(min.doubleValue(), this.minValue);
             }
             if (stateMap.get("max") instanceof Number max) {
-                this.maxValue = max.doubleValue();
+                this.maxValue = NumericInputUtils.sanitizeOptionalBound(max.doubleValue(), this.maxValue);
             }
             if (Double.compare(this.minValue, this.maxValue) > 0) {
                 double tmp = this.minValue;

@@ -20,19 +20,19 @@ import java.util.UUID;
 )
 public class PiNode extends BaseNode {
 
-    private static final String OUTPUT_PI_ID = "output_pi";
+    private static final String OUTPUT_VALUE_ID = "output_value";
 
     public PiNode() {
         super(UUID.randomUUID(), "input.numeric.pi");
 
-        addOutputPort(new BasePort(OUTPUT_PI_ID, "Pi", "The value of Pi", NodeDataType.DOUBLE, this));
-        outputValues.put(OUTPUT_PI_ID, Math.PI);
+        addOutputPort(new BasePort(OUTPUT_VALUE_ID, "Value", "The value of Pi", NodeDataType.DOUBLE, this));
+        outputValues.put(OUTPUT_VALUE_ID, Math.PI);
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        if (!outputValues.containsKey(OUTPUT_PI_ID)) {
-            outputValues.put(OUTPUT_PI_ID, Math.PI);
+        if (!outputValues.containsKey(OUTPUT_VALUE_ID)) {
+            outputValues.put(OUTPUT_VALUE_ID, Math.PI);
         }
     }
 
