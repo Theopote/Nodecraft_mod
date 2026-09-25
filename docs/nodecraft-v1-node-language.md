@@ -17,7 +17,7 @@ Last updated: 2026-09-25
 | Logic boolean / If / Switch (no coercion) | [`node-language-v1-logic.md`](./node-language-v1-logic.md) + `LogicUtils` |
 | Sequence range / series / repeat | [`node-language-v1-sequence.md`](./node-language-v1-sequence.md) + `SequenceOps` |
 | Random seeded / Noise / List&lt;T&gt; pick | [`node-language-v1-random.md`](./node-language-v1-random.md) + `RandomOps` **(PASSED / FROZEN, V29)** |
-| Field scalar/vector / sampling Valid | [`node-language-v1-fields.md`](./node-language-v1-fields.md) + `FieldMath` / `FieldSampleUtils` **(CODE PASS / CONTRACT NOT FROZEN, V30)** |
+| Field scalar/vector / sampling Valid | [`node-language-v1-fields.md`](./node-language-v1-fields.md) + `FieldMath` / `FieldSampleUtils` **(PASSED / FROZEN, V30)** |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 
@@ -31,7 +31,7 @@ Last updated: 2026-09-25
 | Logic v1 | FROZEN | (no bump) |
 | Sequence v1 | FROZEN | V28 |
 | Random v1 | **PASSED / FROZEN** | V29 |
-| Fields v1 | **CODE PASS / CONTRACT NOT FROZEN** | V30 |
+| Fields v1 | **PASSED / FROZEN** | V30 |
 | List / Collection v1 | FROZEN | V23 |
 | Data Tree v1 | FROZEN | V24 |
 
@@ -506,7 +506,7 @@ Three distinct mechanisms (do not treat as one “Boolean”):
 - **Directions** (Axis): `VECTOR` via `SpatialValueResolver.resolveVector`.
 - **Field types**: `SCALAR_FIELD` / `VECTOR_FIELD` stay first-class; no `ANY` in `math.fields.*`.
 - **SDF bridges** are explicit: **Scalar Field From SDF**, **Vector Field From SDF Gradient**.
-- Contract: `FieldsFamilyContractTest`, `FieldLanguageContractTest` — see [`node-language-v1-fields.md`](./node-language-v1-fields.md).
+- **PASSED / FROZEN** (V30): `FieldsFamilyContractTest`, `FieldLanguageContractTest`, `FieldMathTest` — see [`node-language-v1-fields.md`](./node-language-v1-fields.md).
 
 **Batch 13 — Architectural Components language (2026-09-22):**
 
