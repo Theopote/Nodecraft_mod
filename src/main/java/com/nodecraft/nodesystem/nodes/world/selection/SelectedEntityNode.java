@@ -70,7 +70,7 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
         addOutputPort(new BasePort(OUTPUT_ENTITY_ID, "Entity ID", "The unique identifier of the entity", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_ENTITY_UUID, "UUID", "Entity UUID string when available", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_ENTITY_TYPE, "Entity Type", "The type of the entity", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_ENTITY_POSITION, "Entity Position", "The block coordinates of the entity", NodeDataType.COORDINATE, this));
+        addOutputPort(new BasePort(OUTPUT_ENTITY_POSITION, "Entity Position", "The block coordinates of the entity", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_EXACT_POSITION, "Exact Position", "Exact entity position as a vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_DISTANCE_TO_PLAYER, "Distance To Player", "Distance from the current player to the selected entity", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_ENTITY_X, "Entity X", "The X coordinate of the entity", NodeDataType.INTEGER, this));

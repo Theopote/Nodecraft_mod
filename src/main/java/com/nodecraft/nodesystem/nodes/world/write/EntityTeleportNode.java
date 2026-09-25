@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -57,7 +58,7 @@ public class EntityTeleportNode extends BaseNode {
         addInputPort(new BasePort(INPUT_ENTITY_LIST_ID, "Entity List", 
                 "要传送的实体列表", NodeDataType.LIST, this));
         addInputPort(new BasePort(INPUT_DESTINATION_ID, "Destination", 
-                "目标位置", NodeDataType.POSITION, this));
+                "目标位置", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_PRESERVE_ROTATION_ID, "Preserve Rotation", 
                 "是否保留原有旋转", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_ROTATION_YAW_ID, "Yaw", 
@@ -145,7 +146,11 @@ public class EntityTeleportNode extends BaseNode {
             // 处理目标位置
             double x = 0.0, y = 0.0, z = 0.0;
             
-            if (destinationObj instanceof Vector3d) {
+            if (destinationObj instanceof PointData point) {
+                x = point.getX();
+                y = point.getY();
+                z = point.getZ();
+            } else if (destinationObj instanceof Vector3d) {
                 Vector3d pos = (Vector3d) destinationObj;
                 x = pos.x;
                 y = pos.y;

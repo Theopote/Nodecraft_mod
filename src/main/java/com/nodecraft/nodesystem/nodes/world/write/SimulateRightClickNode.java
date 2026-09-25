@@ -44,7 +44,7 @@ public class SimulateRightClickNode extends BaseNode {
     public SimulateRightClickNode() {
         super(UUID.randomUUID(), "world.write.simulate_right_click");
 
-        addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate", "Target block position", NodeDataType.COORDINATE, this));
+        addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate", "Target block position", NodeDataType.BLOCK_POS, this));
         addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "When connected, false prevents this interaction from running", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_PLAYER_ID, "Player", "Optional server player executor", NodeDataType.PLAYER, this));
         addInputPort(new BasePort(INPUT_ITEM_IN_HAND_ID, "Item in Hand", "Optional item stack to use", NodeDataType.ITEM_STACK, this));

@@ -201,7 +201,7 @@ public class NodeGraph {
         indexConnection(connection);
 
         // 建立端口间连接
-        if (!sourcePort.connectTo(targetPort)) {
+        if (sourcePort != null && !sourcePort.connectTo(targetPort)) {
             unindexConnection(connection);
             connections.remove(connection);
             return false;

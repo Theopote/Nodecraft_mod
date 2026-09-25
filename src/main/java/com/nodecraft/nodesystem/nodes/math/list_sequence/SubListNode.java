@@ -1,6 +1,5 @@
 package com.nodecraft.nodesystem.nodes.math.list_sequence;
 
-import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -66,7 +65,7 @@ public class SubListNode extends BaseNode {
             end = size + end;
         }
 
-        if (start < 0 || end < 0 || start > size || end > size || start > end) {
+        if (start < 0 || end < 0 || end > size || start > end) {
             writeInvalid();
             return;
         }

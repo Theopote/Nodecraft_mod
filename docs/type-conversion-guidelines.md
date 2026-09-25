@@ -25,12 +25,6 @@ These are allowed directly at the port layer:
   - `INTEGER`
   - `FLOAT`
   - `DOUBLE`
-- semantic aliases:
-  - `COORDINATE <-> BLOCK_POS` (legacy alias pair)
-  - `VECTOR <-> POSITION` (legacy alias pair)
-  - `COORDINATE_LIST <-> BLOCK_LIST`
-- location drivers of `POINT` inputs:
-  - `POSITION -> POINT` (legacy continuous-location alias)
 - specific geometry -> `GEOMETRY`
 - generic list family compatibility
 
@@ -40,13 +34,13 @@ These relationships are considered safe because they do not require a user-facin
 
 These must stay as explicit nodes in the graph:
 
-- `BLOCK_POS / COORDINATE -> POINT`
+- `BLOCK_POS -> POINT`
   - grid cell → continuous location; use **Block To Point** (corner vs center policy)
-- `BLOCK_POS / COORDINATE -> VECTOR / POSITION`
+- `BLOCK_POS -> VECTOR`
   - corner vs center policy matters when treating a grid cell as a continuous vector
 - `VECTOR -> POINT`
   - direction / displacement must not silently become a location
-- `POINT -> COORDINATE / BLOCK_POS`
+- `POINT -> BLOCK_POS`
   - grid snap / rounding policy matters
 - `BOX_FACE -> PLANE`
   - semantic conversion, not identity
@@ -69,7 +63,7 @@ Canonical spatial chain for new graphs:
 
 ```
 Block Position  →  Block To Point  →  Point
-Position (legacy) → Point            (implicit)
+Point             → Point            (identical)
 Vector            → Point            (explicit — do not wire Look Direction to Origin)
 ```
 

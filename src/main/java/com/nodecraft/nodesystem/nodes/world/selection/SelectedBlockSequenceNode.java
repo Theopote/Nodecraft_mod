@@ -46,7 +46,6 @@ import java.util.UUID;
 )
 public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBlockPickerCallback {
 
-    private static final String OUTPUT_COORDINATES_ID = "output_coordinates";
     private static final String OUTPUT_BLOCKS_ID = "output_blocks";
     private static final String OUTPUT_POINT_LIST_ID = "output_point_list";
     private static final String OUTPUT_LINE_ID = "output_line";
@@ -93,14 +92,13 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
     public SelectedBlockSequenceNode() {
         super(UUID.randomUUID(), "world.selection.selected_block_sequence");
 
-        addOutputPort(new BasePort(OUTPUT_COORDINATES_ID, "Coordinates", "Ordered list of picked block coordinates", NodeDataType.COORDINATE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Ordered list of picked block positions", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_POINT_LIST_ID, "Point List", "Ordered geometric point list derived from the picked blocks", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_LINE_ID, "Line", "Line built directly from the ordered point list when exactly 2 points exist", NodeDataType.LINE, this));
         addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Polyline built directly from the ordered point list when at least 2 points exist", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_CENTERS_ID, "Centers", "Ordered list of block center points", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_FIRST_ID, "First", "First picked block in the sequence", NodeDataType.COORDINATE, this));
-        addOutputPort(new BasePort(OUTPUT_LAST_ID, "Last", "Last picked block in the sequence", NodeDataType.COORDINATE, this));
+        addOutputPort(new BasePort(OUTPUT_FIRST_ID, "First", "First picked block in the sequence", NodeDataType.BLOCK_POS, this));
+        addOutputPort(new BasePort(OUTPUT_LAST_ID, "Last", "Last picked block in the sequence", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of picked blocks in the sequence", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_SEGMENT_COUNT_ID, "Segment Count", "Number of path segments implied by the current ordered sequence", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_IS_CLOSED_ID, "Is Closed", "Whether the ordered sequence is currently treated as a closed path", NodeDataType.BOOLEAN, this));
@@ -245,7 +243,6 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
         LineData line = polylinePoints.size() == 2 ? new LineData(polylinePoints.get(0), polylinePoints.get(1)) : null;
         PolylineData polyline = polylinePoints.size() >= 2 ? new PolylineData(polylinePoints) : null;
 
-        outputValues.put(OUTPUT_COORDINATES_ID, coordinates);
         outputValues.put(OUTPUT_BLOCKS_ID, blocks);
         outputValues.put(OUTPUT_POINT_LIST_ID, pointList);
         outputValues.put(OUTPUT_LINE_ID, line);

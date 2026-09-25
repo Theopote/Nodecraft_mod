@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
@@ -50,7 +51,7 @@ public class SpawnEntityNode extends BaseNode {
     public SpawnEntityNode() {
         super(UUID.randomUUID(), "world.write.spawn_entity");
 
-        addInputPort(new BasePort(INPUT_POSITION_ID, "Position", "Spawn position", NodeDataType.POSITION, this));
+        addInputPort(new BasePort(INPUT_POSITION_ID, "Position", "Spawn position", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_ENTITY_TYPE_ID, "Entity Type", "Entity registry id", NodeDataType.ENTITY_TYPE, this));
         addInputPort(new BasePort(INPUT_NBT_DATA_ID, "NBT Data", "Optional entity NBT", NodeDataType.NBT, this));
         addInputPort(new BasePort(INPUT_MOTION_ID, "Motion", "Optional initial motion vector", NodeDataType.VECTOR, this));
@@ -104,7 +105,12 @@ public class SpawnEntityNode extends BaseNode {
                 double y;
                 double z;
                 BlockPos blockPos;
-                if (positionObj instanceof Vector3d pos) {
+                if (positionObj instanceof PointData point) {
+                    x = point.getX();
+                    y = point.getY();
+                    z = point.getZ();
+                    blockPos = BlockPos.ofFloored(x, y, z);
+                } else if (positionObj instanceof Vector3d pos) {
                     x = pos.x;
                     y = pos.y;
                     z = pos.z;

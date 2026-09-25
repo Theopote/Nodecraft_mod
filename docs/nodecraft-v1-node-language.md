@@ -96,15 +96,16 @@ Point           →  Snap To Block   →  Block Position
 See [`type-conversion-guidelines.md`](./type-conversion-guidelines.md) for
 `IMPLICIT_SAFE` vs `EXPLICIT_REQUIRED`.
 
-**Deprecate expanding player-facing use of:**
+**Removed (pre-release language cleanup — no old-graph preserve):**
 
-| Type / label | Status |
-|--------------|--------|
-| `COORDINATE` | Semantic alias of block grid — prefer `BLOCK_POS` in new UI and ports |
-| `POSITION` | Semantic alias of vector-like continuous xyz — prefer `VECTOR` or `POINT` by role |
+| Type | Replacement |
+|------|-------------|
+| `COORDINATE` | `BLOCK_POS` |
+| `POSITION` | `POINT` (location) or `VECTOR` (direction / displacement) by role |
+| `COORDINATE_LIST` | `BLOCK_LIST` |
 
-Keep aliases in `TypeConversionRegistry` for compatibility; do not grow new player docs
-or AI examples around Coordinate / Position as first-class concepts.
+Do not grow new player docs or AI examples around Coordinate / Position as first-class
+type ids.
 
 Nodes named like `point_from_coordinates` that only emit integer `BlockPos` should be
 repositioned as **Block Position Input** (id/display), with a separate true **Point**
@@ -165,7 +166,7 @@ These violated the freeze at audit time. Batch A items below are remediated in c
 | Integer Slider port id `value` vs peers’ `output_value` | §2 | Fixed + V1→V2 migration |
 | Angle Slider unit property converts to radians while port stays `DOUBLE` | §3 | Fixed (degrees only; legacy `unit` ignored — pre-release, no old-graph preserve) |
 | Coordinate Input: int xyz, dual Coordinate/Block Pos, no `input_x/y/z` | §4, §5 | Fixed → Block Position Input + overrides |
-| World Plane Origin typed as `ANY` | Supporting norm | Fixed → `POINT`; Block→Point explicit; Position→Point implicit; Vector→Point explicit |
+| World Plane Origin typed as `ANY` | Supporting norm | Fixed → `POINT`; Block→Point and Vector→Point explicit |
 | Selected Block: pick silently overrides connected X/Y/Z | §5 | Fixed — Source Mode + Active Source |
 | Selected Block Position / Center types | §4 | Fixed — `BLOCK_POS` / `POINT` |
 | Float / Integer slider dead UI properties | Dead properties | Fixed |
@@ -188,9 +189,9 @@ Document first; code follows this order unless a dependency forces otherwise.
 ### Batch B — language alignment — **done (2026-09-21)**
 
 5. Coordinate Input → **Block Position Input** (`reference.points.block_position`); `input_x/y/z` INTEGER overrides like Vector Input; graph format **V2→V3** type rename.
-6. World Plane Origin: `ANY` → `POINT`. Continuous locations use legacy `POSITION → POINT`
-   implicit (Player Position) or identical `POINT`. `BLOCK_POS → POINT` and `VECTOR → POINT`
-   require explicit conversion so Block Position / Look Direction cannot silently become Origin.
+6. World Plane Origin: `ANY` → `POINT`. Continuous locations use identical `POINT`.
+   `BLOCK_POS → POINT` and `VECTOR → POINT` require explicit conversion so Block Position /
+   Look Direction cannot silently become Origin.
 
 ### Batch C — composition semantics — **done (2026-09-21)**
 
@@ -201,11 +202,11 @@ Document first; code follows this order unless a dependency forces otherwise.
 
 ### Batch D — spatial / angle freeze closure — **done (2026-09-21)**
 
-8. `TypeConversionRegistry`: `BLOCK_POS/COORDINATE → POINT` and `VECTOR → POINT` are
-   `EXPLICIT_REQUIRED`; `POSITION → POINT` remains implicit.
+8. `TypeConversionRegistry`: `BLOCK_POS → POINT` and `VECTOR → POINT` are `EXPLICIT_REQUIRED`.
 9. Angle Slider: degrees-only; ignore legacy `unit` (no old-file radians migration in pre-release).
 10. Selected Block: Position → `BLOCK_POS`, Center → `POINT`.
-11. `COORDINATE` / `POSITION` marked `@Deprecated` on `NodeDataType` (aliases kept for in-repo wiring until ports migrate).
+11. Removed `COORDINATE` / `POSITION` / `COORDINATE_LIST` from `NodeDataType` (pre-release: no
+    alias preserve). Continuous locations use `POINT`; block bags use `BLOCK_LIST`.
 
 **Pre-release compatibility policy:** prefer clean language breaks and update in-repo presets /
 tests. Do not add graph migrations solely to preserve abandoned on-disk semantic variants.
@@ -213,9 +214,7 @@ tests. Do not add graph migrations solely to preserve abandoned on-disk semantic
 ### Deferred (phase 2)
 
 - Collapse Selected Block advanced outputs behind Block Info / Deconstruct patterns.
-- Retire `COORDINATE` / `POSITION` enum values after ports stop using them.
 - Optional editor Convert → Block To Point insert assist.
-- Player Position → canonical `POINT` once Move Geometry placement presets are rewritten.
 
 ---
 

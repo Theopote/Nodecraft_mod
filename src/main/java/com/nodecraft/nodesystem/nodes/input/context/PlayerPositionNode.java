@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.minecraft.PlayerAccessor;
 import com.nodecraft.nodesystem.util.Vector3;
@@ -47,15 +48,11 @@ public class PlayerPositionNode extends BaseCustomUINode {
     private double cachedY = 0.0;
     private double cachedZ = 0.0;
 
-    @SuppressWarnings("deprecation")
     public PlayerPositionNode() {
         super(UUID.randomUUID(), "input.context.player_position");
 
-        // POSITION is the legacy continuous-location alias: it drives POINT inputs
-        // (World Plane Origin) implicitly, and still aliases to VECTOR for existing
-        // Move Geometry translation presets. New location sources should prefer POINT.
         addOutputPort(new BasePort(OUTPUT_POSITION_ID, "Position",
-                "Snapped player world location", NodeDataType.POSITION, this));
+                "Snapped player world location", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X coordinate", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y coordinate", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z coordinate", NodeDataType.DOUBLE, this));
@@ -189,7 +186,7 @@ public class PlayerPositionNode extends BaseCustomUINode {
     }
 
     private void updateOutputs(Vector3d position) {
-        outputValues.put(OUTPUT_POSITION_ID, position);
+        outputValues.put(OUTPUT_POSITION_ID, new PointData(position.x, position.y, position.z));
         outputValues.put(OUTPUT_X_ID, position.x);
         outputValues.put(OUTPUT_Y_ID, position.y);
         outputValues.put(OUTPUT_Z_ID, position.z);

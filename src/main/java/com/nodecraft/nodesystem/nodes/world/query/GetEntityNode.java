@@ -6,13 +6,13 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.entity.Entity;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.Box;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
 import java.util.List;
 import java.util.UUID;
@@ -50,7 +50,7 @@ public class GetEntityNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_ENTITY_ID, "Entity", "Resolved entity object", NodeDataType.MINECRAFT_ENTITY, this));
         addOutputPort(new BasePort(OUTPUT_ENTITY_TYPE_ID, "Entity Type", "Entity registry id", NodeDataType.ENTITY_TYPE, this));
-        addOutputPort(new BasePort(OUTPUT_ENTITY_POS_ID, "Entity Position", "Entity world position", NodeDataType.POSITION, this));
+        addOutputPort(new BasePort(OUTPUT_ENTITY_POS_ID, "Entity Position", "Entity world position", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_FOUND_ID, "Found", "Whether an entity was found", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_DISTANCE_ID, "Distance", "Distance from the current player to the entity", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_UUID_ID, "UUID", "Resolved entity UUID", NodeDataType.STRING, this));
@@ -147,13 +147,13 @@ public class GetEntityNode extends BaseNode {
 
     private void publish(@Nullable Entity entity, boolean valid, boolean found, String error, @Nullable ExecutionContext context) {
         String entityType = "";
-        Vector3d entityPos = new Vector3d();
+        PointData entityPos = new PointData(0, 0, 0);
         String uuid = "";
         double distance = -1.0d;
 
         if (entity != null) {
             entityType = Registries.ENTITY_TYPE.getId(entity.getType()).toString();
-            entityPos = new Vector3d(entity.getX(), entity.getY(), entity.getZ());
+            entityPos = new PointData(entity.getX(), entity.getY(), entity.getZ());
             uuid = entity.getUuidAsString();
             if (context != null && context.getPlayer() != null) {
                 distance = Math.sqrt(context.getPlayer().squaredDistanceTo(entity));

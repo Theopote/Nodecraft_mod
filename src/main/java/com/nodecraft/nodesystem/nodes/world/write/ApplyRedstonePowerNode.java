@@ -43,7 +43,7 @@ public class ApplyRedstonePowerNode extends BaseNode {
     public ApplyRedstonePowerNode() {
         super(UUID.randomUUID(), "world.write.apply_redstone_power");
 
-        addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate", "Target block position", NodeDataType.COORDINATE, this));
+        addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate", "Target block position", NodeDataType.BLOCK_POS, this));
         addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "When connected, false prevents this write from running", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_POWER_LEVEL_ID, "Power Level", "Requested redstone power level", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_DURATION_ID, "Duration", "Duration in ticks", NodeDataType.INTEGER, this));

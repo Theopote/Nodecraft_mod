@@ -35,9 +35,10 @@ class TypeConversionRegistryTest {
     }
 
     @Test
-    void coordinateAliasesAreImplicitlyConnectable() {
-        assertTrue(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.BLOCK_POS, NodeDataType.COORDINATE));
-        assertTrue(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.COORDINATE, NodeDataType.BLOCK_POS));
+    void unknownLegacyTypeIdsMapToAny() {
+        assertEquals(NodeDataType.ANY, NodeDataType.fromId("coordinate"));
+        assertEquals(NodeDataType.ANY, NodeDataType.fromId("position"));
+        assertEquals(NodeDataType.ANY, NodeDataType.fromId("coordinate_list"));
     }
 
     @Test
@@ -50,7 +51,8 @@ class TypeConversionRegistryTest {
     void pointToBlockCoordinateRequiresExplicitConversion() {
         assertEquals(TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
             TypeConversionRegistry.classify(NodeDataType.POINT, NodeDataType.BLOCK_POS));
-        assertTrue(TypeConversionRegistry.requiresExplicitConversion(NodeDataType.POINT, NodeDataType.COORDINATE));
+        assertTrue(TypeConversionRegistry.requiresExplicitConversion(
+                NodeDataType.POINT, NodeDataType.BLOCK_POS));
 
         TypeConversionRegistry.ConversionSuggestion suggestion =
             TypeConversionRegistry.getSuggestedConversion(NodeDataType.POINT, NodeDataType.BLOCK_POS);
@@ -62,8 +64,6 @@ class TypeConversionRegistryTest {
     void blockCoordinateToPointRequiresExplicitConversion() {
         assertEquals(TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
             TypeConversionRegistry.classify(NodeDataType.BLOCK_POS, NodeDataType.POINT));
-        assertEquals(TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
-            TypeConversionRegistry.classify(NodeDataType.COORDINATE, NodeDataType.POINT));
         assertFalse(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.BLOCK_POS, NodeDataType.POINT));
 
         TypeConversionRegistry.ConversionSuggestion suggestion =
@@ -74,8 +74,9 @@ class TypeConversionRegistryTest {
     }
 
     @Test
-    void positionConnectsImplicitlyToPointButVectorRequiresExplicitConversion() {
-        assertTrue(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.POSITION, NodeDataType.POINT));
+    void pointConnectsImplicitlyToPointButVectorRequiresExplicitConversion() {
+        assertTrue(TypeConversionRegistry.isImplicitlyConnectable(
+                NodeDataType.POINT, NodeDataType.POINT));
         assertEquals(TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
             TypeConversionRegistry.classify(NodeDataType.VECTOR, NodeDataType.POINT));
         assertFalse(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.VECTOR, NodeDataType.POINT));
@@ -209,8 +210,7 @@ class TypeConversionRegistryTest {
     }
 
     @Test
-    void coordinateListAliasesRemainConnectable() {
-        assertTrue(NodeDataType.isConnectableTo(NodeDataType.COORDINATE_LIST, NodeDataType.BLOCK_LIST));
-        assertTrue(NodeDataType.isConnectableTo(NodeDataType.BLOCK_LIST, NodeDataType.COORDINATE_LIST));
+    void blockListConnectsToItself() {
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.BLOCK_LIST, NodeDataType.BLOCK_LIST));
     }
 }

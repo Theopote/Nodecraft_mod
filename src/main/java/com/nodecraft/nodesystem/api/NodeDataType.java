@@ -1,18 +1,18 @@
 package com.nodecraft.nodesystem.api;
 
 import com.nodecraft.nodesystem.datatypes.*;
-import com.nodecraft.nodesystem.util.BlockPosList;
-import com.nodecraft.nodesystem.util.Curve;
-import com.nodecraft.nodesystem.util.Vector3;
+import com.nodecraft.nodesystem.util.*;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 /**
  * Declares the data types supported by the node system.
- *
+ * <p>
  * Connectability rules are intentionally delegated to {@link TypeConversionRegistry}
  * so that type compatibility and conversion policy do not keep growing inside this enum.
  */
@@ -30,19 +30,6 @@ public enum NodeDataType {
 
     POINT("point", "Point", PointData.class),
     VECTOR("vector", "Vector", Vector3d.class),
-    /**
-     * Legacy semantic alias of {@link #BLOCK_POS}. Prefer {@code BLOCK_POS} on new ports.
-     * @deprecated Use {@link #BLOCK_POS} for new nodes; kept for graph compatibility.
-     */
-    @Deprecated
-    COORDINATE("coordinate", "Coordinate", BlockPos.class),
-    /**
-     * Legacy continuous-location alias. Prefer {@link #POINT} for locations and
-     * {@link #VECTOR} for direction/displacement on new ports.
-     * @deprecated Use {@link #POINT} or {@link #VECTOR} by role; kept for graph compatibility.
-     */
-    @Deprecated
-    POSITION("position", "Position", Vector3d.class),
     PLANE("plane", "Plane", PlaneData.class),
     /** Origin + X/Y/Z axes. Distinct from {@link #PLANE} (origin + normal only). */
     FRAME("frame", "Frame", FrameData.class),
@@ -63,7 +50,7 @@ public enum NodeDataType {
     DODECAHEDRON_GEOMETRY("dodecahedron_geometry", "Dodecahedron Geometry", DodecahedronGeometryData.class),
     POLYGON_PROFILE("polygon_profile", "Polygon Profile", PolygonProfileData.class),
     /** Ordered polygon profiles (loft sections, sweep section lists). */
-    POLYGON_PROFILE_LIST("polygon_profile_list", "Polygon Profile List", java.util.List.class, ListElementKind.POLYGON_PROFILE),
+    POLYGON_PROFILE_LIST("polygon_profile_list", "Polygon Profile List", List.class, ListElementKind.POLYGON_PROFILE),
     PRISM_GEOMETRY("prism_geometry", "Prism Geometry", PrismGeometryData.class),
     TETRAHEDRON_GEOMETRY("tetrahedron_geometry", "Tetrahedron Geometry", TetrahedronGeometryData.class),
     TORUS_GEOMETRY("torus_geometry", "Torus Geometry", TorusGeometryData.class),
@@ -81,10 +68,10 @@ public enum NodeDataType {
     BLOCK_POS("block_pos", "Block Position", BlockPos.class),
     BLOCK_LIST("block_list", "Block List", BlockPosList.class, ListElementKind.BLOCK_POS),
     BLOCK_INFO("block_info", "Block Info", Object.class),
-    BLOCK_STATE_DATA("block_state_data", "Block State Data", com.nodecraft.nodesystem.util.BlockStateData.class),
+    BLOCK_STATE_DATA("block_state_data", "Block State Data", BlockStateData.class),
     BLOCK_TYPE("block_type", "Block Type", String.class),
     /** Ordered weighted block ids for Material palette mapping. */
-    BLOCK_PALETTE("block_palette", "Block Palette", com.nodecraft.nodesystem.util.BlockPaletteData.class),
+    BLOCK_PALETTE("block_palette", "Block Palette", BlockPaletteData.class),
     ITEM_TYPE("item_type", "Item Type", String.class),
     ITEM_STACK("item_stack", "Item Stack", Object.class),
     ENTITY_TYPE("entity_type", "Entity Type", String.class),
@@ -103,10 +90,10 @@ public enum NodeDataType {
     NBT("nbt", "NBT", Object.class),
 
     L_SYSTEM_RULE("l_system_rule", "L-System Rule", LSystemRule.class),
-    L_SYSTEM_RULE_LIST("l_system_rule_list", "L-System Rule List", java.util.List.class, ListElementKind.L_SYSTEM_RULE),
+    L_SYSTEM_RULE_LIST("l_system_rule_list", "L-System Rule List", List.class, ListElementKind.L_SYSTEM_RULE),
     PLANT_STRUCTURE("plant_structure", "Plant Structure", PlantStructure.class),
     PLANT_BLOCK("plant_block", "Plant Block", PlantStructure.PlantBlock.class),
-    PLANT_BLOCK_LIST("plant_block_list", "Plant Block List", java.util.List.class, ListElementKind.PLANT_BLOCK),
+    PLANT_BLOCK_LIST("plant_block_list", "Plant Block List", List.class, ListElementKind.PLANT_BLOCK),
     TREE_TYPE("tree_type", "Tree Type", String.class),
     BUSH_TYPE("bush_type", "Bush Type", String.class),
     FLOWER_TYPE("flower_type", "Flower Type", String.class),
@@ -114,34 +101,33 @@ public enum NodeDataType {
 
     FILE_PATH("file_path", "File Path", String.class),
 
-    LIST("list", "List", java.util.List.class, ListElementKind.UNCONSTRAINED),
+    LIST("list", "List", List.class, ListElementKind.UNCONSTRAINED),
     /** Ordered integers (counts, branch sizes, index bags). */
-    INTEGER_LIST("integer_list", "Integer List", java.util.List.class, ListElementKind.INTEGER),
+    INTEGER_LIST("integer_list", "Integer List", List.class, ListElementKind.INTEGER),
     /** Ordered doubles (sequences, distances, numeric map results). */
-    DOUBLE_LIST("double_list", "Double List", java.util.List.class, ListElementKind.DOUBLE),
+    DOUBLE_LIST("double_list", "Double List", List.class, ListElementKind.DOUBLE),
     /** Ordered booleans (dispatch masks, per-item predicates). */
-    BOOLEAN_LIST("boolean_list", "Boolean List", java.util.List.class, ListElementKind.BOOLEAN),
+    BOOLEAN_LIST("boolean_list", "Boolean List", List.class, ListElementKind.BOOLEAN),
     /** Ordered strings (text sort / join sources). */
-    STRING_LIST("string_list", "String List", java.util.List.class, ListElementKind.STRING),
+    STRING_LIST("string_list", "String List", List.class, ListElementKind.STRING),
     /** Data tree branch address (ordered integer path). */
     TREE_PATH("tree_path", "Tree Path", TreePathData.class),
     /** Ordered tree paths. */
-    TREE_PATH_LIST("tree_path_list", "Tree Path List", java.util.List.class, ListElementKind.TREE_PATH),
+    TREE_PATH_LIST("tree_path_list", "Tree Path List", List.class, ListElementKind.TREE_PATH),
     DATA_TREE("data_tree", "Data Tree", DataTreeData.class),
-    COORDINATE_LIST("coordinate_list", "Coordinate List", java.util.List.class, ListElementKind.BLOCK_POS),
-    BLOCK_INFO_LIST("block_info_list", "Block Info List", java.util.List.class, ListElementKind.BLOCK_INFO),
-    BLOCK_PLACEMENT_LIST("block_placement_list", "Block Placement List", java.util.List.class, ListElementKind.BLOCK_PLACEMENT),
-    VECTOR_LIST("vector_list", "Vector List", java.util.List.class, ListElementKind.VECTOR),
+    BLOCK_INFO_LIST("block_info_list", "Block Info List", List.class, ListElementKind.BLOCK_INFO),
+    BLOCK_PLACEMENT_LIST("block_placement_list", "Block Placement List", List.class, ListElementKind.BLOCK_PLACEMENT),
+    VECTOR_LIST("vector_list", "Vector List", List.class, ListElementKind.VECTOR),
     /** Ordered continuous locations (corners, polyline samples, profile vertices). */
-    POINT_LIST("point_list", "Point List", java.util.List.class, ListElementKind.POINT),
+    POINT_LIST("point_list", "Point List", List.class, ListElementKind.POINT),
     /** Ordered planes (align / section / placement layouts). */
-    PLANE_LIST("plane_list", "Plane List", java.util.List.class, ListElementKind.PLANE),
+    PLANE_LIST("plane_list", "Plane List", List.class, ListElementKind.PLANE),
     /** Ordered frames (align / path / surface placement). */
-    FRAME_LIST("frame_list", "Frame List", java.util.List.class, ListElementKind.FRAME),
+    FRAME_LIST("frame_list", "Frame List", List.class, ListElementKind.FRAME),
     /** Ordered paths (beam centerlines, eave edges, multi-segment hosts). */
-    PATH_LIST("path_list", "Path List", java.util.List.class, ListElementKind.PATH),
-    REGION_LIST("region_list", "Region List", java.util.List.class, ListElementKind.REGION),
-    PLANT_STRUCTURE_LIST("plant_structure_list", "Plant Structure List", java.util.List.class, ListElementKind.PLANT_STRUCTURE);
+    PATH_LIST("path_list", "Path List", List.class, ListElementKind.PATH),
+    REGION_LIST("region_list", "Region List", List.class, ListElementKind.REGION),
+    PLANT_STRUCTURE_LIST("plant_structure_list", "Plant Structure List", List.class, ListElementKind.PLANT_STRUCTURE);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NodeDataType.class);
 
@@ -189,7 +175,7 @@ public enum NodeDataType {
             return LIST;
         }
         for (NodeDataType type : values()) {
-            if (type.listElementKind == kind && type != COORDINATE_LIST) {
+            if (type.listElementKind == kind) {
                 return type;
             }
         }
@@ -204,7 +190,7 @@ public enum NodeDataType {
             return ANY;
         }
         return switch (kind) {
-            case NONE, UNCONSTRAINED -> ANY;
+            case NONE, UNCONSTRAINED, BLOCK_PLACEMENT -> ANY;
             case INTEGER -> INTEGER;
             case DOUBLE -> DOUBLE;
             case BOOLEAN -> BOOLEAN;
@@ -219,7 +205,6 @@ public enum NodeDataType {
             case POLYGON_PROFILE -> POLYGON_PROFILE;
             case REGION -> REGION;
             case BLOCK_INFO -> BLOCK_INFO;
-            case BLOCK_PLACEMENT -> ANY;
             case PLANT_STRUCTURE -> PLANT_STRUCTURE;
             case L_SYSTEM_RULE -> L_SYSTEM_RULE;
             case PLANT_BLOCK -> PLANT_BLOCK;
@@ -236,12 +221,12 @@ public enum NodeDataType {
                 if (value instanceof BlockPosList blockPosList) {
                     return isCompatibleListElements(blockPosList, ListElementKind.BLOCK_POS);
                 }
-                if (!(value instanceof java.util.List<?> list)) {
+                if (!(value instanceof List<?> list)) {
                     return false;
                 }
                 return isCompatibleListElements(list, ListElementKind.BLOCK_POS);
             }
-            if (!(value instanceof java.util.List<?> list)) {
+            if (!(value instanceof List<?> list)) {
                 return false;
             }
             if (listElementKind == ListElementKind.UNCONSTRAINED) {
@@ -282,7 +267,8 @@ public enum NodeDataType {
             return value instanceof Boolean;
         }
 
-        if ((this == VECTOR || this == POSITION) && value instanceof Vector3) {
+        // VECTOR accepts legacy Vector3 wrappers in addition to Vector3d.
+        if (this == VECTOR && value instanceof Vector3) {
             return true;
         }
 
@@ -299,7 +285,7 @@ public enum NodeDataType {
         }
 
         if (this == BLOCK_PALETTE) {
-            return value instanceof com.nodecraft.nodesystem.util.BlockPaletteData;
+            return value instanceof BlockPaletteData;
         }
 
         if (this == GEOMETRY && value instanceof GeometryData) {
@@ -319,11 +305,11 @@ public enum NodeDataType {
     }
 
     static boolean isCompatibleElement(ListElementKind kind, Object value) {
-        if (kind == null || kind == ListElementKind.NONE || kind == ListElementKind.UNCONSTRAINED) {
+        if (kind == null) {
             return true;
         }
         return switch (kind) {
-            case NONE, UNCONSTRAINED -> true;
+            case NONE, UNCONSTRAINED, BLOCK_INFO, BLOCK_PLACEMENT -> true;
             case INTEGER -> value instanceof Integer || value instanceof Long || value instanceof Short
                     || value instanceof Byte;
             case DOUBLE -> value instanceof Number;
@@ -341,8 +327,6 @@ public enum NodeDataType {
             case TREE_PATH -> value instanceof TreePathData;
             case POLYGON_PROFILE -> value instanceof PolygonProfileData;
             case REGION -> value instanceof RegionData;
-            case BLOCK_INFO -> true;
-            case BLOCK_PLACEMENT -> true;
             case PLANT_STRUCTURE -> value instanceof PlantStructure;
             case L_SYSTEM_RULE -> value instanceof LSystemRule;
             case PLANT_BLOCK -> value instanceof PlantStructure.PlantBlock;

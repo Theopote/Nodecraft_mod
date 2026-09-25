@@ -47,7 +47,7 @@ public class WriteSignTextNode extends BaseNode {
     public WriteSignTextNode() {
         super(UUID.randomUUID(), "world.write.write_sign_text");
 
-        addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate", "Sign position", NodeDataType.COORDINATE, this));
+        addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate", "Sign position", NodeDataType.BLOCK_POS, this));
         addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "When connected, false prevents this write from running", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_LINE_1_ID, "Line 1", "First line", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_LINE_2_ID, "Line 2", "Second line", NodeDataType.STRING, this));

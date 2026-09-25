@@ -1,6 +1,5 @@
 package com.nodecraft.nodesystem.nodes.math.list_sequence;
 
-import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;

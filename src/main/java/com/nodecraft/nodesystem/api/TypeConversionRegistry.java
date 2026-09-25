@@ -6,11 +6,7 @@ package com.nodecraft.nodesystem.api;
  * - which connections are safe to allow implicitly at the port layer
  * - which conversions require an explicit conversion node
  * - which type pairs are unsupported
- * <p>
- * Legacy {@link NodeDataType#COORDINATE} / {@link NodeDataType#POSITION} aliases are
- * intentionally still classified here for graph load compatibility.
  */
-@SuppressWarnings("deprecation")
 public final class TypeConversionRegistry {
 
     public record ConversionSuggestion(String nodeId, String displayName) {
@@ -36,16 +32,6 @@ public final class TypeConversionRegistry {
         }
 
         if (input == NodeDataType.ANY || output == NodeDataType.ANY || output == input) {
-            return ConversionPolicy.IMPLICIT_SAFE;
-        }
-
-        if (isSemanticAliasCompatible(output, input)) {
-            return ConversionPolicy.IMPLICIT_SAFE;
-        }
-
-        // POSITION is a legacy location alias; it may drive Point inputs.
-        // VECTOR (direction/displacement) must not silently become a Point.
-        if (isPositionToPointCompatible(output, input)) {
             return ConversionPolicy.IMPLICIT_SAFE;
         }
 
@@ -141,18 +127,15 @@ public final class TypeConversionRegistry {
     }
 
     private static boolean isBlockCoordinateToPointConversion(NodeDataType outputType, NodeDataType inputType) {
-        return (outputType == NodeDataType.BLOCK_POS || outputType == NodeDataType.COORDINATE)
-                && inputType == NodeDataType.POINT;
+        return outputType == NodeDataType.BLOCK_POS && inputType == NodeDataType.POINT;
     }
 
     private static boolean isBlockCoordinateToVectorConversion(NodeDataType outputType, NodeDataType inputType) {
-        return (outputType == NodeDataType.BLOCK_POS || outputType == NodeDataType.COORDINATE)
-                && (inputType == NodeDataType.VECTOR || inputType == NodeDataType.POSITION);
+        return outputType == NodeDataType.BLOCK_POS && inputType == NodeDataType.VECTOR;
     }
 
     private static boolean isPointToBlockCoordinateConversion(NodeDataType outputType, NodeDataType inputType) {
-        return outputType == NodeDataType.POINT
-                && (inputType == NodeDataType.COORDINATE || inputType == NodeDataType.BLOCK_POS);
+        return outputType == NodeDataType.POINT && inputType == NodeDataType.BLOCK_POS;
     }
 
     private static boolean isBlockFaceToPlaneConversion(NodeDataType outputType, NodeDataType inputType) {
@@ -220,39 +203,11 @@ public final class TypeConversionRegistry {
                 || type == NodeDataType.TORUS_GEOMETRY;
     }
 
-    private static boolean isSemanticAliasCompatible(NodeDataType outputType, NodeDataType inputType) {
-        boolean coordinateAlias = isCoordinateAlias(outputType) && isCoordinateAlias(inputType);
-        boolean vectorAlias = isVectorAlias(outputType) && isVectorAlias(inputType);
-        boolean coordinateListAlias = isCoordinateListAlias(outputType) && isCoordinateListAlias(inputType);
-        return coordinateAlias || vectorAlias || coordinateListAlias;
-    }
-
-    private static boolean isCoordinateAlias(NodeDataType type) {
-        return type == NodeDataType.COORDINATE || type == NodeDataType.BLOCK_POS;
-    }
-
-    private static boolean isVectorAlias(NodeDataType type) {
-        return type == NodeDataType.VECTOR || type == NodeDataType.POSITION;
-    }
-
-    /**
-     * Legacy {@link NodeDataType#POSITION} means a continuous location, so it may
-     * drive {@link NodeDataType#POINT} inputs implicitly (e.g. World Plane Origin).
-     */
-    private static boolean isPositionToPointCompatible(NodeDataType outputType, NodeDataType inputType) {
-        return outputType == NodeDataType.POSITION && inputType == NodeDataType.POINT;
-    }
-
     /**
      * Direction / displacement vectors must not silently become Points.
-     * Prefer an explicit conversion (or a true Point / Position source).
      */
     private static boolean isVectorToPointConversion(NodeDataType outputType, NodeDataType inputType) {
         return outputType == NodeDataType.VECTOR && inputType == NodeDataType.POINT;
-    }
-
-    private static boolean isCoordinateListAlias(NodeDataType type) {
-        return type == NodeDataType.COORDINATE_LIST || type == NodeDataType.BLOCK_LIST;
     }
 
     private static boolean isPathSourceCompatible(NodeDataType outputType, NodeDataType inputType) {
