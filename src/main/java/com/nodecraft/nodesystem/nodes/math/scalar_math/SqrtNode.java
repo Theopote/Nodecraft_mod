@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarMathOps;
+import com.nodecraft.nodesystem.math.ScalarResult;
 
 import java.util.UUID;
 
@@ -49,16 +51,9 @@ public class SqrtNode extends BaseNode {
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
-
-        double value = number.doubleValue();
-        if (!Double.isFinite(value) || value < 0.0d) {
-            outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-
-        outputValues.put(OUTPUT_RESULT_ID, Math.sqrt(value));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        ScalarResult result = ScalarMathOps.sqrt(number.doubleValue());
+        outputValues.put(OUTPUT_RESULT_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
 }
 

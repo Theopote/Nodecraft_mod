@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarMathOps;
+import com.nodecraft.nodesystem.math.ScalarResult;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -47,23 +49,15 @@ public class LogarithmNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object valNumber = inputValues.get(INPUT_NUMBER_ID);
         Object valBase = inputValues.getOrDefault(INPUT_BASE_ID, Math.E);
-
         if (!(valNumber instanceof Number numberValue) || !(valBase instanceof Number baseNumber)) {
-            outputValues.put(OUTPUT_LOGARITHM_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            publish(ScalarResult.invalid());
             return;
         }
+        publish(ScalarMathOps.log(numberValue.doubleValue(), baseNumber.doubleValue()));
+    }
 
-        double number = numberValue.doubleValue();
-        double base = baseNumber.doubleValue();
-        if (!Double.isFinite(number) || !Double.isFinite(base)
-            || number <= 0.0d || base <= 0.0d || Math.abs(base - 1.0d) < 1.0e-10d) {
-            outputValues.put(OUTPUT_LOGARITHM_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-
-        outputValues.put(OUTPUT_LOGARITHM_ID, Math.log(number) / Math.log(base));
-        outputValues.put(OUTPUT_VALID_ID, true);
+    private void publish(ScalarResult result) {
+        outputValues.put(OUTPUT_LOGARITHM_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
 }

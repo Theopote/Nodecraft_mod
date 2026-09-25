@@ -7,6 +7,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarMathOps;
+import com.nodecraft.nodesystem.math.ScalarResult;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -48,26 +50,15 @@ public class AdditionNode extends BaseNode implements INode {
     public void processNode(@Nullable ExecutionContext context) {
         Object valA = inputValues.get(INPUT_A_ID);
         Object valB = inputValues.get(INPUT_B_ID);
-
-        if (valA instanceof Number && valB instanceof Number) {
-            double a = ((Number) valA).doubleValue();
-            double b = ((Number) valB).doubleValue();
-            if (!Double.isFinite(a) || !Double.isFinite(b)) {
-                outputValues.put(OUTPUT_SUM_ID, Double.NaN);
-                outputValues.put(OUTPUT_VALID_ID, false);
-                return;
-            }
-            double sum = a + b;
-            if (!Double.isFinite(sum)) {
-                outputValues.put(OUTPUT_SUM_ID, Double.NaN);
-                outputValues.put(OUTPUT_VALID_ID, false);
-                return;
-            }
-            outputValues.put(OUTPUT_SUM_ID, sum);
-            outputValues.put(OUTPUT_VALID_ID, true);
-        } else {
-            outputValues.put(OUTPUT_SUM_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        if (!(valA instanceof Number aNumber) || !(valB instanceof Number bNumber)) {
+            publish(ScalarResult.invalid());
+            return;
         }
+        publish(ScalarMathOps.add(aNumber.doubleValue(), bNumber.doubleValue()));
+    }
+
+    private void publish(ScalarResult result) {
+        outputValues.put(OUTPUT_SUM_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
 }

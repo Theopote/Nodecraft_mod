@@ -498,15 +498,15 @@
 | Remap | `math.scalar_math.remap` | Maps a value from a source domain to a target domain. | `RemapNode` |
 | Floor | `math.scalar_math.floor` | Rounds a value down to the nearest integer. | `FloorNode` |
 | Ceiling | `math.scalar_math.ceiling` | Rounds a value up to the nearest integer. | `CeilingNode` |
-| Round | `math.scalar_math.round` | Rounds a value to the nearest integer. | `RoundNode` |
+| Round | `math.scalar_math.round` | Rounds a value to the nearest integer-valued double (ties-to-even). | `RoundNode` |
 | Square Root | `math.scalar_math.sqrt` | Computes the square root of a numeric input. | `SqrtNode` |
 | Lerp | `math.scalar_math.lerp` | Linearly interpolates between A and B using parameter T. | `LerpNode` |
 | Integer Divide | `math.scalar_math.int_divide` | Performs floor-style integer division A / B and returns quotient and remainder. | `IntDivideNode` |
 | Smoothstep | `math.scalar_math.smoothstep` | Computes smooth Hermite interpolation 3t^2 - 2t^3 between edge0 and edge1. | `SmoothstepNode` |
 | Sign | `math.scalar_math.sign` | Returns -1, 0, or +1 based on the sign of the input value. | `SignNode` |
 | Fraction (Frac) | `math.scalar_math.frac` | Returns the fractional part of x as x - floor(x). | `FracNode` |
-| Graph Mapper | `math.scalar_math.graph_mapper` | Maps a value through a selectable normalized graph function, similar to Grasshopper's Graph Mapper | `GraphMapperNode` |
-| Expression | `math.scalar_math.expression` | Evaluates a numeric expression using input variables such as A, B, C, X, Y, Z, and T | `ExpressionNode` |
+| Graph Mapper | `math.scalar_math.graph_mapper` | Advanced: maps a value through a selectable normalized graph function (Grasshopper-style Graph Mapper) | `GraphMapperNode` |
+| Expression | `math.scalar_math.expression` | Advanced: evaluates a numeric expression using variables A, B, C, X, Y, Z, and T | `ExpressionNode` |
 
 ## math.sequence（3）
 

@@ -7,6 +7,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.NumericRangeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarMathOps;
+import com.nodecraft.nodesystem.math.ScalarResult;
 import com.nodecraft.nodesystem.util.NumericDomainResolver;
 import org.jetbrains.annotations.Nullable;
 
@@ -60,20 +62,11 @@ public class ClampNode extends BaseNode {
             return;
         }
 
-        double value = valueNumber.doubleValue();
-        if (!Double.isFinite(value)) {
-            outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-
         NumericRangeData domain = NumericDomainResolver.resolveDomain(
             inputValues.get(INPUT_DOMAIN_ID), defaultStart, defaultEnd);
-        double lower = domain.lower();
-        double upper = domain.upper();
-
-        outputValues.put(OUTPUT_RESULT_ID, Math.max(lower, Math.min(upper, value)));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        ScalarResult result = ScalarMathOps.clamp(valueNumber.doubleValue(), domain);
+        outputValues.put(OUTPUT_RESULT_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
 
     public double getDefaultStart() {

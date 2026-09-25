@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarMathOps;
+import com.nodecraft.nodesystem.math.ScalarResult;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -49,15 +51,8 @@ public class CeilingNode extends BaseNode {
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
-
-        double value = number.doubleValue();
-        if (!Double.isFinite(value)) {
-            outputValues.put(OUTPUT_CEILING_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-
-        outputValues.put(OUTPUT_CEILING_ID, Math.ceil(value));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        ScalarResult result = ScalarMathOps.ceil(number.doubleValue());
+        outputValues.put(OUTPUT_CEILING_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
 }

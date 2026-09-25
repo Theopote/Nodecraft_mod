@@ -25,6 +25,32 @@ class ScalarMathNodeTest {
     }
 
     @Test
+    void divisionAcceptsTinyNonZeroDivisor() {
+        DivisionNode node = new DivisionNode();
+
+        Map<String, Object> outputs = node.compute(Map.of(
+            "input_a", 1.0d,
+            "input_b", 1.0e-11d
+        ));
+
+        assertTrue((Boolean) outputs.get("output_valid"));
+        assertEquals(1.0e11d, (Double) outputs.get("output_quotient"), 1.0e-3);
+    }
+
+    @Test
+    void subtractionOverflowProducesNan() {
+        SubtractionNode node = new SubtractionNode();
+
+        Map<String, Object> outputs = node.compute(Map.of(
+            "input_a", Double.MAX_VALUE,
+            "input_b", -Double.MAX_VALUE
+        ));
+
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertTrue(Double.isNaN((Double) outputs.get("output_difference")));
+    }
+
+    @Test
     void powerRejectsNonFiniteResult() {
         PowerNode node = new PowerNode();
 

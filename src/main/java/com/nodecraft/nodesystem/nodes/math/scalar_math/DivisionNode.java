@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarMathOps;
+import com.nodecraft.nodesystem.math.ScalarResult;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -47,23 +49,15 @@ public class DivisionNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object valA = inputValues.get(INPUT_A_ID);
         Object valB = inputValues.get(INPUT_B_ID);
-
         if (!(valA instanceof Number aNumber) || !(valB instanceof Number bNumber)) {
-            outputValues.put(OUTPUT_QUOTIENT_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            publish(ScalarResult.invalid());
             return;
         }
+        publish(ScalarMathOps.div(aNumber.doubleValue(), bNumber.doubleValue()));
+    }
 
-        double a = aNumber.doubleValue();
-        double b = bNumber.doubleValue();
-        if (Math.abs(b) < 1.0e-10d) {
-            outputValues.put(OUTPUT_QUOTIENT_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-
-        double result = a / b;
-        outputValues.put(OUTPUT_QUOTIENT_ID, result);
-        outputValues.put(OUTPUT_VALID_ID, Double.isFinite(result));
+    private void publish(ScalarResult result) {
+        outputValues.put(OUTPUT_QUOTIENT_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
 }

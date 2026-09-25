@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarMathOps;
+import com.nodecraft.nodesystem.math.ScalarResult;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -32,8 +34,8 @@ public class SmoothstepNode extends BaseNode {
         super(UUID.randomUUID(), "math.scalar_math.smoothstep");
 
         addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Input value", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_EDGE0_ID, "Edge 0", "Lower edge", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_EDGE1_ID, "Edge 1", "Upper edge", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_EDGE0_ID, "Edge 0", "First edge (may be greater than Edge 1)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_EDGE1_ID, "Edge 1", "Second edge (may be less than Edge 0)", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_RESULT_ID, "Result", "Smoothstep result in [0,1]", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_T_ID, "T", "Normalized and clamped parameter", NodeDataType.DOUBLE, this));
@@ -68,26 +70,10 @@ public class SmoothstepNode extends BaseNode {
         double value = valueNum.doubleValue();
         double edge0 = edge0Num.doubleValue();
         double edge1 = edge1Num.doubleValue();
-        if (!Double.isFinite(value) || !Double.isFinite(edge0) || !Double.isFinite(edge1)) {
-            outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
-            outputValues.put(OUTPUT_T_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-        if (Math.abs(edge1 - edge0) <= 1.0e-12d) {
-            outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
-            outputValues.put(OUTPUT_T_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-
-        double t = (value - edge0) / (edge1 - edge0);
-        double clamped = Math.max(0.0d, Math.min(1.0d, t));
-        double result = clamped * clamped * (3.0d - 2.0d * clamped);
-
-        outputValues.put(OUTPUT_RESULT_ID, result);
-        outputValues.put(OUTPUT_T_ID, clamped);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        ScalarResult result = ScalarMathOps.smoothstep(value, edge0, edge1);
+        ScalarResult t = ScalarMathOps.smoothstepT(value, edge0, edge1);
+        outputValues.put(OUTPUT_RESULT_ID, result.value());
+        outputValues.put(OUTPUT_T_ID, t.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
 }
-

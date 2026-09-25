@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarMathOps;
+import com.nodecraft.nodesystem.math.ScalarResult;
 
 import java.util.UUID;
 
@@ -58,17 +60,8 @@ public class LerpNode extends BaseNode {
             return;
         }
 
-        double a = aNum.doubleValue();
-        double b = bNum.doubleValue();
-        double t = tNum.doubleValue();
-        if (!Double.isFinite(a) || !Double.isFinite(b) || !Double.isFinite(t)) {
-            outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-
-        outputValues.put(OUTPUT_RESULT_ID, a + t * (b - a));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        ScalarResult result = ScalarMathOps.lerp(aNum.doubleValue(), bNum.doubleValue(), tNum.doubleValue());
+        outputValues.put(OUTPUT_RESULT_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
 }
-

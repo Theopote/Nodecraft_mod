@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarMathOps;
+import com.nodecraft.nodesystem.math.ScalarResult;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -49,15 +51,8 @@ public class AbsoluteNode extends BaseNode {
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
-
-        double value = number.doubleValue();
-        if (!Double.isFinite(value)) {
-            outputValues.put(OUTPUT_ABSOLUTE_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-
-        outputValues.put(OUTPUT_ABSOLUTE_ID, Math.abs(value));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        ScalarResult result = ScalarMathOps.abs(number.doubleValue());
+        outputValues.put(OUTPUT_ABSOLUTE_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
 }

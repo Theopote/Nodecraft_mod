@@ -19,13 +19,14 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.scalar_math.graph_mapper",
     displayName = "Graph Mapper",
-    description = "Maps a value through a selectable normalized graph function, similar to Grasshopper's Graph Mapper",
+    description = "Advanced: maps a value through a selectable normalized graph function (Grasshopper-style Graph Mapper)",
     category = "math.scalar_math",
     order = 22
 )
 public class GraphMapperNode extends BaseNode {
 
-    private static final double EPS = 1.0e-12d;
+    /** Local solver tolerance only — not graph-facing zero semantics. */
+    private static final double SOLVER_EPS = 1.0e-12d;
 
     public enum CurveType {
         LINEAR,
@@ -50,10 +51,12 @@ public class GraphMapperNode extends BaseNode {
         description = "Used by Power, Ease, and Exponential mappings")
     private double defaultExponent = 2.0d;
 
-    @NodeProperty(displayName = "Gaussian Center", category = "Graph", order = 4)
+    @NodeProperty(displayName = "Gaussian Center", category = "Graph", order = 4,
+        description = "Gaussian center in normalized 0..1 space")
     private double gaussianCenter = 0.5d;
 
-    @NodeProperty(displayName = "Gaussian Width", category = "Graph", order = 5)
+    @NodeProperty(displayName = "Gaussian Width", category = "Graph", order = 5,
+        description = "Gaussian width in normalized 0..1 space")
     private double gaussianWidth = 0.2d;
 
     @NodeProperty(displayName = "Bezier X1", category = "Bezier", order = 6)
@@ -75,9 +78,6 @@ public class GraphMapperNode extends BaseNode {
     private double defaultSourceEnd = 1.0d;
     private double defaultTargetStart = 0.0d;
     private double defaultTargetEnd = 1.0d;
-    private static final String INPUT_EXPONENT_ID = "input_exponent";
-    private static final String INPUT_GAUSSIAN_CENTER_ID = "input_gaussian_center";
-    private static final String INPUT_GAUSSIAN_WIDTH_ID = "input_gaussian_width";
 
     private static final String OUTPUT_RESULT_ID = "output_result";
     private static final String OUTPUT_T_ID = "output_t";
@@ -90,9 +90,6 @@ public class GraphMapperNode extends BaseNode {
         addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Input value to map", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SOURCE_ID, "Source", "Source domain (Start→End)", NodeDataType.NUMERIC_RANGE, this));
         addInputPort(new BasePort(INPUT_TARGET_ID, "Target", "Target domain (Start→End)", NodeDataType.NUMERIC_RANGE, this));
-        addInputPort(new BasePort(INPUT_EXPONENT_ID, "Exponent", "Optional exponent or exponential strength", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_GAUSSIAN_CENTER_ID, "Gaussian Center", "Optional Gaussian center in normalized 0..1 space", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_GAUSSIAN_WIDTH_ID, "Gaussian Width", "Optional Gaussian width in normalized 0..1 space", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_RESULT_ID, "Result", "Mapped value remapped to target domain", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_T_ID, "T", "Normalized input parameter", NodeDataType.DOUBLE, this));
@@ -107,7 +104,7 @@ public class GraphMapperNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Maps a value through a selectable normalized graph function, similar to Grasshopper's Graph Mapper";
+        return "Advanced: maps a value through a selectable normalized graph function (Grasshopper-style Graph Mapper)";
     }
 
     @Override
@@ -117,12 +114,12 @@ public class GraphMapperNode extends BaseNode {
             inputValues.get(INPUT_SOURCE_ID), defaultSourceStart, defaultSourceEnd);
         NumericRangeData target = NumericDomainResolver.resolveDomain(
             inputValues.get(INPUT_TARGET_ID), defaultTargetStart, defaultTargetEnd);
-        double exponent = getInputDouble(INPUT_EXPONENT_ID, defaultExponent);
-        double center = getInputDouble(INPUT_GAUSSIAN_CENTER_ID, gaussianCenter);
-        double width = getInputDouble(INPUT_GAUSSIAN_WIDTH_ID, gaussianWidth);
+        double exponent = defaultExponent;
+        double center = gaussianCenter;
+        double width = gaussianWidth;
 
         if (!allFinite(value, source.start(), source.end(), target.start(), target.end(), exponent, center, width)
-            || Math.abs(source.delta()) <= EPS) {
+            || source.delta() == 0.0d) {
             writeInvalid();
             return;
         }
@@ -138,6 +135,10 @@ public class GraphMapperNode extends BaseNode {
             return;
         }
         double result = target.lerp(mapped);
+        if (!Double.isFinite(result) || !Double.isFinite(t)) {
+            writeInvalid();
+            return;
+        }
 
         outputValues.put(OUTPUT_RESULT_ID, result);
         outputValues.put(OUTPUT_T_ID, t);
@@ -173,18 +174,18 @@ public class GraphMapperNode extends BaseNode {
     }
 
     private static double exponential(double t, double strength) {
-        if (Math.abs(strength) <= EPS) {
+        if (Math.abs(strength) <= SOLVER_EPS) {
             return t;
         }
         double denom = Math.exp(strength) - 1.0d;
-        if (Math.abs(denom) <= EPS) {
+        if (Math.abs(denom) <= SOLVER_EPS) {
             return t;
         }
         return (Math.exp(strength * t) - 1.0d) / denom;
     }
 
     private static double gaussian(double t, double center, double width) {
-        double sigma = Math.max(EPS, Math.abs(width));
+        double sigma = Math.max(SOLVER_EPS, Math.abs(width));
         double x = (t - center) / sigma;
         return Math.exp(-0.5d * x * x);
     }
@@ -206,7 +207,7 @@ public class GraphMapperNode extends BaseNode {
             } else {
                 hi = u;
             }
-            if (Math.abs(dx) > EPS) {
+            if (Math.abs(dx) > SOLVER_EPS) {
                 double next = u - (bx - x) / dx;
                 u = next > lo && next < hi ? next : (lo + hi) * 0.5d;
             } else {
@@ -322,7 +323,7 @@ public class GraphMapperNode extends BaseNode {
     }
 
     public void setGaussianWidth(double gaussianWidth) {
-        double width = Math.max(EPS, Math.abs(gaussianWidth));
+        double width = Math.max(SOLVER_EPS, Math.abs(gaussianWidth));
         if (Double.isFinite(width) && Double.compare(this.gaussianWidth, width) != 0) {
             this.gaussianWidth = width;
             markDirty();

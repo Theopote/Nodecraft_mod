@@ -54,7 +54,7 @@ public record NumericRangeData(double start, double end) {
      * Normalized parameter along the directed domain. Returns NaN when length is zero.
      */
     public double normalizedParameter(double value) {
-        if (Math.abs(delta()) <= EPS) {
+        if (delta() == 0.0d) {
             return Double.NaN;
         }
         return (value - start) / delta();

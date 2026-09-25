@@ -8,6 +8,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarMathOps;
+import com.nodecraft.nodesystem.math.ScalarResult;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
 import imgui.flag.ImGuiInputTextFlags;
@@ -25,7 +27,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.scalar_math.expression",
     displayName = "Expression",
-    description = "Evaluates a numeric expression using input variables such as A, B, C, X, Y, Z, and T",
+    description = "Advanced: evaluates a numeric expression using variables A, B, C, X, Y, Z, and T",
     category = "math.scalar_math",
     order = 23
 )
@@ -80,7 +82,7 @@ public class ExpressionNode extends BaseCustomUINode {
 
     @Override
     public String getDescription() {
-        return "Evaluates a numeric expression using input variables such as A, B, C, X, Y, Z, and T";
+        return "Advanced: evaluates a numeric expression using variables A, B, C, X, Y, Z, and T";
     }
 
     @Override
@@ -308,16 +310,24 @@ public class ExpressionNode extends BaseCustomUINode {
                     value *= parsePower();
                 } else if (match('/')) {
                     double divisor = parsePower();
-                    if (Math.abs(divisor) <= 1.0e-12d) {
+                    if (divisor == 0.0d) {
                         throw error("Division by zero");
                     }
-                    value /= divisor;
+                    ScalarResult divided = ScalarMathOps.div(value, divisor);
+                    if (!divided.valid()) {
+                        throw error("Division produced a non-finite result");
+                    }
+                    value = divided.value();
                 } else if (match('%')) {
                     double divisor = parsePower();
-                    if (Math.abs(divisor) <= 1.0e-12d) {
+                    if (divisor == 0.0d) {
                         throw error("Modulo by zero");
                     }
-                    value %= divisor;
+                    ScalarResult modded = ScalarMathOps.mod(value, divisor);
+                    if (!modded.valid()) {
+                        throw error("Modulo produced a non-finite result");
+                    }
+                    value = modded.value();
                 } else {
                     return value;
                 }
@@ -331,7 +341,7 @@ public class ExpressionNode extends BaseCustomUINode {
                 enterRecursion();
                 try {
                     double exponent = parsePower();
-                    return Math.pow(base, exponent);
+                    return requireValid(ScalarMathOps.pow(base, exponent), "pow");
                 } finally {
                     exitRecursion();
                 }
@@ -454,13 +464,13 @@ public class ExpressionNode extends BaseCustomUINode {
                 case "abs" -> one(name, args, Math::abs);
                 case "floor" -> one(name, args, Math::floor);
                 case "ceil", "ceiling" -> one(name, args, Math::ceil);
-                case "round" -> one(name, args, v -> (double) Math.round(v));
+                case "round" -> one(name, args, v -> requireValid(ScalarMathOps.round(v), "round"));
                 case "log", "ln" -> one(name, args, Math::log);
                 case "log10" -> one(name, args, Math::log10);
                 case "exp" -> one(name, args, Math::exp);
                 case "deg" -> one(name, args, Math::toDegrees);
                 case "rad" -> one(name, args, Math::toRadians);
-                case "pow" -> two(name, args, Math::pow);
+                case "pow" -> two(name, args, (a, b) -> requireValid(ScalarMathOps.pow(a, b), "pow"));
                 case "atan2" -> two(name, args, Math::atan2);
                 case "min" -> min(args);
                 case "max" -> max(args);
@@ -511,37 +521,36 @@ public class ExpressionNode extends BaseCustomUINode {
             if (args.size() != 3) {
                 throw error("clamp expects 3 arguments");
             }
-            double min = Math.min(args.get(1), args.get(2));
-            double max = Math.max(args.get(1), args.get(2));
-            return Math.max(min, Math.min(max, args.get(0)));
+            return requireValid(ScalarMathOps.clamp(args.get(0), args.get(1), args.get(2)), "clamp");
         }
 
         private double lerp(List<Double> args) {
             if (args.size() != 3) {
                 throw error("lerp expects 3 arguments");
             }
-            return args.get(0) + (args.get(1) - args.get(0)) * args.get(2);
+            return requireValid(ScalarMathOps.lerp(args.get(0), args.get(1), args.get(2)), "lerp");
         }
 
         private double smoothstep(List<Double> args) {
             if (args.size() == 1) {
-                double t = clamp01(args.get(0));
+                double t = ScalarMathOps.clamp01(args.get(0));
                 return t * t * (3.0d - 2.0d * t);
             }
             if (args.size() == 3) {
-                double edge0 = args.get(0);
-                double edge1 = args.get(1);
-                if (Math.abs(edge1 - edge0) <= 1.0e-12d) {
-                    throw error("smoothstep edges cannot match");
-                }
-                double t = clamp01((args.get(2) - edge0) / (edge1 - edge0));
-                return t * t * (3.0d - 2.0d * t);
+                // Expression convention: smoothstep(edge0, edge1, value)
+                return requireValid(
+                    ScalarMathOps.smoothstep(args.get(2), args.get(0), args.get(1)),
+                    "smoothstep"
+                );
             }
             throw error("smoothstep expects 1 or 3 arguments");
         }
 
-        private double clamp01(double value) {
-            return Math.max(0.0d, Math.min(1.0d, value));
+        private double requireValid(ScalarResult result, String op) {
+            if (!result.valid()) {
+                throw error(op + " produced a non-finite result");
+            }
+            return result.value();
         }
 
         private String readIdentifier() {

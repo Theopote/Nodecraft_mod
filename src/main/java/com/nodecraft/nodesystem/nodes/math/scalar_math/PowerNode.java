@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarMathOps;
+import com.nodecraft.nodesystem.math.ScalarResult;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -47,23 +49,15 @@ public class PowerNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object valBase = inputValues.get(INPUT_BASE_ID);
         Object valExponent = inputValues.get(INPUT_EXPONENT_ID);
-
         if (!(valBase instanceof Number baseNumber) || !(valExponent instanceof Number exponentNumber)) {
-            outputValues.put(OUTPUT_POWER_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            publish(ScalarResult.invalid());
             return;
         }
+        publish(ScalarMathOps.pow(baseNumber.doubleValue(), exponentNumber.doubleValue()));
+    }
 
-        double base = baseNumber.doubleValue();
-        double exponent = exponentNumber.doubleValue();
-        if (!Double.isFinite(base) || !Double.isFinite(exponent)) {
-            outputValues.put(OUTPUT_POWER_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-
-        double result = Math.pow(base, exponent);
-        outputValues.put(OUTPUT_POWER_ID, result);
-        outputValues.put(OUTPUT_VALID_ID, Double.isFinite(result));
+    private void publish(ScalarResult result) {
+        outputValues.put(OUTPUT_POWER_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
 }

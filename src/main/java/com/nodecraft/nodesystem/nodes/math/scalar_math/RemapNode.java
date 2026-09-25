@@ -7,6 +7,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.NumericRangeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarMathOps;
+import com.nodecraft.nodesystem.math.ScalarResult;
 import com.nodecraft.nodesystem.util.NumericDomainResolver;
 import org.jetbrains.annotations.Nullable;
 
@@ -68,40 +70,15 @@ public class RemapNode extends BaseNode {
             return;
         }
 
-        double value = valueNumber.doubleValue();
-        if (!Double.isFinite(value)) {
-            outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-
         NumericRangeData source = NumericDomainResolver.resolveDomain(
             inputValues.get(INPUT_SOURCE_ID), defaultSourceStart, defaultSourceEnd);
         NumericRangeData target = NumericDomainResolver.resolveDomain(
             inputValues.get(INPUT_TARGET_ID), defaultTargetStart, defaultTargetEnd);
         boolean clamp = clampObj instanceof Boolean ? (Boolean) clampObj : defaultClamp;
 
-        if (!Double.isFinite(source.start()) || !Double.isFinite(source.end())
-            || !Double.isFinite(target.start()) || !Double.isFinite(target.end())) {
-            outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-        if (Math.abs(source.delta()) <= 1.0e-12d) {
-            outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-
-        double t = source.normalizedParameter(value);
-        double result = target.lerp(t);
-
-        if (clamp) {
-            result = Math.max(target.lower(), Math.min(target.upper(), result));
-        }
-
-        outputValues.put(OUTPUT_RESULT_ID, result);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        ScalarResult result = ScalarMathOps.remap(valueNumber.doubleValue(), source, target, clamp);
+        outputValues.put(OUTPUT_RESULT_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
 
     public double getDefaultSourceStart() {

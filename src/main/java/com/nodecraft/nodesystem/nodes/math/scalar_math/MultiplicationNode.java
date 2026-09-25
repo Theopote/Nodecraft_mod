@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarMathOps;
+import com.nodecraft.nodesystem.math.ScalarResult;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -47,14 +49,15 @@ public class MultiplicationNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object valA = inputValues.get(INPUT_A_ID);
         Object valB = inputValues.get(INPUT_B_ID);
-
-        if (valA instanceof Number aNumber && valB instanceof Number bNumber) {
-            double result = aNumber.doubleValue() * bNumber.doubleValue();
-            outputValues.put(OUTPUT_PRODUCT_ID, result);
-            outputValues.put(OUTPUT_VALID_ID, Double.isFinite(result));
-        } else {
-            outputValues.put(OUTPUT_PRODUCT_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        if (!(valA instanceof Number aNumber) || !(valB instanceof Number bNumber)) {
+            publish(ScalarResult.invalid());
+            return;
         }
+        publish(ScalarMathOps.mul(aNumber.doubleValue(), bNumber.doubleValue()));
+    }
+
+    private void publish(ScalarResult result) {
+        outputValues.put(OUTPUT_PRODUCT_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
 }

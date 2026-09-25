@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarMathOps;
+import com.nodecraft.nodesystem.math.ScalarResult;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -28,8 +30,7 @@ public class SignNode extends BaseNode {
         super(UUID.randomUUID(), "math.scalar_math.sign");
 
         addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Input value", NodeDataType.DOUBLE, this));
-
-        addOutputPort(new BasePort(OUTPUT_SIGN_ID, "Sign", "Sign as -1, 0, or +1", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_SIGN_ID, "Sign", "Sign as -1, 0, or +1", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether input is a valid finite number", NodeDataType.BOOLEAN, this));
     }
 
@@ -47,21 +48,12 @@ public class SignNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object valueObj = inputValues.get(INPUT_VALUE_ID);
         if (!(valueObj instanceof Number number)) {
-            outputValues.put(OUTPUT_SIGN_ID, 0);
+            outputValues.put(OUTPUT_SIGN_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
-
-        double value = number.doubleValue();
-        if (!Double.isFinite(value)) {
-            outputValues.put(OUTPUT_SIGN_ID, 0);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-
-        int sign = value > 0.0d ? 1 : (value < 0.0d ? -1 : 0);
-        outputValues.put(OUTPUT_SIGN_ID, sign);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        ScalarResult result = ScalarMathOps.sign(number.doubleValue());
+        outputValues.put(OUTPUT_SIGN_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
 }
-

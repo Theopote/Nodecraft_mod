@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarMathOps;
+import com.nodecraft.nodesystem.math.ScalarResult;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -14,7 +16,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.scalar_math.round",
     displayName = "Round",
-    description = "Rounds a value to the nearest integer.",
+    description = "Rounds a value to the nearest integer-valued double (ties-to-even).",
     category = "math.scalar_math",
     order = 14
 )
@@ -33,7 +35,7 @@ public class RoundNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Rounds a value to the nearest integer.";
+        return "Rounds a value to the nearest integer-valued double (ties-to-even).";
     }
 
     @Override
@@ -49,15 +51,8 @@ public class RoundNode extends BaseNode {
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
-
-        double value = number.doubleValue();
-        if (!Double.isFinite(value)) {
-            outputValues.put(OUTPUT_ROUNDED_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-
-        outputValues.put(OUTPUT_ROUNDED_ID, (double) Math.round(value));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        ScalarResult result = ScalarMathOps.round(number.doubleValue());
+        outputValues.put(OUTPUT_ROUNDED_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
 }

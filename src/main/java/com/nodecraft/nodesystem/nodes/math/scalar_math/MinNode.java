@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarMathOps;
+import com.nodecraft.nodesystem.math.ScalarResult;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -52,16 +54,8 @@ public class MinNode extends BaseNode {
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
-
-        double a = aNumber.doubleValue();
-        double b = bNumber.doubleValue();
-        if (!Double.isFinite(a) || !Double.isFinite(b)) {
-            outputValues.put(OUTPUT_MIN_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-
-        outputValues.put(OUTPUT_MIN_ID, Math.min(a, b));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        ScalarResult result = ScalarMathOps.min(aNumber.doubleValue(), bNumber.doubleValue());
+        outputValues.put(OUTPUT_MIN_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
 }
