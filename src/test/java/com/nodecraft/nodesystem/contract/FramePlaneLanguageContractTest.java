@@ -193,6 +193,27 @@ class FramePlaneLanguageContractTest {
     }
 
     @Test
+    void transformPointsByFramesUsesOrthonormalBasisNotRawAxisScale() {
+        FrameData scaledAxes = new FrameData(
+            new Vector3d(0, 0, 0),
+            new Vector3d(2, 0, 0),
+            new Vector3d(0, 3, 0),
+            new Vector3d(0, 0, 4)
+        );
+
+        BaseNode transform = node("transform.basic_transforms.transform_by_frames");
+        transform.setInput("input_local_points", List.of(new PointData(1, 1, 1)));
+        transform.setInput("input_frames", List.of(scaledAxes));
+        transform.processNode(null);
+
+        assertEquals(Boolean.TRUE, transform.getOutput("output_valid"));
+        PointData world = assertInstanceOf(PointData.class, ((List<?>) transform.getOutput("output_points")).getFirst());
+        assertEquals(1.0d, world.getPosition().x, 1.0e-6d);
+        assertEquals(1.0d, world.getPosition().y, 1.0e-6d);
+        assertEquals(1.0d, world.getPosition().z, 1.0e-6d);
+    }
+
+    @Test
     void worldFrameOutputsFrameOnly() {
         assertPortType("reference.frames.world_frame", "output_frame", false, NodeDataType.FRAME);
         assertFalse(hasOutputPort("reference.frames.world_frame", "output_origin"));

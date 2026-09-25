@@ -55,14 +55,19 @@ public class TransformPointsByFramesNode extends BaseNode {
 
         List<Vector3d> out = new ArrayList<>(frames.size() * localPoints.size());
         for (FrameData frame : frames) {
-            if (frame == null || frame.orthonormalized() == null) {
+            if (frame == null) {
                 writeInvalid();
                 return;
             }
-            Vector3d origin = frame.getOrigin();
-            Vector3d x = frame.getXAxis();
-            Vector3d y = frame.getYAxis();
-            Vector3d z = frame.getZAxis();
+            FrameData basis = frame.orthonormalized();
+            if (basis == null) {
+                writeInvalid();
+                return;
+            }
+            Vector3d origin = basis.getOrigin();
+            Vector3d x = basis.getXAxis();
+            Vector3d y = basis.getYAxis();
+            Vector3d z = basis.getZAxis();
 
             for (Vector3d local : localPoints) {
                 if (local == null || !isFinite(local)) {
