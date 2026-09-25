@@ -13,6 +13,14 @@ final class PointUtils {
     private PointUtils() {
     }
 
+    /** Strict POINT port: accepts {@link PointData} only. */
+    static Vector3d toPointPosition(Object value) {
+        if (value instanceof PointData pointData) {
+            return pointData.getPosition();
+        }
+        return null;
+    }
+
     static Vector3d resolvePoint(Object value) {
         if (value instanceof PointData pointData) {
             return pointData.getPosition();

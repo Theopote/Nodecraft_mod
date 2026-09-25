@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **542**
+- Total nodes: **543**
 - Total categories: **59**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -52,7 +52,7 @@
 | `pattern.voronoi_3d` | 1 |
 | `reference.frames` | 8 |
 | `reference.planes` | 7 |
-| `reference.points` | 18 |
+| `reference.points` | 19 |
 | `reference.vectors` | 18 |
 | `transform.basic_transforms` | 15 |
 | `transform.deformations` | 10 |
@@ -664,19 +664,21 @@
 | Box Face To Plane | `reference.planes.block_face_plane` | Converts a box face into its supporting plane | `BoxFaceToPlaneNode` |
 | Offset Plane | `reference.planes.offset_plane` | Offsets a plane along its normal by a signed distance | `OffsetPlaneNode` |
 
-## reference.points (18)
+## reference.points (19)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Block Position Input | `reference.points.block_position` | Inputs an integer block position from panel values or optional X/Y/Z ports. | `CoordinateInputNode` |
-| Construct Coordinate | `reference.points.construct_coordinate` | Constructs a block coordinate from X, Y, and Z integer components. | `ConstructCoordinateNode` |
+| Construct Block Position | `reference.points.construct_coordinate` | Constructs a block position from X, Y, and Z integer components | `ConstructCoordinateNode` |
 | Block To Point | `reference.points.point_from_block` | Explicitly converts a block coordinate into a geometric point, with optional block-center offset | `BlockToPointNode` |
-| Point Along Vector | `reference.points.point_along_vector` | Creates a new point by moving a start point along a direction vector by a distance | `PointAlongVectorNode` |
-| Block To Vector | `reference.points.block_to_vector` | Convenience: Block Pos → VECTOR position. Canonical spatial path is Block To Point (POINT), then use the point as needed. | `BlockToVectorNode` |
+| Move Point Along Direction | `reference.points.point_along_vector` | Moves a start point along a direction vector by a distance (direction is always normalized) | `PointAlongVectorNode` |
+| Translate Point | `reference.points.translate_point` | Translates a geometric point by a displacement vector (Point + Vector → Point) | `TranslatePointNode` |
+| Construct Point | `reference.points.construct_point` | Constructs a geometric point from X, Y, and Z double components | `ConstructPointNode` |
 | Deconstruct Block Position | `reference.points.deconstruct_block_position` | Extracts X, Y, and Z integer components from a block position | `DeconstructCoordinateNode` |
 | Deconstruct Point | `reference.points.deconstruct_point` | Extracts X, Y, and Z double components from a geometric point | `DeconstructPointNode` |
 | Mid Point | `reference.points.mid_point` | Computes the midpoint between two input points | `MidpointNode` |
 | Distance Between Points | `reference.points.distance_between_points` | Computes the distance between two input points | `DistanceNode` |
+| Vector Between Points | `reference.points.vector_between_points` | Computes the displacement vector from one geometric point to another (To − From) | `VectorBetweenPointsNode` |
 | Closest Point | `reference.points.closest_point` | Finds the closest geometric point in a point list to a reference point | `ClosestPointNode` |
 | Point List Center | `reference.points.point_list_center` | Calculates the average geometric center of a point list | `PointListCenterNode` |
 | Point List Bounds | `reference.points.point_list_bounds` | Calculates an axis-aligned bounding box from a list of geometric points | `PointListBoundsNode` |
@@ -685,7 +687,6 @@
 | Get Face Edge | `reference.points.get_face_edge` | Gets a single edge from a face by index | `GetFaceEdgeNode` |
 | Deconstruct Box Face | `reference.points.deconstruct_face` | Extracts corners, edges, plane, center, and normal from a box face | `DeconstructBoxFaceNode` |
 | Deconstruct Face Edge | `reference.points.deconstruct_edge` | Extracts endpoints, midpoint, direction, vector, and length from a face edge | `DeconstructFaceEdgeNode` |
-| Closest Point To Object | `reference.points.closest_point_to_object` | Finds the nearest point from a query point to a curve, path, surface strip, or voxelized geometry | `ClosestPointToObjectNode` |
 
 ## reference.vectors (18)
 
@@ -703,7 +704,7 @@
 | Vector Subtraction (-) | `reference.vectors.vector_subtraction` | Computes the vector difference A - B. | `VectorSubtractionNode` |
 | Vector Scalar Multiply | `reference.vectors.vector_scalar_multiply` | Multiplies a vector by a scalar. | `VectorScalarMultiplyNode` |
 | Vector Scalar Divide | `reference.vectors.vector_scalar_divide` | Divides a vector by a scalar. | `VectorScalarDivideNode` |
-| Angle Between Vectors | `reference.vectors.angle_between` | Angle between two vectors in radians and degrees; optional reference vector yields a signed angle | `AngleBetweenVectorsNode` |
+| Angle Between Vectors | `reference.vectors.angle_between` | Angle between two vectors in degrees; optional reference vector yields a signed angle | `AngleBetweenVectorsNode` |
 | Lerp Vectors | `reference.vectors.lerp_vectors` | Linearly interpolates between vector A and B using parameter T. | `LerpVectorsNode` |
 | Reflect Vector | `reference.vectors.reflect` | Reflects an input vector around a normal vector using v - 2(v·n)n. | `ReflectVectorNode` |
 | Project Vector onto Vector | `reference.vectors.project` | Projects vector A onto vector B as (A·B / \|B\|^2)B. | `ProjectVectorNode` |

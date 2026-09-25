@@ -118,8 +118,15 @@ public final class GraphFormatVersion {
      */
     public static final int V18 = 18;
 
+    /**
+     * Point/vector language v1 closure: no position-as-VECTOR outputs, degrees-only angles,
+     * POINT_LIST tightening, DELETE Block To Vector / Closest Point To Object,
+     * ADD Construct Point / Translate Point / Vector Between Points.
+     */
+    public static final int V19 = 19;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V18;
+    public static final int CURRENT = V19;
 
     private GraphFormatVersion() {
     }

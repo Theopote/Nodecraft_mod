@@ -38,11 +38,6 @@ public class CoordinateInputNode extends BaseCustomUINode {
     private static final String INPUT_Z_ID = "input_z";
 
     private static final String OUTPUT_BLOCK_POS_ID = "output_block_pos";
-    /** Legacy alias of block position; kept for graph compatibility. */
-    private static final String OUTPUT_COORDINATE_ID = "output_coordinate";
-    private static final String OUTPUT_X_ID = "output_x";
-    private static final String OUTPUT_Y_ID = "output_y";
-    private static final String OUTPUT_Z_ID = "output_z";
 
     @NodeProperty(displayName = "X", category = "Components", order = 1, description = "X block coordinate")
     private int x = 0;
@@ -59,11 +54,6 @@ public class CoordinateInputNode extends BaseCustomUINode {
         addInputPort(new BasePort(INPUT_Y_ID, "Y", "Optional Y override", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_Z_ID, "Z", "Optional Z override", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_BLOCK_POS_ID, "Block Pos", "Block position", NodeDataType.BLOCK_POS, this));
-        addOutputPort(new BasePort(OUTPUT_COORDINATE_ID, "Coordinate",
-            "Legacy alias of Block Pos (same value)", NodeDataType.COORDINATE, this));
-        addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X coordinate", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y coordinate", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z coordinate", NodeDataType.INTEGER, this));
         updateOutput();
     }
 
@@ -150,10 +140,6 @@ public class CoordinateInputNode extends BaseCustomUINode {
         int resolvedZ = getResolvedZ();
         BlockPos blockPos = new BlockPos(resolvedX, resolvedY, resolvedZ);
         outputValues.put(OUTPUT_BLOCK_POS_ID, blockPos);
-        outputValues.put(OUTPUT_COORDINATE_ID, blockPos);
-        outputValues.put(OUTPUT_X_ID, resolvedX);
-        outputValues.put(OUTPUT_Y_ID, resolvedY);
-        outputValues.put(OUTPUT_Z_ID, resolvedZ);
         syncOutputPorts();
     }
 

@@ -7,7 +7,6 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.BlockPosList;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -68,15 +67,14 @@ public class ClosestPointNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d reference = PointUtils.resolvePoint(inputValues.get(INPUT_POINT_ID));
+        Vector3d reference = PointUtils.toPointPosition(inputValues.get(INPUT_POINT_ID));
         if (!PointUtils.isFinite(reference)) {
             writeInvalid();
             return;
         }
 
         Object candidatesObj = inputValues.get(INPUT_COORDINATES_ID);
-        Iterable<?> candidates = toIterable(candidatesObj);
-        if (candidates == null) {
+        if (!(candidatesObj instanceof Collection<?> candidates)) {
             writeInvalid();
             return;
         }
@@ -87,7 +85,7 @@ public class ClosestPointNode extends BaseNode {
         int index = 0;
 
         for (Object candidateObj : candidates) {
-            Vector3d candidate = PointUtils.resolvePoint(candidateObj);
+            Vector3d candidate = PointUtils.toPointPosition(candidateObj);
             if (PointUtils.isFinite(candidate)) {
                 double distanceSquared = PointUtils.distanceSquared(reference, candidate);
                 if (distanceSquared < minDistanceSquared) {
@@ -108,16 +106,6 @@ public class ClosestPointNode extends BaseNode {
         outputValues.put(OUTPUT_DISTANCE_ID, Math.sqrt(minDistanceSquared));
         outputValues.put(OUTPUT_INDEX_ID, closestIndex);
         outputValues.put(OUTPUT_VALID_ID, true);
-    }
-
-    private Iterable<?> toIterable(Object value) {
-        if (value instanceof BlockPosList blockPosList) {
-            return blockPosList;
-        }
-        if (value instanceof Collection<?> collection) {
-            return collection;
-        }
-        return null;
     }
 
     private void writeInvalid() {

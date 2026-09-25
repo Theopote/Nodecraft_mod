@@ -26,7 +26,6 @@ public class MidpointNode extends BaseNode {
     private static final String INPUT_B_ID = "input_point_b";
 
     private static final String OUTPUT_POINT_ID = "output_midpoint";
-    private static final String OUTPUT_VECTOR_ID = "output_vector";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public MidpointNode() {
@@ -41,8 +40,6 @@ public class MidpointNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINT_ID, "Mid Point",
             "Midpoint as point data", NodeDataType.POINT, this));
-        addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector",
-            "Midpoint as a Vector3d position", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when both input points are valid", NodeDataType.BOOLEAN, this));
     }
@@ -54,12 +51,11 @@ public class MidpointNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d pointA = PointUtils.resolvePoint(inputValues.get(INPUT_A_ID));
-        Vector3d pointB = PointUtils.resolvePoint(inputValues.get(INPUT_B_ID));
+        Vector3d pointA = PointUtils.toPointPosition(inputValues.get(INPUT_A_ID));
+        Vector3d pointB = PointUtils.toPointPosition(inputValues.get(INPUT_B_ID));
 
         if (!PointUtils.isFinite(pointA) || !PointUtils.isFinite(pointB)) {
             outputValues.put(OUTPUT_POINT_ID, null);
-            outputValues.put(OUTPUT_VECTOR_ID, null);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
@@ -71,7 +67,6 @@ public class MidpointNode extends BaseNode {
         );
 
         outputValues.put(OUTPUT_POINT_ID, new PointData(midpoint));
-        outputValues.put(OUTPUT_VECTOR_ID, midpoint);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 }

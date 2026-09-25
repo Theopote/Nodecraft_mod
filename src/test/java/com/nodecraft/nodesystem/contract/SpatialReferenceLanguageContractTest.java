@@ -4,10 +4,11 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.TypeConversionRegistry;
-import com.nodecraft.nodesystem.nodes.reference.points.BlockToVectorNode;
+import com.nodecraft.nodesystem.nodes.reference.points.BlockToPointNode;
 import com.nodecraft.nodesystem.nodes.reference.points.ClosestPointNode;
 import com.nodecraft.nodesystem.nodes.reference.points.DeconstructCoordinateNode;
 import com.nodecraft.nodesystem.nodes.reference.points.DeconstructPointNode;
+import com.nodecraft.core.exception.NodeValidationException;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -18,12 +19,14 @@ import java.util.Locale;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Spatial P1 freeze: Closest Point continuous POINT output;
  * Deconstruct Block Position vs Deconstruct Point;
- * Block To Vector remains convenience-only.
+ * Block To Vector removed — canonical path is Block To Point.
  */
 class SpatialReferenceLanguageContractTest {
 
@@ -67,12 +70,13 @@ class SpatialReferenceLanguageContractTest {
     }
 
     @Test
-    void blockToVectorIsConvenience_canonicalPathIsBlockToPoint() {
-        BlockToVectorNode convenience = new BlockToVectorNode();
-        assertEquals(NodeDataType.BLOCK_POS, findPort(convenience, "input_coordinate").getDataType());
-        assertEquals(NodeDataType.VECTOR, findPort(convenience, "output_vector").getDataType());
-        assertTrue(convenience.getDescription().toLowerCase(Locale.ROOT).contains("convenience")
-                || convenience.getDescription().toLowerCase(Locale.ROOT).contains("prefer block to point"));
+    void blockToVectorIsRemoved_canonicalPathIsBlockToPoint() {
+        assertThrows(NodeValidationException.class,
+            () -> registry.createNodeInstance("reference.points.block_to_vector"));
+
+        BlockToPointNode canonical = new BlockToPointNode();
+        assertEquals(NodeDataType.BLOCK_POS, findPort(canonical, "input_coordinate").getDataType());
+        assertEquals(NodeDataType.POINT, findPort(canonical, "output_point").getDataType());
 
         assertEquals(
                 TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
@@ -83,10 +87,7 @@ class SpatialReferenceLanguageContractTest {
         assertNotNull(toPoint);
         assertEquals("reference.points.point_from_block", toPoint.nodeId());
 
-        TypeConversionRegistry.ConversionSuggestion toVector =
-                TypeConversionRegistry.getSuggestedConversion(NodeDataType.BLOCK_POS, NodeDataType.VECTOR);
-        assertNotNull(toVector);
-        assertEquals("reference.points.block_to_vector", toVector.nodeId());
+        assertNull(TypeConversionRegistry.getSuggestedConversion(NodeDataType.BLOCK_POS, NodeDataType.VECTOR));
     }
 
     private static boolean hasBlockPosOutput(INode node) {

@@ -18,7 +18,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "reference.vectors.angle_between",
     displayName = "Angle Between Vectors",
-    description = "Angle between two vectors in radians and degrees; optional reference vector yields a signed angle",
+    description = "Angle between two vectors in degrees; optional reference vector yields a signed angle",
     category = "reference.vectors",
     order = 11
 )
@@ -28,10 +28,8 @@ public class AngleBetweenVectorsNode extends BaseNode {
     private static final String INPUT_B_ID = "input_b";
     private static final String INPUT_REFERENCE_ID = "input_reference";
 
-    private static final String OUTPUT_RADIANS_ID = "output_radians";
-    private static final String OUTPUT_DEGREES_ID = "output_degrees";
-    private static final String OUTPUT_SIGNED_RADIANS_ID = "output_signed_radians";
-    private static final String OUTPUT_SIGNED_DEGREES_ID = "output_signed_degrees";
+    private static final String OUTPUT_ANGLE_ID = "output_angle";
+    private static final String OUTPUT_SIGNED_ANGLE_ID = "output_signed_angle";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public AngleBetweenVectorsNode() {
@@ -40,20 +38,14 @@ public class AngleBetweenVectorsNode extends BaseNode {
         addInputPort(new BasePort(INPUT_A_ID, "A", "First direction vector", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_B_ID, "B", "Second direction vector", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_REFERENCE_ID, "Reference",
-            "Optional axis for signed angle (typically the plane normal). Unsigned outputs ignore this.",
+            "Optional axis for signed angle (typically the plane normal). Unsigned output ignores this.",
             NodeDataType.VECTOR, this));
 
-        addOutputPort(new BasePort(OUTPUT_RADIANS_ID, "Radians",
-            "Unsigned angle in radians between A and B",
-            NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_DEGREES_ID, "Degrees",
+        addOutputPort(new BasePort(OUTPUT_ANGLE_ID, "Angle",
             "Unsigned angle in degrees between A and B",
             NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_SIGNED_RADIANS_ID, "Signed Radians",
-            "Signed angle using right-hand rule around Reference; NaN when Reference is not connected",
-            NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_SIGNED_DEGREES_ID, "Signed Degrees",
-            "Signed angle in degrees; NaN when Reference is not connected",
+        addOutputPort(new BasePort(OUTPUT_SIGNED_ANGLE_ID, "Signed Angle",
+            "Signed angle in degrees using right-hand rule around Reference; NaN when Reference is not connected",
             NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when A and B are valid non-zero vectors",
@@ -67,7 +59,7 @@ public class AngleBetweenVectorsNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Angle between two vectors in radians and degrees; optional reference vector yields a signed angle";
+        return "Angle between two vectors in degrees; optional reference vector yields a signed angle";
     }
 
     @Override
@@ -83,31 +75,26 @@ public class AngleBetweenVectorsNode extends BaseNode {
         Vector3d an = new Vector3d(a).normalize();
         Vector3d bn = new Vector3d(b).normalize();
         double cos = Math.max(-1.0d, Math.min(1.0d, an.dot(bn)));
-        double angle = Math.acos(cos);
-        double deg = Math.toDegrees(angle);
+        double angleRad = Math.acos(cos);
+        double deg = Math.toDegrees(angleRad);
 
-        outputValues.put(OUTPUT_RADIANS_ID, angle);
-        outputValues.put(OUTPUT_DEGREES_ID, deg);
+        outputValues.put(OUTPUT_ANGLE_ID, deg);
 
         if (VectorUtils.isFinite(ref) && ref.lengthSquared() >= VectorUtils.EPS) {
             Vector3d rn = new Vector3d(ref).normalize();
             Vector3d cross = new Vector3d(an).cross(bn);
             double sinSigned = rn.dot(cross);
-            double signed = Math.atan2(sinSigned, cos);
-            outputValues.put(OUTPUT_SIGNED_RADIANS_ID, signed);
-            outputValues.put(OUTPUT_SIGNED_DEGREES_ID, Math.toDegrees(signed));
+            double signedRad = Math.atan2(sinSigned, cos);
+            outputValues.put(OUTPUT_SIGNED_ANGLE_ID, Math.toDegrees(signedRad));
         } else {
-            outputValues.put(OUTPUT_SIGNED_RADIANS_ID, Double.NaN);
-            outputValues.put(OUTPUT_SIGNED_DEGREES_ID, Double.NaN);
+            outputValues.put(OUTPUT_SIGNED_ANGLE_ID, Double.NaN);
         }
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private void writeInvalid() {
-        outputValues.put(OUTPUT_RADIANS_ID, Double.NaN);
-        outputValues.put(OUTPUT_DEGREES_ID, Double.NaN);
-        outputValues.put(OUTPUT_SIGNED_RADIANS_ID, Double.NaN);
-        outputValues.put(OUTPUT_SIGNED_DEGREES_ID, Double.NaN);
+        outputValues.put(OUTPUT_ANGLE_ID, Double.NaN);
+        outputValues.put(OUTPUT_SIGNED_ANGLE_ID, Double.NaN);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 }

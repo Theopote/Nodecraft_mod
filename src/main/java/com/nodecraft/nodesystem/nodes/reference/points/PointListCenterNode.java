@@ -26,7 +26,6 @@ public class PointListCenterNode extends BaseNode {
     private static final String INPUT_POINTS_ID = "input_points";
 
     private static final String OUTPUT_CENTER_POINT_ID = "output_center_point";
-    private static final String OUTPUT_CENTER_VECTOR_ID = "output_center_vector";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
@@ -34,13 +33,11 @@ public class PointListCenterNode extends BaseNode {
         super(UUID.randomUUID(), "reference.points.point_list_center");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points",
-            "Collection of Point, Vector, Position, or Block Coordinate values to average",
-            NodeDataType.LIST, this));
+            "Geometric points to average",
+            NodeDataType.POINT_LIST, this));
 
         addOutputPort(new BasePort(OUTPUT_CENTER_POINT_ID, "Center Point",
             "Average geometric center of the valid input points", NodeDataType.POINT, this));
-        addOutputPort(new BasePort(OUTPUT_CENTER_VECTOR_ID, "Center Vector",
-            "Average center as a Vector3d position", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
             "Number of valid points used to compute the center", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
@@ -69,7 +66,7 @@ public class PointListCenterNode extends BaseNode {
         int count = 0;
 
         for (Object entry : collection) {
-            Vector3d point = PointUtils.resolvePoint(entry);
+            Vector3d point = PointUtils.toPointPosition(entry);
             if (!PointUtils.isFinite(point)) {
                 continue;
             }
@@ -85,14 +82,12 @@ public class PointListCenterNode extends BaseNode {
         Vector3d center = sum.div((double) count);
 
         outputValues.put(OUTPUT_CENTER_POINT_ID, new PointData(center));
-        outputValues.put(OUTPUT_CENTER_VECTOR_ID, center);
         outputValues.put(OUTPUT_COUNT_ID, count);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private void writeInvalid() {
         outputValues.put(OUTPUT_CENTER_POINT_ID, null);
-        outputValues.put(OUTPUT_CENTER_VECTOR_ID, null);
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
     }

@@ -50,8 +50,8 @@ public class DistanceNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d pointA = PointUtils.resolvePoint(inputValues.get(INPUT_A_ID));
-        Vector3d pointB = PointUtils.resolvePoint(inputValues.get(INPUT_B_ID));
+        Vector3d pointA = PointUtils.toPointPosition(inputValues.get(INPUT_A_ID));
+        Vector3d pointB = PointUtils.toPointPosition(inputValues.get(INPUT_B_ID));
 
         if (!PointUtils.isFinite(pointA) || !PointUtils.isFinite(pointB)) {
             outputValues.put(OUTPUT_DISTANCE_ID, Double.NaN);

@@ -29,10 +29,6 @@ public class BlockToPointNode extends BaseNode {
     private static final String INPUT_COORDINATE_ID = "input_coordinate";
 
     private static final String OUTPUT_POINT_ID = "output_point";
-    private static final String OUTPUT_VECTOR_ID = "output_vector";
-    private static final String OUTPUT_X_ID = "output_x";
-    private static final String OUTPUT_Y_ID = "output_y";
-    private static final String OUTPUT_Z_ID = "output_z";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     /** Prefer block center when feeding geometry Center ports (see {@link BlockSpace}). */
@@ -47,14 +43,6 @@ public class BlockToPointNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINT_ID, "Point",
             "Converted geometric point", NodeDataType.POINT, this));
-        addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector",
-            "Converted point as a Vector3d position", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_X_ID, "X",
-            "Converted X value", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_Y_ID, "Y",
-            "Converted Y value", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_Z_ID, "Z",
-            "Converted Z value", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when the input coordinate was available", NodeDataType.BOOLEAN, this));
     }
@@ -74,10 +62,6 @@ public class BlockToPointNode extends BaseNode {
         Object coordinateObj = inputValues.get(INPUT_COORDINATE_ID);
         if (!(coordinateObj instanceof BlockPos blockPos)) {
             outputValues.put(OUTPUT_POINT_ID, null);
-            outputValues.put(OUTPUT_VECTOR_ID, null);
-            outputValues.put(OUTPUT_X_ID, 0.0D);
-            outputValues.put(OUTPUT_Y_ID, 0.0D);
-            outputValues.put(OUTPUT_Z_ID, 0.0D);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
@@ -92,10 +76,6 @@ public class BlockToPointNode extends BaseNode {
         PointData point = new PointData(x, y, z);
 
         outputValues.put(OUTPUT_POINT_ID, point);
-        outputValues.put(OUTPUT_VECTOR_ID, vector);
-        outputValues.put(OUTPUT_X_ID, x);
-        outputValues.put(OUTPUT_Y_ID, y);
-        outputValues.put(OUTPUT_Z_ID, z);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 

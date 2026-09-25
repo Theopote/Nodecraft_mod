@@ -57,7 +57,7 @@ public class DeconstructPointNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d point = PointUtils.resolvePoint(inputValues.get(INPUT_POINT_ID));
+        Vector3d point = PointUtils.toPointPosition(inputValues.get(INPUT_POINT_ID));
         if (!PointUtils.isFinite(point)) {
             outputValues.put(OUTPUT_X_ID, 0.0D);
             outputValues.put(OUTPUT_Y_ID, 0.0D);

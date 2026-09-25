@@ -37,7 +37,7 @@ public class SlerpVectorsNode extends BaseNode {
     private static final String INPUT_T_ID = "input_t";
 
     private static final String OUTPUT_RESULT_ID = "output_result";
-    private static final String OUTPUT_ANGLE_ID = "output_angle_radians";
+    private static final String OUTPUT_ANGLE_ID = "output_angle";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SlerpVectorsNode() {
@@ -110,7 +110,7 @@ public class SlerpVectorsNode extends BaseNode {
         }
 
         outputValues.put(OUTPUT_RESULT_ID, direction);
-        outputValues.put(OUTPUT_ANGLE_ID, angle);
+        outputValues.put(OUTPUT_ANGLE_ID, Math.toDegrees(angle));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 

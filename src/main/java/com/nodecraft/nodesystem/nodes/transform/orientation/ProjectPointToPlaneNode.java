@@ -29,7 +29,6 @@ public class ProjectPointToPlaneNode extends BaseNode {
     private static final String INPUT_PLANE_ID = "input_plane";
 
     private static final String OUTPUT_POINT_ID = "output_point";
-    private static final String OUTPUT_VECTOR_ID = "output_vector";
     private static final String OUTPUT_DISTANCE_ID = "output_distance";
     private static final String OUTPUT_SIGNED_DISTANCE_ID = "output_signed_distance";
     private static final String OUTPUT_VALID_ID = "output_valid";
@@ -46,8 +45,6 @@ public class ProjectPointToPlaneNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINT_ID, "Projected Point",
             "Projected point on the target plane", NodeDataType.POINT, this));
-        addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Projected Vector",
-            "Projected point as a Vector3d position", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_DISTANCE_ID, "Distance",
             "Absolute distance from the input point to the plane", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SIGNED_DISTANCE_ID, "Signed Distance",
@@ -76,7 +73,6 @@ public class ProjectPointToPlaneNode extends BaseNode {
             || !(planeObj instanceof PlaneData plane)
             || !OrientationUtils.isUsablePlane(plane)) {
             outputValues.put(OUTPUT_POINT_ID, null);
-            outputValues.put(OUTPUT_VECTOR_ID, null);
             outputValues.put(OUTPUT_DISTANCE_ID, Double.NaN);
             outputValues.put(OUTPUT_SIGNED_DISTANCE_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
@@ -88,7 +84,6 @@ public class ProjectPointToPlaneNode extends BaseNode {
         double distance = Math.abs(signedDistance);
 
         outputValues.put(OUTPUT_POINT_ID, new PointData(projected));
-        outputValues.put(OUTPUT_VECTOR_ID, projected);
         outputValues.put(OUTPUT_DISTANCE_ID, distance);
         outputValues.put(OUTPUT_SIGNED_DISTANCE_ID, signedDistance);
         outputValues.put(OUTPUT_VALID_ID, true);

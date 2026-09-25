@@ -12,7 +12,7 @@ import com.nodecraft.nodesystem.nodes.math.trigonometry.SineNode;
 import com.nodecraft.nodesystem.nodes.material.basic_assignment.BlockPaletteNode;
 import com.nodecraft.nodesystem.nodes.material.basic_assignment.CreateBlockPaletteNode;
 import com.nodecraft.nodesystem.nodes.reference.planes.ConstructPlaneNode;
-import com.nodecraft.nodesystem.nodes.reference.points.BlockToVectorNode;
+import com.nodecraft.nodesystem.nodes.reference.points.BlockToPointNode;
 import com.nodecraft.nodesystem.nodes.reference.points.ClosestPointNode;
 import com.nodecraft.nodesystem.nodes.reference.points.DistanceNode;
 import com.nodecraft.nodesystem.nodes.reference.points.MidpointNode;
@@ -156,7 +156,7 @@ class AnyAllowlistContractTest {
         assertEquals(NodeDataType.POINT, findPort(new DistanceNode(), "input_point_a").getDataType());
         assertEquals(NodeDataType.POINT, findPort(new MidpointNode(), "input_point_a").getDataType());
         assertEquals(NodeDataType.POINT, findPort(new ConstructPlaneNode(), "input_origin").getDataType());
-        assertEquals(NodeDataType.BLOCK_POS, findPort(new BlockToVectorNode(), "input_coordinate").getDataType());
+        assertEquals(NodeDataType.BLOCK_POS, findPort(new BlockToPointNode(), "input_coordinate").getDataType());
         assertEquals(NodeDataType.DOUBLE, findPort(new VectorScalarMultiplyNode(), "input_scalar").getDataType());
         assertEquals(NodeDataType.POINT_LIST, findPort(new ClosestPointNode(), "input_coordinates").getDataType());
         assertEquals(NodeDataType.POINT, findPort(new ClosestPointNode(), "output_closest_point").getDataType());

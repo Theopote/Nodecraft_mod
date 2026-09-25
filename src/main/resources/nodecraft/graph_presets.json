@@ -307,9 +307,7 @@
               "typeId": "reference.points.point_along_vector",
               "x": 280,
               "y": 240,
-              "state": {
-                "normalizeDirection": false
-              }
+              "state": {}
             },
             {
               "ref": "point_list",
@@ -2801,9 +2799,7 @@
               "typeId": "reference.points.point_along_vector",
               "x": 280,
               "y": 240,
-              "state": {
-                "normalizeDirection": false
-              }
+              "state": {}
             },
             {
               "ref": "point_list",
@@ -3150,9 +3146,7 @@
               "typeId": "reference.points.point_along_vector",
               "x": 280,
               "y": 280,
-              "state": {
-                "normalizeDirection": false
-              }
+              "state": {}
             },
             {
               "ref": "point_list",

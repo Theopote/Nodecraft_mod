@@ -82,6 +82,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V15 -> migrateV15ToV16(graph);
             case GraphFormatVersion.V16 -> migrateV16ToV17(graph);
             case GraphFormatVersion.V17 -> migrateV17ToV18(graph);
+            case GraphFormatVersion.V18 -> migrateV18ToV19(graph);
             default -> graph;
         };
     }
@@ -1125,6 +1126,168 @@ public final class GraphMigrationRegistry {
         });
 
         return graph;
+    }
+
+    private static final String BLOCK_TO_VECTOR_TYPE = "reference.points.block_to_vector";
+    private static final String CLOSEST_POINT_TO_OBJECT_TYPE = "reference.points.closest_point_to_object";
+    private static final String MID_POINT_TYPE = "reference.points.mid_point";
+    private static final String BLOCK_TO_POINT_TYPE = "reference.points.point_from_block";
+    private static final String POINT_ALONG_VECTOR_TYPE = "reference.points.point_along_vector";
+    private static final String POINT_LIST_CENTER_TYPE = "reference.points.point_list_center";
+    private static final String POINT_LIST_BOUNDS_TYPE = "reference.points.point_list_bounds";
+    private static final String CONSTRUCT_COORDINATE_TYPE = "reference.points.construct_coordinate";
+    private static final String PROJECT_TO_PLANE_TYPE = "transform.orientation.project_to_plane";
+    private static final String ANGLE_BETWEEN_TYPE = "reference.vectors.angle_between";
+    private static final String SLERP_VECTORS_TYPE = "reference.vectors.slerp";
+
+    private static final Set<String> DELETED_NODE_TYPES = Set.of(
+            BLOCK_TO_VECTOR_TYPE,
+            CLOSEST_POINT_TO_OBJECT_TYPE
+    );
+
+    /**
+     * Point/vector v1: drop legacy ports, remap angle outputs, remove deleted nodes.
+     */
+    private static SavedGraph migrateV18ToV19(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return graph;
+        }
+
+        graph.nodes = new ArrayList<>(graph.nodes);
+        graph.nodes.removeIf(node -> node != null && node.typeId != null
+                && DELETED_NODE_TYPES.contains(node.typeId.toLowerCase(Locale.ROOT)));
+
+        if (graph.connections == null) {
+            migratePointAlongVectorState(graph);
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null || connection.sourcePortId == null) {
+                continue;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            if (sourceType == null) {
+                continue;
+            }
+            String sourcePort = connection.sourcePortId.toLowerCase(Locale.ROOT);
+            if (ANGLE_BETWEEN_TYPE.equals(sourceType)) {
+                if ("output_degrees".equals(sourcePort)) {
+                    connection.sourcePortId = "output_angle";
+                } else if ("output_signed_degrees".equals(sourcePort)) {
+                    connection.sourcePortId = "output_signed_angle";
+                }
+            } else if (SLERP_VECTORS_TYPE.equals(sourceType) && "output_angle_radians".equals(sourcePort)) {
+                connection.sourcePortId = "output_angle";
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            if (sourceType == null || targetType == null) {
+                LOGGER.debug("Dropped connection involving removed node {} or {}",
+                        connection.sourceNodeId, connection.targetNodeId);
+                return true;
+            }
+
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            String targetPort = connection.targetPortId == null ? "" : connection.targetPortId.toLowerCase(Locale.ROOT);
+
+            if (CLOSEST_POINT_TO_OBJECT_TYPE.equals(targetType) && "input_path".equals(targetPort)) {
+                LOGGER.debug("Dropped Closest Point To Object legacy input_path to {}", connection.targetNodeId);
+                return true;
+            }
+
+            if (shouldDropPointVectorLegacyOutput(sourceType, sourcePort)) {
+                LOGGER.debug("Dropped legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+
+            return false;
+        });
+
+        migratePointAlongVectorState(graph);
+        return graph;
+    }
+
+    private static void migratePointAlongVectorState(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return;
+        }
+        for (SavedNode node : graph.nodes) {
+            if (node == null || !POINT_ALONG_VECTOR_TYPE.equalsIgnoreCase(node.typeId)) {
+                continue;
+            }
+            if (node.state instanceof Map<?, ?> state) {
+                Map<String, Object> migrated = new HashMap<>();
+                for (Map.Entry<?, ?> entry : state.entrySet()) {
+                    if (entry.getKey() instanceof String key && !"normalizeDirection".equals(key)) {
+                        migrated.put(key, entry.getValue());
+                    }
+                }
+                node.state = migrated.isEmpty() ? null : migrated;
+            }
+        }
+    }
+
+    private static boolean shouldDropPointVectorLegacyOutput(String sourceType, String sourcePort) {
+        if (MID_POINT_TYPE.equals(sourceType) && "output_vector".equals(sourcePort)) {
+            return true;
+        }
+        if (BLOCK_TO_POINT_TYPE.equals(sourceType)
+                && ("output_vector".equals(sourcePort) || "output_x".equals(sourcePort)
+                || "output_y".equals(sourcePort) || "output_z".equals(sourcePort))) {
+            return true;
+        }
+        if (POINT_ALONG_VECTOR_TYPE.equals(sourceType)
+                && ("output_vector".equals(sourcePort) || "output_direction".equals(sourcePort))) {
+            return true;
+        }
+        if (POINT_LIST_CENTER_TYPE.equals(sourceType) && "output_center_vector".equals(sourcePort)) {
+            return true;
+        }
+        if (POINT_LIST_BOUNDS_TYPE.equals(sourceType) && "output_region".equals(sourcePort)) {
+            return true;
+        }
+        if (CONSTRUCT_COORDINATE_TYPE.equals(sourceType)
+                && ("output_coordinate".equals(sourcePort) || "output_x".equals(sourcePort)
+                || "output_y".equals(sourcePort) || "output_z".equals(sourcePort))) {
+            return true;
+        }
+        if (BLOCK_POSITION_INPUT_TYPE.equals(sourceType)
+                && ("output_coordinate".equals(sourcePort) || "output_x".equals(sourcePort)
+                || "output_y".equals(sourcePort) || "output_z".equals(sourcePort))) {
+            return true;
+        }
+        if (PROJECT_TO_PLANE_TYPE.equals(sourceType) && "output_vector".equals(sourcePort)) {
+            return true;
+        }
+        if (CLOSEST_POINT_TO_OBJECT_TYPE.equals(sourceType)
+                && ("output_vector".equals(sourcePort) || "output_segment_index".equals(sourcePort)
+                || "output_segment_t".equals(sourcePort) || "output_arc_length".equals(sourcePort))) {
+            return true;
+        }
+        if (ANGLE_BETWEEN_TYPE.equals(sourceType)
+                && ("output_radians".equals(sourcePort) || "output_signed_radians".equals(sourcePort))) {
+            return true;
+        }
+        if (SLERP_VECTORS_TYPE.equals(sourceType) && "output_angle_radians".equals(sourcePort)) {
+            return true;
+        }
+        return false;
     }
 
     private static void migrateDomainInputNodeState(SavedNode node) {

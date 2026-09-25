@@ -7,9 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.PointData;
-import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -29,7 +27,6 @@ public class PointListBoundsNode extends BaseNode {
     private static final String INPUT_POINTS_ID = "input_points";
 
     private static final String OUTPUT_BOUNDING_BOX_ID = "output_bounding_box";
-    private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_MIN_POINT_ID = "output_min_point";
     private static final String OUTPUT_MAX_POINT_ID = "output_max_point";
     private static final String OUTPUT_CENTER_POINT_ID = "output_center_point";
@@ -43,13 +40,11 @@ public class PointListBoundsNode extends BaseNode {
         super(UUID.randomUUID(), "reference.points.point_list_bounds");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points",
-            "Collection of Point, Vector, Position, or Block Coordinate values to bound",
-            NodeDataType.LIST, this));
+            "Geometric points to bound",
+            NodeDataType.POINT_LIST, this));
 
         addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box",
             "Axis-aligned geometric bounding box", NodeDataType.BOUNDING_BOX, this));
-        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region",
-            "Outward snapped block region covering all points", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_MIN_POINT_ID, "Min Point",
             "Minimum geometric corner of the bounds", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_MAX_POINT_ID, "Max Point",
@@ -91,7 +86,7 @@ public class PointListBoundsNode extends BaseNode {
         int count = 0;
 
         for (Object entry : collection) {
-            Vector3d point = PointUtils.resolvePoint(entry);
+            Vector3d point = PointUtils.toPointPosition(entry);
             if (!PointUtils.isFinite(point)) {
                 continue;
             }
@@ -117,13 +112,8 @@ public class PointListBoundsNode extends BaseNode {
         double sizeZ = max.z - min.z;
 
         BoundingBoxData boundingBox = new BoundingBoxData(min, max);
-        RegionData region = new RegionData(
-            new BlockPos((int) Math.floor(min.x), (int) Math.floor(min.y), (int) Math.floor(min.z)),
-            new BlockPos((int) Math.ceil(max.x), (int) Math.ceil(max.y), (int) Math.ceil(max.z))
-        );
 
         outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
-        outputValues.put(OUTPUT_REGION_ID, region);
         outputValues.put(OUTPUT_MIN_POINT_ID, new PointData(min));
         outputValues.put(OUTPUT_MAX_POINT_ID, new PointData(max));
         outputValues.put(OUTPUT_CENTER_POINT_ID, new PointData(center));
@@ -136,7 +126,6 @@ public class PointListBoundsNode extends BaseNode {
 
     private void writeInvalid() {
         outputValues.put(OUTPUT_BOUNDING_BOX_ID, null);
-        outputValues.put(OUTPUT_REGION_ID, null);
         outputValues.put(OUTPUT_MIN_POINT_ID, null);
         outputValues.put(OUTPUT_MAX_POINT_ID, null);
         outputValues.put(OUTPUT_CENTER_POINT_ID, null);
