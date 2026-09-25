@@ -127,12 +127,15 @@ public class FloatSliderNode extends BaseCustomUINode {
     private void normalizeRange() {
         minValue = NumericInputUtils.sanitizeFiniteBound(minValue, 0.0d);
         maxValue = NumericInputUtils.sanitizeFiniteBound(maxValue, 100.0d);
-        if (Double.compare(minValue, maxValue) > 0) {
+        if (!NumericInputUtils.isFiniteUsableSpan(minValue, maxValue)) {
+            minValue = 0.0d;
+            maxValue = 100.0d;
+        } else if (Double.compare(minValue, maxValue) > 0) {
             double temp = minValue;
             minValue = maxValue;
             maxValue = temp;
         }
-        currentValue = clampValue(currentValue);
+        setCurrentValue(clampValue(currentValue));
     }
 
     private double clampValue(double value) {
@@ -246,17 +249,18 @@ public class FloatSliderNode extends BaseCustomUINode {
                 this.showValueInput = value;
             }
 
+            normalizeRange();
+
             Object current = map.containsKey("currentValue") ? map.get("currentValue") : map.get("value");
             if (current instanceof Number number) {
-                this.currentValue = number.doubleValue();
+                setCurrentValue(number.doubleValue());
             } else if (current instanceof String text) {
                 try {
-                    this.currentValue = Double.parseDouble(text);
+                    setCurrentValue(Double.parseDouble(text));
                 } catch (NumberFormatException ignored) {
                 }
             }
 
-            normalizeRange();
             updateOutput();
             invalidateCache();
             markDirty();

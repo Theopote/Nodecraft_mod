@@ -121,12 +121,15 @@ public class AngleSliderNode extends BaseCustomUINode {
     private void normalizeRange() {
         minAngle = NumericInputUtils.sanitizeFiniteBound(minAngle, 0.0d);
         maxAngle = NumericInputUtils.sanitizeFiniteBound(maxAngle, 360.0d);
-        if (Double.compare(minAngle, maxAngle) > 0) {
+        if (!NumericInputUtils.isFiniteUsableSpan(minAngle, maxAngle)) {
+            minAngle = 0.0d;
+            maxAngle = 360.0d;
+        } else if (Double.compare(minAngle, maxAngle) > 0) {
             double temp = minAngle;
             minAngle = maxAngle;
             maxAngle = temp;
         }
-        currentAngle = clampAngle(currentAngle);
+        setCurrentAngle(clampAngle(currentAngle));
     }
 
     private double clampAngle(double angle) {
@@ -223,18 +226,18 @@ public class AngleSliderNode extends BaseCustomUINode {
                 this.maxAngle = NumericInputUtils.sanitizeFiniteBound(value.doubleValue(), this.maxAngle);
             }
 
+            normalizeRange();
+
             Object angleValue = map.get("angle");
             if (angleValue instanceof Number number) {
-                this.currentAngle = number.doubleValue();
+                setCurrentAngle(number.doubleValue());
             } else if (angleValue instanceof String text) {
                 try {
-                    this.currentAngle = Double.parseDouble(text);
+                    setCurrentAngle(Double.parseDouble(text));
                 } catch (NumberFormatException ignored) {
                 }
             }
 
-            normalizeRange();
-            updateOutput();
             invalidateCache();
             markDirty();
         } else if (state instanceof Number number) {

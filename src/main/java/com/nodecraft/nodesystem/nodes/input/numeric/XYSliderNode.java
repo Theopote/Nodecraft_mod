@@ -243,16 +243,28 @@ public class XYSliderNode extends BaseCustomUINode {
     }
 
     private void normalizeRanges() {
-        if (Double.compare(minX, maxX) > 0) {
+        minX = NumericInputUtils.sanitizeFiniteBound(minX, 0.0d);
+        maxX = NumericInputUtils.sanitizeFiniteBound(maxX, 1.0d);
+        if (!NumericInputUtils.isFiniteUsableSpan(minX, maxX)) {
+            minX = 0.0d;
+            maxX = 1.0d;
+        } else if (Double.compare(minX, maxX) > 0) {
             double temp = minX;
             minX = maxX;
             maxX = temp;
         }
-        if (Double.compare(minY, maxY) > 0) {
+
+        minY = NumericInputUtils.sanitizeFiniteBound(minY, 0.0d);
+        maxY = NumericInputUtils.sanitizeFiniteBound(maxY, 1.0d);
+        if (!NumericInputUtils.isFiniteUsableSpan(minY, maxY)) {
+            minY = 0.0d;
+            maxY = 1.0d;
+        } else if (Double.compare(minY, maxY) > 0) {
             double temp = minY;
             minY = maxY;
             maxY = temp;
         }
+
         step = Double.isFinite(step) ? Math.max(0.0d, step) : 0.0d;
         x = clampAndSnap(x, minX, maxX);
         y = clampAndSnap(y, minY, maxY);
@@ -288,8 +300,9 @@ public class XYSliderNode extends BaseCustomUINode {
     }
 
     public void setMinX(double minX) {
-        if (Double.compare(this.minX, minX) != 0) {
-            this.minX = minX;
+        double sanitized = NumericInputUtils.sanitizeFiniteBound(minX, this.minX);
+        if (Double.compare(this.minX, sanitized) != 0) {
+            this.minX = sanitized;
             normalizeRanges();
             updateOutput();
             invalidateCache();
@@ -302,8 +315,9 @@ public class XYSliderNode extends BaseCustomUINode {
     }
 
     public void setMaxX(double maxX) {
-        if (Double.compare(this.maxX, maxX) != 0) {
-            this.maxX = maxX;
+        double sanitized = NumericInputUtils.sanitizeFiniteBound(maxX, this.maxX);
+        if (Double.compare(this.maxX, sanitized) != 0) {
+            this.maxX = sanitized;
             normalizeRanges();
             updateOutput();
             invalidateCache();
@@ -316,8 +330,9 @@ public class XYSliderNode extends BaseCustomUINode {
     }
 
     public void setMinY(double minY) {
-        if (Double.compare(this.minY, minY) != 0) {
-            this.minY = minY;
+        double sanitized = NumericInputUtils.sanitizeFiniteBound(minY, this.minY);
+        if (Double.compare(this.minY, sanitized) != 0) {
+            this.minY = sanitized;
             normalizeRanges();
             updateOutput();
             invalidateCache();
@@ -330,8 +345,9 @@ public class XYSliderNode extends BaseCustomUINode {
     }
 
     public void setMaxY(double maxY) {
-        if (Double.compare(this.maxY, maxY) != 0) {
-            this.maxY = maxY;
+        double sanitized = NumericInputUtils.sanitizeFiniteBound(maxY, this.maxY);
+        if (Double.compare(this.maxY, sanitized) != 0) {
+            this.maxY = sanitized;
             normalizeRanges();
             updateOutput();
             invalidateCache();
@@ -410,26 +426,20 @@ public class XYSliderNode extends BaseCustomUINode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("x") instanceof Number value) {
-            x = value.doubleValue();
-        }
-        if (map.get("y") instanceof Number value) {
-            y = value.doubleValue();
-        }
         if (map.get("minX") instanceof Number value) {
-            minX = value.doubleValue();
+            minX = NumericInputUtils.finiteOrFallback(value.doubleValue(), minX);
         }
         if (map.get("maxX") instanceof Number value) {
-            maxX = value.doubleValue();
+            maxX = NumericInputUtils.finiteOrFallback(value.doubleValue(), maxX);
         }
         if (map.get("minY") instanceof Number value) {
-            minY = value.doubleValue();
+            minY = NumericInputUtils.finiteOrFallback(value.doubleValue(), minY);
         }
         if (map.get("maxY") instanceof Number value) {
-            maxY = value.doubleValue();
+            maxY = NumericInputUtils.finiteOrFallback(value.doubleValue(), maxY);
         }
         if (map.get("step") instanceof Number value) {
-            step = value.doubleValue();
+            step = NumericInputUtils.finiteOrFallback(value.doubleValue(), step);
         }
         if (map.get("precision") instanceof Number value) {
             precision = Math.max(0, Math.min(6, value.intValue()));
@@ -440,7 +450,16 @@ public class XYSliderNode extends BaseCustomUINode {
         if (map.get("showValueInputs") instanceof Boolean value) {
             showValueInputs = value;
         }
+
         normalizeRanges();
+
+        if (map.get("x") instanceof Number value) {
+            setX(value.doubleValue());
+        }
+        if (map.get("y") instanceof Number value) {
+            setY(value.doubleValue());
+        }
+
         updateOutput();
         invalidateCache();
         markDirty();

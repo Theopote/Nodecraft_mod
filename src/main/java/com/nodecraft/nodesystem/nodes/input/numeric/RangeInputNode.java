@@ -209,23 +209,17 @@ public class RangeInputNode extends BaseCustomUINode {
             return;
         }
         if (map.get("start") instanceof Number n) {
-            start = n.doubleValue();
+            setStart(n.doubleValue());
         } else if (map.get("min") instanceof Number n) {
-            start = n.doubleValue();
+            setStart(n.doubleValue());
         }
         if (map.get("end") instanceof Number n) {
-            end = n.doubleValue();
+            setEnd(n.doubleValue());
         } else if (map.get("max") instanceof Number n) {
-            end = n.doubleValue();
+            setEnd(n.doubleValue());
         }
         if (map.get("precision") instanceof Number precisionValue) {
             precision = Math.max(0, Math.min(6, precisionValue.intValue()));
-        }
-        if (!Double.isFinite(start)) {
-            start = 0.0d;
-        }
-        if (!Double.isFinite(end)) {
-            end = 1.0d;
         }
         updateOutput();
         invalidateCache();

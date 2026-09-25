@@ -9,9 +9,14 @@ public final class NumericInputUtils {
     private NumericInputUtils() {
     }
 
+    /** Accept finite {@code candidate}; otherwise return {@code fallback}. */
+    public static double finiteOrFallback(double candidate, double fallback) {
+        return Double.isFinite(candidate) ? candidate : fallback;
+    }
+
     /** Accept {@code candidate} when finite; otherwise keep {@code previous}. */
     public static double acceptFiniteOrKeep(double candidate, double previous) {
-        return Double.isFinite(candidate) ? candidate : previous;
+        return finiteOrFallback(candidate, previous);
     }
 
     /** Optional bounds: {@code ±Infinity} allowed; {@code NaN} rejected (returns {@code fallback}). */
@@ -21,7 +26,18 @@ public final class NumericInputUtils {
 
     /** Slider bounds must be finite; otherwise returns {@code fallback}. */
     public static double sanitizeFiniteBound(double bound, double fallback) {
-        return Double.isFinite(bound) ? bound : fallback;
+        return finiteOrFallback(bound, fallback);
+    }
+
+    /**
+     * Slider-safe range: both endpoints finite and directed span {@code max - min} finite.
+     * Rejects full IEEE span such as {@code [-Double.MAX_VALUE, +Double.MAX_VALUE]}.
+     */
+    public static boolean isFiniteUsableSpan(double min, double max) {
+        if (!Double.isFinite(min) || !Double.isFinite(max)) {
+            return false;
+        }
+        return Double.isFinite(max - min);
     }
 
     /**
@@ -44,18 +60,22 @@ public final class NumericInputUtils {
         return Math.max(min, Math.min(max, value));
     }
 
-    /** Normalized parameter in {@code [0, 1]}; zero-width range returns {@code 0}. */
+    /** Normalized parameter in {@code [0, 1]}; zero-width or non-finite span returns {@code 0}. */
     public static double normalizedInRange(double value, double min, double max) {
         double range = max - min;
-        if (range == 0.0d) {
+        if (range == 0.0d || !Double.isFinite(range)) {
             return 0.0d;
         }
         return clamp01((value - min) / range);
     }
 
-    /** Map {@code t ∈ [0, 1]} back to {@code [min, max]}. */
+    /** Map {@code t ∈ [0, 1]} back to {@code [min, max]}. Non-finite span returns {@code min}. */
     public static double lerpFromNormalized(double t, double min, double max) {
-        return min + clamp01(t) * (max - min);
+        double range = max - min;
+        if (!Double.isFinite(range)) {
+            return min;
+        }
+        return min + clamp01(t) * range;
     }
 
     /** Wrap degrees to {@code [0, 360)}. Non-finite input yields {@code NaN}. */
@@ -82,13 +102,21 @@ public final class NumericInputUtils {
         return Double.isFinite(span) ? span : Double.NaN;
     }
 
-    /** Snap to step within {@code [min, max]}; invalid step returns clamped value only. */
+    /** Snap to step within {@code [min, max]}; invalid step or quotient returns clamped value only. */
     public static double snapToStep(double value, double min, double max, double step) {
-        double clamped = clampFiniteRange(value, min, max);
+        double clamped = clampFiniteRange(
+                finiteOrFallback(value, min),
+                min,
+                max
+        );
         if (!Double.isFinite(step) || step <= 0.0d) {
             return clamped;
         }
-        clamped = min + Math.round((clamped - min) / step) * step;
+        double quotient = (clamped - min) / step;
+        if (!Double.isFinite(quotient)) {
+            return clamped;
+        }
+        clamped = min + Math.round(quotient) * step;
         return clampFiniteRange(clamped, min, max);
     }
 

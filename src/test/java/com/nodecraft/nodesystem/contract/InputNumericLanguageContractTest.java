@@ -92,6 +92,33 @@ class InputNumericLanguageContractTest {
     }
 
     @Test
+    void floatInputStateNaNRemainsFinite() {
+        FloatInputNode node = new FloatInputNode();
+        node.setValue(3.0d);
+        node.setNodeState(Map.of("value", Double.NaN));
+        assertTrue(Double.isFinite(node.getValue()));
+        assertEquals(3.0d, node.getValue(), 0.0d);
+    }
+
+    @Test
+    void floatSliderStateInfinityRemainsFinite() {
+        FloatSliderNode node = new FloatSliderNode();
+        node.setCurrentValue(12.0d);
+        node.setNodeState(Map.of("currentValue", Double.POSITIVE_INFINITY));
+        assertTrue(Double.isFinite(node.getCurrentValue()));
+        assertEquals(12.0d, node.getCurrentValue(), 0.0d);
+    }
+
+    @Test
+    void floatSliderRejectsOverflowSpan() {
+        FloatSliderNode node = new FloatSliderNode();
+        node.setMinValue(-Double.MAX_VALUE);
+        node.setMaxValue(Double.MAX_VALUE);
+        assertEquals(0.0d, node.getMinValue(), 0.0d);
+        assertEquals(100.0d, node.getMaxValue(), 0.0d);
+    }
+
+    @Test
     void circularAnglePickerRejectsNaNBeforeWrap() {
         CircularAngleNode node = new CircularAngleNode();
         node.setAngle(90.0d);
@@ -109,10 +136,28 @@ class InputNumericLanguageContractTest {
     }
 
     @Test
+    void circularPickerStateNaNRemainsFinite() {
+        CircularAngleNode node = new CircularAngleNode();
+        node.setAngle(90.0d);
+        node.setNodeState(Map.of("angle", Double.NaN));
+        assertTrue(Double.isFinite(node.getAngle()));
+        assertEquals(90.0d, node.getAngle(), 0.0d);
+    }
+
+    @Test
     void angleSliderRejectsNonFiniteAngle() {
         AngleSliderNode node = new AngleSliderNode();
         node.setCurrentAngle(45.0d);
         node.setCurrentAngle(Double.NaN);
+        assertEquals(45.0d, node.getCurrentAngle(), 0.0d);
+    }
+
+    @Test
+    void angleSliderStateNaNRemainsFinite() {
+        AngleSliderNode node = new AngleSliderNode();
+        node.setCurrentAngle(45.0d);
+        node.setNodeState(Map.of("angle", Double.NaN));
+        assertTrue(Double.isFinite(node.getCurrentAngle()));
         assertEquals(45.0d, node.getCurrentAngle(), 0.0d);
     }
 
@@ -137,6 +182,25 @@ class InputNumericLanguageContractTest {
         node.processNode(null);
         List<?> uv = assertInstanceOf(List.class, node.getOutput("output_uv"));
         assertEquals(0.0d, (Double) uv.get(0), 0.0d);
+    }
+
+    @Test
+    void xySliderStateNonFiniteRemainsFinite() {
+        XYSliderNode node = new XYSliderNode();
+        node.setX(0.25d);
+        node.setY(0.75d);
+        node.setNodeState(Map.of(
+                "x", Double.NaN,
+                "y", Double.POSITIVE_INFINITY,
+                "minX", Double.POSITIVE_INFINITY,
+                "step", Double.NaN
+        ));
+        node.processNode(null);
+        assertTrue(Double.isFinite(node.getX()));
+        assertTrue(Double.isFinite(node.getY()));
+        List<?> uv = assertInstanceOf(List.class, node.getOutput("output_uv"));
+        assertTrue(Double.isFinite((Double) uv.get(0)));
+        assertTrue(Double.isFinite((Double) uv.get(1)));
     }
 
     @Test

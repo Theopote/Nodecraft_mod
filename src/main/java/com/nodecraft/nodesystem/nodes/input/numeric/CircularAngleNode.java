@@ -312,15 +312,14 @@ public class CircularAngleNode extends BaseCustomUINode {
 
             Object angleValue = map.get("angle");
             if (angleValue instanceof Number number) {
-                this.angle = number.doubleValue();
+                setAngle(number.doubleValue());
             } else if (angleValue instanceof String text) {
                 try {
-                    this.angle = Double.parseDouble(text);
+                    setAngle(Double.parseDouble(text));
                 } catch (NumberFormatException ignored) {
                 }
             }
 
-            setAngle(this.angle);
             invalidateCache();
             markDirty();
         } else if (state instanceof Number number) {

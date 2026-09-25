@@ -237,15 +237,16 @@ public class FloatInputNode extends BaseCustomUINode {
 
             Object valueObj = stateMap.get("value");
             if (valueObj instanceof Number number) {
-                this.value = number.doubleValue();
+                setValue(number.doubleValue());
             } else if (valueObj instanceof String str) {
                 try {
-                    this.value = Double.parseDouble(str);
+                    setValue(Double.parseDouble(str));
                 } catch (NumberFormatException ignored) {
                 }
+            } else {
+                setValue(this.value);
             }
 
-            setValue(this.value);
             invalidateCache();
             markDirty();
         } else if (state instanceof Number number) {
