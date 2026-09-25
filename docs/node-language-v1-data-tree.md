@@ -8,7 +8,8 @@ Freeze against Graph **V24**.
 - No per-kind `POINT_DATA_TREE` explosion
 - **`TREE_PATH` / `TREE_PATH_LIST`** — structured path authority; `"{0;1}"` is Viewer/debug only
 - **Unique path invariant** — one path = one branch; collisions merge items in encounter order
-- Invalid path / index → **fail-closed** (`Found=false`), never silent `{0}` / wrap / append
+- Multi-input `DataTree<T>` (Merge / Entwine): conflicting constrained element kinds are
+  **rejected at connect time** (order-independent); never silently widen to `UNCONSTRAINED`
 
 ## Bridges (preserve T)
 

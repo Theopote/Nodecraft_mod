@@ -155,6 +155,57 @@ class DataTreeLanguageContractTest {
     }
 
     @Test
+    void mergeAndEntwineRejectConflictingTreeElementKinds() {
+        GraftListNode pointGraftA = new GraftListNode();
+        GraftListNode pointGraftB = new GraftListNode();
+        GraftListNode vectorGraft = new GraftListNode();
+        assertTrue(outputPort("pl_a", NodeDataType.POINT_LIST).connectTo(findPort(pointGraftA, "input_list")));
+        assertTrue(outputPort("pl_b", NodeDataType.POINT_LIST).connectTo(findPort(pointGraftB, "input_list")));
+        assertTrue(outputPort("vl", NodeDataType.VECTOR_LIST).connectTo(findPort(vectorGraft, "input_list")));
+
+        // Merge: POINT then VECTOR rejected; reverse also rejected; POINT+POINT allowed
+        MergeTreesNode mergePv = new MergeTreesNode();
+        assertTrue(findPort(pointGraftA, "output_tree").connectTo(findPort(mergePv, "input_a")));
+        assertFalse(findPort(vectorGraft, "output_tree").connectTo(findPort(mergePv, "input_b")));
+
+        MergeTreesNode mergeVp = new MergeTreesNode();
+        assertTrue(findPort(vectorGraft, "output_tree").connectTo(findPort(mergeVp, "input_a")));
+        assertFalse(findPort(pointGraftA, "output_tree").connectTo(findPort(mergeVp, "input_b")));
+
+        MergeTreesNode mergePp = new MergeTreesNode();
+        assertTrue(findPort(pointGraftA, "output_tree").connectTo(findPort(mergePp, "input_a")));
+        assertTrue(findPort(pointGraftB, "output_tree").connectTo(findPort(mergePp, "input_b")));
+
+        // Entwine: same same-T rule
+        EntwineNode entwinePv = new EntwineNode();
+        assertTrue(findPort(pointGraftA, "output_tree").connectTo(findPort(entwinePv, "input_a")));
+        assertFalse(findPort(vectorGraft, "output_tree").connectTo(findPort(entwinePv, "input_b")));
+
+        EntwineNode entwinePp = new EntwineNode();
+        assertTrue(findPort(pointGraftA, "output_tree").connectTo(findPort(entwinePp, "input_a")));
+        assertTrue(findPort(pointGraftB, "output_tree").connectTo(findPort(entwinePp, "input_b")));
+    }
+
+    @Test
+    void graftMergeFlattenPreservesPointListThroughSameTMerge() {
+        GraftListNode graftA = new GraftListNode();
+        GraftListNode graftB = new GraftListNode();
+        MergeTreesNode merge = new MergeTreesNode();
+        FlattenTreeNode flatten = new FlattenTreeNode();
+
+        assertTrue(outputPort("pl_a", NodeDataType.POINT_LIST).connectTo(findPort(graftA, "input_list")));
+        assertTrue(outputPort("pl_b", NodeDataType.POINT_LIST).connectTo(findPort(graftB, "input_list")));
+        assertTrue(findPort(graftA, "output_tree").connectTo(findPort(merge, "input_a")));
+        assertTrue(findPort(graftB, "output_tree").connectTo(findPort(merge, "input_b")));
+        assertTrue(findPort(merge, "output_tree").connectTo(findPort(flatten, "input_tree")));
+
+        assertEquals(NodeDataType.POINT_LIST, PortTypeResolver.resolveEffectiveType(findPort(flatten, "output_list")));
+        assertTrue(PortTypeResolver.isConnectable(
+                findPort(flatten, "output_list"),
+                inputPort("points_in", NodeDataType.POINT_LIST)));
+    }
+
+    @Test
     void treePathsAndStatisticsHaveSeparatedRoles() {
         assertEquals(NodeDataType.TREE_PATH_LIST, findPort(new TreePathsNode(), "output_paths").getDataType());
         assertFalse(hasPort(new TreePathsNode(), "output_path_strings"));

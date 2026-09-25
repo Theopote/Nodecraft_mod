@@ -18,7 +18,9 @@ import java.util.Set;
  * <p>
  * {@link NodeDataType#DATA_TREE} ports participate in the same {@code T} group as list
  * ports via {@link IPort#getListTypeVariable()}; their declared type stays {@code DATA_TREE}
- * while kind flows to remapped list/element ports.
+ * while kind flows to remapped list/element ports. Multi-input tree nodes (Merge / Entwine)
+ * reject conflicting constrained kinds at connect time — they never silently widen to
+ * {@link ListElementKind#UNCONSTRAINED}.
  */
 public final class PortTypeResolver {
 
@@ -59,6 +61,11 @@ public final class PortTypeResolver {
             return true;
         }
 
+        ListElementKind candidateKind = kindFromSourcePort(outputPort, new HashSet<>());
+        if (!kindsAgree(provisionalKind, candidateKind)) {
+            return false;
+        }
+
         return validateTypeVariableGroup(node, variable, provisionalKind);
     }
 
@@ -73,7 +80,7 @@ public final class PortTypeResolver {
 
     /**
      * Validates every existing inbound connection on ports sharing {@code variable}
-     * against effective types implied by {@code boundKind}.
+     * against effective types and element kinds implied by {@code boundKind}.
      */
     public static boolean validateTypeVariableGroup(INode node, String variable, ListElementKind boundKind) {
         if (node == null || variable == null || variable.isBlank()) {
@@ -88,6 +95,10 @@ public final class PortTypeResolver {
             }
             NodeDataType peerEffective = resolveEffectiveWithKind(peer, boundKind);
             for (IPort source : connectedSources(peer)) {
+                ListElementKind sourceKind = kindFromSourcePort(source, new HashSet<>());
+                if (!kindsAgree(boundKind, sourceKind)) {
+                    return false;
+                }
                 NodeDataType sourceEffective = resolveEffectiveType(source);
                 if (!NodeDataType.isConnectableTo(sourceEffective, peerEffective)) {
                     return false;
@@ -119,9 +130,16 @@ public final class PortTypeResolver {
     /**
      * Bound kind after hypothetically connecting {@code candidateOutput → candidateInput},
      * without mutating the graph.
+     * <p>
+     * Prefers an already-established constrained binding so a second conflicting tree cannot
+     * flip {@code T}; the candidate is then checked against that binding in {@link #isConnectable}.
      */
     private static ListElementKind resolveBoundElementKindProvisional(
             INode node, String variable, IPort candidateOutput, IPort candidateInput) {
+        ListElementKind existing = resolveBoundElementKind(node, variable);
+        if (isConstrained(existing)) {
+            return existing;
+        }
         if (variable != null && !variable.isBlank()
                 && variable.equals(candidateInput.getListTypeVariable())
                 && !candidateInput.isListElementBinding()) {
@@ -130,7 +148,7 @@ public final class PortTypeResolver {
                 return fromCandidate;
             }
         }
-        return resolveBoundElementKind(node, variable);
+        return existing;
     }
 
     private static ListElementKind resolveBoundElementKind(INode node, String variable) {
@@ -190,6 +208,17 @@ public final class PortTypeResolver {
             }
         }
         return null;
+    }
+
+    /**
+     * Two constrained kinds must match. Unconstrained / unknown kinds do not veto here
+     * (list asymmetry still applies via {@link NodeDataType#isConnectableTo}).
+     */
+    private static boolean kindsAgree(ListElementKind boundKind, ListElementKind sourceKind) {
+        if (!isConstrained(boundKind) || !isConstrained(sourceKind)) {
+            return true;
+        }
+        return boundKind == sourceKind;
     }
 
     private static boolean isConstrained(ListElementKind kind) {
