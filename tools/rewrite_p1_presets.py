@@ -124,7 +124,7 @@ P1_PRESETS: dict[str, dict] = {
             node("step_run", "input.numeric.float", 560, 420, {"value": 1.0}),
             node("step_rise", "input.numeric.float", 560, 560, {"value": 0.25}),
             node("step_width", "input.numeric.float", 560, 700, {"value": 1.2}),
-            node("layout", "input.basic.text_input", 560, 840, {"text": "straight", "multiline": False}),
+            node("layout", "input.values.text_input", 560, 840, {"text": "straight", "multiline": False}),
             node("staircase", "geometry.architectural_primitives.staircase", 860, 280),
             node("preview_geometry", "output.preview.preview_geometry", 1160, 120),
             node("voxelize", "geometry.voxel.voxelize_geometry", 1160, 320),

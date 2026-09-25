@@ -49,7 +49,7 @@ Related: [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domai
 Display rename only (type ids unchanged): **Float Input → Number Input**,
 **Float Slider → Number Slider**.
 
-`input.basic.boolean_toggle` is not part of this family.
+`input.values.boolean_toggle` is not part of this family (see Input Values v1).
 
 ## Integer Input (`input.numeric.integer`)
 

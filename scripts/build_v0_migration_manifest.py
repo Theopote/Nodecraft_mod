@@ -43,7 +43,7 @@ def parse_node_type_aliases(plan_text: str) -> dict[str, str]:
 
     # Correct alias-plan rows that diverged from the current catalog.
     direct_overrides = {
-        "inputs.basic.boolean_toggle": "input.basic.boolean_toggle",
+        "inputs.basic.boolean_toggle": "input.values.boolean_toggle",
         "inputs.sources.create_list": "math.list.create_list",
         "math.basic.math_range": "input.numeric.range",
         "math.randomness.noise": "math.random.noise",

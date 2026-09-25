@@ -21,6 +21,7 @@ Last updated: 2026-09-25
 | Input numeric sources / sliders / constants | [`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.md) + `NumericInputUtils` **(PASSED / FROZEN, V31)** |
 | Input context / world reads | [`node-language-v1-input-context.md`](./node-language-v1-input-context.md) + `ContextReadUtils` **(PASSED / FROZEN, V32)** |
 | Input type selectors / registry ids | [`node-language-v1-type-selectors.md`](./node-language-v1-type-selectors.md) + `RegistrySelectorUtils` **(PASSED / FROZEN, V33)** |
+| Input values sources / ColorData / Value List | [`node-language-v1-input-values.md`](./node-language-v1-input-values.md) + `ValueInputUtils` **(PASSED / FROZEN, V34)** |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 
@@ -38,6 +39,7 @@ Last updated: 2026-09-25
 | Input Numeric v1 | **PASSED / FROZEN** | V31 |
 | Input Context v1 | **PASSED / FROZEN** | V32 |
 | Type Selectors v1 | **PASSED / FROZEN** | V33 |
+| Input Values v1 | **PASSED / FROZEN** | V34 |
 | List / Collection v1 | FROZEN | V23 |
 | Data Tree v1 | FROZEN | V24 |
 
@@ -208,6 +210,9 @@ These violated the freeze at audit time. Batch A items below are remediated in c
 | Block Type Selector `STRING` vs typed registry ports | Type Selectors v1 | Fixed (`BLOCK_TYPE`, V33) |
 | Unknown registry id silent fallback to default | Type Selectors v1 | Fixed (`output_valid`, preserve id, V33) |
 | Block State Selector overlaps Build Block State | Type Selectors v1 | Fixed (removed; use Build Block State, V33) |
+| Color channels `FLOAT` / `util.Color` payload | Input Values v1 | Fixed (`DOUBLE` + `ColorData`, V34) |
+| Dropdown `ANY`/`LIST` options + `String.valueOf` | Input Values v1 | Fixed (`STRING_LIST`, Integer index, V34) |
+| Gradient hidden EPS / unconstrained `output_ramp` | Input Values v1 | Fixed (finite Valid, drop ramp, V34) |
 
 ---
 
@@ -547,6 +552,13 @@ Three distinct mechanisms (do not treat as one “Boolean”):
 - Block Type → `BLOCK_TYPE`; shared `AbstractRegistryTypeSelectorNode`; graph format **V33**.
 - Block state: **Block Type Selector → Build Block State** (`propertiesText`).
 - **PASSED / FROZEN**: `TypeSelectorsLanguageContractTest` — see [`node-language-v1-type-selectors.md`](./node-language-v1-type-selectors.md).
+
+**Input Values v1 (2026-09-25):**
+
+- Six nodes under `input.values.*` (Text / Color / Boolean / Gradient / Value List / File Path).
+- Color → `ColorData` + `DOUBLE` channels; Value List → `STRING_LIST` + Integer-only index; Gradient finite `Valid` (no EPS / no `output_ramp`); File Path `output_valid` (syntax-only).
+- Remap `input.basic.text_input/color_picker/boolean_toggle` → `input.values.*`; graph format **V34**.
+- **PASSED / FROZEN**: `InputValuesLanguageContractTest` — see [`node-language-v1-input-values.md`](./node-language-v1-input-values.md).
 
 **Batch 13 — Architectural Components language (2026-09-22):**
 

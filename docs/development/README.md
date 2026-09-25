@@ -11,6 +11,9 @@ Related architecture:
 - [`../architecture/docs-authority.md`](../architecture/docs-authority.md) — Docs SoT: code + `NODE_LIBRARY` (0.9 Compatibility)
 - [`../nodecraft-v1-node-language.md`](../nodecraft-v1-node-language.md) — V1 node language freeze (DOUBLE / port ids / degrees / Point·Vector·BlockPos / override)
 - [`../node-language-v1-input-numeric.md`](../node-language-v1-input-numeric.md) — Input Numeric v1 (PASSED / FROZEN, V31)
+- [`../node-language-v1-input-context.md`](../node-language-v1-input-context.md) — Input Context v1 (PASSED / FROZEN, V32)
+- [`../node-language-v1-type-selectors.md`](../node-language-v1-type-selectors.md) — Type Selectors v1 (PASSED / FROZEN, V33)
+- [`../node-language-v1-input-values.md`](../node-language-v1-input-values.md) — Input Values v1 (PASSED / FROZEN, V34)
 - [`../type-conversion-guidelines.md`](../type-conversion-guidelines.md) — Port connectability vs explicit conversion
 - [`../architecture/execution-runtime-2.0.md`](../architecture/execution-runtime-2.0.md) — Runtime 2.0 design freeze
 - [`../architecture/node-catalog.md`](../architecture/node-catalog.md) — Build-time NodeCatalog (Phase C)

@@ -48,9 +48,6 @@ public final class RegistrySelectorUtils {
         if (canonicalId == null || !registryContains) {
             return false;
         }
-        if (!allowModded && !canonicalId.startsWith(MINECRAFT_NAMESPACE + ":")) {
-            return false;
-        }
-        return true;
+        return allowModded || canonicalId.startsWith(MINECRAFT_NAMESPACE + ":");
     }
 }

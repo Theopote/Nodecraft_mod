@@ -7,7 +7,7 @@ import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.biome.Biome;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
@@ -86,9 +86,7 @@ final class RegistryCatalogHelper {
         }
 
         if (!collected) {
-            for (String id : FALLBACK_BIOME_IDS) {
-                target.add(id);
-            }
+            target.addAll(Arrays.asList(FALLBACK_BIOME_IDS));
         }
         target.sort(Comparator.naturalOrder());
     }

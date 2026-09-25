@@ -18,14 +18,15 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "input.values.dropdown",
-    displayName = "Dropdown Selector",
-    description = "Selects one value from user-defined option list and outputs index + text value.",
+    displayName = "Value List",
+    description = "Selects one value from a string option list and outputs index + text value.",
     category = "input.values",
     order = 10
 )
 public class DropdownSelectorNode extends BaseNode {
 
-    @NodeProperty(displayName = "Options", category = "Value", order = 1)
+    @NodeProperty(displayName = "Options", category = "Value", order = 1,
+        description = "Comma-separated options used when Options port is unconnected")
     private String options = "Option A, Option B, Option C";
 
     @NodeProperty(displayName = "Selected Index", category = "Value", order = 2)
@@ -42,11 +43,11 @@ public class DropdownSelectorNode extends BaseNode {
     public DropdownSelectorNode() {
         super(UUID.randomUUID(), "input.values.dropdown");
         addInputPort(new BasePort(INPUT_INDEX_ID, "Index", "Optional selected index override", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_OPTIONS_ID, "Options", "Optional list/string options override", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_OPTIONS_ID, "Options", "Optional string-list options override", NodeDataType.STRING_LIST, this));
 
         addOutputPort(new BasePort(OUTPUT_INDEX_ID, "Index", "Selected option index", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALUE_ID, "Value", "Selected option text", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_OPTIONS_ID, "Options", "Resolved option list", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_OPTIONS_ID, "Options", "Resolved option list", NodeDataType.STRING_LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when options are available", NodeDataType.BOOLEAN, this));
     }
 
@@ -61,7 +62,7 @@ public class DropdownSelectorNode extends BaseNode {
             return;
         }
 
-        int index = inputValues.get(INPUT_INDEX_ID) instanceof Number n ? n.intValue() : selectedIndex;
+        int index = inputValues.get(INPUT_INDEX_ID) instanceof Integer i ? i : selectedIndex;
         index = Math.max(0, Math.min(optionList.size() - 1, index));
         String value = optionList.get(index);
 
@@ -87,7 +88,10 @@ public class DropdownSelectorNode extends BaseNode {
         if (map.get("options") instanceof String text) {
             setOptions(text);
         }
-        if (map.get("selectedIndex") instanceof Number n) {
+        if (map.get("selectedIndex") instanceof Integer i) {
+            setSelectedIndex(i);
+        } else if (map.get("selectedIndex") instanceof Number n) {
+            // Legacy persisted state may store Number; keep restore compatibility only.
             setSelectedIndex(n.intValue());
         }
     }
@@ -116,26 +120,37 @@ public class DropdownSelectorNode extends BaseNode {
         }
     }
 
+    /**
+     * Port override accepts only {@link String} list elements (no {@code String.valueOf} coercion).
+     * When the port is unconnected, falls back to the Options property CSV.
+     */
     private List<String> resolveOptions(Object value) {
         if (value instanceof List<?> list) {
             List<String> out = new ArrayList<>();
             for (Object item : list) {
-                if (item == null) {
+                if (!(item instanceof String text)) {
                     continue;
                 }
-                String text = String.valueOf(item).trim();
-                if (!text.isEmpty()) {
-                    out.add(text);
+                String trimmed = text.trim();
+                if (!trimmed.isEmpty()) {
+                    out.add(trimmed);
                 }
             }
             return out;
         }
 
-        String raw = value instanceof String text ? text : options;
-        if (raw == null || raw.isBlank()) {
+        if (value != null) {
+            // Connected non-list values are rejected (no silent String coercion).
             return List.of();
         }
 
+        return parseCsvOptions(options);
+    }
+
+    private static List<String> parseCsvOptions(@Nullable String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
         List<String> out = new ArrayList<>();
         String normalized = raw.replace('\n', ',').replace(';', ',');
         for (String token : normalized.split(",")) {
@@ -147,4 +162,3 @@ public class DropdownSelectorNode extends BaseNode {
         return out;
     }
 }
-

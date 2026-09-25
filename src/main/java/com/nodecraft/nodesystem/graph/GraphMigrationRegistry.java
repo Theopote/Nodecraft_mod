@@ -99,6 +99,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V30 -> migrateV30ToV31(graph);
             case GraphFormatVersion.V31 -> migrateV31ToV32(graph);
             case GraphFormatVersion.V32 -> migrateV32ToV33(graph);
+            case GraphFormatVersion.V33 -> migrateV33ToV34(graph);
             default -> graph;
         };
     }
@@ -2142,6 +2143,18 @@ public final class GraphMigrationRegistry {
     private static final String BLOCK_STATE_SELECTOR_TYPE = "input.type_selectors.block_state_selector";
     private static final String BUILD_BLOCK_STATE_TYPE = "material.block_state.build_block_state";
 
+    private static final String LEGACY_TEXT_INPUT_TYPE = "input.basic.text_input";
+    private static final String LEGACY_COLOR_PICKER_TYPE = "input.basic.color_picker";
+    private static final String LEGACY_BOOLEAN_TOGGLE_TYPE = "input.basic.boolean_toggle";
+    private static final String VALUES_TEXT_INPUT_TYPE = "input.values.text_input";
+    private static final String VALUES_COLOR_PICKER_TYPE = "input.values.color_picker";
+    private static final String VALUES_BOOLEAN_TOGGLE_TYPE = "input.values.boolean_toggle";
+    private static final String VALUES_DROPDOWN_TYPE = "input.values.dropdown";
+    private static final String VALUES_GRADIENT_RAMP_TYPE = "input.values.gradient_ramp";
+    private static final Set<String> COLOR_CHANNEL_PORTS = Set.of(
+            "output_red", "output_green", "output_blue", "output_alpha"
+    );
+
     /**
      * Type Selectors v1: Block Type {@code BLOCK_TYPE} port; remove Block State Selector.
      */
@@ -2256,6 +2269,80 @@ public final class GraphMigrationRegistry {
         });
 
         return graph;
+    }
+
+    /**
+     * Input Values v1: remap basic value sources; tighten Color / Value List ports;
+     * drop Gradient {@code output_ramp} wires.
+     */
+    private static SavedGraph migrateV33ToV34(SavedGraph graph) {
+        if (graph.nodes == null) {
+            graph.nodes = new ArrayList<>();
+        } else {
+            graph.nodes = new ArrayList<>(graph.nodes);
+        }
+        if (graph.connections == null) {
+            graph.connections = new ArrayList<>();
+        } else {
+            graph.connections = new ArrayList<>(graph.connections);
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node == null || node.nodeId == null || node.typeId == null) {
+                continue;
+            }
+            String remapped = remapInputValuesTypeId(node.typeId);
+            if (!remapped.equals(node.typeId)) {
+                LOGGER.debug("Migrated node type: {} -> {} (nodeId={})", node.typeId, remapped, node.nodeId);
+                node.typeId = remapped;
+            }
+            nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            String targetPort = connection.targetPortId == null ? "" : connection.targetPortId.toLowerCase(Locale.ROOT);
+
+            if (VALUES_GRADIENT_RAMP_TYPE.equals(sourceType) && "output_ramp".equals(sourcePort)) {
+                LOGGER.debug("Dropped Gradient Ramp output_ramp wire from {}", connection.sourceNodeId);
+                return true;
+            }
+
+            boolean colorChannelEndpoint = VALUES_COLOR_PICKER_TYPE.equals(sourceType)
+                    && COLOR_CHANNEL_PORTS.contains(sourcePort);
+            boolean dropdownOptionsEndpoint =
+                    (VALUES_DROPDOWN_TYPE.equals(sourceType) && "output_options".equals(sourcePort))
+                            || (VALUES_DROPDOWN_TYPE.equals(targetType) && "input_options".equals(targetPort));
+
+            if (colorChannelEndpoint || dropdownOptionsEndpoint) {
+                if (!isDeclaredConnectionStillCompatible(sourceType, connection.sourcePortId,
+                        targetType, connection.targetPortId)) {
+                    LOGGER.debug("Dropped Input Values v1 incompatible wire {}#{} → {}#{}",
+                            connection.sourceNodeId, connection.sourcePortId,
+                            connection.targetNodeId, connection.targetPortId);
+                    return true;
+                }
+            }
+            return false;
+        });
+
+        return graph;
+    }
+
+    private static String remapInputValuesTypeId(String typeId) {
+        String normalized = typeId.toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case LEGACY_TEXT_INPUT_TYPE -> VALUES_TEXT_INPUT_TYPE;
+            case LEGACY_COLOR_PICKER_TYPE -> VALUES_COLOR_PICKER_TYPE;
+            case LEGACY_BOOLEAN_TOGGLE_TYPE -> VALUES_BOOLEAN_TOGGLE_TYPE;
+            default -> typeId;
+        };
     }
 
     private static void migrateBlockStateSelectorState(SavedNode node) {

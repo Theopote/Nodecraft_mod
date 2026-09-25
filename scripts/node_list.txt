@@ -135,9 +135,9 @@ geometry.solids.surface_strip_to_geometry|geometry.solids|Surface Strip To Geome
 geometry.solids.sweep_from_points|geometry.solids|Sweep Point List Along Path
 geometry.solids.sweep|geometry.solids|Sweep Profile Along Path
 geometry.solids.thicken_surface|geometry.solids|Thicken Surface
-input.basic.boolean_toggle|input.values|Boolean Toggle
-input.basic.color_picker|input.values|Color Picker
-input.basic.text_input|input.values|Text Input
+input.values.boolean_toggle|input.values|Boolean Toggle
+input.values.color_picker|input.values|Color Picker
+input.values.text_input|input.values|Text Input
 input.context.current_time|input.context|Current Time
 input.context.dimension_info|input.context|Dimension Info
 input.context.player_look_direction|input.context|Player Look At

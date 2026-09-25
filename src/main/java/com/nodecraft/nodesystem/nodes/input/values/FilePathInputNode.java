@@ -50,6 +50,7 @@ public class FilePathInputNode extends BaseCustomUINode {
     private static final String OUTPUT_FILENAME_ID = "output_filename";
     private static final String OUTPUT_EXTENSION_ID = "output_extension";
     private static final String OUTPUT_HAS_VALUE_ID = "output_has_value";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
     @NodeProperty(displayName = "Path", category = "Value", order = 1)
     private String selectedPath = "";
@@ -77,6 +78,7 @@ public class FilePathInputNode extends BaseCustomUINode {
         addOutputPort(new BasePort(OUTPUT_FILENAME_ID, "File Name", "File name with extension", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_EXTENSION_ID, "Extension", "Lowercase file extension", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_HAS_VALUE_ID, "Has Value", "True when a non-empty path is selected", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the path is non-empty and syntactically parseable", NodeDataType.BOOLEAN, this));
         updateOutput();
     }
 
@@ -183,13 +185,16 @@ public class FilePathInputNode extends BaseCustomUINode {
     private void updateOutput() {
         String path = normalizeString(selectedPath).trim();
         Path parsed = parsePath(path);
+        boolean hasValue = !path.isBlank();
+        boolean valid = hasValue && parsed != null;
 
         outputValues.put(OUTPUT_PATH_ID, path);
         outputValues.put(OUTPUT_TEXT_ID, path);
         outputValues.put(OUTPUT_DIRECTORY_ID, parsed != null && parsed.getParent() != null ? parsed.getParent().toString() : "");
         outputValues.put(OUTPUT_FILENAME_ID, parsed != null && parsed.getFileName() != null ? parsed.getFileName().toString() : "");
         outputValues.put(OUTPUT_EXTENSION_ID, getExtension(parsed));
-        outputValues.put(OUTPUT_HAS_VALUE_ID, !path.isBlank());
+        outputValues.put(OUTPUT_HAS_VALUE_ID, hasValue);
+        outputValues.put(OUTPUT_VALID_ID, valid);
         syncOutputPorts();
     }
 

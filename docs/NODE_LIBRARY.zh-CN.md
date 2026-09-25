@@ -316,11 +316,11 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Text Input | `input.basic.text_input` | Allows entering single-line or multi-line text. | `TextInputNode` |
-| Color Picker | `input.basic.color_picker` | Allows selecting a color value with RGB and alpha support. | `ColorPickerNode` |
-| Boolean Toggle | `input.basic.boolean_toggle` | 提供一个可以切换的布尔值开关控制 | `BooleanToggleNode` |
+| Text Input | `input.values.text_input` | Allows entering multi-line text. | `TextInputNode` |
+| Color Picker | `input.values.color_picker` | Allows selecting a color value with RGB and alpha support. | `ColorPickerNode` |
+| Boolean Toggle | `input.values.boolean_toggle` | Provides a boolean on/off toggle control. | `BooleanToggleNode` |
 | Gradient Ramp | `input.values.gradient_ramp` | Creates and samples a customizable multi-stop gradient ramp with a visual editor | `GradientRampNode` |
-| Dropdown Selector | `input.values.dropdown` | Selects one value from user-defined option list and outputs index + text value. | `DropdownSelectorNode` |
+| Value List | `input.values.dropdown` | Selects one value from a string option list and outputs index + text value. | `DropdownSelectorNode` |
 | File Path Input | `input.values.file_path` | Selects or types a local file path and outputs it for file read/write nodes. | `FilePathInputNode` |
 
 ## material.basic_assignment（4）

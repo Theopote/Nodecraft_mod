@@ -58,8 +58,7 @@ class AnyAllowlistContractTest {
         "output.export.",
         "output.execute.clear_preview",
         "output.execute.bake_status",
-        "world.",
-        "input.values."
+        "world."
     );
 
     private static final Set<String> ANY_ALLOWED_TYPE_IDS = Set.of(
@@ -86,7 +85,8 @@ class AnyAllowlistContractTest {
         "math.fields.",
         "geometry.architectural_primitives.",
         "material.",
-        "reference."
+        "reference.",
+        "input.values."
     );
 
     private static final Set<String> ANY_FORBIDDEN_TYPE_IDS = Set.of(

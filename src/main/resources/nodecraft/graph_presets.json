@@ -8,7 +8,7 @@
         {
           "id": "composite.textured_box",
           "displayName": "Textured Box",
-          "description": "Box geometry with Preview Geometry plus Voxelize â†’ Assign Block Type â†’ Preview Blocks. Shows Geometry Preview vs Block Preview.",
+          "description": "Box geometry with Preview Geometry plus Voxelize â†?Assign Block Type â†?Preview Blocks. Shows Geometry Preview vs Block Preview.",
           "kind": "composite",
           "nodes": [
             {
@@ -77,7 +77,7 @@
         {
           "id": "composite.array_transform_deform",
           "displayName": "Array Transform",
-          "description": "Box â†’ Linear Array â†’ Transform â†’ Preview Geometry, with optional Voxelize â†’ Preview Blocks.",
+          "description": "Box â†?Linear Array â†?Transform â†?Preview Geometry, with optional Voxelize â†?Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -169,7 +169,7 @@
         {
           "id": "composite.boolean_cut_bake",
           "displayName": "Boolean Cut + Voxelize",
-          "description": "Box A + Box B â†’ Difference â†’ Preview Geometry and Voxelize â†’ Preview Blocks. Demonstrates boolean cut without legacy Bake naming.",
+          "description": "Box A + Box B â†?Difference â†?Preview Geometry and Voxelize â†?Preview Blocks. Demonstrates boolean cut without legacy Bake naming.",
           "kind": "composite",
           "nodes": [
             {
@@ -261,7 +261,7 @@
         {
           "id": "architectural.infrastructure.stone_bridge",
           "displayName": "Stone Arch Bridge",
-          "description": "Span path â†’ Beam deck + Railing; pier boxes âˆ’ Arch Opening â†’ Combine â†’ Preview Geometry, Voxelize â†’ Material â†’ Preview Blocks.",
+          "description": "Span path â†?Beam deck + Railing; pier boxes âˆ?Arch Opening â†?Combine â†?Preview Geometry, Voxelize â†?Material â†?Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -414,7 +414,7 @@
             },
             {
               "ref": "arch_type",
-              "typeId": "input.basic.text_input",
+              "typeId": "input.values.text_input",
               "x": 560,
               "y": 820,
               "state": {
@@ -708,7 +708,7 @@
         {
           "id": "architectural.infrastructure.watchtower",
           "displayName": "Medieval Watchtower",
-          "description": "Hollow cylinder tower + Roof Base + Eave Railing + Linear Array battlement â†’ Preview Geometry and block preview chain.",
+          "description": "Hollow cylinder tower + Roof Base + Eave Railing + Linear Array battlement â†?Preview Geometry and block preview chain.",
           "kind": "composite",
           "nodes": [
             {
@@ -784,7 +784,7 @@
             },
             {
               "ref": "roof_type",
-              "typeId": "input.basic.text_input",
+              "typeId": "input.values.text_input",
               "x": 280,
               "y": 700,
               "state": {
@@ -984,7 +984,7 @@
         {
           "id": "architectural.residential.medieval_cottage",
           "displayName": "Medieval Cottage",
-          "description": "Building volume â†’ Floor / Wall / Window / Door / Roof architectural chain â†’ Preview + block preview.",
+          "description": "Building volume â†?Floor / Wall / Window / Door / Roof architectural chain â†?Preview + block preview.",
           "kind": "composite",
           "nodes": [
             {
@@ -1090,7 +1090,7 @@
             },
             {
               "ref": "roof_type",
-              "typeId": "input.basic.text_input",
+              "typeId": "input.values.text_input",
               "x": 520,
               "y": 480,
               "state": {
@@ -1342,7 +1342,7 @@
         {
           "id": "architectural.residential.simple_house",
           "displayName": "Simple Modern House",
-          "description": "Architectural component chain with flat roof and window array â€” modern residential showcase.",
+          "description": "Architectural component chain with flat roof and window array â€?modern residential showcase.",
           "kind": "composite",
           "nodes": [
             {
@@ -1424,7 +1424,7 @@
             },
             {
               "ref": "roof_type",
-              "typeId": "input.basic.text_input",
+              "typeId": "input.values.text_input",
               "x": 520,
               "y": 480,
               "state": {
@@ -1637,7 +1637,7 @@
         {
           "id": "architectural.residential.mini_building_v1",
           "displayName": "Mini Building (Component Chain)",
-          "description": "Floor Slab â†’ Wall Along Path â†’ Window Array â†’ Roof Base â†’ Preview Geometry, Voxelize â†’ Assign Block Type â†’ Preview Blocks â†’ Apply Changes.",
+          "description": "Floor Slab â†?Wall Along Path â†?Window Array â†?Roof Base â†?Preview Geometry, Voxelize â†?Assign Block Type â†?Preview Blocks â†?Apply Changes.",
           "kind": "composite",
           "nodes": [
             {
@@ -1856,7 +1856,7 @@
         {
           "id": "architectural.workflow.wall_with_windows",
           "displayName": "Wall + Windows",
-          "description": "Wall With Openings â†’ Difference (cut holes) + Window Array frames â†’ Combine â†’ Preview.",
+          "description": "Wall With Openings â†?Difference (cut holes) + Window Array frames â†?Combine â†?Preview.",
           "kind": "composite",
           "nodes": [
             {
@@ -1967,7 +1967,7 @@
         {
           "id": "architectural.workflow.floor_with_beam_grid",
           "displayName": "Floor + Beam Grid",
-          "description": "Composable Floor Slab + Beam Grid on the same BOX_FACE â†’ Combine â†’ Preview.",
+          "description": "Composable Floor Slab + Beam Grid on the same BOX_FACE â†?Combine â†?Preview.",
           "kind": "composite",
           "nodes": [
             {
@@ -2069,7 +2069,7 @@
         {
           "id": "architectural.workflow.roof_with_eave",
           "displayName": "Roof + Eave Railing",
-          "description": "Roof Base (gable) â†’ Eave Path drives Railing â†’ Combine â†’ Preview Geometry / Curves.",
+          "description": "Roof Base (gable) â†?Eave Path drives Railing â†?Combine â†?Preview Geometry / Curves.",
           "kind": "composite",
           "nodes": [
             {
@@ -2177,7 +2177,7 @@
         {
           "id": "building_elements.columns.classical_column",
           "displayName": "Classical Column",
-          "description": "Stacked Column nodes (base, shaft, capital) with explicit dimensions â†’ Preview Geometry, Voxelize â†’ Assign Block Type â†’ Preview Blocks.",
+          "description": "Stacked Column nodes (base, shaft, capital) with explicit dimensions â†?Preview Geometry, Voxelize â†?Assign Block Type â†?Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -2263,7 +2263,7 @@
             },
             {
               "ref": "base_shape",
-              "typeId": "input.basic.text_input",
+              "typeId": "input.values.text_input",
               "x": 220,
               "y": 180,
               "state": {
@@ -2273,7 +2273,7 @@
             },
             {
               "ref": "shaft_shape",
-              "typeId": "input.basic.text_input",
+              "typeId": "input.values.text_input",
               "x": 220,
               "y": 460,
               "state": {
@@ -2283,7 +2283,7 @@
             },
             {
               "ref": "capital_shape",
-              "typeId": "input.basic.text_input",
+              "typeId": "input.values.text_input",
               "x": 220,
               "y": 740,
               "state": {
@@ -2490,7 +2490,7 @@
         {
           "id": "building_elements.doors.simple_door",
           "displayName": "Simple Door Frame",
-          "description": "Outer frame box âˆ’ inner opening â†’ frame geometry â†’ Preview Geometry, Voxelize â†’ Assign Block Type â†’ Preview Blocks.",
+          "description": "Outer frame box âˆ?inner opening â†?frame geometry â†?Preview Geometry, Voxelize â†?Assign Block Type â†?Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -2618,7 +2618,7 @@
         {
           "id": "building_elements.roofs.gable_roof",
           "displayName": "Gable Roof",
-          "description": "Building volume top face â†’ Roof Base (Gable) â†’ Preview Geometry, Voxelize â†’ Assign Block Type â†’ Preview Blocks.",
+          "description": "Building volume top face â†?Roof Base (Gable) â†?Preview Geometry, Voxelize â†?Assign Block Type â†?Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -2753,7 +2753,7 @@
         {
           "id": "building_elements.stairs.spiral_staircase",
           "displayName": "Spiral Staircase",
-          "description": "Path â†’ Staircase (spiral layout) + center post â†’ Preview Geometry, Voxelize â†’ Assign Block Type â†’ Preview Blocks. Procedural spiral with frozen parameters.",
+          "description": "Path â†?Staircase (spiral layout) + center post â†?Preview Geometry, Voxelize â†?Assign Block Type â†?Preview Blocks. Procedural spiral with frozen parameters.",
           "kind": "composite",
           "nodes": [
             {
@@ -2890,7 +2890,7 @@
             },
             {
               "ref": "layout",
-              "typeId": "input.basic.text_input",
+              "typeId": "input.values.text_input",
               "x": 560,
               "y": 1340,
               "state": {
@@ -3112,7 +3112,7 @@
         {
           "id": "building_elements.stairs.straight_staircase",
           "displayName": "Straight Staircase",
-          "description": "Player Position â†’ Path â†’ Staircase (straight layout) â†’ Preview Geometry, Voxelize â†’ Assign Block Type â†’ Preview Blocks.",
+          "description": "Player Position â†?Path â†?Staircase (straight layout) â†?Preview Geometry, Voxelize â†?Assign Block Type â†?Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -3201,7 +3201,7 @@
             },
             {
               "ref": "layout",
-              "typeId": "input.basic.text_input",
+              "typeId": "input.values.text_input",
               "x": 560,
               "y": 840,
               "state": {
@@ -3342,7 +3342,7 @@
         {
           "id": "building_elements.windows.arched_window",
           "displayName": "Arched Window",
-          "description": "Rectangle + sector profiles â†’ extruded opening â†’ subtract from frame box â†’ Preview Geometry, Voxelize â†’ Assign Block Type â†’ Preview Blocks.",
+          "description": "Rectangle + sector profiles â†?extruded opening â†?subtract from frame box â†?Preview Geometry, Voxelize â†?Assign Block Type â†?Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -3528,7 +3528,7 @@
         {
           "id": "building_elements.windows.modern_window",
           "displayName": "Modern Window",
-          "description": "Facade panel â†’ Wall With Openings âˆ’ opening volumes â†’ frame; Window Array inset glass â†’ Combine â†’ Preview Geometry and block preview chain.",
+          "description": "Facade panel â†?Wall With Openings âˆ?opening volumes â†?frame; Window Array inset glass â†?Combine â†?Preview Geometry and block preview chain.",
           "kind": "composite",
           "nodes": [
             {
@@ -3840,7 +3840,7 @@
         {
           "id": "decorative.fountain_circular",
           "displayName": "Circular Fountain",
-          "description": "Outer basin âˆ’ inner hollow + tier + center spout with explicit dimensions â†’ Preview Geometry and block preview chain.",
+          "description": "Outer basin âˆ?inner hollow + tier + center spout with explicit dimensions â†?Preview Geometry and block preview chain.",
           "kind": "composite",
           "nodes": [
             {
@@ -4027,7 +4027,7 @@
         {
           "id": "decorative.gazebo",
           "displayName": "Garden Gazebo",
-          "description": "Floor slab + Polar Array columns + Roof Base on host volume â†’ Preview Geometry and block preview chain.",
+          "description": "Floor slab + Polar Array columns + Roof Base on host volume â†?Preview Geometry and block preview chain.",
           "kind": "composite",
           "nodes": [
             {
@@ -4121,7 +4121,7 @@
             },
             {
               "ref": "roof_type",
-              "typeId": "input.basic.text_input",
+              "typeId": "input.values.text_input",
               "x": 280,
               "y": 760,
               "state": {
@@ -4283,7 +4283,7 @@
         {
           "id": "quickstart.basic_box",
           "displayName": "Basic Box",
-          "description": "Player Position â†’ Box â†’ Preview Geometry, and Voxelize â†’ Assign Block Type â†’ Preview Blocks. Canonical NodeCraft v1 quickstart chain.",
+          "description": "Player Position â†?Box â†?Preview Geometry, and Voxelize â†?Assign Block Type â†?Preview Blocks. Canonical NodeCraft v1 quickstart chain.",
           "kind": "composite",
           "nodes": [
             {
@@ -4364,7 +4364,7 @@
         {
           "id": "quickstart.basic_sphere",
           "displayName": "Basic Sphere",
-          "description": "Player Position â†’ Sphere â†’ Preview Geometry, and Voxelize â†’ Assign Block Type â†’ Preview Blocks.",
+          "description": "Player Position â†?Sphere â†?Preview Geometry, and Voxelize â†?Assign Block Type â†?Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -4443,7 +4443,7 @@
         {
           "id": "quickstart.garden_wall",
           "displayName": "Garden Wall with Gate",
-          "description": "Wall Box âˆ’ Gate Cutter â†’ Move to player â†’ Preview Geometry, and Voxelize â†’ Assign Block Type â†’ Preview Blocks.",
+          "description": "Wall Box âˆ?Gate Cutter â†?Move to player â†?Preview Geometry, and Voxelize â†?Assign Block Type â†?Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -4571,7 +4571,7 @@
         {
           "id": "quickstart.simple_tower",
           "displayName": "Simple Tower",
-          "description": "Outer âˆ’ Inner Cylinder â†’ Move to player â†’ Preview Geometry, and Voxelize â†’ Assign Block Type â†’ Preview Blocks.",
+          "description": "Outer âˆ?Inner Cylinder â†?Move to player â†?Preview Geometry, and Voxelize â†?Assign Block Type â†?Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -4707,7 +4707,7 @@
         {
           "id": "styles.fantasy.wizard_tower",
           "displayName": "Wizard Tower",
-          "description": "Hollow cylinder shell + Cone roof + balcony ring with explicit dimensions â†’ Preview Geometry and block preview chain.",
+          "description": "Hollow cylinder shell + Cone roof + balcony ring with explicit dimensions â†?Preview Geometry and block preview chain.",
           "kind": "composite",
           "nodes": [
             {
@@ -4927,7 +4927,7 @@
         {
           "id": "styles.medieval.castle_keep",
           "displayName": "Castle Keep",
-          "description": "Keep body + Column Grid corner towers on footprint (not 4 duplicate boxes) â†’ Preview Geometry and block preview chain.",
+          "description": "Keep body + Column Grid corner towers on footprint (not 4 duplicate boxes) â†?Preview Geometry and block preview chain.",
           "kind": "composite",
           "nodes": [
             {
@@ -5139,7 +5139,7 @@
         {
           "id": "styles.modern.glass_box_building",
           "displayName": "Modern Glass Box Building",
-          "description": "Glass shell âˆ’ inner void; separate frame columns; dual Assign Block Type â†’ Merge Placements â†’ Preview Blocks (geometry semantics preserved).",
+          "description": "Glass shell âˆ?inner void; separate frame columns; dual Assign Block Type â†?Merge Placements â†?Preview Blocks (geometry semantics preserved).",
           "kind": "composite",
           "nodes": [
             {
@@ -5232,7 +5232,7 @@
             },
             {
               "ref": "frame_shape",
-              "typeId": "input.basic.text_input",
+              "typeId": "input.values.text_input",
               "x": 280,
               "y": 1180,
               "state": {

@@ -45,9 +45,10 @@ class TypeSelectorsLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV33() {
+    void currentGraphFormatIsV34() {
         assertEquals(33, GraphFormatVersion.V33);
-        assertEquals(GraphFormatVersion.V33, GraphFormatVersion.CURRENT);
+        assertEquals(34, GraphFormatVersion.V34);
+        assertEquals(GraphFormatVersion.V34, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -139,7 +140,7 @@ class TypeSelectorsLanguageContractTest {
         v32.nodePositions = Map.of();
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v32);
-        assertEquals(GraphFormatVersion.V33, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.V34, migrated.formatVersion);
         assertEquals(BLOCK_TYPE_SELECTOR, findNode(migrated, "legacy").typeId);
         assertFalse(hasWire(migrated, "legacy", "output_block_state", "build", "input_base_state"));
         assertTrue(hasWire(migrated, "block", "output_block_id", "assign", "input_block_type"));

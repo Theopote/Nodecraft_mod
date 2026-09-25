@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.input.basic;
+package com.nodecraft.nodesystem.nodes.input.values;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.IPort;
@@ -20,9 +20,9 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "input.basic.text_input",
+    id = "input.values.text_input",
     displayName = "Text Input",
-    description = "Allows entering single-line or multi-line text.",
+    description = "Allows entering multi-line text.",
     category = "input.values",
     order = 0
 )
@@ -30,16 +30,11 @@ public class TextInputNode extends BaseCustomUINode {
 
     private static final String OUTPUT_TEXT_ID = "output_text";
     private static final String OUTPUT_LENGTH_ID = "output_length";
-    private static final int SINGLE_LINE_BUF_SIZE = 1024;
     private static final int MULTI_LINE_BUF_SIZE = 32768;
 
     @NodeProperty(displayName = "Text", category = "Content", order = 1,
         description = "Current text content")
     private volatile String text = "";
-
-    @NodeProperty(displayName = "Multiline", category = "UI Settings", order = 10,
-        description = "Whether multi-line mode is enabled")
-    private volatile boolean multiline = true;
 
     @NodeProperty(displayName = "Max Length", category = "Limits", order = 11,
         description = "Maximum allowed input length")
@@ -57,7 +52,7 @@ public class TextInputNode extends BaseCustomUINode {
     private transient boolean bufferNeedsSync = true;
 
     public TextInputNode() {
-        super(UUID.randomUUID(), "input.basic.text_input");
+        super(UUID.randomUUID(), "input.values.text_input");
         IPort textOutput = new BasePort(OUTPUT_TEXT_ID, "Text", "Input text content", NodeDataType.STRING, this);
         addOutputPort(textOutput);
         IPort lengthOutput = new BasePort(OUTPUT_LENGTH_ID, "Length", "Text length", NodeDataType.INTEGER, this);
@@ -67,7 +62,7 @@ public class TextInputNode extends BaseCustomUINode {
 
     @Override
     public String getDescription() {
-        return "Allows entering single-line or multi-line text.";
+        return "Allows entering multi-line text.";
     }
 
     @Override
@@ -196,22 +191,6 @@ public class TextInputNode extends BaseCustomUINode {
         return text;
     }
 
-    public boolean isMultiline() {
-        return multiline;
-    }
-
-    public void setMultiline(boolean multiline) {
-        if (this.multiline != multiline) {
-            this.multiline = multiline;
-            bufferNeedsSync = true;
-            if (!multiline) {
-                setText(this.text);
-            }
-            invalidateCache();
-            markDirty();
-        }
-    }
-
     public int getMaxLength() {
         return maxLength;
     }
@@ -256,7 +235,6 @@ public class TextInputNode extends BaseCustomUINode {
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
         state.put("text", getText());
-        state.put("multiline", isMultiline());
         state.put("maxLength", getMaxLength());
         state.put("placeholder", getPlaceholder());
         state.put("showLengthCounter", isShowLengthCounter());
@@ -266,9 +244,6 @@ public class TextInputNode extends BaseCustomUINode {
     @Override
     public void setNodeState(Object state) {
         if (state instanceof Map<?, ?> stateMap) {
-            if (stateMap.get("multiline") instanceof Boolean ml) {
-                setMultiline(ml);
-            }
             if (stateMap.get("maxLength") instanceof Number max) {
                 setMaxLength(max.intValue());
             }

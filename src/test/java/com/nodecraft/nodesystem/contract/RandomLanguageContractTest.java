@@ -225,7 +225,8 @@ class RandomLanguageContractTest {
         assertEquals(29, GraphFormatVersion.V29);
         assertEquals(30, GraphFormatVersion.V30);
         assertEquals(33, GraphFormatVersion.V33);
-        assertEquals(GraphFormatVersion.V33, GraphFormatVersion.CURRENT);
+        assertEquals(34, GraphFormatVersion.V34);
+        assertEquals(GraphFormatVersion.V34, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -248,7 +249,7 @@ class RandomLanguageContractTest {
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v28);
         assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(GraphFormatVersion.V33, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.V34, migrated.formatVersion);
 
         assertEquals(4, migrated.nodes.size());
         assertEquals(1, migrated.connections.size());
@@ -264,7 +265,7 @@ class RandomLanguageContractTest {
 
         SavedNode listItem = savedNode("rli", "math.random.random_list_item");
         SavedNode numbers = savedNode("rns", "math.random.random_numbers");
-        SavedNode text = savedNode("text", "input.basic.text_input");
+        SavedNode text = savedNode("text", "input.values.text_input");
         SavedNode createList = savedNode("clist", "math.list.create_list");
         SavedNode sortText = savedNode("sort", "math.list.sort_text");
         SavedNode equals = savedNode("eq", "math.compare.equals");
@@ -288,7 +289,7 @@ class RandomLanguageContractTest {
         v28.nodePositions = Map.of();
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v28);
-        assertEquals(GraphFormatVersion.V33, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.V34, migrated.formatVersion);
 
         assertFalse(hasWire(migrated, "text", "output_text", "rli", "input_list"));
         assertTrue(hasWire(migrated, "clist", "output_list", "rli", "input_list"));

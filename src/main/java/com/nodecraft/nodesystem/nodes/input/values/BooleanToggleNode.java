@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.input.numeric;
+package com.nodecraft.nodesystem.nodes.input.values;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.IPort;
@@ -21,9 +21,9 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "input.basic.boolean_toggle",
+    id = "input.values.boolean_toggle",
     displayName = "Boolean Toggle",
-    description = "提供一个可以切换的布尔值开关控制",
+    description = "Provides a boolean on/off toggle control.",
     category = "input.values",
     order = 6
 )
@@ -44,15 +44,15 @@ public class BooleanToggleNode extends BaseCustomUINode {
     private String falseLabel = "OFF";
 
     public BooleanToggleNode() {
-        super(UUID.randomUUID(), "input.basic.boolean_toggle");
-        IPort valueOutput = new BasePort(OUTPUT_VALUE_ID, "Value", "当前布尔值", NodeDataType.BOOLEAN, this);
+        super(UUID.randomUUID(), "input.values.boolean_toggle");
+        IPort valueOutput = new BasePort(OUTPUT_VALUE_ID, "Value", "Current boolean value", NodeDataType.BOOLEAN, this);
         addOutputPort(valueOutput);
         updateOutput();
     }
 
     @Override
     public String getDescription() {
-        return "提供一个可以切换的布尔值开关控制。";
+        return "Provides a boolean on/off toggle control.";
     }
 
     @Override

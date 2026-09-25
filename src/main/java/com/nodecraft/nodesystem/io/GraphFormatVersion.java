@@ -210,8 +210,15 @@ public final class GraphFormatVersion {
      */
     public static final int V33 = 33;
 
+    /**
+     * Input Values v1: remap {@code input.basic.*} value sources to {@code input.values.*};
+     * Color channels DOUBLE + ColorData; Value List STRING_LIST; Gradient finite Valid / drop ramp;
+     * File Path {@code output_valid}.
+     */
+    public static final int V34 = 34;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V33;
+    public static final int CURRENT = V34;
 
     private GraphFormatVersion() {
     }

@@ -69,7 +69,6 @@ public class GradientRampNode extends BaseCustomUINode {
     private static final String OUTPUT_ALPHA_ID = "output_alpha";
     private static final String OUTPUT_T_ID = "output_t";
     private static final String OUTPUT_HEX_ID = "output_hex";
-    private static final String OUTPUT_RAMP_ID = "output_ramp";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     @NodeProperty(displayName = "Gradient Mode", category = "Sampling", order = 1)
@@ -113,8 +112,7 @@ public class GradientRampNode extends BaseCustomUINode {
         addOutputPort(new BasePort(OUTPUT_ALPHA_ID, "A", "Alpha channel in 0..1", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_T_ID, "T", "Resolved normalized sample coordinate", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_HEX_ID, "Hex", "Sampled color as #RRGGBB", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_RAMP_ID, "Ramp", "Gradient stop list", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the ramp is valid", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when sampling inputs and stops are finite and radius is positive when required", NodeDataType.BOOLEAN, this));
 
         stops.add(new GradientStop(0.0d, new ColorData(0.08f, 0.12f, 0.18f, 1.0f)));
         stops.add(new GradientStop(0.5d, new ColorData(0.10f, 0.65f, 0.88f, 1.0f)));
@@ -346,8 +344,13 @@ public class GradientRampNode extends BaseCustomUINode {
 
     private void updateOutput() {
         ensureValidStops();
-        double t = resolveSampleT();
-        ColorData color = sampleColor(t);
+        SampleResult sample = resolveSample();
+        if (!sample.valid()) {
+            invalidateOutputs();
+            return;
+        }
+        ColorData color = sample.color();
+        double t = sample.t();
         outputValues.put(OUTPUT_COLOR_ID, color);
         outputValues.put(OUTPUT_RED_ID, (double) color.r());
         outputValues.put(OUTPUT_GREEN_ID, (double) color.g());
@@ -355,21 +358,74 @@ public class GradientRampNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_ALPHA_ID, (double) color.a());
         outputValues.put(OUTPUT_T_ID, t);
         outputValues.put(OUTPUT_HEX_ID, toHex(color));
-        outputValues.put(OUTPUT_RAMP_ID, toRampList());
-        outputValues.put(OUTPUT_VALID_ID, !stops.isEmpty());
+        outputValues.put(OUTPUT_VALID_ID, true);
         syncOutputPorts();
     }
 
-    private double resolveSampleT() {
-        double raw;
-        if (gradientMode == GradientMode.SCALAR) {
-            raw = getInputDouble(INPUT_T_ID, 0.5d);
-        } else {
-            double x = getInputDouble(INPUT_X_ID, 0.5d);
-            double y = getInputDouble(INPUT_Y_ID, 0.5d);
-            raw = sampleCoordinate(x, y);
+    private void invalidateOutputs() {
+        outputValues.put(OUTPUT_COLOR_ID, null);
+        outputValues.put(OUTPUT_RED_ID, Double.NaN);
+        outputValues.put(OUTPUT_GREEN_ID, Double.NaN);
+        outputValues.put(OUTPUT_BLUE_ID, Double.NaN);
+        outputValues.put(OUTPUT_ALPHA_ID, Double.NaN);
+        outputValues.put(OUTPUT_T_ID, Double.NaN);
+        outputValues.put(OUTPUT_HEX_ID, "");
+        outputValues.put(OUTPUT_VALID_ID, false);
+        syncOutputPorts();
+    }
+
+    private SampleResult resolveSample() {
+        if (!stopsFinite()) {
+            return SampleResult.invalid();
         }
-        return wrap(raw);
+        if (!Double.isFinite(angleDegrees) || !Double.isFinite(centerX) || !Double.isFinite(centerY)) {
+            return SampleResult.invalid();
+        }
+        GradientMode mode = gradientMode == null ? GradientMode.SCALAR : gradientMode;
+        if (mode == GradientMode.RADIAL || mode == GradientMode.BOX) {
+            if (!Double.isFinite(radius) || radius <= 0.0d) {
+                return SampleResult.invalid();
+            }
+        }
+
+        Double raw = resolveSampleTRaw();
+        if (raw == null || !Double.isFinite(raw)) {
+            return SampleResult.invalid();
+        }
+        double t = wrap(raw);
+        if (!Double.isFinite(t)) {
+            return SampleResult.invalid();
+        }
+        ColorData color = sampleColor(t);
+        if (!ValueInputUtils.isFiniteColor(color)) {
+            return SampleResult.invalid();
+        }
+        return new SampleResult(true, t, color);
+    }
+
+    private boolean stopsFinite() {
+        if (stops.isEmpty()) {
+            return false;
+        }
+        for (GradientStop stop : stops) {
+            if (!Double.isFinite(stop.position) || !ValueInputUtils.isFiniteColor(stop.color)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private @Nullable Double resolveSampleTRaw() {
+        if (gradientMode == GradientMode.SCALAR) {
+            Double t = getInputDoubleOrNull(INPUT_T_ID, 0.5d);
+            return t;
+        }
+        Double x = getInputDoubleOrNull(INPUT_X_ID, 0.5d);
+        Double y = getInputDoubleOrNull(INPUT_Y_ID, 0.5d);
+        if (x == null || y == null || !Double.isFinite(x) || !Double.isFinite(y)) {
+            return null;
+        }
+        return sampleCoordinate(x, y);
     }
 
     private double sampleCoordinate(double x, double y) {
@@ -381,13 +437,16 @@ public class GradientRampNode extends BaseCustomUINode {
                 double angle = Math.toRadians(angleDegrees);
                 yield 0.5d + dx * Math.cos(angle) + dy * Math.sin(angle);
             }
-            case RADIAL -> Math.sqrt(dx * dx + dy * dy) / Math.max(1.0e-9d, radius);
-            case BOX -> Math.max(Math.abs(dx), Math.abs(dy)) / Math.max(1.0e-9d, radius);
+            case RADIAL -> Math.sqrt(dx * dx + dy * dy) / radius;
+            case BOX -> Math.max(Math.abs(dx), Math.abs(dy)) / radius;
             case ANGULAR -> {
                 double a = Math.atan2(dy, dx) + Math.PI;
                 yield a / (Math.PI * 2.0d);
             }
-            case SCALAR -> getInputDouble(INPUT_T_ID, 0.5d);
+            case SCALAR -> {
+                Double t = getInputDoubleOrNull(INPUT_T_ID, 0.5d);
+                yield t == null ? Double.NaN : t;
+            }
         };
     }
 
@@ -427,7 +486,11 @@ public class GradientRampNode extends BaseCustomUINode {
                 if (interpolationMode == InterpolationMode.CONSTANT) {
                     return a.color;
                 }
-                double span = Math.max(1.0e-9d, b.position - a.position);
+                double span = b.position - a.position;
+                if (span == 0.0d) {
+                    // Equal stops: pick upper stop for LINEAR/SMOOTH.
+                    return b.color;
+                }
                 double k = (u - a.position) / span;
                 if (interpolationMode == InterpolationMode.SMOOTH) {
                     k = k * k * (3.0d - 2.0d * k);
@@ -509,12 +572,29 @@ public class GradientRampNode extends BaseCustomUINode {
     }
 
     private double getInputDouble(String portId, double fallback) {
+        Double value = getInputDoubleOrNull(portId, fallback);
+        return value == null ? fallback : value;
+    }
+
+    private @Nullable Double getInputDoubleOrNull(String portId, double fallback) {
         Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
+        if (value == null) {
+            return fallback;
+        }
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        return null;
     }
 
     private double clamp01(double value) {
         return Math.max(0.0d, Math.min(1.0d, value));
+    }
+
+    private record SampleResult(boolean valid, double t, @Nullable ColorData color) {
+        private static SampleResult invalid() {
+            return new SampleResult(false, Double.NaN, null);
+        }
     }
 
     private int toU32(ColorData color) {
@@ -568,7 +648,7 @@ public class GradientRampNode extends BaseCustomUINode {
             centerY = value.doubleValue();
         }
         if (map.get("radius") instanceof Number value) {
-            radius = Math.max(1.0e-9d, value.doubleValue());
+            radius = value.doubleValue();
         }
         if (map.get("showSampleInput") instanceof Boolean value) {
             showSampleInput = value;

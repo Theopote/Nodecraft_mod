@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.input.basic;
+package com.nodecraft.nodesystem.nodes.input.values;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.IPort;
@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.ColorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Color;
 import imgui.ImGui;
@@ -19,7 +20,7 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "input.basic.color_picker",
+    id = "input.values.color_picker",
     displayName = "Color Picker",
     description = "Allows selecting a color value with RGB and alpha support.",
     category = "input.values",
@@ -38,8 +39,8 @@ public class ColorPickerNode extends BaseCustomUINode {
         description = "Current selected color value")
     private Color color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
 
-    @NodeProperty(displayName = "Include Alpha", category = "Settings", order = 2,
-        description = "Whether alpha channel editing is enabled")
+    @NodeProperty(displayName = "Edit Alpha", category = "Settings", order = 2,
+        description = "Whether alpha channel editing is enabled in the color editor")
     private boolean includeAlpha = true;
 
     @NodeProperty(displayName = "Show Preview", category = "UI Settings", order = 10,
@@ -62,17 +63,17 @@ public class ColorPickerNode extends BaseCustomUINode {
     private boolean needsUIUpdate = false;
 
     public ColorPickerNode() {
-        super(UUID.randomUUID(), "input.basic.color_picker");
+        super(UUID.randomUUID(), "input.values.color_picker");
 
         IPort colorOutput = new BasePort(OUTPUT_COLOR_ID, "Color", "Current color value", NodeDataType.COLOR, this);
         addOutputPort(colorOutput);
-        IPort redOutput = new BasePort(OUTPUT_RED_ID, "Red", "Red channel (0-1)", NodeDataType.FLOAT, this);
+        IPort redOutput = new BasePort(OUTPUT_RED_ID, "Red", "Red channel (0-1)", NodeDataType.DOUBLE, this);
         addOutputPort(redOutput);
-        IPort greenOutput = new BasePort(OUTPUT_GREEN_ID, "Green", "Green channel (0-1)", NodeDataType.FLOAT, this);
+        IPort greenOutput = new BasePort(OUTPUT_GREEN_ID, "Green", "Green channel (0-1)", NodeDataType.DOUBLE, this);
         addOutputPort(greenOutput);
-        IPort blueOutput = new BasePort(OUTPUT_BLUE_ID, "Blue", "Blue channel (0-1)", NodeDataType.FLOAT, this);
+        IPort blueOutput = new BasePort(OUTPUT_BLUE_ID, "Blue", "Blue channel (0-1)", NodeDataType.DOUBLE, this);
         addOutputPort(blueOutput);
-        IPort alphaOutput = new BasePort(OUTPUT_ALPHA_ID, "Alpha", "Alpha channel (0-1)", NodeDataType.FLOAT, this);
+        IPort alphaOutput = new BasePort(OUTPUT_ALPHA_ID, "Alpha", "Alpha channel (0-1)", NodeDataType.DOUBLE, this);
         addOutputPort(alphaOutput);
 
         updateColorArray();
@@ -216,11 +217,13 @@ public class ColorPickerNode extends BaseCustomUINode {
     }
 
     private void updateOutput() {
-        outputValues.put(OUTPUT_COLOR_ID, color);
-        outputValues.put(OUTPUT_RED_ID, color.getRed());
-        outputValues.put(OUTPUT_GREEN_ID, color.getGreen());
-        outputValues.put(OUTPUT_BLUE_ID, color.getBlue());
-        outputValues.put(OUTPUT_ALPHA_ID, color.getAlpha());
+        ColorData colorData = ValueInputUtils.toColorData(
+                color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
+        outputValues.put(OUTPUT_COLOR_ID, colorData);
+        outputValues.put(OUTPUT_RED_ID, (double) color.getRed());
+        outputValues.put(OUTPUT_GREEN_ID, (double) color.getGreen());
+        outputValues.put(OUTPUT_BLUE_ID, (double) color.getBlue());
+        outputValues.put(OUTPUT_ALPHA_ID, (double) color.getAlpha());
         syncOutputPorts();
     }
 
