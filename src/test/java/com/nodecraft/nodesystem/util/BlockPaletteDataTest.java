@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.util;
 
+import com.nodecraft.nodesystem.nodes.material.basic_assignment.BasicAssignmentUtils;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -33,7 +34,7 @@ class BlockPaletteDataTest {
 
     @Test
     void weightedEntriesPreserveWeights() {
-        BlockPaletteData palette = BlockPaletteData.ofBlockIdsAndWeights(
+        BlockPaletteData palette = BasicAssignmentUtils.buildPalette(
             List.of("minecraft:stone", "minecraft:dirt"),
             List.of(4.0d, 1.0d)
         );
