@@ -144,7 +144,6 @@ class PlacementFamilyContractTest {
         construct.setInput("input_origin", new PointData(0, 0, 0));
         construct.setInput("input_x_axis", new Vector3d(2, 0, 0));
         construct.setInput("input_y_axis", new Vector3d(0, 3, 0));
-        construct.setInput("input_z_axis", new Vector3d(0, 0, 4));
         construct.processNode(null);
 
         assertEquals(Boolean.TRUE, construct.getOutput("output_valid"));

@@ -112,8 +112,14 @@ public final class GraphFormatVersion {
      */
     public static final int V17 = 17;
 
+    /**
+     * Frame/plane language v1 closure: producer/deconstruct split, Transform Frame no scale,
+     * Transform Points by Frames uses FRAME_LIST, new Deconstruct Plane / Frame From Plane.
+     */
+    public static final int V18 = 18;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V17;
+    public static final int CURRENT = V18;
 
     private GraphFormatVersion() {
     }

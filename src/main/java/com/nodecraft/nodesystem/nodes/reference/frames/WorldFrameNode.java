@@ -6,10 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
-import com.nodecraft.nodesystem.datatypes.PlaneData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -19,36 +16,22 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "reference.frames.world_frame",
     displayName = "World Frame",
-    description = "Outputs the world coordinate frame as FRAME plus decomposed origin/axes",
+    description = "Outputs the world coordinate frame as FRAME",
     category = "reference.frames",
     order = 2
 )
 public class WorldFrameNode extends BaseNode {
 
     private static final String OUTPUT_FRAME_ID = "output_frame";
-    private static final String OUTPUT_ORIGIN_POS_ID = "output_origin_pos";
-    private static final String OUTPUT_ORIGIN_ID = "output_origin";
-    private static final String OUTPUT_X_AXIS_ID = "output_x_axis";
-    private static final String OUTPUT_Y_AXIS_ID = "output_y_axis";
-    private static final String OUTPUT_Z_AXIS_ID = "output_z_axis";
-    private static final String OUTPUT_XY_PLANE_ID = "output_xy_plane";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public WorldFrameNode() {
         super(UUID.randomUUID(), "reference.frames.world_frame");
         addOutputPort(new BasePort(OUTPUT_FRAME_ID, "Frame", "World coordinate frame", NodeDataType.FRAME, this));
-        addOutputPort(new BasePort(OUTPUT_ORIGIN_POS_ID, "Origin Pos", "World origin block position", NodeDataType.BLOCK_POS, this));
-        addOutputPort(new BasePort(OUTPUT_ORIGIN_ID, "Origin", "World origin point", NodeDataType.POINT, this));
-        addOutputPort(new BasePort(OUTPUT_X_AXIS_ID, "X Axis", "World X axis", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_Y_AXIS_ID, "Y Axis", "World Y axis", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_Z_AXIS_ID, "Z Axis", "World Z axis", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_XY_PLANE_ID, "XY Plane", "World XY plane", NodeDataType.PLANE, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Always true", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Outputs the world coordinate frame as FRAME plus decomposed origin/axes";
+        return "Outputs the world coordinate frame as FRAME";
     }
 
     @Override
@@ -57,15 +40,6 @@ public class WorldFrameNode extends BaseNode {
         Vector3d x = new Vector3d(1.0d, 0.0d, 0.0d);
         Vector3d y = new Vector3d(0.0d, 1.0d, 0.0d);
         Vector3d z = new Vector3d(0.0d, 0.0d, 1.0d);
-        FrameData frame = new FrameData(origin, x, y, z);
-
-        outputValues.put(OUTPUT_FRAME_ID, frame);
-        outputValues.put(OUTPUT_ORIGIN_POS_ID, BlockPos.ORIGIN);
-        outputValues.put(OUTPUT_ORIGIN_ID, new PointData(origin));
-        outputValues.put(OUTPUT_X_AXIS_ID, x);
-        outputValues.put(OUTPUT_Y_AXIS_ID, y);
-        outputValues.put(OUTPUT_Z_AXIS_ID, z);
-        outputValues.put(OUTPUT_XY_PLANE_ID, PlaneData.XY_PLANE);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_FRAME_ID, new FrameData(origin, x, y, z));
     }
 }

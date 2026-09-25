@@ -26,8 +26,6 @@ public class OffsetPlaneNode extends BaseNode {
     private static final String INPUT_DISTANCE_ID = "input_distance";
 
     private static final String OUTPUT_PLANE_ID = "output_plane";
-    private static final String OUTPUT_ORIGIN_ID = "output_origin";
-    private static final String OUTPUT_NORMAL_ID = "output_normal";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public OffsetPlaneNode() {
@@ -36,14 +34,7 @@ public class OffsetPlaneNode extends BaseNode {
         addInputPort(new BasePort(INPUT_DISTANCE_ID, "Distance", "Signed offset distance along the plane normal", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Offset plane", NodeDataType.PLANE, this));
-        addOutputPort(new BasePort(OUTPUT_ORIGIN_ID, "Origin", "A point on the offset plane", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_NORMAL_ID, "Normal", "Offset plane normal", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when offset succeeded", NodeDataType.BOOLEAN, this));
-    }
-
-    @Override
-    public String getDescription() {
-        return "Offsets a plane along its normal by a signed distance";
     }
 
     @Override
@@ -66,18 +57,12 @@ public class OffsetPlaneNode extends BaseNode {
         }
         normal.normalize();
         Vector3d origin = plane.getPoint().add(new Vector3d(normal).mul(distance));
-        PlaneData offsetPlane = new PlaneData(origin, normal);
-
-        outputValues.put(OUTPUT_PLANE_ID, offsetPlane);
-        outputValues.put(OUTPUT_ORIGIN_ID, origin);
-        outputValues.put(OUTPUT_NORMAL_ID, normal);
+        outputValues.put(OUTPUT_PLANE_ID, new PlaneData(origin, normal));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private void writeEmpty() {
         outputValues.put(OUTPUT_PLANE_ID, null);
-        outputValues.put(OUTPUT_ORIGIN_ID, null);
-        outputValues.put(OUTPUT_NORMAL_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 }

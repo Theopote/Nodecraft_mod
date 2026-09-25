@@ -28,7 +28,6 @@ public class ConstructPlaneFromPointsNode extends BaseNode {
     private static final String INPUT_POINT_C_ID = "input_point_c";
 
     private static final String OUTPUT_PLANE_ID = "output_plane";
-    private static final String OUTPUT_NORMAL_ID = "output_normal";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ConstructPlaneFromPointsNode() {
@@ -39,42 +38,30 @@ public class ConstructPlaneFromPointsNode extends BaseNode {
         addInputPort(new BasePort(INPUT_POINT_C_ID, "Point C", "Third geometric point on the plane", NodeDataType.POINT, this));
 
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Constructed plane", NodeDataType.PLANE, this));
-        addOutputPort(new BasePort(OUTPUT_NORMAL_ID, "Normal", "Plane normal vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the three points formed a valid plane", NodeDataType.BOOLEAN, this));
     }
 
     @Override
-    public String getDescription() {
-        return "Constructs a plane from three non-collinear points";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object aObj = inputValues.get(INPUT_POINT_A_ID);
-        Object bObj = inputValues.get(INPUT_POINT_B_ID);
-        Object cObj = inputValues.get(INPUT_POINT_C_ID);
+        Vector3d av = PlaneUtils.resolvePoint(inputValues.get(INPUT_POINT_A_ID));
+        Vector3d bv = PlaneUtils.resolvePoint(inputValues.get(INPUT_POINT_B_ID));
+        Vector3d cv = PlaneUtils.resolvePoint(inputValues.get(INPUT_POINT_C_ID));
 
         PlaneData plane = null;
-        Vector3d normal = null;
         boolean valid = false;
 
-        Vector3d av = PlaneUtils.resolvePoint(aObj);
-        Vector3d bv = PlaneUtils.resolvePoint(bObj);
-        Vector3d cv = PlaneUtils.resolvePoint(cObj);
         if (PlaneUtils.isFinite(av) && PlaneUtils.isFinite(bv) && PlaneUtils.isFinite(cv)) {
             Vector3d ab = new Vector3d(bv).sub(av);
             Vector3d ac = new Vector3d(cv).sub(av);
             Vector3d cross = ab.cross(ac, new Vector3d());
 
             if (cross.lengthSquared() > 1e-9) {
-                normal = cross.normalize();
                 plane = new PlaneData(av, bv, cv);
                 valid = true;
             }
         }
 
         outputValues.put(OUTPUT_PLANE_ID, plane);
-        outputValues.put(OUTPUT_NORMAL_ID, normal);
         outputValues.put(OUTPUT_VALID_ID, valid);
     }
 

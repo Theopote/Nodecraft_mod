@@ -81,6 +81,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V14 -> migrateV14ToV15(graph);
             case GraphFormatVersion.V15 -> migrateV15ToV16(graph);
             case GraphFormatVersion.V16 -> migrateV16ToV17(graph);
+            case GraphFormatVersion.V17 -> migrateV17ToV18(graph);
             default -> graph;
         };
     }
@@ -951,6 +952,178 @@ public final class GraphMigrationRegistry {
                 node.typeId = CLOSEST_POINT_ON_PATH_TYPE;
             }
         }
+        return graph;
+    }
+
+    private static final String TRANSFORM_FRAME_TYPE = "reference.frames.transform_frame";
+    private static final String CONSTRUCT_FRAME_TYPE = "reference.frames.construct_frame";
+    private static final String WORLD_FRAME_TYPE = "reference.frames.world_frame";
+    private static final String TRANSFORM_BY_FRAMES_TYPE = "transform.basic_transforms.transform_by_frames";
+    private static final String WORLD_PLANE_TYPE = "reference.planes.world_plane";
+    private static final String OFFSET_PLANE_TYPE = "reference.planes.offset_plane";
+    private static final String BOX_FACE_TO_PLANE_TYPE = "reference.planes.block_face_plane";
+    private static final String FACE_CENTER_FRAME_TYPE = "reference.frames.frame_from_face";
+    private static final String SPHERE_SURFACE_FRAME_TYPE = "reference.frames.frame_along_surface";
+    private static final String CONSTRUCT_PLANE_TYPE = "reference.planes.construct_plane";
+    private static final String PLANE_FROM_POINTS_TYPE = "reference.planes.plane_from_points";
+
+    private static final Set<String> TRANSFORM_FRAME_LEGACY_OUTPUT_PORTS = Set.of(
+            "output_origin",
+            "output_x_axis",
+            "output_y_axis",
+            "output_z_axis",
+            "output_plane"
+    );
+
+    private static final Set<String> TRANSFORM_FRAME_LEGACY_INPUT_PORTS = Set.of(
+            "input_origin",
+            "input_x_axis",
+            "input_y_axis",
+            "input_z_axis",
+            "input_scale"
+    );
+
+    private static final Set<String> WORLD_FRAME_LEGACY_OUTPUT_PORTS = Set.of(
+            "output_origin_pos",
+            "output_origin",
+            "output_x_axis",
+            "output_y_axis",
+            "output_z_axis",
+            "output_xy_plane",
+            "output_valid"
+    );
+
+    private static final Set<String> TRANSFORM_BY_FRAMES_LEGACY_INPUT_PORTS = Set.of(
+            "input_origins",
+            "input_x_axes",
+            "input_y_axes",
+            "input_z_axes"
+    );
+
+    private static final Set<String> TRANSFORM_BY_FRAMES_LEGACY_OUTPUT_PORTS = Set.of(
+            "output_frame_count",
+            "output_used_frame_count",
+            "output_skipped_frame_count"
+    );
+
+    private static final Set<String> WORLD_PLANE_LEGACY_OUTPUT_PORTS = Set.of(
+            "output_origin",
+            "output_origin_vector",
+            "output_normal"
+    );
+
+    private static final Set<String> OFFSET_PLANE_LEGACY_OUTPUT_PORTS = Set.of(
+            "output_origin",
+            "output_normal"
+    );
+
+    private static final Set<String> BOX_FACE_TO_PLANE_LEGACY_OUTPUT_PORTS = Set.of(
+            "output_center",
+            "output_normal",
+            "output_name",
+            "output_index"
+    );
+
+    private static final Set<String> FACE_CENTER_FRAME_LEGACY_OUTPUT_PORTS = Set.of(
+            "output_plane",
+            "output_x_axis",
+            "output_y_axis",
+            "output_z_axis",
+            "output_normal",
+            "output_corner_indices"
+    );
+
+    private static final Set<String> SPHERE_SURFACE_FRAME_LEGACY_OUTPUT_PORTS = Set.of(
+            "output_center",
+            "output_x_axis",
+            "output_y_axis",
+            "output_z_axis",
+            "output_plane"
+    );
+
+    /**
+     * Frame/plane v1: drop wires to removed producer ports; decomposed-frame graphs may need manual repair.
+     */
+    private static SavedGraph migrateV17ToV18(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            String targetPort = connection.targetPortId == null ? "" : connection.targetPortId.toLowerCase(Locale.ROOT);
+
+            if (TRANSFORM_FRAME_TYPE.equals(sourceType) && TRANSFORM_FRAME_LEGACY_OUTPUT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped Transform Frame legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+            if (TRANSFORM_FRAME_TYPE.equals(targetType) && TRANSFORM_FRAME_LEGACY_INPUT_PORTS.contains(targetPort)) {
+                LOGGER.debug("Dropped Transform Frame legacy input {} to {}", connection.targetPortId, connection.targetNodeId);
+                return true;
+            }
+            if (CONSTRUCT_FRAME_TYPE.equals(sourceType) && "output_plane".equals(sourcePort)) {
+                LOGGER.debug("Dropped Construct Frame legacy output_plane from {}", connection.sourceNodeId);
+                return true;
+            }
+            if (CONSTRUCT_FRAME_TYPE.equals(targetType) && "input_z_axis".equals(targetPort)) {
+                LOGGER.debug("Dropped Construct Frame legacy input_z_axis to {}", connection.targetNodeId);
+                return true;
+            }
+            if (WORLD_FRAME_TYPE.equals(sourceType) && WORLD_FRAME_LEGACY_OUTPUT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped World Frame legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+            if (TRANSFORM_BY_FRAMES_TYPE.equals(targetType) && TRANSFORM_BY_FRAMES_LEGACY_INPUT_PORTS.contains(targetPort)) {
+                LOGGER.debug("Dropped Transform Points by Frames legacy input {} to {}", connection.targetPortId, connection.targetNodeId);
+                return true;
+            }
+            if (TRANSFORM_BY_FRAMES_TYPE.equals(sourceType) && TRANSFORM_BY_FRAMES_LEGACY_OUTPUT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped Transform Points by Frames legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+            if (WORLD_PLANE_TYPE.equals(sourceType) && WORLD_PLANE_LEGACY_OUTPUT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped World Plane legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+            if (OFFSET_PLANE_TYPE.equals(sourceType) && OFFSET_PLANE_LEGACY_OUTPUT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped Offset Plane legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+            if (BOX_FACE_TO_PLANE_TYPE.equals(sourceType) && BOX_FACE_TO_PLANE_LEGACY_OUTPUT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped Box Face To Plane legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+            if (FACE_CENTER_FRAME_TYPE.equals(sourceType) && FACE_CENTER_FRAME_LEGACY_OUTPUT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped Face Center Frame legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+            if (SPHERE_SURFACE_FRAME_TYPE.equals(sourceType) && SPHERE_SURFACE_FRAME_LEGACY_OUTPUT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped Sphere Surface Frame legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+            if (CONSTRUCT_PLANE_TYPE.equals(sourceType) && "output_normalized_normal".equals(sourcePort)) {
+                LOGGER.debug("Dropped Construct Plane legacy output_normalized_normal from {}", connection.sourceNodeId);
+                return true;
+            }
+            if (PLANE_FROM_POINTS_TYPE.equals(sourceType) && "output_normal".equals(sourcePort)) {
+                LOGGER.debug("Dropped Construct Plane From Points legacy output_normal from {}", connection.sourceNodeId);
+                return true;
+            }
+            return false;
+        });
+
         return graph;
     }
 

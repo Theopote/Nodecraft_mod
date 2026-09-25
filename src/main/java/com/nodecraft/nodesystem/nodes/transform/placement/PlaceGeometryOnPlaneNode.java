@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.FrameUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -27,8 +28,6 @@ import java.util.UUID;
     order = 1
 )
 public class PlaceGeometryOnPlaneNode extends BaseNode {
-
-    private static final double EPS = 1.0e-12d;
 
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_PIVOT_ID = "input_pivot";
@@ -72,50 +71,13 @@ public class PlaceGeometryOnPlaneNode extends BaseNode {
             return;
         }
 
-        Vector3d normal = plane.getNormal();
-        if (!isUsable(normal)) {
-            writeResult(null, null, false, "Plane normal is invalid");
-            return;
-        }
-        normal.normalize();
-
-        Vector3d origin = plane.getPoint();
-        if (!isFinite(origin)) {
-            writeResult(null, null, false, "Plane origin is invalid");
-            return;
-        }
-
         Vector3d xHint = SpatialValueResolver.resolveVector(inputValues.get(INPUT_X_HINT_ID));
-        if (!isUsable(xHint)) {
-            xHint = Math.abs(normal.y) < 0.9d
-                ? new Vector3d(0.0d, 1.0d, 0.0d)
-                : new Vector3d(1.0d, 0.0d, 0.0d);
-        }
-
-        Vector3d x = new Vector3d(xHint).sub(new Vector3d(normal).mul(xHint.dot(normal)));
-        if (x.lengthSquared() <= EPS) {
-            xHint = Math.abs(normal.x) < 0.9d
-                ? new Vector3d(1.0d, 0.0d, 0.0d)
-                : new Vector3d(0.0d, 0.0d, 1.0d);
-            x = new Vector3d(xHint).sub(new Vector3d(normal).mul(xHint.dot(normal)));
-        }
-        if (x.lengthSquared() <= EPS) {
-            writeResult(null, null, false, "Could not build stable X axis on plane");
-            return;
-        }
-        x.normalize();
-        Vector3d y = new Vector3d(normal).cross(x);
-        if (y.lengthSquared() <= EPS) {
-            writeResult(null, null, false, "Could not build stable Y axis on plane");
-            return;
-        }
-        y.normalize();
-
-        FrameData frame = FrameData.orthonormal(origin, x, y, normal);
+        FrameData frame = FrameUtils.fromPlane(plane, xHint);
         if (frame == null) {
             writeResult(null, null, false, "Could not build orthonormal frame on plane");
             return;
         }
+
         Vector3d pivot = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_PIVOT_ID));
         if (pivot == null) {
             pivot = new Vector3d();
@@ -141,9 +103,5 @@ public class PlaceGeometryOnPlaneNode extends BaseNode {
             && Double.isFinite(vector.x)
             && Double.isFinite(vector.y)
             && Double.isFinite(vector.z);
-    }
-
-    private static boolean isUsable(Vector3d vector) {
-        return isFinite(vector) && vector.lengthSquared() > EPS;
     }
 }

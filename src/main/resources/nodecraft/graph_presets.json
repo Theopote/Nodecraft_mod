@@ -277,6 +277,12 @@
               "y": 40
             },
             {
+              "ref": "world_origin_deconstruct",
+              "typeId": "reference.frames.deconstruct_frame",
+              "x": 220,
+              "y": 120
+            },
+            {
               "ref": "run_vector",
               "typeId": "reference.vectors.vector",
               "x": 0,
@@ -491,6 +497,12 @@
           "connections": [
             {
               "fromRef": "local_origin",
+              "fromPort": "output_frame",
+              "toRef": "world_origin_deconstruct",
+              "toPort": "input_frame"
+            },
+            {
+              "fromRef": "world_origin_deconstruct",
               "fromPort": "output_origin",
               "toRef": "path_end",
               "toPort": "input_point"
@@ -508,7 +520,7 @@
               "toPort": "input_distance"
             },
             {
-              "fromRef": "local_origin",
+              "fromRef": "world_origin_deconstruct",
               "fromPort": "output_origin",
               "toRef": "point_list",
               "toPort": "input_0"
@@ -2183,6 +2195,12 @@
               "y": 40
             },
             {
+              "ref": "world_origin_deconstruct",
+              "typeId": "reference.frames.deconstruct_frame",
+              "x": 220,
+              "y": 120
+            },
+            {
               "ref": "base_height",
               "typeId": "input.numeric.float",
               "x": 0,
@@ -2333,6 +2351,12 @@
           "connections": [
             {
               "fromRef": "local_origin",
+              "fromPort": "output_frame",
+              "toRef": "world_origin_deconstruct",
+              "toPort": "input_frame"
+            },
+            {
+              "fromRef": "world_origin_deconstruct",
               "fromPort": "output_origin",
               "toRef": "base",
               "toPort": "input_base"
@@ -2747,6 +2771,12 @@
               "y": 40
             },
             {
+              "ref": "world_origin_deconstruct",
+              "typeId": "reference.frames.deconstruct_frame",
+              "x": 220,
+              "y": 120
+            },
+            {
               "ref": "tangent_vector",
               "typeId": "reference.vectors.vector",
               "x": 0,
@@ -2933,6 +2963,12 @@
           "connections": [
             {
               "fromRef": "local_origin",
+              "fromPort": "output_frame",
+              "toRef": "world_origin_deconstruct",
+              "toPort": "input_frame"
+            },
+            {
+              "fromRef": "world_origin_deconstruct",
               "fromPort": "output_origin",
               "toRef": "path_end",
               "toPort": "input_point"
@@ -2950,7 +2986,7 @@
               "toPort": "input_distance"
             },
             {
-              "fromRef": "local_origin",
+              "fromRef": "world_origin_deconstruct",
               "fromPort": "output_origin",
               "toRef": "point_list",
               "toPort": "input_0"

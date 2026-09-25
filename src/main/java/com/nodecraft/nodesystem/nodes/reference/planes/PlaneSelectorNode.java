@@ -8,7 +8,6 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -34,9 +33,6 @@ public class PlaneSelectorNode extends BaseNode {
 
     private static final String INPUT_ORIGIN_ID = "input_origin";
     private static final String OUTPUT_PLANE_ID = "output_plane";
-    private static final String OUTPUT_ORIGIN_ID = "output_origin";
-    private static final String OUTPUT_ORIGIN_VECTOR_ID = "output_origin_vector";
-    private static final String OUTPUT_NORMAL_ID = "output_normal";
 
     @NodeProperty(
         displayName = "Plane Preset",
@@ -52,7 +48,7 @@ public class PlaneSelectorNode extends BaseNode {
         order = 2,
         description = "Fallback X coordinate when no origin input is connected"
     )
-    private int originX = 0;
+    private double originX = 0.0d;
 
     @NodeProperty(
         displayName = "Origin Y",
@@ -60,7 +56,7 @@ public class PlaneSelectorNode extends BaseNode {
         order = 3,
         description = "Fallback Y coordinate when no origin input is connected"
     )
-    private int originY = 0;
+    private double originY = 0.0d;
 
     @NodeProperty(
         displayName = "Origin Z",
@@ -68,7 +64,7 @@ public class PlaneSelectorNode extends BaseNode {
         order = 4,
         description = "Fallback Z coordinate when no origin input is connected"
     )
-    private int originZ = 0;
+    private double originZ = 0.0d;
 
     public PlaneSelectorNode() {
         super(UUID.randomUUID(), "reference.planes.world_plane");
@@ -78,12 +74,6 @@ public class PlaneSelectorNode extends BaseNode {
             NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane",
             "Constructed plane data", NodeDataType.PLANE, this));
-        addOutputPort(new BasePort(OUTPUT_ORIGIN_ID, "Origin",
-            "Plane origin snapped to block grid", NodeDataType.BLOCK_POS, this));
-        addOutputPort(new BasePort(OUTPUT_ORIGIN_VECTOR_ID, "Origin Vector",
-            "Plane origin as a continuous vector", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_NORMAL_ID, "Normal",
-            "Plane normal vector", NodeDataType.VECTOR, this));
     }
 
     @Override
@@ -94,17 +84,8 @@ public class PlaneSelectorNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d originVector = resolveOriginVector(inputValues.get(INPUT_ORIGIN_ID));
-        BlockPos originBlock = PlaneUtils.toBlockPos(originVector, new BlockPos(originX, originY, originZ));
         Vector3d normal = resolveNormal();
-        PlaneData plane = new PlaneData(
-            new Vector3d(originVector),
-            new Vector3d(normal)
-        );
-
-        outputValues.put(OUTPUT_PLANE_ID, plane);
-        outputValues.put(OUTPUT_ORIGIN_ID, originBlock);
-        outputValues.put(OUTPUT_ORIGIN_VECTOR_ID, originVector);
-        outputValues.put(OUTPUT_NORMAL_ID, normal);
+        outputValues.put(OUTPUT_PLANE_ID, new PlaneData(new Vector3d(originVector), new Vector3d(normal)));
     }
 
     private Vector3d resolveOriginVector(Object originObj) {
@@ -134,34 +115,34 @@ public class PlaneSelectorNode extends BaseNode {
         }
     }
 
-    public int getOriginX() {
+    public double getOriginX() {
         return originX;
     }
 
-    public void setOriginX(int originX) {
-        if (this.originX != originX) {
+    public void setOriginX(double originX) {
+        if (Double.isFinite(originX) && this.originX != originX) {
             this.originX = originX;
             markDirty();
         }
     }
 
-    public int getOriginY() {
+    public double getOriginY() {
         return originY;
     }
 
-    public void setOriginY(int originY) {
-        if (this.originY != originY) {
+    public void setOriginY(double originY) {
+        if (Double.isFinite(originY) && this.originY != originY) {
             this.originY = originY;
             markDirty();
         }
     }
 
-    public int getOriginZ() {
+    public double getOriginZ() {
         return originZ;
     }
 
-    public void setOriginZ(int originZ) {
-        if (this.originZ != originZ) {
+    public void setOriginZ(double originZ) {
+        if (Double.isFinite(originZ) && this.originZ != originZ) {
             this.originZ = originZ;
             markDirty();
         }
@@ -190,13 +171,13 @@ public class PlaneSelectorNode extends BaseNode {
             }
         }
         if (map.get("originX") instanceof Number x) {
-            setOriginX(x.intValue());
+            setOriginX(x.doubleValue());
         }
         if (map.get("originY") instanceof Number y) {
-            setOriginY(y.intValue());
+            setOriginY(y.doubleValue());
         }
         if (map.get("originZ") instanceof Number z) {
-            setOriginZ(z.intValue());
+            setOriginZ(z.doubleValue());
         }
     }
 }

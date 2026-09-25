@@ -19,7 +19,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "reference.frames.frame_from_face",
     displayName = "Face Center Frame",
-    description = "Builds a local frame at the center of a box face using the face plane and boundary directions",
+    description = "Builds an orthonormal frame at the center of a box face",
     category = "reference.frames",
     order = 0
 )
@@ -29,12 +29,6 @@ public class FaceCenterFrameNode extends BaseNode {
 
     private static final String OUTPUT_FRAME_ID = "output_frame";
     private static final String OUTPUT_CENTER_ID = "output_center";
-    private static final String OUTPUT_PLANE_ID = "output_plane";
-    private static final String OUTPUT_X_AXIS_ID = "output_x_axis";
-    private static final String OUTPUT_Y_AXIS_ID = "output_y_axis";
-    private static final String OUTPUT_Z_AXIS_ID = "output_z_axis";
-    private static final String OUTPUT_NORMAL_ID = "output_normal";
-    private static final String OUTPUT_CORNER_INDICES_ID = "output_corner_indices";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public FaceCenterFrameNode() {
@@ -44,18 +38,12 @@ public class FaceCenterFrameNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_FRAME_ID, "Frame", "Oriented frame at the face center", NodeDataType.FRAME, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Face center point used as frame origin", NodeDataType.POINT, this));
-        addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Supporting plane of the face", NodeDataType.PLANE, this));
-        addOutputPort(new BasePort(OUTPUT_X_AXIS_ID, "X Axis", "First in-plane frame axis derived from the face boundary", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_Y_AXIS_ID, "Y Axis", "Second in-plane frame axis derived from the face boundary", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_Z_AXIS_ID, "Z Axis", "Frame Z axis aligned with the face normal", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_NORMAL_ID, "Normal", "Face normal vector", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_CORNER_INDICES_ID, "Corner Indices", "Corner indices that define the face winding", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether a valid face frame could be constructed", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Builds a local frame at the center of a box face using the face plane and boundary directions";
+        return "Builds an orthonormal frame at the center of a box face";
     }
 
     @Override
@@ -81,29 +69,22 @@ public class FaceCenterFrameNode extends BaseNode {
             writeEmptyOutputs();
             return;
         }
-
         zAxis.normalize();
 
-        outputValues.put(OUTPUT_FRAME_ID, new FrameData(center, xAxis, yAxis, zAxis));
+        FrameData frame = FrameData.orthonormal(center, xAxis, yAxis, zAxis);
+        if (frame == null) {
+            writeEmptyOutputs();
+            return;
+        }
+
+        outputValues.put(OUTPUT_FRAME_ID, frame);
         outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
-        outputValues.put(OUTPUT_PLANE_ID, face.getPlane());
-        outputValues.put(OUTPUT_X_AXIS_ID, xAxis);
-        outputValues.put(OUTPUT_Y_AXIS_ID, yAxis);
-        outputValues.put(OUTPUT_Z_AXIS_ID, zAxis);
-        outputValues.put(OUTPUT_NORMAL_ID, new Vector3d(zAxis));
-        outputValues.put(OUTPUT_CORNER_INDICES_ID, face.getCornerIndices());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private void writeEmptyOutputs() {
         outputValues.put(OUTPUT_FRAME_ID, null);
         outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_PLANE_ID, null);
-        outputValues.put(OUTPUT_X_AXIS_ID, null);
-        outputValues.put(OUTPUT_Y_AXIS_ID, null);
-        outputValues.put(OUTPUT_Z_AXIS_ID, null);
-        outputValues.put(OUTPUT_NORMAL_ID, null);
-        outputValues.put(OUTPUT_CORNER_INDICES_ID, List.of());
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 }

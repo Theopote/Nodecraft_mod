@@ -191,20 +191,19 @@ class TransformFamilyContractTest {
     void frameLanguageIsWiredOnReferenceNodes() {
         assertEquals(FrameData.class, NodeDataType.FRAME.getJavaClass());
         assertPortType("reference.frames.world_frame", "output_frame", false, NodeDataType.FRAME);
-        assertPortType("reference.frames.world_frame", "output_origin", false, NodeDataType.POINT);
         assertPortType("reference.frames.construct_frame", "input_origin", true, NodeDataType.POINT);
         assertPortType("reference.frames.construct_frame", "output_frame", false, NodeDataType.FRAME);
         assertPortType("reference.frames.deconstruct_frame", "input_frame", true, NodeDataType.FRAME);
         assertPortType("reference.frames.transform_frame", "input_frame", true, NodeDataType.FRAME);
-        assertPortType("reference.frames.transform_frame", "input_origin", true, NodeDataType.POINT);
+        assertPortType("reference.frames.frame_from_plane", "input_plane", true, NodeDataType.PLANE);
         assertPortType("reference.frames.frame_from_face", "output_center", false, NodeDataType.POINT);
         assertPortType("reference.frames.frame_along_surface", "input_point", true, NodeDataType.POINT);
+        assertPortType("reference.planes.deconstruct_plane", "input_plane", true, NodeDataType.PLANE);
 
         BaseNode world = assertInstanceOf(BaseNode.class,
             NodeRegistry.getInstance().createNodeInstance("reference.frames.world_frame"));
         world.processNode(null);
         assertInstanceOf(FrameData.class, world.getOutput("output_frame"));
-        assertEquals(Boolean.TRUE, world.getOutput("output_valid"));
     }
 
     private static void assertPortType(String typeId, String portId, boolean input, NodeDataType expected) {

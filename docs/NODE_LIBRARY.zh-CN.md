@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**540**
+- **节点总数**：**542**
 - **分类总数**：**59**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -50,8 +50,8 @@
 | `pattern.radial` | 4 |
 | `pattern.surface_volume_distribution` | 9 |
 | `pattern.voronoi_3d` | 1 |
-| `reference.frames` | 7 |
-| `reference.planes` | 6 |
+| `reference.frames` | 8 |
+| `reference.planes` | 7 |
 | `reference.points` | 18 |
 | `reference.vectors` | 18 |
 | `transform.basic_transforms` | 15 |
@@ -639,27 +639,29 @@
 |---|---|---|---|
 | Voronoi 3D Lloyd Relax (Grid) | `pattern.voronoi_3d.lloyd_relax` | Approximate 3D Lloyd relaxation: grid cell centers vote for nearest site; sites move to cell centroids (repeat). Not an exact Voronoi diagram. | `Voronoi3DLloydRelaxNode` |
 
-## reference.frames（7）
+## reference.frames（8）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Face Center Frame | `reference.frames.frame_from_face` | Builds a local frame at the center of a box face using the face plane and boundary directions | `FaceCenterFrameNode` |
-| Sphere Surface Frame | `reference.frames.frame_along_surface` | Builds a local tangent frame on a sphere using the nearest surface point and outward normal | `SphereSurfaceFrameNode` |
-| World Frame | `reference.frames.world_frame` | Outputs the world coordinate frame as FRAME plus decomposed origin/axes | `WorldFrameNode` |
-| Transform Frame | `reference.frames.transform_frame` | Applies translation, Euler rotation (degrees), and positive uniform scale to a frame | `TransformFrameNode` |
-| Construct Frame | `reference.frames.construct_frame` | Packs origin point and X/Y/Z axes into an orthonormal right-handed FRAME | `ConstructFrameNode` |
+| Face Center Frame | `reference.frames.frame_from_face` | Builds an orthonormal frame at the center of a box face | `FaceCenterFrameNode` |
+| Sphere Surface Frame | `reference.frames.frame_along_surface` | Builds a local tangent frame on a sphere at the projected surface point | `SphereSurfaceFrameNode` |
+| World Frame | `reference.frames.world_frame` | Outputs the world coordinate frame as FRAME | `WorldFrameNode` |
+| Transform Frame | `reference.frames.transform_frame` | Applies translation and Euler rotation (degrees) to a FRAME. Output is orthonormal orientation-only. | `TransformFrameNode` |
+| Construct Frame | `reference.frames.construct_frame` | Builds an orthonormal right-handed FRAME from origin, X axis, and Y axis (Z = X × Y) | `ConstructFrameNode` |
 | Deconstruct Frame | `reference.frames.deconstruct_frame` | Splits a FRAME into origin point, X/Y/Z axes, and plane | `DeconstructFrameNode` |
 | Deconstruct Frames | `reference.frames.deconstruct_frames` | Splits a FRAME_LIST into origins, axes, and planes | `DeconstructFramesNode` |
+| Frame From Plane | `reference.frames.frame_from_plane` | Builds a right-handed orthonormal FRAME on a plane (Z = normal, X from hint) | `FrameFromPlaneNode` |
 
-## reference.planes（6）
+## reference.planes（7）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | World Plane | `reference.planes.world_plane` | Creates a standard XY, YZ, or XZ world plane with a Point-compatible origin | `PlaneSelectorNode` |
 | Construct Plane | `reference.planes.construct_plane` | Constructs a plane from an origin point and a normal vector | `ConstructPlaneNode` |
 | Construct Plane From Points | `reference.planes.plane_from_points` | Constructs a plane from three non-collinear points | `ConstructPlaneFromPointsNode` |
+| Deconstruct Plane | `reference.planes.deconstruct_plane` | Splits a PLANE into origin point and normal vector | `DeconstructPlaneNode` |
 | Distance Point To Plane | `reference.planes.distance_point_to_plane` | Measures the absolute and signed distance from a geometric point to a plane | `DistancePointToPlaneNode` |
-| Box Face To Plane | `reference.planes.block_face_plane` | Explicitly converts a box face into its supporting plane and related face frame data | `BoxFaceToPlaneNode` |
+| Box Face To Plane | `reference.planes.block_face_plane` | Converts a box face into its supporting plane | `BoxFaceToPlaneNode` |
 | Offset Plane | `reference.planes.offset_plane` | Offsets a plane along its normal by a signed distance | `OffsetPlaneNode` |
 
 ## reference.points（18）
@@ -723,7 +725,7 @@
 | Transform Geometry | `transform.basic_transforms.transform_geometry` | Applies translation, Euler XYZ rotation, and uniform scale to analytic geometry (primitives, composites, booleans, SDF wrappers) | `TransformGeometryNode` |
 | Mirror Vector List About Plane | `transform.basic_transforms.mirror_vector_list_plane` | Mirrors each point in a list about a plane and outputs Vector3d positions | `MirrorVectorListAboutPlaneNode` |
 | Shear Point List | `transform.basic_transforms.shear` | Applies axial shear deformation to a point list around an origin. | `ShearPointListNode` |
-| Transform Points by Frames | `transform.basic_transforms.transform_by_frames` | Transforms local points by frame origin and basis axes into world-space positions. | `TransformPointsByFramesNode` |
+| Transform Points by Frames | `transform.basic_transforms.transform_by_frames` | Transforms local points by FRAME_LIST into world-space positions. | `TransformPointsByFramesNode` |
 | Move Geometry | `transform.basic_transforms.move_geometry` | Moves analytic geometry by a translation vector | `MoveGeometryNode` |
 | Rotate Geometry Around Axis | `transform.basic_transforms.rotate_geometry_axis` | Rotates analytic geometry around a center point and arbitrary axis | `RotateGeometryAroundAxisNode` |
 | Scale Geometry Around Point | `transform.basic_transforms.scale_geometry_point` | Uniformly scales analytic geometry around a center point (scale must be greater than zero; use Mirror for reflection) | `ScaleGeometryAroundPointNode` |

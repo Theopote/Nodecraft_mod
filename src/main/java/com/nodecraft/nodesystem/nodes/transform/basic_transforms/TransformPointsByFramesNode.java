@@ -3,133 +3,78 @@ package com.nodecraft.nodesystem.nodes.transform.basic_transforms;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "transform.basic_transforms.transform_by_frames",
     displayName = "Transform Points by Frames",
-    description = "Transforms local points by frame origin and basis axes into world-space positions.",
+    description = "Transforms local points by FRAME_LIST into world-space positions.",
     category = "transform.basic_transforms",
     order = 12
 )
 public class TransformPointsByFramesNode extends BaseNode {
 
-    @NodeProperty(displayName = "Normalize Axes", category = "Frames", order = 1)
-    private boolean normalizeAxes = true;
-
-    @NodeProperty(displayName = "Use Shortest Frame List", category = "Frames", order = 2)
-    private boolean useShortestFrameList = true;
-
     private static final String INPUT_LOCAL_POINTS_ID = "input_local_points";
-    private static final String INPUT_ORIGINS_ID = "input_origins";
-    private static final String INPUT_X_AXES_ID = "input_x_axes";
-    private static final String INPUT_Y_AXES_ID = "input_y_axes";
-    private static final String INPUT_Z_AXES_ID = "input_z_axes";
+    private static final String INPUT_FRAMES_ID = "input_frames";
 
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_FRAME_COUNT_ID = "output_frame_count";
-    private static final String OUTPUT_USED_FRAME_COUNT_ID = "output_used_frame_count";
-    private static final String OUTPUT_SKIPPED_FRAME_COUNT_ID = "output_skipped_frame_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public TransformPointsByFramesNode() {
         super(UUID.randomUUID(), "transform.basic_transforms.transform_by_frames");
 
         addInputPort(new BasePort(INPUT_LOCAL_POINTS_ID, "Local Points", "Point list in local frame coordinates", NodeDataType.POINT_LIST, this));
-        addInputPort(new BasePort(INPUT_ORIGINS_ID, "Origins", "Frame origins list", NodeDataType.POINT_LIST, this));
-        addInputPort(new BasePort(INPUT_X_AXES_ID, "X Axes", "Frame X axes list", NodeDataType.VECTOR_LIST, this));
-        addInputPort(new BasePort(INPUT_Y_AXES_ID, "Y Axes", "Frame Y axes list", NodeDataType.VECTOR_LIST, this));
-        addInputPort(new BasePort(INPUT_Z_AXES_ID, "Z Axes", "Frame Z axes list", NodeDataType.VECTOR_LIST, this));
+        addInputPort(new BasePort(INPUT_FRAMES_ID, "Frames", "Frame list defining placement orientation", NodeDataType.FRAME_LIST, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "World-space transformed points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output points", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_FRAME_COUNT_ID, "Frame Count", "Number of candidate frames", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_USED_FRAME_COUNT_ID, "Used Frame Count", "Number of frames actually used", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_SKIPPED_FRAME_COUNT_ID, "Skipped Frame Count", "Number of frames skipped because data was missing or invalid", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when frame transform succeeded", NodeDataType.BOOLEAN, this));
-    }
-
-    @Override
-    public String getDisplayName() {
-        return "Transform Points by Frames";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Transforms local points by frame origin and basis axes into world-space positions.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> localPoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_LOCAL_POINTS_ID));
-        List<Vector3d> origins = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_ORIGINS_ID));
-        List<Vector3d> xAxes = SpatialValueResolver.resolveVectorList(inputValues.get(INPUT_X_AXES_ID));
-        List<Vector3d> yAxes = SpatialValueResolver.resolveVectorList(inputValues.get(INPUT_Y_AXES_ID));
-        List<Vector3d> zAxes = SpatialValueResolver.resolveVectorList(inputValues.get(INPUT_Z_AXES_ID));
-        if (localPoints.isEmpty() || origins.isEmpty() || xAxes.isEmpty() || yAxes.isEmpty() || zAxes.isEmpty()) {
+        List<FrameData> frames = resolveFrameList(inputValues.get(INPUT_FRAMES_ID));
+
+        if (localPoints.isEmpty() || frames.isEmpty()) {
             writeInvalid();
             return;
         }
 
-        int frameCount = useShortestFrameList
-            ? Math.min(Math.min(origins.size(), xAxes.size()), Math.min(yAxes.size(), zAxes.size()))
-            : Math.max(Math.max(origins.size(), xAxes.size()), Math.max(yAxes.size(), zAxes.size()));
-        if (frameCount <= 0) {
-            writeInvalid();
-            return;
-        }
-
-        List<Vector3d> out = new ArrayList<>(frameCount * localPoints.size());
-        int usedFrameCount = 0;
-        int skippedFrameCount = 0;
-        for (int i = 0; i < frameCount; i++) {
-            Vector3d origin = getByMode(origins, i);
-            Vector3d xAxis = getByMode(xAxes, i);
-            Vector3d yAxis = getByMode(yAxes, i);
-            Vector3d zAxis = getByMode(zAxes, i);
-            if (origin == null || xAxis == null || yAxis == null || zAxis == null) {
-                skippedFrameCount++;
-                if (useShortestFrameList) {
-                    break;
-                }
-                continue;
+        List<Vector3d> out = new ArrayList<>(frames.size() * localPoints.size());
+        for (FrameData frame : frames) {
+            if (frame == null || frame.orthonormalized() == null) {
+                writeInvalid();
+                return;
             }
-
-            Vector3d x = new Vector3d(xAxis);
-            Vector3d y = new Vector3d(yAxis);
-            Vector3d z = new Vector3d(zAxis);
-            if (!isFinite(origin) || !isUsableAxis(x) || !isUsableAxis(y) || !isUsableAxis(z)) {
-                skippedFrameCount++;
-                continue;
-            }
-            if (normalizeAxes) {
-                x.normalize();
-                y.normalize();
-                z.normalize();
-            }
+            Vector3d origin = frame.getOrigin();
+            Vector3d x = frame.getXAxis();
+            Vector3d y = frame.getYAxis();
+            Vector3d z = frame.getZAxis();
 
             for (Vector3d local : localPoints) {
+                if (local == null || !isFinite(local)) {
+                    writeInvalid();
+                    return;
+                }
                 Vector3d world = new Vector3d(origin)
                     .add(new Vector3d(x).mul(local.x))
                     .add(new Vector3d(y).mul(local.y))
                     .add(new Vector3d(z).mul(local.z));
                 out.add(world);
             }
-            usedFrameCount++;
         }
 
         if (out.isEmpty()) {
@@ -138,58 +83,34 @@ public class TransformPointsByFramesNode extends BaseNode {
         }
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(out));
         outputValues.put(OUTPUT_COUNT_ID, out.size());
-        outputValues.put(OUTPUT_FRAME_COUNT_ID, frameCount);
-        outputValues.put(OUTPUT_USED_FRAME_COUNT_ID, usedFrameCount);
-        outputValues.put(OUTPUT_SKIPPED_FRAME_COUNT_ID, skippedFrameCount);
         outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    private static List<FrameData> resolveFrameList(@Nullable Object value) {
+        if (!(value instanceof List<?> raw)) {
+            return List.of();
+        }
+        List<FrameData> frames = new ArrayList<>(raw.size());
+        for (Object element : raw) {
+            if (element instanceof FrameData frame) {
+                frames.add(frame);
+            } else {
+                return List.of();
+            }
+        }
+        return frames;
     }
 
     private void writeInvalid() {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_FRAME_COUNT_ID, 0);
-        outputValues.put(OUTPUT_USED_FRAME_COUNT_ID, 0);
-        outputValues.put(OUTPUT_SKIPPED_FRAME_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
-    private Vector3d getByMode(List<Vector3d> list, int index) {
-        if (list.isEmpty()) return null;
-        if (index < list.size()) return list.get(index);
-        return useShortestFrameList ? null : list.get(list.size() - 1);
-    }
-
-    private boolean isUsableAxis(Vector3d axis) {
-        return isFinite(axis) && axis.lengthSquared() > 1.0e-12d;
-    }
-
-    private boolean isFinite(Vector3d vector) {
+    private static boolean isFinite(Vector3d vector) {
         return vector != null
             && Double.isFinite(vector.x)
             && Double.isFinite(vector.y)
             && Double.isFinite(vector.z);
-    }
-
-    @Override
-    public Object getNodeState() {
-        Map<String, Object> state = new HashMap<>();
-        state.put("normalizeAxes", normalizeAxes);
-        state.put("useShortestFrameList", useShortestFrameList);
-        return state;
-    }
-
-    @Override
-    public void setNodeState(Object state) {
-        if (!(state instanceof Map<?, ?> map)) {
-            return;
-        }
-        Object normalizeValue = map.get("normalizeAxes");
-        if (normalizeValue instanceof Boolean value) {
-            normalizeAxes = value;
-        }
-        Object shortestValue = map.get("useShortestFrameList");
-        if (shortestValue instanceof Boolean value) {
-            useShortestFrameList = value;
-        }
     }
 }
