@@ -122,13 +122,13 @@ public class SlabStairAutofillNode extends BaseNode {
         }
 
         Object normalsObj = inputValues.get(INPUT_NORMALS_ID);
-        if (placementSource && normalsObj == null) {
-            emitInvalid("Normals required when adapting existing placements");
+        if (!base.isEmpty() && normalsObj == null) {
+            emitInvalid("Normals required");
             return;
         }
 
         List<Vector3d> normals = resolveNormals(normalsObj);
-        if (normalsObj != null && !base.isEmpty()) {
+        if (!base.isEmpty()) {
             if (normals.isEmpty() && normalsObj instanceof List<?> list && !list.isEmpty()) {
                 emitInvalid("Normals must be a homogeneous VECTOR_LIST");
                 return;

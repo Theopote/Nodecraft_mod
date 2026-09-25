@@ -15,6 +15,7 @@ import com.nodecraft.nodesystem.nodes.material.directional_mapping.SlopeMapNode;
 import com.nodecraft.nodesystem.nodes.material.directional_mapping.TopSideBottomMapNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
+import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BlockStateData;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
@@ -211,6 +212,25 @@ class DirectionalMappingLanguageContractTest {
         assertNull(adapted.stateData().get("half"));
         assertNull(adapted.stateData().get("shape"));
         assertNull(adapted.stateData().get("type"));
+    }
+
+    @Test
+    void slabStairAdaptRequiresNormalsForCoordinatesSource() {
+        SlabStairAutofillNode node = new SlabStairAutofillNode();
+        BlockPosList coordinates = new BlockPosList();
+        coordinates.add(new BlockPos(0, 64, 0));
+        coordinates.add(new BlockPos(1, 64, 0));
+
+        node.setInput("input_coordinates", coordinates);
+        node.setInput("input_default_block", "minecraft:stone");
+        // No normals — must fail closed even when source is coordinates, not placements
+        node.processNode(null);
+
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertTrue(((String) node.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("normal"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> out = assertInstanceOf(List.class, node.getOutput("output_placements"));
+        assertTrue(out.isEmpty());
     }
 
     @Test

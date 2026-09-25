@@ -18,12 +18,15 @@ Related: [`node-language-v1-block-state.md`](./node-language-v1-block-state.md),
 2. **blockId only** — `pos` and `stateData` unchanged; only `blockId` may change.
 3. **Preserve on partial override** — when a material port is unconnected and the source is
    existing placements, keep `source.blockId` (never invent `minecraft:stone`).
-4. **Geometry / coordinates path** — requires at least one explicit material port; otherwise
-   `Valid=false`, empty placements.
+4. **Geometry / coordinates path** —
+   - Column Layer / Surface Slope: at least one explicit mapped material port; otherwise
+     `Valid=false`, empty placements.
+   - Slab / Stair Adapt: **Default Block** is required as the voxelization base material
+     (slab/stair ports alone are not enough to create geometry placements).
 5. **No deconstruct duplicate outputs** — canonical output is `BLOCK_PLACEMENT_LIST` plus
    `Valid` / `Error` (Slab/Stair also keeps counts).
-6. **Normals fail-closed** — Slab/Stair Adapt requires index-aligned `VECTOR_LIST` when
-   adapting existing placements.
+6. **Normals fail-closed** — Slab/Stair Adapt requires index-aligned `VECTOR_LIST` whenever
+   the resolved source is non-empty (placements, coordinates, or geometry).
 
 ## Inventory (3)
 
@@ -59,6 +62,12 @@ Normal angle from vertical (degrees):
 
 Defaults: Slab Angle = 20°, Stair Angle = 35° (clamped to `[0, 90]`).
 
+**Normals:** required whenever resolved placements are non-empty (any source). Empty source
+→ `Valid=true` + `[]`. Missing normals or count mismatch → `Valid=false`.
+
+**Geometry path:** Default Block required as base material for voxelization; then normals
+remap to Default / Slab / Stair ports (unconnected ports preserve that base id).
+
 Does **not** write `type` / `half` / `shape` / `facing`. Chain:
 
 ```
@@ -74,7 +83,8 @@ Placements → Slab/Stair Adapt → Orient Block State → Apply Block State →
 
 ## Contracts
 
-- `DirectionalMappingLanguageContractTest` — inventory, PURE, blockId-only, normals fail-closed,
-  surface-only slope, partial preserve, V35→V36 migration.
+- `DirectionalMappingLanguageContractTest` — inventory, PURE, blockId-only, normals fail-closed
+  (placements **and** coordinates/geometry sources), surface-only slope, partial preserve,
+  V35→V36 migration.
 - `MaterialFamilyContractTest` — slope surface vs interior.
 - Format fences bumped to **V36**.
