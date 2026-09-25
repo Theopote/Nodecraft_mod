@@ -101,7 +101,7 @@ class VectorLanguageContractTest {
         v20.nodePositions = java.util.Map.of();
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v20);
-        assertEquals(GraphFormatVersion.V24, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
         assertEquals(1, migrated.connections.size());
         assertEquals("output_vector", migrated.connections.getFirst().sourcePortId);
     }

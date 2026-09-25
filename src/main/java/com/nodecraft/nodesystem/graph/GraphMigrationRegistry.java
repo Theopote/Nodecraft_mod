@@ -90,6 +90,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V21 -> migrateV21ToV22(graph);
             case GraphFormatVersion.V22 -> migrateV22ToV23(graph);
             case GraphFormatVersion.V23 -> migrateV23ToV24(graph);
+            case GraphFormatVersion.V24 -> migrateV24ToV25(graph);
             default -> graph;
         };
     }
@@ -1703,6 +1704,55 @@ public final class GraphMigrationRegistry {
                 }
             }
 
+            return false;
+        });
+
+        return graph;
+    }
+
+    private static final String FRAC_TYPE = "math.scalar_math.frac";
+    private static final Set<String> GRAPH_MAPPER_REMOVED_INPUT_PORTS = Set.of(
+            "input_exponent",
+            "input_gaussian_center",
+            "input_gaussian_width"
+    );
+
+    /**
+     * Scalar Math v1 schema cleanup: drop deleted Fraction Floor output wires and Graph Mapper
+     * curve-parameter input ports (now properties only). Dynamic wires are dropped without
+     * guessing static property values (pre-release).
+     */
+    private static SavedGraph migrateV24ToV25(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            String targetPort = connection.targetPortId == null ? "" : connection.targetPortId.toLowerCase(Locale.ROOT);
+
+            if (FRAC_TYPE.equals(sourceType) && "output_floor".equals(sourcePort)) {
+                LOGGER.debug("Dropped Fraction output_floor wire from {}", connection.sourceNodeId);
+                return true;
+            }
+            if (GRAPH_MAPPER_TYPE.equals(targetType) && GRAPH_MAPPER_REMOVED_INPUT_PORTS.contains(targetPort)) {
+                LOGGER.debug("Dropped Graph Mapper {} wire into {}", targetPort, connection.targetNodeId);
+                return true;
+            }
             return false;
         });
 

@@ -157,8 +157,15 @@ public final class GraphFormatVersion {
      */
     public static final int V24 = 24;
 
+    /**
+     * Scalar Math v1 schema cleanup: drop deleted Fraction {@code output_floor} wires and
+     * Graph Mapper curve-parameter input ports ({@code input_exponent} /
+     * {@code input_gaussian_center} / {@code input_gaussian_width}) now owned by properties.
+     */
+    public static final int V25 = 25;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V24;
+    public static final int CURRENT = V25;
 
     private GraphFormatVersion() {
     }

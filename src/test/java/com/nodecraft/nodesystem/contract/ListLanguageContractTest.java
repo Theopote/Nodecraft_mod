@@ -234,7 +234,7 @@ class ListLanguageContractTest {
         v22.nodePositions = Map.of();
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v22);
-        assertEquals(GraphFormatVersion.V24, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
         assertTrue(migrated.nodes.stream().noneMatch(n -> "math.list.sort_list".equals(n.typeId)));
         assertTrue(migrated.nodes.stream().anyMatch(n -> "length".equals(n.nodeId)));
         assertTrue(migrated.connections.isEmpty(), "orphan wires to deleted Sort and illegal LIST→typed/mask wires must be dropped");

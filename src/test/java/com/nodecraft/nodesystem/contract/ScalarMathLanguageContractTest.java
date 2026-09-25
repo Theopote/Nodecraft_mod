@@ -5,6 +5,11 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.datatypes.NumericRangeData;
+import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
+import com.nodecraft.nodesystem.io.GraphFormatVersion;
+import com.nodecraft.nodesystem.io.SavedConnection;
+import com.nodecraft.nodesystem.io.SavedGraph;
+import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.nodes.math.scalar_math.DivisionNode;
 import com.nodecraft.nodesystem.nodes.math.scalar_math.ExpressionNode;
 import com.nodecraft.nodesystem.nodes.math.scalar_math.FracNode;
@@ -18,6 +23,8 @@ import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -199,5 +206,77 @@ class ScalarMathLanguageContractTest {
         assertTrue(Double.isNaN((Double) outputs.get("output_result")));
         assertTrue(Double.isNaN((Double) outputs.get("output_t")));
         assertTrue(Double.isNaN((Double) outputs.get("output_mapped")));
+    }
+
+    @Test
+    void currentGraphFormatIsV25() {
+        assertEquals(25, GraphFormatVersion.V25);
+        assertEquals(GraphFormatVersion.V25, GraphFormatVersion.CURRENT);
+    }
+
+    @Test
+    void v24ToV25DropsDeletedScalarMathPortsAndPreservesUnrelatedWires() {
+        SavedGraph v24 = new SavedGraph();
+        v24.formatVersion = GraphFormatVersion.V24;
+
+        SavedNode numberA = savedNode("num_a", "input.values.float");
+        SavedNode numberB = savedNode("num_b", "input.values.float");
+        SavedNode numberC = savedNode("num_c", "input.values.float");
+        SavedNode numberD = savedNode("num_d", "input.values.float");
+        SavedNode mapper = savedNode("mapper", "math.scalar_math.graph_mapper");
+        SavedNode frac = savedNode("frac", "math.scalar_math.frac");
+        SavedNode sink = savedNode("sink", "math.list.create_list");
+        SavedNode add = savedNode("add", "math.scalar_math.addition");
+
+        v24.nodes = new ArrayList<>(List.of(numberA, numberB, numberC, numberD, mapper, frac, sink, add));
+        v24.connections = new ArrayList<>(List.of(
+                wire("num_a", "output_value", "mapper", "input_exponent"),
+                wire("num_b", "output_value", "mapper", "input_gaussian_center"),
+                wire("num_c", "output_value", "mapper", "input_gaussian_width"),
+                wire("frac", "output_floor", "sink", "input_0"),
+                wire("num_d", "output_value", "mapper", "input_value"),
+                wire("num_a", "output_value", "add", "input_a"),
+                wire("num_b", "output_value", "add", "input_b")
+        ));
+        v24.nodePositions = Map.of();
+
+        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v24);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.V25, migrated.formatVersion);
+
+        assertEquals(8, migrated.nodes.size());
+        assertEquals(3, migrated.connections.size());
+        assertTrue(hasWire(migrated, "num_d", "output_value", "mapper", "input_value"));
+        assertTrue(hasWire(migrated, "num_a", "output_value", "add", "input_a"));
+        assertTrue(hasWire(migrated, "num_b", "output_value", "add", "input_b"));
+        assertFalse(hasWire(migrated, "num_a", "output_value", "mapper", "input_exponent"));
+        assertFalse(hasWire(migrated, "num_b", "output_value", "mapper", "input_gaussian_center"));
+        assertFalse(hasWire(migrated, "num_c", "output_value", "mapper", "input_gaussian_width"));
+        assertFalse(hasWire(migrated, "frac", "output_floor", "sink", "input_0"));
+    }
+
+    private static SavedNode savedNode(String id, String typeId) {
+        SavedNode node = new SavedNode();
+        node.nodeId = id;
+        node.typeId = typeId;
+        return node;
+    }
+
+    private static SavedConnection wire(String sourceNode, String sourcePort, String targetNode, String targetPort) {
+        SavedConnection connection = new SavedConnection();
+        connection.sourceNodeId = sourceNode;
+        connection.sourcePortId = sourcePort;
+        connection.targetNodeId = targetNode;
+        connection.targetPortId = targetPort;
+        return connection;
+    }
+
+    private static boolean hasWire(SavedGraph graph, String sourceNode, String sourcePort,
+                                   String targetNode, String targetPort) {
+        return graph.connections.stream().anyMatch(c ->
+                sourceNode.equals(c.sourceNodeId)
+                        && sourcePort.equalsIgnoreCase(c.sourcePortId)
+                        && targetNode.equals(c.targetNodeId)
+                        && targetPort.equalsIgnoreCase(c.targetPortId));
     }
 }

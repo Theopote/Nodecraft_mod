@@ -2,6 +2,7 @@
 
 Freeze for `math.scalar_math.*` continuous numeric nodes.
 Shared implementation: `com.nodecraft.nodesystem.math.ScalarMathOps`.
+Graph schema: **V25** drops deleted Fraction / Graph Mapper ports (see migration below).
 
 Related: [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) (directed Domain),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md) (DOUBLE language).
@@ -83,3 +84,17 @@ Clamp, Remap, Lerp, Smoothstep
 ## Fraction
 
 Single action: `frac(x) = x - floor(x)`. Outputs: Frac + Valid only (no Floor echo port).
+Need Floor? Use the Floor node.
+
+## Graph migration (V24→V25)
+
+Scalar Math v1 schema cleanup — drop obsolete wires only (no value guessing):
+
+| Node | Removed port | Side |
+|------|--------------|------|
+| `math.scalar_math.frac` | `output_floor` | source |
+| `math.scalar_math.graph_mapper` | `input_exponent` | target |
+| `math.scalar_math.graph_mapper` | `input_gaussian_center` | target |
+| `math.scalar_math.graph_mapper` | `input_gaussian_width` | target |
+
+Curve parameters on Graph Mapper remain `@NodeProperty` only.

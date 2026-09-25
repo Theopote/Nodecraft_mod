@@ -63,9 +63,9 @@ class PointVectorLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV24() {
-        assertEquals(24, GraphFormatVersion.V24);
-        assertEquals(GraphFormatVersion.V24, GraphFormatVersion.CURRENT);
+    void currentGraphFormatIsV25() {
+        assertEquals(25, GraphFormatVersion.V25);
+        assertEquals(GraphFormatVersion.V25, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -218,7 +218,7 @@ class PointVectorLanguageContractTest {
         v18.nodePositions = java.util.Map.of();
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v18);
-        assertEquals(GraphFormatVersion.V24, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
         assertEquals(2, migrated.nodes.size());
         assertTrue(migrated.nodes.stream().noneMatch(n -> "reference.points.block_to_vector".equals(n.typeId)));
         assertTrue(migrated.connections.isEmpty());

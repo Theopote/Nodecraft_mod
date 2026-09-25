@@ -268,7 +268,7 @@ class DataTreeLanguageContractTest {
         v23.nodePositions = Map.of();
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v23);
-        assertEquals(GraphFormatVersion.V24, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
 
         @SuppressWarnings("unchecked")
         Map<String, Object> itemState = (Map<String, Object>) migrated.nodes.stream()
