@@ -6,11 +6,11 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.minecraft.PlayerAccessor;
-import com.nodecraft.nodesystem.util.Vector3;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
@@ -18,7 +18,6 @@ import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,13 +25,20 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.WORLD_READ,
-    id = "input.context.player_look_direction",
-    displayName = "Player Look At",
-    description = "Gets the player's look direction and current raycast hit information.",
+    id = "input.context.player_raycast",
+    displayName = "Player Raycast",
+    description = "Raycasts from the player view and reports hit position, block, entity, and distance.",
     category = "input.context",
     order = 1
 )
-public class PlayerLookAtNode extends BaseCustomUINode {
+public class PlayerRaycastNode extends BaseCustomUINode {
+
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_HIT_POSITION_ID = "output_hit_position";
+    private static final String OUTPUT_HIT_BLOCK_ID = "output_hit_block";
+    private static final String OUTPUT_HIT_ENTITY_ID = "output_hit_entity";
+    private static final String OUTPUT_HIT_DISTANCE_ID = "output_hit_distance";
+    private static final String OUTPUT_HAS_HIT_ID = "output_has_hit";
 
     @NodeProperty(
             displayName = "Max Distance",
@@ -40,7 +46,7 @@ public class PlayerLookAtNode extends BaseCustomUINode {
             order = 1,
             description = "Maximum raycast distance."
     )
-    private float maxDistance = 100.0f;
+    private double maxDistance = 100.0d;
 
     @NodeProperty(
             displayName = "Include Entities",
@@ -58,43 +64,32 @@ public class PlayerLookAtNode extends BaseCustomUINode {
     )
     private boolean includeFluids = false;
 
-    private static final String OUTPUT_HIT_POSITION_ID = "output_hit_position";
-    private static final String OUTPUT_HIT_BLOCK_ID = "output_hit_block";
-    private static final String OUTPUT_HIT_ENTITY_ID = "output_hit_entity";
-    private static final String OUTPUT_HIT_DISTANCE_ID = "output_hit_distance";
-    private static final String OUTPUT_HAS_HIT_ID = "output_has_hit";
+    public PlayerRaycastNode() {
+        super(UUID.randomUUID(), "input.context.player_raycast");
 
-    public PlayerLookAtNode() {
-        super(UUID.randomUUID(), "input.context.player_look_direction");
-
-        addOutputPort(new BasePort(OUTPUT_HIT_POSITION_ID, "Hit Position", "The current hit position", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether world context was available for raycast", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_HIT_POSITION_ID, "Hit Position", "World-space hit location", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_HIT_BLOCK_ID, "Hit Block", "The currently hit block", NodeDataType.BLOCK_INFO, this));
         addOutputPort(new BasePort(OUTPUT_HIT_ENTITY_ID, "Hit Entity", "The currently hit entity", NodeDataType.ENTITY_INFO, this));
-        addOutputPort(new BasePort(OUTPUT_HIT_DISTANCE_ID, "Hit Distance", "Distance from the player to the hit", NodeDataType.FLOAT, this));
-        addOutputPort(new BasePort(OUTPUT_HAS_HIT_ID, "Has Hit", "Whether something was hit", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_HIT_DISTANCE_ID, "Hit Distance", "Distance from the player to the hit", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_HAS_HIT_ID, "Has Hit", "Whether the raycast hit something", NodeDataType.BOOLEAN, this));
 
-        resetOutputs();
+        invalidateContext();
     }
 
     @Override
     public String getDescription() {
-        return "Gets the player's look direction and current raycast hit information.";
+        return "Raycasts from the player view and reports hit position, block, entity, and distance.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        if (context == null || context.getWorld() == null || context.getPlayer() == null) {
-            resetOutputs();
+        if (!ContextReadUtils.isLiveContextAvailable(context)) {
+            invalidateContext();
             return;
         }
 
-        PlayerAccessor playerAccessor = context.getPlayerAccessor();
-        if (playerAccessor == null) {
-            resetOutputs();
-            return;
-        }
-
-        performRaycast(context, playerAccessor);
+        performRaycast(context);
     }
 
     @Override
@@ -112,27 +107,26 @@ public class PlayerLookAtNode extends BaseCustomUINode {
         return false;
     }
 
-    private void performRaycast(ExecutionContext context, PlayerAccessor playerAccessor) {
-        Vector3 eyePosition = playerAccessor.getPlayerEyePosition();
-        Vector3 lookVector = playerAccessor.getPlayerLookVector();
-        Vector3 direction = lookVector.normalize();
-        if (direction.length() <= 1.0e-6f) {
-            resetOutputs();
+    private void performRaycast(ExecutionContext context) {
+        PlayerEntity sourceEntity = context.getPlayer();
+        if (!(sourceEntity instanceof ServerPlayerEntity player)) {
+            invalidateContext();
             return;
         }
 
-        float castDistance = Math.max(0.0f, maxDistance);
-        Vec3d start = new Vec3d(eyePosition.getX(), eyePosition.getY(), eyePosition.getZ());
-        Vec3d end = new Vec3d(
-            start.x + direction.getX() * castDistance,
-            start.y + direction.getY() * castDistance,
-            start.z + direction.getZ() * castDistance
-        );
+        Vec3d start = player.getEyePos();
+        Vec3d look = player.getRotationVec(1.0f);
+        if (look.lengthSquared() <= 1.0e-12d) {
+            setMiss();
+            return;
+        }
+
+        double castDistance = Math.max(0.0d, maxDistance);
+        Vec3d end = start.add(look.normalize().multiply(castDistance));
 
         RaycastContext.FluidHandling fluidHandling = includeFluids
             ? RaycastContext.FluidHandling.ANY
             : RaycastContext.FluidHandling.NONE;
-        PlayerEntity sourceEntity = context.getPlayer();
         BlockHitResult blockHit = context.getWorld().raycast(new RaycastContext(
             start,
             end,
@@ -156,28 +150,23 @@ public class PlayerLookAtNode extends BaseCustomUINode {
 
         HitCandidate best = chooseNearest(blockCandidate, entityCandidate);
         if (best == null) {
-            resetOutputs();
+            setMiss();
             return;
         }
 
-        outputValues.put(OUTPUT_HAS_HIT_ID, true);
-        outputValues.put(
-            OUTPUT_HIT_POSITION_ID,
-            new Vector3d(best.hitPos.x, best.hitPos.y, best.hitPos.z)
+        setHit(
+            best.hitPos,
+            best.blockPos != null ? context.getWorld().getBlockState(best.blockPos) : null,
+            best.entity,
+            best.distance
         );
-        outputValues.put(
-            OUTPUT_HIT_BLOCK_ID,
-            best.blockPos != null ? context.getWorld().getBlockState(best.blockPos) : null
-        );
-        outputValues.put(OUTPUT_HIT_ENTITY_ID, best.entity);
-        outputValues.put(OUTPUT_HIT_DISTANCE_ID, (float) best.distance);
     }
 
     private @Nullable HitCandidate raycastEntities(ExecutionContext context,
                                                    PlayerEntity sourceEntity,
                                                    Vec3d start,
                                                    Vec3d end,
-                                                   float maxCastDistance) {
+                                                   double maxCastDistance) {
         Box sweep = new Box(start, end).expand(1.0d);
         List<Entity> entities = new ArrayList<>(context.getWorld().getOtherEntities(sourceEntity, sweep));
         entities.remove(sourceEntity);
@@ -211,12 +200,34 @@ public class PlayerLookAtNode extends BaseCustomUINode {
         return block.distance <= entity.distance ? block : entity;
     }
 
-    private void resetOutputs() {
+    private void invalidateContext() {
+        outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_HAS_HIT_ID, false);
-        outputValues.put(OUTPUT_HIT_POSITION_ID, new Vector3d());
+        outputValues.put(OUTPUT_HIT_POSITION_ID, null);
         outputValues.put(OUTPUT_HIT_BLOCK_ID, null);
         outputValues.put(OUTPUT_HIT_ENTITY_ID, null);
-        outputValues.put(OUTPUT_HIT_DISTANCE_ID, 0.0f);
+        outputValues.put(OUTPUT_HIT_DISTANCE_ID, 0.0d);
+        syncOutputPorts();
+    }
+
+    private void setMiss() {
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_HAS_HIT_ID, false);
+        outputValues.put(OUTPUT_HIT_POSITION_ID, null);
+        outputValues.put(OUTPUT_HIT_BLOCK_ID, null);
+        outputValues.put(OUTPUT_HIT_ENTITY_ID, null);
+        outputValues.put(OUTPUT_HIT_DISTANCE_ID, 0.0d);
+        syncOutputPorts();
+    }
+
+    private void setHit(Vec3d hitPos, @Nullable Object blockState, @Nullable Entity entity, double distance) {
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_HAS_HIT_ID, true);
+        outputValues.put(OUTPUT_HIT_POSITION_ID, new PointData(hitPos.x, hitPos.y, hitPos.z));
+        outputValues.put(OUTPUT_HIT_BLOCK_ID, blockState);
+        outputValues.put(OUTPUT_HIT_ENTITY_ID, entity);
+        outputValues.put(OUTPUT_HIT_DISTANCE_ID, distance);
+        syncOutputPorts();
     }
 
     private static final class HitCandidate {
@@ -243,14 +254,14 @@ public class PlayerLookAtNode extends BaseCustomUINode {
         }
     }
 
-    public float getMaxDistance() {
+    public double getMaxDistance() {
         return maxDistance;
     }
 
-    public void setMaxDistance(float maxDistance) {
-        float clamped = Math.max(0, Math.min(1000, maxDistance));
-        if (this.maxDistance != clamped) {
-            this.maxDistance = clamped;
+    public void setMaxDistance(double maxDistance) {
+        double sanitized = ContextReadUtils.sanitizeMaxDistance(maxDistance, this.maxDistance);
+        if (Double.compare(this.maxDistance, sanitized) != 0) {
+            this.maxDistance = sanitized;
             markDirty();
         }
     }
@@ -292,7 +303,7 @@ public class PlayerLookAtNode extends BaseCustomUINode {
             if (map.containsKey("maxDistance")) {
                 Object value = map.get("maxDistance");
                 if (value instanceof Number number) {
-                    setMaxDistance(number.floatValue());
+                    setMaxDistance(number.doubleValue());
                 }
             }
             if (map.containsKey("includeEntities")) {

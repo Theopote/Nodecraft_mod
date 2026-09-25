@@ -8,6 +8,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.minecraft.PlayerAccessor;
+import net.minecraft.world.World;
+import net.minecraft.world.dimension.DimensionType;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -25,6 +27,7 @@ import java.util.UUID;
 )
 public class DimensionInfoNode extends BaseNode {
 
+    private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_DIMENSION_ID = "output_dimension_id";
     private static final String OUTPUT_IS_OVERWORLD_ID = "output_is_overworld";
     private static final String OUTPUT_IS_NETHER_ID = "output_is_nether";
@@ -40,6 +43,8 @@ public class DimensionInfoNode extends BaseNode {
 
     public DimensionInfoNode() {
         super(UUID.randomUUID(), "input.context.dimension_info");
+
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether world context was available", NodeDataType.BOOLEAN, this));
 
         IPort dimensionIdOutput = new BasePort(
             OUTPUT_DIMENSION_ID,
@@ -95,7 +100,7 @@ public class DimensionInfoNode extends BaseNode {
         );
         addOutputPort(hasCeilingOutput);
 
-        resetOutputs();
+        invalidateContext();
     }
 
     @Override
@@ -105,31 +110,28 @@ public class DimensionInfoNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        if (context == null) {
-            resetOutputs();
+        if (!ContextReadUtils.isLiveContextAvailable(context)) {
+            invalidateContext();
             return;
         }
 
         PlayerAccessor playerAccessor = context.getPlayerAccessor();
-        if (playerAccessor == null) {
-            resetOutputs();
-            return;
-        }
-
-        updateOutputs(playerAccessor);
+        World world = context.getWorld();
+        updateOutputs(playerAccessor, world);
     }
 
-    private void updateOutputs(PlayerAccessor playerAccessor) {
+    private void updateOutputs(PlayerAccessor playerAccessor, World world) {
         String dimensionId = playerAccessor.getPlayerDimension();
 
         boolean isOverworld = OVERWORLD_ID.equals(dimensionId);
         boolean isNether = NETHER_ID.equals(dimensionId);
         boolean isEnd = END_ID.equals(dimensionId);
 
-        // These traits are inferred from the known vanilla dimensions.
-        boolean hasSkylight = isOverworld || isEnd;
-        boolean hasCeiling = isNether;
+        DimensionType dimensionType = world.getDimension();
+        boolean hasSkylight = dimensionType.hasSkyLight();
+        boolean hasCeiling = dimensionType.hasCeiling();
 
+        outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_DIMENSION_ID, dimensionId);
         outputValues.put(OUTPUT_IS_OVERWORLD_ID, isOverworld);
         outputValues.put(OUTPUT_IS_NETHER_ID, isNether);
@@ -138,12 +140,13 @@ public class DimensionInfoNode extends BaseNode {
         outputValues.put(OUTPUT_HAS_CEILING_ID, hasCeiling);
     }
 
-    private void resetOutputs() {
-        outputValues.put(OUTPUT_DIMENSION_ID, OVERWORLD_ID);
-        outputValues.put(OUTPUT_IS_OVERWORLD_ID, true);
+    private void invalidateContext() {
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_DIMENSION_ID, "");
+        outputValues.put(OUTPUT_IS_OVERWORLD_ID, false);
         outputValues.put(OUTPUT_IS_NETHER_ID, false);
         outputValues.put(OUTPUT_IS_END_ID, false);
-        outputValues.put(OUTPUT_HAS_SKYLIGHT_ID, true);
+        outputValues.put(OUTPUT_HAS_SKYLIGHT_ID, false);
         outputValues.put(OUTPUT_HAS_CEILING_ID, false);
     }
 

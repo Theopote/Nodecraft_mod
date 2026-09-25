@@ -8,11 +8,10 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.minecraft.PlayerAccessor;
-import com.nodecraft.nodesystem.util.Vector3;
 import imgui.ImGui;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -23,8 +22,8 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.WORLD_READ,
     id = "input.context.player_position",
-    displayName = "Player Position",
-    description = "Outputs a snapped player world position. Click Update Position to refresh the snapshot.",
+    displayName = "Player Position Snapshot",
+    description = "Captures a stable continuous player world position snapshot. Click Update Position to recapture.",
     category = "input.context",
     order = 0
 )
@@ -38,6 +37,7 @@ public class PlayerPositionNode extends BaseCustomUINode {
     )
     private boolean useEyePosition = false;
 
+    private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_POSITION_ID = "output_position";
     private static final String OUTPUT_X_ID = "output_x";
     private static final String OUTPUT_Y_ID = "output_y";
@@ -51,18 +51,19 @@ public class PlayerPositionNode extends BaseCustomUINode {
     public PlayerPositionNode() {
         super(UUID.randomUUID(), "input.context.player_position");
 
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether a position snapshot is available", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_POSITION_ID, "Position",
-                "Snapped player world location", NodeDataType.POINT, this));
+                "Continuous player world location snapshot", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X coordinate", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y coordinate", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z coordinate", NodeDataType.DOUBLE, this));
 
-        updateOutputs(cachedPosition());
+        updateOutputs();
     }
 
     @Override
     public String getDescription() {
-        return "Outputs a snapped player world position. Click Update Position to refresh the snapshot.";
+        return "Captures a stable continuous player world position snapshot. Click Update Position to recapture.";
     }
 
     @Override
@@ -70,7 +71,7 @@ public class PlayerPositionNode extends BaseCustomUINode {
         if (!hasCachedPosition) {
             capturePosition(context);
         }
-        updateOutputs(cachedPosition());
+        updateOutputs();
     }
 
     @Override
@@ -159,18 +160,16 @@ public class PlayerPositionNode extends BaseCustomUINode {
     }
 
     private @Nullable Vector3d readPlayerPosition(ExecutionContext context) {
-        // DefaultPlayerAccessor returns (0,0,0) when player is missing — do not treat that as a snapshot.
         if (context.getPlayer() == null) {
             return null;
         }
-        PlayerAccessor playerAccessor = context.getPlayerAccessor();
-        if (playerAccessor == null) {
+        if (!(context.getPlayer() instanceof ServerPlayerEntity player)) {
             return null;
         }
-        Vector3 position = useEyePosition
-                ? playerAccessor.getPlayerEyePosition()
-                : playerAccessor.getPlayerPosition();
-        return new Vector3d(position.getX(), position.getY(), position.getZ());
+        double x = player.getX();
+        double y = useEyePosition ? player.getEyeY() : player.getY();
+        double z = player.getZ();
+        return new Vector3d(x, y, z);
     }
 
     private void setCachedPosition(double x, double y, double z) {
@@ -178,18 +177,23 @@ public class PlayerPositionNode extends BaseCustomUINode {
         this.cachedY = y;
         this.cachedZ = z;
         this.hasCachedPosition = true;
-        updateOutputs(cachedPosition());
+        updateOutputs();
     }
 
-    private Vector3d cachedPosition() {
-        return new Vector3d(cachedX, cachedY, cachedZ);
-    }
-
-    private void updateOutputs(Vector3d position) {
-        outputValues.put(OUTPUT_POSITION_ID, new PointData(position.x, position.y, position.z));
-        outputValues.put(OUTPUT_X_ID, position.x);
-        outputValues.put(OUTPUT_Y_ID, position.y);
-        outputValues.put(OUTPUT_Z_ID, position.z);
+    private void updateOutputs() {
+        outputValues.put(OUTPUT_VALID_ID, hasCachedPosition);
+        if (hasCachedPosition) {
+            outputValues.put(OUTPUT_POSITION_ID, new PointData(cachedX, cachedY, cachedZ));
+            outputValues.put(OUTPUT_X_ID, cachedX);
+            outputValues.put(OUTPUT_Y_ID, cachedY);
+            outputValues.put(OUTPUT_Z_ID, cachedZ);
+        } else {
+            outputValues.put(OUTPUT_POSITION_ID, null);
+            outputValues.put(OUTPUT_X_ID, 0.0d);
+            outputValues.put(OUTPUT_Y_ID, 0.0d);
+            outputValues.put(OUTPUT_Z_ID, 0.0d);
+        }
+        syncOutputPorts();
     }
 
     public boolean isUseEyePosition() {
@@ -201,7 +205,6 @@ public class PlayerPositionNode extends BaseCustomUINode {
             return;
         }
         this.useEyePosition = useEyePosition;
-        // Re-sample when possible so feet/eye toggle stays in sync with current player.
         capturePosition(null);
         markDirty();
     }
@@ -232,19 +235,26 @@ public class PlayerPositionNode extends BaseCustomUINode {
         Double x = asDouble(map.get("cachedX"));
         Double y = asDouble(map.get("cachedY"));
         Double z = asDouble(map.get("cachedZ"));
-        boolean restored = map.get("hasCachedPosition") instanceof Boolean has && has
-                && x != null && y != null && z != null;
-        if (restored) {
-            setCachedPosition(x, y, z);
-        } else if (x != null && y != null && z != null) {
-            // Older saves without the flag still restore numeric snapshots.
+        if (map.get("hasCachedPosition") instanceof Boolean hasFlag) {
+            if (hasFlag && x != null && y != null && z != null) {
+                setCachedPosition(x, y, z);
+                return;
+            }
+            hasCachedPosition = false;
+            cachedX = x != null ? x : 0.0;
+            cachedY = y != null ? y : 0.0;
+            cachedZ = z != null ? z : 0.0;
+            updateOutputs();
+            return;
+        }
+        if (x != null && y != null && z != null) {
             setCachedPosition(x, y, z);
         } else {
             hasCachedPosition = false;
             cachedX = 0.0;
             cachedY = 0.0;
             cachedZ = 0.0;
-            updateOutputs(cachedPosition());
+            updateOutputs();
         }
     }
 

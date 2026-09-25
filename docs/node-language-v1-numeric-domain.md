@@ -54,6 +54,7 @@ See `docs/node-language-v1-curve-path.md` for curve/path node roles.
 | Number Input | Precise value; optional Min/Max (`input.numeric.float`) |
 | Number Slider | Bounded exploration; finite Min/Max required (`input.numeric.float_slider`) |
 | Angle Slider / Circular Angle Picker | Degrees only; use Degrees To Radians for rad |
+| Player Position Snapshot / Player Raycast / Dimension Info / Current Time | World context reads (`input.context.*`) — see [`node-language-v1-input-context.md`](./node-language-v1-input-context.md) |
 
 Full inventory and freeze: [`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.md).
 

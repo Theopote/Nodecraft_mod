@@ -213,8 +213,8 @@ class ScalarMathLanguageContractTest {
         assertEquals(28, GraphFormatVersion.V28);
         assertEquals(29, GraphFormatVersion.V29);
         assertEquals(30, GraphFormatVersion.V30);
-        assertEquals(31, GraphFormatVersion.V31);
-        assertEquals(GraphFormatVersion.V31, GraphFormatVersion.CURRENT);
+        assertEquals(32, GraphFormatVersion.V32);
+        assertEquals(GraphFormatVersion.V32, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -245,7 +245,7 @@ class ScalarMathLanguageContractTest {
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v24);
         assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(GraphFormatVersion.V31, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.V32, migrated.formatVersion);
 
         assertEquals(8, migrated.nodes.size());
         assertEquals(3, migrated.connections.size());

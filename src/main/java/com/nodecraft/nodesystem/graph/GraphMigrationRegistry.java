@@ -97,6 +97,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V28 -> migrateV28ToV29(graph);
             case GraphFormatVersion.V29 -> migrateV29ToV30(graph);
             case GraphFormatVersion.V30 -> migrateV30ToV31(graph);
+            case GraphFormatVersion.V31 -> migrateV31ToV32(graph);
             default -> graph;
         };
     }
@@ -2055,6 +2056,77 @@ public final class GraphMigrationRegistry {
                     && !isDeclaredConnectionStillCompatible(sourceType, connection.sourcePortId,
                     nodeTypeBySavedId.get(connection.targetNodeId), connection.targetPortId)) {
                 LOGGER.debug("Dropped Input Numeric v1 type-incompatible wire {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
+            return false;
+        });
+
+        return graph;
+    }
+
+    private static final String LEGACY_PLAYER_LOOK_DIRECTION_TYPE = "input.context.player_look_direction";
+    private static final String PLAYER_RAYCAST_TYPE = "input.context.player_raycast";
+    private static final String CURRENT_TIME_TYPE = "input.context.current_time";
+
+    /**
+     * Input Context v1: remap Player Look At → Player Raycast; drop incompatible hit/time wires.
+     */
+    private static SavedGraph migrateV31ToV32(SavedGraph graph) {
+        if (graph.nodes != null) {
+            graph.nodes = new ArrayList<>(graph.nodes);
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                if (LEGACY_PLAYER_LOOK_DIRECTION_TYPE.equalsIgnoreCase(node.typeId)) {
+                    LOGGER.debug("Migrated node type: {} -> {}", node.typeId, PLAYER_RAYCAST_TYPE);
+                    node.typeId = PLAYER_RAYCAST_TYPE;
+                }
+            }
+        }
+
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+
+            if (PLAYER_RAYCAST_TYPE.equals(sourceType) && "output_hit_position".equals(sourcePort)
+                    && !isDeclaredConnectionStillCompatible(sourceType, connection.sourcePortId,
+                    nodeTypeBySavedId.get(connection.targetNodeId), connection.targetPortId)) {
+                LOGGER.debug("Dropped Input Context v1 incompatible wire {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
+            if (PLAYER_RAYCAST_TYPE.equals(sourceType) && "output_hit_distance".equals(sourcePort)
+                    && !isDeclaredConnectionStillCompatible(sourceType, connection.sourcePortId,
+                    nodeTypeBySavedId.get(connection.targetNodeId), connection.targetPortId)) {
+                LOGGER.debug("Dropped Input Context v1 incompatible wire {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
+            if (CURRENT_TIME_TYPE.equals(sourceType) && "output_time_ticks".equals(sourcePort)
+                    && !isDeclaredConnectionStillCompatible(sourceType, connection.sourcePortId,
+                    nodeTypeBySavedId.get(connection.targetNodeId), connection.targetPortId)) {
+                LOGGER.debug("Dropped Input Context v1 incompatible wire {}#{} → {}#{}",
                         connection.sourceNodeId, connection.sourcePortId,
                         connection.targetNodeId, connection.targetPortId);
                 return true;

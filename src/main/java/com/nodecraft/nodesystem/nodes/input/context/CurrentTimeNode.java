@@ -25,6 +25,7 @@ import java.util.UUID;
 )
 public class CurrentTimeNode extends BaseNode {
 
+    private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_TIME_TICKS_ID = "output_time_ticks";
     private static final String OUTPUT_DAY_ID = "output_day";
     private static final String OUTPUT_DAY_TIME_ID = "output_day_time";
@@ -40,11 +41,13 @@ public class CurrentTimeNode extends BaseNode {
     public CurrentTimeNode() {
         super(UUID.randomUUID(), "input.context.current_time");
 
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether world context was available", NodeDataType.BOOLEAN, this));
+
         IPort timeTicksOutput = new BasePort(
             OUTPUT_TIME_TICKS_ID,
             "Time (Ticks)",
             "The current world time in ticks",
-            NodeDataType.INTEGER,
+            NodeDataType.DOUBLE,
             this
         );
         addOutputPort(timeTicksOutput);
@@ -121,7 +124,7 @@ public class CurrentTimeNode extends BaseNode {
         );
         addOutputPort(isThunderingOutput);
 
-        resetOutputs();
+        invalidateContext();
     }
 
     @Override
@@ -131,36 +134,31 @@ public class CurrentTimeNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        if (context == null) {
-            resetOutputs();
+        if (!ContextReadUtils.isLiveContextAvailable(context)) {
+            invalidateContext();
             return;
         }
 
         PlayerAccessor playerAccessor = context.getPlayerAccessor();
-        if (playerAccessor == null) {
-            resetOutputs();
-            return;
-        }
-
         updateOutputsFromAccessor(playerAccessor);
     }
 
     private void updateOutputsFromAccessor(PlayerAccessor playerAccessor) {
         long worldTimeTicks = playerAccessor.getWorldTime();
         int worldDay = playerAccessor.getWorldDay();
-        int dayTime = (int) (worldTimeTicks % 24000);
+        int dayTime = (int) Math.floorMod(worldTimeTicks, 24000L);
 
-        // Minecraft time zero is 06:00 local time.
         int adjustedTime = (dayTime + 6000) % 24000;
         int hour = adjustedTime / 1000;
-        int minute = (int) ((adjustedTime % 1000) / (1000.0f / 60.0f));
+        int minute = (int) ((adjustedTime % 1000) / (1000.0d / 60.0d));
 
         boolean isDay = playerAccessor.isDaytime();
         boolean isNight = !isDay;
         boolean isRaining = playerAccessor.isRaining();
         boolean isThundering = playerAccessor.isThundering();
 
-        outputValues.put(OUTPUT_TIME_TICKS_ID, worldTimeTicks);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_TIME_TICKS_ID, (double) worldTimeTicks);
         outputValues.put(OUTPUT_DAY_ID, worldDay);
         outputValues.put(OUTPUT_DAY_TIME_ID, dayTime);
         outputValues.put(OUTPUT_HOUR_ID, hour);
@@ -171,13 +169,14 @@ public class CurrentTimeNode extends BaseNode {
         outputValues.put(OUTPUT_IS_THUNDERING_ID, isThundering);
     }
 
-    private void resetOutputs() {
-        outputValues.put(OUTPUT_TIME_TICKS_ID, 0);
+    private void invalidateContext() {
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_TIME_TICKS_ID, 0.0d);
         outputValues.put(OUTPUT_DAY_ID, 0);
         outputValues.put(OUTPUT_DAY_TIME_ID, 0);
-        outputValues.put(OUTPUT_HOUR_ID, 6);
+        outputValues.put(OUTPUT_HOUR_ID, 0);
         outputValues.put(OUTPUT_MINUTE_ID, 0);
-        outputValues.put(OUTPUT_IS_DAY_ID, true);
+        outputValues.put(OUTPUT_IS_DAY_ID, false);
         outputValues.put(OUTPUT_IS_NIGHT_ID, false);
         outputValues.put(OUTPUT_IS_RAINING_ID, false);
         outputValues.put(OUTPUT_IS_THUNDERING_ID, false);

@@ -19,6 +19,7 @@ Last updated: 2026-09-25
 | Random seeded / Noise / List&lt;T&gt; pick | [`node-language-v1-random.md`](./node-language-v1-random.md) + `RandomOps` **(PASSED / FROZEN, V29)** |
 | Field scalar/vector / sampling Valid | [`node-language-v1-fields.md`](./node-language-v1-fields.md) + `FieldMath` / `FieldSampleUtils` **(PASSED / FROZEN, V30)** |
 | Input numeric sources / sliders / constants | [`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.md) + `NumericInputUtils` **(PASSED / FROZEN, V31)** |
+| Input context / world reads | [`node-language-v1-input-context.md`](./node-language-v1-input-context.md) + `ContextReadUtils` **(PASSED / FROZEN, V32)** |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 
@@ -34,6 +35,7 @@ Last updated: 2026-09-25
 | Random v1 | **PASSED / FROZEN** | V29 |
 | Fields v1 | **PASSED / FROZEN** | V30 |
 | Input Numeric v1 | **PASSED / FROZEN** | V31 |
+| Input Context v1 | **PASSED / FROZEN** | V32 |
 | List / Collection v1 | FROZEN | V23 |
 | Data Tree v1 | FROZEN | V24 |
 
@@ -198,6 +200,9 @@ These violated the freeze at audit time. Batch A items below are remediated in c
 | XY Slider `output_vector` (wrong VECTOR semantic) | Input Numeric v1 | Fixed (removed; UV → `DOUBLE_LIST`, V31) |
 | Pi/E legacy ports `output_pi` / `output_e` | Input Numeric v1 | Fixed (`output_value`, V31) |
 | Persisted NaN/Infinity in input node state | Input Numeric v1 | Fixed (`setNodeState` sanitize-before-assign) |
+| Context nodes fake Overworld / origin / morning on missing context | Input Context v1 | Fixed (`output_valid` fail-closed, V32) |
+| Player Look At hit as `VECTOR`; miss ≡ invalid | Input Context v1 | Fixed → Player Raycast `POINT` + miss semantics, V32) |
+| Current Time `Long` on `INTEGER` port; `%` day wrap | Input Context v1 | Fixed (`DOUBLE` ticks, `floorMod`, V32) |
 
 ---
 
@@ -521,6 +526,14 @@ Three distinct mechanisms (do not treat as one “Boolean”):
 - XY Slider: `output_uv` → `DOUBLE_LIST`; `output_vector` removed.
 - Pi / E → `output_value`; graph format **V31**.
 - **PASSED / FROZEN**: `InputNumericLanguageContractTest`, `NumericDomainLanguageContractTest` — see [`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.md).
+
+**Input Context v1 (2026-09-25):**
+
+- Four nodes under `input.context.*` (Player Position Snapshot, Player Raycast, Dimension Info, Current Time).
+- Unified `output_valid` gate; no fake world state when context is missing.
+- Player Look At → **Player Raycast** (`POINT` hit, `DOUBLE` distance); time ticks → `DOUBLE`.
+- Skylight/ceiling from `DimensionType`; graph format **V32**.
+- **PASSED / FROZEN**: `InputContextLanguageContractTest` — see [`node-language-v1-input-context.md`](./node-language-v1-input-context.md).
 
 **Batch 13 — Architectural Components language (2026-09-22):**
 
