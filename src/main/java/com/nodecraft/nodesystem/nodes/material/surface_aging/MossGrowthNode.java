@@ -57,7 +57,7 @@ public class MossGrowthNode extends BaseNode {
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
         addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry data to materialize", NodeDataType.TORUS_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BASE_ID, "Base Block",
-            "Geometry/coords voxelization base when placements are empty", NodeDataType.BLOCK_TYPE, this));
+            "Required geometry/coords voxelization base when placements are empty", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_MOSS_ID, "Moss Block", "Moss material for aged top-exposed cells", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_AMOUNT_ID, "Amount", "Moss ratio in [0, 1] among top-exposed voxels", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Integer seed for deterministic moss mask", NodeDataType.INTEGER, this));
@@ -108,11 +108,10 @@ public class MossGrowthNode extends BaseNode {
                 inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
                 inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
                 inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-                MaterialMappingSupport.firstMappedBlockType(baseMapped, mossMapped)
+                baseMapped
             );
 
         if (!placementSource
-            && sources.isEmpty()
             && SurfaceAgingUtils.hasNonPlacementSource(
                 inputValues.get(INPUT_COORDINATES_ID),
                 inputValues.get(INPUT_GEOMETRY_ID),
@@ -121,9 +120,8 @@ public class MossGrowthNode extends BaseNode {
                 inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
                 inputValues.get(INPUT_TORUS_GEOMETRY_ID)
             )
-            && baseMapped == null
-            && mossMapped == null) {
-            emitFail("Base Block or Moss Block required for geometry or coordinates input");
+            && baseMapped == null) {
+            emitFail("Base Block required for geometry or coordinates input");
             return;
         }
 

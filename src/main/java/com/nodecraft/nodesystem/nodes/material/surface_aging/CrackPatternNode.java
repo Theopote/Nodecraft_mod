@@ -57,7 +57,7 @@ public class CrackPatternNode extends BaseNode {
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
         addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry data to materialize", NodeDataType.TORUS_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BASE_ID, "Base Block",
-            "Geometry/coords voxelization base when placements are empty", NodeDataType.BLOCK_TYPE, this));
+            "Required geometry/coords voxelization base when placements are empty", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_CRACK_ID, "Crack Block", "Crack material for aged surface cells", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_AMOUNT_ID, "Amount", "Crack density in [0, 1] among surface voxels", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Integer seed for deterministic crack mask", NodeDataType.INTEGER, this));
@@ -108,11 +108,10 @@ public class CrackPatternNode extends BaseNode {
                 inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
                 inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
                 inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-                MaterialMappingSupport.firstMappedBlockType(baseMapped, crackMapped)
+                baseMapped
             );
 
         if (!placementSource
-            && sources.isEmpty()
             && SurfaceAgingUtils.hasNonPlacementSource(
                 inputValues.get(INPUT_COORDINATES_ID),
                 inputValues.get(INPUT_GEOMETRY_ID),
@@ -121,9 +120,8 @@ public class CrackPatternNode extends BaseNode {
                 inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
                 inputValues.get(INPUT_TORUS_GEOMETRY_ID)
             )
-            && baseMapped == null
-            && crackMapped == null) {
-            emitFail("Base Block or Crack Block required for geometry or coordinates input");
+            && baseMapped == null) {
+            emitFail("Base Block required for geometry or coordinates input");
             return;
         }
 

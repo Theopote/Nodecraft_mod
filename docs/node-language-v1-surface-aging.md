@@ -26,8 +26,10 @@ Related: [`node-language-v1-pattern-mapping.md`](./node-language-v1-pattern-mapp
 5. **Amount** — finite and exact `[0, 1]`; no `clamp01`, no NaN success.
 6. **Preserve on partial override** — placement source + unconnected aged role → keep
    `source.blockId` (never invent stone_bricks / moss defaults).
-7. **Geometry / coordinates** — at least one explicit role material required;
-   otherwise `Valid=false`, `[]`.
+7. **Geometry / coordinates** — **Base Block required**. Aging role (Aged/Moss/Crack)
+   is optional (missing → preserve base; Affected Count = 0). Placements source does
+   not require Base (source already has `blockId`). Aging-role-only geometry →
+   `Valid=false` (never voxelize the whole model as the aging material).
 8. **No deconstruct outputs** — `BLOCK_PLACEMENT_LIST` + `Valid` / `Error` +
    `Affected Count`.
 9. **Aging Origin** — `input_aging_origin : BLOCK_POS`:
@@ -46,19 +48,21 @@ Related: [`node-language-v1-pattern-mapping.md`](./node-language-v1-pattern-mapp
 
 ## Weathering
 
-Roles: Base Block (geometry voxelization base), Aged Block (aged surface cells).
-Amount default `0.2`. Interior voxels in a solid occupancy set are never aged.
+Roles: Base Block (**required** for geometry/coords voxelization), Aged Block
+(optional aged surface cells). Amount default `0.2`. Interior voxels in a solid
+occupancy set are never aged.
 
 ## Moss Growth
 
-Roles: Base Block, Moss Block. Moss prefers upward-exposed voxels (v1 = top-only;
-no side bias weights). Amount default `1.0`.
+Roles: Base Block (**required** for geometry/coords), Moss Block (optional).
+Moss prefers upward-exposed voxels (v1 = top-only; no side bias weights).
+Amount default `1.0`.
 
 ## Surface Cracks
 
-Display rename only (type id unchanged). Roles: Base Block, Crack Block.
-Replaces legacy Interval world-stripe formula with Amount `[0,1]` + Seed RandomOps
-sparse mask on surface voxels.
+Display rename only (type id unchanged). Roles: Base Block (**required** for
+geometry/coords), Crack Block (optional). Replaces legacy Interval world-stripe
+formula with Amount `[0,1]` + Seed RandomOps sparse mask on surface voxels.
 
 ## Graph migration (V38→V39)
 
@@ -72,5 +76,5 @@ sparse mask on surface voxels.
 
 - `SurfaceAgingLanguageContractTest` — inventory, PURE, preserve/no-stone, surface vs
   interior, moss top-only, Amount NaN, Seed Integer-only, Origin fail-closed,
-  V38→V39 migration.
+  geometry Base required (aging-role-only invalid), V38→V39 migration.
 - Format fences bumped to **V39**.

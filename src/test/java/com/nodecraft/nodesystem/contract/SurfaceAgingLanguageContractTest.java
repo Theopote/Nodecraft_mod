@@ -151,6 +151,62 @@ class SurfaceAgingLanguageContractTest {
         assertTrue(out.isEmpty());
         String error = ((String) node.getOutput("output_error")).toLowerCase(Locale.ROOT);
         assertFalse(error.contains("stone_bricks"));
+        assertTrue(error.contains("base"));
+    }
+
+    @Test
+    void geometryWithAgingRoleOnlyRequiresBaseBlock() {
+        BlockPosList coords = new BlockPosList();
+        coords.add(new BlockPos(0, 0, 0));
+        coords.add(new BlockPos(1, 0, 0));
+
+        WeatheringNode weathering = new WeatheringNode();
+        weathering.setInput("input_coordinates", coords);
+        weathering.setInput("input_aged_block", "minecraft:cobblestone");
+        weathering.setInput("input_amount", 0.2d);
+        weathering.processNode(null);
+        assertFalse((Boolean) weathering.getOutput("output_valid"));
+        assertTrue(((String) weathering.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("base"));
+
+        MossGrowthNode moss = new MossGrowthNode();
+        moss.setInput("input_coordinates", coords);
+        moss.setInput("input_moss", "minecraft:moss_block");
+        moss.setInput("input_amount", 0.2d);
+        moss.processNode(null);
+        assertFalse((Boolean) moss.getOutput("output_valid"));
+        assertTrue(((String) moss.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("base"));
+
+        CrackPatternNode crack = new CrackPatternNode();
+        crack.setInput("input_coordinates", coords);
+        crack.setInput("input_crack", "minecraft:cracked_stone_bricks");
+        crack.setInput("input_amount", 0.2d);
+        crack.processNode(null);
+        assertFalse((Boolean) crack.getOutput("output_valid"));
+        assertTrue(((String) crack.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("base"));
+    }
+
+    @Test
+    void geometryWithBaseAndAgedIsValidAndPreservesUnagedCells() {
+        BlockPosList coords = new BlockPosList();
+        coords.add(new BlockPos(0, 0, 0));
+        coords.add(new BlockPos(1, 0, 0));
+        coords.add(new BlockPos(2, 0, 0));
+
+        WeatheringNode node = new WeatheringNode();
+        node.setInput("input_coordinates", coords);
+        node.setInput("input_base_block", "minecraft:oak_planks");
+        node.setInput("input_aged_block", "minecraft:cobblestone");
+        node.setInput("input_amount", 0.0d);
+        node.setInput("input_seed", 0);
+        node.processNode(null);
+        assertTrue((Boolean) node.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> out = assertInstanceOf(List.class, node.getOutput("output_placements"));
+        assertEquals(3, out.size());
+        assertEquals("minecraft:oak_planks", findAt(out, 0, 0, 0).blockId());
+        assertEquals("minecraft:oak_planks", findAt(out, 1, 0, 0).blockId());
+        assertEquals("minecraft:oak_planks", findAt(out, 2, 0, 0).blockId());
+        assertEquals(0, (Integer) node.getOutput("output_affected_count"));
     }
 
     @Test
