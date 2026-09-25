@@ -291,6 +291,13 @@ class BasicAssignmentLanguageContractTest {
     }
 
     @Test
+    void weightedPaletteZeroWeightEntriesNeverSelected() {
+        assertEquals(1, BasicAssignmentUtils.pickWeightedIndex(0.0d, List.of(0.0d, 1.0d)));
+        assertEquals(0, BasicAssignmentUtils.pickWeightedIndex(0.0d, List.of(1.0d, 0.0d, 0.0d)));
+        assertEquals(0, BasicAssignmentUtils.pickWeightedIndex(1.0d, List.of(1.0d, 0.0d, 0.0d)));
+    }
+
+    @Test
     void weightedPaletteStrictWeightsOverride() {
         BlockPaletteData palette = BlockPaletteData.ofBlockIds(
                 List.of("minecraft:stone", "minecraft:dirt", "minecraft:gravel"));

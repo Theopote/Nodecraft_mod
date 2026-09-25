@@ -230,25 +230,59 @@ public final class BasicAssignmentUtils {
         }
         sample = Math.max(0.0d, Math.min(1.0d, sample));
 
+        int index = pickWeightedIndex(sample, weights);
+        if (index < 0 || index >= palette.size()) {
+            return preserveWhenEmpty != null ? preserveWhenEmpty : "";
+        }
+        String id = palette.get(index);
+        return id == null || id.isBlank() ? (preserveWhenEmpty != null ? preserveWhenEmpty : "") : id;
+    }
+
+    /**
+     * Maps normalized {@code sample} in {@code [0,1]} to a palette index.
+     * Entries with {@code weight <= 0} are never selected.
+     *
+     * @return index in {@code weights}, or {@code -1} when no positive mass exists
+     */
+    public static int pickWeightedIndex(double sample, List<Double> weights) {
+        if (weights == null || weights.isEmpty()) {
+            return -1;
+        }
+        sample = Math.max(0.0d, Math.min(1.0d, sample));
+
         double total = 0.0d;
         for (double weight : weights) {
-            total += weight;
+            if (weight > 0.0d) {
+                total += weight;
+            }
         }
         if (total <= 0.0d) {
-            return preserveWhenEmpty != null ? preserveWhenEmpty : "";
+            return -1;
         }
 
         double threshold = sample * total;
+        if (threshold >= total) {
+            threshold = Math.nextDown(total);
+        }
+
         double cumulative = 0.0d;
-        for (int i = 0; i < palette.size(); i++) {
-            cumulative += weights.get(i);
-            if (threshold <= cumulative) {
-                String id = palette.get(i);
-                return id == null || id.isBlank() ? (preserveWhenEmpty != null ? preserveWhenEmpty : "") : id;
+        for (int i = 0; i < weights.size(); i++) {
+            double weight = weights.get(i);
+            if (weight <= 0.0d) {
+                continue;
+            }
+            cumulative += weight;
+            if (threshold < cumulative) {
+                return i;
             }
         }
-        String last = palette.getLast();
-        return last == null || last.isBlank() ? (preserveWhenEmpty != null ? preserveWhenEmpty : "") : last;
+
+        for (int i = weights.size() - 1; i >= 0; i--) {
+            if (weights.get(i) > 0.0d) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     public static double totalWeight(List<Double> weights) {

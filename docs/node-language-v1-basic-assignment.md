@@ -60,7 +60,7 @@ Related: [`node-language-v1-surface-aging.md`](./node-language-v1-surface-aging.
 - No Fallback Block Type port.
 - `input_weights : DOUBLE_LIST` override — strict size match with palette; no pad/truncate.
 - Missing Weights port → use palette embedded weights.
-- Random: `RandomOps.valueNoise3(x,y,z,seed)` → cumulative weight pick (**position + seed only**).
+- Random: `RandomOps.valueNoise3(x,y,z,seed)` → strict-interval cumulative pick (**position + seed only**); `weight = 0` entries are never selected.
 - Seed: `RandomOps.resolveSeed` (Integer-only).
 - Outputs include `output_total_weight` diagnostic.
 
@@ -75,5 +75,7 @@ Related: [`node-language-v1-surface-aging.md`](./node-language-v1-surface-aging.
 ## Contracts
 
 - `BasicAssignmentLanguageContractTest` — inventory, PURE, no stone, typed lists,
-  flat vs tree cyclic semantics, RandomOps position stability, V39→V40 migration.
+  flat vs tree cyclic semantics, RandomOps position stability, zero-weight boundaries,
+  V39→V40 migration.
+- `BasicAssignmentUtilsTest` — `pickWeightedIndex` strict-interval semantics.
 - Format fences bumped to **V40**.
