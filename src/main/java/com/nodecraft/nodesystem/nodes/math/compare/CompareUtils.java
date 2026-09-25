@@ -19,14 +19,18 @@ final class CompareUtils {
         if (left == null || right == null) {
             return left == right;
         }
-        if (left instanceof Number leftNumber && right instanceof Number rightNumber) {
-            return numericEqual(leftNumber.doubleValue(), rightNumber.doubleValue());
-        }
-        if (left instanceof String leftString && right instanceof String rightString) {
-            return leftString.equals(rightString);
-        }
-        if (left instanceof Boolean leftBoolean && right instanceof Boolean rightBoolean) {
-            return leftBoolean.equals(rightBoolean);
+        switch (left) {
+            case Number leftNumber when right instanceof Number rightNumber -> {
+                return numericEqual(leftNumber.doubleValue(), rightNumber.doubleValue());
+            }
+            case String leftString when right instanceof String rightString -> {
+                return leftString.equals(rightString);
+            }
+            case Boolean leftBoolean when right instanceof Boolean rightBoolean -> {
+                return leftBoolean.equals(rightBoolean);
+            }
+            default -> {
+            }
         }
         if (left.getClass() == right.getClass()) {
             return Objects.equals(left, right);
