@@ -78,7 +78,7 @@ public class GetEntityNode extends BaseNode {
         boolean findNearest = !(inputValues.get(INPUT_FIND_NEAREST_ID) instanceof Boolean b) || b;
         double maxDistance = inputValues.get(INPUT_MAX_DISTANCE_ID) instanceof Number n ? Math.max(1.0d, n.doubleValue()) : 64.0d;
 
-        Entity entity = null;
+        Entity entity;
         Object uuidObj = inputValues.get(INPUT_UUID_ID);
         Object entityTypeObj = inputValues.get(INPUT_ENTITY_TYPE_ID);
 
@@ -116,7 +116,10 @@ public class GetEntityNode extends BaseNode {
     }
 
     private @Nullable Entity findByType(ExecutionContext context, String typeId, boolean findNearest, double maxDistance) {
-        Box box = context.getPlayer().getBoundingBox().expand(maxDistance);
+        Box box = null;
+        if (context.getPlayer() != null) {
+            box = context.getPlayer().getBoundingBox().expand(maxDistance);
+        }
         List<Entity> nearby = context.getWorld().getOtherEntities(context.getPlayer(), box);
         Entity best = null;
         double bestDistance = Double.MAX_VALUE;

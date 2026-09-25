@@ -105,24 +105,29 @@ public class SpawnEntityNode extends BaseNode {
                 double y;
                 double z;
                 BlockPos blockPos;
-                if (positionObj instanceof PointData point) {
-                    x = point.getX();
-                    y = point.getY();
-                    z = point.getZ();
-                    blockPos = BlockPos.ofFloored(x, y, z);
-                } else if (positionObj instanceof Vector3d pos) {
-                    x = pos.x;
-                    y = pos.y;
-                    z = pos.z;
-                    blockPos = BlockPos.ofFloored(x, y, z);
-                } else if (positionObj instanceof BlockPos pos) {
-                    x = pos.getX() + 0.5;
-                    y = pos.getY();
-                    z = pos.getZ() + 0.5;
-                    blockPos = pos;
-                } else {
-                    publish(entityObj, success, entityUUID);
-                    return;
+                switch (positionObj) {
+                    case PointData point -> {
+                        x = point.getX();
+                        y = point.getY();
+                        z = point.getZ();
+                        blockPos = BlockPos.ofFloored(x, y, z);
+                    }
+                    case Vector3d pos -> {
+                        x = pos.x;
+                        y = pos.y;
+                        z = pos.z;
+                        blockPos = BlockPos.ofFloored(x, y, z);
+                    }
+                    case BlockPos pos -> {
+                        x = pos.getX() + 0.5;
+                        y = pos.getY();
+                        z = pos.getZ() + 0.5;
+                        blockPos = pos;
+                    }
+                    default -> {
+                        publish(entityObj, success, entityUUID);
+                        return;
+                    }
                 }
 
                 Entity entity;

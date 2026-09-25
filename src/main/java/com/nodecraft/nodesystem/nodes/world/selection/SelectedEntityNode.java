@@ -12,7 +12,6 @@ import com.nodecraft.nodesystem.interaction.NodeEditorInteractionManager;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.visual.SelectionVisualFeedback;
 import imgui.ImGui;
-import imgui.flag.ImGuiCol;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;

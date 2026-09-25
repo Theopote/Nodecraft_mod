@@ -138,8 +138,7 @@ public class EntityTeleportNode extends BaseNode {
             }
             
             // 添加实体列表
-            if (entityListObj instanceof List) {
-                List<?> entityList = (List<?>) entityListObj;
+            if (entityListObj instanceof List<?> entityList) {
                 entitiesToTeleport.addAll(entityList);
             }
             

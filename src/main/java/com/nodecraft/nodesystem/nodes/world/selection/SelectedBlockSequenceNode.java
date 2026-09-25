@@ -190,7 +190,7 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
             if (pickedBlocks.isEmpty()) {
                 return;
             }
-            pickedBlocks.remove(pickedBlocks.size() - 1);
+            pickedBlocks.removeLast();
         }
         updateOutputs();
         updatePathPreview();
