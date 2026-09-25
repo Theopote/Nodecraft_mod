@@ -48,7 +48,7 @@ public class VectorScalarMultiplyNode extends BaseNode {
 
     @Override
     public String getDisplayName() {
-        return "Vector Scale (*)";
+        return "Vector Scalar Multiply";
     }
 
     @Override

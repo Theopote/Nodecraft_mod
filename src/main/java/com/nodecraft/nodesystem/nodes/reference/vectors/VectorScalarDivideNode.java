@@ -48,7 +48,7 @@ public class VectorScalarDivideNode extends BaseNode {
 
     @Override
     public String getDisplayName() {
-        return "Vector Scale (/)";
+        return "Vector Scalar Divide";
     }
 
     @Override

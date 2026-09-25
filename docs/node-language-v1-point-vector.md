@@ -55,6 +55,20 @@ No radians outputs on graph-facing ports.
 - Removes `Block To Vector` and `Closest Point To Object` nodes from saved graphs
 - Strips `normalizeDirection` from Move Point Along Direction state
 
+## Vector producers (V21)
+
+| Node | Outputs |
+|------|---------|
+| Construct Vector | `VECTOR` + Valid |
+| Vector Input | `VECTOR` only |
+| Deconstruct Vector | X/Y/Z DOUBLE + Valid |
+
+Component echo ports were removed — use Deconstruct Vector.
+
+## Graph migration (V20→V21)
+
+- Drops wires from Construct Vector / Vector Input `output_x` / `output_y` / `output_z`
+
 ## Known limitations
 
 - `Project Points To Plane` Distances LIST — awaits typed `DOUBLE_LIST`

@@ -692,8 +692,8 @@
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Vector Input | `reference.vectors.vector` | Inputs a 3D vector from panel values or optional X/Y/Z input ports, then outputs the vector and components. | `VectorInputNode` |
-| Construct Vector | `reference.vectors.construct_vector` | Constructs a Vector3d from X, Y, and Z components. | `ConstructVectorNode` |
+| Vector Input | `reference.vectors.vector` | Inputs a 3D vector from panel values or optional X/Y/Z input ports | `VectorInputNode` |
+| Construct Vector | `reference.vectors.construct_vector` | Constructs a vector from X, Y, and Z components | `ConstructVectorNode` |
 | Deconstruct Vector | `reference.vectors.deconstruct_vector` | Outputs the X, Y, and Z components of a vector. | `DeconstructVectorNode` |
 | 2D Vector Input | `reference.vectors.vector2_input` | Inputs a 2D vector (X/Y or U/V) and outputs vector + components. | `Vector2InputNode` |
 | Normalize Vector | `reference.vectors.normalize_vector` | Normalizes a vector to unit length. | `NormalizeVectorNode` |

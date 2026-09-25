@@ -84,6 +84,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V17 -> migrateV17ToV18(graph);
             case GraphFormatVersion.V18 -> migrateV18ToV19(graph);
             case GraphFormatVersion.V19 -> migrateV19ToV20(graph);
+            case GraphFormatVersion.V20 -> migrateV20ToV21(graph);
             default -> graph;
         };
     }
@@ -1355,6 +1356,50 @@ public final class GraphMigrationRegistry {
             }
             if (SNAP_POINT_TO_BLOCK_TYPE.equals(sourceType) && SNAP_POINT_LEGACY_OUTPUT_PORTS.contains(sourcePort)) {
                 LOGGER.debug("Dropped Snap Point To Block legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+            return false;
+        });
+
+        return graph;
+    }
+
+    private static final String CONSTRUCT_VECTOR_TYPE = "reference.vectors.construct_vector";
+    private static final String VECTOR_INPUT_TYPE = "reference.vectors.vector";
+
+    private static final Set<String> VECTOR_PRODUCER_LEGACY_COMPONENT_PORTS = Set.of(
+            "output_x",
+            "output_y",
+            "output_z"
+    );
+
+    /**
+     * Vector producer closure: drop X/Y/Z echo wires from Construct Vector / Vector Input.
+     */
+    private static SavedGraph migrateV20ToV21(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+
+            if ((CONSTRUCT_VECTOR_TYPE.equals(sourceType) || VECTOR_INPUT_TYPE.equals(sourceType))
+                    && VECTOR_PRODUCER_LEGACY_COMPONENT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped vector producer legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
                 return true;
             }
             return false;

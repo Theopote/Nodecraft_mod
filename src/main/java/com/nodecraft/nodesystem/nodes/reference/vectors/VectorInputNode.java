@@ -21,7 +21,7 @@ import java.util.function.DoubleConsumer;
     effect = NodeEffect.PURE,
     id = "reference.vectors.vector",
     displayName = "Vector Input",
-    description = "Inputs a 3D vector from panel values or optional X/Y/Z input ports, then outputs the vector and components.",
+    description = "Inputs a 3D vector from panel values or optional X/Y/Z input ports",
     category = "reference.vectors",
     order = 0
 )
@@ -32,9 +32,6 @@ public class VectorInputNode extends BaseCustomUINode {
     private static final String INPUT_Z_ID = "input_z";
 
     private static final String OUTPUT_VECTOR_ID = "output_vector";
-    private static final String OUTPUT_X_ID = "output_x";
-    private static final String OUTPUT_Y_ID = "output_y";
-    private static final String OUTPUT_Z_ID = "output_z";
 
     @NodeProperty(displayName = "X", category = "Components", order = 1, description = "X component")
     private double x = 0.0;
@@ -59,15 +56,12 @@ public class VectorInputNode extends BaseCustomUINode {
         addInputPort(new BasePort(INPUT_Y_ID, "Y", "Optional Y component override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_Z_ID, "Z", "Optional Z component override", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "3D vector", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X component", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y component", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z component", NodeDataType.DOUBLE, this));
         updateOutput();
     }
 
     @Override
     public String getDescription() {
-        return "Inputs a 3D vector from panel values or optional X/Y/Z input ports, then outputs the vector and components.";
+        return "Inputs a 3D vector from panel values or optional X/Y/Z input ports";
     }
 
     @Override
@@ -153,9 +147,6 @@ public class VectorInputNode extends BaseCustomUINode {
         double resolvedZ = getResolvedZ();
         Vector3d vector = new Vector3d(resolvedX, resolvedY, resolvedZ);
         outputValues.put(OUTPUT_VECTOR_ID, vector);
-        outputValues.put(OUTPUT_X_ID, resolvedX);
-        outputValues.put(OUTPUT_Y_ID, resolvedY);
-        outputValues.put(OUTPUT_Z_ID, resolvedZ);
         syncOutputPorts();
     }
 

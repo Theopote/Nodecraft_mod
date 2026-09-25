@@ -132,8 +132,14 @@ public final class GraphFormatVersion {
      */
     public static final int V20 = 20;
 
+    /**
+     * Vector producer/deconstruct closure: Construct Vector / Vector Input emit VECTOR only
+     * (no X/Y/Z echo); use Deconstruct Vector for components.
+     */
+    public static final int V21 = 21;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V20;
+    public static final int CURRENT = V21;
 
     private GraphFormatVersion() {
     }
