@@ -98,6 +98,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V29 -> migrateV29ToV30(graph);
             case GraphFormatVersion.V30 -> migrateV30ToV31(graph);
             case GraphFormatVersion.V31 -> migrateV31ToV32(graph);
+            case GraphFormatVersion.V32 -> migrateV32ToV33(graph);
             default -> graph;
         };
     }
@@ -2135,6 +2136,165 @@ public final class GraphMigrationRegistry {
         });
 
         return graph;
+    }
+
+    private static final String BLOCK_TYPE_SELECTOR_TYPE = "input.type_selectors.block_type_selector";
+    private static final String BLOCK_STATE_SELECTOR_TYPE = "input.type_selectors.block_state_selector";
+    private static final String BUILD_BLOCK_STATE_TYPE = "material.block_state.build_block_state";
+
+    /**
+     * Type Selectors v1: Block Type {@code BLOCK_TYPE} port; remove Block State Selector.
+     */
+    private static SavedGraph migrateV32ToV33(SavedGraph graph) {
+        if (graph.nodes != null) {
+            graph.nodes = new ArrayList<>(graph.nodes);
+        } else {
+            graph.nodes = new ArrayList<>();
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        Map<String, SavedNode> nodeById = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+                nodeById.put(node.nodeId, node);
+            }
+        }
+
+        if (graph.connections == null) {
+            graph.connections = new ArrayList<>();
+        } else {
+            graph.connections = new ArrayList<>(graph.connections);
+        }
+
+        List<SavedConnection> stateOutputConnections = new ArrayList<>();
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null || connection.sourceNodeId == null) {
+                continue;
+            }
+            if (!BLOCK_STATE_SELECTOR_TYPE.equals(nodeTypeBySavedId.get(connection.sourceNodeId))) {
+                continue;
+            }
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            if ("output_block_state".equals(sourcePort) || "output_has_properties".equals(sourcePort)) {
+                stateOutputConnections.add(connection);
+            }
+        }
+
+        List<SavedNode> nodesToMigrate = new ArrayList<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.typeId != null
+                    && BLOCK_STATE_SELECTOR_TYPE.equalsIgnoreCase(node.typeId)) {
+                nodesToMigrate.add(node);
+            }
+        }
+
+        List<SavedNode> insertedBuildNodes = new ArrayList<>();
+        for (SavedNode node : nodesToMigrate) {
+            Object legacyState = node.state;
+            boolean hasStateOutput = stateOutputConnections.stream()
+                    .anyMatch(c -> node.nodeId.equals(c.sourceNodeId));
+            boolean hasProperties = hasNonEmptyStateProperties(legacyState);
+
+            node.typeId = BLOCK_TYPE_SELECTOR_TYPE;
+            nodeTypeBySavedId.put(node.nodeId, BLOCK_TYPE_SELECTOR_TYPE);
+            migrateBlockStateSelectorState(node);
+
+            if (hasStateOutput || hasProperties) {
+                String buildNodeId = java.util.UUID.randomUUID().toString();
+                SavedNode buildNode = new SavedNode();
+                buildNode.nodeId = buildNodeId;
+                buildNode.typeId = BUILD_BLOCK_STATE_TYPE;
+                buildNode.state = buildBlockStateNodeStateFromLegacy(legacyState);
+                insertedBuildNodes.add(buildNode);
+                nodeTypeBySavedId.put(buildNodeId, BUILD_BLOCK_STATE_TYPE);
+                nodeById.put(buildNodeId, buildNode);
+
+                SavedConnection typeWire = new SavedConnection();
+                typeWire.sourceNodeId = node.nodeId;
+                typeWire.sourcePortId = "output_block_id";
+                typeWire.targetNodeId = buildNodeId;
+                typeWire.targetPortId = "input_block_type";
+                graph.connections.add(typeWire);
+
+                for (SavedConnection connection : new ArrayList<>(stateOutputConnections)) {
+                    if (!node.nodeId.equals(connection.sourceNodeId)) {
+                        continue;
+                    }
+                    String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+                    if ("output_has_properties".equals(sourcePort)) {
+                        graph.connections.remove(connection);
+                        continue;
+                    }
+                    if ("output_block_state".equals(sourcePort)) {
+                        connection.sourceNodeId = buildNodeId;
+                        connection.sourcePortId = "output_block_state";
+                    }
+                }
+            }
+
+            LOGGER.debug("Migrated node type: {} -> {} (nodeId={})", BLOCK_STATE_SELECTOR_TYPE, BLOCK_TYPE_SELECTOR_TYPE, node.nodeId);
+        }
+        graph.nodes.addAll(insertedBuildNodes);
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+
+            if (BLOCK_TYPE_SELECTOR_TYPE.equals(sourceType) && "output_block_id".equals(sourcePort)
+                    && !isDeclaredConnectionStillCompatible(sourceType, connection.sourcePortId,
+                    nodeTypeBySavedId.get(connection.targetNodeId), connection.targetPortId)) {
+                LOGGER.debug("Dropped Type Selectors v1 incompatible wire {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
+            return false;
+        });
+
+        return graph;
+    }
+
+    private static void migrateBlockStateSelectorState(SavedNode node) {
+        if (!(node.state instanceof Map<?, ?> state)) {
+            return;
+        }
+        Map<String, Object> migrated = new HashMap<>();
+        if (state.get("blockId") instanceof String blockId) {
+            migrated.put("selectedBlock", blockId);
+        }
+        if (state.get("allowModded") instanceof Boolean allowModded) {
+            migrated.put("allowModded", allowModded);
+        }
+        if (state.get("selectedCategory") instanceof String category) {
+            migrated.put("selectedCategory", category);
+        }
+        if (state.get("minecraftOnly") instanceof Boolean minecraftOnly) {
+            migrated.put("minecraftOnly", minecraftOnly);
+        }
+        node.state = migrated.isEmpty() ? null : migrated;
+    }
+
+    private static @Nullable Map<String, Object> buildBlockStateNodeStateFromLegacy(@Nullable Object legacyState) {
+        if (!(legacyState instanceof Map<?, ?> state)) {
+            return null;
+        }
+        Object properties = state.get("stateProperties");
+        if (!(properties instanceof String text) || text.isBlank()) {
+            return null;
+        }
+        return Map.of("propertiesText", text);
+    }
+
+    private static boolean hasNonEmptyStateProperties(@Nullable Object legacyState) {
+        if (!(legacyState instanceof Map<?, ?> state)) {
+            return false;
+        }
+        Object properties = state.get("stateProperties");
+        return properties instanceof String text && !text.isBlank();
     }
 
     private static boolean isRandomV29TypeTightenedEndpoint(

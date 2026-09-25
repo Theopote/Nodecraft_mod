@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.material.block_state;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -14,8 +15,10 @@ import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
@@ -42,6 +45,14 @@ public class BuildBlockStateNode extends BaseNode {
     private static final String OUTPUT_PROPERTY_COUNT_ID = "output_property_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
+
+    @NodeProperty(
+            displayName = "Properties Text",
+            category = "State",
+            order = 1,
+            description = "Compact block-state overrides, e.g. facing=north,waterlogged=false"
+    )
+    private String propertiesText = "";
 
     public BuildBlockStateNode() {
         super(UUID.randomUUID(), "material.block_state.build_block_state");
@@ -73,6 +84,8 @@ public class BuildBlockStateNode extends BaseNode {
             state.setProperty("blockId", blockType);
         }
 
+        applyPropertiesText(state, propertiesText);
+
         putString(state, INPUT_PROPERTY_NAME_ID, INPUT_PROPERTY_VALUE_ID);
         putShortcut(state, "facing", inputValues.get(INPUT_FACING_ID));
         putShortcut(state, "axis", inputValues.get(INPUT_AXIS_ID));
@@ -87,6 +100,20 @@ public class BuildBlockStateNode extends BaseNode {
         outputValues.put(OUTPUT_PROPERTY_COUNT_ID, state.size());
         outputValues.put(OUTPUT_VALID_ID, validation.valid());
         outputValues.put(OUTPUT_ERROR_ID, validation.message());
+    }
+
+    static void applyPropertiesText(BlockStateData state, @Nullable String text) {
+        if (text == null || text.isBlank()) {
+            return;
+        }
+        String[] pairs = text.split(",");
+        for (String pair : pairs) {
+            String[] kv = pair.trim().split("=", 2);
+            if (kv.length != 2) {
+                continue;
+            }
+            putProperty(state, kv[0], kv[1]);
+        }
     }
 
     private void putString(BlockStateData state, String namePortId, String valuePortId) {
@@ -104,7 +131,7 @@ public class BuildBlockStateNode extends BaseNode {
         }
     }
 
-    private void putProperty(BlockStateData state, String rawName, String rawValue) {
+    private static void putProperty(BlockStateData state, String rawName, String rawValue) {
         if (rawName == null || rawValue == null) {
             return;
         }
@@ -160,6 +187,28 @@ public class BuildBlockStateNode extends BaseNode {
             }
         }
         return null;
+    }
+
+    public String getPropertiesText() {
+        return propertiesText;
+    }
+
+    public void setPropertiesText(String propertiesText) {
+        this.propertiesText = propertiesText == null ? "" : propertiesText;
+    }
+
+    @Override
+    public Object getNodeState() {
+        Map<String, Object> state = new HashMap<>();
+        state.put("propertiesText", propertiesText);
+        return state;
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (state instanceof Map<?, ?> map && map.get("propertiesText") instanceof String text) {
+            setPropertiesText(text);
+        }
     }
 
     private record ValidationResult(boolean valid, String message) {

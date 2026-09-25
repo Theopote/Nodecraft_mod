@@ -64,7 +64,6 @@ public class ItemTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
     private boolean allowModded = true;
 
     private static final String OUTPUT_ITEM_ID = "output_item_id";
-    private static final String OUTPUT_NAMESPACE = "output_namespace";
     private static final String OUTPUT_ITEM_PATH = "output_item_path";
     private static final String OUTPUT_IS_MODDED = "output_is_modded";
 
@@ -75,6 +74,7 @@ public class ItemTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
         addOutputPort(new BasePort(OUTPUT_NAMESPACE, "Namespace", "The namespace part of the selected item id", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_ITEM_PATH, "Item Path", "The path part of the selected item id", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_IS_MODDED, "Is Modded", "Whether the selected item is outside the minecraft namespace", NodeDataType.BOOLEAN, this));
+        addValidOutputPort();
 
         onSelectionApplied();
     }
@@ -110,6 +110,11 @@ public class ItemTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
     }
 
     @Override
+    protected void writeSelectedId(String canonicalId) {
+        this.selectedItem = canonicalId;
+    }
+
+    @Override
     protected boolean isAllowModded() {
         return allowModded;
     }
@@ -118,15 +123,13 @@ public class ItemTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
     protected void applyAllowModdedQuietly(boolean allowModded) {
         this.allowModded = allowModded;
         normalizeFilterState();
-        if (!allowModded && !selectedItem.startsWith("minecraft:")) {
-            applySelectedId(getDefaultId());
-        }
     }
 
     @Override
     protected void setAllowModdedFlag(boolean allowModded) {
         applyAllowModdedQuietly(allowModded);
         updateFilteredListFromSearch();
+        onSelectionApplied();
     }
 
     @Override
@@ -153,9 +156,6 @@ public class ItemTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
 
     @Override
     protected boolean isKnownId(String id) {
-        if (getDefaultId().equals(id)) {
-            return true;
-        }
         if (catalogContains(id)) {
             return true;
         }
@@ -168,7 +168,7 @@ public class ItemTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
                 return false;
             }
             return Registries.ITEM.containsId(parsed);
-        } catch (Exception ignored) {
+        } catch (Throwable ignored) {
             return false;
         }
     }
@@ -233,38 +233,18 @@ public class ItemTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
     }
 
     public void setSelectedItem(String itemId) {
-        applyValidatedId(itemId, getDefaultId());
+        commitSelectedId(itemId);
+        onSelectionApplied();
     }
 
     private void updateOutputs() {
-        String namespace = "minecraft";
-        String path = "stone";
-        if (selectedItem.contains(":")) {
-            String[] parts = selectedItem.split(":", 2);
-            namespace = parts[0];
-            path = parts[1];
-        }
+        RegistrySelectionOutputs resolved = resolveSelectionOutputs(selectedItem);
         outputValues.put(OUTPUT_ITEM_ID, selectedItem);
-        outputValues.put(OUTPUT_NAMESPACE, namespace);
-        outputValues.put(OUTPUT_ITEM_PATH, path);
-        outputValues.put(OUTPUT_IS_MODDED, !namespace.equals("minecraft"));
+        outputValues.put(OUTPUT_NAMESPACE, resolved.namespace());
+        outputValues.put(OUTPUT_ITEM_PATH, resolved.path());
+        outputValues.put(OUTPUT_IS_MODDED, resolved.modded());
+        outputValues.put(OUTPUT_VALID_ID, resolved.valid());
         syncOutputPorts();
-    }
-
-    @Override
-    protected void applySelectedId(String id) {
-        String nextId = sanitizeNamespacedId(id, getDefaultId());
-        if (!allowModded && !nextId.startsWith("minecraft:")) {
-            nextId = getDefaultId();
-        }
-        if (!isKnownId(nextId)) {
-            nextId = getDefaultId();
-        }
-        if (!selectedItem.equals(nextId)) {
-            selectedItem = nextId;
-            updateOutputs();
-            markDirty();
-        }
     }
 
     public String getSelectedItem() {
@@ -289,13 +269,14 @@ public class ItemTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
     public void setNodeState(Object state) {
         if (state instanceof Map<?, ?> map) {
             if (map.get("selectedItem") instanceof String value) {
-                applyValidatedId(value, getDefaultId());
+                commitSelectedId(value);
             }
             restoreFilterState(
                 map.get("allowModded") instanceof Boolean b ? b : allowModded,
                 map.get("selectedCategory") instanceof String c ? c : CATEGORY_ALL,
                 map.get("minecraftOnly") instanceof Boolean m && m
             );
+            onSelectionApplied();
         }
     }
 }

@@ -20,6 +20,7 @@ Last updated: 2026-09-25
 | Field scalar/vector / sampling Valid | [`node-language-v1-fields.md`](./node-language-v1-fields.md) + `FieldMath` / `FieldSampleUtils` **(PASSED / FROZEN, V30)** |
 | Input numeric sources / sliders / constants | [`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.md) + `NumericInputUtils` **(PASSED / FROZEN, V31)** |
 | Input context / world reads | [`node-language-v1-input-context.md`](./node-language-v1-input-context.md) + `ContextReadUtils` **(PASSED / FROZEN, V32)** |
+| Input type selectors / registry ids | [`node-language-v1-type-selectors.md`](./node-language-v1-type-selectors.md) + `RegistrySelectorUtils` **(PASSED / FROZEN, V33)** |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 
@@ -36,6 +37,7 @@ Last updated: 2026-09-25
 | Fields v1 | **PASSED / FROZEN** | V30 |
 | Input Numeric v1 | **PASSED / FROZEN** | V31 |
 | Input Context v1 | **PASSED / FROZEN** | V32 |
+| Type Selectors v1 | **PASSED / FROZEN** | V33 |
 | List / Collection v1 | FROZEN | V23 |
 | Data Tree v1 | FROZEN | V24 |
 
@@ -203,6 +205,9 @@ These violated the freeze at audit time. Batch A items below are remediated in c
 | Context nodes fake Overworld / origin / morning on missing context | Input Context v1 | Fixed (`output_valid` fail-closed, V32) |
 | Player Look At hit as `VECTOR`; miss ≡ invalid | Input Context v1 | Fixed → Player Raycast `POINT` + miss semantics, V32) |
 | Current Time `Long` on `INTEGER` port; `%` day wrap | Input Context v1 | Fixed (`DOUBLE` ticks, `floorMod`, V32) |
+| Block Type Selector `STRING` vs typed registry ports | Type Selectors v1 | Fixed (`BLOCK_TYPE`, V33) |
+| Unknown registry id silent fallback to default | Type Selectors v1 | Fixed (`output_valid`, preserve id, V33) |
+| Block State Selector overlaps Build Block State | Type Selectors v1 | Fixed (removed; use Build Block State, V33) |
 
 ---
 
@@ -534,6 +539,14 @@ Three distinct mechanisms (do not treat as one “Boolean”):
 - Player Look At → **Player Raycast** (`POINT` hit, `DOUBLE` distance); time ticks → `DOUBLE`.
 - Skylight/ceiling from `DimensionType`; graph format **V32**.
 - **PASSED / FROZEN**: `InputContextLanguageContractTest` — see [`node-language-v1-input-context.md`](./node-language-v1-input-context.md).
+
+**Type Selectors v1 (2026-09-25):**
+
+- Four nodes under `input.type_selectors.*` (Block / Entity / Item / Biome); **Block State Selector removed**.
+- Unified `output_valid`; preserve canonical id when registry entry missing; UI-only filters.
+- Block Type → `BLOCK_TYPE`; shared `AbstractRegistryTypeSelectorNode`; graph format **V33**.
+- Block state: **Block Type Selector → Build Block State** (`propertiesText`).
+- **PASSED / FROZEN**: `TypeSelectorsLanguageContractTest` — see [`node-language-v1-type-selectors.md`](./node-language-v1-type-selectors.md).
 
 **Batch 13 — Architectural Components language (2026-09-22):**
 

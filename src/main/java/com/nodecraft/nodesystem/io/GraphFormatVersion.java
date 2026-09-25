@@ -204,8 +204,14 @@ public final class GraphFormatVersion {
      */
     public static final int V32 = 32;
 
+    /**
+     * Type Selectors v1: Block Type {@code BLOCK_TYPE}, {@code output_valid}, preserve unknown ids;
+     * remove Block State Selector; Build Block State gains properties text.
+     */
+    public static final int V33 = 33;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V32;
+    public static final int CURRENT = V33;
 
     private GraphFormatVersion() {
     }

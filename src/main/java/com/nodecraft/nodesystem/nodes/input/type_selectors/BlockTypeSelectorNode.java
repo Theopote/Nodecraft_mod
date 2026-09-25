@@ -1,32 +1,15 @@
 package com.nodecraft.nodesystem.nodes.input.type_selectors;
 
-import com.nodecraft.core.NodeCraft;
-import com.nodecraft.gui.editor.impl.BaseCustomUINode;
-import com.nodecraft.gui.layout.ImGuiChildScope;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.execution.ExecutionContext;
-import imgui.ImGui;
-import imgui.flag.ImGuiInputTextFlags;
-import imgui.flag.ImGuiStyleVar;
-import imgui.flag.ImGuiTableColumnFlags;
-import imgui.flag.ImGuiTableFlags;
-import imgui.flag.ImGuiWindowFlags;
-import imgui.type.ImString;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 @NodeInfo(
@@ -37,42 +20,8 @@ import java.util.UUID;
     category = "input.type_selectors",
     order = 0
 )
-public class BlockTypeSelectorNode extends BaseCustomUINode {
+public class BlockTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
 
-    private static final String[] QUICK_BLOCKS = {
-            "minecraft:stone",
-            "minecraft:cobblestone",
-            "minecraft:stone_bricks",
-            "minecraft:polished_andesite",
-            "minecraft:smooth_stone",
-            "minecraft:glass",
-            "minecraft:oak_planks",
-            "minecraft:quartz_block"
-    };
-    private static final int POPUP_PAGE_SIZE = 18;
-    /** 弹窗最小尺寸，防止分类 + 列表被压到不可见 */
-    private static final float POPUP_MIN_WIDTH = 380.0f;
-    private static final float POPUP_MIN_HEIGHT = 420.0f;
-    private static final float POPUP_FIXED_HEIGHT = 520.0f;
-    /** 水平内边距；垂直略小，减轻底栏与窗口底之间的空白 */
-    private static final float POPUP_WINDOW_PADDING_X = 5.0f;
-    private static final float POPUP_WINDOW_PADDING_Y = 3.0f;
-    private static final float POPUP_ITEM_SPACING_X = 4.0f;
-    private static final float POPUP_ITEM_SPACING_Y = 3.0f;
-    private static final float POPUP_SCROLLBAR_SIZE = 14.0f;
-    private static final float POPUP_FRAME_PADDING_X = 4.0f;
-    private static final float POPUP_FRAME_PADDING_Y = 3.0f;
-    private static final float POPUP_FRAME_BORDER_SIZE = 1.0f;
-    private static final float POPUP_FRAME_ROUNDING = 0.0f;
-    /** 区块之间的垂直留白 */
-    private static final float POPUP_SECTION_GAP = 2.0f;
-    /** 列表与底栏（分页+关闭）之间的预留 */
-    private static final float POPUP_LIST_FOOTER_EXTRA = 0.0f;
-    private static final String OPEN_BUTTON_SUFFIX = " v]";
-    private static final String OPEN_BUTTON_PREFIX = "[";
-    private static final String ELLIPSIS = "...";
-    private static final String BLOCK_PICKER_POPUP_KEY = "block_picker";
-    private static final String CATEGORY_ALL = "all";
     private static final String CATEGORY_STONE = "stone";
     private static final String CATEGORY_WOOD = "wood";
     private static final String CATEGORY_NATURAL = "natural";
@@ -80,13 +29,35 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
     private static final String CATEGORY_REDSTONE = "redstone";
     private static final String CATEGORY_FUNCTIONAL = "functional";
     private static final String CATEGORY_NETHER_END = "nether_end";
-    private static final String CATEGORY_MODDED = "modded";
+
+    private static final String[] QUICK_BLOCKS = {
+        "minecraft:stone",
+        "minecraft:cobblestone",
+        "minecraft:stone_bricks",
+        "minecraft:polished_andesite",
+        "minecraft:smooth_stone",
+        "minecraft:glass",
+        "minecraft:oak_planks",
+        "minecraft:quartz_block"
+    };
+
+    private static final CategorySpec[] CATEGORIES = {
+        new CategorySpec(CATEGORY_ALL, "All"),
+        new CategorySpec(CATEGORY_STONE, "Stone"),
+        new CategorySpec(CATEGORY_WOOD, "Wood"),
+        new CategorySpec(CATEGORY_NATURAL, "Natural"),
+        new CategorySpec(CATEGORY_DECOR, "Decor"),
+        new CategorySpec(CATEGORY_REDSTONE, "Redstone"),
+        new CategorySpec(CATEGORY_FUNCTIONAL, "Functional"),
+        new CategorySpec(CATEGORY_NETHER_END, "Nether/End"),
+        new CategorySpec(CATEGORY_MODDED, "Modded")
+    };
 
     @NodeProperty(
         displayName = "Selected Block",
         category = "Selection",
         order = 1,
-        description = "The currently selected block ID."
+        description = "The currently selected block type id."
     )
     private String selectedBlock = "minecraft:stone";
 
@@ -94,33 +65,24 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
         displayName = "Allow Modded Blocks",
         category = "Filter",
         order = 2,
-        description = "Whether block IDs outside the minecraft namespace should appear in search results."
+        description = "Whether block ids outside the minecraft namespace should appear in search results."
     )
     private boolean allowModded = true;
 
     private static final String OUTPUT_BLOCK_ID = "output_block_id";
-    private static final String OUTPUT_NAMESPACE = "output_namespace";
     private static final String OUTPUT_BLOCK_PATH = "output_block_path";
     private static final String OUTPUT_IS_MODDED = "output_is_modded";
-
-    private transient ImString searchBuffer = new ImString(256);
-    private transient volatile List<String> allBlocks = new ArrayList<>();
-    private transient volatile List<String> filteredBlocks = new ArrayList<>();
-    private transient volatile boolean minecraftOnly = false;
-    private transient volatile int currentPage = 0;
-    private transient volatile boolean blockRegistryReady = true;
-    private transient volatile boolean registryErrorLogged = false;
-    private transient volatile String selectedCategory = CATEGORY_ALL;
 
     public BlockTypeSelectorNode() {
         super(UUID.randomUUID(), "input.type_selectors.block_type_selector");
 
-        addOutputPort(new BasePort(OUTPUT_BLOCK_ID, "Block ID", "The selected block's full identifier", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_NAMESPACE, "Namespace", "The namespace part of the selected block ID", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCK_PATH, "Block Path", "The path part of the selected block ID", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCK_ID, "Block Type", "The selected block's full identifier", NodeDataType.BLOCK_TYPE, this));
+        addOutputPort(new BasePort(OUTPUT_NAMESPACE, "Namespace", "The namespace part of the selected block id", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCK_PATH, "Block Path", "The path part of the selected block id", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_IS_MODDED, "Is Modded", "Whether the selected block is outside the minecraft namespace", NodeDataType.BOOLEAN, this));
+        addValidOutputPort();
 
-        updateOutputs();
+        onSelectionApplied();
     }
 
     @Override
@@ -129,552 +91,166 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
     }
 
     @Override
-    public void processNode(@Nullable ExecutionContext context) {
-        updateOutputs();
+    protected String getPickerPopupKey() {
+        return "block_picker";
     }
 
     @Override
-    protected float calculateUIHeight() {
-        // 与 renderCustomUIScaled 一致：仅上下边距 + 单行按钮（无独立标题行）
-        float height = getMediumPadding();
-        height += ImGui.getFrameHeight();
-        height += getMediumPadding();
-        return height;
+    protected String getPickerTitle() {
+        return "Select Block";
     }
 
     @Override
-    protected float calculateMinUIWidth() {
-        // 与 Text Input 等节点同量级，保证缩小时仍有稳定内容区宽度（逻辑单位）
-        return 200f;
+    protected String getSearchHint() {
+        return "Search block id...";
     }
 
     @Override
-    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
-        return layout(zoom, layout -> {
-            boolean changed = false;
-
-            try {
-                // 与 TextInputNode 一致：在像素空间内算可用宽度，避免 getAvailableContentWidth(像素) 再 /zoom
-                // 又经 LayoutHelper.setItemWidth 二次缩放导致缩放画布时按钮宽度飘忽
-                float edgeMargin = layout.toPixels(getSmallPadding());
-                float availableWidth = Math.max(0.0f, layout.toPixelsExact(width) - edgeMargin * 2.0f);
-                float baseCursorX = ImGui.getCursorPosX();
-
-                layout.addVerticalSpacing(getMediumPadding());
-                ImGui.setCursorPosX(baseCursorX + edgeMargin);
-
-                layout.pushFramePadding(4.0f, 3.0f);
-                try {
-                    String compactLabel = buildCompactLabel(availableWidth);
-                    if (ImGui.button(compactLabel + "##open_block_picker", availableWidth, 0)) {
-                        ensureBlockCatalogReady();
-                        updateFilteredList(getSearchBuffer().get());
-                        openScopedPopup(BLOCK_PICKER_POPUP_KEY, "Select Block");
-                    }
-                } finally {
-                    layout.popStyleVar();
-                }
-
-                if (renderBlockPickerPopup(zoom)) {
-                    changed = true;
-                }
-
-                layout.addVerticalSpacing(getMediumPadding());
-            } catch (Exception e) {
-                com.nodecraft.core.NodeCraft.LOGGER.warn("BlockTypeSelectorNode UI render failed", e);
-            }
-
-            return changed;
-        });
+    protected String getOpenButtonIdSuffix() {
+        return "##open_block_picker";
     }
 
-    private boolean renderBlockPickerPopup(float zoom) {
-        boolean changed = false;
-        imgui.ImGui imguiInstance = new imgui.ImGui();
-
-        // Keep popup layout in screen-pixel space (no inverse zoom compensation).
-        float popupAppearingHeight = computePopupAppearingHeight();
-        ImGui.setNextWindowSizeConstraints(POPUP_MIN_WIDTH, POPUP_MIN_HEIGHT, 4096.0f, 4096.0f);
-        ImGui.setNextWindowSize(POPUP_MIN_WIDTH, popupAppearingHeight, imgui.flag.ImGuiCond.Appearing);
-        ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, POPUP_WINDOW_PADDING_X, POPUP_WINDOW_PADDING_Y);
-        ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, POPUP_ITEM_SPACING_X, POPUP_ITEM_SPACING_Y);
-        ImGui.pushStyleVar(ImGuiStyleVar.ScrollbarSize, POPUP_SCROLLBAR_SIZE);
-        ImGui.pushStyleVar(ImGuiStyleVar.FramePadding, POPUP_FRAME_PADDING_X, POPUP_FRAME_PADDING_Y);
-        ImGui.pushStyleVar(ImGuiStyleVar.FrameBorderSize, POPUP_FRAME_BORDER_SIZE);
-        ImGui.pushStyleVar(ImGuiStyleVar.FrameRounding, POPUP_FRAME_ROUNDING);
-        try {
-            // Important: window font scale is absolute, not multiplicative.
-            // Use 1.0f here to neutralize inherited node zoom.
-            imguiInstance.setWindowFontScale(1.0f);
-            int popupFlags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse;
-            if (!beginScopedPopupModal(BLOCK_PICKER_POPUP_KEY, "Select Block", popupFlags)) {
-                return false;
-            }
-            try {
-            imguiInstance.setWindowFontScale(1.0f);
-            renderSearchScopeRow();
-
-            popupSectionGap();
-            renderCategorySelector();
-            popupSectionGap();
-
-            if (renderQuickBlockStrip()) {
-                changed = true;
-            }
-
-            popupSectionGap();
-            List<String> snapshot = filteredBlocks;
-            int total = snapshot.size();
-            int totalPages = Math.max(1, (int) Math.ceil(total / (float) POPUP_PAGE_SIZE));
-            if (currentPage >= totalPages) {
-                currentPage = totalPages - 1;
-            }
-            int start = currentPage * POPUP_PAGE_SIZE;
-            int end = Math.min(start + POPUP_PAGE_SIZE, total);
-
-            ImGui.text(String.format("Results: %d", total));
-            // 用剩余可用高度显式分配列表区，避免负高度在头部内容变多时算错导致列表被压扁
-            float footerReserve = ImGui.getFrameHeightWithSpacing() + POPUP_LIST_FOOTER_EXTRA;
-            float listHeight = ImGui.getContentRegionAvail().y - footerReserve;
-            listHeight = Math.max(160.0f, listHeight);
-            float listWidth = ImGui.getContentRegionAvail().x;
-            // 列表子窗口不画边框，减少一层内边距/裁剪观感
-            try (ImGuiChildScope listScope = new ImGuiChildScope(
-                    "##block_picker_list", listWidth, listHeight, false, ImGuiWindowFlags.AlwaysVerticalScrollbar)) {
-                if (!listScope.isOpen()) {
-                    return changed;
-                }
-                if (snapshot.isEmpty()) {
-                    if (!blockRegistryReady) {
-                        ImGui.textDisabled("Block registry not ready");
-                    } else {
-                        ImGui.textDisabled("No blocks found");
-                    }
-                } else {
-                    for (int i = start; i < end; i++) {
-                        String blockId = snapshot.get(i);
-                        boolean isSelected = blockId.equals(selectedBlock);
-                        String selectableLabel = buildSelectableLabel(blockId);
-                        if (ImGui.selectable(selectableLabel + "##block_" + i, isSelected)) {
-                            setSelectedBlock(blockId);
-                            changed = true;
-                        }
-                        if (ImGui.isItemHovered()) {
-                            ImGui.setTooltip(blockId);
-                        }
-                    }
-                }
-            }
-
-            boolean canPrev = currentPage > 0;
-            boolean canNext = currentPage + 1 < totalPages;
-            if (!canPrev) ImGui.beginDisabled();
-            if (ImGui.button("< Prev##block_page_prev")) {
-                currentPage--;
-            }
-            if (!canPrev) ImGui.endDisabled();
-
-            ImGui.sameLine();
-            ImGui.text(String.format("Page %d / %d", currentPage + 1, totalPages));
-            ImGui.sameLine();
-
-            if (!canNext) ImGui.beginDisabled();
-            if (ImGui.button("Next >##block_page_next")) {
-                currentPage++;
-            }
-            if (!canNext) ImGui.endDisabled();
-
-            ImGui.sameLine();
-            if (ImGui.button("Close##close_block_picker")) {
-                ImGui.closeCurrentPopup();
-            }
-            } finally {
-                imguiInstance.setWindowFontScale(1.0f);
-                endScopedPopup();
-            }
-        } finally {
-            ImGui.popStyleVar(6);
-        }
-        return changed;
+    @Override
+    protected String readSelectedId() {
+        return selectedBlock;
     }
 
-    private static void popupSectionGap() {
-        ImGui.dummy(0.0f, POPUP_SECTION_GAP);
+    @Override
+    protected void writeSelectedId(String canonicalId) {
+        this.selectedBlock = canonicalId;
     }
 
-    private float computePopupAppearingHeight() {
-        // Use fixed screen pixels so popup height is fully independent of canvas zoom/style scaling.
-        return Math.max(POPUP_MIN_HEIGHT, POPUP_FIXED_HEIGHT);
+    @Override
+    protected boolean isAllowModded() {
+        return allowModded;
     }
 
-    private ImString getSearchBuffer() {
-        if (searchBuffer == null) {
-            searchBuffer = new ImString(256);
-        }
-        return searchBuffer;
+    @Override
+    protected void applyAllowModdedQuietly(boolean allowModded) {
+        this.allowModded = allowModded;
+        normalizeFilterState();
     }
 
-    /**
-     * 搜索框与 All / Minecraft 同一行：用表格分配列宽，避免输入框占满整行后挤出边界。
-     */
-    private void renderSearchScopeRow() {
-        float fp = ImGui.getStyle().getFramePaddingX() * 2f;
-        float inner = ImGui.getStyle().getItemInnerSpacingX();
-        float reserve = ImGui.calcTextSize("All").x + ImGui.calcTextSize("Minecraft").x + fp * 2f + inner + 20f;
-        float avail = ImGui.getContentRegionAvail().x;
-        float scopeColW = Math.min(Math.max(reserve, 118f), avail * 0.45f);
-
-        if (!ImGui.beginTable("##block_search_scope", 2,
-                ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.NoBordersInBody)) {
-            return;
-        }
-        ImGui.tableSetupColumn("search", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.tableSetupColumn("scope", ImGuiTableColumnFlags.WidthFixed, scopeColW);
-        ImGui.tableNextRow();
-        ImGui.tableSetColumnIndex(0);
-        ImGui.pushItemWidth(-1.0f);
-        ImString buffer = getSearchBuffer();
-        if (ImGui.inputTextWithHint("##block_picker_search", "Search block id...", buffer, ImGuiInputTextFlags.None)) {
-            updateFilteredList(buffer.get());
-        }
-        ImGui.popItemWidth();
-        ImGui.tableSetColumnIndex(1);
-        if (renderPopupButton("All##scope_all")) {
-            minecraftOnly = false;
-            updateFilteredList(getSearchBuffer().get());
-        }
-        ImGui.sameLine(0f, inner);
-        if (renderPopupButton("Minecraft##scope_vanilla")) {
-            minecraftOnly = true;
-            updateFilteredList(getSearchBuffer().get());
-        }
-        ImGui.endTable();
+    @Override
+    protected void setAllowModdedFlag(boolean allowModded) {
+        applyAllowModdedQuietly(allowModded);
+        updateFilteredListFromSearch();
+        onSelectionApplied();
     }
 
-    private void renderCategorySelector() {
-        String[][] categories = {
-                {CATEGORY_ALL, "All"},
-                {CATEGORY_STONE, "Stone"},
-                {CATEGORY_WOOD, "Wood"},
-                {CATEGORY_NATURAL, "Natural"},
-                {CATEGORY_DECOR, "Decor"},
-                {CATEGORY_REDSTONE, "Redstone"},
-                {CATEGORY_FUNCTIONAL, "Functional"},
-                {CATEGORY_NETHER_END, "Nether/End"},
-                {CATEGORY_MODDED, "Modded"}
-        };
-
-        ImGui.text("Category:");
-        // 固定两行：上行 ceil(n/2)，下行剩余，避免横向子窗口裁剪
-        int n = categories.length;
-        int firstRowCount = (n + 1) / 2;
-        renderCategoryButtonRow(categories, 0, firstRowCount);
-        renderCategoryButtonRow(categories, firstRowCount, n);
+    @Override
+    protected String getDefaultId() {
+        return "minecraft:stone";
     }
 
-    private void renderCategoryButtonRow(String[][] categories, int fromInclusive, int toExclusive) {
-        for (int i = fromInclusive; i < toExclusive; i++) {
-            if (i > fromInclusive) {
-                ImGui.sameLine();
-            }
-            String categoryKey = categories[i][0];
-            String categoryLabel = categories[i][1];
-            boolean isSelected = categoryKey.equals(selectedCategory);
-            if (isSelected) {
-                ImGui.pushStyleColor(imgui.flag.ImGuiCol.Button, 0.26f, 0.44f, 0.62f, 1.0f);
-                ImGui.pushStyleColor(imgui.flag.ImGuiCol.ButtonHovered, 0.30f, 0.50f, 0.70f, 1.0f);
-            }
-            if (renderPopupButton(categoryLabel + "##category_" + categoryKey)) {
-                selectedCategory = categoryKey;
-                updateFilteredList(getSearchBuffer().get());
-            }
-            if (isSelected) {
-                ImGui.popStyleColor(2);
-            }
+    @Override
+    protected String[] getQuickPickIds() {
+        return QUICK_BLOCKS;
+    }
+
+    @Override
+    protected CategorySpec[] getCategorySpecs() {
+        return CATEGORIES;
+    }
+
+    @Override
+    protected void collectRegistryIds(List<String> target) {
+        for (Identifier id : Registries.BLOCK.getIds()) {
+            target.add(id.toString());
         }
     }
 
-    /** 两行快捷块，每行 4 个 */
-    private boolean renderQuickBlockStrip() {
-        boolean quickChanged = false;
-        ImGui.text("Quick:");
-        int perRow = 4;
-        for (int row = 0; row < 2; row++) {
-            int start = row * perRow;
-            if (start >= QUICK_BLOCKS.length) {
-                break;
-            }
-            int end = Math.min(start + perRow, QUICK_BLOCKS.length);
-            for (int i = start; i < end; i++) {
-                if (i > start) {
-                    ImGui.sameLine();
-                }
-                String quickBlock = QUICK_BLOCKS[i];
-                String quickLabel = quickBlock.split(":", 2)[1];
-                if (renderPopupButton(quickLabel + "##quick_" + i)) {
-                    setSelectedBlock(quickBlock);
-                    quickChanged = true;
-                }
-            }
-        }
-        return quickChanged;
-    }
-
-    private boolean renderPopupButton(String label) {
-        String visibleLabel = label;
-        int idSeparator = label.indexOf("##");
-        if (idSeparator >= 0) {
-            visibleLabel = label.substring(0, idSeparator);
-        }
-        float width = ImGui.calcTextSize(visibleLabel).x + ImGui.getStyle().getFramePaddingX() * 2.0f;
-        float height = ImGui.getFrameHeight();
-        return ImGui.button(label, width, height);
-    }
-
-    private String buildCompactLabel(float buttonWidthPx) {
-        String content = selectedBlock;
-        String fullLabel = OPEN_BUTTON_PREFIX + content + OPEN_BUTTON_SUFFIX;
-        float stylePadX = ImGui.getStyle().getFramePaddingX() * 2.0f;
-        float safeContentWidth = Math.max(48.0f, buttonWidthPx - stylePadX);
-
-        if (ImGui.calcTextSize(fullLabel).x <= safeContentWidth) {
-            return fullLabel;
-        }
-
-        String fixedParts = OPEN_BUTTON_PREFIX + ELLIPSIS + OPEN_BUTTON_SUFFIX;
-        float fixedWidth = ImGui.calcTextSize(fixedParts).x;
-        if (fixedWidth >= safeContentWidth) {
-            return fixedParts;
-        }
-
-        int low = 0;
-        int high = content.length();
-        int best = 0;
-        while (low <= high) {
-            int mid = (low + high) >>> 1;
-            String candidate = OPEN_BUTTON_PREFIX + content.substring(0, mid) + ELLIPSIS + OPEN_BUTTON_SUFFIX;
-            float width = ImGui.calcTextSize(candidate).x;
-            if (width <= safeContentWidth) {
-                best = mid;
-                low = mid + 1;
-            } else {
-                high = mid - 1;
-            }
-        }
-
-        if (best <= 0) {
-            return fixedParts;
-        }
-        return OPEN_BUTTON_PREFIX + content.substring(0, best) + ELLIPSIS + OPEN_BUTTON_SUFFIX;
-    }
-
-    private String buildSelectableLabel(String blockId) {
-        String[] parts = blockId.split(":", 2);
-        if (parts.length < 2) {
-            return blockId;
-        }
-        String prefix = "minecraft".equals(parts[0]) ? "[MC]" : "[MOD]";
-        return prefix + " " + parts[1];
-    }
-
-    private void ensureBlockCatalogReady() {
-        if (!allBlocks.isEmpty()) {
-            blockRegistryReady = true;
-            return;
-        }
-        List<String> collected = new ArrayList<>();
-        try {
-            for (Identifier id : Registries.BLOCK.getIds()) {
-                collected.add(id.toString());
-            }
-            collected.sort(Comparator.naturalOrder());
-            blockRegistryReady = !collected.isEmpty();
-            if (blockRegistryReady) {
-                registryErrorLogged = false;
-            }
-        } catch (Exception ignored) {
-            blockRegistryReady = false;
-            if (!registryErrorLogged) {
-                NodeCraft.LOGGER.warn("Block registry is not ready for BlockTypeSelectorNode yet.");
-                registryErrorLogged = true;
-            }
-        }
-        allBlocks = collected;
-    }
-
-    private void updateFilteredList(String searchTextRaw) {
-        ensureBlockCatalogReady();
-
-        String searchText = searchTextRaw == null ? "" : searchTextRaw.trim().toLowerCase(Locale.ROOT);
-        Set<String> nextFilteredBlocks = new LinkedHashSet<>();
-
-        List<String> source = allBlocks;
-        for (String fullId : source) {
-            if (matchesFilters(fullId, searchText)) {
-                nextFilteredBlocks.add(fullId);
-            }
-        }
-
-        for (String quickBlock : QUICK_BLOCKS) {
-            if (matchesFilters(quickBlock, searchText)) {
-                nextFilteredBlocks.add(quickBlock);
-            }
-        }
-
-        currentPage = 0;
-        filteredBlocks = new ArrayList<>(nextFilteredBlocks);
-    }
-
-    private boolean matchesFilters(String fullId, String searchText) {
-        boolean isMinecraft = fullId.startsWith("minecraft:");
-        if (!allowModded && !isMinecraft) {
-            return false;
-        }
-        if (minecraftOnly && !isMinecraft) {
-            return false;
-        }
-        if (!matchesCategory(fullId)) {
-            return false;
-        }
-        return searchText.isEmpty() || fullId.toLowerCase(Locale.ROOT).contains(searchText);
-    }
-
-    /**
-     * 统一收敛筛选状态，避免 allowModded 与 minecraftOnly 组合出现语义漂移。
-     * 当不允许模组方块时，minecraftOnly 必然为 true。
-     */
-    private void normalizeFilterState() {
-        if (!allowModded) {
-            minecraftOnly = true;
-        }
-    }
-
-    private boolean matchesCategory(String fullId) {
-        if (CATEGORY_ALL.equals(selectedCategory)) {
+    @Override
+    protected boolean isKnownId(String id) {
+        if (catalogContains(id)) {
             return true;
         }
+        try {
+            Identifier parsed = Identifier.tryParse(id);
+            if (parsed == null) {
+                return false;
+            }
+            if (Registries.BLOCK.getIds().isEmpty()) {
+                return false;
+            }
+            return Registries.BLOCK.containsId(parsed);
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
 
-        String namespace = "minecraft";
+    @Override
+    protected boolean matchesCategory(String fullId, String categoryKey) {
+        if (CATEGORY_ALL.equals(categoryKey)) {
+            return true;
+        }
+        if (CATEGORY_MODDED.equals(categoryKey)) {
+            return matchesModdedCategory(fullId);
+        }
+
         String path = fullId;
         String[] parts = fullId.split(":", 2);
         if (parts.length == 2) {
-            namespace = parts[0];
+            if (!"minecraft".equals(parts[0])) {
+                return false;
+            }
             path = parts[1];
         }
 
-        if (CATEGORY_MODDED.equals(selectedCategory)) {
-            return !"minecraft".equals(namespace);
-        }
-        if (!"minecraft".equals(namespace)) {
-            return false;
-        }
-
-        return switch (selectedCategory) {
+        return switch (categoryKey) {
             case CATEGORY_STONE -> containsAny(path,
-                    "stone", "deepslate", "cobble", "granite", "diorite", "andesite", "tuff",
-                    "basalt", "calcite", "dripstone", "blackstone", "sandstone", "ore", "brick");
+                "stone", "deepslate", "cobble", "granite", "diorite", "andesite", "tuff",
+                "basalt", "calcite", "dripstone", "blackstone", "sandstone", "ore", "brick");
             case CATEGORY_WOOD -> containsAny(path,
-                    "oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "bamboo",
-                    "planks", "_log", "_wood", "stripped", "_stairs", "_slab", "_fence",
-                    "_door", "_trapdoor", "_button", "_pressure_plate");
+                "oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "bamboo",
+                "planks", "_log", "_wood", "stripped", "_stairs", "_slab", "_fence",
+                "_door", "_trapdoor", "_button", "_pressure_plate");
             case CATEGORY_NATURAL -> containsAny(path,
-                    "dirt", "grass", "mud", "clay", "sand", "gravel", "snow", "ice", "leaves", "sapling",
-                    "flower", "mushroom", "cactus", "vine", "bamboo", "wheat", "carrot", "potato", "melon", "pumpkin");
+                "dirt", "grass", "mud", "clay", "sand", "gravel", "snow", "ice", "leaves", "sapling",
+                "flower", "mushroom", "cactus", "vine", "bamboo", "wheat", "carrot", "potato", "melon", "pumpkin");
             case CATEGORY_DECOR -> containsAny(path,
-                    "glass", "wool", "carpet", "terracotta", "concrete", "banner", "lantern", "glowstone",
-                    "candle", "amethyst", "shelf", "pot", "bed");
+                "glass", "wool", "carpet", "terracotta", "concrete", "banner", "lantern", "glowstone",
+                "candle", "amethyst", "shelf", "pot", "bed");
             case CATEGORY_REDSTONE -> containsAny(path,
-                    "redstone", "repeater", "comparator", "observer", "piston", "lever", "button",
-                    "pressure_plate", "rail", "hopper", "dispenser", "dropper", "daylight", "tripwire",
-                    "target", "note_block", "sculk_sensor");
+                "redstone", "repeater", "comparator", "observer", "piston", "lever", "button",
+                "pressure_plate", "rail", "hopper", "dispenser", "dropper", "daylight", "tripwire",
+                "target", "note_block", "sculk_sensor");
             case CATEGORY_FUNCTIONAL -> containsAny(path,
-                    "crafting", "furnace", "chest", "barrel", "anvil", "enchant", "beacon", "lectern",
-                    "loom", "smithing", "grindstone", "cartography", "brewing", "spawner", "bell");
+                "crafting", "furnace", "chest", "barrel", "anvil", "enchant", "beacon", "lectern",
+                "loom", "smithing", "grindstone", "cartography", "brewing", "spawner", "bell");
             case CATEGORY_NETHER_END -> containsAny(path,
-                    "nether", "crimson", "warped", "soul", "basalt", "blackstone", "quartz", "end_", "chorus", "purpur");
+                "nether", "crimson", "warped", "soul", "basalt", "blackstone", "quartz", "end_", "chorus", "purpur");
             default -> true;
         };
     }
 
-    private boolean containsAny(String text, String... keywords) {
-        for (String keyword : keywords) {
-            if (text.contains(keyword)) {
-                return true;
-            }
-        }
-        return false;
+    @Override
+    protected String getRegistryNotReadyMessage() {
+        return "Block registry not ready";
+    }
+
+    @Override
+    protected String getRegistryLoadWarningLog() {
+        return "Block registry is not ready for BlockTypeSelectorNode yet.";
+    }
+
+    @Override
+    protected void onSelectionApplied() {
+        updateOutputs();
     }
 
     public void setSelectedBlock(String blockId) {
-        String nextBlockId = sanitizeBlockId(blockId);
-
-        if (!allowModded && !nextBlockId.startsWith("minecraft:")) {
-            nextBlockId = "minecraft:stone";
-        }
-
-        if (!isKnownBlockId(nextBlockId)) {
-            nextBlockId = "minecraft:stone";
-        }
-
-        if (!this.selectedBlock.equals(nextBlockId)) {
-            this.selectedBlock = nextBlockId;
-            updateOutputs();
-            markDirty();
-        }
-    }
-
-    private String sanitizeBlockId(String blockId) {
-        if (blockId == null) {
-            return "minecraft:stone";
-        }
-        String normalized = blockId.trim().toLowerCase(Locale.ROOT);
-        if (normalized.isEmpty()) {
-            return "minecraft:stone";
-        }
-        if (!normalized.contains(":")) {
-            normalized = "minecraft:" + normalized;
-        }
-        return normalized;
-    }
-
-    private boolean isKnownBlockId(String blockId) {
-        if ("minecraft:stone".equals(blockId)) {
-            return true;
-        }
-
-        ensureBlockCatalogReady();
-        if (!allBlocks.isEmpty()) {
-            return allBlocks.contains(blockId);
-        }
-
-        try {
-            Identifier id = Identifier.tryParse(blockId);
-            if (id == null) {
-                return false;
-            }
-
-            // 注册表在极早期未就绪时保守拒绝，避免无效 ID 混入状态。
-            if (Registries.BLOCK.getIds().isEmpty()) {
-                return false;
-            }
-            return Registries.BLOCK.containsId(id);
-        } catch (Exception ignored) {
-            return false;
-        }
+        commitSelectedId(blockId);
+        onSelectionApplied();
     }
 
     private void updateOutputs() {
-        String namespace = "minecraft";
-        String path = "stone";
-        if (selectedBlock.contains(":")) {
-            String[] parts = selectedBlock.split(":", 2);
-            namespace = parts[0];
-            path = parts[1];
-        }
+        RegistrySelectionOutputs resolved = resolveSelectionOutputs(selectedBlock);
         outputValues.put(OUTPUT_BLOCK_ID, selectedBlock);
-        outputValues.put(OUTPUT_NAMESPACE, namespace);
-        outputValues.put(OUTPUT_BLOCK_PATH, path);
-        outputValues.put(OUTPUT_IS_MODDED, !namespace.equals("minecraft"));
+        outputValues.put(OUTPUT_NAMESPACE, resolved.namespace());
+        outputValues.put(OUTPUT_BLOCK_PATH, resolved.path());
+        outputValues.put(OUTPUT_IS_MODDED, resolved.modded());
+        outputValues.put(OUTPUT_VALID_ID, resolved.valid());
         syncOutputPorts();
     }
 
@@ -682,21 +258,8 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
         return selectedBlock;
     }
 
-    public boolean isAllowModded() {
-        return allowModded;
-    }
-
     public void setAllowModded(boolean allowModded) {
-        applyAllowModdedQuietly(allowModded);
-        updateFilteredList(getSearchBuffer().get());
-    }
-
-    private void applyAllowModdedQuietly(boolean allowModded) {
-        this.allowModded = allowModded;
-        normalizeFilterState();
-        if (!allowModded && !selectedBlock.startsWith("minecraft:")) {
-            setSelectedBlock("minecraft:stone");
-        }
+        setAllowModdedFlag(allowModded);
     }
 
     @Override
@@ -704,39 +267,23 @@ public class BlockTypeSelectorNode extends BaseCustomUINode {
         return Map.of(
             "selectedBlock", getSelectedBlock(),
             "allowModded", isAllowModded(),
-            "selectedCategory", selectedCategory,
-            "minecraftOnly", minecraftOnly
+            "selectedCategory", getFilterCategory(),
+            "minecraftOnly", isMinecraftOnlyFilter()
         );
     }
 
     @Override
     public void setNodeState(Object state) {
         if (state instanceof Map<?, ?> map) {
-            if (map.get("minecraftOnly") instanceof Boolean onlyMinecraft) {
-                minecraftOnly = onlyMinecraft;
-            }
-            if (map.get("selectedCategory") instanceof String category) {
-                selectedCategory = sanitizeCategory(category);
-            }
             if (map.get("selectedBlock") instanceof String value) {
-                setSelectedBlock(value);
+                commitSelectedId(value);
             }
-            if (map.get("allowModded") instanceof Boolean bool) {
-                applyAllowModdedQuietly(bool);
-            } else {
-                normalizeFilterState();
-            }
+            restoreFilterState(
+                map.get("allowModded") instanceof Boolean b ? b : allowModded,
+                map.get("selectedCategory") instanceof String c ? c : CATEGORY_ALL,
+                map.get("minecraftOnly") instanceof Boolean m && m
+            );
+            onSelectionApplied();
         }
-    }
-
-    private String sanitizeCategory(String category) {
-        if (category == null || category.isBlank()) {
-            return CATEGORY_ALL;
-        }
-        return switch (category) {
-            case CATEGORY_ALL, CATEGORY_STONE, CATEGORY_WOOD, CATEGORY_NATURAL, CATEGORY_DECOR,
-                 CATEGORY_REDSTONE, CATEGORY_FUNCTIONAL, CATEGORY_NETHER_END, CATEGORY_MODDED -> category;
-            default -> CATEGORY_ALL;
-        };
     }
 }

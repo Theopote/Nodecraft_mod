@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**543**
+- **节点总数**：**542**
 - **分类总数**：**59**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -23,7 +23,7 @@
 | `geometry.voxel` | 1 |
 | `input.context` | 4 |
 | `input.numeric` | 10 |
-| `input.type_selectors` | 5 |
+| `input.type_selectors` | 4 |
 | `input.values` | 6 |
 | `material.basic_assignment` | 4 |
 | `material.block_state` | 8 |
@@ -303,7 +303,7 @@
 | Pi | `input.numeric.pi` | Outputs the mathematical constant Pi. | `PiNode` |
 | E | `input.numeric.e` | Outputs the mathematical constant e (approximately 2.718281828...). | `ENode` |
 
-## input.type_selectors（5）
+## input.type_selectors（4）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -311,7 +311,6 @@
 | Entity Type Selector | `input.type_selectors.entity_type_selector` | Searches and selects a Minecraft entity type. | `EntityTypeSelectorNode` |
 | Item Type Selector | `input.type_selectors.item_type_selector` | Searches and selects a Minecraft item type. | `ItemTypeSelectorNode` |
 | Biome Selector | `input.type_selectors.biome_selector` | Selects a biome id for biome-aware generation workflows. | `BiomeSelectorNode` |
-| Block State Selector | `input.type_selectors.block_state_selector` | Builds block-state key/value data from a compact properties string. | `BlockStateSelectorNode` |
 
 ## input.values（6）
 

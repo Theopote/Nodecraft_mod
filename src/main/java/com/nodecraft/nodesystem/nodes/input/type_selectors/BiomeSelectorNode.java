@@ -5,7 +5,6 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
-import net.minecraft.util.Identifier;
 
 import java.util.List;
 import java.util.Map;
@@ -55,7 +54,6 @@ public class BiomeSelectorNode extends AbstractRegistryTypeSelectorNode {
     private boolean allowModded = true;
 
     private static final String OUTPUT_BIOME_ID = "output_biome_id";
-    private static final String OUTPUT_NAMESPACE = "output_namespace";
     private static final String OUTPUT_BIOME_PATH = "output_biome_path";
     private static final String OUTPUT_IS_MODDED = "output_is_modded";
 
@@ -65,6 +63,7 @@ public class BiomeSelectorNode extends AbstractRegistryTypeSelectorNode {
         addOutputPort(new BasePort(OUTPUT_NAMESPACE, "Namespace", "Biome namespace", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_BIOME_PATH, "Biome Path", "Biome path", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_IS_MODDED, "Is Modded", "Whether biome is non-minecraft namespace", NodeDataType.BOOLEAN, this));
+        addValidOutputPort();
         onSelectionApplied();
     }
 
@@ -99,6 +98,11 @@ public class BiomeSelectorNode extends AbstractRegistryTypeSelectorNode {
     }
 
     @Override
+    protected void writeSelectedId(String canonicalId) {
+        this.selectedBiome = canonicalId;
+    }
+
+    @Override
     protected boolean isAllowModded() {
         return allowModded;
     }
@@ -107,15 +111,13 @@ public class BiomeSelectorNode extends AbstractRegistryTypeSelectorNode {
     protected void applyAllowModdedQuietly(boolean allowModded) {
         this.allowModded = allowModded;
         normalizeFilterState();
-        if (!allowModded && !selectedBiome.startsWith("minecraft:")) {
-            applySelectedId(getDefaultId());
-        }
     }
 
     @Override
     protected void setAllowModdedFlag(boolean allowModded) {
         applyAllowModdedQuietly(allowModded);
         updateFilteredListFromSearch();
+        onSelectionApplied();
     }
 
     @Override
@@ -140,9 +142,6 @@ public class BiomeSelectorNode extends AbstractRegistryTypeSelectorNode {
 
     @Override
     protected boolean isKnownId(String id) {
-        if (getDefaultId().equals(id)) {
-            return true;
-        }
         if (catalogContains(id)) {
             return true;
         }
@@ -194,36 +193,18 @@ public class BiomeSelectorNode extends AbstractRegistryTypeSelectorNode {
     }
 
     public void setSelectedBiome(String biomeId) {
-        applyValidatedId(biomeId, getDefaultId());
+        commitSelectedId(biomeId);
+        onSelectionApplied();
     }
 
     private void updateOutputs() {
-        Identifier id = Identifier.tryParse(selectedBiome);
-        if (id == null) {
-            id = Identifier.of("minecraft", "plains");
-            selectedBiome = id.toString();
-        }
-        outputValues.put(OUTPUT_BIOME_ID, id.toString());
-        outputValues.put(OUTPUT_NAMESPACE, id.getNamespace());
-        outputValues.put(OUTPUT_BIOME_PATH, id.getPath());
-        outputValues.put(OUTPUT_IS_MODDED, !"minecraft".equals(id.getNamespace()));
+        RegistrySelectionOutputs resolved = resolveSelectionOutputs(selectedBiome);
+        outputValues.put(OUTPUT_BIOME_ID, selectedBiome);
+        outputValues.put(OUTPUT_NAMESPACE, resolved.namespace());
+        outputValues.put(OUTPUT_BIOME_PATH, resolved.path());
+        outputValues.put(OUTPUT_IS_MODDED, resolved.modded());
+        outputValues.put(OUTPUT_VALID_ID, resolved.valid());
         syncOutputPorts();
-    }
-
-    @Override
-    protected void applySelectedId(String id) {
-        String nextId = sanitizeNamespacedId(id, getDefaultId());
-        if (!allowModded && !nextId.startsWith("minecraft:")) {
-            nextId = getDefaultId();
-        }
-        if (!isKnownId(nextId)) {
-            nextId = getDefaultId();
-        }
-        if (!selectedBiome.equals(nextId)) {
-            selectedBiome = nextId;
-            updateOutputs();
-            markDirty();
-        }
     }
 
     public String getSelectedBiome() {
@@ -248,13 +229,14 @@ public class BiomeSelectorNode extends AbstractRegistryTypeSelectorNode {
     public void setNodeState(Object state) {
         if (state instanceof Map<?, ?> map) {
             if (map.get("selectedBiome") instanceof String value) {
-                applyValidatedId(value, getDefaultId());
+                commitSelectedId(value);
             }
             restoreFilterState(
                 map.get("allowModded") instanceof Boolean b ? b : allowModded,
                 map.get("selectedCategory") instanceof String c ? c : CATEGORY_ALL,
                 map.get("minecraftOnly") instanceof Boolean m && m
             );
+            onSelectionApplied();
         }
     }
 }

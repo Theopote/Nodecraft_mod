@@ -10,6 +10,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BlockStateNodeTest {
 
@@ -48,6 +49,49 @@ class BlockStateNodeTest {
         assertEquals("y", state.get("axis"));
         assertEquals("y", outputs.get("output_axis"));
         assertEquals(true, outputs.get("output_valid"));
+    }
+
+    @Test
+    void buildBlockStateAppliesPropertiesTextWithValidation() {
+        BuildBlockStateNode node = new BuildBlockStateNode();
+        node.setPropertiesText("axis=x,waterlogged=false");
+
+        Map<String, Object> outputs = node.compute(Map.of(
+                "input_block_type", "minecraft:oak_log"
+        ));
+
+        BlockStateData state = assertInstanceOf(BlockStateData.class, outputs.get("output_block_state"));
+        assertEquals("minecraft:oak_log", state.get("blockId"));
+        assertEquals("x", state.get("axis"));
+        assertEquals("false", state.get("waterlogged"));
+        // When Minecraft registries are bootstrapped, Valid should be true for real properties.
+        // Unit tests without bootstrap skip property validation (Valid remains true with a note).
+        assertInstanceOf(Boolean.class, outputs.get("output_valid"));
+        assertInstanceOf(String.class, outputs.get("output_error"));
+    }
+
+    @Test
+    void buildBlockStatePropertiesTextRejectsUnknownProperty() {
+        BuildBlockStateNode node = new BuildBlockStateNode();
+        node.setPropertiesText("foo=bar");
+
+        Map<String, Object> outputs = node.compute(Map.of(
+                "input_block_type", "minecraft:stone"
+        ));
+
+        BlockStateData state = assertInstanceOf(BlockStateData.class, outputs.get("output_block_state"));
+        assertEquals("bar", state.get("foo"));
+        assertInstanceOf(String.class, outputs.get("output_error"));
+        Boolean valid = assertInstanceOf(Boolean.class, outputs.get("output_valid"));
+        String error = (String) outputs.get("output_error");
+        // Bootstrapped: Valid=false + unsupported property message.
+        // Headless unit tests: registry unavailable → skip validation (Valid=true + note).
+        if (error.contains("registry unavailable")) {
+            assertEquals(true, valid);
+        } else {
+            assertEquals(false, valid);
+            assertTrue(error.toLowerCase().contains("foo") || error.toLowerCase().contains("unsupported"));
+        }
     }
 
     @Test

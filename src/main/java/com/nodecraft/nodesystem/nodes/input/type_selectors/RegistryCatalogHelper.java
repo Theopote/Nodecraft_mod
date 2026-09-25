@@ -82,7 +82,7 @@ final class RegistryCatalogHelper {
                     .forEach(target::add);
                 collected = !target.isEmpty();
             }
-        } catch (Exception ignored) {
+        } catch (Throwable ignored) {
         }
 
         if (!collected) {
@@ -113,7 +113,7 @@ final class RegistryCatalogHelper {
                 RegistryWrapper.Impl<Biome> biomes = lookup.getOrThrow(RegistryKeys.BIOME);
                 return biomes.getOptional(RegistryKey.of(RegistryKeys.BIOME, parsed)).isPresent();
             }
-        } catch (Exception ignored) {
+        } catch (Throwable ignored) {
         }
         for (String fallback : FALLBACK_BIOME_IDS) {
             if (fallback.equals(id)) {

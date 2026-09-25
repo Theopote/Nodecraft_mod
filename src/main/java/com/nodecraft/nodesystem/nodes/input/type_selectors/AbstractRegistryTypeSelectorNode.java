@@ -3,6 +3,8 @@ package com.nodecraft.nodesystem.nodes.input.type_selectors;
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.gui.layout.ImGuiChildScope;
+import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import imgui.ImGui;
 import imgui.flag.ImGuiInputTextFlags;
@@ -27,6 +29,8 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
 
     static final String CATEGORY_ALL = "all";
     static final String CATEGORY_MODDED = "modded";
+    static final String OUTPUT_VALID_ID = "output_valid";
+    static final String OUTPUT_NAMESPACE = "output_namespace";
 
     private static final int POPUP_PAGE_SIZE = 18;
     private static final float POPUP_MIN_WIDTH = 380.0f;
@@ -57,6 +61,9 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
     private transient volatile boolean registryReady = true;
     private transient volatile boolean registryErrorLogged = false;
     private transient volatile String selectedCategory = CATEGORY_ALL;
+    private transient boolean lastCommitSyntaxValid = true;
+
+    record RegistrySelectionOutputs(String namespace, String path, boolean modded, boolean valid) {}
 
     protected AbstractRegistryTypeSelectorNode(java.util.UUID id, String nodeType) {
         super(id, nodeType);
@@ -72,7 +79,7 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
 
     protected abstract String readSelectedId();
 
-    protected abstract void applySelectedId(String id);
+    protected abstract void writeSelectedId(String canonicalId);
 
     protected abstract boolean isAllowModded();
 
@@ -98,6 +105,43 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
     protected abstract String getRegistryLoadWarningLog();
 
     protected abstract void onSelectionApplied();
+
+    protected final void addValidOutputPort() {
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
+                "Whether the selected id is syntactically valid and present in the registry under current filter policy",
+                NodeDataType.BOOLEAN, this));
+    }
+
+    protected final void commitSelectedId(String raw) {
+        String canonical = RegistrySelectorUtils.normalizeCanonicalId(raw);
+        lastCommitSyntaxValid = canonical != null;
+        if (canonical == null) {
+            canonical = getDefaultId();
+        }
+        if (!readSelectedId().equals(canonical)) {
+            writeSelectedId(canonical);
+            markDirty();
+        }
+    }
+
+    protected final void applySelectedId(String id) {
+        commitSelectedId(id);
+        onSelectionApplied();
+        markDirty();
+    }
+
+    protected final RegistrySelectionOutputs resolveSelectionOutputs(String selectedId) {
+        String[] parts = RegistrySelectorUtils.splitNamespacePath(selectedId);
+        boolean registryOk = isKnownId(selectedId);
+        boolean valid = lastCommitSyntaxValid
+                && RegistrySelectorUtils.computeValid(selectedId, registryOk, isAllowModded());
+        return new RegistrySelectionOutputs(
+                parts[0],
+                parts[1],
+                RegistrySelectorUtils.isModdedNamespace(parts[0]),
+                valid
+        );
+    }
 
     protected void normalizeFilterState() {
         if (!isAllowModded()) {
@@ -501,7 +545,8 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
             if (registryReady) {
                 registryErrorLogged = false;
             }
-        } catch (Exception ignored) {
+        } catch (Throwable ignored) {
+            // Includes Bootstrap ExceptionInInitializerError when Minecraft is not loaded.
             registryReady = false;
             if (!registryErrorLogged) {
                 NodeCraft.LOGGER.warn(getRegistryLoadWarningLog());
@@ -545,33 +590,6 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
             return false;
         }
         return searchText.isEmpty() || fullId.toLowerCase(Locale.ROOT).contains(searchText);
-    }
-
-    protected final String sanitizeNamespacedId(String raw, String defaultId) {
-        if (raw == null) {
-            return defaultId;
-        }
-        String normalized = raw.trim().toLowerCase(Locale.ROOT);
-        if (normalized.isEmpty()) {
-            return defaultId;
-        }
-        if (!normalized.contains(":")) {
-            normalized = "minecraft:" + normalized;
-        }
-        return normalized;
-    }
-
-    protected final void applyValidatedId(String rawId, String defaultId) {
-        String nextId = sanitizeNamespacedId(rawId, defaultId);
-        if (!isAllowModded() && !nextId.startsWith("minecraft:")) {
-            nextId = defaultId;
-        }
-        if (!isKnownId(nextId)) {
-            nextId = defaultId;
-        }
-        if (!readSelectedId().equals(nextId)) {
-            applySelectedId(nextId);
-        }
     }
 
     protected final boolean catalogContains(String id) {

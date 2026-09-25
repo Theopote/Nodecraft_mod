@@ -64,7 +64,6 @@ public class EntityTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
     private boolean allowModded = true;
 
     private static final String OUTPUT_ENTITY_ID = "output_entity_id";
-    private static final String OUTPUT_NAMESPACE = "output_namespace";
     private static final String OUTPUT_ENTITY_PATH = "output_entity_path";
     private static final String OUTPUT_IS_MODDED = "output_is_modded";
 
@@ -75,6 +74,7 @@ public class EntityTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
         addOutputPort(new BasePort(OUTPUT_NAMESPACE, "Namespace", "The namespace part of the selected entity id", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_ENTITY_PATH, "Entity Path", "The path part of the selected entity id", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_IS_MODDED, "Is Modded", "Whether the selected entity is outside the minecraft namespace", NodeDataType.BOOLEAN, this));
+        addValidOutputPort();
 
         onSelectionApplied();
     }
@@ -110,6 +110,11 @@ public class EntityTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
     }
 
     @Override
+    protected void writeSelectedId(String canonicalId) {
+        this.selectedEntity = canonicalId;
+    }
+
+    @Override
     protected boolean isAllowModded() {
         return allowModded;
     }
@@ -118,15 +123,13 @@ public class EntityTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
     protected void applyAllowModdedQuietly(boolean allowModded) {
         this.allowModded = allowModded;
         normalizeFilterState();
-        if (!allowModded && !selectedEntity.startsWith("minecraft:")) {
-            applySelectedId(getDefaultId());
-        }
     }
 
     @Override
     protected void setAllowModdedFlag(boolean allowModded) {
         applyAllowModdedQuietly(allowModded);
         updateFilteredListFromSearch();
+        onSelectionApplied();
     }
 
     @Override
@@ -153,9 +156,6 @@ public class EntityTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
 
     @Override
     protected boolean isKnownId(String id) {
-        if (getDefaultId().equals(id)) {
-            return true;
-        }
         if (catalogContains(id)) {
             return true;
         }
@@ -168,7 +168,7 @@ public class EntityTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
                 return false;
             }
             return Registries.ENTITY_TYPE.containsId(parsed);
-        } catch (Exception ignored) {
+        } catch (Throwable ignored) {
             return false;
         }
     }
@@ -226,38 +226,18 @@ public class EntityTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
     }
 
     public void setSelectedEntity(String entityId) {
-        applyValidatedId(entityId, getDefaultId());
+        commitSelectedId(entityId);
+        onSelectionApplied();
     }
 
     private void updateOutputs() {
-        String namespace = "minecraft";
-        String path = "pig";
-        if (selectedEntity.contains(":")) {
-            String[] parts = selectedEntity.split(":", 2);
-            namespace = parts[0];
-            path = parts[1];
-        }
+        RegistrySelectionOutputs resolved = resolveSelectionOutputs(selectedEntity);
         outputValues.put(OUTPUT_ENTITY_ID, selectedEntity);
-        outputValues.put(OUTPUT_NAMESPACE, namespace);
-        outputValues.put(OUTPUT_ENTITY_PATH, path);
-        outputValues.put(OUTPUT_IS_MODDED, !namespace.equals("minecraft"));
+        outputValues.put(OUTPUT_NAMESPACE, resolved.namespace());
+        outputValues.put(OUTPUT_ENTITY_PATH, resolved.path());
+        outputValues.put(OUTPUT_IS_MODDED, resolved.modded());
+        outputValues.put(OUTPUT_VALID_ID, resolved.valid());
         syncOutputPorts();
-    }
-
-    @Override
-    protected void applySelectedId(String id) {
-        String nextId = sanitizeNamespacedId(id, getDefaultId());
-        if (!allowModded && !nextId.startsWith("minecraft:")) {
-            nextId = getDefaultId();
-        }
-        if (!isKnownId(nextId)) {
-            nextId = getDefaultId();
-        }
-        if (!selectedEntity.equals(nextId)) {
-            selectedEntity = nextId;
-            updateOutputs();
-            markDirty();
-        }
     }
 
     public String getSelectedEntity() {
@@ -282,13 +262,14 @@ public class EntityTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
     public void setNodeState(Object state) {
         if (state instanceof Map<?, ?> map) {
             if (map.get("selectedEntity") instanceof String value) {
-                applyValidatedId(value, getDefaultId());
+                commitSelectedId(value);
             }
             restoreFilterState(
                 map.get("allowModded") instanceof Boolean b ? b : allowModded,
                 map.get("selectedCategory") instanceof String c ? c : CATEGORY_ALL,
                 map.get("minecraftOnly") instanceof Boolean m && m
             );
+            onSelectionApplied();
         }
     }
 }

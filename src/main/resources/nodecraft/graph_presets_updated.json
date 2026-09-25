@@ -5287,20 +5287,20 @@
             },
             {
               "ref": "glass_block",
-              "typeId": "input.type_selectors.block_state_selector",
+              "typeId": "input.type_selectors.block_type_selector",
               "x": 1060,
               "y": 720,
               "state": {
-                "blockId": "minecraft:light_blue_stained_glass"
+                "selectedBlock": "minecraft:light_blue_stained_glass"
               }
             },
             {
               "ref": "frame_block",
-              "typeId": "input.type_selectors.block_state_selector",
+              "typeId": "input.type_selectors.block_type_selector",
               "x": 1060,
               "y": 880,
               "state": {
-                "blockId": "minecraft:iron_block"
+                "selectedBlock": "minecraft:iron_block"
               }
             },
             {
