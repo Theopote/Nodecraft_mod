@@ -20,7 +20,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.sequence.range",
     displayName = "Number Sequence",
-    description = "Generates a discrete numeric sequence from Start to End using Step. Not a continuous domain — use Domain Input for intervals.",
+    description = "Generates a discrete DOUBLE_LIST from Start to End using Step. Not a continuous domain — use Domain Input for intervals.",
     category = "math.sequence",
     order = 1
 )
@@ -37,7 +37,7 @@ public class MathRangeNode extends BaseNode {
         addInputPort(new BasePort(INPUT_START_ID, "Start", "The starting number of the range", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_END_ID, "End", "The ending number of the range", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_STEP_ID, "Step", "The step size between numbers", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_NUMBERS_ID, "Numbers", "The generated list of numbers", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_NUMBERS_ID, "Numbers", "The generated double list", NodeDataType.DOUBLE_LIST, this));
     }
 
     @Override
@@ -82,4 +82,3 @@ public class MathRangeNode extends BaseNode {
         return defaultValue;
     }
 }
-

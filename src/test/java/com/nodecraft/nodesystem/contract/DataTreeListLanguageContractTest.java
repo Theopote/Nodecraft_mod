@@ -78,7 +78,7 @@ class DataTreeListLanguageContractTest {
     @Test
     void filterAndDispatchConditionAreListMasks() {
         assertPortType(new FilterListNode(), "input_condition", NodeDataType.LIST);
-        assertPortType(new DispatchListNode(), "input_condition", NodeDataType.LIST);
+        assertPortType(new DispatchListNode(), "input_condition", NodeDataType.BOOLEAN_LIST);
         assertFalse(hasAnyPort(new FilterListNode()));
         assertFalse(hasAnyPort(new DispatchListNode()));
     }

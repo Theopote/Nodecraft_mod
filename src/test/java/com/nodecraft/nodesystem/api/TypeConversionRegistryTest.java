@@ -174,6 +174,18 @@ class TypeConversionRegistryTest {
         assertTrue(NodeDataType.isConnectableTo(NodeDataType.PATH_LIST, NodeDataType.PATH_LIST));
         assertTrue(NodeDataType.isConnectableTo(NodeDataType.FRAME_LIST, NodeDataType.FRAME_LIST));
         assertTrue(NodeDataType.isConnectableTo(NodeDataType.POINT_LIST, NodeDataType.POINT_LIST));
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.DOUBLE_LIST, NodeDataType.DOUBLE_LIST));
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.BOOLEAN_LIST, NodeDataType.BOOLEAN_LIST));
+    }
+
+    @Test
+    void doubleAndBooleanListsDoNotSilentlyCrossConnect() {
+        assertEquals(TypeConversionRegistry.ConversionPolicy.UNSUPPORTED,
+            TypeConversionRegistry.classify(NodeDataType.DOUBLE_LIST, NodeDataType.BOOLEAN_LIST));
+        assertEquals(TypeConversionRegistry.ConversionPolicy.UNSUPPORTED,
+            TypeConversionRegistry.classify(NodeDataType.DOUBLE_LIST, NodeDataType.POINT_LIST));
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.LIST, NodeDataType.DOUBLE_LIST));
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.BOOLEAN_LIST, NodeDataType.LIST));
     }
 
     @Test

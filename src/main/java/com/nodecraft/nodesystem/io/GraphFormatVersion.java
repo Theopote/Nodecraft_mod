@@ -138,8 +138,15 @@ public final class GraphFormatVersion {
      */
     public static final int V21 = 21;
 
+    /**
+     * List/collection v1: DOUBLE_LIST / BOOLEAN_LIST; numeric list producers;
+     * Create List / Repeat Item semantics; delete Chunk/Combine/Zip/Transpose;
+     * Group List → DATA_TREE; Map List → Map Numbers.
+     */
+    public static final int V22 = 22;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V21;
+    public static final int CURRENT = V22;
 
     private GraphFormatVersion() {
     }

@@ -71,7 +71,7 @@ Component echo ports were removed — use Deconstruct Vector.
 
 ## Known limitations
 
-- `Project Points To Plane` Distances LIST — awaits typed `DOUBLE_LIST`
+- `Project Points To Plane` Distances — prefer `DOUBLE_LIST` (typed in List v1; wire when touching that node)
 - Closest Point On Surface / Closest Point On Geometry — not yet implemented
 - Bounding Box → Region — no dedicated conversion node; use explicit geometry pipeline
 - Presets that used `normalizeDirection: false` on Move Point Along Direction need **Translate Point** for displacement semantics

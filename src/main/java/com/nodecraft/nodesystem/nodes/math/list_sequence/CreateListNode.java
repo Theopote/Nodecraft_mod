@@ -22,13 +22,13 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Dynamic list builder node with add/remove controls for input ports.
+ * Generic heterogeneous list builder. Typed lists come from typed producers.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "math.list.create_list",
     displayName = "Create List",
-    description = "Packs multiple input items into a single list.",
+    description = "Packs multiple ANY items into a generic LIST.",
     category = "math.list",
     order = 0
 )
@@ -47,21 +47,13 @@ public class CreateListNode extends BaseCustomUINode {
     )
     private volatile int inputCount = 3;
 
-    @NodeProperty(
-        displayName = "Allow Mixed Types",
-        category = "Settings",
-        order = 2,
-        description = "Whether the node accepts mixed input types."
-    )
-    private boolean allowDifferentTypes = true;
-
     public CreateListNode() {
         super(UUID.randomUUID(), "math.list.create_list");
         rebuildInputPorts();
         addOutputPort(new BasePort(
             OUTPUT_LIST_ID,
             "List",
-            "The resulting list containing all input items",
+            "The resulting generic list containing all input items",
             NodeDataType.LIST,
             this
         ));
@@ -135,7 +127,7 @@ public class CreateListNode extends BaseCustomUINode {
                 inputPortId(i),
                 "Item " + (i + 1),
                 "Item to add to the output list",
-                allowDifferentTypes ? NodeDataType.ANY : NodeDataType.STRING,
+                NodeDataType.ANY,
                 this
             );
             addInputPort(inputPort);
@@ -174,39 +166,22 @@ public class CreateListNode extends BaseCustomUINode {
         }
     }
 
-    public boolean isAllowDifferentTypes() {
-        return allowDifferentTypes;
-    }
-
-    public void setAllowDifferentTypes(boolean allow) {
-        if (this.allowDifferentTypes != allow) {
-            this.allowDifferentTypes = allow;
-            rebuildInputPorts();
-            markDirty();
-        }
-    }
-
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
         state.put("inputCount", getInputCount());
-        state.put("allowDifferentTypes", isAllowDifferentTypes());
         return state;
     }
 
     @Override
     public void setNodeState(Object state) {
-        if (state instanceof Map<?, ?> map) {
-            Object allowMixed = map.get("allowDifferentTypes");
-            if (allowMixed instanceof Boolean value) {
-                setAllowDifferentTypes(value);
-            }
-
-            Object count = map.get("inputCount");
-            if (count instanceof Number value) {
-                setInputCount(value.intValue());
-            }
+        if (!(state instanceof Map<?, ?> map)) {
+            return;
+        }
+        // Legacy allowDifferentTypes is ignored — inputs are always ANY.
+        Object count = map.get("inputCount");
+        if (count instanceof Number value) {
+            setInputCount(value.intValue());
         }
     }
 }
-

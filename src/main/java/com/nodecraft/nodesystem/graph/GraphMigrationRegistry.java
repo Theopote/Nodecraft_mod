@@ -85,6 +85,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V18 -> migrateV18ToV19(graph);
             case GraphFormatVersion.V19 -> migrateV19ToV20(graph);
             case GraphFormatVersion.V20 -> migrateV20ToV21(graph);
+            case GraphFormatVersion.V21 -> migrateV21ToV22(graph);
             default -> graph;
         };
     }
@@ -1400,6 +1401,92 @@ public final class GraphMigrationRegistry {
             if ((CONSTRUCT_VECTOR_TYPE.equals(sourceType) || VECTOR_INPUT_TYPE.equals(sourceType))
                     && VECTOR_PRODUCER_LEGACY_COMPONENT_PORTS.contains(sourcePort)) {
                 LOGGER.debug("Dropped vector producer legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+            return false;
+        });
+
+        return graph;
+    }
+
+    private static final Set<String> LIST_V22_DELETED_NODE_TYPES = Set.of(
+            "math.list.chunk",
+            "math.list.combine_lists",
+            "math.list.zip",
+            "math.list.transpose"
+    );
+
+    private static final String MAP_LIST_LEGACY_TYPE = "math.list.map_list";
+    private static final String MAP_NUMBERS_TYPE = "math.list.map_numbers";
+    private static final String GROUP_LIST_TYPE = "math.list.group_list";
+
+    /**
+     * List/collection v1: delete nested-list structure nodes; remap Map List → Map Numbers;
+     * drop Group List legacy {@code output_groups} wires (now DATA_TREE {@code output_tree}).
+     */
+    private static SavedGraph migrateV21ToV22(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return graph;
+        }
+
+        graph.nodes = new ArrayList<>(graph.nodes);
+        graph.nodes.removeIf(node -> node != null && node.typeId != null
+                && LIST_V22_DELETED_NODE_TYPES.contains(node.typeId.toLowerCase(Locale.ROOT)));
+
+        for (SavedNode node : graph.nodes) {
+            if (node == null || node.typeId == null) {
+                continue;
+            }
+            if (MAP_LIST_LEGACY_TYPE.equalsIgnoreCase(node.typeId)) {
+                node.typeId = MAP_NUMBERS_TYPE;
+            }
+            if (node.state instanceof Map<?, ?> state
+                    && ("math.list.create_list".equalsIgnoreCase(node.typeId)
+                    || "math.sequence.series".equalsIgnoreCase(node.typeId)
+                    || MAP_NUMBERS_TYPE.equalsIgnoreCase(node.typeId)
+                    || "math.list.statistics".equalsIgnoreCase(node.typeId))) {
+                Map<String, Object> cleaned = new HashMap<>();
+                for (Map.Entry<?, ?> entry : state.entrySet()) {
+                    if (!(entry.getKey() instanceof String key)) {
+                        continue;
+                    }
+                    if ("allowDifferentTypes".equals(key)
+                            || "useIntegerType".equals(key)
+                            || "ignoreNonNumeric".equals(key)
+                            || "ignoreNulls".equals(key)) {
+                        continue;
+                    }
+                    cleaned.put(key, entry.getValue());
+                }
+                node.state = cleaned;
+            }
+        }
+
+        if (graph.connections == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            if (GROUP_LIST_TYPE.equals(sourceType) && "output_groups".equals(sourcePort)) {
+                LOGGER.debug("Dropped Group List legacy output_groups from {}", connection.sourceNodeId);
+                return true;
+            }
+            if (MAP_NUMBERS_TYPE.equals(sourceType) && "output_changed_count".equals(sourcePort)) {
+                LOGGER.debug("Dropped Map Numbers legacy output_changed_count from {}", connection.sourceNodeId);
                 return true;
             }
             return false;

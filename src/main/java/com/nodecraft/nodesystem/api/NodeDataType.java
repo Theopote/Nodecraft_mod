@@ -115,6 +115,10 @@ public enum NodeDataType {
     FILE_PATH("file_path", "File Path", String.class),
 
     LIST("list", "List", java.util.List.class, ListElementKind.UNCONSTRAINED),
+    /** Ordered doubles (sequences, distances, numeric map results). */
+    DOUBLE_LIST("double_list", "Double List", java.util.List.class, ListElementKind.DOUBLE),
+    /** Ordered booleans (dispatch masks, per-item predicates). */
+    BOOLEAN_LIST("boolean_list", "Boolean List", java.util.List.class, ListElementKind.BOOLEAN),
     DATA_TREE("data_tree", "Data Tree", DataTreeData.class),
     COORDINATE_LIST("coordinate_list", "Coordinate List", java.util.List.class, ListElementKind.BLOCK_POS),
     BLOCK_INFO_LIST("block_info_list", "Block Info List", java.util.List.class, ListElementKind.BLOCK_INFO),

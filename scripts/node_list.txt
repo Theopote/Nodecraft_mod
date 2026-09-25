@@ -204,8 +204,6 @@ math.fields.vector_sample_point|math.fields|Vector Field Sample Point
 math.fields.vector_sample_points|math.fields|Vector Field Sample Points
 math.fields.volume_attractor_field|math.fields|Volume Attractor Field
 math.fields.vortex_field|math.fields|Vortex Field
-math.list.chunk|math.list|Chunk List
-math.list.combine_lists|math.list|Combine Lists
 math.list.create_list|math.list|Create List
 math.list.deduplicate|math.list|Deduplicate List
 math.list.dispatch_list|math.list|Dispatch List
@@ -215,7 +213,7 @@ math.list.get_item|math.list|Get Item
 math.list.group_list|math.list|Group List
 math.list.insert_item|math.list|Insert Item
 math.list.list_length|math.list|List Length
-math.list.map_list|math.list|Map List
+math.list.map_numbers|math.list|Map Numbers
 math.list.reduce|math.list|Reduce List
 math.list.remove_item|math.list|Remove Item
 math.list.reverse_list|math.list|Reverse List
@@ -224,8 +222,6 @@ math.list.shuffle_list|math.list|Shuffle List
 math.list.sort_list|math.list|Sort List
 math.list.statistics|math.list|List Statistics
 math.list.sub_list|math.list|Sub List
-math.list.transpose|math.list|Transpose List of Lists
-math.list.zip|math.list|Zip Lists
 math.logic.and|math.logic|AND
 math.logic.if|math.logic|If
 math.logic.not|math.logic|NOT
@@ -259,9 +255,9 @@ math.scalar_math.sign|math.scalar_math|Sign
 math.scalar_math.smoothstep|math.scalar_math|Smoothstep
 math.scalar_math.sqrt|math.scalar_math|Square Root
 math.scalar_math.subtraction|math.scalar_math|Subtraction (-)
-math.sequence.range|math.sequence|Range
-math.sequence.repeat|math.sequence|Repeat
-math.sequence.series|math.sequence|Data Series
+math.sequence.range|math.sequence|Number Sequence
+math.sequence.repeat|math.sequence|Repeat Item
+math.sequence.series|math.sequence|Number Series
 math.trigonometry.acos|math.trigonometry|Arccosine (ArcCos)
 math.trigonometry.asin|math.trigonometry|Arcsine (ArcSin)
 math.trigonometry.atan|math.trigonometry|Arctangent (ArcTan)

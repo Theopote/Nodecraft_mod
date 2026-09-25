@@ -17,9 +17,9 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "math.list.map_list",
-    displayName = "Map List",
-    description = "Applies a scalar operation to each numeric item in a list.",
+    id = "math.list.map_numbers",
+    displayName = "Map Numbers",
+    description = "Applies a scalar operation to each value in a DOUBLE_LIST.",
     category = "math.list",
     order = 31
 )
@@ -44,94 +44,86 @@ public class MapListNode extends BaseNode {
     @NodeProperty(displayName = "Operation", category = "Map", order = 1)
     private Operation operation = Operation.ADD;
 
-    @NodeProperty(displayName = "Ignore Non-Numeric", category = "Map", order = 2)
-    private boolean ignoreNonNumeric = true;
-
-    @NodeProperty(displayName = "Ignore Nulls", category = "Map", order = 3)
-    private boolean ignoreNulls = true;
-
     private static final String INPUT_LIST_ID = "input_list";
     private static final String INPUT_VALUE_ID = "input_value";
     private static final String INPUT_MIN_ID = "input_min";
     private static final String INPUT_MAX_ID = "input_max";
 
     private static final String OUTPUT_LIST_ID = "output_list";
-    private static final String OUTPUT_CHANGED_COUNT_ID = "output_changed_count";
+    private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public MapListNode() {
-        super(UUID.randomUUID(), "math.list.map_list");
+        super(UUID.randomUUID(), "math.list.map_numbers");
 
-        addInputPort(new BasePort(INPUT_LIST_ID, "List", "Input list", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_LIST_ID, "Numbers", "Input double list", NodeDataType.DOUBLE_LIST, this));
         addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Operand value for scalar operations", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_MIN_ID, "Min", "Clamp minimum (for CLAMP operation)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_MAX_ID, "Max", "Clamp maximum (for CLAMP operation)", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_LIST_ID, "Mapped", "Mapped list", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_CHANGED_COUNT_ID, "Changed Count", "Number of mapped numeric entries", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_LIST_ID, "Numbers", "Mapped double list", NodeDataType.DOUBLE_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of mapped entries", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether mapping completed", NodeDataType.BOOLEAN, this));
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "Map Numbers";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object listObj = inputValues.get(INPUT_LIST_ID);
         if (!(listObj instanceof List<?> inputList)) {
-            outputValues.put(OUTPUT_LIST_ID, List.of());
-            outputValues.put(OUTPUT_CHANGED_COUNT_ID, 0);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            writeInvalid();
             return;
         }
 
-        double operand = getFiniteOrDefault(inputValues.get(INPUT_VALUE_ID), 0.0d);
-        double min = getFiniteOrDefault(inputValues.get(INPUT_MIN_ID), 0.0d);
-        double max = getFiniteOrDefault(inputValues.get(INPUT_MAX_ID), 1.0d);
+        Double operand = toFiniteDouble(inputValues.get(INPUT_VALUE_ID));
+        Double minObj = toFiniteDouble(inputValues.get(INPUT_MIN_ID));
+        Double maxObj = toFiniteDouble(inputValues.get(INPUT_MAX_ID));
+        double min = minObj != null ? minObj : 0.0d;
+        double max = maxObj != null ? maxObj : 1.0d;
         if (min > max) {
             double tmp = min;
             min = max;
             max = tmp;
         }
 
-        List<Object> mapped = new ArrayList<>(inputList.size());
-        int changedCount = 0;
+        Operation op = operation == null ? Operation.ADD : operation;
+        boolean needsOperand = op != Operation.ABS && op != Operation.FLOOR && op != Operation.CEIL
+                && op != Operation.ROUND && op != Operation.SIGN && op != Operation.CLAMP;
+        if (needsOperand && operand == null) {
+            writeInvalid();
+            return;
+        }
+        double operandValue = operand != null ? operand : 0.0d;
+
+        List<Double> mapped = new ArrayList<>(inputList.size());
         for (Object item : inputList) {
-            if (item == null) {
-                if (!ignoreNulls) {
-                    outputValues.put(OUTPUT_LIST_ID, List.of());
-                    outputValues.put(OUTPUT_CHANGED_COUNT_ID, 0);
-                    outputValues.put(OUTPUT_VALID_ID, false);
-                    return;
-                }
-                mapped.add(null);
-                continue;
-            }
-
-            Double value = toDouble(item);
-            if (value == null || !Double.isFinite(value)) {
-                if (!ignoreNonNumeric) {
-                    outputValues.put(OUTPUT_LIST_ID, List.of());
-                    outputValues.put(OUTPUT_CHANGED_COUNT_ID, 0);
-                    outputValues.put(OUTPUT_VALID_ID, false);
-                    return;
-                }
-                mapped.add(item);
-                continue;
-            }
-
-            double mappedValue = applyOperation(value, operand, min, max);
-            if (!Double.isFinite(mappedValue)) {
-                outputValues.put(OUTPUT_LIST_ID, List.of());
-                outputValues.put(OUTPUT_CHANGED_COUNT_ID, 0);
-                outputValues.put(OUTPUT_VALID_ID, false);
+            Double value = toFiniteDouble(item);
+            if (value == null) {
+                writeInvalid();
                 return;
             }
 
+            double mappedValue = applyOperation(value, operandValue, min, max);
+            if (!Double.isFinite(mappedValue)) {
+                writeInvalid();
+                return;
+            }
             mapped.add(mappedValue);
-            changedCount++;
         }
 
         outputValues.put(OUTPUT_LIST_ID, mapped);
-        outputValues.put(OUTPUT_CHANGED_COUNT_ID, changedCount);
+        outputValues.put(OUTPUT_COUNT_ID, mapped.size());
         outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    private void writeInvalid() {
+        outputValues.put(OUTPUT_LIST_ID, List.of());
+        outputValues.put(OUTPUT_COUNT_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
     }
 
     private double applyOperation(double input, double operand, double min, double max) {
@@ -153,34 +145,18 @@ public class MapListNode extends BaseNode {
         };
     }
 
-    private Double toDouble(Object value) {
+    private Double toFiniteDouble(Object value) {
         if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        if (value instanceof String text) {
-            try {
-                return Double.parseDouble(text.trim());
-            } catch (NumberFormatException ignored) {
-                return null;
-            }
+            double parsed = number.doubleValue();
+            return Double.isFinite(parsed) ? parsed : null;
         }
         return null;
-    }
-
-    private double getFiniteOrDefault(Object value, double fallback) {
-        Double parsed = toDouble(value);
-        if (parsed == null || !Double.isFinite(parsed)) {
-            return fallback;
-        }
-        return parsed;
     }
 
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
         state.put("operation", operation != null ? operation.name() : Operation.ADD.name());
-        state.put("ignoreNonNumeric", ignoreNonNumeric);
-        state.put("ignoreNulls", ignoreNulls);
         return state;
     }
 
@@ -197,14 +173,7 @@ public class MapListNode extends BaseNode {
                 setOperation(Operation.ADD);
             }
         }
-        Object ignoreNonNumericValue = map.get("ignoreNonNumeric");
-        if (ignoreNonNumericValue instanceof Boolean value) {
-            setIgnoreNonNumeric(value);
-        }
-        Object ignoreNullsValue = map.get("ignoreNulls");
-        if (ignoreNullsValue instanceof Boolean value) {
-            setIgnoreNulls(value);
-        }
+        // Legacy ignoreNonNumeric / ignoreNulls are ignored.
     }
 
     public Operation getOperation() {
@@ -218,27 +187,4 @@ public class MapListNode extends BaseNode {
             markDirty();
         }
     }
-
-    public boolean isIgnoreNonNumeric() {
-        return ignoreNonNumeric;
-    }
-
-    public void setIgnoreNonNumeric(boolean value) {
-        if (ignoreNonNumeric != value) {
-            ignoreNonNumeric = value;
-            markDirty();
-        }
-    }
-
-    public boolean isIgnoreNulls() {
-        return ignoreNulls;
-    }
-
-    public void setIgnoreNulls(boolean value) {
-        if (ignoreNulls != value) {
-            ignoreNulls = value;
-            markDirty();
-        }
-    }
 }
-

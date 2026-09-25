@@ -7,6 +7,8 @@ package com.nodecraft.nodesystem.api;
 public enum ListElementKind {
     NONE,
     UNCONSTRAINED,
+    DOUBLE,
+    BOOLEAN,
     BLOCK_POS,
     POINT,
     VECTOR,

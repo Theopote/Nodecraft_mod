@@ -119,7 +119,7 @@ class BoxFaceSpatialLanguageContractTest {
         v19.nodePositions = java.util.Map.of();
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v19);
-        assertEquals(GraphFormatVersion.V21, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.V22, migrated.formatVersion);
         assertEquals(1, migrated.connections.size());
         assertEquals("output_found", migrated.connections.getFirst().sourcePortId);
     }

@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **543**
+- Total nodes: **539**
 - Total categories: **59**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -34,7 +34,7 @@
 | `math.compare` | 7 |
 | `math.data_tree` | 13 |
 | `math.fields` | 17 |
-| `math.list` | 22 |
+| `math.list` | 18 |
 | `math.logic` | 6 |
 | `math.random` | 5 |
 | `math.scalar_math` | 23 |
@@ -430,24 +430,20 @@
 | Repulsor Field | `math.fields.repulsor_field` | Inverts a vector field direction (repulsion) with optional strength scaling. | `RepulsorFieldNode` |
 | Attractor Field Blend | `math.fields.attractor_blend` | Blends up to four attractor/repulsor fields using per-field weights. | `AttractorFieldBlendNode` |
 
-## math.list (22)
+## math.list (18)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Create List | `math.list.create_list` | Packs multiple input items into a single list. | `CreateListNode` |
-| Zip Lists | `math.list.zip` | Pairs two lists by index and outputs tuples as entry maps. | `ZipListsNode` |
+| Create List | `math.list.create_list` | Packs multiple ANY items into a generic LIST. | `CreateListNode` |
 | Deduplicate List | `math.list.deduplicate` | Removes duplicate values from a list while preserving order. | `DeduplicateListNode` |
-| List Statistics | `math.list.statistics` | Computes min, max, sum, average, and median for a numeric list. | `ListStatisticsNode` |
-| Map List | `math.list.map_list` | Applies a scalar operation to each numeric item in a list. | `MapListNode` |
+| List Statistics | `math.list.statistics` | Computes min, max, sum, average, and median for a DOUBLE_LIST. | `ListStatisticsNode` |
+| Map Numbers | `math.list.map_numbers` | Applies a scalar operation to each value in a DOUBLE_LIST. | `MapListNode` |
 | Reduce List | `math.list.reduce` | Reduces a list into a single value using a selected operation. | `ReduceListNode` |
-| Chunk List | `math.list.chunk` | Splits a list into fixed-size chunks. | `ChunkListNode` |
-| Transpose List of Lists | `math.list.transpose` | Transposes a list of lists by swapping rows and columns. | `TransposeListNode` |
-| Combine Lists | `math.list.combine_lists` | Combines multiple lists into a single list by index. | `CombineListsNode` |
-| Dispatch List | `math.list.dispatch_list` | Splits a list into two based on boolean conditions | `DispatchListNode` |
+| Dispatch List | `math.list.dispatch_list` | Splits a list into two using a BOOLEAN_LIST mask (one boolean per item). | `DispatchListNode` |
 | Filter List | `math.list.filter_list` | Filters a list based on boolean conditions | `FilterListNode` |
 | Flatten List | `math.list.flatten_list` | Flattens a nested list structure into a single-level list | `FlattenListNode` |
 | Get Item | `math.list.get_item` | Gets an item from a list at a specified index. | `GetItemNode` |
-| Group List | `math.list.group_list` | Groups items in a list based on a key list | `GroupListNode` |
+| Group List | `math.list.group_list` | Groups list items by parallel keys into a DATA_TREE (one branch per unique key). | `GroupListNode` |
 | Insert Item | `math.list.insert_item` | Inserts an item into a list at a specified index | `InsertItemNode` |
 | List Length | `math.list.list_length` | Returns the number of items in a list. | `ListLengthNode` |
 | Remove Item | `math.list.remove_item` | Removes an item from a list by index or value | `RemoveItemNode` |
@@ -510,9 +506,9 @@
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Number Sequence | `math.sequence.range` | Generates a discrete numeric sequence from Start to End using Step. Not a continuous domain — use Domain Input for intervals. | `MathRangeNode` |
-| Repeat | `math.sequence.repeat` | Repeats a single data item or list multiple times | `RepeatNode` |
-| Data Series | `math.sequence.series` | Generates a series of numbers with constant increment | `DataSeriesNode` |
+| Number Sequence | `math.sequence.range` | Generates a discrete DOUBLE_LIST from Start to End using Step. Not a continuous domain — use Domain Input for intervals. | `MathRangeNode` |
+| Repeat Item | `math.sequence.repeat` | Repeats a single item Count times as a LIST. A list item is repeated as one element, never tiled. | `RepeatNode` |
+| Number Series | `math.sequence.series` | Generates a DOUBLE_LIST with Start, Step, and Count. | `DataSeriesNode` |
 
 ## math.trigonometry (14)
 
