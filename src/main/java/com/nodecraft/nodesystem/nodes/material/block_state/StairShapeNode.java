@@ -5,16 +5,12 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
-import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BlockStateData;
-import com.nodecraft.nodesystem.util.Coordinate;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -31,63 +27,43 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "material.block_state.stair_shape",
     displayName = "Stair Shape",
-    description = "Assigns stair facing, half, and inner/outer corner shape states",
+    description = "Resolves stair corner shape from neighboring stair placements",
     category = "material.block_state",
-    order = 2
+    order = 3
 )
 public class StairShapeNode extends BaseNode {
 
     private static final String INPUT_PLACEMENTS_ID = "input_placements";
-    private static final String INPUT_COORDINATES_ID = "input_coordinates";
-    private static final String INPUT_GEOMETRY_ID = "input_geometry";
-    private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
-    private static final String INPUT_CYLINDER_GEOMETRY_ID = "input_cylinder_geometry";
-    private static final String INPUT_SPHERE_GEOMETRY_ID = "input_sphere_geometry";
-    private static final String INPUT_TORUS_GEOMETRY_ID = "input_torus_geometry";
-    private static final String INPUT_BLOCK_TYPE_ID = "input_block_type";
     private static final String INPUT_DIRECTION_ID = "input_direction";
     private static final String INPUT_HALF_ID = "input_half";
 
     private static final String OUTPUT_PLACEMENTS_ID = "output_placements";
-    private static final String OUTPUT_POSITIONS_ID = "output_positions";
-    private static final String OUTPUT_BLOCK_IDS_ID = "output_block_ids";
 
     public StairShapeNode() {
         super(UUID.randomUUID(), "material.block_state.stair_shape");
 
-        addInputPort(new BasePort(INPUT_PLACEMENTS_ID, "Block Placements", "Optional incoming placements to convert into stair states", NodeDataType.BLOCK_PLACEMENT_LIST, this));
-        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list", NodeDataType.BLOCK_LIST, this));
-        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified abstract geometry input", NodeDataType.GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry data to materialize", NodeDataType.BOX_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to materialize", NodeDataType.CYLINDER_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
-        addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry data to materialize", NodeDataType.TORUS_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_BLOCK_TYPE_ID, "Block Type", "Fallback stair block id when building placements from coordinates or geometry", NodeDataType.BLOCK_TYPE, this));
-        addInputPort(new BasePort(INPUT_DIRECTION_ID, "Direction", "Fallback direction used to derive a horizontal facing", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_PLACEMENTS_ID, "Block Placements", "Stair placements to resolve corner shapes for", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addInputPort(new BasePort(INPUT_DIRECTION_ID, "Direction", "Fallback horizontal facing when placement state lacks facing", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_HALF_ID, "Half", "Optional stair half override: bottom or top", NodeDataType.STRING, this));
 
-        addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Placements with stair state overrides", NodeDataType.BLOCK_PLACEMENT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_POSITIONS_ID, "Positions", "Resolved block positions", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCK_IDS_ID, "Block IDs", "Block IDs aligned with the positions list", NodeDataType.BLOCK_INFO_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Placements with resolved stair shape state", NodeDataType.BLOCK_PLACEMENT_LIST, this));
     }
 
     @Override
     public String getDescription() {
-        return "Assigns stair facing, half, and inner/outer corner shape states";
+        return "Resolves stair corner shape from neighboring stair placements";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Direction fallbackFacing = resolveHorizontalFacing(resolveDirection(inputValues.get(INPUT_DIRECTION_ID)));
+        Direction fallbackFacing = resolveHorizontalFacing(
+            BlockStateValidationUtils.resolveStrictVector3d(inputValues.get(INPUT_DIRECTION_ID)));
         String half = resolveHalf(inputValues.get(INPUT_HALF_ID));
 
-        List<BlockPlacementData> basePlacements = resolvePlacements(fallbackFacing, half);
+        List<BlockPlacementData> basePlacements = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
         Map<BlockPos, StairPlacement> stairMap = buildStairMap(basePlacements, fallbackFacing, half);
 
         List<BlockPlacementData> resolved = new ArrayList<>(basePlacements.size());
-        BlockPosList positions = new BlockPosList();
-        List<String> blockIds = new ArrayList<>(basePlacements.size());
-
         for (BlockPlacementData placement : basePlacements) {
             if (placement.pos() == null || placement.blockId() == null || placement.blockId().isEmpty()) {
                 continue;
@@ -99,47 +75,9 @@ public class StairShapeNode extends BaseNode {
                 : copyState(placement.stateData());
 
             resolved.add(new BlockPlacementData(placement.pos(), placement.blockId(), state));
-            positions.add(placement.pos());
-            blockIds.add(placement.blockId());
         }
 
         outputValues.put(OUTPUT_PLACEMENTS_ID, resolved);
-        outputValues.put(OUTPUT_POSITIONS_ID, positions);
-        outputValues.put(OUTPUT_BLOCK_IDS_ID, blockIds);
-    }
-
-    private List<BlockPlacementData> resolvePlacements(Direction fallbackFacing, String fallbackHalf) {
-        Object placementsObj = inputValues.get(INPUT_PLACEMENTS_ID);
-        if (placementsObj instanceof List<?> placementList && !placementList.isEmpty()) {
-            List<BlockPlacementData> resolved = new ArrayList<>();
-            for (Object entry : placementList) {
-                if (entry instanceof BlockPlacementData placement && placement.pos() != null && placement.blockId() != null) {
-                    resolved.add(new BlockPlacementData(placement.pos(), placement.blockId(), placement.stateData()));
-                }
-            }
-            return resolved;
-        }
-
-        String blockType = getInputString(INPUT_BLOCK_TYPE_ID, "minecraft:stone_stairs");
-        BlockPosList positions = GeometryVoxelizer.resolveBlocks(
-            inputValues.get(INPUT_COORDINATES_ID),
-            inputValues.get(INPUT_GEOMETRY_ID),
-            inputValues.get(INPUT_BOX_GEOMETRY_ID),
-            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-            inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-            inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-            true
-        );
-
-        List<BlockPlacementData> resolved = new ArrayList<>();
-        for (BlockPos pos : positions) {
-            BlockStateData state = new BlockStateData();
-            state.setProperty("facing", fallbackFacing.asString());
-            state.setProperty("half", fallbackHalf);
-            state.setProperty("shape", "straight");
-            resolved.add(new BlockPlacementData(pos, blockType, state));
-        }
-        return resolved;
     }
 
     private Map<BlockPos, StairPlacement> buildStairMap(List<BlockPlacementData> placements, Direction fallbackFacing, String fallbackHalf) {
@@ -241,32 +179,10 @@ public class StairShapeNode extends BaseNode {
         return direction.z >= 0.0d ? Direction.SOUTH : Direction.NORTH;
     }
 
-    private @Nullable Vector3d resolveDirection(@Nullable Object value) {
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof PointData point) {
-            return point.getPosition();
-        }
-        if (value instanceof Vec3d vector) {
-            return new Vector3d(vector.x, vector.y, vector.z);
-        }
-        if (value instanceof Coordinate coordinate) {
-            return new Vector3d(coordinate.getX(), coordinate.getY(), coordinate.getZ());
-        }
-        if (value instanceof BlockPos pos) {
-            return new Vector3d(pos.getX(), pos.getY(), pos.getZ());
-        }
-        return null;
-    }
-
     private BlockStateData copyState(@Nullable BlockStateData stateData) {
-        return stateData != null ? stateData.copy() : new BlockStateData();
-    }
-
-    private String getInputString(String portId, String fallback) {
-        Object value = inputValues.get(portId);
-        return (value instanceof String text && !text.isBlank()) ? text : fallback;
+        BlockStateData copy = stateData != null ? stateData.copy() : new BlockStateData();
+        BlockStateValidationUtils.stripIdentityKeys(copy);
+        return copy;
     }
 
     private record StairPlacement(BlockPos pos, String blockId, Direction facing, String half) {

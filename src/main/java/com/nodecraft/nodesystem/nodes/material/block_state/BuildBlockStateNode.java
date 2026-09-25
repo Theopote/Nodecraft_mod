@@ -8,15 +8,9 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockStateData;
-import net.minecraft.block.Block;
-import net.minecraft.registry.Registries;
-import net.minecraft.state.property.Property;
-import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -24,10 +18,10 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "material.block_state.build_block_state",
-    displayName = "Build BlockState",
-    description = "Builds block-state key/value data from a block id, base state, and dynamic property override",
+    displayName = "Build Block State",
+    description = "Builds and validates block-state property data from a block type, base state, and overrides",
     category = "material.block_state",
-    order = 6
+    order = 0
 )
 public class BuildBlockStateNode extends BaseNode {
 
@@ -41,7 +35,6 @@ public class BuildBlockStateNode extends BaseNode {
     private static final String INPUT_WATERLOGGED_ID = "input_waterlogged";
 
     private static final String OUTPUT_BLOCK_STATE_ID = "output_block_state";
-    private static final String OUTPUT_BLOCK_INFO_ID = "output_block_info";
     private static final String OUTPUT_PROPERTY_COUNT_ID = "output_property_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
@@ -58,7 +51,7 @@ public class BuildBlockStateNode extends BaseNode {
         super(UUID.randomUUID(), "material.block_state.build_block_state");
 
         addInputPort(new BasePort(INPUT_BASE_STATE_ID, "Base State", "Optional state data to copy before applying overrides", NodeDataType.BLOCK_STATE_DATA, this));
-        addInputPort(new BasePort(INPUT_BLOCK_TYPE_ID, "Block Type", "Block id to include, e.g. minecraft:oak_stairs", NodeDataType.BLOCK_TYPE, this));
+        addInputPort(new BasePort(INPUT_BLOCK_TYPE_ID, "Block Type", "Block id used for registry validation, e.g. minecraft:oak_stairs", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_PROPERTY_NAME_ID, "Property", "Dynamic property name, e.g. facing or axis", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_PROPERTY_VALUE_ID, "Value", "Dynamic property value, e.g. north or x", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_FACING_ID, "Facing", "Shortcut for the facing property", NodeDataType.STRING, this));
@@ -66,11 +59,10 @@ public class BuildBlockStateNode extends BaseNode {
         addInputPort(new BasePort(INPUT_HALF_ID, "Half", "Shortcut for the half property", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_WATERLOGGED_ID, "Waterlogged", "Shortcut for the waterlogged property", NodeDataType.BOOLEAN, this));
 
-        addOutputPort(new BasePort(OUTPUT_BLOCK_STATE_ID, "Block State", "Composed block-state data", NodeDataType.BLOCK_STATE_DATA, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCK_INFO_ID, "Block Info", "Block-state data usable by world write nodes", NodeDataType.BLOCK_INFO, this));
-        addOutputPort(new BasePort(OUTPUT_PROPERTY_COUNT_ID, "Property Count", "Number of emitted state entries including block id", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when all resolvable properties are valid for the selected block", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Validation warnings or errors", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCK_STATE_ID, "Block State", "Composed block-state property data", NodeDataType.BLOCK_STATE_DATA, this));
+        addOutputPort(new BasePort(OUTPUT_PROPERTY_COUNT_ID, "Property Count", "Number of state property entries", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when block type is known and all properties are valid", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Validation error when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -78,13 +70,16 @@ public class BuildBlockStateNode extends BaseNode {
         BlockStateData state = inputValues.get(INPUT_BASE_STATE_ID) instanceof BlockStateData base
             ? base.copy()
             : new BlockStateData();
+        BlockStateValidationUtils.stripIdentityKeys(state);
 
-        String blockType = normalizeBlockId(inputValues.get(INPUT_BLOCK_TYPE_ID));
-        if (blockType != null) {
-            state.setProperty("blockId", blockType);
+        String blockType = BlockStateValidationUtils.normalizeBlockId(inputValues.get(INPUT_BLOCK_TYPE_ID));
+
+        BlockStateValidationUtils.PropertiesTextResult textResult =
+            BlockStateValidationUtils.applyPropertiesText(state, propertiesText);
+        if (!textResult.valid()) {
+            emit(state, blockType, BlockStateValidationUtils.ValidationResult.fail(textResult.error()));
+            return;
         }
-
-        applyPropertiesText(state, propertiesText);
 
         putString(state, INPUT_PROPERTY_NAME_ID, INPUT_PROPERTY_VALUE_ID);
         putShortcut(state, "facing", inputValues.get(INPUT_FACING_ID));
@@ -94,26 +89,14 @@ public class BuildBlockStateNode extends BaseNode {
             state.setBooleanProperty("waterlogged", waterlogged);
         }
 
-        ValidationResult validation = validateState(blockType, state);
-        outputValues.put(OUTPUT_BLOCK_STATE_ID, state);
-        outputValues.put(OUTPUT_BLOCK_INFO_ID, state);
-        outputValues.put(OUTPUT_PROPERTY_COUNT_ID, state.size());
-        outputValues.put(OUTPUT_VALID_ID, validation.valid());
-        outputValues.put(OUTPUT_ERROR_ID, validation.message());
+        emit(state, blockType, BlockStateValidationUtils.validateProperties(blockType, state));
     }
 
-    static void applyPropertiesText(BlockStateData state, @Nullable String text) {
-        if (text == null || text.isBlank()) {
-            return;
-        }
-        String[] pairs = text.split(",");
-        for (String pair : pairs) {
-            String[] kv = pair.trim().split("=", 2);
-            if (kv.length != 2) {
-                continue;
-            }
-            putProperty(state, kv[0], kv[1]);
-        }
+    private void emit(BlockStateData state, @Nullable String blockType, BlockStateValidationUtils.ValidationResult validation) {
+        outputValues.put(OUTPUT_BLOCK_STATE_ID, state);
+        outputValues.put(OUTPUT_PROPERTY_COUNT_ID, BlockStateValidationUtils.propertyCount(state));
+        outputValues.put(OUTPUT_VALID_ID, validation.valid());
+        outputValues.put(OUTPUT_ERROR_ID, validation.message());
     }
 
     private void putString(BlockStateData state, String namePortId, String valuePortId) {
@@ -122,71 +105,13 @@ public class BuildBlockStateNode extends BaseNode {
         if (!(nameObj instanceof String name) || !(valueObj instanceof String value)) {
             return;
         }
-        putProperty(state, name, value);
+        BlockStateValidationUtils.putProperty(state, name, value);
     }
 
     private void putShortcut(BlockStateData state, String property, Object valueObj) {
         if (valueObj instanceof String value) {
-            putProperty(state, property, value);
+            BlockStateValidationUtils.putProperty(state, property, value);
         }
-    }
-
-    private static void putProperty(BlockStateData state, String rawName, String rawValue) {
-        if (rawName == null || rawValue == null) {
-            return;
-        }
-        String name = rawName.trim().toLowerCase(Locale.ROOT);
-        String value = rawValue.trim().toLowerCase(Locale.ROOT);
-        if (!name.isEmpty() && !value.isEmpty()) {
-            state.setProperty(name, value);
-        }
-    }
-
-    private static @Nullable String normalizeBlockId(Object value) {
-        if (!(value instanceof String text) || text.isBlank()) {
-            return null;
-        }
-        String trimmed = text.trim().toLowerCase(Locale.ROOT);
-        return trimmed.contains(":") ? trimmed : "minecraft:" + trimmed;
-    }
-
-    private ValidationResult validateState(@Nullable String blockType, BlockStateData state) {
-        if (blockType == null) {
-            return new ValidationResult(true, "");
-        }
-
-        Block block;
-        try {
-            block = Registries.BLOCK.get(Identifier.of(blockType));
-        } catch (Throwable e) {
-            return new ValidationResult(true, "Block registry unavailable; skipped property validation.");
-        }
-
-        List<String> errors = new ArrayList<>();
-        for (String key : state.keySet()) {
-            if ("blockId".equals(key) || "id".equals(key)) {
-                continue;
-            }
-            Property<?> property = findProperty(block, key);
-            if (property == null) {
-                errors.add("Unsupported property '" + key + "' for " + blockType);
-                continue;
-            }
-            String value = state.get(key);
-            if (property.parse(value).isEmpty()) {
-                errors.add("Invalid value '" + value + "' for property '" + key + "'");
-            }
-        }
-        return new ValidationResult(errors.isEmpty(), String.join("; ", errors));
-    }
-
-    private static @Nullable Property<?> findProperty(Block block, String name) {
-        for (Property<?> property : block.getDefaultState().getProperties()) {
-            if (property.getName().equals(name)) {
-                return property;
-            }
-        }
-        return null;
     }
 
     public String getPropertiesText() {
@@ -209,8 +134,5 @@ public class BuildBlockStateNode extends BaseNode {
         if (state instanceof Map<?, ?> map && map.get("propertiesText") instanceof String text) {
             setPropertiesText(text);
         }
-    }
-
-    private record ValidationResult(boolean valid, String message) {
     }
 }

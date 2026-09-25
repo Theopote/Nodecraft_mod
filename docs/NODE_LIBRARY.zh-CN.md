@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**542**
+- **节点总数**：**539**
 - **分类总数**：**59**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -26,8 +26,8 @@
 | `input.type_selectors` | 4 |
 | `input.values` | 6 |
 | `material.basic_assignment` | 4 |
-| `material.block_state` | 8 |
-| `material.directional_mapping` | 2 |
+| `material.block_state` | 4 |
+| `material.directional_mapping` | 3 |
 | `material.gradient_mapping` | 5 |
 | `material.pattern_mapping` | 4 |
 | `material.surface_aging` | 3 |
@@ -332,25 +332,22 @@
 | Block Palette | `material.basic_assignment.block_palette` | Assigns palette block types to flat positions or tree branches | `BlockPaletteNode` |
 | Weighted Block Palette | `material.basic_assignment.weighted_palette` | Assigns weighted random block types to flat positions or tree branches. | `WeightedBlockPaletteNode` |
 
-## material.block_state（8）
+## material.block_state（4）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Block State Assign | `material.block_state.block_state_assign` | Assigns explicit block-state properties to placements or voxelized geometry | `BlockStateAssignNode` |
-| Auto Orient Blocks | `material.block_state.auto_orient_blocks` | Automatically assigns a facing state from the dominant direction axis | `AutoOrientBlocksNode` |
-| Stair Shape | `material.block_state.stair_shape` | Assigns stair facing, half, and inner/outer corner shape states | `StairShapeNode` |
-| Waterlogged State | `material.block_state.waterlogged` | Assigns the waterlogged block-state property to placements or voxelized geometry. | `WaterloggedStateNode` |
-| Facing From Normal | `material.block_state.facing_from_normal` | Converts normal vectors to nearest facing direction and optionally writes facing state to placements. | `FacingFromNormalNode` |
-| Slab / Stair Auto-Fill | `material.block_state.slab_autofill` | Generates slab or stair placements from normals to smooth stepped transitions. | `SlabStairAutofillNode` |
-| Build BlockState | `material.block_state.build_block_state` | Builds block-state key/value data from a block id, base state, and dynamic property override | `BuildBlockStateNode` |
-| Orient BlockState | `material.block_state.orient_block_state` | Derives facing, axis, and stair half block-state properties from a normal or tangent vector | `OrientBlockStateNode` |
+| Build Block State | `material.block_state.build_block_state` | Builds and validates block-state property data from a block type, base state, and overrides | `BuildBlockStateNode` |
+| Orient Block State | `material.block_state.orient_block_state` | Derives facing, axis, and stair half block-state properties from a direction vector | `OrientBlockStateNode` |
+| Apply Block State | `material.block_state.apply_block_state` | Merges block-state overrides into existing block placements | `ApplyBlockStateNode` |
+| Stair Shape | `material.block_state.stair_shape` | Resolves stair corner shape from neighboring stair placements | `StairShapeNode` |
 
-## material.directional_mapping（2）
+## material.directional_mapping（3）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Top / Side / Bottom Map | `material.directional_mapping.top_side_bottom_map` | Voxel column map: highest / lowest / middle blocks per X/Z column. Remaps blockId only; preserves stateData. Geometry inputs are voxelized first. | `TopSideBottomMapNode` |
 | Slope Map | `material.directional_mapping.slope_map` | Voxel material map: assigns flat/slope/steep by 4-neighbor column height grade. Remaps blockId only; preserves stateData. | `SlopeMapNode` |
+| Slab / Stair Auto-Fill | `material.directional_mapping.slab_stair_autofill` | Adapts block types to surface normals for slab or stair transitions (remaps blockId only) | `SlabStairAutofillNode` |
 
 ## material.gradient_mapping（5）
 

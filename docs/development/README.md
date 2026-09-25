@@ -14,6 +14,7 @@ Related architecture:
 - [`../node-language-v1-input-context.md`](../node-language-v1-input-context.md) — Input Context v1 (PASSED / FROZEN, V32)
 - [`../node-language-v1-type-selectors.md`](../node-language-v1-type-selectors.md) — Type Selectors v1 (PASSED / FROZEN, V33)
 - [`../node-language-v1-input-values.md`](../node-language-v1-input-values.md) — Input Values v1 (PASSED / FROZEN, V34)
+- [`../node-language-v1-block-state.md`](../node-language-v1-block-state.md) — Block State v1 (PASSED / FROZEN, V35)
 - [`../type-conversion-guidelines.md`](../type-conversion-guidelines.md) — Port connectability vs explicit conversion
 - [`../architecture/execution-runtime-2.0.md`](../architecture/execution-runtime-2.0.md) — Runtime 2.0 design freeze
 - [`../architecture/node-catalog.md`](../architecture/node-catalog.md) — Build-time NodeCatalog (Phase C)

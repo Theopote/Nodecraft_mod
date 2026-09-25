@@ -217,8 +217,14 @@ public final class GraphFormatVersion {
      */
     public static final int V34 = 34;
 
+    /**
+     * Block State v1: four PURE state-only nodes; apply merge semantics; Build Valid fix;
+     * slab autofill moved to directional_mapping; remove geometry-voxelize block_state nodes.
+     */
+    public static final int V35 = 35;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V34;
+    public static final int CURRENT = V35;
 
     private GraphFormatVersion() {
     }

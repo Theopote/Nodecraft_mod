@@ -62,7 +62,8 @@ All four also expose: `output_namespace`, `output_*_path`, `output_is_modded`, `
 ## Block state workflow
 
 ```
-Block Type Selector  →  Build Block State  →  BLOCK_STATE_DATA / BLOCK_INFO
+Block Type Selector  →  Build Block State  →  BLOCK_STATE_DATA
+                                              →  Apply Block State  →  placements
 ```
 
 **Build Block State** (`material.block_state.build_block_state`):
@@ -70,7 +71,11 @@ Block Type Selector  →  Build Block State  →  BLOCK_STATE_DATA / BLOCK_INFO
 - `input_block_type`: `BLOCK_TYPE`
 - `@NodeProperty propertiesText`: compact overrides (`facing=north,waterlogged=false`)
 - Port overrides still apply after properties text
+- `output_block_state`: `BLOCK_STATE_DATA` (properties only — no embedded block id)
 - `output_valid` / `output_error` validate against real block property definitions
+
+See [`node-language-v1-block-state.md`](./node-language-v1-block-state.md) for the full
+four-node Block State v1 freeze (Graph **V35**).
 
 ## Shared helpers (`RegistrySelectorUtils`)
 

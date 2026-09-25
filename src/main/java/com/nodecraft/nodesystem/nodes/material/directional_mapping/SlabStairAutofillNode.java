@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.material.block_state;
+package com.nodecraft.nodesystem.nodes.material.directional_mapping;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -6,16 +6,14 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.material.block_state.BlockStateValidationUtils;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BlockStateData;
-import com.nodecraft.nodesystem.util.Coordinate;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -25,11 +23,11 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "material.block_state.slab_autofill",
+    id = "material.directional_mapping.slab_stair_autofill",
     displayName = "Slab / Stair Auto-Fill",
-    description = "Generates slab or stair placements from normals to smooth stepped transitions.",
-    category = "material.block_state",
-    order = 5
+    description = "Adapts block types to surface normals for slab or stair transitions (remaps blockId only)",
+    category = "material.directional_mapping",
+    order = 10
 )
 public class SlabStairAutofillNode extends BaseNode {
 
@@ -53,9 +51,11 @@ public class SlabStairAutofillNode extends BaseNode {
     private static final String OUTPUT_BLOCK_IDS_ID = "output_block_ids";
     private static final String OUTPUT_SLAB_COUNT_ID = "output_slab_count";
     private static final String OUTPUT_STAIR_COUNT_ID = "output_stair_count";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public SlabStairAutofillNode() {
-        super(UUID.randomUUID(), "material.block_state.slab_autofill");
+        super(UUID.randomUUID(), "material.directional_mapping.slab_stair_autofill");
 
         addInputPort(new BasePort(INPUT_PLACEMENTS_ID, "Block Placements", "Optional incoming placements", NodeDataType.BLOCK_PLACEMENT_LIST, this));
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list", NodeDataType.BLOCK_LIST, this));
@@ -64,7 +64,7 @@ public class SlabStairAutofillNode extends BaseNode {
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to materialize", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
         addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry data to materialize", NodeDataType.TORUS_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_NORMALS_ID, "Normals", "Normal vectors aligned with placements", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_NORMALS_ID, "Normals", "Normal vectors index-aligned with placements", NodeDataType.VECTOR_LIST, this));
         addInputPort(new BasePort(INPUT_DEFAULT_BLOCK_ID, "Default Block", "Fallback full block id", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_SLAB_BLOCK_ID, "Slab Block", "Slab block id", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_STAIR_BLOCK_ID, "Stair Block", "Stair block id", NodeDataType.BLOCK_TYPE, this));
@@ -74,20 +74,35 @@ public class SlabStairAutofillNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_BLOCK_IDS_ID, "Block IDs", "Block IDs aligned with positions", NodeDataType.BLOCK_INFO_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SLAB_COUNT_ID, "Slab Count", "Number of slab placements", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_STAIR_COUNT_ID, "Stair Count", "Number of stair placements", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when normals align with placements", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Validation error when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
     public String getDescription() {
-        return "Generates slab or stair placements from normals to smooth stepped transitions.";
+        return "Adapts block types to surface normals for slab or stair transitions";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
+        double threshold = resolveSlopeThreshold();
         String defaultBlock = getInputString(INPUT_DEFAULT_BLOCK_ID, "minecraft:stone");
         String slabBlock = getInputString(INPUT_SLAB_BLOCK_ID, "minecraft:stone_slab");
         String stairBlock = getInputString(INPUT_STAIR_BLOCK_ID, "minecraft:stone_stairs");
         List<BlockPlacementData> base = resolvePlacements(defaultBlock);
-        List<Vector3d> normals = resolveNormals(inputValues.get(INPUT_NORMALS_ID));
+
+        Object normalsObj = inputValues.get(INPUT_NORMALS_ID);
+        List<Vector3d> normals = resolveNormals(normalsObj);
+        if (normalsObj != null && !base.isEmpty() && normals.size() != base.size()) {
+            outputValues.put(OUTPUT_PLACEMENTS_ID, List.of());
+            outputValues.put(OUTPUT_POSITIONS_ID, new BlockPosList());
+            outputValues.put(OUTPUT_BLOCK_IDS_ID, List.of());
+            outputValues.put(OUTPUT_SLAB_COUNT_ID, 0);
+            outputValues.put(OUTPUT_STAIR_COUNT_ID, 0);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            outputValues.put(OUTPUT_ERROR_ID, "Normals count must match placements count");
+            return;
+        }
 
         List<BlockPlacementData> resolved = new ArrayList<>(base.size());
         BlockPosList positions = new BlockPosList();
@@ -101,9 +116,9 @@ public class SlabStairAutofillNode extends BaseNode {
                 continue;
             }
             Vector3d normal = i < normals.size() ? normals.get(i) : null;
-            MaterialChoice choice = chooseMaterial(normal, defaultBlock, slabBlock, stairBlock);
+            MaterialChoice choice = chooseMaterial(normal, defaultBlock, slabBlock, stairBlock, threshold);
 
-            BlockStateData state = placement.stateData() != null ? placement.stateData() : new BlockStateData();
+            BlockStateData state = placement.stateData() != null ? placement.stateData().copy() : new BlockStateData();
             if (choice.type == MaterialType.SLAB) {
                 state.setProperty("type", choice.normal != null && choice.normal.y > 0.0d ? "bottom" : "top");
                 slabCount++;
@@ -124,15 +139,24 @@ public class SlabStairAutofillNode extends BaseNode {
         outputValues.put(OUTPUT_BLOCK_IDS_ID, blockIds);
         outputValues.put(OUTPUT_SLAB_COUNT_ID, slabCount);
         outputValues.put(OUTPUT_STAIR_COUNT_ID, stairCount);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private MaterialChoice chooseMaterial(@Nullable Vector3d normal, String defaultBlock, String slabBlock, String stairBlock) {
+    private double resolveSlopeThreshold() {
+        if (!Double.isFinite(slopeThreshold)) {
+            return 0.35d;
+        }
+        return Math.max(0.0d, Math.min(1.0d, slopeThreshold));
+    }
+
+    private MaterialChoice chooseMaterial(@Nullable Vector3d normal, String defaultBlock, String slabBlock, String stairBlock, double threshold) {
         if (normal == null || normal.lengthSquared() <= 1.0e-9d) {
             return new MaterialChoice(MaterialType.DEFAULT, defaultBlock, null);
         }
         Vector3d n = new Vector3d(normal).normalize();
         double horizontal = Math.sqrt(n.x * n.x + n.z * n.z);
-        if (horizontal >= Math.max(0.0d, slopeThreshold)) {
+        if (horizontal >= threshold) {
             return new MaterialChoice(MaterialType.STAIR, stairBlock, n);
         }
         if (Math.abs(n.y) < 0.999d) {
@@ -153,57 +177,37 @@ public class SlabStairAutofillNode extends BaseNode {
         return normal.z >= 0.0d ? Direction.SOUTH : Direction.NORTH;
     }
 
-    private List<Vector3d> resolveNormals(Object value) {
-        List<Vector3d> out = new ArrayList<>();
-        if (value instanceof List<?> list) {
-            for (Object entry : list) {
-                Vector3d normal = resolveDirection(entry);
-                if (normal != null) {
-                    out.add(normal);
-                }
+    private List<Vector3d> resolveNormals(@Nullable Object value) {
+        if (!(value instanceof List<?> list)) {
+            return List.of();
+        }
+        List<Vector3d> out = new ArrayList<>(list.size());
+        for (Object entry : list) {
+            Vector3d normal = BlockStateValidationUtils.resolveStrictVectorListElement(entry);
+            if (normal == null) {
+                return List.of();
             }
+            out.add(normal);
         }
         return out;
     }
 
-    private @Nullable Vector3d resolveDirection(@Nullable Object value) {
-        if (value instanceof Vector3d vector) return new Vector3d(vector);
-        if (value instanceof PointData point) return point.getPosition();
-        if (value instanceof Vec3d vector) return new Vector3d(vector.x, vector.y, vector.z);
-        if (value instanceof Coordinate coordinate) return new Vector3d(coordinate.getX(), coordinate.getY(), coordinate.getZ());
-        if (value instanceof BlockPos pos) return new Vector3d(pos.getX(), pos.getY(), pos.getZ());
-        return null;
-    }
-
     private List<BlockPlacementData> resolvePlacements(String fallbackBlockId) {
-        Object placementsObj = inputValues.get(INPUT_PLACEMENTS_ID);
-        if (placementsObj instanceof List<?> placementList && !placementList.isEmpty()) {
-            List<BlockPlacementData> resolved = new ArrayList<>();
-            for (Object entry : placementList) {
-                if (entry instanceof BlockPlacementData placement && placement.pos() != null) {
-                    resolved.add(placement);
-                }
-            }
-            if (!resolved.isEmpty()) {
-                return resolved;
-            }
+        List<BlockPlacementData> fromPlacements = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
+        if (!fromPlacements.isEmpty()) {
+            return fromPlacements;
         }
 
-        BlockPosList positions = GeometryVoxelizer.resolveBlocks(
+        return MaterialMappingSupport.resolveSourcePlacements(
+            null,
             inputValues.get(INPUT_COORDINATES_ID),
             inputValues.get(INPUT_GEOMETRY_ID),
             inputValues.get(INPUT_BOX_GEOMETRY_ID),
             inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
             inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
             inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-            true
+            fallbackBlockId
         );
-
-        List<BlockPlacementData> generated = new ArrayList<>(positions.size());
-        for (BlockPos pos : positions) {
-            generated.add(new BlockPlacementData(pos, fallbackBlockId));
-        }
-        return generated;
     }
 
     private String getInputString(String portId, String fallback) {

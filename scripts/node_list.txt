@@ -162,12 +162,11 @@ input.values.file_path|input.values|File Path Input
 material.basic_assignment.assign_block_type|material.basic_assignment|Assign Block Type
 material.basic_assignment.block_palette|material.basic_assignment|Block Palette
 material.basic_assignment.weighted_palette|material.basic_assignment|Weighted Block Palette
-material.block_state.auto_orient_blocks|material.block_state|Auto Orient Blocks
-material.block_state.block_state_assign|material.block_state|Block State Assign
-material.block_state.facing_from_normal|material.block_state|Facing From Normal
-material.block_state.slab_autofill|material.block_state|Slab / Stair Auto-Fill
+material.block_state.apply_block_state|material.block_state|Apply Block State
+material.block_state.build_block_state|material.block_state|Build Block State
+material.block_state.orient_block_state|material.block_state|Orient Block State
 material.block_state.stair_shape|material.block_state|Stair Shape
-material.block_state.waterlogged|material.block_state|Waterlogged State
+material.directional_mapping.slab_stair_autofill|material.directional_mapping|Slab / Stair Auto-Fill
 material.directional_mapping.slope_map|material.directional_mapping|Slope Map
 material.directional_mapping.top_side_bottom_map|material.directional_mapping|Top / Side / Bottom Map
 material.gradient_mapping.distance_material|material.gradient_mapping|Distance-Based Material

@@ -100,6 +100,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V31 -> migrateV31ToV32(graph);
             case GraphFormatVersion.V32 -> migrateV32ToV33(graph);
             case GraphFormatVersion.V33 -> migrateV33ToV34(graph);
+            case GraphFormatVersion.V34 -> migrateV34ToV35(graph);
             default -> graph;
         };
     }
@@ -2155,6 +2156,33 @@ public final class GraphMigrationRegistry {
             "output_red", "output_green", "output_blue", "output_alpha"
     );
 
+    private static final String LEGACY_BLOCK_STATE_ASSIGN_TYPE = "material.block_state.block_state_assign";
+    private static final String APPLY_BLOCK_STATE_TYPE = "material.block_state.apply_block_state";
+    private static final String LEGACY_SLAB_AUTOFILL_TYPE = "material.block_state.slab_autofill";
+    private static final String SLAB_STAIR_AUTOFILL_TYPE = "material.directional_mapping.slab_stair_autofill";
+    private static final String STAIR_SHAPE_TYPE = "material.block_state.stair_shape";
+
+    private static final Set<String> REMOVED_BLOCK_STATE_TYPES = Set.of(
+            "material.block_state.auto_orient_blocks",
+            "material.block_state.waterlogged",
+            "material.block_state.facing_from_normal"
+    );
+
+    private static final Set<String> BLOCK_STATE_GEOMETRY_PORTS = Set.of(
+            "input_coordinates",
+            "input_geometry",
+            "input_box_geometry",
+            "input_cylinder_geometry",
+            "input_sphere_geometry",
+            "input_torus_geometry",
+            "input_block_type"
+    );
+
+    private static final Set<String> BLOCK_STATE_DECONSTRUCT_OUTPUT_PORTS = Set.of(
+            "output_positions",
+            "output_block_ids"
+    );
+
     /**
      * Type Selectors v1: Block Type {@code BLOCK_TYPE} port; remove Block State Selector.
      */
@@ -2333,6 +2361,139 @@ public final class GraphMigrationRegistry {
         });
 
         return graph;
+    }
+
+    /**
+     * Block State v1: shrink to four state-only nodes; move slab autofill; drop geometry ports and legacy outputs.
+     */
+    private static SavedGraph migrateV34ToV35(SavedGraph graph) {
+        if (graph.nodes == null) {
+            graph.nodes = new ArrayList<>();
+        } else {
+            graph.nodes = new ArrayList<>(graph.nodes);
+        }
+        if (graph.connections == null) {
+            graph.connections = new ArrayList<>();
+        } else {
+            graph.connections = new ArrayList<>(graph.connections);
+        }
+
+        graph.nodes.removeIf(node -> node != null && node.typeId != null
+                && REMOVED_BLOCK_STATE_TYPES.contains(node.typeId.toLowerCase(Locale.ROOT)));
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node == null || node.nodeId == null || node.typeId == null) {
+                continue;
+            }
+            String remapped = remapBlockStateTypeId(node.typeId);
+            if (!remapped.equals(node.typeId)) {
+                LOGGER.debug("Migrated node type: {} -> {} (nodeId={})", node.typeId, remapped, node.nodeId);
+                node.typeId = remapped;
+            }
+            node.state = stripBlockStateIdentityFromNodeState(node.state);
+            nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            if (sourceType == null || targetType == null) {
+                return sourceType == null || targetType == null;
+            }
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            String targetPort = connection.targetPortId == null ? "" : connection.targetPortId.toLowerCase(Locale.ROOT);
+
+            if (BUILD_BLOCK_STATE_TYPE.equals(sourceType) && "output_block_info".equals(sourcePort)) {
+                LOGGER.debug("Dropped Build Block State output_block_info wire from {}", connection.sourceNodeId);
+                return true;
+            }
+
+            if (isBlockStateGeometryWire(sourceType, sourcePort, targetType, targetPort)) {
+                LOGGER.debug("Dropped Block State v1 geometry wire {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
+
+            if (isBlockStateDeconstructOutputEndpoint(sourceType, sourcePort)) {
+                LOGGER.debug("Dropped Block State v1 deconstruct output wire {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId);
+                return true;
+            }
+
+            if (SLAB_STAIR_AUTOFILL_TYPE.equals(targetType) && "input_normals".equals(targetPort)
+                    && !isDeclaredConnectionStillCompatible(sourceType, connection.sourcePortId,
+                    targetType, connection.targetPortId)) {
+                LOGGER.debug("Dropped Slab/Stair Auto-Fill incompatible normals wire to {}",
+                        connection.targetNodeId);
+                return true;
+            }
+
+            return false;
+        });
+
+        return graph;
+    }
+
+    private static String remapBlockStateTypeId(String typeId) {
+        String normalized = typeId.toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case LEGACY_BLOCK_STATE_ASSIGN_TYPE -> APPLY_BLOCK_STATE_TYPE;
+            case LEGACY_SLAB_AUTOFILL_TYPE -> SLAB_STAIR_AUTOFILL_TYPE;
+            default -> typeId;
+        };
+    }
+
+    private static boolean isBlockStateGeometryWire(
+            @Nullable String sourceType,
+            String sourcePort,
+            @Nullable String targetType,
+            String targetPort
+    ) {
+        if (APPLY_BLOCK_STATE_TYPE.equals(targetType) || STAIR_SHAPE_TYPE.equals(targetType)) {
+            if (BLOCK_STATE_GEOMETRY_PORTS.contains(targetPort)) {
+                return true;
+            }
+        }
+        if (APPLY_BLOCK_STATE_TYPE.equals(sourceType) || STAIR_SHAPE_TYPE.equals(sourceType)) {
+            return BLOCK_STATE_GEOMETRY_PORTS.contains(sourcePort);
+        }
+        return false;
+    }
+
+    private static boolean isBlockStateDeconstructOutputEndpoint(@Nullable String sourceType, String sourcePort) {
+        if (sourceType == null || !sourceType.startsWith("material.block_state.")) {
+            return false;
+        }
+        return BLOCK_STATE_DECONSTRUCT_OUTPUT_PORTS.contains(sourcePort);
+    }
+
+    private static @Nullable Object stripBlockStateIdentityFromNodeState(@Nullable Object state) {
+        return stripBlockStateIdentityValue(state);
+    }
+
+    private static Object stripBlockStateIdentityValue(@Nullable Object value) {
+        if (value instanceof Map<?, ?> map) {
+            Map<String, Object> cleaned = new HashMap<>();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (entry.getKey() instanceof String key && !"blockId".equals(key) && !"id".equals(key)) {
+                    cleaned.put(key, stripBlockStateIdentityValue(entry.getValue()));
+                }
+            }
+            return cleaned;
+        }
+        if (value instanceof List<?> list) {
+            List<Object> cleaned = new ArrayList<>(list.size());
+            for (Object item : list) {
+                cleaned.add(stripBlockStateIdentityValue(item));
+            }
+            return cleaned;
+        }
+        return value;
     }
 
     private static String remapInputValuesTypeId(String typeId) {

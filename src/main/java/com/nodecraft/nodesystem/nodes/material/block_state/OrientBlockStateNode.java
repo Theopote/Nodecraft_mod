@@ -7,7 +7,6 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockStateData;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Direction;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -18,10 +17,10 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "material.block_state.orient_block_state",
-    displayName = "Orient BlockState",
-    description = "Derives facing, axis, and stair half block-state properties from a normal or tangent vector",
+    displayName = "Orient Block State",
+    description = "Derives facing, axis, and stair half block-state properties from a direction vector",
     category = "material.block_state",
-    order = 7
+    order = 1
 )
 public class OrientBlockStateNode extends BaseNode {
 
@@ -37,22 +36,24 @@ public class OrientBlockStateNode extends BaseNode {
     private static final String OUTPUT_AXIS_ID = "output_axis";
     private static final String OUTPUT_HALF_ID = "output_half";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public OrientBlockStateNode() {
         super(UUID.randomUUID(), "material.block_state.orient_block_state");
 
         addInputPort(new BasePort(INPUT_BASE_STATE_ID, "Base State", "Optional state data to copy before applying orientation", NodeDataType.BLOCK_STATE_DATA, this));
-        addInputPort(new BasePort(INPUT_BLOCK_TYPE_ID, "Block Type", "Optional block id to include in the output state", NodeDataType.BLOCK_TYPE, this));
-        addInputPort(new BasePort(INPUT_VECTOR_ID, "Vector", "Normal or tangent vector used to derive orientation", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_BLOCK_TYPE_ID, "Block Type", "Optional block id for registry validation of derived properties", NodeDataType.BLOCK_TYPE, this));
+        addInputPort(new BasePort(INPUT_VECTOR_ID, "Vector", "Direction vector used to derive orientation", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_MODE_ID, "Mode", "facing, horizontal_facing, axis, or stair", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_INCLUDE_WATERLOGGED_ID, "Include Waterlogged", "When true, writes the waterlogged shortcut property", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_WATERLOGGED_ID, "Waterlogged", "Waterlogged value to write when enabled", NodeDataType.BOOLEAN, this));
 
-        addOutputPort(new BasePort(OUTPUT_BLOCK_STATE_ID, "Block State", "Oriented block-state data", NodeDataType.BLOCK_STATE_DATA, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCK_STATE_ID, "Block State", "Oriented block-state property data", NodeDataType.BLOCK_STATE_DATA, this));
         addOutputPort(new BasePort(OUTPUT_FACING_ID, "Facing", "Derived facing value", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_AXIS_ID, "Axis", "Derived axis value", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_HALF_ID, "Half", "Derived stair half value", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the vector was usable", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the vector is usable and properties validate when block type is provided", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Validation error when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -60,20 +61,20 @@ public class OrientBlockStateNode extends BaseNode {
         BlockStateData state = inputValues.get(INPUT_BASE_STATE_ID) instanceof BlockStateData base
             ? base.copy()
             : new BlockStateData();
+        BlockStateValidationUtils.stripIdentityKeys(state);
 
-        String blockType = normalizeBlockId(inputValues.get(INPUT_BLOCK_TYPE_ID));
-        if (blockType != null) {
-            state.setProperty("blockId", blockType);
+        Vector3d vector = BlockStateValidationUtils.resolveStrictVector3d(inputValues.get(INPUT_VECTOR_ID));
+        if (vector == null || vector.lengthSquared() <= 1.0e-9d) {
+            outputValues.put(OUTPUT_BLOCK_STATE_ID, state);
+            outputValues.put(OUTPUT_FACING_ID, "");
+            outputValues.put(OUTPUT_AXIS_ID, "");
+            outputValues.put(OUTPUT_HALF_ID, "");
+            outputValues.put(OUTPUT_VALID_ID, false);
+            outputValues.put(OUTPUT_ERROR_ID, "Invalid or missing direction vector");
+            return;
         }
 
-        Vector3d vector = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_VECTOR_ID));
-        boolean valid = vector != null && vector.lengthSquared() > 1.0e-9d;
-        if (!valid) {
-            vector = new Vector3d(0.0d, 0.0d, -1.0d);
-        } else {
-            vector.normalize();
-        }
-
+        vector = new Vector3d(vector).normalize();
         String mode = normalizeMode(inputValues.get(INPUT_MODE_ID));
         Direction facing = "horizontal_facing".equals(mode) || "stair".equals(mode)
             ? horizontalFacing(vector)
@@ -96,11 +97,17 @@ public class OrientBlockStateNode extends BaseNode {
             state.setBooleanProperty("waterlogged", Boolean.TRUE.equals(inputValues.get(INPUT_WATERLOGGED_ID)));
         }
 
+        String blockType = BlockStateValidationUtils.normalizeBlockId(inputValues.get(INPUT_BLOCK_TYPE_ID));
+        BlockStateValidationUtils.ValidationResult validation = blockType != null
+            ? BlockStateValidationUtils.validateProperties(blockType, state)
+            : BlockStateValidationUtils.ValidationResult.ok();
+
         outputValues.put(OUTPUT_BLOCK_STATE_ID, state);
         outputValues.put(OUTPUT_FACING_ID, facing.asString());
         outputValues.put(OUTPUT_AXIS_ID, axis);
         outputValues.put(OUTPUT_HALF_ID, half);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_VALID_ID, validation.valid());
+        outputValues.put(OUTPUT_ERROR_ID, validation.message());
     }
 
     private static Direction facing(Vector3d direction) {
@@ -140,13 +147,5 @@ public class OrientBlockStateNode extends BaseNode {
             return "facing";
         }
         return text.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private static @Nullable String normalizeBlockId(Object value) {
-        if (!(value instanceof String text) || text.isBlank()) {
-            return null;
-        }
-        String trimmed = text.trim().toLowerCase(Locale.ROOT);
-        return trimmed.contains(":") ? trimmed : "minecraft:" + trimmed;
     }
 }

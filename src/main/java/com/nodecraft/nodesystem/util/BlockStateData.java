@@ -1,5 +1,7 @@
 package com.nodecraft.nodesystem.util;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -97,6 +99,35 @@ public class BlockStateData extends HashMap<String, String> {
      */
     public BlockStateData copy() {
         return new BlockStateData(this);
+    }
+
+    /**
+     * Merges {@code override} into a copy of {@code base}; override keys win.
+     * Identity keys ({@code blockId}, {@code id}) are never copied from either side.
+     */
+    public static BlockStateData merge(@Nullable BlockStateData base, @Nullable BlockStateData override) {
+        BlockStateData merged = base != null ? base.copy() : new BlockStateData();
+        stripIdentityKeys(merged);
+        if (override != null) {
+            for (Map.Entry<String, String> entry : override.entrySet()) {
+                if (!isIdentityKey(entry.getKey())) {
+                    merged.setProperty(entry.getKey(), entry.getValue());
+                }
+            }
+        }
+        return merged;
+    }
+
+    public static void stripIdentityKeys(BlockStateData state) {
+        if (state == null) {
+            return;
+        }
+        state.remove("blockId");
+        state.remove("id");
+    }
+
+    private static boolean isIdentityKey(String key) {
+        return "blockId".equals(key) || "id".equals(key);
     }
     
     @Override

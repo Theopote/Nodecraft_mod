@@ -22,6 +22,7 @@ Last updated: 2026-09-25
 | Input context / world reads | [`node-language-v1-input-context.md`](./node-language-v1-input-context.md) + `ContextReadUtils` **(PASSED / FROZEN, V32)** |
 | Input type selectors / registry ids | [`node-language-v1-type-selectors.md`](./node-language-v1-type-selectors.md) + `RegistrySelectorUtils` **(PASSED / FROZEN, V33)** |
 | Input values sources / ColorData / Value List | [`node-language-v1-input-values.md`](./node-language-v1-input-values.md) + `ValueInputUtils` **(PASSED / FROZEN, V34)** |
+| Block state / placement state only | [`node-language-v1-block-state.md`](./node-language-v1-block-state.md) + `BlockStateValidationUtils` **(PASSED / FROZEN, V35)** |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 
@@ -40,6 +41,7 @@ Last updated: 2026-09-25
 | Input Context v1 | **PASSED / FROZEN** | V32 |
 | Type Selectors v1 | **PASSED / FROZEN** | V33 |
 | Input Values v1 | **PASSED / FROZEN** | V34 |
+| Block State v1 | **PASSED / FROZEN** | V35 |
 | List / Collection v1 | FROZEN | V23 |
 | Data Tree v1 | FROZEN | V24 |
 

@@ -57,6 +57,9 @@ public final class BlockStateResolver {
 
         BlockState resolved = baseState;
         for (Map.Entry<String, String> entry : stateData.entrySet()) {
+            if ("blockId".equals(entry.getKey()) || "id".equals(entry.getKey())) {
+                continue;
+            }
             Property<?> property = resolved.getProperties().stream()
                 .filter(candidate -> candidate.getName().equals(entry.getKey()))
                 .findFirst()

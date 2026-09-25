@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BlockStateData;
+import com.nodecraft.nodesystem.util.BlockStateResolver;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.Vector3;
 import net.minecraft.block.Block;
@@ -82,24 +83,21 @@ final class WorldWriteUtils {
             }
         }
         if (value instanceof BlockStateData stateData) {
-            Object idObj = stateData.get("blockId");
-            if (idObj == null) {
-                idObj = stateData.get("id");
+            // Legacy graphs may still carry blockId inside state until V35 migration strips it.
+            String blockId = stateData.get("blockId");
+            if (blockId == null || blockId.isBlank()) {
+                blockId = stateData.get("id");
             }
-            BlockState state = resolveBlockState(idObj);
-            if (state == null) {
+            if (blockId == null || blockId.isBlank()) {
                 return null;
             }
-            for (Map.Entry<String, String> entry : stateData.entrySet()) {
-                String key = entry.getKey();
-                if ("blockId".equals(key) || "id".equals(key)) {
-                    continue;
-                }
-                state = withProperty(state, key, entry.getValue());
-            }
-            return state;
+            return BlockStateResolver.resolve(blockId, stateData);
         }
         return null;
+    }
+
+    static @Nullable BlockState resolveBlockState(@Nullable String blockId, @Nullable BlockStateData stateData) {
+        return BlockStateResolver.resolve(blockId, stateData);
     }
 
     static boolean matches(BlockState current, BlockState target, boolean exactMatch) {
