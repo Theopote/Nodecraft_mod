@@ -68,9 +68,9 @@ class DataTreeListLanguageContractTest {
     }
 
     @Test
-    void treePathPortsAreString_itemOutputKeepsAny() {
-        assertPortType(new TreeBranchNode(), "input_path", NodeDataType.STRING);
-        assertPortType(new TreeItemNode(), "input_path", NodeDataType.STRING);
+    void treePathPortsAreTreePath_itemOutputKeepsAny() {
+        assertPortType(new TreeBranchNode(), "input_path", NodeDataType.TREE_PATH);
+        assertPortType(new TreeItemNode(), "input_path", NodeDataType.TREE_PATH);
         assertPortType(new TreeItemNode(), "output_item", NodeDataType.ANY);
         assertFalse(hasAnyPort(new TreeBranchNode()));
     }

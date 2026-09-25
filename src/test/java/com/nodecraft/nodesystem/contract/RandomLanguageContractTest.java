@@ -244,7 +244,7 @@ class RandomLanguageContractTest {
         v28.connections = new ArrayList<>(List.of(
                 wire("rv", "output_random_vector", "sink", "input_0"),
                 wire("count", "output_value", "rv", "input_count"),
-                wire("construct", "output_vector", "rv", "input_min_corner")
+                wire("cv", "output_vector", "rv", "input_min_corner")
         ));
         v28.nodePositions = Map.of();
 
@@ -254,7 +254,7 @@ class RandomLanguageContractTest {
 
         assertEquals(4, migrated.nodes.size());
         assertEquals(1, migrated.connections.size());
-        assertTrue(hasWire(migrated, "construct", "output_vector", "rv", "input_min_corner"));
+        assertTrue(hasWire(migrated, "cv", "output_vector", "rv", "input_min_corner"));
         assertFalse(hasWire(migrated, "rv", "output_random_vector", "sink", "input_0"));
         assertFalse(hasWire(migrated, "count", "output_value", "rv", "input_count"));
     }

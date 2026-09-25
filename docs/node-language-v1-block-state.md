@@ -1,6 +1,6 @@
 # Node Language v1 — Block State
 
-**Status: PASSED / FROZEN** (Graph **V35**)
+**Status: PASSED / FROZEN** (HEAD `38af57f3`, Graph **V35**)
 
 Language unification for exactly **4** `material.block_state.*` nodes: PURE state-only
 semantics — compose, orient, merge, and resolve stair shape on existing placements without
@@ -138,7 +138,9 @@ Slab / stair geometry adaptation belongs upstream in
 
 ## Contracts
 
-- `BlockStateLanguageContractTest` — 4-node inventory, PURE, no geometry ports, Valid gates,
-  merge semantics, strict VECTOR, V34→V35 migration.
+- `BlockStateLanguageContractTest` — 4-node inventory, PURE, no geometry ports, Valid gates
+  (missing block type, unknown block, malformed properties text including empty key/value,
+  non-finite VECTOR, unknown orient mode), merge semantics, strict VECTOR / POINT rejection,
+  stair-only shape mutation, V34→V35 migration.
 - `BlockStateNodeTest` — Build/Orient property composition.
 - Format contract tests bumped to **V35**.
