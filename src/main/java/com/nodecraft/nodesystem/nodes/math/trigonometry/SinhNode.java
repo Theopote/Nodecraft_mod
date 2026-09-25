@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarResult;
+import com.nodecraft.nodesystem.math.TrigMathOps;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -51,15 +53,9 @@ public class SinhNode extends BaseNode {
             return;
         }
 
-        double value = number.doubleValue();
-        if (!Double.isFinite(value)) {
-            outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-
-        outputValues.put(OUTPUT_RESULT_ID, Math.sinh(value));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        ScalarResult result = TrigMathOps.sinh(number.doubleValue());
+        outputValues.put(OUTPUT_RESULT_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
 }
 

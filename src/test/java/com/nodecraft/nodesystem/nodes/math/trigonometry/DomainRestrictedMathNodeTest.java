@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.math.trigonometry;
 
 import com.nodecraft.nodesystem.nodes.math.scalar_math.LogarithmNode;
+import com.nodecraft.nodesystem.nodes.math.trigonometry.SinhNode;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -75,5 +76,38 @@ class DomainRestrictedMathNodeTest {
 
         assertEquals(true, outputs.get("output_valid"));
         assertEquals(90.0d, (Double) outputs.get("output_angle"), 1.0e-12);
+    }
+
+    @Test
+    void atan2RejectsNonFiniteInput() {
+        Atan2Node node = new Atan2Node();
+
+        Map<String, Object> outputs = node.compute(Map.of(
+            "input_y", Double.NaN,
+            "input_x", 1.0d
+        ));
+
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertTrue(Double.isNaN((Double) outputs.get("output_angle")));
+    }
+
+    @Test
+    void sinhOverflowIsInvalid() {
+        SinhNode node = new SinhNode();
+
+        Map<String, Object> outputs = node.compute(Map.of("input_value", 1000.0d));
+
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertTrue(Double.isNaN((Double) outputs.get("output_result")));
+    }
+
+    @Test
+    void tangentNearSingularityStaysValid() {
+        TangentNode node = new TangentNode();
+
+        Map<String, Object> outputs = node.compute(Map.of("input_angle", 89.999999d));
+
+        assertTrue((Boolean) outputs.get("output_valid"));
+        assertTrue(Double.isFinite((Double) outputs.get("output_tangent")));
     }
 }

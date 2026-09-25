@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **545**
+- Total nodes: **543**
 - Total categories: **59**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -22,7 +22,7 @@
 | `geometry.solids` | 24 |
 | `geometry.voxel` | 1 |
 | `input.context` | 4 |
-| `input.numeric` | 8 |
+| `input.numeric` | 10 |
 | `input.type_selectors` | 5 |
 | `input.values` | 6 |
 | `material.basic_assignment` | 4 |
@@ -39,7 +39,7 @@
 | `math.random` | 5 |
 | `math.scalar_math` | 23 |
 | `math.sequence` | 3 |
-| `math.trigonometry` | 14 |
+| `math.trigonometry` | 10 |
 | `output.debug` | 4 |
 | `output.execute` | 8 |
 | `output.export` | 4 |
@@ -288,7 +288,7 @@
 | Dimension Info | `input.context.dimension_info` | Gets the current dimension and basic dimension traits from the active Minecraft world. | `DimensionInfoNode` |
 | Current Time | `input.context.current_time` | Gets the current time and weather state from the active Minecraft world. | `CurrentTimeNode` |
 
-## input.numeric (8)
+## input.numeric (10)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -300,6 +300,8 @@
 | Circular Angle Picker | `input.numeric.angle_picker` | 通过圆形表盘选择角度（度）。需要弧度时使用 Degrees To Radians。 | `CircularAngleNode` |
 | XY Slider | `input.numeric.xy_slider` | Provides a two-dimensional slider pad that outputs X and Y values from one draggable handle | `XYSliderNode` |
 | Domain Input | `input.numeric.range` | Defines a directed numeric domain (Start→End) and outputs domain, start, end, and directed span. | `RangeInputNode` |
+| Pi | `input.numeric.pi` | Outputs the mathematical constant Pi. | `PiNode` |
+| E | `input.numeric.e` | Outputs the mathematical constant e (approximately 2.718281828...). | `ENode` |
 
 ## input.type_selectors (5)
 
@@ -516,21 +518,17 @@
 | Repeat Item | `math.sequence.repeat` | Repeats a single item Count times as a LIST. A list item is repeated as one element, never tiled. | `RepeatNode` |
 | Number Series | `math.sequence.series` | Generates a DOUBLE_LIST with Start, Step, and Count. | `DataSeriesNode` |
 
-## math.trigonometry (14)
+## math.trigonometry (10)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Sine (Sin) | `math.trigonometry.sin` | Computes sine of an angle in degrees. | `SineNode` |
 | Cosine (Cos) | `math.trigonometry.cos` | Computes cosine of an angle in degrees. | `CosineNode` |
 | Tangent (Tan) | `math.trigonometry.tan` | Computes tangent of an angle in degrees. | `TangentNode` |
-| Degrees To Radians | `math.trigonometry.deg_to_rad` | 将角度从度数转换为弧度 | `DegreesToRadiansNode` |
-| Radians To Degrees | `math.trigonometry.rad_to_deg` | 将角度从弧度转换为度数 | `RadiansToDegreesNode` |
 | Arcsine (ArcSin) | `math.trigonometry.asin` | Computes arcsine; result angle is in degrees. | `ArcSinNode` |
 | Arccosine (ArcCos) | `math.trigonometry.acos` | Computes arccosine; result angle is in degrees. | `ArcCosNode` |
 | Arctangent (ArcTan) | `math.trigonometry.atan` | Computes arctangent; result angle is in degrees. | `ArcTanNode` |
 | Atan2 | `math.trigonometry.atan2` | Computes the signed angle in degrees from X and Y using atan2(Y, X). | `Atan2Node` |
-| Pi | `math.trigonometry.pi` | 输出数学常数π的值 | `PiNode` |
-| E | `math.trigonometry.e` | Outputs the mathematical constant e (approximately 2.718281828...). | `ENode` |
 | Sinh | `math.trigonometry.sinh` | Computes the hyperbolic sine of the input value. | `SinhNode` |
 | Cosh | `math.trigonometry.cosh` | Computes the hyperbolic cosine of the input value. | `CoshNode` |
 | Tanh | `math.trigonometry.tanh` | Computes the hyperbolic tangent of the input value. | `TanhNode` |

@@ -150,6 +150,8 @@ input.numeric.integer_slider|input.numeric|Integer Slider
 input.numeric.integer|input.numeric|Integer Input
 input.numeric.range|input.numeric|Range Input
 input.numeric.xy_slider|input.numeric|XY Slider
+input.numeric.pi|input.numeric|Pi
+input.numeric.e|input.numeric|E
 input.type_selectors.biome_selector|input.type_selectors|Biome Selector
 input.type_selectors.block_state_selector|input.type_selectors|Block State Selector
 input.type_selectors.block_type_selector|input.type_selectors|Block Type Selector
@@ -264,10 +266,6 @@ math.trigonometry.atan|math.trigonometry|Arctangent (ArcTan)
 math.trigonometry.atan2|math.trigonometry|Atan2
 math.trigonometry.cos|math.trigonometry|Cosine (Cos)
 math.trigonometry.cosh|math.trigonometry|Cosh
-math.trigonometry.deg_to_rad|math.trigonometry|Degrees To Radians
-math.trigonometry.e|math.trigonometry|E
-math.trigonometry.pi|math.trigonometry|Pi
-math.trigonometry.rad_to_deg|math.trigonometry|Radians To Degrees
 math.trigonometry.sin|math.trigonometry|Sine (Sin)
 math.trigonometry.sinh|math.trigonometry|Sinh
 math.trigonometry.tan|math.trigonometry|Tangent (Tan)

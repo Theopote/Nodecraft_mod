@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.math.trigonometry;
+package com.nodecraft.nodesystem.nodes.input.numeric;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -12,21 +12,28 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "math.trigonometry.e",
+    id = "input.numeric.e",
     displayName = "E",
     description = "Outputs the mathematical constant e (approximately 2.718281828...).",
-    category = "math.trigonometry",
-    order = 9
+    category = "input.numeric",
+    order = 21
 )
 public class ENode extends BaseNode {
 
     private static final String OUTPUT_E_ID = "output_e";
 
     public ENode() {
-        super(UUID.randomUUID(), "math.trigonometry.e");
+        super(UUID.randomUUID(), "input.numeric.e");
 
         addOutputPort(new BasePort(OUTPUT_E_ID, "E", "The value of e", NodeDataType.DOUBLE, this));
         outputValues.put(OUTPUT_E_ID, Math.E);
+    }
+
+    @Override
+    public void processNode(@Nullable ExecutionContext context) {
+        if (!outputValues.containsKey(OUTPUT_E_ID)) {
+            outputValues.put(OUTPUT_E_ID, Math.E);
+        }
     }
 
     @Override
@@ -36,13 +43,6 @@ public class ENode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Outputs the mathematical constant e (approximately 2.718281828...).";
-    }
-
-    @Override
-    public void processNode(@Nullable ExecutionContext context) {
-        if (!outputValues.containsKey(OUTPUT_E_ID)) {
-            outputValues.put(OUTPUT_E_ID, Math.E);
-        }
+        return "Outputs the mathematical constant e.";
     }
 }

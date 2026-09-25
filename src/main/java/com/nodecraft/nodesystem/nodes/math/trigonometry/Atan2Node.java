@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarResult;
+import com.nodecraft.nodesystem.math.TrigMathOps;
 
 import java.util.UUID;
 
@@ -50,10 +52,9 @@ public class Atan2Node extends BaseNode {
         Object xObj = inputValues.get(INPUT_X_ID);
 
         if (yObj instanceof Number yNum && xObj instanceof Number xNum) {
-            double y = yNum.doubleValue();
-            double x = xNum.doubleValue();
-            outputValues.put(OUTPUT_ANGLE_ID, Math.toDegrees(Math.atan2(y, x)));
-            outputValues.put(OUTPUT_VALID_ID, true);
+            ScalarResult result = TrigMathOps.atan2(yNum.doubleValue(), xNum.doubleValue());
+            outputValues.put(OUTPUT_ANGLE_ID, result.value());
+            outputValues.put(OUTPUT_VALID_ID, result.valid());
             return;
         }
 

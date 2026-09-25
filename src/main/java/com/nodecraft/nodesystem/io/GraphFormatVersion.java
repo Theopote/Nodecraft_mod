@@ -164,8 +164,14 @@ public final class GraphFormatVersion {
      */
     public static final int V25 = 25;
 
+    /**
+     * Trigonometry v1: delete deg↔rad converters; move Pi/E to {@code input.numeric};
+     * drop orphan wires to removed nodes.
+     */
+    public static final int V26 = 26;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V25;
+    public static final int CURRENT = V26;
 
     private GraphFormatVersion() {
     }

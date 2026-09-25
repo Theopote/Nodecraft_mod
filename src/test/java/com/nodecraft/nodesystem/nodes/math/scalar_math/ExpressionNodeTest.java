@@ -50,7 +50,7 @@ class ExpressionNodeTest {
         node.setExpression("sin(A) + B");
 
         Map<String, Object> outputs = node.compute(Map.of(
-            "input_a", Math.PI / 2.0d,
+            "input_a", 90.0d,
             "input_b", 2.0d
         ));
 

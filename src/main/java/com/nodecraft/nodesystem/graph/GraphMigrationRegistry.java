@@ -91,6 +91,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V22 -> migrateV22ToV23(graph);
             case GraphFormatVersion.V23 -> migrateV23ToV24(graph);
             case GraphFormatVersion.V24 -> migrateV24ToV25(graph);
+            case GraphFormatVersion.V25 -> migrateV25ToV26(graph);
             default -> graph;
         };
     }
@@ -1751,6 +1752,74 @@ public final class GraphMigrationRegistry {
             }
             if (GRAPH_MAPPER_TYPE.equals(targetType) && GRAPH_MAPPER_REMOVED_INPUT_PORTS.contains(targetPort)) {
                 LOGGER.debug("Dropped Graph Mapper {} wire into {}", targetPort, connection.targetNodeId);
+                return true;
+            }
+            return false;
+        });
+
+        return graph;
+    }
+
+    private static final String LEGACY_TRIG_PI_TYPE = "math.trigonometry.pi";
+    private static final String LEGACY_TRIG_E_TYPE = "math.trigonometry.e";
+    private static final String NUMERIC_PI_TYPE = "input.numeric.pi";
+    private static final String NUMERIC_E_TYPE = "input.numeric.e";
+
+    private static final Set<String> TRIG_V26_DELETED_NODE_TYPES = Set.of(
+            "math.trigonometry.deg_to_rad",
+            "math.trigonometry.rad_to_deg"
+    );
+
+    /**
+     * Trigonometry v1: remap Pi/E to input.numeric; delete deg↔rad nodes; drop orphan wires.
+     */
+    private static SavedGraph migrateV25ToV26(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return graph;
+        }
+
+        graph.nodes = new ArrayList<>(graph.nodes);
+
+        for (SavedNode node : graph.nodes) {
+            if (node == null || node.typeId == null) {
+                continue;
+            }
+            String type = node.typeId.toLowerCase(Locale.ROOT);
+            if (LEGACY_TRIG_PI_TYPE.equals(type)) {
+                LOGGER.debug("Migrated node type: {} -> {}", node.typeId, NUMERIC_PI_TYPE);
+                node.typeId = NUMERIC_PI_TYPE;
+            } else if (LEGACY_TRIG_E_TYPE.equals(type)) {
+                LOGGER.debug("Migrated node type: {} -> {}", node.typeId, NUMERIC_E_TYPE);
+                node.typeId = NUMERIC_E_TYPE;
+            }
+        }
+
+        graph.nodes.removeIf(node -> node != null && node.typeId != null
+                && TRIG_V26_DELETED_NODE_TYPES.contains(node.typeId.toLowerCase(Locale.ROOT)));
+
+        if (graph.connections == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            if (sourceType == null || targetType == null) {
+                LOGGER.debug("Dropped orphan connection after Trigonometry V26 node removal: {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
                 return true;
             }
             return false;

@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.math.ScalarMathOps;
 import com.nodecraft.nodesystem.math.ScalarResult;
+import com.nodecraft.nodesystem.math.TrigMathOps;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
 import imgui.flag.ImGuiInputTextFlags;
@@ -454,12 +455,12 @@ public class ExpressionNode extends BaseCustomUINode {
 
         private double callFunction(String name, List<Double> args) {
             return switch (name) {
-                case "sin" -> one(name, args, Math::sin);
-                case "cos" -> one(name, args, Math::cos);
-                case "tan" -> one(name, args, Math::tan);
-                case "asin" -> one(name, args, Math::asin);
-                case "acos" -> one(name, args, Math::acos);
-                case "atan" -> one(name, args, Math::atan);
+                case "sin" -> one(name, args, v -> requireValid(TrigMathOps.sin(v), "sin"));
+                case "cos" -> one(name, args, v -> requireValid(TrigMathOps.cos(v), "cos"));
+                case "tan" -> one(name, args, v -> requireValid(TrigMathOps.tan(v), "tan"));
+                case "asin" -> one(name, args, v -> requireValid(TrigMathOps.asin(v), "asin"));
+                case "acos" -> one(name, args, v -> requireValid(TrigMathOps.acos(v), "acos"));
+                case "atan" -> one(name, args, v -> requireValid(TrigMathOps.atan(v), "atan"));
                 case "sqrt" -> one(name, args, Math::sqrt);
                 case "abs" -> one(name, args, Math::abs);
                 case "floor" -> one(name, args, Math::floor);
@@ -468,10 +469,8 @@ public class ExpressionNode extends BaseCustomUINode {
                 case "log", "ln" -> one(name, args, Math::log);
                 case "log10" -> one(name, args, Math::log10);
                 case "exp" -> one(name, args, Math::exp);
-                case "deg" -> one(name, args, Math::toDegrees);
-                case "rad" -> one(name, args, Math::toRadians);
                 case "pow" -> two(name, args, (a, b) -> requireValid(ScalarMathOps.pow(a, b), "pow"));
-                case "atan2" -> two(name, args, Math::atan2);
+                case "atan2" -> two(name, args, (y, x) -> requireValid(TrigMathOps.atan2(y, x), "atan2"));
                 case "min" -> min(args);
                 case "max" -> max(args);
                 case "clamp" -> clamp(args);

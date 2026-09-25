@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarResult;
+import com.nodecraft.nodesystem.math.TrigMathOps;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -41,18 +43,9 @@ public class TangentNode extends BaseNode {
             return;
         }
 
-        double angleDeg = number.doubleValue();
-        if (!Double.isFinite(angleDeg)) {
-            outputValues.put(OUTPUT_TANGENT_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-
-        double angleRad = Math.toRadians(angleDeg);
-        double result = Math.tan(angleRad);
-        boolean valid = Double.isFinite(result) && Math.abs(Math.cos(angleRad)) > 1.0e-12d;
-        outputValues.put(OUTPUT_TANGENT_ID, valid ? result : Double.NaN);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        ScalarResult result = TrigMathOps.tan(number.doubleValue());
+        outputValues.put(OUTPUT_TANGENT_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
 
     @Override

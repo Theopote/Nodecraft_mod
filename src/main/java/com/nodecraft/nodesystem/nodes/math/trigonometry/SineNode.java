@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarResult;
+import com.nodecraft.nodesystem.math.TrigMathOps;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -41,16 +43,9 @@ public class SineNode extends BaseNode {
             return;
         }
 
-        double angleDeg = number.doubleValue();
-        if (!Double.isFinite(angleDeg)) {
-            outputValues.put(OUTPUT_SINE_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            return;
-        }
-
-        double result = Math.sin(Math.toRadians(angleDeg));
-        outputValues.put(OUTPUT_SINE_ID, result);
-        outputValues.put(OUTPUT_VALID_ID, Double.isFinite(result));
+        ScalarResult result = TrigMathOps.sin(number.doubleValue());
+        outputValues.put(OUTPUT_SINE_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
 
     @Override
