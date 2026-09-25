@@ -131,8 +131,8 @@ class InputNumericLanguageContractTest {
     @Test
     void xySliderZeroWidthRangeNormalizesToZero() {
         XYSliderNode node = new XYSliderNode();
-        node.setMinX(5.0d);
         node.setMaxX(5.0d);
+        node.setMinX(5.0d);
         node.setX(5.0d);
         node.processNode(null);
         List<?> uv = assertInstanceOf(List.class, node.getOutput("output_uv"));
@@ -201,7 +201,6 @@ class InputNumericLanguageContractTest {
     void exactlyTenInputNumericNodesRegistered() {
         List<String> ids = registry.getAllNodeIds().stream()
                 .filter(id -> id.toLowerCase(Locale.ROOT).startsWith("input.numeric."))
-                .filter(id -> !"input.numeric.boolean".equals(id))
                 .sorted()
                 .toList();
         assertEquals(10, ids.size(), "Expected 10 input.numeric nodes: " + ids);

@@ -293,9 +293,9 @@
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Integer Input | `input.numeric.integer` | 允许手动输入整数值的节点 | `IntegerInputNode` |
-| Float Input | `input.numeric.float` | 精确浮点值输入。Min/Max 可选。需要快速有界探索时使用 Float Slider。 | `FloatInputNode` |
+| Number Input | `input.numeric.float` | 精确浮点值输入。Min/Max 可选。需要快速有界探索时使用 Number Slider。 | `FloatInputNode` |
 | Integer Slider | `input.numeric.integer_slider` | 输出一个可通过滑动条调节的整数值 | `IntegerSliderNode` |
-| Float Slider | `input.numeric.float_slider` | 有界参数探索：精确 double 输入 + 滑动条快速调节。Min/Max 必须设置。 | `FloatSliderNode` |
+| Number Slider | `input.numeric.float_slider` | 有界参数探索：精确 double 输入 + 滑动条快速调节。Min/Max 必须设置。 | `FloatSliderNode` |
 | Angle Slider | `input.numeric.angle` | 输出一个可通过滑动条调节的角度值（度）。需要弧度时使用 Degrees To Radians。 | `AngleSliderNode` |
 | Circular Angle Picker | `input.numeric.angle_picker` | 通过圆形表盘选择角度（度）。需要弧度时使用 Degrees To Radians。 | `CircularAngleNode` |
 | XY Slider | `input.numeric.xy_slider` | Provides a two-dimensional slider pad that outputs X and Y values from one draggable handle | `XYSliderNode` |

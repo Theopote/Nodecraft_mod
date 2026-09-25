@@ -194,7 +194,7 @@ public class CircularAngleNode extends BaseCustomUINode {
                 float y1 = centerY + (float) (Math.sin(radians) * innerRadius);
                 float x2 = centerX + (float) (Math.cos(radians) * outerRadius);
                 float y2 = centerY + (float) (Math.sin(radians) * outerRadius);
-                drawList.addLine(x1, y1, x2, y2, tickColor, major ? 2.0f * zoom : 1.0f * zoom);
+                drawList.addLine(x1, y1, x2, y2, tickColor, major ? 2.0f * zoom : zoom);
             }
         }
 
