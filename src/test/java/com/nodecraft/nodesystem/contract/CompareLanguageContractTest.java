@@ -81,9 +81,9 @@ class CompareLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV27() {
-        assertEquals(27, GraphFormatVersion.V27);
-        assertEquals(GraphFormatVersion.V27, GraphFormatVersion.CURRENT);
+    void currentGraphFormatIsV28() {
+        assertEquals(28, GraphFormatVersion.V28);
+        assertEquals(GraphFormatVersion.V28, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -108,7 +108,7 @@ class CompareLanguageContractTest {
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v26);
         assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(GraphFormatVersion.V27, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.V28, migrated.formatVersion);
 
         assertEquals(3, migrated.nodes.size());
         assertEquals(3, migrated.connections.size());

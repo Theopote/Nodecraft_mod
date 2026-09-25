@@ -7,12 +7,11 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.SequenceOps;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -20,7 +19,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.sequence.series",
     displayName = "Number Series",
-    description = "Generates a DOUBLE_LIST with Start, Step, and Count.",
+    description = "Generates a DOUBLE_LIST with Start, Step, and Count (no Sum — use Sum Numbers).",
     category = "math.sequence"
 )
 public class DataSeriesNode extends BaseNode {
@@ -33,7 +32,6 @@ public class DataSeriesNode extends BaseNode {
     private static final String INPUT_STEP_ID = "input_step";
     private static final String INPUT_COUNT_ID = "input_count";
     private static final String OUTPUT_SERIES_ID = "output_series";
-    private static final String OUTPUT_SUM_ID = "output_sum";
 
     public DataSeriesNode() {
         super(UUID.randomUUID(), "math.sequence.series");
@@ -53,10 +51,6 @@ public class DataSeriesNode extends BaseNode {
         IPort seriesOutput = new BasePort(OUTPUT_SERIES_ID, "Series",
                 "The generated double list", NodeDataType.DOUBLE_LIST, this);
         addOutputPort(seriesOutput);
-
-        IPort sumOutput = new BasePort(OUTPUT_SUM_ID, "Sum",
-                "Sum of all values in the series", NodeDataType.DOUBLE, this);
-        addOutputPort(sumOutput);
     }
 
     @Override
@@ -66,38 +60,21 @@ public class DataSeriesNode extends BaseNode {
         Object countObj = inputValues.get(INPUT_COUNT_ID);
 
         double start = defaultStart;
-        if (startObj instanceof Number) {
-            start = ((Number) startObj).doubleValue();
+        if (startObj instanceof Number number) {
+            start = number.doubleValue();
         }
 
         double step = defaultStep;
-        if (stepObj instanceof Number) {
-            step = ((Number) stepObj).doubleValue();
+        if (stepObj instanceof Number number) {
+            step = number.doubleValue();
         }
 
         int count = defaultCount;
-        if (countObj instanceof Number) {
-            count = ((Number) countObj).intValue();
-        }
-        count = GenerationLimits.clampNonNegativeCount(count);
-
-        if (!Double.isFinite(start) || !Double.isFinite(step)) {
-            outputValues.put(OUTPUT_SERIES_ID, new ArrayList<Double>());
-            outputValues.put(OUTPUT_SUM_ID, 0.0);
-            return;
+        if (countObj instanceof Integer integer) {
+            count = integer;
         }
 
-        List<Double> series = new ArrayList<>(count);
-        double sum = 0.0;
-
-        for (int i = 0; i < count; i++) {
-            double value = start + i * step;
-            series.add(value);
-            sum += value;
-        }
-
-        outputValues.put(OUTPUT_SERIES_ID, series);
-        outputValues.put(OUTPUT_SUM_ID, sum);
+        outputValues.put(OUTPUT_SERIES_ID, SequenceOps.series(start, step, count));
     }
 
     public int getDefaultCount() {
@@ -148,7 +125,6 @@ public class DataSeriesNode extends BaseNode {
         if (!(state instanceof Map<?, ?> stateMap)) {
             return;
         }
-        // Legacy useIntegerType is ignored — series is always DOUBLE_LIST.
 
         Object count = stateMap.get("defaultCount");
         if (count instanceof Number number) {

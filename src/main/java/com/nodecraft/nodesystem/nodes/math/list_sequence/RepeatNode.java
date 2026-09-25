@@ -25,6 +25,8 @@ import java.util.UUID;
 )
 public class RepeatNode extends BaseNode {
 
+    private static final String LIST_T = "T";
+
     private int defaultCount = 3;
 
     private static final String INPUT_DATA_ID = "input_data";
@@ -36,7 +38,8 @@ public class RepeatNode extends BaseNode {
         super(UUID.randomUUID(), "math.sequence.repeat");
 
         IPort dataInput = new BasePort(INPUT_DATA_ID, "Item",
-                "The item to repeat (lists are one element, not tiled)", NodeDataType.ANY, this);
+                "The item to repeat (lists are one element, not tiled)", NodeDataType.ANY, this)
+                .bindListElementType(LIST_T);
         addInputPort(dataInput);
 
         IPort countInput = new BasePort(INPUT_COUNT_ID, "Count",
@@ -44,7 +47,8 @@ public class RepeatNode extends BaseNode {
         addInputPort(countInput);
 
         IPort resultOutput = new BasePort(OUTPUT_RESULT_ID, "Result",
-                "The repeated item as a list", NodeDataType.LIST, this);
+                "The repeated item as a list", NodeDataType.LIST, this)
+                .bindListType(LIST_T);
         addOutputPort(resultOutput);
 
         IPort lengthOutput = new BasePort(OUTPUT_LENGTH_ID, "Length",
@@ -63,8 +67,8 @@ public class RepeatNode extends BaseNode {
         Object countObj = inputValues.get(INPUT_COUNT_ID);
 
         int count = defaultCount;
-        if (countObj instanceof Number number) {
-            count = number.intValue();
+        if (countObj instanceof Integer integer) {
+            count = integer;
         }
         count = GenerationLimits.clampNonNegativeCount(count);
 

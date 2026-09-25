@@ -6,11 +6,9 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.SequenceOps;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -42,42 +40,15 @@ public class MathRangeNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        double start = getValueAsDouble(inputValues.get(INPUT_START_ID), 0.0);
-        double end = getValueAsDouble(inputValues.get(INPUT_END_ID), 10.0);
-        double step = getValueAsDouble(inputValues.get(INPUT_STEP_ID), 1.0);
-
-        List<Double> numbers = new ArrayList<>();
-        if (!Double.isFinite(start) || !Double.isFinite(end) || !Double.isFinite(step)) {
-            outputValues.put(OUTPUT_NUMBERS_ID, Collections.unmodifiableList(numbers));
-            return;
-        }
-
-        if (Math.abs(step) < 1e-10) {
-            if (start <= end) {
-                numbers.add(start);
-            }
-            outputValues.put(OUTPUT_NUMBERS_ID, Collections.unmodifiableList(numbers));
-            return;
-        }
-
-        if (step > 0) {
-            if (start <= end) {
-                for (double current = start; current <= end + step * 0.001; current += step) {
-                    numbers.add(current);
-                }
-            }
-        } else if (start >= end) {
-            for (double current = start; current >= end + step * 0.001; current += step) {
-                numbers.add(current);
-            }
-        }
-
-        outputValues.put(OUTPUT_NUMBERS_ID, Collections.unmodifiableList(numbers));
+        double start = getValueAsDouble(inputValues.get(INPUT_START_ID), 0.0d);
+        double end = getValueAsDouble(inputValues.get(INPUT_END_ID), 10.0d);
+        double step = getValueAsDouble(inputValues.get(INPUT_STEP_ID), 1.0d);
+        outputValues.put(OUTPUT_NUMBERS_ID, SequenceOps.range(start, end, step));
     }
 
-    private double getValueAsDouble(Object value, double defaultValue) {
-        if (value instanceof Number) {
-            return ((Number) value).doubleValue();
+    private static double getValueAsDouble(Object value, double defaultValue) {
+        if (value instanceof Number number) {
+            return number.doubleValue();
         }
         return defaultValue;
     }

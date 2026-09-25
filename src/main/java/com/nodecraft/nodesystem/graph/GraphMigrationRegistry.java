@@ -93,6 +93,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V24 -> migrateV24ToV25(graph);
             case GraphFormatVersion.V25 -> migrateV25ToV26(graph);
             case GraphFormatVersion.V26 -> migrateV26ToV27(graph);
+            case GraphFormatVersion.V27 -> migrateV27ToV28(graph);
             default -> graph;
         };
     }
@@ -1868,6 +1869,41 @@ public final class GraphMigrationRegistry {
                 LOGGER.debug("Dropped orphan connection after Compare V27 node removal: {}#{} → {}#{}",
                         connection.sourceNodeId, connection.sourcePortId,
                         connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
+            return false;
+        });
+
+        return graph;
+    }
+
+    private static final String SERIES_TYPE = "math.sequence.series";
+
+    /**
+     * Sequence v1: drop Number Series Sum output wires (reduction belongs on Sum Numbers).
+     */
+    private static SavedGraph migrateV27ToV28(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            if (SERIES_TYPE.equals(sourceType) && "output_sum".equals(sourcePort)) {
+                LOGGER.debug("Dropped Number Series output_sum wire from {}", connection.sourceNodeId);
                 return true;
             }
             return false;

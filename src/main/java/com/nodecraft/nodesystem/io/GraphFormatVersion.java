@@ -175,8 +175,13 @@ public final class GraphFormatVersion {
      */
     public static final int V27 = 27;
 
+    /**
+     * Sequence v1: drop Number Series {@code output_sum} wires (use Sum Numbers instead).
+     */
+    public static final int V28 = 28;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V27;
+    public static final int CURRENT = V28;
 
     private GraphFormatVersion() {
     }

@@ -26,7 +26,7 @@ class RepeatNodeTest {
         RepeatNode node = new RepeatNode();
         Map<String, Object> outputs = node.compute(Map.of(
             "input_data", List.of(1, 2, 3, 4),
-            "input_count", 1_000_000
+            "input_count", Integer.MAX_VALUE
         ));
 
         assertEquals(GenerationLimits.MAX_LIST_ELEMENTS, outputs.get("output_length"));

@@ -515,7 +515,7 @@
 |---|---|---|---|
 | Number Sequence | `math.sequence.range` | Generates a discrete DOUBLE_LIST from Start to End using Step. Not a continuous domain — use Domain Input for intervals. | `MathRangeNode` |
 | Repeat Item | `math.sequence.repeat` | Repeats a single item Count times as a LIST. A list item is repeated as one element, never tiled. | `RepeatNode` |
-| Number Series | `math.sequence.series` | Generates a DOUBLE_LIST with Start, Step, and Count. | `DataSeriesNode` |
+| Number Series | `math.sequence.series` | Generates a DOUBLE_LIST with Start, Step, and Count (no Sum — use Sum Numbers). | `DataSeriesNode` |
 
 ## math.trigonometry（10）
 
