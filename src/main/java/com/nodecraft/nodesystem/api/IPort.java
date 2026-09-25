@@ -24,10 +24,26 @@ public interface IPort {
     String getDescription();
     
     /**
-     * 获取端口的数据类型
+     * 获取端口的数据类型（声明类型；有效类型见 {@link PortTypeResolver}）
      * @return 数据类型
      */
     NodeDataType getDataType();
+
+    /**
+     * Optional list type-variable name shared across ports on the same node (e.g. {@code "T"}).
+     * Null means unbound.
+     */
+    default String getListTypeVariable() {
+        return null;
+    }
+
+    /**
+     * When true with a list type variable, this port binds to the <em>element</em> type of {@code T}
+     * rather than the list type of {@code T}.
+     */
+    default boolean isListElementBinding() {
+        return false;
+    }
     
     /**
      * 判断此端口是否为输入端口

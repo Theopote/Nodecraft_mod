@@ -9,6 +9,7 @@ public enum ListElementKind {
     UNCONSTRAINED,
     DOUBLE,
     BOOLEAN,
+    STRING,
     BLOCK_POS,
     POINT,
     VECTOR,

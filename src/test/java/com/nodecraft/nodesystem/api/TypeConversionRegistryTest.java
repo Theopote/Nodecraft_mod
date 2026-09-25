@@ -184,8 +184,17 @@ class TypeConversionRegistryTest {
             TypeConversionRegistry.classify(NodeDataType.DOUBLE_LIST, NodeDataType.BOOLEAN_LIST));
         assertEquals(TypeConversionRegistry.ConversionPolicy.UNSUPPORTED,
             TypeConversionRegistry.classify(NodeDataType.DOUBLE_LIST, NodeDataType.POINT_LIST));
-        assertTrue(NodeDataType.isConnectableTo(NodeDataType.LIST, NodeDataType.DOUBLE_LIST));
+        assertFalse(NodeDataType.isConnectableTo(NodeDataType.LIST, NodeDataType.DOUBLE_LIST));
         assertTrue(NodeDataType.isConnectableTo(NodeDataType.BOOLEAN_LIST, NodeDataType.LIST));
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.DOUBLE_LIST, NodeDataType.LIST));
+    }
+
+    @Test
+    void typedListWidensToGenericListButNotTheReverse() {
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.VECTOR_LIST, NodeDataType.LIST));
+        assertFalse(NodeDataType.isConnectableTo(NodeDataType.LIST, NodeDataType.VECTOR_LIST));
+        assertFalse(NodeDataType.isConnectableTo(NodeDataType.LIST, NodeDataType.POINT_LIST));
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.LIST, NodeDataType.LIST));
     }
 
     @Test
@@ -195,19 +204,13 @@ class TypeConversionRegistryTest {
         assertEquals(TypeConversionRegistry.ConversionPolicy.UNSUPPORTED,
             TypeConversionRegistry.classify(NodeDataType.PATH_LIST, NodeDataType.FRAME_LIST));
         assertFalse(NodeDataType.isConnectableTo(NodeDataType.PATH_LIST, NodeDataType.VECTOR_LIST));
-        assertTrue(NodeDataType.isConnectableTo(NodeDataType.LIST, NodeDataType.PATH_LIST));
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.PATH_LIST, NodeDataType.LIST));
+        assertFalse(NodeDataType.isConnectableTo(NodeDataType.LIST, NodeDataType.PATH_LIST));
     }
 
     @Test
     void coordinateListAliasesRemainConnectable() {
         assertTrue(NodeDataType.isConnectableTo(NodeDataType.COORDINATE_LIST, NodeDataType.BLOCK_LIST));
         assertTrue(NodeDataType.isConnectableTo(NodeDataType.BLOCK_LIST, NodeDataType.COORDINATE_LIST));
-    }
-
-    @Test
-    void genericListConnectsToTypedLists() {
-        assertTrue(NodeDataType.isConnectableTo(NodeDataType.VECTOR_LIST, NodeDataType.LIST));
-        assertTrue(NodeDataType.isConnectableTo(NodeDataType.LIST, NodeDataType.VECTOR_LIST));
-        assertTrue(NodeDataType.isConnectableTo(NodeDataType.LIST, NodeDataType.LIST));
     }
 }

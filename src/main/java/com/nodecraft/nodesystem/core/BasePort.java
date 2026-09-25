@@ -3,7 +3,9 @@ package com.nodecraft.nodesystem.core;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.PortTypeResolver;
 
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -28,6 +30,8 @@ public class BasePort implements IPort {
     private final INode node;
     private final boolean allowMultipleIncomingConnections;
     private final boolean required;
+    private String listTypeVariable;
+    private boolean listElementBinding;
     private Direction direction = Direction.UNASSIGNED;
     private boolean isConnected = false;
     private IPort connectedPort = null;
@@ -53,6 +57,24 @@ public class BasePort implements IPort {
         this.allowMultipleIncomingConnections = allowMultipleIncomingConnections;
         this.required = required;
         initializeDefaultValue();
+    }
+
+    /**
+     * Binds this list port to a shared type variable on the owning node (List&lt;T&gt; preservation).
+     */
+    public BasePort bindListType(String variable) {
+        this.listTypeVariable = variable;
+        this.listElementBinding = false;
+        return this;
+    }
+
+    /**
+     * Binds this port to the element type of a shared list type variable.
+     */
+    public BasePort bindListElementType(String variable) {
+        this.listTypeVariable = variable;
+        this.listElementBinding = true;
+        return this;
     }
 
     private void initializeDefaultValue() {
@@ -87,6 +109,16 @@ public class BasePort implements IPort {
     }
 
     @Override
+    public String getListTypeVariable() {
+        return listTypeVariable;
+    }
+
+    @Override
+    public boolean isListElementBinding() {
+        return listElementBinding;
+    }
+
+    @Override
     public boolean isInput() {
         return resolveDirection() == Direction.INPUT;
     }
@@ -115,9 +147,14 @@ public class BasePort implements IPort {
         return node;
     }
 
+    public Set<IPort> getConnectedPorts() {
+        return Collections.unmodifiableSet(connectedPorts);
+    }
+
     @Override
     public void setValue(Object newValue) {
-        if (dataType.isCompatible(newValue)) {
+        NodeDataType effective = PortTypeResolver.resolveEffectiveType(this);
+        if (effective.isCompatible(newValue)) {
             this.value = newValue;
         }
     }
@@ -152,22 +189,22 @@ public class BasePort implements IPort {
         IPort outputPort = isOutput() ? this : targetPort;
         IPort inputPort = isOutput() ? targetPort : this;
 
-        if (!NodeDataType.isConnectableTo(outputPort.getDataType(), inputPort.getDataType())) {
-            String reason = NodeDataType.getConnectabilityRejectionReason(outputPort.getDataType(), inputPort.getDataType());
+        if (inputPort.isConnected() && !inputPort.allowsMultipleIncomingConnections()) {
             com.nodecraft.core.NodeCraft.LOGGER.debug(
-                    "Port connect rejected: {} (outputNode={}, outputPort={}, inputNode={}, inputPort={})",
-                    reason,
-                    outputPort.getNode() != null ? outputPort.getNode().getId() : "null",
-                    outputPort.getId(),
+                    "Port connect rejected: input already connected and does not allow multiple incoming (inputNode={}, inputPort={})",
                     inputPort.getNode() != null ? inputPort.getNode().getId() : "null",
                     inputPort.getId()
             );
             return false;
         }
 
-        if (inputPort.isConnected() && !inputPort.allowsMultipleIncomingConnections()) {
+        if (!PortTypeResolver.isConnectable(outputPort, inputPort)) {
+            String reason = PortTypeResolver.connectabilityRejectionReason(outputPort, inputPort);
             com.nodecraft.core.NodeCraft.LOGGER.debug(
-                    "Port connect rejected: input already connected and does not allow multiple incoming (inputNode={}, inputPort={})",
+                    "Port connect rejected: {} (outputNode={}, outputPort={}, inputNode={}, inputPort={})",
+                    reason,
+                    outputPort.getNode() != null ? outputPort.getNode().getId() : "null",
+                    outputPort.getId(),
                     inputPort.getNode() != null ? inputPort.getNode().getId() : "null",
                     inputPort.getId()
             );
@@ -209,7 +246,7 @@ public class BasePort implements IPort {
         }
     }
 
-    void setDirection(Direction direction) {
+    public void setDirection(Direction direction) {
         if (direction != null) {
             this.direction = direction;
         }

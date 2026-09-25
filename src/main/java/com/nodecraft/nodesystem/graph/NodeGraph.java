@@ -229,7 +229,7 @@ public class NodeGraph {
             return false;
         }
 
-        if (!com.nodecraft.nodesystem.api.NodeDataType.isConnectableTo(sourcePort.getDataType(), targetPort.getDataType())) {
+        if (!com.nodecraft.nodesystem.api.PortTypeResolver.isConnectable(sourcePort, targetPort)) {
             return false;
         }
 

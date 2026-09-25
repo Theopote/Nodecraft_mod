@@ -3,15 +3,12 @@ package com.nodecraft.nodesystem.nodes.math.list_sequence;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -22,17 +19,14 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.list.deduplicate",
     displayName = "Deduplicate List",
-    description = "Removes duplicate values from a list while preserving order.",
+    description = "Removes duplicate values, keeping first occurrence order (preserves element type T).",
     category = "math.list",
     order = 20
 )
 public class DeduplicateListNode extends BaseNode {
 
-    @NodeProperty(displayName = "Preserve Order", category = "Deduplicate", order = 1)
-    private boolean preserveOrder = true;
-
+    private static final String LIST_T = "T";
     private static final String INPUT_LIST_ID = "input_list";
-
     private static final String OUTPUT_UNIQUE_ID = "output_unique";
     private static final String OUTPUT_REMOVED_ID = "output_removed";
     private static final String OUTPUT_UNIQUE_COUNT_ID = "output_unique_count";
@@ -42,13 +36,18 @@ public class DeduplicateListNode extends BaseNode {
     public DeduplicateListNode() {
         super(UUID.randomUUID(), "math.list.deduplicate");
 
-        addInputPort(new BasePort(INPUT_LIST_ID, "List", "List to deduplicate", NodeDataType.LIST, this));
-
-        addOutputPort(new BasePort(OUTPUT_UNIQUE_ID, "Unique", "List with duplicates removed", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_REMOVED_ID, "Removed", "Values removed as duplicates", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_UNIQUE_COUNT_ID, "Unique Count", "Unique list size", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_REMOVED_COUNT_ID, "Removed Count", "Removed duplicate count", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether input is a valid list", NodeDataType.BOOLEAN, this));
+        addInputPort(new BasePort(INPUT_LIST_ID, "List", "List to deduplicate", NodeDataType.LIST, this)
+                .bindListType(LIST_T));
+        addOutputPort(new BasePort(OUTPUT_UNIQUE_ID, "Unique", "List with duplicates removed",
+                NodeDataType.LIST, this).bindListType(LIST_T));
+        addOutputPort(new BasePort(OUTPUT_REMOVED_ID, "Removed", "Values removed as duplicates",
+                NodeDataType.LIST, this).bindListType(LIST_T));
+        addOutputPort(new BasePort(OUTPUT_UNIQUE_COUNT_ID, "Unique Count", "Unique list size",
+                NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_REMOVED_COUNT_ID, "Removed Count", "Removed duplicate count",
+                NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether input is a valid list",
+                NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -63,27 +62,14 @@ public class DeduplicateListNode extends BaseNode {
             return;
         }
 
+        Set<Object> seen = new LinkedHashSet<>();
+        List<Object> unique = new ArrayList<>();
         List<Object> removed = new ArrayList<>();
-        List<Object> unique;
-        if (preserveOrder) {
-            Set<Object> seen = new LinkedHashSet<>();
-            unique = new ArrayList<>();
-            for (Object value : list) {
-                if (seen.add(value)) {
-                    unique.add(value);
-                } else {
-                    removed.add(value);
-                }
-            }
-        } else {
-            Set<Object> seen = new HashSet<>();
-            unique = new ArrayList<>();
-            for (Object value : list) {
-                if (seen.add(value)) {
-                    unique.add(value);
-                } else {
-                    removed.add(value);
-                }
+        for (Object value : list) {
+            if (seen.add(value)) {
+                unique.add(value);
+            } else {
+                removed.add(value);
             }
         }
 
@@ -96,31 +82,11 @@ public class DeduplicateListNode extends BaseNode {
 
     @Override
     public Object getNodeState() {
-        Map<String, Object> state = new HashMap<>();
-        state.put("preserveOrder", preserveOrder);
-        return state;
+        return Map.of();
     }
 
     @Override
     public void setNodeState(Object state) {
-        if (!(state instanceof Map<?, ?> map)) {
-            return;
-        }
-        Object preserveOrderValue = map.get("preserveOrder");
-        if (preserveOrderValue instanceof Boolean value) {
-            setPreserveOrder(value);
-        }
-    }
-
-    public boolean isPreserveOrder() {
-        return preserveOrder;
-    }
-
-    public void setPreserveOrder(boolean value) {
-        if (preserveOrder != value) {
-            preserveOrder = value;
-            markDirty();
-        }
+        // Legacy preserveOrder ignored — first-occurrence order is always used.
     }
 }
-

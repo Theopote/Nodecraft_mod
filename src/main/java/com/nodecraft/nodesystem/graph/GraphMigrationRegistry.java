@@ -1,5 +1,7 @@
 package com.nodecraft.nodesystem.graph;
 
+import com.nodecraft.nodesystem.api.ListElementKind;
+import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
@@ -86,6 +88,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V19 -> migrateV19ToV20(graph);
             case GraphFormatVersion.V20 -> migrateV20ToV21(graph);
             case GraphFormatVersion.V21 -> migrateV21ToV22(graph);
+            case GraphFormatVersion.V22 -> migrateV22ToV23(graph);
             default -> graph;
         };
     }
@@ -1493,6 +1496,127 @@ public final class GraphMigrationRegistry {
         });
 
         return graph;
+    }
+
+    private static final Set<String> LIST_V23_DELETED_NODE_TYPES = Set.of(
+            "math.list.sort_list",
+            "math.list.reduce"
+    );
+
+    private static final Set<String> LIST_V23_STATE_STRIP_KEYS = Set.of(
+            "preserveOrder",
+            "preserveInput",
+            "allowNegativeIndex",
+            "clampToList",
+            "expandList",
+            "useDefaultValue",
+            "defaultValue"
+    );
+
+    /**
+     * List typed boundary: drop LIST→typed wires; Filter/Dispatch mask must be BOOLEAN_LIST;
+     * remove generic Sort/Reduce.
+     */
+    private static SavedGraph migrateV22ToV23(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return graph;
+        }
+
+        graph.nodes = new ArrayList<>(graph.nodes);
+        graph.nodes.removeIf(node -> node != null && node.typeId != null
+                && LIST_V23_DELETED_NODE_TYPES.contains(node.typeId.toLowerCase(Locale.ROOT)));
+
+        for (SavedNode node : graph.nodes) {
+            if (node == null || !(node.state instanceof Map<?, ?> state)) {
+                continue;
+            }
+            Map<String, Object> cleaned = new HashMap<>();
+            for (Map.Entry<?, ?> entry : state.entrySet()) {
+                if (!(entry.getKey() instanceof String key)) {
+                    continue;
+                }
+                if (LIST_V23_STATE_STRIP_KEYS.contains(key)) {
+                    continue;
+                }
+                cleaned.put(key, entry.getValue());
+            }
+            node.state = cleaned;
+        }
+
+        if (graph.connections == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            String targetPort = connection.targetPortId == null ? "" : connection.targetPortId.toLowerCase(Locale.ROOT);
+
+            NodeDataType sourceDataType = resolveDeclaredPortType(sourceType, connection.sourcePortId, true);
+            NodeDataType targetDataType = resolveDeclaredPortType(targetType, connection.targetPortId, false);
+
+            if (sourceDataType != null && targetDataType != null
+                    && sourceDataType.isListType() && targetDataType.isListType()
+                    && sourceDataType.getListElementKind() == ListElementKind.UNCONSTRAINED
+                    && targetDataType.getListElementKind() != ListElementKind.UNCONSTRAINED) {
+                LOGGER.debug("Dropped LIST→typed connection {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
+
+            if (("math.list.filter_list".equals(targetType) || "math.list.dispatch_list".equals(targetType))
+                    && "input_condition".equals(targetPort)) {
+                if (sourceDataType == null || sourceDataType != NodeDataType.BOOLEAN_LIST) {
+                    LOGGER.debug("Dropped non-BOOLEAN_LIST mask wire to {}#{}",
+                            connection.targetNodeId, connection.targetPortId);
+                    return true;
+                }
+            }
+
+            return false;
+        });
+
+        return graph;
+    }
+
+    private static NodeDataType resolveDeclaredPortType(@Nullable String typeId, @Nullable String portId,
+                                                        boolean output) {
+        if (typeId == null || portId == null) {
+            return null;
+        }
+        try {
+            var registry = com.nodecraft.nodesystem.registry.NodeRegistry.getInstance();
+            if (!registry.isInitialized()) {
+                return null;
+            }
+            com.nodecraft.nodesystem.api.INode instance = registry.createNodeInstance(typeId);
+            if (instance == null) {
+                return null;
+            }
+            var ports = output ? instance.getOutputPorts() : instance.getInputPorts();
+            for (com.nodecraft.nodesystem.api.IPort port : ports) {
+                if (port != null && portId.equalsIgnoreCase(port.getId())) {
+                    return port.getDataType();
+                }
+            }
+        } catch (Exception ignored) {
+            return null;
+        }
+        return null;
     }
 
     private static void migrateDomainInputNodeState(SavedNode node) {

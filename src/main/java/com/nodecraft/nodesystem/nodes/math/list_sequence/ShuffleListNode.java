@@ -1,17 +1,19 @@
 package com.nodecraft.nodesystem.nodes.math.list_sequence;
 
-import com.nodecraft.nodesystem.core.BaseNode;
-import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.api.IPort;
+import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
@@ -19,114 +21,75 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.list.shuffle_list",
     displayName = "Shuffle List",
-    description = "Randomly reorders elements in a list",
+    description = "Deterministically reorders a list using Seed (preserves element type T).",
     category = "math.list"
 )
 public class ShuffleListNode extends BaseNode {
-    
+
     private long seed = 0;
-    private boolean preserveInput = false;
-    
+
+    private static final String LIST_T = "T";
     private static final String INPUT_LIST_ID = "input_list";
     private static final String INPUT_SEED_ID = "input_seed";
     private static final String OUTPUT_LIST_ID = "output_list";
-    
+
     public ShuffleListNode() {
         super(UUID.randomUUID(), "math.list.shuffle_list");
-        
-        IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
-                "The list to shuffle", NodeDataType.LIST, this);
-        addInputPort(listInput);
-        
-        IPort seedInput = new BasePort(INPUT_SEED_ID, "Seed", 
-                "Optional random seed (integer)", NodeDataType.INTEGER, this);
-        addInputPort(seedInput);
-        
-        IPort listOutput = new BasePort(OUTPUT_LIST_ID, "Shuffled List", 
-                "The list with elements in random order", NodeDataType.LIST, this);
-        addOutputPort(listOutput);
+
+        addInputPort(new BasePort(INPUT_LIST_ID, "List", "The list to shuffle", NodeDataType.LIST, this)
+                .bindListType(LIST_T));
+        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Random seed (0 is a valid deterministic seed)",
+                NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_LIST_ID, "Shuffled", "The shuffled list", NodeDataType.LIST, this)
+                .bindListType(LIST_T));
     }
-    
+
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object inputObj = inputValues.get(INPUT_LIST_ID);
         Object seedObj = inputValues.get(INPUT_SEED_ID);
-        
+
         List<Object> resultList = new ArrayList<>();
-        
-        if (inputObj instanceof List) {
-            List<?> inputList = (List<?>) inputObj;
-            
+        if (inputObj instanceof List<?> inputList) {
             resultList.addAll(inputList);
-            
             long actualSeed = seed;
-            if (seedObj instanceof Number) {
-                actualSeed = ((Number) seedObj).longValue();
+            if (seedObj instanceof Number number) {
+                actualSeed = number.longValue();
             }
-            
             if (!resultList.isEmpty()) {
-                if (actualSeed != 0) {
-                    Collections.shuffle(resultList, new Random(actualSeed));
-                } else {
-                    Collections.shuffle(resultList);
-                }
+                Collections.shuffle(resultList, new Random(actualSeed));
             }
         }
-        
         outputValues.put(OUTPUT_LIST_ID, resultList);
     }
-    
-    // --- Getters/Setters for Properties ---
-    
+
     public long getSeed() {
         return seed;
     }
-    
+
     public void setSeed(long seed) {
         if (this.seed != seed) {
             this.seed = seed;
             markDirty();
         }
     }
-    
-    public boolean isPreserveInput() {
-        return preserveInput;
-    }
-    
-    public void setPreserveInput(boolean preserve) {
-        if (this.preserveInput != preserve) {
-            this.preserveInput = preserve;
-            markDirty();
-        }
-    }
-    
-    
+
     @Override
     public Object getNodeState() {
-        java.util.Map<String, Object> state = new java.util.HashMap<>();
+        Map<String, Object> state = new HashMap<>();
         state.put("seed", getSeed());
-        state.put("preserveInput", isPreserveInput());
         return state;
     }
-    
+
     @Override
     public void setNodeState(Object state) {
-        if (state instanceof java.util.Map) {
-            java.util.Map<?, ?> stateMap = (java.util.Map<?, ?>) state;
-            
-            if (stateMap.containsKey("seed")) {
-                Object seedObj = stateMap.get("seed");
-                if (seedObj instanceof Number) {
-                    setSeed(((Number) seedObj).longValue());
-                }
-            }
-            
-            if (stateMap.containsKey("preserveInput")) {
-                Object preserve = stateMap.get("preserveInput");
-                if (preserve instanceof Boolean) {
-                    setPreserveInput((Boolean) preserve);
-                }
-            }
+        if (!(state instanceof Map<?, ?> stateMap)) {
+            return;
         }
+        Object seedObj = stateMap.get("seed");
+        if (seedObj instanceof Number number) {
+            setSeed(number.longValue());
+        }
+        // Legacy preserveInput ignored.
     }
-} 
+}

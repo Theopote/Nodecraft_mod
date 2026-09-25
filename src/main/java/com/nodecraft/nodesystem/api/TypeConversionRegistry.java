@@ -272,9 +272,13 @@ public final class TypeConversionRegistry {
         ListElementKind outputKind = outputType.getListElementKind();
         ListElementKind inputKind = inputType.getListElementKind();
 
-        if (outputKind == ListElementKind.UNCONSTRAINED
-                || inputKind == ListElementKind.UNCONSTRAINED) {
+        // typed → LIST (safe widening)
+        if (inputKind == ListElementKind.UNCONSTRAINED) {
             return true;
+        }
+        // LIST → typed (forbidden; needs explicit As/Validate)
+        if (outputKind == ListElementKind.UNCONSTRAINED) {
+            return false;
         }
 
         return outputKind == inputKind;

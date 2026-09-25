@@ -71,7 +71,6 @@ class AnyAllowlistContractTest {
         "math.list.insert_item",
         "math.list.remove_item",
         "math.sequence.repeat",
-        "math.list.reduce",
         "math.list.create_list",
         // Polymorphic tree item container
         "math.data_tree.item"

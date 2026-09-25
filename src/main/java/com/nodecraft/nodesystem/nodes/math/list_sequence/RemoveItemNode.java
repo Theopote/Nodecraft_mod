@@ -1,16 +1,17 @@
 package com.nodecraft.nodesystem.nodes.math.list_sequence;
 
-import com.nodecraft.nodesystem.core.BaseNode;
-import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.api.IPort;
+import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -18,183 +19,158 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.list.remove_item",
     displayName = "Remove Item",
-    description = "Removes an item from a list by index or value",
+    description = "Removes an item by index or value (preserves element type T).",
     category = "math.list"
 )
 public class RemoveItemNode extends BaseNode {
-    
+
     private boolean useIndex = true;
-    private boolean allowNegativeIndex = true;
     private boolean removeAllMatches = false;
-    
+
+    private static final String LIST_T = "T";
     private static final String INPUT_LIST_ID = "input_list";
     private static final String INPUT_INDEX_ID = "input_index";
     private static final String INPUT_VALUE_ID = "input_value";
     private static final String OUTPUT_LIST_ID = "output_list";
     private static final String OUTPUT_REMOVED_ID = "output_removed";
     private static final String OUTPUT_COUNT_ID = "output_remove_count";
-    
+    private static final String OUTPUT_VALID_ID = "output_valid";
+
     public RemoveItemNode() {
         super(UUID.randomUUID(), "math.list.remove_item");
-        
-        IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
-                "The list to remove from", NodeDataType.LIST, this);
-        addInputPort(listInput);
-        
-        IPort indexInput = new BasePort(INPUT_INDEX_ID, "Index", 
-                "The index of the item to remove (0-based)", NodeDataType.INTEGER, this);
-        addInputPort(indexInput);
-        
-        IPort valueInput = new BasePort(INPUT_VALUE_ID, "Value", 
-                "The value to remove (used if 'Use Index' is false)", NodeDataType.ANY, this);
-        addInputPort(valueInput);
-        
-        IPort listOutput = new BasePort(OUTPUT_LIST_ID, "Modified List", 
-                "The list with item(s) removed", NodeDataType.LIST, this);
-        addOutputPort(listOutput);
-        
-        IPort removedOutput = new BasePort(OUTPUT_REMOVED_ID, "Removed Item", 
-                "The removed item (first one if multiple)", NodeDataType.ANY, this);
-        addOutputPort(removedOutput);
-        
-        IPort countOutput = new BasePort(OUTPUT_COUNT_ID, "Remove Count", 
-                "The number of items removed", NodeDataType.INTEGER, this);
-        addOutputPort(countOutput);
+
+        addInputPort(new BasePort(INPUT_LIST_ID, "List", "The list to remove from", NodeDataType.LIST, this)
+                .bindListType(LIST_T));
+        addInputPort(new BasePort(INPUT_INDEX_ID, "Index", "Index to remove (0-based, negatives from end)",
+                NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Value to remove when not using index",
+                NodeDataType.ANY, this).bindListElementType(LIST_T));
+        addOutputPort(new BasePort(OUTPUT_LIST_ID, "List", "The list after removal", NodeDataType.LIST, this)
+                .bindListType(LIST_T));
+        addOutputPort(new BasePort(OUTPUT_REMOVED_ID, "Removed", "First removed item", NodeDataType.ANY, this)
+                .bindListElementType(LIST_T));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Remove Count", "Number of items removed",
+                NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the remove operation was in-range / matched",
+                NodeDataType.BOOLEAN, this));
     }
-    
+
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object inputObj = inputValues.get(INPUT_LIST_ID);
         Object indexObj = inputValues.get(INPUT_INDEX_ID);
         Object valueObj = inputValues.get(INPUT_VALUE_ID);
         boolean hasValueInput = inputValues.containsKey(INPUT_VALUE_ID);
-        
-        List<Object> resultList = new ArrayList<>();
+
+        if (!(inputObj instanceof List<?> inputList)) {
+            writeEmpty(false);
+            return;
+        }
+
+        List<Object> result = new ArrayList<>(inputList);
         Object removedItem = null;
         int removeCount = 0;
-        
-        if (inputObj instanceof List) {
-            List<?> inputList = (List<?>) inputObj;
-            
-            for (Object item : inputList) {
-                resultList.add(item);
+        boolean valid = false;
+
+        if (useIndex) {
+            if (!(indexObj instanceof Number number)) {
+                writeResult(result, null, 0, false);
+                return;
             }
-            
-            if (useIndex && indexObj instanceof Number) {
-                int index = ((Number) indexObj).intValue();
-                int listSize = resultList.size();
-                
-                if (index < 0 && allowNegativeIndex) {
-                    index = listSize + index;
-                }
-                
-                if (index >= 0 && index < listSize) {
-                    removedItem = resultList.remove(index);
-                    removeCount = 1;
-                }
-            } 
-            else if (!useIndex && hasValueInput) {
-                if (removeAllMatches) {
-                    List<Object> toRemove = new ArrayList<>();
-                    
-                    for (Object item : resultList) {
-                        if (Objects.equals(item, valueObj)) {
-                            toRemove.add(item);
-                            removeCount++;
-                            
-                            if (removedItem == null) {
-                                removedItem = item;
-                            }
+            int size = result.size();
+            int index = number.intValue();
+            if (index < 0) {
+                index = size + index;
+            }
+            if (index < 0 || index >= size) {
+                writeResult(result, null, 0, false);
+                return;
+            }
+            removedItem = result.remove(index);
+            removeCount = 1;
+            valid = true;
+        } else if (hasValueInput) {
+            if (removeAllMatches) {
+                List<Object> remaining = new ArrayList<>();
+                for (Object item : result) {
+                    if (Objects.equals(item, valueObj)) {
+                        if (removedItem == null) {
+                            removedItem = item;
                         }
+                        removeCount++;
+                    } else {
+                        remaining.add(item);
                     }
-                    
-                    resultList.removeAll(toRemove);
-                } 
-                else {
-                    int index = resultList.indexOf(valueObj);
-                    if (index >= 0) {
-                        removedItem = resultList.remove(index);
-                        removeCount = 1;
-                    }
+                }
+                result = remaining;
+                valid = removeCount > 0;
+            } else {
+                int index = result.indexOf(valueObj);
+                if (index >= 0) {
+                    removedItem = result.remove(index);
+                    removeCount = 1;
+                    valid = true;
                 }
             }
         }
-        
-        outputValues.put(OUTPUT_LIST_ID, resultList);
-        outputValues.put(OUTPUT_REMOVED_ID, removedItem);
-        outputValues.put(OUTPUT_COUNT_ID, removeCount);
+
+        writeResult(result, removedItem, removeCount, valid);
     }
-    
-    // --- Getters/Setters for Properties ---
-    
+
+    private void writeEmpty(boolean valid) {
+        writeResult(List.of(), null, 0, valid);
+    }
+
+    private void writeResult(List<Object> list, Object removed, int count, boolean valid) {
+        outputValues.put(OUTPUT_LIST_ID, list);
+        outputValues.put(OUTPUT_REMOVED_ID, removed);
+        outputValues.put(OUTPUT_COUNT_ID, count);
+        outputValues.put(OUTPUT_VALID_ID, valid);
+    }
+
     public boolean isUseIndex() {
         return useIndex;
     }
-    
+
     public void setUseIndex(boolean useIndex) {
         if (this.useIndex != useIndex) {
             this.useIndex = useIndex;
             markDirty();
         }
     }
-    
-    public boolean isAllowNegativeIndex() {
-        return allowNegativeIndex;
-    }
-    
-    public void setAllowNegativeIndex(boolean allow) {
-        if (this.allowNegativeIndex != allow) {
-            this.allowNegativeIndex = allow;
-            markDirty();
-        }
-    }
-    
+
     public boolean isRemoveAllMatches() {
         return removeAllMatches;
     }
-    
+
     public void setRemoveAllMatches(boolean removeAll) {
         if (this.removeAllMatches != removeAll) {
             this.removeAllMatches = removeAll;
             markDirty();
         }
     }
-    
-    
+
     @Override
     public Object getNodeState() {
-        java.util.Map<String, Object> state = new java.util.HashMap<>();
+        Map<String, Object> state = new HashMap<>();
         state.put("useIndex", isUseIndex());
-        state.put("allowNegativeIndex", isAllowNegativeIndex());
         state.put("removeAllMatches", isRemoveAllMatches());
         return state;
     }
-    
+
     @Override
     public void setNodeState(Object state) {
-        if (state instanceof java.util.Map) {
-            java.util.Map<?, ?> stateMap = (java.util.Map<?, ?>) state;
-            
-            if (stateMap.containsKey("useIndex")) {
-                Object useIdx = stateMap.get("useIndex");
-                if (useIdx instanceof Boolean) {
-                    setUseIndex((Boolean) useIdx);
-                }
-            }
-            
-            if (stateMap.containsKey("allowNegativeIndex")) {
-                Object allow = stateMap.get("allowNegativeIndex");
-                if (allow instanceof Boolean) {
-                    setAllowNegativeIndex((Boolean) allow);
-                }
-            }
-            
-            if (stateMap.containsKey("removeAllMatches")) {
-                Object removeAll = stateMap.get("removeAllMatches");
-                if (removeAll instanceof Boolean) {
-                    setRemoveAllMatches((Boolean) removeAll);
-                }
-            }
+        if (!(state instanceof Map<?, ?> stateMap)) {
+            return;
         }
+        Object useIdx = stateMap.get("useIndex");
+        if (useIdx instanceof Boolean value) {
+            setUseIndex(value);
+        }
+        Object removeAll = stateMap.get("removeAllMatches");
+        if (removeAll instanceof Boolean value) {
+            setRemoveAllMatches(value);
+        }
+        // Legacy allowNegativeIndex ignored.
     }
-} 
+}

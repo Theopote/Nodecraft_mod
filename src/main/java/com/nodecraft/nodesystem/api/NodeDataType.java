@@ -119,6 +119,8 @@ public enum NodeDataType {
     DOUBLE_LIST("double_list", "Double List", java.util.List.class, ListElementKind.DOUBLE),
     /** Ordered booleans (dispatch masks, per-item predicates). */
     BOOLEAN_LIST("boolean_list", "Boolean List", java.util.List.class, ListElementKind.BOOLEAN),
+    /** Ordered strings (text sort / join sources). */
+    STRING_LIST("string_list", "String List", java.util.List.class, ListElementKind.STRING),
     DATA_TREE("data_tree", "Data Tree", DataTreeData.class),
     COORDINATE_LIST("coordinate_list", "Coordinate List", java.util.List.class, ListElementKind.BLOCK_POS),
     BLOCK_INFO_LIST("block_info_list", "Block Info List", java.util.List.class, ListElementKind.BLOCK_INFO),
@@ -173,6 +175,49 @@ public enum NodeDataType {
         return listElementKind != ListElementKind.NONE;
     }
 
+    /**
+     * Declared list type for a given element kind, or {@link #LIST} when unconstrained/none.
+     */
+    public static NodeDataType forListElementKind(ListElementKind kind) {
+        if (kind == null || kind == ListElementKind.NONE || kind == ListElementKind.UNCONSTRAINED) {
+            return LIST;
+        }
+        for (NodeDataType type : values()) {
+            if (type.listElementKind == kind && type != COORDINATE_LIST) {
+                return type;
+            }
+        }
+        return LIST;
+    }
+
+    /**
+     * Scalar / element type corresponding to a list element kind.
+     */
+    public static NodeDataType elementTypeForKind(ListElementKind kind) {
+        if (kind == null) {
+            return ANY;
+        }
+        return switch (kind) {
+            case NONE, UNCONSTRAINED -> ANY;
+            case DOUBLE -> DOUBLE;
+            case BOOLEAN -> BOOLEAN;
+            case STRING -> STRING;
+            case BLOCK_POS -> BLOCK_POS;
+            case POINT -> POINT;
+            case VECTOR -> VECTOR;
+            case PLANE -> PLANE;
+            case FRAME -> FRAME;
+            case PATH -> PATH;
+            case POLYGON_PROFILE -> POLYGON_PROFILE;
+            case REGION -> REGION;
+            case BLOCK_INFO -> BLOCK_INFO;
+            case BLOCK_PLACEMENT -> ANY;
+            case PLANT_STRUCTURE -> PLANT_STRUCTURE;
+            case L_SYSTEM_RULE -> L_SYSTEM_RULE;
+            case PLANT_BLOCK -> PLANT_BLOCK;
+        };
+    }
+
     public boolean isCompatible(Object value) {
         if (value == null || this == ANY) {
             return true;
@@ -180,11 +225,39 @@ public enum NodeDataType {
 
         if (isListType()) {
             if (this == BLOCK_LIST) {
-                return value instanceof BlockPosList || value instanceof java.util.List;
+                if (value instanceof BlockPosList blockPosList) {
+                    return isCompatibleListElements(blockPosList, ListElementKind.BLOCK_POS);
+                }
+                if (!(value instanceof java.util.List<?> list)) {
+                    return false;
+                }
+                return isCompatibleListElements(list, ListElementKind.BLOCK_POS);
             }
-            return value instanceof java.util.List;
+            if (!(value instanceof java.util.List<?> list)) {
+                return false;
+            }
+            if (listElementKind == ListElementKind.UNCONSTRAINED) {
+                return true;
+            }
+            return isCompatibleListElements(list, listElementKind);
         }
 
+        return isCompatibleScalar(value);
+    }
+
+    private static boolean isCompatibleListElements(Iterable<?> values, ListElementKind kind) {
+        for (Object item : values) {
+            if (item == null) {
+                continue;
+            }
+            if (!isCompatibleElement(kind, item)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isCompatibleScalar(Object value) {
         if (this == DOUBLE && value instanceof Number) {
             return true;
         }
@@ -235,6 +308,34 @@ public enum NodeDataType {
         }
 
         return javaClass != null && javaClass.isInstance(value);
+    }
+
+    static boolean isCompatibleElement(ListElementKind kind, Object value) {
+        if (kind == null || kind == ListElementKind.NONE || kind == ListElementKind.UNCONSTRAINED) {
+            return true;
+        }
+        return switch (kind) {
+            case NONE, UNCONSTRAINED -> true;
+            case DOUBLE -> value instanceof Number;
+            case BOOLEAN -> value instanceof Boolean;
+            case STRING -> value instanceof String;
+            case BLOCK_POS -> value instanceof BlockPos;
+            case POINT -> value instanceof PointData;
+            case VECTOR -> value instanceof Vector3d || value instanceof Vector3;
+            case PLANE -> value instanceof PlaneData;
+            case FRAME -> value instanceof FrameData;
+            case PATH -> value instanceof PathData
+                    || value instanceof LineData
+                    || value instanceof PolylineData
+                    || value instanceof Curve;
+            case POLYGON_PROFILE -> value instanceof PolygonProfileData;
+            case REGION -> value instanceof RegionData;
+            case BLOCK_INFO -> true;
+            case BLOCK_PLACEMENT -> true;
+            case PLANT_STRUCTURE -> value instanceof PlantStructure;
+            case L_SYSTEM_RULE -> value instanceof LSystemRule;
+            case PLANT_BLOCK -> value instanceof PlantStructure.PlantBlock;
+        };
     }
 
     public static boolean isConnectableTo(NodeDataType outputType, NodeDataType inputType) {

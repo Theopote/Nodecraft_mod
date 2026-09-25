@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**539**
+- **节点总数**：**544**
 - **分类总数**：**59**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -34,7 +34,7 @@
 | `math.compare` | 7 |
 | `math.data_tree` | 13 |
 | `math.fields` | 17 |
-| `math.list` | 18 |
+| `math.list` | 23 |
 | `math.logic` | 6 |
 | `math.random` | 5 |
 | `math.scalar_math` | 23 |
@@ -430,28 +430,33 @@
 | Repulsor Field | `math.fields.repulsor_field` | Inverts a vector field direction (repulsion) with optional strength scaling. | `RepulsorFieldNode` |
 | Attractor Field Blend | `math.fields.attractor_blend` | Blends up to four attractor/repulsor fields using per-field weights. | `AttractorFieldBlendNode` |
 
-## math.list（18）
+## math.list（23）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Create List | `math.list.create_list` | Packs multiple ANY items into a generic LIST. | `CreateListNode` |
-| Deduplicate List | `math.list.deduplicate` | Removes duplicate values from a list while preserving order. | `DeduplicateListNode` |
+| Deduplicate List | `math.list.deduplicate` | Removes duplicate values, keeping first occurrence order (preserves element type T). | `DeduplicateListNode` |
 | List Statistics | `math.list.statistics` | Computes min, max, sum, average, and median for a DOUBLE_LIST. | `ListStatisticsNode` |
 | Map Numbers | `math.list.map_numbers` | Applies a scalar operation to each value in a DOUBLE_LIST. | `MapListNode` |
-| Reduce List | `math.list.reduce` | Reduces a list into a single value using a selected operation. | `ReduceListNode` |
-| Dispatch List | `math.list.dispatch_list` | Splits a list into two using a BOOLEAN_LIST mask (one boolean per item). | `DispatchListNode` |
-| Filter List | `math.list.filter_list` | Filters a list based on boolean conditions | `FilterListNode` |
+| Sort Numbers | `math.list.sort_numbers` | Sorts a DOUBLE_LIST ascending or descending. | `SortNumbersNode` |
+| Sort Text | `math.list.sort_text` | Sorts a STRING_LIST ascending or descending. | `SortTextNode` |
+| Sum Numbers | `math.list.sum_numbers` | Sums a DOUBLE_LIST. | `SumNumbersNode` |
+| Product Numbers | `math.list.product_numbers` | Multiplies all values in a DOUBLE_LIST. | `ProductNumbersNode` |
+| Min Number | `math.list.min_number` | Minimum of a DOUBLE_LIST. | `MinNumberNode` |
+| Max Number | `math.list.max_number` | Maximum of a DOUBLE_LIST. | `MaxNumberNode` |
+| Average | `math.list.average` | Average of a DOUBLE_LIST. | `AverageNumbersNode` |
+| Dispatch List | `math.list.dispatch_list` | Splits a list with a BOOLEAN_LIST mask of equal length (preserves element type T). | `DispatchListNode` |
+| Filter List | `math.list.filter_list` | Filters a list with a BOOLEAN_LIST mask of equal length (preserves element type T). | `FilterListNode` |
 | Flatten List | `math.list.flatten_list` | Flattens a nested list structure into a single-level list | `FlattenListNode` |
 | Get Item | `math.list.get_item` | Gets an item from a list at a specified index. | `GetItemNode` |
 | Group List | `math.list.group_list` | Groups list items by parallel keys into a DATA_TREE (one branch per unique key). | `GroupListNode` |
-| Insert Item | `math.list.insert_item` | Inserts an item into a list at a specified index | `InsertItemNode` |
+| Insert Item | `math.list.insert_item` | Inserts an item at index (negatives from end). Invalid index → Valid=false. | `InsertItemNode` |
 | List Length | `math.list.list_length` | Returns the number of items in a list. | `ListLengthNode` |
-| Remove Item | `math.list.remove_item` | Removes an item from a list by index or value | `RemoveItemNode` |
-| Reverse List | `math.list.reverse_list` | Reverses the order of elements in a list. | `ReverseListNode` |
-| Set Item | `math.list.set_item` | Sets an item in a list at a specified index | `SetItemNode` |
-| Shuffle List | `math.list.shuffle_list` | Randomly reorders elements in a list | `ShuffleListNode` |
-| Sort List | `math.list.sort_list` | Sorts elements of a list | `SortListNode` |
-| Sub List | `math.list.sub_list` | Gets a portion of a list between start and end indexes. | `SubListNode` |
+| Remove Item | `math.list.remove_item` | Removes an item by index or value (preserves element type T). | `RemoveItemNode` |
+| Reverse List | `math.list.reverse_list` | Reverses the order of elements in a list (preserves element type T). | `ReverseListNode` |
+| Set Item | `math.list.set_item` | Sets an item at index (negatives from end). Invalid index → Success=false. | `SetItemNode` |
+| Shuffle List | `math.list.shuffle_list` | Deterministically reorders a list using Seed (preserves element type T). | `ShuffleListNode` |
+| Sub List | `math.list.sub_list` | Inclusive start / exclusive end slice. Negatives from end. Out-of-range → Valid=false. | `SubListNode` |
 
 ## math.logic（6）
 

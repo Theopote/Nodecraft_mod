@@ -145,8 +145,14 @@ public final class GraphFormatVersion {
      */
     public static final int V22 = 22;
 
+    /**
+     * List typed boundary: asymmetric LIST↔typed connectability, list type-variable
+     * preservation, STRING_LIST, Filter/Dispatch BOOLEAN_LIST masks, retire generic Sort/Reduce.
+     */
+    public static final int V23 = 23;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V22;
+    public static final int CURRENT = V23;
 
     private GraphFormatVersion() {
     }
