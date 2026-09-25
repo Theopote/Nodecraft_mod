@@ -60,7 +60,7 @@ class PatternMappingLanguageContractTest {
     void currentGraphFormatIsV38() {
         assertEquals(37, GraphFormatVersion.V37);
         assertEquals(38, GraphFormatVersion.V38);
-        assertEquals(GraphFormatVersion.V38, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V39, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -322,7 +322,7 @@ class PatternMappingLanguageContractTest {
         v37.nodePositions = Map.of();
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v37);
-        assertEquals(GraphFormatVersion.V38, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
 
         assertTrue(hasWire(migrated, "checker", "output_placements", "preview", "input_block_placements"));
         assertFalse(hasWire(migrated, "checker", "output_positions", "preview", "input_block_placements"));

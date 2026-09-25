@@ -178,7 +178,7 @@ material.pattern_mapping.brick_pattern_map|material.pattern_mapping|Brick Patter
 material.pattern_mapping.checker_pattern_map|material.pattern_mapping|Checker Pattern Map
 material.pattern_mapping.grid_pattern_map|material.pattern_mapping|Grid Pattern Map
 material.pattern_mapping.stripe_pattern_map|material.pattern_mapping|Stripe Pattern Map
-material.surface_aging.crack_pattern|material.surface_aging|Crack Pattern
+material.surface_aging.crack_pattern|material.surface_aging|Surface Cracks
 material.surface_aging.moss_growth|material.surface_aging|Moss Growth
 material.surface_aging.weathering|material.surface_aging|Weathering
 math.compare.equals|math.compare|Equals (==)

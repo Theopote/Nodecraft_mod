@@ -6,24 +6,25 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.RandomOps;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
-import com.nodecraft.nodesystem.util.BlockPosList;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
- * Applies a deterministic aged-material replacement over placements or voxelized geometry.
+ * Applies deterministic surface weathering (topology-eligible voxels only).
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "material.surface_aging.weathering",
     displayName = "Weathering",
-    description = "Replaces part of a block set with an aged material using a deterministic weathering ratio",
+    description = "Ages exposed surface voxels with a deterministic RandomOps mask. Remaps blockId only; preserves stateData.",
     category = "material.surface_aging",
     order = 0
 )
@@ -40,140 +41,141 @@ public class WeatheringNode extends BaseNode {
     private static final String INPUT_AGED_BLOCK_ID = "input_aged_block";
     private static final String INPUT_AMOUNT_ID = "input_amount";
     private static final String INPUT_SEED_ID = "input_seed";
+    private static final String INPUT_AGING_ORIGIN_ID = "input_aging_origin";
 
-    private static final String OUTPUT_POSITIONS_ID = "output_positions";
-    private static final String OUTPUT_BLOCK_IDS_ID = "output_block_ids";
     private static final String OUTPUT_PLACEMENTS_ID = "output_placements";
+    private static final String OUTPUT_AFFECTED_COUNT_ID = "output_affected_count";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public WeatheringNode() {
         super(UUID.randomUUID(), "material.surface_aging.weathering");
 
-        addInputPort(new BasePort(INPUT_PLACEMENTS_ID, "Block Placements", "Optional incoming placements to weather", NodeDataType.BLOCK_PLACEMENT_LIST, this));
-        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list", NodeDataType.BLOCK_LIST, this));
-        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified abstract geometry input", NodeDataType.GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_PLACEMENTS_ID, "Block Placements",
+            "Canonical placements to age (blockId only; stateData preserved)", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list when placements are empty", NodeDataType.BLOCK_LIST, this));
+        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry",
+            "Optional geometry — voxelized first when placements/coordinates are empty", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry data to materialize", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to materialize", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
         addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry data to materialize", NodeDataType.TORUS_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_BASE_BLOCK_ID, "Base Block", "Fallback base block when generating placements", NodeDataType.BLOCK_TYPE, this));
-        addInputPort(new BasePort(INPUT_AGED_BLOCK_ID, "Aged Block", "Block type used for weathered cells", NodeDataType.BLOCK_TYPE, this));
-        addInputPort(new BasePort(INPUT_AMOUNT_ID, "Amount", "Weathering ratio from 0.0 to 1.0", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Seed used for deterministic weathering variation", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_BASE_BLOCK_ID, "Base Block",
+            "Geometry/coords voxelization base when placements are empty", NodeDataType.BLOCK_TYPE, this));
+        addInputPort(new BasePort(INPUT_AGED_BLOCK_ID, "Aged Block", "Block type used for weathered surface cells", NodeDataType.BLOCK_TYPE, this));
+        addInputPort(new BasePort(INPUT_AMOUNT_ID, "Amount", "Weathering ratio in [0, 1]", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Integer seed for deterministic weathering", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_AGING_ORIGIN_ID, "Aging Origin",
+            "BLOCK_POS origin for aging phase; missing defaults to (0,0,0)", NodeDataType.BLOCK_POS, this));
 
-        addOutputPort(new BasePort(OUTPUT_POSITIONS_ID, "Positions", "Resolved block positions", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCK_IDS_ID, "Block IDs", "Block IDs aligned with the positions list", NodeDataType.BLOCK_INFO_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Weathered placements for baking", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Canonical material payload", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_AFFECTED_COUNT_ID, "Affected Count", "Number of voxels remapped to Aged Block", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when amount/origin and inputs are usable", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Validation error when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
     public String getDescription() {
-        return "Replaces part of a block set with an aged material using a deterministic weathering ratio";
+        return "Ages exposed surface voxels with a deterministic RandomOps mask. Remaps blockId only; preserves stateData.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<BlockPlacementData> sourcePlacements = resolvePlacements();
-        String agedBlockId = getInputString(INPUT_AGED_BLOCK_ID, "minecraft:mossy_cobblestone");
-        double amount = clamp01(getInputDouble(INPUT_AMOUNT_ID, 0.2d));
-        int seed = getInputInt(INPUT_SEED_ID, 0);
+        double amount = readAmount(0.2d);
+        SurfaceAgingUtils.Validation amountOk = SurfaceAgingUtils.requireAmount01(amount);
+        if (!amountOk.valid()) {
+            emitFail(amountOk.message());
+            return;
+        }
 
-        BlockPosList positions = new BlockPosList();
-        List<String> blockIds = new ArrayList<>();
-        List<BlockPlacementData> placements = new ArrayList<>();
+        SurfaceAgingUtils.OriginResult originResult =
+            SurfaceAgingUtils.resolveAgingOrigin(inputValues.get(INPUT_AGING_ORIGIN_ID));
+        if (!originResult.valid()) {
+            emitFail(originResult.error());
+            return;
+        }
+        BlockPos origin = originResult.origin();
 
-        for (BlockPlacementData placement : sourcePlacements) {
-            BlockPos pos = placement.pos();
-            if (pos == null || placement.blockId() == null || placement.blockId().isEmpty()) {
+        String baseMapped = SurfaceAgingUtils.optionalRole(inputValues.get(INPUT_BASE_BLOCK_ID));
+        String agedMapped = SurfaceAgingUtils.optionalRole(inputValues.get(INPUT_AGED_BLOCK_ID));
+
+        List<BlockPlacementData> fromPlacements = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
+        boolean placementSource = !fromPlacements.isEmpty();
+
+        List<BlockPlacementData> sources = placementSource
+            ? fromPlacements
+            : MaterialMappingSupport.resolveSourcePlacements(
+                null,
+                inputValues.get(INPUT_COORDINATES_ID),
+                inputValues.get(INPUT_GEOMETRY_ID),
+                inputValues.get(INPUT_BOX_GEOMETRY_ID),
+                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
+                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
+                inputValues.get(INPUT_TORUS_GEOMETRY_ID),
+                MaterialMappingSupport.firstMappedBlockType(baseMapped, agedMapped)
+            );
+
+        if (!placementSource
+            && sources.isEmpty()
+            && SurfaceAgingUtils.hasNonPlacementSource(
+                inputValues.get(INPUT_COORDINATES_ID),
+                inputValues.get(INPUT_GEOMETRY_ID),
+                inputValues.get(INPUT_BOX_GEOMETRY_ID),
+                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
+                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
+                inputValues.get(INPUT_TORUS_GEOMETRY_ID)
+            )
+            && baseMapped == null
+            && agedMapped == null) {
+            emitFail("Base Block or Aged Block required for geometry or coordinates input");
+            return;
+        }
+
+        int seed = RandomOps.resolveSeed(inputValues.get(INPUT_SEED_ID));
+        Set<BlockPos> occupancy = SurfaceAgingUtils.buildOccupancy(sources);
+        List<BlockPlacementData> placements = new ArrayList<>(sources.size());
+        int affected = 0;
+
+        for (BlockPlacementData source : sources) {
+            BlockPos pos = source.pos();
+            if (pos == null) {
                 continue;
             }
-
-            String resolvedBlockId = shouldWeather(pos, seed, amount) ? agedBlockId : placement.blockId();
-            BlockPlacementData resolvedPlacement = new BlockPlacementData(pos, resolvedBlockId, placement.stateData());
-
-            positions.add(pos);
-            blockIds.add(resolvedBlockId);
-            placements.add(resolvedPlacement);
-        }
-
-        outputValues.put(OUTPUT_POSITIONS_ID, positions);
-        outputValues.put(OUTPUT_BLOCK_IDS_ID, blockIds);
-        outputValues.put(OUTPUT_PLACEMENTS_ID, placements);
-    }
-
-    private List<BlockPlacementData> resolvePlacements() {
-        Object placementsObj = inputValues.get(INPUT_PLACEMENTS_ID);
-        if (placementsObj instanceof List<?> placementList && !placementList.isEmpty()) {
-            List<BlockPlacementData> resolved = new ArrayList<>();
-            for (Object entry : placementList) {
-                if (entry instanceof BlockPlacementData placement && placement.pos() != null && placement.blockId() != null) {
-                    resolved.add(placement);
-                }
+            if (!SurfaceAgingUtils.isSurface(pos, occupancy)) {
+                placements.add(MaterialMappingSupport.remapBlockId(source, source.blockId()));
+                continue;
             }
-            return resolved;
+            SurfaceAgingUtils.SampleResult sample = SurfaceAgingUtils.agingSample(
+                SurfaceAgingUtils.relativeX(pos, origin),
+                SurfaceAgingUtils.relativeY(pos, origin),
+                SurfaceAgingUtils.relativeZ(pos, origin),
+                seed
+            );
+            if (!sample.valid()) {
+                emitFail(sample.error());
+                return;
+            }
+            boolean age = SurfaceAgingUtils.shouldAge(sample.sample(), amount);
+            String mapped = age ? agedMapped : null;
+            String blockId = SurfaceAgingUtils.pickRole(mapped, source.blockId());
+            if (age && agedMapped != null && !agedMapped.isBlank()) {
+                affected++;
+            }
+            placements.add(MaterialMappingSupport.remapBlockId(source, blockId));
         }
-
-        String baseBlockId = getInputString(INPUT_BASE_BLOCK_ID, "minecraft:stone_bricks");
-        BlockPosList positions = GeometryVoxelizer.resolveBlocks(
-            inputValues.get(INPUT_COORDINATES_ID),
-            inputValues.get(INPUT_GEOMETRY_ID),
-            inputValues.get(INPUT_BOX_GEOMETRY_ID),
-            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-            inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-            inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-            true
-        );
-
-        List<BlockPlacementData> generated = new ArrayList<>();
-        for (BlockPos pos : positions) {
-            generated.add(new BlockPlacementData(pos, baseBlockId));
-        }
-        return generated;
+        emitOk(placements, affected);
     }
 
-    private boolean shouldWeather(BlockPos pos, int seed, double amount) {
-        if (amount <= 0.0d) {
-            return false;
-        }
-        if (amount >= 1.0d) {
-            return true;
-        }
-
-        long hash = 1469598103934665603L;
-        hash = mix(hash, pos.getX());
-        hash = mix(hash, pos.getY());
-        hash = mix(hash, pos.getZ());
-        hash = mix(hash, seed);
-        double normalized = (double) (hash & 0x7fffffffL) / (double) 0x7fffffffL;
-        return normalized < amount;
-    }
-
-    private long mix(long current, int value) {
-        long mixed = current ^ value;
-        return mixed * 1099511628211L;
-    }
-
-    private double clamp01(double value) {
-        if (value < 0.0d) {
-            return 0.0d;
-        }
-        if (value > 1.0d) {
-            return 1.0d;
-        }
-        return value;
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
+    private double readAmount(double fallback) {
+        Object value = inputValues.get(INPUT_AMOUNT_ID);
         return value instanceof Number number ? number.doubleValue() : fallback;
     }
 
-    private int getInputInt(String portId, int fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.intValue() : fallback;
+    private void emitFail(String message) {
+        outputValues.putAll(SurfaceAgingUtils.failResult(message));
     }
 
-    private String getInputString(String portId, String fallback) {
-        Object value = inputValues.get(portId);
-        return (value instanceof String text && !text.isEmpty()) ? text : fallback;
+    private void emitOk(List<BlockPlacementData> placements, int affected) {
+        outputValues.putAll(SurfaceAgingUtils.okResult(placements, affected));
     }
 }

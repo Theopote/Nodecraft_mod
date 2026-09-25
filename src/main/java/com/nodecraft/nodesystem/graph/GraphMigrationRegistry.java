@@ -104,6 +104,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V35 -> migrateV35ToV36(graph);
             case GraphFormatVersion.V36 -> migrateV36ToV37(graph);
             case GraphFormatVersion.V37 -> migrateV37ToV38(graph);
+            case GraphFormatVersion.V38 -> migrateV38ToV39(graph);
             default -> graph;
         };
     }
@@ -2232,6 +2233,20 @@ public final class GraphMigrationRegistry {
             "output_block_ids"
     );
 
+    private static final Set<String> SURFACE_AGING_TYPES = Set.of(
+            "material.surface_aging.weathering",
+            "material.surface_aging.moss_growth",
+            "material.surface_aging.crack_pattern"
+    );
+
+    private static final Set<String> SURFACE_AGING_DECONSTRUCT_OUTPUT_PORTS = Set.of(
+            "output_positions",
+            "output_block_ids"
+    );
+
+    private static final String CRACK_PATTERN_TYPE = "material.surface_aging.crack_pattern";
+    private static final String CRACK_LEGACY_INTERVAL_PORT = "input_interval";
+
     /**
      * Type Selectors v1: Block Type {@code BLOCK_TYPE} port; remove Block State Selector.
      */
@@ -2639,6 +2654,54 @@ public final class GraphMigrationRegistry {
                         connection.sourceNodeId, connection.sourcePortId);
                 return true;
             }
+            return false;
+        });
+
+        return graph;
+    }
+
+    /**
+     * Surface Aging v1: drop deconstruct outputs; drop Crack legacy {@code input_interval} wires.
+     */
+    private static SavedGraph migrateV38ToV39(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            String targetPort = connection.targetPortId == null ? "" : connection.targetPortId.toLowerCase(Locale.ROOT);
+
+            if (sourceType != null
+                    && SURFACE_AGING_TYPES.contains(sourceType)
+                    && SURFACE_AGING_DECONSTRUCT_OUTPUT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped Surface Aging v1 deconstruct output wire {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId);
+                return true;
+            }
+
+            if (CRACK_PATTERN_TYPE.equals(targetType)
+                    && CRACK_LEGACY_INTERVAL_PORT.equals(targetPort)) {
+                LOGGER.debug("Dropped Surface Aging v1 legacy Crack interval wire {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
+
             return false;
         });
 

@@ -242,8 +242,14 @@ public final class GraphFormatVersion {
      */
     public static final int V38 = 38;
 
+    /**
+     * Surface Aging v1: three PURE topology aging nodes; RandomOps masks;
+     * placements-in; drop deconstruct outputs; no hidden vanilla defaults.
+     */
+    public static final int V39 = 39;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V38;
+    public static final int CURRENT = V39;
 
     private GraphFormatVersion() {
     }

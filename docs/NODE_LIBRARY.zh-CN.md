@@ -372,9 +372,9 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Weathering | `material.surface_aging.weathering` | Replaces part of a block set with an aged material using a deterministic weathering ratio | `WeatheringNode` |
-| Moss Growth | `material.surface_aging.moss_growth` | Applies moss material preferentially to upward-facing/exposed blocks. | `MossGrowthNode` |
-| Crack Pattern | `material.surface_aging.crack_pattern` | Adds deterministic crack lines by replacing sparse diagonal bands. | `CrackPatternNode` |
+| Weathering | `material.surface_aging.weathering` | Ages exposed surface voxels with a deterministic RandomOps mask. Remaps blockId only; preserves stateData. | `WeatheringNode` |
+| Moss Growth | `material.surface_aging.moss_growth` | Applies moss to upward-exposed (top-only) voxels with a deterministic RandomOps mask. Remaps blockId only; preserves stateData. | `MossGrowthNode` |
+| Surface Cracks | `material.surface_aging.crack_pattern` | Applies sparse cracks to exposed surface voxels with a deterministic RandomOps mask. Remaps blockId only; preserves stateData. | `CrackPatternNode` |
 
 ## math.compare（6）
 
