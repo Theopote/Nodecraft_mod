@@ -1,6 +1,6 @@
 # Node Language v1 — Input Values
 
-**Status: PASSED / FROZEN** (HEAD `b7bee1c9`, Graph **V34**)
+**Status: PASSED / FROZEN** (HEAD `98096d80`, Graph **V34**)
 
 Language unification for exactly **6** `input.values.*` value-source nodes: typed ports,
 no graph-facing `ANY` / unconstrained `LIST`, no hidden coercion, and `Valid` where needed.
