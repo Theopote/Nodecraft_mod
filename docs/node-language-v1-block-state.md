@@ -79,7 +79,8 @@ Property `@NodeProperty propertiesText`: compact overrides (`facing=north,waterl
 Half → Waterlogged (later wins).
 
 **Valid=false when:** no block type, unknown block, registry unavailable, malformed
-properties text, or invalid property values.
+properties text (including empty key/value pairs like `facing=` or `=north`), or invalid
+property values.
 
 **Dropped:** `output_block_info` (`BLOCK_INFO` alias).
 
@@ -87,8 +88,8 @@ properties text, or invalid property values.
 
 | Port | Type | Notes |
 |------|------|-------|
-| `input_vector` | `VECTOR` | `Vector3d` only |
-| `input_mode` | `STRING` | `facing`, `horizontal_facing`, `axis`, `stair` |
+| `input_vector` | `VECTOR` | Canonical `Vector3d` only; non-finite components → `Valid=false` |
+| `input_mode` | `STRING` | `facing`, `horizontal_facing`, `axis`, `stair`; unknown mode → `Valid=false` |
 | `input_block_type` | `BLOCK_TYPE` | Optional; when set, validates derived properties |
 | `output_block_state` | `BLOCK_STATE_DATA` | Oriented properties |
 | `output_valid` / `output_error` | `BOOLEAN` / `STRING` | Invalid vector or validation failure |
@@ -110,7 +111,7 @@ properties text, or invalid property values.
 | `input_placements` | `BLOCK_PLACEMENT_LIST` | Stair placements |
 | `input_direction` | `VECTOR` | Fallback facing when state lacks facing |
 | `input_half` | `STRING` | Optional half override |
-| `output_placements` | `BLOCK_PLACEMENT_LIST` | Same block ids; updated `shape` / facing / half |
+| `output_placements` | `BLOCK_PLACEMENT_LIST` | Stair placements get `shape` / facing / half; non-stair pass through unchanged |
 
 ## Typical chain
 

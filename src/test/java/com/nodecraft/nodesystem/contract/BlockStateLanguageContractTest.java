@@ -160,6 +160,23 @@ class BlockStateLanguageContractTest {
     }
 
     @Test
+    void buildBlockStateRejectsEmptyPropertyKeyOrValue() {
+        BuildBlockStateNode emptyValue = new BuildBlockStateNode();
+        emptyValue.setPropertiesText("facing=");
+        emptyValue.setInput("input_block_type", "minecraft:stone");
+        emptyValue.processNode(null);
+        assertFalse((Boolean) emptyValue.getOutput("output_valid"));
+        assertTrue(((String) emptyValue.getOutput("output_error")).contains("Malformed property entry"));
+
+        BuildBlockStateNode emptyKey = new BuildBlockStateNode();
+        emptyKey.setPropertiesText("=north");
+        emptyKey.setInput("input_block_type", "minecraft:stone");
+        emptyKey.processNode(null);
+        assertFalse((Boolean) emptyKey.getOutput("output_valid"));
+        assertTrue(((String) emptyKey.getOutput("output_error")).contains("Malformed property entry"));
+    }
+
+    @Test
     void buildBlockStateOutputHasNoBlockIdKey() {
         BuildBlockStateNode node = new BuildBlockStateNode();
         node.setInput("input_block_type", "minecraft:oak_log");
@@ -178,6 +195,31 @@ class BlockStateLanguageContractTest {
         node.processNode(null);
         assertFalse((Boolean) node.getOutput("output_valid"));
         assertTrue(((String) node.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("vector"));
+    }
+
+    @Test
+    void orientBlockStateRejectsNonFiniteVector() {
+        OrientBlockStateNode nan = new OrientBlockStateNode();
+        nan.setInput("input_vector", new Vector3d(Double.NaN, 0.0d, 0.0d));
+        nan.processNode(null);
+        assertFalse((Boolean) nan.getOutput("output_valid"));
+        assertTrue(((String) nan.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("vector"));
+
+        OrientBlockStateNode infinity = new OrientBlockStateNode();
+        infinity.setInput("input_vector", new Vector3d(Double.POSITIVE_INFINITY, 0.0d, 0.0d));
+        infinity.processNode(null);
+        assertFalse((Boolean) infinity.getOutput("output_valid"));
+        assertTrue(((String) infinity.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("vector"));
+    }
+
+    @Test
+    void orientBlockStateRejectsUnknownMode() {
+        OrientBlockStateNode node = new OrientBlockStateNode();
+        node.setInput("input_vector", new Vector3d(0.0d, 0.0d, -1.0d));
+        node.setInput("input_mode", "banana");
+        node.processNode(null);
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertEquals("Unknown orientation mode", node.getOutput("output_error"));
     }
 
     @Test
@@ -242,6 +284,27 @@ class BlockStateLanguageContractTest {
         List<BlockPlacementData> out = assertInstanceOf(List.class, node.getOutput("output_placements"));
         assertEquals(1, out.size());
         assertEquals("minecraft:oak_stairs", out.getFirst().blockId());
+    }
+
+    @Test
+    void stairShapeLeavesNonStairPlacementsUnchanged() {
+        StairShapeNode node = new StairShapeNode();
+
+        BlockPlacementData stone = new BlockPlacementData(
+                new BlockPos(1, 64, 1),
+                "minecraft:stone",
+                null
+        );
+
+        node.setInput("input_placements", List.of(stone));
+        node.processNode(null);
+
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> out = assertInstanceOf(List.class, node.getOutput("output_placements"));
+        assertEquals(1, out.size());
+        BlockPlacementData unchanged = out.getFirst();
+        assertEquals("minecraft:stone", unchanged.blockId());
+        assertTrue(unchanged.stateData() == null || unchanged.stateData().isEmpty());
     }
 
     @Test

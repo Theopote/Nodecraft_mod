@@ -69,6 +69,15 @@ public class StairShapeNode extends BaseNode {
                 continue;
             }
 
+            if (!isStairBlock(placement.blockId())) {
+                resolved.add(new BlockPlacementData(
+                    placement.pos(),
+                    placement.blockId(),
+                    copyState(placement.stateData())
+                ));
+                continue;
+            }
+
             StairPlacement stair = stairMap.get(placement.pos());
             BlockStateData state = stair != null
                 ? createStateData(placement.stateData(), stair, stairMap)
@@ -84,6 +93,9 @@ public class StairShapeNode extends BaseNode {
         Map<BlockPos, StairPlacement> map = new HashMap<>();
         for (BlockPlacementData placement : placements) {
             if (placement.pos() == null || placement.blockId() == null || placement.blockId().isEmpty()) {
+                continue;
+            }
+            if (!isStairBlock(placement.blockId())) {
                 continue;
             }
             Direction facing = resolvePlacementFacing(placement.stateData(), fallbackFacing);

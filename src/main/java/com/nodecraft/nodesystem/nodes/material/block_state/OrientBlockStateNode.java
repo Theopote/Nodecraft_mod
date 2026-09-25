@@ -75,7 +75,16 @@ public class OrientBlockStateNode extends BaseNode {
         }
 
         vector = new Vector3d(vector).normalize();
-        String mode = normalizeMode(inputValues.get(INPUT_MODE_ID));
+        String mode = parseMode(inputValues.get(INPUT_MODE_ID));
+        if (mode == null) {
+            outputValues.put(OUTPUT_BLOCK_STATE_ID, state);
+            outputValues.put(OUTPUT_FACING_ID, "");
+            outputValues.put(OUTPUT_AXIS_ID, "");
+            outputValues.put(OUTPUT_HALF_ID, "");
+            outputValues.put(OUTPUT_VALID_ID, false);
+            outputValues.put(OUTPUT_ERROR_ID, "Unknown orientation mode");
+            return;
+        }
         Direction facing = "horizontal_facing".equals(mode) || "stair".equals(mode)
             ? horizontalFacing(vector)
             : facing(vector);
@@ -142,10 +151,14 @@ public class OrientBlockStateNode extends BaseNode {
         return absY >= absX && absY >= absZ ? "y" : "z";
     }
 
-    private static String normalizeMode(Object value) {
+    private static @Nullable String parseMode(Object value) {
         if (!(value instanceof String text) || text.isBlank()) {
             return "facing";
         }
-        return text.trim().toLowerCase(Locale.ROOT);
+        String normalized = text.trim().toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case "facing", "horizontal_facing", "axis", "stair" -> normalized;
+            default -> null;
+        };
     }
 }

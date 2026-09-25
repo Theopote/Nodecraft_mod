@@ -115,7 +115,12 @@ public final class BlockStateValidationUtils {
             if (kv.length != 2) {
                 return PropertiesTextResult.fail("Malformed property entry: " + trimmed);
             }
-            putProperty(state, kv[0], kv[1]);
+            String name = kv[0].trim();
+            String propertyValue = kv[1].trim();
+            if (name.isEmpty() || propertyValue.isEmpty()) {
+                return PropertiesTextResult.fail("Malformed property entry: " + trimmed);
+            }
+            putProperty(state, name, propertyValue);
         }
         return PropertiesTextResult.ok();
     }
@@ -155,10 +160,13 @@ public final class BlockStateValidationUtils {
      * Graph-facing VECTOR ports accept canonical {@link Vector3d} only (no POINT/BLOCK_POS coercion).
      */
     public static @Nullable Vector3d resolveStrictVector3d(@Nullable Object value) {
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
+        if (!(value instanceof Vector3d vector)) {
+            return null;
         }
-        return null;
+        if (!Double.isFinite(vector.x) || !Double.isFinite(vector.y) || !Double.isFinite(vector.z)) {
+            return null;
+        }
+        return new Vector3d(vector);
     }
 
     public static @Nullable Vector3d resolveStrictVectorListElement(@Nullable Object value) {
