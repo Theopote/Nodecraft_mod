@@ -23,12 +23,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -52,7 +50,7 @@ class RandomLanguageContractTest {
         List<String> ids = registry.getAllNodeIds().stream()
                 .filter(id -> id.toLowerCase(Locale.ROOT).startsWith("math.random."))
                 .sorted()
-                .collect(Collectors.toList());
+                .toList();
         assertEquals(6, ids.size(), "Expected 6 random nodes: " + ids);
         assertTrue(ids.contains("math.random.random_vectors"));
     }
@@ -311,26 +309,34 @@ class RandomLanguageContractTest {
     private static IPort findPortOrNull(Object node, String portId) {
         Iterable<IPort> inputs;
         Iterable<IPort> outputs;
-        if (node instanceof RandomNumberNode n) {
-            inputs = n.getInputPorts();
-            outputs = n.getOutputPorts();
-        } else if (node instanceof RandomNumbersNode n) {
-            inputs = n.getInputPorts();
-            outputs = n.getOutputPorts();
-        } else if (node instanceof RandomListItemNode n) {
-            inputs = n.getInputPorts();
-            outputs = n.getOutputPorts();
-        } else if (node instanceof RandomVectorNode n) {
-            inputs = n.getInputPorts();
-            outputs = n.getOutputPorts();
-        } else if (node instanceof RandomVectorsNode n) {
-            inputs = n.getInputPorts();
-            outputs = n.getOutputPorts();
-        } else if (node instanceof NoiseNode n) {
-            inputs = n.getInputPorts();
-            outputs = n.getOutputPorts();
-        } else {
-            return null;
+        switch (node) {
+            case RandomNumberNode n -> {
+                inputs = n.getInputPorts();
+                outputs = n.getOutputPorts();
+            }
+            case RandomNumbersNode n -> {
+                inputs = n.getInputPorts();
+                outputs = n.getOutputPorts();
+            }
+            case RandomListItemNode n -> {
+                inputs = n.getInputPorts();
+                outputs = n.getOutputPorts();
+            }
+            case RandomVectorNode n -> {
+                inputs = n.getInputPorts();
+                outputs = n.getOutputPorts();
+            }
+            case RandomVectorsNode n -> {
+                inputs = n.getInputPorts();
+                outputs = n.getOutputPorts();
+            }
+            case NoiseNode n -> {
+                inputs = n.getInputPorts();
+                outputs = n.getOutputPorts();
+            }
+            case null, default -> {
+                return null;
+            }
         }
         for (IPort port : inputs) {
             if (portId.equals(port.getId())) {
