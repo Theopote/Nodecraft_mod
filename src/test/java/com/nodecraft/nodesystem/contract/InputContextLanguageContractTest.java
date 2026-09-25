@@ -131,6 +131,29 @@ class InputContextLanguageContractTest {
     }
 
     @Test
+    void playerPositionRestoreNonFiniteSnapshotIsInvalid() {
+        PlayerPositionNode nanNode = new PlayerPositionNode();
+        nanNode.setNodeState(Map.of(
+                "hasCachedPosition", true,
+                "cachedX", Double.NaN,
+                "cachedY", 64.0d,
+                "cachedZ", 20.0d
+        ));
+        assertFalse((Boolean) nanNode.getOutput("output_valid"));
+        assertNull(nanNode.getOutput("output_position"));
+
+        PlayerPositionNode infNode = new PlayerPositionNode();
+        infNode.setNodeState(Map.of(
+                "hasCachedPosition", true,
+                "cachedX", 10.0d,
+                "cachedY", 64.0d,
+                "cachedZ", Double.POSITIVE_INFINITY
+        ));
+        assertFalse((Boolean) infNode.getOutput("output_valid"));
+        assertNull(infNode.getOutput("output_position"));
+    }
+
+    @Test
     void v31ToV32RemapsRaycastTypeAndDropsIncompatibleHitWire() {
         SavedGraph v31 = new SavedGraph();
         v31.formatVersion = GraphFormatVersion.V31;

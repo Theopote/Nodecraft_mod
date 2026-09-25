@@ -25,7 +25,8 @@ Related: [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md),
    `Has Hit=false`, neutral hit outputs.
 4. **Spatial typing** — hit location is `POINT` (`PointData`), not `VECTOR`. Distance is
    `DOUBLE`.
-5. **Time ticks** — `output_time_ticks` is `DOUBLE` (full world tick count); day decomposition
+5. **Time ticks** — `output_time_ticks` is `DOUBLE` (world tick count represented as `DOUBLE`);
+   day decomposition
    uses `Math.floorMod(worldTimeTicks, 24000L)`.
 
 ## Inventory (4)
@@ -46,9 +47,12 @@ recaptures). Display copy no longer says “snapped.”
 
 | Output | Type | When `Valid=false` |
 |--------|------|---------------------|
-| `output_valid` | `BOOLEAN` | No snapshot yet / restore without snapshot |
+| `output_valid` | `BOOLEAN` | No snapshot yet / restore without snapshot / non-finite coords |
 | `output_position` | `POINT` | `null` |
 | `output_x` / `output_y` / `output_z` | `DOUBLE` | `0.0` (neutral; gated by Valid) |
+
+Persisted snapshot restore rejects non-finite `cachedX/Y/Z` (`setNodeState` sanitize + defensive
+`setCachedPosition` guard). `Valid=true` never pairs with NaN/Infinity coordinates.
 
 Server capture reads `ServerPlayerEntity` doubles directly (bypasses float `PlayerAccessor` path).
 
@@ -122,5 +126,5 @@ Runtime object on `output_time_ticks` is `Double`, not `Long` or `Integer`.
 ## Contracts
 
 - `InputContextLanguageContractTest` — 4-node inventory, WORLD_READ, port types, fail-closed
-  `processNode(null)`, snapshot restore, V31→V32 migration.
+  `processNode(null)`, snapshot restore (missing / non-finite persisted coords), V31→V32 migration.
 - Format contract tests bumped to **V32** (`GraphFormatVersionContractTest`, family fences).

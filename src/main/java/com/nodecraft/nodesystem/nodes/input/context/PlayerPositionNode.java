@@ -173,6 +173,11 @@ public class PlayerPositionNode extends BaseCustomUINode {
     }
 
     private void setCachedPosition(double x, double y, double z) {
+        if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)) {
+            hasCachedPosition = false;
+            updateOutputs();
+            return;
+        }
         this.cachedX = x;
         this.cachedY = y;
         this.cachedZ = z;
@@ -232,9 +237,9 @@ public class PlayerPositionNode extends BaseCustomUINode {
         if (map.get("useEyePosition") instanceof Boolean bool) {
             this.useEyePosition = bool;
         }
-        Double x = asDouble(map.get("cachedX"));
-        Double y = asDouble(map.get("cachedY"));
-        Double z = asDouble(map.get("cachedZ"));
+        Double x = asFiniteDouble(map.get("cachedX"));
+        Double y = asFiniteDouble(map.get("cachedY"));
+        Double z = asFiniteDouble(map.get("cachedZ"));
         if (map.get("hasCachedPosition") instanceof Boolean hasFlag) {
             if (hasFlag && x != null && y != null && z != null) {
                 setCachedPosition(x, y, z);
@@ -258,9 +263,10 @@ public class PlayerPositionNode extends BaseCustomUINode {
         }
     }
 
-    private static @Nullable Double asDouble(@Nullable Object value) {
+    private static @Nullable Double asFiniteDouble(@Nullable Object value) {
         if (value instanceof Number number) {
-            return number.doubleValue();
+            double candidate = number.doubleValue();
+            return Double.isFinite(candidate) ? candidate : null;
         }
         return null;
     }
