@@ -198,8 +198,14 @@ public final class GraphFormatVersion {
      */
     public static final int V31 = 31;
 
+    /**
+     * Input Context v1: Player Raycast POINT/DOUBLE + {@code output_valid}; Current Time ticks DOUBLE;
+     * fail-closed context semantics; {@code player_look_direction} → {@code player_raycast}.
+     */
+    public static final int V32 = 32;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V31;
+    public static final int CURRENT = V32;
 
     private GraphFormatVersion() {
     }
