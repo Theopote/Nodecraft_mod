@@ -11,7 +11,6 @@ import org.joml.Vector3d;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 /**
  * Shared validation and merge helpers for {@code material.block_state.*} nodes.

@@ -12,13 +12,13 @@ import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BlockStateData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @NodeInfo(
@@ -118,7 +118,7 @@ public class SlabStairAutofillNode extends BaseNode {
             Vector3d normal = i < normals.size() ? normals.get(i) : null;
             MaterialChoice choice = chooseMaterial(normal, defaultBlock, slabBlock, stairBlock, threshold);
 
-            BlockStateData state = placement.stateData() != null ? placement.stateData().copy() : new BlockStateData();
+            BlockStateData state = placement.stateData() != null ? Objects.requireNonNull(placement.stateData()).copy() : new BlockStateData();
             if (choice.type == MaterialType.SLAB) {
                 state.setProperty("type", choice.normal != null && choice.normal.y > 0.0d ? "bottom" : "top");
                 slabCount++;
@@ -130,7 +130,7 @@ public class SlabStairAutofillNode extends BaseNode {
             }
 
             resolved.add(new BlockPlacementData(placement.pos(), choice.blockId, state));
-            positions.add(placement.pos());
+            positions.add(Objects.requireNonNull(placement.pos()));
             blockIds.add(choice.blockId);
         }
 

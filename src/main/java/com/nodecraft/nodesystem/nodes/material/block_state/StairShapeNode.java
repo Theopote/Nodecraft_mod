@@ -14,11 +14,7 @@ import net.minecraft.util.math.Direction;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Assigns stair-facing, half, and corner shape state data using local stair neighborhood analysis.
@@ -100,7 +96,7 @@ public class StairShapeNode extends BaseNode {
             }
             Direction facing = resolvePlacementFacing(placement.stateData(), fallbackFacing);
             String half = resolvePlacementHalf(placement.stateData(), fallbackHalf);
-            map.put(placement.pos().toImmutable(), new StairPlacement(placement.pos().toImmutable(), placement.blockId(), facing, half));
+            map.put(Objects.requireNonNull(placement.pos()).toImmutable(), new StairPlacement(Objects.requireNonNull(placement.pos()).toImmutable(), placement.blockId(), facing, half));
         }
         return map;
     }
