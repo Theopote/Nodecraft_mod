@@ -131,7 +131,7 @@ public class LinearArrayNode extends BaseNode {
                 count = ((Number) countObj).intValue();
                 
                 // 计算阵列方向向量（从第一个坐标到终点）
-                BlockPos firstPos = coordinates.getPositions().get(0);
+                BlockPos firstPos = coordinates.getPositions().getFirst();
                 Vector3d startVec = new Vector3d(firstPos.getX(), firstPos.getY(), firstPos.getZ());
                 Vector3d endVec = new Vector3d(endPoint.getX(), endPoint.getY(), endPoint.getZ());
                 

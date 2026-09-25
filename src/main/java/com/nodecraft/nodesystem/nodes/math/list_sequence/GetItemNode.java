@@ -57,8 +57,7 @@ public class GetItemNode extends BaseNode {
         Object item = null;
         boolean found = false;
         
-        if (inputObj instanceof List && indexObj instanceof Number) {
-            List<?> list = (List<?>) inputObj;
+        if (inputObj instanceof List<?> list && indexObj instanceof Number) {
             int listSize = list.size();
             
             if (listSize > 0) {
@@ -120,7 +119,7 @@ public class GetItemNode extends BaseNode {
     public void setNodeState(Object state) {
         if (state instanceof java.util.Map) {
             java.util.Map<?, ?> stateMap = (java.util.Map<?, ?>) state;
-            
+
             if (stateMap.containsKey("allowNegativeIndex")) {
                 Object allow = stateMap.get("allowNegativeIndex");
                 if (allow instanceof Boolean) {

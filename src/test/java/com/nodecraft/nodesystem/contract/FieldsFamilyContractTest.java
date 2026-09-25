@@ -61,6 +61,7 @@ class FieldsFamilyContractTest {
     void samplePointUsesPoint_samplePointsUsePointList() {
         assertPortType(new ScalarFieldSamplePointNode(), "input_point", NodeDataType.POINT);
         assertPortType(new ScalarFieldSamplePointsNode(), "input_points", NodeDataType.POINT_LIST);
+        assertPortType(new ScalarFieldSamplePointsNode(), "output_values", NodeDataType.DOUBLE_LIST);
         assertPortType(new VectorFieldSamplePointsNode(), "input_points", NodeDataType.POINT_LIST);
         assertPortType(new VectorFieldSamplePointsNode(), "output_vectors", NodeDataType.VECTOR_LIST);
     }

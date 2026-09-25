@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.FieldMath;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -54,7 +55,7 @@ public class VectorFieldFromSdfGradientNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object sdfObj = inputValues.get(INPUT_SDF_ID);
-        double h = Math.max(1.0e-4d, getInputDouble(INPUT_STEP_ID, step));
+        double h = FieldMath.resolvePositive(inputValues.get(INPUT_STEP_ID), step);
         if (!(sdfObj instanceof SignedDistanceFieldData sdf)) {
             outputValues.put(OUTPUT_FIELD_ID, null);
             return;
@@ -74,10 +75,5 @@ public class VectorFieldFromSdfGradientNode extends BaseNode {
         };
 
         outputValues.put(OUTPUT_FIELD_ID, field);
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
     }
 }

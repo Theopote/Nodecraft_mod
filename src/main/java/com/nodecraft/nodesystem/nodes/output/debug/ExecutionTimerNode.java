@@ -1,7 +1,6 @@
 package com.nodecraft.nodesystem.nodes.output.debug;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
-import com.nodecraft.gui.editor.impl.ZoomHelper;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;

@@ -146,8 +146,7 @@ public class PrintToChatNode extends BaseCustomUINode {
 
     private String formatData(Object data) {
         if (data == null) return "null";
-        if (data instanceof String) {
-            String str = (String) data;
+        if (data instanceof String str) {
             return autoFormat && str.length() > 100 ? "\"" + str.substring(0, 97) + "...\"" : "\"" + str + "\"";
         }
         return data.toString();

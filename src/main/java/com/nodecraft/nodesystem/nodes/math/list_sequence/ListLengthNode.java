@@ -42,8 +42,7 @@ public class ListLengthNode extends BaseNode {
         int length = 0;
         
         //                      
-        if (inputObj instanceof List) {
-            List<?> list = (List<?>) inputObj;
+        if (inputObj instanceof List<?> list) {
             length = list.size();
         }
         

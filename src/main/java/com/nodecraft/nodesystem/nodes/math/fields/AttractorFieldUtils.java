@@ -96,7 +96,7 @@ final class AttractorFieldUtils {
         if (sdf == null || query == null || dest == null) {
             return false;
         }
-        double h = Math.max(1.0e-4d, step);
+        double h = step;
         double d = sdf.sampleDistance(new Vector3d(query));
         double gx = sdf.sampleDistance(new Vector3d(query.x + h, query.y, query.z))
             - sdf.sampleDistance(new Vector3d(query.x - h, query.y, query.z));

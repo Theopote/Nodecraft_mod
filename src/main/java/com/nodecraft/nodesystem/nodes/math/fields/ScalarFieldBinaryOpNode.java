@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.FieldMath;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -15,7 +16,7 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "math.fields.scalar_binary_op",
-    displayName = "Scalar Field Binary Op",
+    displayName = "Combine Scalar Fields",
     description = "Combines two scalar fields with a basic arithmetic operation.",
     category = "math.fields",
     order = 4
@@ -54,7 +55,7 @@ public class ScalarFieldBinaryOpNode extends BaseNode {
 
     @Override
     public String getDisplayName() {
-        return "Scalar Field Binary Op";
+        return "Combine Scalar Fields";
     }
 
     @Override
@@ -67,30 +68,10 @@ public class ScalarFieldBinaryOpNode extends BaseNode {
         }
 
         ScalarBinaryOp op = operation == null ? ScalarBinaryOp.ADD : operation;
-        ScalarFieldData field = switch (op) {
-            case ADD -> point -> a.sampleScalar(point) + b.sampleScalar(point);
-            case SUB -> point -> a.sampleScalar(point) - b.sampleScalar(point);
-            case MUL -> point -> a.sampleScalar(point) * b.sampleScalar(point);
-            case DIV -> point -> safeDiv(a.sampleScalar(point), b.sampleScalar(point));
-            case MIN -> point -> Math.min(a.sampleScalar(point), b.sampleScalar(point));
-            case MAX -> point -> Math.max(a.sampleScalar(point), b.sampleScalar(point));
-            case POW -> point -> safePow(a.sampleScalar(point), b.sampleScalar(point));
-        };
+        FieldMath.ScalarCombineOp combineOp = FieldMath.ScalarCombineOp.valueOf(op.name());
+        ScalarFieldData field = point -> FieldMath.combineScalars(
+                a.sampleScalar(point), b.sampleScalar(point), combineOp);
 
         outputValues.put(OUTPUT_FIELD_ID, field);
-    }
-
-    private static double safeDiv(double x, double y) {
-        if (y == 0.0d) {
-            return x >= 0.0d ? Double.POSITIVE_INFINITY : Double.NEGATIVE_INFINITY;
-        }
-        return x / y;
-    }
-
-    private static double safePow(double x, double y) {
-        if (Double.isNaN(x) || Double.isNaN(y)) {
-            return Double.NaN;
-        }
-        return Math.pow(x, y);
     }
 }

@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.FieldMath;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.PolylineClosestPoint3d;
 import org.jetbrains.annotations.Nullable;
@@ -68,9 +69,9 @@ public class CurveAttractorFieldNode extends BaseNode {
             return;
         }
 
-        double effectiveStrength = getInputDouble(INPUT_STRENGTH_ID, strength);
-        double effectiveRadius = Math.max(AttractorFieldUtils.EPS, getInputDouble(INPUT_RADIUS_ID, radius));
-        double effectiveExponent = Math.max(0.001d, getInputDouble(INPUT_EXPONENT_ID, exponent));
+        double effectiveStrength = FieldMath.resolveFinite(inputValues.get(INPUT_STRENGTH_ID), strength);
+        double effectiveRadius = FieldMath.resolvePositive(inputValues.get(INPUT_RADIUS_ID), radius);
+        double effectiveExponent = FieldMath.resolvePositive(inputValues.get(INPUT_EXPONENT_ID), exponent);
         AttractorFieldUtils.FalloffMode mode = falloff == null ? AttractorFieldUtils.FalloffMode.INVERSE : falloff;
 
         VectorFieldData field = (point, dest) -> {
@@ -88,10 +89,5 @@ public class CurveAttractorFieldNode extends BaseNode {
         };
 
         outputValues.put(OUTPUT_FIELD_ID, field);
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
     }
 }

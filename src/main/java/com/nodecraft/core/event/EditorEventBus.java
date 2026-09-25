@@ -1,7 +1,6 @@
 package com.nodecraft.core.event;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -39,17 +38,16 @@ public class EditorEventBus {
     
     /**
      * 注销一个事件监听器
+     *
      * @param listener 要注销的监听器
-     * @return 如果成功注销则返回true
      */
-    public boolean unregisterListener(EditorEventListener listener) {
-        if (listener == null) return false;
+    public void unregisterListener(EditorEventListener listener) {
+        if (listener == null) return;
         
         boolean removed = listeners.remove(listener);
         if (removed) {
             NodeCraft.LOGGER.debug("注销事件监听器: {}", listener.getName());
         }
-        return removed;
     }
     
     /**
@@ -109,7 +107,7 @@ public class EditorEventBus {
     private void sortListeners() {
         List<EditorEventListener> tempList = new ArrayList<>(listeners);
         // 按优先级降序排列，优先级高的先处理
-        Collections.sort(tempList, (l1, l2) -> Integer.compare(l2.getPriority(), l1.getPriority()));
+        tempList.sort((l1, l2) -> Integer.compare(l2.getPriority(), l1.getPriority()));
         
         listeners.clear();
         listeners.addAll(tempList);

@@ -7,6 +7,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.FieldMath;
+import com.nodecraft.nodesystem.math.RandomOps;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -15,7 +17,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.fields.scalar_noise",
     displayName = "Scalar Field Noise",
-    description = "Builds a deterministic pseudo-noise scalar field over world space.",
+    description = "Builds a deterministic coherent noise scalar field over world space.",
     category = "math.fields",
     order = 3
 )
@@ -30,10 +32,13 @@ public class ScalarFieldNoiseNode extends BaseNode {
 
     private static final String OUTPUT_FIELD_ID = "output_field";
 
+    private double defaultScale = 1.0d;
+    private double defaultAmplitude = 1.0d;
+
     public ScalarFieldNoiseNode() {
         super(UUID.randomUUID(), "math.fields.scalar_noise");
 
-        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Noise seed", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Deterministic noise seed (missing ≡ 0)", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SCALE_ID, "Scale", "Noise frequency scale (larger = finer detail)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_OFFSET_X_ID, "Offset X", "Domain offset X", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_OFFSET_Y_ID, "Offset Y", "Domain offset Y", NodeDataType.DOUBLE, this));
@@ -45,7 +50,7 @@ public class ScalarFieldNoiseNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Builds a deterministic pseudo-noise scalar field over world space.";
+        return "Builds a deterministic coherent noise scalar field over world space (same kernel as Random Noise).";
     }
 
     @Override
@@ -55,40 +60,24 @@ public class ScalarFieldNoiseNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        long seed = getInputLong(INPUT_SEED_ID, 0L);
-        double scale = Math.max(1.0e-9d, getInputDouble(INPUT_SCALE_ID, 1.0d));
-        double ox = getInputDouble(INPUT_OFFSET_X_ID, 0.0d);
-        double oy = getInputDouble(INPUT_OFFSET_Y_ID, 0.0d);
-        double oz = getInputDouble(INPUT_OFFSET_Z_ID, 0.0d);
-        double amplitude = getInputDouble(INPUT_AMPLITUDE_ID, 1.0d);
+        int seed = RandomOps.resolveSeed(inputValues.get(INPUT_SEED_ID));
+        double scale = FieldMath.resolveFinite(inputValues.get(INPUT_SCALE_ID), defaultScale);
+        double ox = FieldMath.resolveFinite(inputValues.get(INPUT_OFFSET_X_ID), 0.0d);
+        double oy = FieldMath.resolveFinite(inputValues.get(INPUT_OFFSET_Y_ID), 0.0d);
+        double oz = FieldMath.resolveFinite(inputValues.get(INPUT_OFFSET_Z_ID), 0.0d);
+        double amplitude = FieldMath.resolveFinite(inputValues.get(INPUT_AMPLITUDE_ID), defaultAmplitude);
 
         ScalarFieldData field = point -> {
             double nx = (point.x + ox) * scale;
             double ny = (point.y + oy) * scale;
             double nz = (point.z + oz) * scale;
-            return sampleHashNoise(nx, ny, nz, seed) * amplitude;
+            double noise = RandomOps.valueNoise3(nx, ny, nz, seed);
+            if (!Double.isFinite(noise) || !Double.isFinite(amplitude)) {
+                return Double.NaN;
+            }
+            return noise * amplitude;
         };
 
         outputValues.put(OUTPUT_FIELD_ID, field);
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
-    }
-
-    private long getInputLong(String portId, long fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.longValue() : fallback;
-    }
-
-    private double sampleHashNoise(double x, double y, double z, long seed) {
-        long hash = Double.doubleToLongBits(x * 12.9898 + y * 78.233 + z * 37.719) ^ seed * 0x9E3779B97F4A7C15L;
-        hash ^= (hash >>> 33);
-        hash *= 0xff51afd7ed558ccdl;
-        hash ^= (hash >>> 33);
-        hash *= 0xc4ceb9fe1a85ec53l;
-        hash ^= (hash >>> 33);
-        return ((hash & Long.MAX_VALUE) / (double) Long.MAX_VALUE) * 2.0 - 1.0;
     }
 }

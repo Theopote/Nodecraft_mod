@@ -25,7 +25,7 @@ public final class NodeExecutionCache {
             return false;
         }
         Long lastExecuted = lastExecutedDirtyVersion.get(node.getId());
-        return lastExecuted != null && lastExecuted.longValue() == baseNode.getDirtyVersion();
+        return lastExecuted != null && lastExecuted == baseNode.getDirtyVersion();
     }
 
     public void invalidate(UUID nodeId) {

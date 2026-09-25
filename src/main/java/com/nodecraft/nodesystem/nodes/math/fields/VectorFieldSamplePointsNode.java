@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,7 +40,7 @@ public class VectorFieldSamplePointsNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_VECTORS_ID, "Vectors", "Vector samples aligned with resolved points", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of resolved samples", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when field exists and at least one point resolved", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when all samples are finite", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -67,19 +68,22 @@ public class VectorFieldSamplePointsNode extends BaseNode {
         }
 
         List<Vector3d> vectors = new ArrayList<>(points.size());
-        Vector3d tmp = new Vector3d();
         for (Vector3d p : points) {
-            field.sampleVector(p, tmp);
-            vectors.add(new Vector3d(tmp));
+            FieldSampleUtils.VectorSample sample = FieldSampleUtils.sampleVector(field, p);
+            if (!sample.valid() || sample.vector() == null) {
+                writeInvalid();
+                return;
+            }
+            vectors.add(new Vector3d(sample.vector()));
         }
 
-        outputValues.put(OUTPUT_VECTORS_ID, List.copyOf(vectors));
+        outputValues.put(OUTPUT_VECTORS_ID, Collections.unmodifiableList(vectors));
         outputValues.put(OUTPUT_COUNT_ID, vectors.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private void writeInvalid() {
-        outputValues.put(OUTPUT_VECTORS_ID, List.of());
+        outputValues.put(OUTPUT_VECTORS_ID, Collections.emptyList());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
     }

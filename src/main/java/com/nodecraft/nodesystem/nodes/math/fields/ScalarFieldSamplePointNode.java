@@ -35,7 +35,7 @@ public class ScalarFieldSamplePointNode extends BaseNode {
         addInputPort(new BasePort(INPUT_POINT_ID, "Point", "Query point", NodeDataType.POINT, this));
 
         addOutputPort(new BasePort(OUTPUT_VALUE_ID, "Value", "Sampled scalar", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when sampling succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when sample is finite", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -53,12 +53,13 @@ public class ScalarFieldSamplePointNode extends BaseNode {
         Object fieldObj = inputValues.get(INPUT_FIELD_ID);
         Vector3d p = FieldSampleUtils.resolvePoint(inputValues.get(INPUT_POINT_ID));
         if (!(fieldObj instanceof ScalarFieldData field) || p == null) {
-            outputValues.put(OUTPUT_VALUE_ID, 0.0d);
+            outputValues.put(OUTPUT_VALUE_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
 
-        outputValues.put(OUTPUT_VALUE_ID, field.sampleScalar(p));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        FieldSampleUtils.ScalarSample sample = FieldSampleUtils.sampleScalar(field, p);
+        outputValues.put(OUTPUT_VALUE_ID, sample.value());
+        outputValues.put(OUTPUT_VALID_ID, sample.valid());
     }
 }

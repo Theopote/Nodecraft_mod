@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -80,9 +81,7 @@ public class FlattenListNode extends BaseNode {
             } else {
                 try {
                     Object[] array = (Object[]) item;
-                    for (Object arrayItem : array) {
-                        output.add(arrayItem);
-                    }
+                    output.addAll(Arrays.asList(array));
                 } catch (ClassCastException e) {
                     output.add(item);
                 }
@@ -127,7 +126,7 @@ public class FlattenListNode extends BaseNode {
     public void setNodeState(Object state) {
         if (state instanceof java.util.Map) {
             java.util.Map<?, ?> stateMap = (java.util.Map<?, ?>) state;
-            
+
             if (stateMap.containsKey("maxDepth")) {
                 Object depth = stateMap.get("maxDepth");
                 if (depth instanceof Number) {

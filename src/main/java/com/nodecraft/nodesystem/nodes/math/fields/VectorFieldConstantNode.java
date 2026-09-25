@@ -48,16 +48,24 @@ public class VectorFieldConstantNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        double x = getInputDouble(INPUT_X_ID, 0.0d);
-        double y = getInputDouble(INPUT_Y_ID, 0.0d);
-        double z = getInputDouble(INPUT_Z_ID, 0.0d);
+        Double x = resolveComponent(inputValues.get(INPUT_X_ID), 0.0d);
+        Double y = resolveComponent(inputValues.get(INPUT_Y_ID), 0.0d);
+        Double z = resolveComponent(inputValues.get(INPUT_Z_ID), 0.0d);
+        if (x == null || y == null || z == null) {
+            outputValues.put(OUTPUT_FIELD_ID, null);
+            return;
+        }
 
         VectorFieldData field = (point, dest) -> dest.set(x, y, z);
         outputValues.put(OUTPUT_FIELD_ID, field);
     }
 
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
+    /** Finite component value, or {@code null} when an explicit input is non-finite. */
+    private static Double resolveComponent(@Nullable Object raw, double fallback) {
+        if (raw instanceof Number number) {
+            double v = number.doubleValue();
+            return Double.isFinite(v) ? v : null;
+        }
+        return fallback;
     }
 }

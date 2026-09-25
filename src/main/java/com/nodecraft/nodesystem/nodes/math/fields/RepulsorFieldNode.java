@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.FieldMath;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -30,8 +31,6 @@ public class RepulsorFieldNode extends BaseNode {
     private static final String INPUT_STRENGTH_ID = "input_strength";
     private static final String OUTPUT_FIELD_ID = "output_field";
 
-    private final Vector3d tmp = new Vector3d();
-
     public RepulsorFieldNode() {
         super(UUID.randomUUID(), "math.fields.repulsor_field");
 
@@ -53,17 +52,13 @@ public class RepulsorFieldNode extends BaseNode {
             return;
         }
 
-        double effectiveStrength = getInputDouble(INPUT_STRENGTH_ID, strength);
+        double effectiveStrength = FieldMath.resolveFinite(inputValues.get(INPUT_STRENGTH_ID), strength);
         VectorFieldData repulsor = (point, dest) -> {
+            Vector3d tmp = new Vector3d();
             field.sampleVector(point, tmp);
             dest.set(tmp).mul(-effectiveStrength);
         };
 
         outputValues.put(OUTPUT_FIELD_ID, repulsor);
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
     }
 }

@@ -24,6 +24,8 @@ public class ScalarFieldConstantNode extends BaseNode {
     private static final String INPUT_VALUE_ID = "input_value";
     private static final String OUTPUT_FIELD_ID = "output_field";
 
+    private double defaultValue = 0.0d;
+
     public ScalarFieldConstantNode() {
         super(UUID.randomUUID(), "math.fields.scalar_constant");
         addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Constant scalar value", NodeDataType.DOUBLE, this));
@@ -42,13 +44,18 @@ public class ScalarFieldConstantNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        double v = getInputDouble(INPUT_VALUE_ID, 0.0d);
+        Object raw = inputValues.get(INPUT_VALUE_ID);
+        double v;
+        if (raw instanceof Number number) {
+            v = number.doubleValue();
+            if (!Double.isFinite(v)) {
+                outputValues.put(OUTPUT_FIELD_ID, null);
+                return;
+            }
+        } else {
+            v = defaultValue;
+        }
         ScalarFieldData field = point -> v;
         outputValues.put(OUTPUT_FIELD_ID, field);
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
     }
 }

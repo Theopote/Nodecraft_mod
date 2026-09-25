@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.FieldMath;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -16,8 +17,8 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "math.fields.attractor_blend",
-    displayName = "Attractor Field Blend",
-    description = "Blends up to four attractor/repulsor fields using per-field weights.",
+    displayName = "Blend Vector Fields",
+    description = "Blends up to four vector fields using per-field weights.",
     category = "math.fields",
     order = 13
 )
@@ -39,8 +40,6 @@ public class AttractorFieldBlendNode extends BaseNode {
     private static final String INPUT_WEIGHT_D_ID = "input_weight_d";
     private static final String OUTPUT_FIELD_ID = "output_field";
 
-    private final Vector3d tmp = new Vector3d();
-
     public AttractorFieldBlendNode() {
         super(UUID.randomUUID(), "math.fields.attractor_blend");
 
@@ -58,7 +57,7 @@ public class AttractorFieldBlendNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Blends up to four attractor/repulsor fields using per-field weights.";
+        return "Blends up to four vector fields using per-field weights.";
     }
 
     @Override
@@ -72,44 +71,51 @@ public class AttractorFieldBlendNode extends BaseNode {
             return;
         }
 
-        double weightA = getInputDouble(INPUT_WEIGHT_A_ID, 1.0d);
-        double weightB = getInputDouble(INPUT_WEIGHT_B_ID, 1.0d);
-        double weightC = getInputDouble(INPUT_WEIGHT_C_ID, 1.0d);
-        double weightD = getInputDouble(INPUT_WEIGHT_D_ID, 1.0d);
+        double weightA = FieldMath.resolveFinite(inputValues.get(INPUT_WEIGHT_A_ID), 1.0d);
+        double weightB = FieldMath.resolveFinite(inputValues.get(INPUT_WEIGHT_B_ID), 1.0d);
+        double weightC = FieldMath.resolveFinite(inputValues.get(INPUT_WEIGHT_C_ID), 1.0d);
+        double weightD = FieldMath.resolveFinite(inputValues.get(INPUT_WEIGHT_D_ID), 1.0d);
         boolean normalizeOutput = normalize;
-        double limit = Math.max(0.0d, maxMagnitude);
+        double limit = Double.isFinite(maxMagnitude) && maxMagnitude >= 0.0d ? maxMagnitude : 0.0d;
+
+        final double weightAFinal = weightA;
+        final double weightBFinal = weightB;
+        final double weightCFinal = weightC;
+        final double weightDFinal = weightD;
+        final double limitFinal = limit;
 
         VectorFieldData field = (point, dest) -> {
             dest.zero();
-            if (fieldA != null && Math.abs(weightA) > AttractorFieldUtils.EPS) {
+            Vector3d tmp = new Vector3d();
+            if (fieldA != null && weightAFinal != 0.0d) {
                 fieldA.sampleVector(point, tmp);
-                dest.fma(weightA, tmp);
+                dest.fma(weightAFinal, tmp);
             }
-            if (fieldB != null && Math.abs(weightB) > AttractorFieldUtils.EPS) {
+            if (fieldB != null && weightBFinal != 0.0d) {
                 fieldB.sampleVector(point, tmp);
-                dest.fma(weightB, tmp);
+                dest.fma(weightBFinal, tmp);
             }
-            if (fieldC != null && Math.abs(weightC) > AttractorFieldUtils.EPS) {
+            if (fieldC != null && weightCFinal != 0.0d) {
                 fieldC.sampleVector(point, tmp);
-                dest.fma(weightC, tmp);
+                dest.fma(weightCFinal, tmp);
             }
-            if (fieldD != null && Math.abs(weightD) > AttractorFieldUtils.EPS) {
+            if (fieldD != null && weightDFinal != 0.0d) {
                 fieldD.sampleVector(point, tmp);
-                dest.fma(weightD, tmp);
+                dest.fma(weightDFinal, tmp);
             }
 
-            double lenSq = dest.lengthSquared();
-            if (lenSq <= AttractorFieldUtils.EPS) {
-                dest.zero();
-                return;
-            }
             if (normalizeOutput) {
+                double lenSq = dest.lengthSquared();
+                if (lenSq <= AttractorFieldUtils.EPS) {
+                    dest.zero();
+                    return;
+                }
                 dest.normalize();
             }
-            if (limit > AttractorFieldUtils.EPS) {
+            if (limitFinal > AttractorFieldUtils.EPS) {
                 double len = dest.length();
-                if (len > limit) {
-                    dest.mul(limit / len);
+                if (len > limitFinal) {
+                    dest.mul(limitFinal / len);
                 }
             }
         };
@@ -119,10 +125,5 @@ public class AttractorFieldBlendNode extends BaseNode {
 
     private static VectorFieldData asField(Object value) {
         return value instanceof VectorFieldData field ? field : null;
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
     }
 }

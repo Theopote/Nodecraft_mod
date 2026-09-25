@@ -97,15 +97,12 @@ public class PolarArrayNode extends BaseNode {
         List<DataTreeData.Branch> branches = new ArrayList<>();
         
         // 检查输入是否合法
-        if (coordinatesObj instanceof BlockPosList && 
-            centerObj instanceof BlockPos && 
-            axisObj instanceof Vector3d && 
+        if (coordinatesObj instanceof BlockPosList coordinates &&
+                centerObj instanceof BlockPos centerPos &&
+                axisObj instanceof Vector3d axis &&
             countObj instanceof Number && 
             totalAngleObj instanceof Number) {
-            
-            BlockPosList coordinates = (BlockPosList) coordinatesObj;
-            BlockPos centerPos = (BlockPos) centerObj;
-            Vector3d axis = (Vector3d) axisObj;
+
             int count = ((Number) countObj).intValue();
             double totalAngleDegrees = ((Number) totalAngleObj).doubleValue();
             
@@ -238,7 +235,7 @@ public class PolarArrayNode extends BaseNode {
     public void setNodeState(Object state) {
         if (state instanceof java.util.Map) {
             java.util.Map<?, ?> stateMap = (java.util.Map<?, ?>) state;
-            
+
             if (stateMap.containsKey("includeOriginal")) {
                 Object includeOriginalObj = stateMap.get("includeOriginal");
                 if (includeOriginalObj instanceof Boolean) {

@@ -416,11 +416,11 @@
 |---|---|---|---|
 | Scalar Field Constant | `math.fields.scalar_constant` | Builds a scalar field that returns a constant value everywhere. | `ScalarFieldConstantNode` |
 | Scalar Field From SDF | `math.fields.scalar_from_sdf` | Wraps a signed distance field as a scalar field using its distance value. | `ScalarFieldFromSdfNode` |
-| Scalar Field Noise | `math.fields.scalar_noise` | Builds a deterministic pseudo-noise scalar field over world space. | `ScalarFieldNoiseNode` |
-| Scalar Field Binary Op | `math.fields.scalar_binary_op` | Combines two scalar fields with a basic arithmetic operation. | `ScalarFieldBinaryOpNode` |
+| Scalar Field Noise | `math.fields.scalar_noise` | Builds a deterministic coherent noise scalar field over world space. | `ScalarFieldNoiseNode` |
+| Combine Scalar Fields | `math.fields.scalar_binary_op` | Combines two scalar fields with a basic arithmetic operation. | `ScalarFieldBinaryOpNode` |
 | Vector Field Constant | `math.fields.vector_constant` | Builds a vector field that returns a constant vector everywhere. | `VectorFieldConstantNode` |
 | Vector Field From SDF Gradient | `math.fields.vector_from_sdf_gradient` | Builds a vector field from central-difference gradients of an SDF (normalized direction). | `VectorFieldFromSdfGradientNode` |
-| Vector Field Binary Op | `math.fields.vector_binary_op` | Combines two vector fields component-wise or via cross product. | `VectorFieldBinaryOpNode` |
+| Combine Vector Fields | `math.fields.vector_binary_op` | Combines two vector fields component-wise or via cross product. | `VectorFieldBinaryOpNode` |
 | Point Attractor Field | `math.fields.point_attractor_field` | Builds a vector field that pulls points toward a center with configurable distance falloff. | `PointAttractorFieldNode` |
 | Scalar Field Sample Point | `math.fields.scalar_sample_point` | Samples a scalar field at a point. | `ScalarFieldSamplePointNode` |
 | Path Attractor Field | `math.fields.curve_attractor_field` | Builds a vector field that pulls points toward the closest point on a path. | `CurveAttractorFieldNode` |
@@ -430,7 +430,7 @@
 | Vector Field Sample Points | `math.fields.vector_sample_points` | Samples a vector field for each query point and outputs a vector list. | `VectorFieldSamplePointsNode` |
 | Vortex Field | `math.fields.vortex_field` | Builds a tangential swirl field around an axis, with radial falloff and clockwise/counter-clockwise control. | `VortexFieldNode` |
 | Repulsor Field | `math.fields.repulsor_field` | Inverts a vector field direction (repulsion) with optional strength scaling. | `RepulsorFieldNode` |
-| Attractor Field Blend | `math.fields.attractor_blend` | Blends up to four attractor/repulsor fields using per-field weights. | `AttractorFieldBlendNode` |
+| Blend Vector Fields | `math.fields.attractor_blend` | Blends up to four vector fields using per-field weights. | `AttractorFieldBlendNode` |
 
 ## math.list（23）
 

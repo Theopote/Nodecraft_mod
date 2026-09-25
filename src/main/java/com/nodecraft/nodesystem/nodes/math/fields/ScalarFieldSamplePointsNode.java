@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,9 +38,9 @@ public class ScalarFieldSamplePointsNode extends BaseNode {
         addInputPort(new BasePort(INPUT_FIELD_ID, "Field", "Scalar field input", NodeDataType.SCALAR_FIELD, this));
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Query point list", NodeDataType.POINT_LIST, this));
 
-        addOutputPort(new BasePort(OUTPUT_VALUES_ID, "Values", "Scalar samples aligned with resolved points", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VALUES_ID, "Values", "Scalar samples aligned with resolved points", NodeDataType.DOUBLE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of resolved samples", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when field exists and at least one point resolved", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when all samples are finite", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -68,16 +69,21 @@ public class ScalarFieldSamplePointsNode extends BaseNode {
 
         List<Double> values = new ArrayList<>(points.size());
         for (Vector3d p : points) {
-            values.add(field.sampleScalar(p));
+            FieldSampleUtils.ScalarSample sample = FieldSampleUtils.sampleScalar(field, p);
+            if (!sample.valid()) {
+                writeInvalid();
+                return;
+            }
+            values.add(sample.value());
         }
 
-        outputValues.put(OUTPUT_VALUES_ID, List.copyOf(values));
+        outputValues.put(OUTPUT_VALUES_ID, Collections.unmodifiableList(values));
         outputValues.put(OUTPUT_COUNT_ID, values.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private void writeInvalid() {
-        outputValues.put(OUTPUT_VALUES_ID, List.of());
+        outputValues.put(OUTPUT_VALUES_ID, Collections.emptyList());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
     }

@@ -95,6 +95,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V26 -> migrateV26ToV27(graph);
             case GraphFormatVersion.V27 -> migrateV27ToV28(graph);
             case GraphFormatVersion.V28 -> migrateV28ToV29(graph);
+            case GraphFormatVersion.V29 -> migrateV29ToV30(graph);
             default -> graph;
         };
     }
@@ -1881,6 +1882,7 @@ public final class GraphMigrationRegistry {
     private static final String SERIES_TYPE = "math.sequence.series";
     private static final String RANDOM_VECTOR_TYPE = "math.random.random_vector";
     private static final String RANDOM_LIST_ITEM_TYPE = "math.random.random_list_item";
+    private static final String SCALAR_SAMPLE_POINTS_TYPE = "math.fields.scalar_sample_points";
 
     /**
      * Sequence v1: drop Number Series Sum output wires (reduction belongs on Sum Numbers).
@@ -1956,6 +1958,44 @@ public final class GraphMigrationRegistry {
                     && !isDeclaredConnectionStillCompatible(sourceType, connection.sourcePortId,
                     targetType, connection.targetPortId)) {
                 LOGGER.debug("Dropped Random v1 type-incompatible wire {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
+            return false;
+        });
+
+        return graph;
+    }
+
+    /**
+     * Field v1: Scalar Field Sample Points output is DOUBLE_LIST; drop incompatible wires.
+     */
+    private static SavedGraph migrateV29ToV30(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+
+            if (SCALAR_SAMPLE_POINTS_TYPE.equals(sourceType) && "output_values".equals(sourcePort)
+                    && !isDeclaredConnectionStillCompatible(sourceType, connection.sourcePortId,
+                    nodeTypeBySavedId.get(connection.targetNodeId), connection.targetPortId)) {
+                LOGGER.debug("Dropped Field v1 type-incompatible wire {}#{} → {}#{}",
                         connection.sourceNodeId, connection.sourcePortId,
                         connection.targetNodeId, connection.targetPortId);
                 return true;

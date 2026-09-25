@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.FieldMath;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -74,9 +75,9 @@ public class VortexFieldNode extends BaseNode {
         }
 
         Vector3d axisNorm = new Vector3d(axis).normalize();
-        double effectiveStrength = getInputDouble(INPUT_STRENGTH_ID, strength);
-        double effectiveRadius = Math.max(AttractorFieldUtils.EPS, getInputDouble(INPUT_RADIUS_ID, radius));
-        double effectiveExponent = Math.max(0.001d, getInputDouble(INPUT_EXPONENT_ID, exponent));
+        double effectiveStrength = FieldMath.resolveFinite(inputValues.get(INPUT_STRENGTH_ID), strength);
+        double effectiveRadius = FieldMath.resolvePositive(inputValues.get(INPUT_RADIUS_ID), radius);
+        double effectiveExponent = FieldMath.resolvePositive(inputValues.get(INPUT_EXPONENT_ID), exponent);
         boolean effectiveClockwise = inputValues.get(INPUT_CLOCKWISE_ID) instanceof Boolean b ? b : clockwise;
         AttractorFieldUtils.FalloffMode mode = falloff == null ? AttractorFieldUtils.FalloffMode.INVERSE : falloff;
 
@@ -101,10 +102,5 @@ public class VortexFieldNode extends BaseNode {
         };
 
         outputValues.put(OUTPUT_FIELD_ID, field);
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
     }
 }

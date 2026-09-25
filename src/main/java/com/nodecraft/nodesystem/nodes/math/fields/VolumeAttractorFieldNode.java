@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.FieldMath;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -99,10 +100,10 @@ public class VolumeAttractorFieldNode extends BaseNode {
             return;
         }
 
-        double effectiveStrength = getInputDouble(INPUT_STRENGTH_ID, strength);
-        double effectiveRadius = Math.max(AttractorFieldUtils.EPS, getInputDouble(INPUT_RADIUS_ID, radius));
-        double effectiveExponent = Math.max(0.001d, getInputDouble(INPUT_EXPONENT_ID, exponent));
-        double effectiveSdfStep = Math.max(1.0e-4d, getInputDouble(INPUT_SDF_STEP_ID, sdfStep));
+        double effectiveStrength = FieldMath.resolveFinite(inputValues.get(INPUT_STRENGTH_ID), strength);
+        double effectiveRadius = FieldMath.resolvePositive(inputValues.get(INPUT_RADIUS_ID), radius);
+        double effectiveExponent = FieldMath.resolvePositive(inputValues.get(INPUT_EXPONENT_ID), exponent);
+        double effectiveSdfStep = FieldMath.resolvePositive(inputValues.get(INPUT_SDF_STEP_ID), sdfStep);
         AttractorFieldUtils.FalloffMode falloffMode = falloff == null ? AttractorFieldUtils.FalloffMode.INVERSE : falloff;
 
         final SignedDistanceFieldData fieldSdf = sdf;
@@ -136,10 +137,5 @@ public class VolumeAttractorFieldNode extends BaseNode {
         };
 
         outputValues.put(OUTPUT_FIELD_ID, field);
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
     }
 }

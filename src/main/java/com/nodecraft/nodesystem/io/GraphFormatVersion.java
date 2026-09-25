@@ -186,8 +186,14 @@ public final class GraphFormatVersion {
      */
     public static final int V29 = 29;
 
+    /**
+     * Field v1: Scalar Field Sample Points {@code output_values} LIST → DOUBLE_LIST;
+     * drop incompatible downstream wires.
+     */
+    public static final int V30 = 30;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V29;
+    public static final int CURRENT = V30;
 
     private GraphFormatVersion() {
     }

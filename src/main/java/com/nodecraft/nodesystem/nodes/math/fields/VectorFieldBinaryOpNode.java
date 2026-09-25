@@ -16,7 +16,7 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "math.fields.vector_binary_op",
-    displayName = "Vector Field Binary Op",
+    displayName = "Combine Vector Fields",
     description = "Combines two vector fields component-wise or via cross product.",
     category = "math.fields",
     order = 7
@@ -37,9 +37,6 @@ public class VectorFieldBinaryOpNode extends BaseNode {
     private static final String INPUT_B_ID = "input_b";
     private static final String OUTPUT_FIELD_ID = "output_field";
 
-    private final Vector3d tmpA = new Vector3d();
-    private final Vector3d tmpB = new Vector3d();
-
     public VectorFieldBinaryOpNode() {
         super(UUID.randomUUID(), "math.fields.vector_binary_op");
 
@@ -55,7 +52,7 @@ public class VectorFieldBinaryOpNode extends BaseNode {
 
     @Override
     public String getDisplayName() {
-        return "Vector Field Binary Op";
+        return "Combine Vector Fields";
     }
 
     @Override
@@ -69,6 +66,8 @@ public class VectorFieldBinaryOpNode extends BaseNode {
 
         VectorBinaryOp op = operation == null ? VectorBinaryOp.ADD : operation;
         VectorFieldData field = (point, dest) -> {
+            Vector3d tmpA = new Vector3d();
+            Vector3d tmpB = new Vector3d();
             a.sampleVector(point, tmpA);
             b.sampleVector(point, tmpB);
             switch (op) {

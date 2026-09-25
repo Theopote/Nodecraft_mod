@@ -35,7 +35,7 @@ public class VectorFieldSamplePointNode extends BaseNode {
         addInputPort(new BasePort(INPUT_POINT_ID, "Point", "Query point", NodeDataType.POINT, this));
 
         addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "Sampled vector", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when sampling succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when sample is finite", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -58,9 +58,8 @@ public class VectorFieldSamplePointNode extends BaseNode {
             return;
         }
 
-        Vector3d out = new Vector3d();
-        field.sampleVector(p, out);
-        outputValues.put(OUTPUT_VECTOR_ID, out);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        FieldSampleUtils.VectorSample sample = FieldSampleUtils.sampleVector(field, p);
+        outputValues.put(OUTPUT_VECTOR_ID, sample.vector());
+        outputValues.put(OUTPUT_VALID_ID, sample.valid());
     }
 }
