@@ -353,10 +353,10 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Height Gradient Map | `material.gradient_mapping.height_gradient_map` | Maps voxelized blocks by relative Y height into material bands. Remaps blockId only; preserves stateData. Geometry is voxelized first. | `HeightGradientMapNode` |
+| Height Gradient Map | `material.gradient_mapping.height_gradient_map` | Maps blocks by relative Y height into Bottom/Middle/Top/Peak bands. Remaps blockId only; preserves stateData. | `HeightGradientMapNode` |
 | Noise Material | `material.gradient_mapping.noise_material` | Assigns block types across placements or geometry using deterministic 3D noise bands | `NoiseMaterialNode` |
-| Gradient Ramp Map | `material.gradient_mapping.gradient_ramp_map` | Assigns block types by height using a custom multi-stop ramp list. | `GradientRampMapNode` |
-| Distance-Based Material | `material.gradient_mapping.distance_material` | Assigns block types from a palette based on distance to a reference point, plane, curve, or line. | `DistanceBasedMaterialNode` |
+| Height Palette Map | `material.gradient_mapping.gradient_ramp_map` | Assigns block types by height using equal bins from a BLOCK_PALETTE. Remaps blockId only; preserves stateData. | `GradientRampMapNode` |
+| Distance-Based Material | `material.gradient_mapping.distance_material` | Assigns block types from a palette based on distance to exactly one reference point, plane, curve, polyline, or line. | `DistanceBasedMaterialNode` |
 | SDF-Driven Material | `material.gradient_mapping.sdf_material` | Assigns block types from a palette using sampled SDF distance values. | `SdfDrivenMaterialNode` |
 
 ## material.pattern_mapping（4）

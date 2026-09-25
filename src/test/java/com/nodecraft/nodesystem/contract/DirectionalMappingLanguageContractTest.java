@@ -60,7 +60,7 @@ class DirectionalMappingLanguageContractTest {
     void currentGraphFormatIsV36() {
         assertEquals(35, GraphFormatVersion.V35);
         assertEquals(36, GraphFormatVersion.V36);
-        assertEquals(GraphFormatVersion.V36, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V37, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -266,7 +266,7 @@ class DirectionalMappingLanguageContractTest {
         v35.nodePositions = Map.of();
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v35);
-        assertEquals(GraphFormatVersion.V36, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
 
         assertTrue(hasWire(migrated, "slope", "output_placements", "preview", "input_block_placements"));
         assertFalse(hasWire(migrated, "slope", "output_positions", "preview", "input_block_placements"));

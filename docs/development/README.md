@@ -16,6 +16,7 @@ Related architecture:
 - [`../node-language-v1-input-values.md`](../node-language-v1-input-values.md) — Input Values v1 (PASSED / FROZEN, V34)
 - [`../node-language-v1-block-state.md`](../node-language-v1-block-state.md) — Block State v1 (PASSED / FROZEN, V35)
 - [`../node-language-v1-directional-mapping.md`](../node-language-v1-directional-mapping.md) — Directional Mapping v1 (PASSED / FROZEN, V36)
+- [`../node-language-v1-gradient-mapping.md`](../node-language-v1-gradient-mapping.md) — Gradient Mapping v1 (PASSED / FROZEN, V37)
 - [`../type-conversion-guidelines.md`](../type-conversion-guidelines.md) — Port connectability vs explicit conversion
 - [`../architecture/execution-runtime-2.0.md`](../architecture/execution-runtime-2.0.md) — Runtime 2.0 design freeze
 - [`../architecture/node-catalog.md`](../architecture/node-catalog.md) — Build-time NodeCatalog (Phase C)

@@ -53,7 +53,7 @@ class InputValuesLanguageContractTest {
         assertEquals(34, GraphFormatVersion.V34);
         assertEquals(35, GraphFormatVersion.V35);
         assertEquals(36, GraphFormatVersion.V36);
-        assertEquals(GraphFormatVersion.V36, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V37, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -255,7 +255,7 @@ class InputValuesLanguageContractTest {
         v33.nodePositions = Map.of();
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v33);
-        assertEquals(GraphFormatVersion.V36, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
 
         assertEquals("input.values.text_input", findNode(migrated, "text").typeId);
         assertEquals("input.values.color_picker", findNode(migrated, "color").typeId);

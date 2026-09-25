@@ -170,7 +170,7 @@ material.directional_mapping.slab_stair_autofill|material.directional_mapping|Sl
 material.directional_mapping.slope_map|material.directional_mapping|Surface Slope Map
 material.directional_mapping.top_side_bottom_map|material.directional_mapping|Column Layer Map
 material.gradient_mapping.distance_material|material.gradient_mapping|Distance-Based Material
-material.gradient_mapping.gradient_ramp_map|material.gradient_mapping|Gradient Ramp Map
+material.gradient_mapping.gradient_ramp_map|material.gradient_mapping|Height Palette Map
 material.gradient_mapping.height_gradient_map|material.gradient_mapping|Height Gradient Map
 material.gradient_mapping.noise_material|material.gradient_mapping|Noise Material
 material.gradient_mapping.sdf_material|material.gradient_mapping|SDF-Driven Material

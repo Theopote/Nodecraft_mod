@@ -50,7 +50,7 @@ class InputNumericLanguageContractTest {
         assertEquals(34, GraphFormatVersion.V34);
         assertEquals(35, GraphFormatVersion.V35);
         assertEquals(36, GraphFormatVersion.V36);
-        assertEquals(GraphFormatVersion.V36, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V37, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -257,7 +257,7 @@ class InputNumericLanguageContractTest {
         v30.nodePositions = Map.of();
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v30);
-        assertEquals(GraphFormatVersion.V36, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
         assertTrue(hasWire(migrated, "pi", "output_value", "sin", "input_angle"));
         assertFalse(hasWire(migrated, "pi", "output_pi", "sin", "input_angle"));
         assertFalse(hasWire(migrated, "xy", "output_vector", "construct", "input_x"));

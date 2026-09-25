@@ -9,8 +9,7 @@ import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
-import com.nodecraft.nodesystem.util.BlockPosList;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -42,11 +41,11 @@ public class SdfDrivenMaterialNode extends BaseNode {
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_HALF_WIDTH_ID = "input_half_width";
 
-    private static final String OUTPUT_POSITIONS_ID = "output_positions";
-    private static final String OUTPUT_BLOCK_IDS_ID = "output_block_ids";
     private static final String OUTPUT_PLACEMENTS_ID = "output_placements";
     private static final String OUTPUT_DISTANCES_ID = "output_distances";
     private static final String OUTPUT_WEIGHTS_ID = "output_weights";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public SdfDrivenMaterialNode() {
         super(UUID.randomUUID(), "material.gradient_mapping.sdf_material");
@@ -60,15 +59,15 @@ public class SdfDrivenMaterialNode extends BaseNode {
         addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry data to materialize", NodeDataType.TORUS_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SDF_ID, "SDF", "Signed distance field used for material sampling", NodeDataType.SDF, this));
         addInputPort(new BasePort(INPUT_PALETTE_ID, "Palette", "Typed block palette (BLOCK_PALETTE)", NodeDataType.BLOCK_PALETTE, this));
-        addInputPort(new BasePort(INPUT_FALLBACK_BLOCK_ID, "Fallback Block", "Fallback block when palette is empty", NodeDataType.BLOCK_TYPE, this));
+        addInputPort(new BasePort(INPUT_FALLBACK_BLOCK_ID, "Fallback Block", "Geometry voxelization base when palette is empty", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Distance center mapped to 0.5 weight", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_HALF_WIDTH_ID, "Half Width", "Half transition width used to normalize distance", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_POSITIONS_ID, "Positions", "Resolved block positions", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCK_IDS_ID, "Block IDs", "Block ids aligned with positions", NodeDataType.BLOCK_INFO_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "SDF-mapped placements", NodeDataType.BLOCK_PLACEMENT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_DISTANCES_ID, "Distances", "Raw sampled SDF distances", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_WEIGHTS_ID, "Weights", "Smoothed normalized SDF weights", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_DISTANCES_ID, "Distances", "Raw sampled SDF distances", NodeDataType.DOUBLE_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_WEIGHTS_ID, "Weights", "Smoothed normalized SDF weights", NodeDataType.DOUBLE_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when SDF and half-width are usable", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Validation error when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -80,109 +79,105 @@ public class SdfDrivenMaterialNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object sdfObj = inputValues.get(INPUT_SDF_ID);
         if (!(sdfObj instanceof SignedDistanceFieldData sdf)) {
-            writeInvalid();
+            emitFail("SDF input is required");
             return;
         }
 
-        String fallback = getInputString(INPUT_FALLBACK_BLOCK_ID, "minecraft:stone");
-        List<String> palette = resolvePalette(fallback);
-        List<BlockPlacementData> base = resolvePlacements(fallback);
+        double center = readDouble(INPUT_CENTER_ID, 0.0d);
+        double halfWidth = readDouble(INPUT_HALF_WIDTH_ID, 1.0d);
+        GradientMaterialUtils.Validation centerOk = GradientMaterialUtils.requireFinite(center, "Center");
+        if (!centerOk.valid()) {
+            emitFail(centerOk.message());
+            return;
+        }
+        GradientMaterialUtils.Validation halfWidthOk = GradientMaterialUtils.requirePositive(halfWidth, "Half Width");
+        if (!halfWidthOk.valid()) {
+            emitFail(halfWidthOk.message());
+            return;
+        }
 
-        double center = getInputDouble(INPUT_CENTER_ID, 0.0d);
-        double halfWidth = Math.max(1.0e-6d, Math.abs(getInputDouble(INPUT_HALF_WIDTH_ID, 1.0d)));
+        BlockPaletteData palette = GradientMaterialUtils.resolvePalette(inputValues.get(INPUT_PALETTE_ID));
+        String fallbackMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_FALLBACK_BLOCK_ID));
 
-        BlockPosList positions = new BlockPosList();
-        List<String> blockIds = new ArrayList<>(base.size());
-        List<BlockPlacementData> placements = new ArrayList<>(base.size());
-        List<Double> distances = new ArrayList<>(base.size());
-        List<Double> weights = new ArrayList<>(base.size());
+        List<BlockPlacementData> fromPlacements = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
+        boolean placementSource = !fromPlacements.isEmpty();
 
-        for (BlockPlacementData placement : base) {
-            if (placement.pos() == null) {
+        List<BlockPlacementData> sources = placementSource
+            ? fromPlacements
+            : MaterialMappingSupport.resolveSourcePlacements(
+                null,
+                inputValues.get(INPUT_COORDINATES_ID),
+                inputValues.get(INPUT_GEOMETRY_ID),
+                inputValues.get(INPUT_BOX_GEOMETRY_ID),
+                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
+                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
+                inputValues.get(INPUT_TORUS_GEOMETRY_ID),
+                MaterialMappingSupport.firstMappedBlockType(
+                    fallbackMapped,
+                    palette.isEmpty() ? null : palette.entries().getFirst().blockId()
+                )
+            );
+
+        if (!placementSource
+            && sources.isEmpty()
+            && GradientMaterialUtils.hasNonPlacementSource(
+                inputValues.get(INPUT_COORDINATES_ID),
+                inputValues.get(INPUT_GEOMETRY_ID),
+                inputValues.get(INPUT_BOX_GEOMETRY_ID),
+                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
+                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
+                inputValues.get(INPUT_TORUS_GEOMETRY_ID)
+            )
+            && palette.isEmpty()
+            && fallbackMapped == null) {
+            emitFail("Palette or fallback block required for geometry or coordinates input");
+            return;
+        }
+
+        List<BlockPlacementData> placements = new ArrayList<>(sources.size());
+        List<Double> distances = new ArrayList<>(sources.size());
+        List<Double> weights = new ArrayList<>(sources.size());
+
+        for (BlockPlacementData source : sources) {
+            BlockPos pos = source.pos();
+            if (pos == null) {
                 continue;
             }
-            Vector3d sample = new Vector3d(
-                placement.pos().getX() + 0.5d,
-                placement.pos().getY() + 0.5d,
-                placement.pos().getZ() + 0.5d
-            );
+            Vector3d sample = new Vector3d(pos.getX() + 0.5d, pos.getY() + 0.5d, pos.getZ() + 0.5d);
             double distance = sdf.sampleDistance(sample);
+            if (!Double.isFinite(distance)) {
+                emitFail("SDF sample produced a non-finite value");
+                return;
+            }
             double x = (distance - center) / halfWidth;
             double weight = smoothstep01(0.5d + 0.5d * x);
-            int index = Math.min(palette.size() - 1, Math.max(0, (int) Math.floor(weight * palette.size())));
-            String selected = palette.get(index);
-            String blockId = (selected == null || selected.isBlank()) ? fallback : selected;
-
-            positions.add(placement.pos());
-            blockIds.add(blockId);
-            placements.add(new BlockPlacementData(placement.pos(), blockId, placement.stateData()));
+            if (!Double.isFinite(weight)) {
+                emitFail("SDF weight produced a non-finite value");
+                return;
+            }
+            String blockId = GradientMaterialUtils.pickByNormalized(palette, weight, source.blockId());
+            placements.add(MaterialMappingSupport.remapBlockId(source, blockId));
             distances.add(distance);
             weights.add(weight);
         }
 
-        outputValues.put(OUTPUT_POSITIONS_ID, positions);
-        outputValues.put(OUTPUT_BLOCK_IDS_ID, blockIds);
         outputValues.put(OUTPUT_PLACEMENTS_ID, placements);
         outputValues.put(OUTPUT_DISTANCES_ID, List.copyOf(distances));
         outputValues.put(OUTPUT_WEIGHTS_ID, List.copyOf(weights));
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POSITIONS_ID, new BlockPosList());
-        outputValues.put(OUTPUT_BLOCK_IDS_ID, List.of());
-        outputValues.put(OUTPUT_PLACEMENTS_ID, List.of());
-        outputValues.put(OUTPUT_DISTANCES_ID, List.of());
-        outputValues.put(OUTPUT_WEIGHTS_ID, List.of());
+    private void emitFail(String message) {
+        outputValues.putAll(GradientMaterialUtils.failResult(message, OUTPUT_DISTANCES_ID, OUTPUT_WEIGHTS_ID));
     }
 
-    private List<BlockPlacementData> resolvePlacements(String fallbackBlockId) {
-        Object placementsObj = inputValues.get(INPUT_PLACEMENTS_ID);
-        if (placementsObj instanceof List<?> placementList && !placementList.isEmpty()) {
-            List<BlockPlacementData> resolved = new ArrayList<>();
-            for (Object entry : placementList) {
-                if (entry instanceof BlockPlacementData placement && placement.pos() != null) {
-                    resolved.add(placement);
-                }
-            }
-            if (!resolved.isEmpty()) {
-                return resolved;
-            }
-        }
-
-        BlockPosList positions = GeometryVoxelizer.resolveBlocks(
-            inputValues.get(INPUT_COORDINATES_ID),
-            inputValues.get(INPUT_GEOMETRY_ID),
-            inputValues.get(INPUT_BOX_GEOMETRY_ID),
-            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-            inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-            inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-            true
-        );
-
-        List<BlockPlacementData> generated = new ArrayList<>(positions.size());
-        for (BlockPos pos : positions) {
-            generated.add(new BlockPlacementData(pos, fallbackBlockId));
-        }
-        return generated;
-    }
-
-    private List<String> resolvePalette(String fallback) {
-        return new ArrayList<>(BlockPaletteData.requireTyped(inputValues.get(INPUT_PALETTE_ID))
-            .withFallback(fallback)
-            .blockIds());
-    }
-
-    private double smoothstep01(double value) {
+    private static double smoothstep01(double value) {
         double t = Math.max(0.0d, Math.min(1.0d, value));
         return t * t * (3.0d - 2.0d * t);
     }
 
-    private String getInputString(String portId, String fallback) {
-        Object value = inputValues.get(portId);
-        return (value instanceof String text && !text.isBlank()) ? text : fallback;
-    }
-
-    private double getInputDouble(String portId, double fallback) {
+    private double readDouble(String portId, double fallback) {
         Object value = inputValues.get(portId);
         return value instanceof Number number ? number.doubleValue() : fallback;
     }

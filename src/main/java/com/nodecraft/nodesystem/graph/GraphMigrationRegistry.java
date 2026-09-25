@@ -102,6 +102,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V33 -> migrateV33ToV34(graph);
             case GraphFormatVersion.V34 -> migrateV34ToV35(graph);
             case GraphFormatVersion.V35 -> migrateV35ToV36(graph);
+            case GraphFormatVersion.V36 -> migrateV36ToV37(graph);
             default -> graph;
         };
     }
@@ -2195,6 +2196,29 @@ public final class GraphMigrationRegistry {
             "output_block_ids"
     );
 
+    private static final Set<String> GRADIENT_MAPPING_TYPES = Set.of(
+            "material.gradient_mapping.height_gradient_map",
+            "material.gradient_mapping.noise_material",
+            "material.gradient_mapping.gradient_ramp_map",
+            "material.gradient_mapping.distance_material",
+            "material.gradient_mapping.sdf_material"
+    );
+
+    private static final Set<String> GRADIENT_MAPPING_DECONSTRUCT_OUTPUT_PORTS = Set.of(
+            "output_positions",
+            "output_block_ids"
+    );
+
+    private static final Set<String> GRADIENT_MAPPING_DIAGNOSTIC_OUTPUT_PORTS = Set.of(
+            "output_noise_values",
+            "output_distances",
+            "output_weights"
+    );
+
+    private static final String GRADIENT_RAMP_MAP_TYPE = "material.gradient_mapping.gradient_ramp_map";
+    private static final String DISTANCE_MATERIAL_TYPE = "material.gradient_mapping.distance_material";
+    private static final String DISTANCE_REFERENCE_POINT_PORT = "input_reference_point";
+
     /**
      * Type Selectors v1: Block Type {@code BLOCK_TYPE} port; remove Block State Selector.
      */
@@ -2482,6 +2506,88 @@ public final class GraphMigrationRegistry {
                         connection.sourceNodeId, connection.sourcePortId);
                 return true;
             }
+            return false;
+        });
+
+        return graph;
+    }
+
+    /**
+     * Gradient Mapping v1: drop deconstruct outputs; tighten diagnostics to DOUBLE_LIST;
+     * Distance reference POINT; strip legacy rampBlocks property.
+     */
+    private static SavedGraph migrateV36ToV37(SavedGraph graph) {
+        if (graph.nodes == null) {
+            graph.nodes = new ArrayList<>();
+        } else {
+            graph.nodes = new ArrayList<>(graph.nodes);
+        }
+        if (graph.connections == null) {
+            graph.connections = new ArrayList<>();
+        } else {
+            graph.connections = new ArrayList<>(graph.connections);
+        }
+
+        for (SavedNode node : graph.nodes) {
+            if (node == null || node.typeId == null) {
+                continue;
+            }
+            if (GRADIENT_RAMP_MAP_TYPE.equalsIgnoreCase(node.typeId) && node.state instanceof Map<?, ?> state) {
+                Map<String, Object> cleaned = new HashMap<>();
+                for (Map.Entry<?, ?> entry : state.entrySet()) {
+                    if (entry.getKey() instanceof String key && !"rampBlocks".equals(key)) {
+                        cleaned.put(key, entry.getValue());
+                    }
+                }
+                node.state = cleaned;
+            }
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            String targetPort = connection.targetPortId == null ? "" : connection.targetPortId.toLowerCase(Locale.ROOT);
+
+            if (sourceType != null
+                    && GRADIENT_MAPPING_TYPES.contains(sourceType)
+                    && GRADIENT_MAPPING_DECONSTRUCT_OUTPUT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped Gradient Mapping v1 deconstruct output wire {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId);
+                return true;
+            }
+
+            if (sourceType != null
+                    && GRADIENT_MAPPING_TYPES.contains(sourceType)
+                    && GRADIENT_MAPPING_DIAGNOSTIC_OUTPUT_PORTS.contains(sourcePort)
+                    && !isDeclaredConnectionStillCompatible(sourceType, connection.sourcePortId,
+                    targetType, connection.targetPortId)) {
+                LOGGER.debug("Dropped Gradient Mapping v1 incompatible diagnostic wire {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
+
+            if (DISTANCE_MATERIAL_TYPE.equals(targetType)
+                    && DISTANCE_REFERENCE_POINT_PORT.equals(targetPort)
+                    && !isDeclaredConnectionStillCompatible(sourceType, connection.sourcePortId,
+                    targetType, connection.targetPortId)) {
+                LOGGER.debug("Dropped Gradient Mapping v1 incompatible Distance reference wire {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
+
             return false;
         });
 

@@ -229,8 +229,15 @@ public final class GraphFormatVersion {
      */
     public static final int V36 = 36;
 
+    /**
+     * Gradient Mapping v1: five PURE scalar→palette→blockId nodes; RandomOps noise;
+     * DOUBLE_LIST diagnostics; Distance POINT reference; drop deconstruct outputs;
+     * no hidden stone/origin/epsilon domain repair.
+     */
+    public static final int V37 = 37;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V36;
+    public static final int CURRENT = V37;
 
     private GraphFormatVersion() {
     }

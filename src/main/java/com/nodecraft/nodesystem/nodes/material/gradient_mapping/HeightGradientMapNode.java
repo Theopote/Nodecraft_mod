@@ -8,13 +8,14 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
-import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -24,7 +25,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "material.gradient_mapping.height_gradient_map",
     displayName = "Height Gradient Map",
-    description = "Maps voxelized blocks by relative Y height into material bands. Remaps blockId only; preserves stateData. Geometry is voxelized first.",
+    description = "Maps blocks by relative Y height into Bottom/Middle/Top/Peak bands. Remaps blockId only; preserves stateData.",
     category = "material.gradient_mapping",
     order = 0
 )
@@ -34,7 +35,7 @@ public class HeightGradientMapNode extends BaseNode {
         displayName = "Lower End Ratio",
         category = "Bands",
         order = 1,
-        description = "Relative height where the lower band ends."
+        description = "Relative height where the lower band ends [0,1]."
     )
     private double lowerEndRatio = 0.30d;
 
@@ -42,7 +43,7 @@ public class HeightGradientMapNode extends BaseNode {
         displayName = "Middle End Ratio",
         category = "Bands",
         order = 2,
-        description = "Relative height where the middle band ends."
+        description = "Relative height where the middle band ends [0,1]."
     )
     private double middleEndRatio = 0.70d;
 
@@ -50,7 +51,7 @@ public class HeightGradientMapNode extends BaseNode {
         displayName = "Upper End Ratio",
         category = "Bands",
         order = 3,
-        description = "Relative height where the upper band ends and the peak band begins."
+        description = "Relative height where the upper band ends and the peak begins [0,1]."
     )
     private double upperEndRatio = 0.90d;
 
@@ -66,9 +67,9 @@ public class HeightGradientMapNode extends BaseNode {
     private static final String INPUT_TOP_ID = "input_top";
     private static final String INPUT_PEAK_ID = "input_peak";
 
-    private static final String OUTPUT_POSITIONS_ID = "output_positions";
-    private static final String OUTPUT_BLOCK_IDS_ID = "output_block_ids";
     private static final String OUTPUT_PLACEMENTS_ID = "output_placements";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public HeightGradientMapNode() {
         super(UUID.randomUUID(), "material.gradient_mapping.height_gradient_map");
@@ -81,44 +82,64 @@ public class HeightGradientMapNode extends BaseNode {
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Legacy cylinder geometry (voxelized first)", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Legacy sphere geometry (voxelized first)", NodeDataType.SPHERE, this));
         addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Legacy torus geometry (voxelized first)", NodeDataType.TORUS_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_BOTTOM_ID, "Bottom", "Block for the lower third", NodeDataType.BLOCK_TYPE, this));
-        addInputPort(new BasePort(INPUT_MIDDLE_ID, "Middle", "Block for the middle third", NodeDataType.BLOCK_TYPE, this));
+        addInputPort(new BasePort(INPUT_BOTTOM_ID, "Bottom", "Block for the lower band", NodeDataType.BLOCK_TYPE, this));
+        addInputPort(new BasePort(INPUT_MIDDLE_ID, "Middle", "Block for the middle band", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_TOP_ID, "Top", "Block for the upper band below the peak", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_PEAK_ID, "Peak", "Block for the topmost band", NodeDataType.BLOCK_TYPE, this));
 
-        addOutputPort(new BasePort(OUTPUT_POSITIONS_ID, "Positions", "Resolved block positions", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCK_IDS_ID, "Block IDs", "Block IDs aligned with the positions list", NodeDataType.BLOCK_INFO_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Canonical material payload", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when band ratios and inputs are usable", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Validation error when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
     public String getDescription() {
-        return "Maps voxelized blocks by relative Y height into material bands. Remaps blockId only; preserves stateData.";
+        return "Maps blocks by relative Y height into Bottom/Middle/Top/Peak bands. Remaps blockId only; preserves stateData.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        String bottom = getInputString(INPUT_BOTTOM_ID, "minecraft:stone");
-        String middle = getInputString(INPUT_MIDDLE_ID, "minecraft:dirt");
-        String top = getInputString(INPUT_TOP_ID, "minecraft:grass_block");
-        String peak = getInputString(INPUT_PEAK_ID, top);
+        GradientMaterialUtils.Validation ratios = validateRatios();
+        if (!ratios.valid()) {
+            emitFail(ratios.message());
+            return;
+        }
 
-        List<BlockPlacementData> sources = MaterialMappingSupport.resolveSourcePlacements(
-            inputValues.get(INPUT_PLACEMENTS_ID),
+        String bottomMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_BOTTOM_ID));
+        String middleMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_MIDDLE_ID));
+        String topMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_TOP_ID));
+        String peakMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_PEAK_ID));
+
+        List<BlockPlacementData> fromPlacements = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
+        boolean placementSource = !fromPlacements.isEmpty();
+
+        List<BlockPlacementData> sources = placementSource
+            ? fromPlacements
+            : MaterialMappingSupport.resolveSourcePlacements(
+                null,
+                inputValues.get(INPUT_COORDINATES_ID),
+                inputValues.get(INPUT_GEOMETRY_ID),
+                inputValues.get(INPUT_BOX_GEOMETRY_ID),
+                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
+                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
+                inputValues.get(INPUT_TORUS_GEOMETRY_ID),
+                MaterialMappingSupport.firstMappedBlockType(bottomMapped, middleMapped, topMapped, peakMapped)
+            );
+
+        if (!placementSource && sources.isEmpty() && GradientMaterialUtils.hasNonPlacementSource(
             inputValues.get(INPUT_COORDINATES_ID),
             inputValues.get(INPUT_GEOMETRY_ID),
             inputValues.get(INPUT_BOX_GEOMETRY_ID),
             inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
             inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-            inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-            bottom
-        );
-
-        List<String> blockIds = new ArrayList<>(sources.size());
-        List<BlockPlacementData> placements = new ArrayList<>(sources.size());
+            inputValues.get(INPUT_TORUS_GEOMETRY_ID)
+        )) {
+            emitFail("Explicit band material required for geometry or coordinates input");
+            return;
+        }
 
         if (sources.isEmpty()) {
-            publishOutputs(new BlockPosList(), blockIds, placements);
+            emitOk(List.of());
             return;
         }
 
@@ -133,58 +154,54 @@ public class HeightGradientMapNode extends BaseNode {
             maxY = Math.max(maxY, pos.getY());
         }
 
-        double span = maxY - minY;
-        if (span < 1e-6d) {
-            span = 1.0d;
-        }
-
-        BlockPosList outputPositions = new BlockPosList();
-        double[] bandEnds = resolveBandEnds();
+        boolean singleHeight = maxY == minY;
+        List<BlockPlacementData> placements = new ArrayList<>(sources.size());
         for (BlockPlacementData source : sources) {
             BlockPos pos = source.pos();
             if (pos == null) {
                 continue;
             }
-            double t = (pos.getY() - minY) / span;
-            String blockId;
-            if (t < bandEnds[0]) {
-                blockId = bottom;
-            } else if (t < bandEnds[1]) {
-                blockId = middle;
-            } else if (t < bandEnds[2]) {
-                blockId = top;
+            double t = singleHeight ? 0.0d : (double) (pos.getY() - minY) / (double) (maxY - minY);
+            String roleMapped;
+            if (t < lowerEndRatio) {
+                roleMapped = bottomMapped;
+            } else if (t < middleEndRatio) {
+                roleMapped = middleMapped;
+            } else if (t < upperEndRatio) {
+                roleMapped = topMapped;
             } else {
-                blockId = peak;
+                roleMapped = peakMapped;
             }
-
-            outputPositions.add(pos);
-            blockIds.add(blockId);
+            String blockId = MaterialMappingSupport.resolveMaterialTarget(roleMapped, source.blockId());
             placements.add(MaterialMappingSupport.remapBlockId(source, blockId));
         }
 
-        publishOutputs(outputPositions, blockIds, placements);
+        emitOk(placements);
     }
 
-    private void publishOutputs(BlockPosList positions, List<String> blockIds, List<BlockPlacementData> placements) {
-        outputValues.put(OUTPUT_POSITIONS_ID, positions);
-        outputValues.put(OUTPUT_BLOCK_IDS_ID, blockIds);
+    private GradientMaterialUtils.Validation validateRatios() {
+        if (!Double.isFinite(lowerEndRatio) || !Double.isFinite(middleEndRatio) || !Double.isFinite(upperEndRatio)) {
+            return GradientMaterialUtils.Validation.fail("Band ratios must be finite");
+        }
+        if (lowerEndRatio < 0.0d || upperEndRatio > 1.0d) {
+            return GradientMaterialUtils.Validation.fail("Band ratios must be within [0, 1]");
+        }
+        if (!(lowerEndRatio <= middleEndRatio && middleEndRatio <= upperEndRatio)) {
+            return GradientMaterialUtils.Validation.fail("Band ratios must satisfy 0 ≤ lower ≤ middle ≤ upper ≤ 1");
+        }
+        return GradientMaterialUtils.Validation.ok();
+    }
+
+    private void emitFail(String message) {
+        outputValues.put(OUTPUT_PLACEMENTS_ID, List.of());
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, message);
+    }
+
+    private void emitOk(List<BlockPlacementData> placements) {
         outputValues.put(OUTPUT_PLACEMENTS_ID, placements);
-    }
-
-    private String getInputString(String portId, String fallback) {
-        Object value = inputValues.get(portId);
-        return (value instanceof String text && !text.isEmpty()) ? text : fallback;
-    }
-
-    private double[] resolveBandEnds() {
-        double lower = clamp01(lowerEndRatio);
-        double middle = Math.max(lower, clamp01(middleEndRatio));
-        double upper = Math.max(middle, clamp01(upperEndRatio));
-        return new double[]{lower, middle, upper};
-    }
-
-    private double clamp01(double value) {
-        return Math.max(0.0d, Math.min(1.0d, value));
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     public double getLowerEndRatio() {
@@ -192,9 +209,8 @@ public class HeightGradientMapNode extends BaseNode {
     }
 
     public void setLowerEndRatio(double lowerEndRatio) {
-        double resolved = clamp01(lowerEndRatio);
-        if (Double.compare(this.lowerEndRatio, resolved) != 0) {
-            this.lowerEndRatio = resolved;
+        if (Double.compare(this.lowerEndRatio, lowerEndRatio) != 0) {
+            this.lowerEndRatio = lowerEndRatio;
             markDirty();
         }
     }
@@ -204,9 +220,8 @@ public class HeightGradientMapNode extends BaseNode {
     }
 
     public void setMiddleEndRatio(double middleEndRatio) {
-        double resolved = clamp01(middleEndRatio);
-        if (Double.compare(this.middleEndRatio, resolved) != 0) {
-            this.middleEndRatio = resolved;
+        if (Double.compare(this.middleEndRatio, middleEndRatio) != 0) {
+            this.middleEndRatio = middleEndRatio;
             markDirty();
         }
     }
@@ -216,35 +231,34 @@ public class HeightGradientMapNode extends BaseNode {
     }
 
     public void setUpperEndRatio(double upperEndRatio) {
-        double resolved = clamp01(upperEndRatio);
-        if (Double.compare(this.upperEndRatio, resolved) != 0) {
-            this.upperEndRatio = resolved;
+        if (Double.compare(this.upperEndRatio, upperEndRatio) != 0) {
+            this.upperEndRatio = upperEndRatio;
             markDirty();
         }
     }
 
     @Override
     public Object getNodeState() {
-        return new java.util.HashMap<String, Object>() {{
-            put("lowerEndRatio", lowerEndRatio);
-            put("middleEndRatio", middleEndRatio);
-            put("upperEndRatio", upperEndRatio);
-        }};
+        Map<String, Object> state = new HashMap<>();
+        state.put("lowerEndRatio", lowerEndRatio);
+        state.put("middleEndRatio", middleEndRatio);
+        state.put("upperEndRatio", upperEndRatio);
+        return state;
     }
 
     @Override
     public void setNodeState(Object state) {
-        if (!(state instanceof java.util.Map<?, ?> map)) {
+        if (!(state instanceof Map<?, ?> map)) {
             return;
         }
         if (map.get("lowerEndRatio") instanceof Number value) {
-            this.lowerEndRatio = clamp01(value.doubleValue());
+            this.lowerEndRatio = value.doubleValue();
         }
         if (map.get("middleEndRatio") instanceof Number value) {
-            this.middleEndRatio = clamp01(value.doubleValue());
+            this.middleEndRatio = value.doubleValue();
         }
         if (map.get("upperEndRatio") instanceof Number value) {
-            this.upperEndRatio = clamp01(value.doubleValue());
+            this.upperEndRatio = value.doubleValue();
         }
     }
 }
