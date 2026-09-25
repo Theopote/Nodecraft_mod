@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -47,7 +48,8 @@ public class GetBoxCornerNode extends BaseNode {
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry to query", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_INDEX_ID, "Corner Index", "Corner index from 0 to 7", NodeDataType.INTEGER, this));
 
-        addOutputPort(new BasePort(OUTPUT_CORNER_ID, "Corner", "Resolved box corner position", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_CORNER_ID, "Corner",
+            "Resolved box corner as geometric point", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_FOUND_ID, "Found", "Whether the corner index resolved successfully", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_RESOLVED_INDEX_ID, "Resolved Index", "Resolved corner index after negative/wrap handling", NodeDataType.INTEGER, this));
     }
@@ -88,7 +90,7 @@ public class GetBoxCornerNode extends BaseNode {
             }
         }
 
-        outputValues.put(OUTPUT_CORNER_ID, corner);
+        outputValues.put(OUTPUT_CORNER_ID, corner == null ? null : new PointData(corner));
         outputValues.put(OUTPUT_FOUND_ID, found);
         outputValues.put(OUTPUT_RESOLVED_INDEX_ID, resolvedIndex);
     }

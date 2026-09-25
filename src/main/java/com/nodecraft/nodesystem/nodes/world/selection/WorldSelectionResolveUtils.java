@@ -14,9 +14,17 @@ final class WorldSelectionResolveUtils {
     private WorldSelectionResolveUtils() {
     }
 
-    static @Nullable Vector3d resolveVector3d(Object value) {
+    static @Nullable Vector3d toPointPosition(Object value) {
         if (value instanceof PointData pointData) {
             return new Vector3d(pointData.getPosition());
+        }
+        return null;
+    }
+
+    static @Nullable Vector3d resolveVector3d(Object value) {
+        Vector3d strict = toPointPosition(value);
+        if (strict != null) {
+            return strict;
         }
         if (value instanceof Vector3d vector) {
             return new Vector3d(vector);

@@ -35,10 +35,7 @@ public class SnapPointToBlockNode extends BaseNode {
 
     private static final String INPUT_POINT_ID = "input_point";
 
-    private static final String OUTPUT_COORDINATE_ID = "output_coordinate";
-    private static final String OUTPUT_X_ID = "output_x";
-    private static final String OUTPUT_Y_ID = "output_y";
-    private static final String OUTPUT_Z_ID = "output_z";
+    private static final String OUTPUT_BLOCK_POS_ID = "output_coordinate";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_DISTANCE_ID = "output_distance";
 
@@ -48,21 +45,16 @@ public class SnapPointToBlockNode extends BaseNode {
         super(UUID.randomUUID(), "world.selection.snap_point_to_block");
 
         addInputPort(new BasePort(INPUT_POINT_ID, "Point",
-            "Geometric point to snap onto the block grid. Supports Point, Vector, Position, or Block Coordinate.",
-            NodeDataType.ANY, this));
+            "Geometric point to snap onto the block grid",
+            NodeDataType.POINT, this));
 
-        addOutputPort(new BasePort(OUTPUT_COORDINATE_ID, "Coordinate",
-            "Snapped block coordinate", NodeDataType.BLOCK_POS, this));
-        addOutputPort(new BasePort(OUTPUT_X_ID, "X",
-            "Snapped X coordinate", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_Y_ID, "Y",
-            "Snapped Y coordinate", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_Z_ID, "Z",
-            "Snapped Z coordinate", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCK_POS_ID, "Block Pos",
+            "Snapped block position", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
-            "True when the input could be resolved to a geometric point", NodeDataType.BOOLEAN, this));
+            "True when the input point is valid", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_DISTANCE_ID, "Distance",
-            "Distance from the original point to the snapped block coordinate", NodeDataType.DOUBLE, this));
+            "Distance from the original point to the snapped block position (integer corner)",
+            NodeDataType.DOUBLE, this));
     }
 
     @Override
@@ -77,14 +69,11 @@ public class SnapPointToBlockNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d point = WorldSelectionResolveUtils.resolveVector3d(inputValues.get(INPUT_POINT_ID));
+        Vector3d point = WorldSelectionResolveUtils.toPointPosition(inputValues.get(INPUT_POINT_ID));
         if (point == null) {
-            outputValues.put(OUTPUT_COORDINATE_ID, BlockPos.ORIGIN);
-            outputValues.put(OUTPUT_X_ID, 0);
-            outputValues.put(OUTPUT_Y_ID, 0);
-            outputValues.put(OUTPUT_Z_ID, 0);
+            outputValues.put(OUTPUT_BLOCK_POS_ID, null);
             outputValues.put(OUTPUT_VALID_ID, false);
-            outputValues.put(OUTPUT_DISTANCE_ID, 0.0D);
+            outputValues.put(OUTPUT_DISTANCE_ID, Double.NaN);
             return;
         }
 
@@ -98,10 +87,7 @@ public class SnapPointToBlockNode extends BaseNode {
         double dz = point.z - snapped.getZ();
         double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-        outputValues.put(OUTPUT_COORDINATE_ID, snapped);
-        outputValues.put(OUTPUT_X_ID, x);
-        outputValues.put(OUTPUT_Y_ID, y);
-        outputValues.put(OUTPUT_Z_ID, z);
+        outputValues.put(OUTPUT_BLOCK_POS_ID, snapped);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_DISTANCE_ID, distance);
     }

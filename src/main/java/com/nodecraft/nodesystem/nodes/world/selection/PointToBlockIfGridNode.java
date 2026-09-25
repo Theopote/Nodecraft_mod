@@ -39,8 +39,8 @@ public class PointToBlockIfGridNode extends BaseNode {
         super(UUID.randomUUID(), "world.selection.point_to_block_if_grid");
 
         addInputPort(new BasePort(INPUT_POINT_ID, "Point",
-            "Point to convert without snapping. Supports Point, Vector, Position, or Block Coordinate.",
-            NodeDataType.ANY, this));
+            "Geometric point to convert without snapping",
+            NodeDataType.POINT, this));
 
         addOutputPort(new BasePort(OUTPUT_COORDINATE_ID, "Coordinate",
             "Block coordinate only when the point already lies on the integer grid", NodeDataType.BLOCK_POS, this));
@@ -68,14 +68,14 @@ public class PointToBlockIfGridNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d point = WorldSelectionResolveUtils.resolveVector3d(inputValues.get(INPUT_POINT_ID));
+        Vector3d point = WorldSelectionResolveUtils.toPointPosition(inputValues.get(INPUT_POINT_ID));
         if (point == null) {
             outputValues.put(OUTPUT_COORDINATE_ID, null);
             outputValues.put(OUTPUT_VALID_ID, false);
             outputValues.put(OUTPUT_IS_GRID_POINT_ID, false);
-            outputValues.put(OUTPUT_NEAREST_COORDINATE_ID, BlockPos.ORIGIN);
-            outputValues.put(OUTPUT_DISTANCE_ID, 0.0D);
-            outputValues.put(OUTPUT_OFFSET_VECTOR_ID, new Vector3d());
+            outputValues.put(OUTPUT_NEAREST_COORDINATE_ID, null);
+            outputValues.put(OUTPUT_DISTANCE_ID, Double.NaN);
+            outputValues.put(OUTPUT_OFFSET_VECTOR_ID, null);
             return;
         }
 

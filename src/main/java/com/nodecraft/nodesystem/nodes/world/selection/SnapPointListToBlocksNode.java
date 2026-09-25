@@ -41,13 +41,13 @@ public class SnapPointListToBlocksNode extends BaseNode {
         super(UUID.randomUUID(), "world.selection.snap_points_to_blocks");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points",
-            "Collection of Point, Vector, Position, or Block Coordinate values to snap onto the block grid",
-            NodeDataType.LIST, this));
+            "Geometric points to snap onto the block grid",
+            NodeDataType.POINT_LIST, this));
 
         addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks",
-            "Snapped block coordinates", NodeDataType.BLOCK_LIST, this));
+            "Snapped block positions", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
-            "Number of snapped block coordinates in the final output", NodeDataType.INTEGER, this));
+            "Number of snapped block positions in the final output", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_COUNT_ID, "Valid Count",
             "Number of inputs that were successfully resolved to points", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_SKIPPED_COUNT_ID, "Skipped Count",
@@ -85,7 +85,7 @@ public class SnapPointListToBlocksNode extends BaseNode {
         int skippedCount = 0;
 
         for (Object entry : values) {
-            Vector3d point = WorldSelectionResolveUtils.resolveVector3d(entry);
+            Vector3d point = WorldSelectionResolveUtils.toPointPosition(entry);
             if (point == null) {
                 skippedCount++;
                 continue;

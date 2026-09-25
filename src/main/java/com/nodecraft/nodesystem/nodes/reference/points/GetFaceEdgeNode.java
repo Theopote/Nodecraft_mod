@@ -42,10 +42,6 @@ public class GetFaceEdgeNode extends BaseNode {
     private static final String OUTPUT_EDGE_ID = "output_edge";
     private static final String OUTPUT_FOUND_ID = "output_found";
     private static final String OUTPUT_RESOLVED_INDEX_ID = "output_resolved_index";
-    private static final String OUTPUT_START_ID = "output_start";
-    private static final String OUTPUT_END_ID = "output_end";
-    private static final String OUTPUT_START_CORNER_INDEX_ID = "output_start_corner_index";
-    private static final String OUTPUT_END_CORNER_INDEX_ID = "output_end_corner_index";
 
     public GetFaceEdgeNode() {
         super(UUID.randomUUID(), "reference.points.get_face_edge");
@@ -56,10 +52,6 @@ public class GetFaceEdgeNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_EDGE_ID, "Edge", "Resolved face edge", NodeDataType.LINE, this));
         addOutputPort(new BasePort(OUTPUT_FOUND_ID, "Found", "Whether the edge index resolved successfully", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_RESOLVED_INDEX_ID, "Resolved Index", "Resolved edge index after negative/wrap handling", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_START_ID, "Start", "Edge start point", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_END_ID, "End", "Edge end point", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_START_CORNER_INDEX_ID, "Start Corner Index", "Index of the start corner in the parent box", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_END_CORNER_INDEX_ID, "End Corner Index", "Index of the end corner in the parent box", NodeDataType.INTEGER, this));
     }
 
     @Override
@@ -75,14 +67,9 @@ public class GetFaceEdgeNode extends BaseNode {
         LineData edge = null;
         boolean found = false;
         Integer resolvedIndex = null;
-        Vector3d start = null;
-        Vector3d end = null;
-        Integer startCornerIndex = null;
-        Integer endCornerIndex = null;
 
         if (faceObj instanceof BoxFaceData face && indexObj instanceof Number number) {
             List<Vector3d> corners = face.getCorners();
-            List<Integer> cornerIndices = face.getCornerIndices();
             int index = number.intValue();
             int edgeCount = corners.size();
 
@@ -96,10 +83,8 @@ public class GetFaceEdgeNode extends BaseNode {
                 }
 
                 if (index >= 0 && index < edgeCount) {
-                    start = new Vector3d(corners.get(index));
-                    end = new Vector3d(corners.get((index + 1) % edgeCount));
-                    startCornerIndex = cornerIndices.get(index);
-                    endCornerIndex = cornerIndices.get((index + 1) % edgeCount);
+                    Vector3d start = corners.get(index);
+                    Vector3d end = corners.get((index + 1) % edgeCount);
                     edge = new LineData(
                         new Vec3d(start.x, start.y, start.z),
                         new Vec3d(end.x, end.y, end.z)
@@ -113,10 +98,6 @@ public class GetFaceEdgeNode extends BaseNode {
         outputValues.put(OUTPUT_EDGE_ID, edge);
         outputValues.put(OUTPUT_FOUND_ID, found);
         outputValues.put(OUTPUT_RESOLVED_INDEX_ID, resolvedIndex);
-        outputValues.put(OUTPUT_START_ID, start);
-        outputValues.put(OUTPUT_END_ID, end);
-        outputValues.put(OUTPUT_START_CORNER_INDEX_ID, startCornerIndex);
-        outputValues.put(OUTPUT_END_CORNER_INDEX_ID, endCornerIndex);
     }
 
     public boolean isAllowNegativeIndex() {

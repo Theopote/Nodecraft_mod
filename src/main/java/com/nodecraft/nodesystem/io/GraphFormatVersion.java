@@ -125,8 +125,15 @@ public final class GraphFormatVersion {
      */
     public static final int V19 = 19;
 
+    /**
+     * Box/face point language + world.selection Point↔BlockPos typing:
+     * Get Box Corner / Deconstruct Face Edge positions as POINT;
+     * Get Face Edge slimmed; Snap Point ports typed POINT / POINT_LIST.
+     */
+    public static final int V20 = 20;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V19;
+    public static final int CURRENT = V20;
 
     private GraphFormatVersion() {
     }

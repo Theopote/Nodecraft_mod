@@ -686,7 +686,7 @@
 | Get Box Face | `reference.points.get_box_face` | Gets a single face from box geometry by semantic name or index | `GetBoxFaceNode` |
 | Get Face Edge | `reference.points.get_face_edge` | Gets a single edge from a face by index | `GetFaceEdgeNode` |
 | Deconstruct Box Face | `reference.points.deconstruct_face` | Extracts corners, edges, plane, center, and normal from a box face | `DeconstructBoxFaceNode` |
-| Deconstruct Face Edge | `reference.points.deconstruct_edge` | Extracts endpoints, midpoint, direction, vector, and length from a face edge | `DeconstructFaceEdgeNode` |
+| Deconstruct Face Edge | `reference.points.deconstruct_edge` | Extracts endpoints, midpoint, direction, displacement, and length from a face edge | `DeconstructFaceEdgeNode` |
 
 ## reference.vectors（18）
 

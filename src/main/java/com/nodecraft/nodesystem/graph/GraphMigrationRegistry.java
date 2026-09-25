@@ -83,6 +83,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V16 -> migrateV16ToV17(graph);
             case GraphFormatVersion.V17 -> migrateV17ToV18(graph);
             case GraphFormatVersion.V18 -> migrateV18ToV19(graph);
+            case GraphFormatVersion.V19 -> migrateV19ToV20(graph);
             default -> graph;
         };
     }
@@ -1288,6 +1289,78 @@ public final class GraphMigrationRegistry {
             return true;
         }
         return false;
+    }
+
+    private static final String GET_FACE_EDGE_TYPE = "reference.points.get_face_edge";
+    private static final String DECONSTRUCT_EDGE_TYPE = "reference.points.deconstruct_edge";
+    private static final String SNAP_POINT_TO_BLOCK_TYPE = "world.selection.snap_point_to_block";
+
+    private static final Set<String> GET_FACE_EDGE_LEGACY_OUTPUT_PORTS = Set.of(
+            "output_start",
+            "output_end",
+            "output_start_corner_index",
+            "output_end_corner_index"
+    );
+
+    private static final Set<String> DECONSTRUCT_EDGE_LEGACY_PORTS = Set.of(
+            "input_start_corner_index",
+            "input_end_corner_index",
+            "output_start_corner_index",
+            "output_end_corner_index"
+    );
+
+    private static final Set<String> SNAP_POINT_LEGACY_OUTPUT_PORTS = Set.of(
+            "output_x",
+            "output_y",
+            "output_z"
+    );
+
+    /**
+     * Box/face + snap typing v1: drop slimmed ports; corner/edge positions remain same IDs (now POINT).
+     */
+    private static SavedGraph migrateV19ToV20(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            String targetPort = connection.targetPortId == null ? "" : connection.targetPortId.toLowerCase(Locale.ROOT);
+
+            if (GET_FACE_EDGE_TYPE.equals(sourceType) && GET_FACE_EDGE_LEGACY_OUTPUT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped Get Face Edge legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+            if (DECONSTRUCT_EDGE_TYPE.equals(sourceType) && DECONSTRUCT_EDGE_LEGACY_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped Deconstruct Face Edge legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+            if (DECONSTRUCT_EDGE_TYPE.equals(targetType) && DECONSTRUCT_EDGE_LEGACY_PORTS.contains(targetPort)) {
+                LOGGER.debug("Dropped Deconstruct Face Edge legacy input {} to {}", connection.targetPortId, connection.targetNodeId);
+                return true;
+            }
+            if (SNAP_POINT_TO_BLOCK_TYPE.equals(sourceType) && SNAP_POINT_LEGACY_OUTPUT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped Snap Point To Block legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
+            return false;
+        });
+
+        return graph;
     }
 
     private static void migrateDomainInputNodeState(SavedNode node) {

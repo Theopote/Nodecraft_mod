@@ -61,3 +61,23 @@ No radians outputs on graph-facing ports.
 - Closest Point On Surface / Closest Point On Geometry — not yet implemented
 - Bounding Box → Region — no dedicated conversion node; use explicit geometry pipeline
 - Presets that used `normalizeDirection: false` on Move Point Along Direction need **Translate Point** for displacement semantics
+- `Deconstruct Box Face` still emits untyped `LIST` for edges / index pairs — await typed `LINE_LIST` / `INTEGER_LIST`
+- Full-repo `SpatialValueResolver.resolvePoint` coercion on typed POINT ports — staged audit remaining
+
+## Box / face getters (V20)
+
+| Node | Notes |
+|------|-------|
+| Get Box Corner | Corner is `POINT` |
+| Get Box Face | KEEP — emits `BOX_FACE` |
+| Get Face Edge | Slim: `LINE` + Found + Resolved Index |
+| Deconstruct Face Edge | Start/End/Midpoint are `POINT`; Direction/Vector are displacement |
+
+## World selection Point ↔ BlockPos (V20)
+
+| Node | Input | Output |
+|------|-------|--------|
+| Block To Point | `BLOCK_POS` | `POINT` |
+| Snap Point To Block | `POINT` | `BLOCK_POS` + Valid + Distance |
+| Snap Point List To Blocks | `POINT_LIST` | `BLOCK_LIST` |
+| Point To Block If Grid | `POINT` | `BLOCK_POS` only when grid-aligned |
