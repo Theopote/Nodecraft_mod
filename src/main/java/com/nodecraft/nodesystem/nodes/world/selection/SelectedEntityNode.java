@@ -7,24 +7,28 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.interaction.NodeEditorInteractionManager;
-import com.nodecraft.nodesystem.util.Coordinate;
+import com.nodecraft.nodesystem.util.BlockSpace;
 import com.nodecraft.nodesystem.visual.SelectionVisualFeedback;
 import imgui.ImGui;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.Entity;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3d;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    effect = NodeEffect.WORLD_READ,
+    effect = NodeEffect.CONTEXT_READ,
     id = "world.selection.selected_entity",
     displayName = "Selected Entity",
-    description = "Gets information about the entity selected by the player.",
+    description = "Editor selection source for a picked entity (UUID, type, exact POINT, block cell, live Entity).",
     category = "world.selection",
     order = 7
 )
@@ -46,43 +50,41 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
     )
     private boolean showHighlight = true;
 
-    private static final String OUTPUT_ENTITY_ID = "output_entity_id";
     private static final String OUTPUT_ENTITY_UUID = "output_entity_uuid";
     private static final String OUTPUT_ENTITY_TYPE = "output_entity_type";
+    private static final String OUTPUT_ENTITY = "output_entity";
     private static final String OUTPUT_ENTITY_POSITION = "output_entity_position";
     private static final String OUTPUT_EXACT_POSITION = "output_exact_position";
     private static final String OUTPUT_DISTANCE_TO_PLAYER = "output_distance_to_player";
-    private static final String OUTPUT_ENTITY_X = "output_entity_x";
-    private static final String OUTPUT_ENTITY_Y = "output_entity_y";
-    private static final String OUTPUT_ENTITY_Z = "output_entity_z";
     private static final String OUTPUT_HAS_ENTITY = "output_has_entity";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
-    private volatile String pickedEntityId;
+    private volatile String pickedEntityUuid;
     private volatile String pickedEntityType = "";
-    private volatile Coordinate pickedEntityPosition;
     private volatile Vec3d pickedEntityExactPosition;
+    private volatile @Nullable Entity pickedEntity;
     private volatile boolean hasPickedEntity = false;
 
     public SelectedEntityNode() {
         super(UUID.randomUUID(), "world.selection.selected_entity");
 
-        addOutputPort(new BasePort(OUTPUT_ENTITY_ID, "Entity ID", "The unique identifier of the entity", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_ENTITY_UUID, "UUID", "Entity UUID string when available", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_ENTITY_TYPE, "Entity Type", "The type of the entity", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_ENTITY_POSITION, "Entity Position", "The block coordinates of the entity", NodeDataType.BLOCK_POS, this));
-        addOutputPort(new BasePort(OUTPUT_EXACT_POSITION, "Exact Position", "Exact entity position as a vector", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_ENTITY_UUID, "UUID", "Entity UUID string", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_ENTITY_TYPE, "Entity Type", "Entity type registry id", NodeDataType.ENTITY_TYPE, this));
+        addOutputPort(new BasePort(OUTPUT_ENTITY, "Entity", "Live Minecraft entity when available", NodeDataType.MINECRAFT_ENTITY, this));
+        addOutputPort(new BasePort(OUTPUT_ENTITY_POSITION, "Block Position", "Containing block cell of the exact position", NodeDataType.BLOCK_POS, this));
+        addOutputPort(new BasePort(OUTPUT_EXACT_POSITION, "Exact Position", "Continuous entity position", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_DISTANCE_TO_PLAYER, "Distance To Player", "Distance from the current player to the selected entity", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_ENTITY_X, "Entity X", "The X coordinate of the entity", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_ENTITY_Y, "Entity Y", "The Y coordinate of the entity", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_ENTITY_Z, "Entity Z", "The Z coordinate of the entity", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_HAS_ENTITY, "Has Entity", "Whether a valid entity is selected", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether selection outputs are valid", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when selection is invalid", NodeDataType.STRING, this));
 
         resetOutputs();
     }
 
     @Override
     public String getDescription() {
-        return "Gets information about the entity selected by the player.";
+        return "Editor selection source for a picked entity (UUID, type, exact POINT, block cell, live Entity).";
     }
 
     @Override
@@ -92,55 +94,53 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        if (context == null) {
-            resetOutputs();
-            return;
-        }
         updateOutputsWithPickedEntity();
     }
 
     private void updateOutputsWithPickedEntity() {
-        outputValues.put(OUTPUT_HAS_ENTITY, hasPickedEntity);
-        outputValues.put(OUTPUT_ENTITY_ID, pickedEntityId != null ? pickedEntityId : "");
-        outputValues.put(OUTPUT_ENTITY_UUID, pickedEntityId != null ? pickedEntityId : "");
-        outputValues.put(OUTPUT_ENTITY_TYPE, pickedEntityType);
-
-        if (pickedEntityPosition != null) {
-            outputValues.put(OUTPUT_ENTITY_POSITION, pickedEntityPosition);
-            outputValues.put(OUTPUT_ENTITY_X, pickedEntityPosition.x());
-            outputValues.put(OUTPUT_ENTITY_Y, pickedEntityPosition.y());
-            outputValues.put(OUTPUT_ENTITY_Z, pickedEntityPosition.z());
-        } else {
-            outputValues.put(OUTPUT_ENTITY_POSITION, new Coordinate(0, 0, 0));
-            outputValues.put(OUTPUT_ENTITY_X, 0);
-            outputValues.put(OUTPUT_ENTITY_Y, 0);
-            outputValues.put(OUTPUT_ENTITY_Z, 0);
+        if (!hasPickedEntity || pickedEntityExactPosition == null) {
+            resetOutputs();
+            return;
         }
-        outputValues.put(OUTPUT_EXACT_POSITION, pickedEntityExactPosition != null
-            ? new org.joml.Vector3d(pickedEntityExactPosition.x, pickedEntityExactPosition.y, pickedEntityExactPosition.z)
-            : new org.joml.Vector3d());
+
+        Vector3d exact = new Vector3d(
+            pickedEntityExactPosition.x,
+            pickedEntityExactPosition.y,
+            pickedEntityExactPosition.z
+        );
+        BlockPos blockPos = BlockSpace.pointToBlockFloor(exact);
+
+        outputValues.put(OUTPUT_HAS_ENTITY, true);
+        outputValues.put(OUTPUT_ENTITY_UUID, pickedEntityUuid != null ? pickedEntityUuid : "");
+        outputValues.put(OUTPUT_ENTITY_TYPE, pickedEntityType);
+        outputValues.put(OUTPUT_ENTITY, pickedEntity);
+        outputValues.put(OUTPUT_ENTITY_POSITION, blockPos);
+        outputValues.put(OUTPUT_EXACT_POSITION, new PointData(exact.x, exact.y, exact.z));
         outputValues.put(OUTPUT_DISTANCE_TO_PLAYER, distanceToPlayer());
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     private void resetOutputs() {
         outputValues.put(OUTPUT_HAS_ENTITY, false);
-        outputValues.put(OUTPUT_ENTITY_ID, "");
         outputValues.put(OUTPUT_ENTITY_UUID, "");
         outputValues.put(OUTPUT_ENTITY_TYPE, "");
-        outputValues.put(OUTPUT_ENTITY_POSITION, new Coordinate(0, 0, 0));
-        outputValues.put(OUTPUT_EXACT_POSITION, new org.joml.Vector3d());
+        outputValues.put(OUTPUT_ENTITY, null);
+        outputValues.put(OUTPUT_ENTITY_POSITION, BlockPos.ORIGIN);
+        outputValues.put(OUTPUT_EXACT_POSITION, new PointData(0.5, 0.5, 0.5));
         outputValues.put(OUTPUT_DISTANCE_TO_PLAYER, 0.0D);
-        outputValues.put(OUTPUT_ENTITY_X, 0);
-        outputValues.put(OUTPUT_ENTITY_Y, 0);
-        outputValues.put(OUTPUT_ENTITY_Z, 0);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     @Override
-    public void onEntityPicked(String entityId, String entityType, Coordinate position) {
-        this.pickedEntityId = entityId;
-        this.pickedEntityType = entityType;
-        this.pickedEntityPosition = position;
-        this.pickedEntityExactPosition = new Vec3d(position.x(), position.y(), position.z());
+    public void onEntityPicked(String entityUuid, String entityType, Vec3d exactPosition, @Nullable Entity entity) {
+        this.pickedEntityUuid = entityUuid;
+        this.pickedEntityType = entityType != null ? entityType : "";
+        this.pickedEntityExactPosition = exactPosition != null
+            ? exactPosition
+            : new Vec3d(0, 0, 0);
+        this.pickedEntity = entity;
         this.hasPickedEntity = true;
 
         markDirty();
@@ -161,10 +161,10 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
 
     public void clearPickedEntity() {
         hasPickedEntity = false;
-        pickedEntityId = null;
+        pickedEntityUuid = null;
         pickedEntityType = "";
-        pickedEntityPosition = null;
         pickedEntityExactPosition = null;
+        pickedEntity = null;
 
         SelectionVisualFeedback.getInstance().clearFeedback(getId().toString());
         markDirty();
@@ -281,17 +281,7 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
         Map<String, Object> state = new HashMap<>();
         state.put("maxDistance", maxDistance);
         state.put("showHighlight", showHighlight);
-
-        if (hasPickedEntity && pickedEntityPosition != null) {
-            Map<String, Object> pickedEntity = new HashMap<>();
-            pickedEntity.put("entityId", pickedEntityId);
-            pickedEntity.put("entityType", pickedEntityType);
-            pickedEntity.put("x", pickedEntityPosition.x());
-            pickedEntity.put("y", pickedEntityPosition.y());
-            pickedEntity.put("z", pickedEntityPosition.z());
-            state.put("pickedEntity", pickedEntity);
-        }
-
+        // Transient pick is not persisted.
         return state;
     }
 
@@ -308,24 +298,7 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
         if (stateMap.get("showHighlight") instanceof Boolean highlight) {
             setShowHighlight(highlight);
         }
-
-        Object pickedEntityObj = stateMap.get("pickedEntity");
-        if (pickedEntityObj instanceof Map<?, ?> pickedEntityMap) {
-            String entityId = pickedEntityMap.get("entityId") instanceof String value ? value : null;
-            String entityType = pickedEntityMap.get("entityType") instanceof String value ? value : null;
-            Integer x = pickedEntityMap.get("x") instanceof Number value ? value.intValue() : null;
-            Integer y = pickedEntityMap.get("y") instanceof Number value ? value.intValue() : null;
-            Integer z = pickedEntityMap.get("z") instanceof Number value ? value.intValue() : null;
-
-            if (entityType != null && x != null && y != null && z != null) {
-                this.pickedEntityId = entityId;
-                this.pickedEntityType = entityType;
-                this.pickedEntityPosition = new Coordinate(x, y, z);
-                this.pickedEntityExactPosition = new Vec3d(x, y, z);
-                this.hasPickedEntity = true;
-            }
-        }
-
+        // Ignore legacy pickedEntity payloads.
         markDirty();
     }
 

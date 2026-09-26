@@ -86,9 +86,9 @@ class WorldReadLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV61() {
+    void currentGraphFormatIsAtLeastV61() {
         assertEquals(61, GraphFormatVersion.V61);
-        assertEquals(GraphFormatVersion.V61, GraphFormatVersion.CURRENT);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V61);
     }
 
     @Test
@@ -263,7 +263,8 @@ class WorldReadLanguageContractTest {
         graph.connections.add(wire("b1", "output_biome", "t10", "input_stub"));
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.V61, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
+        assertTrue(migrated.formatVersion >= GraphFormatVersion.V61);
 
         assertEquals("world.read.get_block_positions_in_region",
                 migrated.nodes.stream().filter(n -> "p1".equals(n.nodeId)).findFirst().orElseThrow().typeId);

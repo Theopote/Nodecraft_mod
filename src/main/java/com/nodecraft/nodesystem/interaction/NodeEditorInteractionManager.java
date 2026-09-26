@@ -6,9 +6,12 @@ import com.nodecraft.nodesystem.preview.gizmo.GizmoInteractionService;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.BlockStateData;
 import com.nodecraft.client.input.NodecraftInputSystem;
+import net.minecraft.entity.Entity;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
+import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.Map;
@@ -92,12 +95,14 @@ public class NodeEditorInteractionManager {
      */
     public interface IEntityPickerCallback extends IInteractionCallback {
         /**
-         * 当实体被拾取时调用
-         * @param entityId 实体ID
-         * @param entityType 实体类型
-         * @param position 实体位置
+         * Called when an entity is picked.
+         *
+         * @param entityUuid    entity UUID string
+         * @param entityType    entity type registry id
+         * @param exactPosition continuous world position
+         * @param entity        live entity when available (may be null)
          */
-        void onEntityPicked(String entityId, String entityType, Coordinate position);
+        void onEntityPicked(String entityUuid, String entityType, Vec3d exactPosition, @Nullable Entity entity);
     }
     
     /**

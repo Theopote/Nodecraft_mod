@@ -10,7 +10,8 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.BlockStateData;
-import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -53,10 +54,10 @@ import org.joml.Vector3d;
  * 职责明确：仅负责输出拾取到的方块数据，不直接管理交互模式
  */
 @NodeInfo(
-    effect = NodeEffect.WORLD_READ,
+    effect = NodeEffect.CONTEXT_READ,
     id = "world.selection.selected_block",
     displayName = "Selected Block",
-    description = "获取方块信息，支持交互拾取或坐标输入",
+    description = "Selection source only: Block Position / Has Selection / Valid / Error",
     category = "world.selection",
     order = 0
 )
@@ -89,7 +90,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         displayName = "Source Mode",
         category = "Source",
         order = 0,
-        description = "Auto prefers complete X/Y/Z connections; otherwise uses a picked block. Explicit modes never silently ignore the other source."
+        description = "Auto: any connected X/Y/Z owns the source (all three exact integers required); otherwise uses a picked block. Explicit modes never silently ignore the other source."
     )
     private SourceMode sourceMode = SourceMode.AUTO;
 
@@ -212,69 +213,44 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     private static final String INPUT_Y_ID = "input_y";
     private static final String INPUT_Z_ID = "input_z";
     
-    // --- 输出端口 ---
-    // 核心输出
-    private static final String OUTPUT_BLOCK_ID = "output_block_id";
-    private static final String OUTPUT_BLOCK_NAME = "output_block_name";
+    // --- 输出端口 (Graph V62 slim selection source) ---
     private static final String OUTPUT_POSITION = "output_position";
-    private static final String OUTPUT_CENTER = "output_center";
-    private static final String OUTPUT_BLOCK_STATE = "output_block_state";
-    private static final String OUTPUT_HAS_BLOCK_ENTITY = "output_has_block_entity";
-    
-    // 坐标分量输出
-    private static final String OUTPUT_BLOCK_X_ID = "output_block_x";
-    private static final String OUTPUT_BLOCK_Y_ID = "output_block_y";
-    private static final String OUTPUT_BLOCK_Z_ID = "output_block_z";
+    private static final String OUTPUT_HAS_SELECTION = "output_has_selection";
+    private static final String OUTPUT_VALID = "output_valid";
+    private static final String OUTPUT_ERROR = "output_error";
     
     public SelectedBlockNode() {
         super(UUID.randomUUID(), "world.selection.selected_block");
         
         // 创建输入端口
         addInputPort(new BasePort(INPUT_X_ID, "X", 
-                "Block X (used when Source is Coordinates, or Auto with X/Y/Z all connected)", NodeDataType.INTEGER, this));
+                "Block X (used when Source is Coordinates, or Auto when any of X/Y/Z is connected)", NodeDataType.INTEGER, this));
         
         addInputPort(new BasePort(INPUT_Y_ID, "Y", 
-                "Block Y (used when Source is Coordinates, or Auto with X/Y/Z all connected)", NodeDataType.INTEGER, this));
+                "Block Y (used when Source is Coordinates, or Auto when any of X/Y/Z is connected)", NodeDataType.INTEGER, this));
         
         addInputPort(new BasePort(INPUT_Z_ID, "Z", 
-                "Block Z (used when Source is Coordinates, or Auto with X/Y/Z all connected)", NodeDataType.INTEGER, this));
+                "Block Z (used when Source is Coordinates, or Auto when any of X/Y/Z is connected)", NodeDataType.INTEGER, this));
         
-        // 创建输出端口
-        // 核心输出端口
-        addOutputPort(new BasePort(OUTPUT_BLOCK_ID, "Block ID", 
-                "机器可读的唯一标识，如 minecraft:oak_planks", NodeDataType.STRING, this));
-        
-        addOutputPort(new BasePort(OUTPUT_BLOCK_NAME, "Block Name", 
-                "人类可读的显示名称，如 '橡木楼梯'", NodeDataType.STRING, this));
-        
-        addOutputPort(new BasePort(OUTPUT_POSITION, "Position",
-                "整数方块坐标，用于定位和网格对齐", NodeDataType.BLOCK_POS, this));
+        // Slim selection-source outputs only
+        addOutputPort(new BasePort(OUTPUT_POSITION, "Block Position",
+                "Selected block grid position", NodeDataType.BLOCK_POS, this));
 
-        addOutputPort(new BasePort(OUTPUT_CENTER, "Center",
-                "方块几何中心（连续位置），用于非网格对齐操作", NodeDataType.POINT, this));
-        
-        addOutputPort(new BasePort(OUTPUT_BLOCK_STATE, "Block State", 
-                "方块的变体属性，如 {\"facing\": \"north\", \"waterlogged\": \"true\"}", NodeDataType.BLOCK_STATE_DATA, this));
-        
-        addOutputPort(new BasePort(OUTPUT_HAS_BLOCK_ENTITY, "Has Block Entity", 
-                "是否有额外数据（箱子、熔炉等）", NodeDataType.BOOLEAN, this));
-        
-        // 坐标分量输出
-        addOutputPort(new BasePort(OUTPUT_BLOCK_X_ID, "Block X", 
-                "方块的X坐标", NodeDataType.INTEGER, this));
-        
-        addOutputPort(new BasePort(OUTPUT_BLOCK_Y_ID, "Block Y", 
-                "方块的Y坐标", NodeDataType.INTEGER, this));
-        
-        addOutputPort(new BasePort(OUTPUT_BLOCK_Z_ID, "Block Z", 
-                "方块的Z坐标", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_HAS_SELECTION, "Has Selection",
+                "Whether a block selection is currently active", NodeDataType.BOOLEAN, this));
+
+        addOutputPort(new BasePort(OUTPUT_VALID, "Valid",
+                "Whether the current selection source resolved without error", NodeDataType.BOOLEAN, this));
+
+        addOutputPort(new BasePort(OUTPUT_ERROR, "Error",
+                "Error message when Valid is false", NodeDataType.STRING, this));
         
         resetOutputs();
     }
     
     @Override
     public String getDescription() {
-        return "获取方块信息。Source Mode 明确选择交互拾取或坐标输入，避免连线静默失效。";
+        return "Selection source only: Block Position / Has Selection / Valid / Error. Pick or drive via X/Y/Z.";
     }
     
     @Override
@@ -295,9 +271,11 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         switch (active) {
             case COORDINATES -> tryProcessInputCoordinates(context);
             case PICKED -> {
-                // Pick data already stored; still refresh outputs.
+                // Pick data already stored; drop stale coordinate errors.
+                clearInputValidationState();
             }
             case NONE -> {
+                clearInputValidationState();
                 if (!hasPickedBlock) {
                     clearInputBlockData();
                 }
@@ -311,16 +289,14 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         SourceMode mode = sourceMode == null ? SourceMode.AUTO : sourceMode;
         return switch (mode) {
             case PICKED -> hasPickedBlock ? ActiveSource.PICKED : ActiveSource.NONE;
-            case COORDINATES -> hasCoordinateInputValues() ? ActiveSource.COORDINATES : ActiveSource.NONE;
+            case COORDINATES -> hasAnyCoordinateConnected() ? ActiveSource.COORDINATES : ActiveSource.NONE;
             case AUTO -> {
-                if (hasCompleteCoordinateConnections() && hasCoordinateInputValues()) {
+                // Any connected X/Y/Z owns the source — never fall back to picked while coords are wired.
+                if (hasAnyCoordinateConnected()) {
                     yield ActiveSource.COORDINATES;
                 }
                 if (hasPickedBlock) {
                     yield ActiveSource.PICKED;
-                }
-                if (hasCoordinateInputValues()) {
-                    yield ActiveSource.COORDINATES;
                 }
                 yield ActiveSource.NONE;
             }
@@ -332,32 +308,22 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
 
     private @Nullable ActiveBlock resolveActiveBlock() {
         return switch (resolveActiveSource()) {
-            case PICKED -> new ActiveBlock(pickedBlockPosition, pickedBlockId, pickedBlockStateData);
-            case COORDINATES -> new ActiveBlock(inputBlockPosition, inputBlockId, inputBlockStateData);
+            case PICKED -> hasPickedBlock && pickedBlockPosition != null
+                ? new ActiveBlock(pickedBlockPosition, pickedBlockId, pickedBlockStateData)
+                : null;
+            case COORDINATES -> hasInputBlock && inputBlockPosition != null
+                ? new ActiveBlock(inputBlockPosition, inputBlockId, inputBlockStateData)
+                : null;
             case NONE -> null;
         };
     }
 
     private boolean isPortConnected(String portId) {
-        IPort port = getInputPort(portId);
-        return port != null && port.isConnected();
+        return OptionalPortDrive.isConnected(this, portId);
     }
 
-    private boolean hasCompleteCoordinateConnections() {
-        return isPortConnected(INPUT_X_ID) && isPortConnected(INPUT_Y_ID) && isPortConnected(INPUT_Z_ID);
-    }
-
-    private @Nullable Integer asInteger(@Nullable Object value) {
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        return null;
-    }
-
-    private boolean hasCoordinateInputValues() {
-        return asInteger(inputValues.get(INPUT_X_ID)) != null
-            && asInteger(inputValues.get(INPUT_Y_ID)) != null
-            && asInteger(inputValues.get(INPUT_Z_ID)) != null;
+    private boolean hasAnyCoordinateConnected() {
+        return isPortConnected(INPUT_X_ID) || isPortConnected(INPUT_Y_ID) || isPortConnected(INPUT_Z_ID);
     }
     
     /**
@@ -388,7 +354,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     }
     
     /**
-     * 尝试从输入端口处理坐标（写入 input* 存储，不影响 pick 存储）
+     * 尝试从输入端口处理坐标（写入 input* 存储，不影响 pick 存储）。
+     * Does not read the Minecraft world — stores exact integer coordinates only.
      */
     private void tryProcessInputCoordinates(@Nullable ExecutionContext context) {
         if (context == null) {
@@ -399,28 +366,42 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         clearInputValidationState();
         
         try {
-            Integer x = asInteger(inputValues.get(INPUT_X_ID));
-            Integer y = asInteger(inputValues.get(INPUT_Y_ID));
-            Integer z = asInteger(inputValues.get(INPUT_Z_ID));
+            Integer x = StrictIntegerUtils.requireExactInteger(inputValues.get(INPUT_X_ID));
+            Integer y = StrictIntegerUtils.requireExactInteger(inputValues.get(INPUT_Y_ID));
+            Integer z = StrictIntegerUtils.requireExactInteger(inputValues.get(INPUT_Z_ID));
             
-            if (x != null && y != null && z != null) {
-                ValidationResult<Coordinate> rangeValidation = validateCoordinateRange(x, y, z);
-                if (!rangeValidation.isValid()) {
-                    inputValidationError = rangeValidation.getMessage();
-                    clearInputBlockData();
-                    return;
-                }
-                
-                Coordinate inputPosition = new Coordinate(x, y, z);
-                
-                if (!inputPosition.equals(inputBlockPosition) || !hasInputBlock) {
-                    processBlockAtPosition(inputPosition);
-                }
-            } else {
+            if (x == null || y == null || z == null) {
+                inputValidationError = "X, Y, and Z must all be exact integers when any coordinate input is connected.";
                 clearInputBlockData();
+                return;
             }
+
+            ValidationResult<Coordinate> rangeValidation = validateCoordinateRange(x, y, z);
+            if (!rangeValidation.isValid()) {
+                inputValidationError = rangeValidation.getMessage();
+                clearInputBlockData();
+                return;
+            }
+            
+            Coordinate inputPosition = new Coordinate(x, y, z);
+            
+            // Store coordinates only — no world lookup / processBlockAtPosition.
+            this.inputBlockPosition = inputPosition;
+            this.inputBlockId = "unknown";
+            this.inputBlockStateData = null;
+            this.hasInputBlock = true;
+
+            refreshBlockPreview();
+            SelectionVisualFeedback.getInstance().showBlockSelection(
+                getId().toString(),
+                inputPosition,
+                SelectionVisualFeedback.SelectionState.SELECTED
+            );
+            
+            NodeCraft.LOGGER.debug("节点 {} 从输入坐标设置位置: {}", getId(), inputPosition);
         } catch (Exception e) {
             inputValidationError = "处理输入坐标时发生异常: " + e.getMessage();
+            clearInputBlockData();
             NodeCraft.LOGGER.debug("节点 {} 处理输入坐标失败: {}", getId(), e.getMessage());
         }
     }
@@ -565,13 +546,6 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     }
     
     /**
-     * 检查是否有完整坐标输入值（不因拾取状态而失效）
-     */
-    private boolean hasInputCoordinates() {
-        return hasCoordinateInputValues();
-    }
-    
-    /**
      * 清除输入验证状态
      */
     private void clearInputValidationState() {
@@ -613,42 +587,38 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     }
     
     private void updateOutputsWithActiveBlock() {
+        // Coordinate connected-invalid: Valid=false, Has Selection=false, Error=message
+        // Only when coordinate drive owns the source (never poison pick/idle with stale errors).
+        if (resolveActiveSource() == ActiveSource.COORDINATES
+                && inputValidationError != null && !inputValidationError.isEmpty()) {
+            outputValues.put(OUTPUT_POSITION, BlockPos.ORIGIN);
+            outputValues.put(OUTPUT_HAS_SELECTION, false);
+            outputValues.put(OUTPUT_VALID, false);
+            outputValues.put(OUTPUT_ERROR, inputValidationError);
+            syncOutputPorts();
+            return;
+        }
+
         ActiveBlock active = resolveActiveBlock();
         if (active == null || active.position() == null) {
+            // Idle / no selection: Has Selection=false, Valid=true, Error=""
             resetOutputs();
             return;
         }
 
-        String blockId = active.blockId() != null ? active.blockId() : "minecraft:air";
         Coordinate position = active.position();
-        BlockStateData stateData = active.state();
-
-        outputValues.put(OUTPUT_BLOCK_ID, blockId);
-        outputValues.put(OUTPUT_BLOCK_NAME, getBlockDisplayName(blockId));
         outputValues.put(OUTPUT_POSITION, new BlockPos(position.x(), position.y(), position.z()));
-        outputValues.put(OUTPUT_CENTER, new PointData(
-            position.x() + 0.5,
-            position.y() + 0.5,
-            position.z() + 0.5
-        ));
-        outputValues.put(OUTPUT_BLOCK_X_ID, position.x());
-        outputValues.put(OUTPUT_BLOCK_Y_ID, position.y());
-        outputValues.put(OUTPUT_BLOCK_Z_ID, position.z());
-        outputValues.put(OUTPUT_BLOCK_STATE, stateData);
-        outputValues.put(OUTPUT_HAS_BLOCK_ENTITY, checkHasBlockEntity(blockId, position));
+        outputValues.put(OUTPUT_HAS_SELECTION, true);
+        outputValues.put(OUTPUT_VALID, true);
+        outputValues.put(OUTPUT_ERROR, "");
         syncOutputPorts();
     }
 
     private void resetOutputs() {
-        outputValues.put(OUTPUT_BLOCK_ID, "minecraft:air");
-        outputValues.put(OUTPUT_BLOCK_NAME, "空气");
         outputValues.put(OUTPUT_POSITION, BlockPos.ORIGIN);
-        outputValues.put(OUTPUT_CENTER, new PointData(0.5, 0.5, 0.5));
-        outputValues.put(OUTPUT_BLOCK_STATE, null);
-        outputValues.put(OUTPUT_HAS_BLOCK_ENTITY, false);
-        outputValues.put(OUTPUT_BLOCK_X_ID, 0);
-        outputValues.put(OUTPUT_BLOCK_Y_ID, 0);
-        outputValues.put(OUTPUT_BLOCK_Z_ID, 0);
+        outputValues.put(OUTPUT_HAS_SELECTION, false);
+        outputValues.put(OUTPUT_VALID, true);
+        outputValues.put(OUTPUT_ERROR, "");
         syncOutputPorts();
     }
     
@@ -1087,7 +1057,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         baseHeight += smallGap;
         // Active 行
         baseHeight += textLine;
-        if ((sourceMode == SourceMode.PICKED && hasCompleteCoordinateConnections())
+        if ((sourceMode == SourceMode.PICKED && hasAnyCoordinateConnected())
                 || (sourceMode == SourceMode.COORDINATES && hasPickedBlock)) {
             baseHeight += textLine;
         }
@@ -1250,7 +1220,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             ImGui.textDisabled("Active:");
             ImGui.sameLine();
             ImGui.text(getActiveSourceLabel());
-            if (sourceMode == SourceMode.PICKED && hasCompleteCoordinateConnections()) {
+            if (sourceMode == SourceMode.PICKED && hasAnyCoordinateConnected()) {
                 ImGui.textColored(0.9f, 0.7f, 0.2f, 1.0f, "X/Y/Z connected but Source=Picked");
             } else if (sourceMode == SourceMode.COORDINATES && hasPickedBlock) {
                 ImGui.textColored(0.9f, 0.7f, 0.2f, 1.0f, "Pick stored but Source=Coordinates");
@@ -1420,7 +1390,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 
                 // 输入端口 / Source Mode 状态说明
                 ActiveSource activeForHint = resolveActiveSource();
-                if (activeForHint == ActiveSource.PICKED && hasCompleteCoordinateConnections()) {
+                if (activeForHint == ActiveSource.PICKED && hasAnyCoordinateConnected()) {
                     ImGui.pushStyleColor(ImGuiCol.Text, 0.8f, 0.6f, 0.2f, 1.0f); // 橙色
                     ImGui.textWrapped("X/Y/Z connected; Active Source is Picked (mode="
                         + (sourceMode == null ? SourceMode.AUTO : sourceMode).getLabel() + ")");
@@ -1624,34 +1594,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             state.put("maxDistance", maxDistance);
             state.put("includeFluids", includeFluids);
             state.put("showBlockPreview", showBlockPreview);
-            
-            // 保存拾取的方块信息
-            if (hasPickedBlock && pickedBlockPosition != null) {
-                Map<String, Object> pickedBlock = new HashMap<>();
-                
-                // 确保方块ID不为null
-                pickedBlock.put("blockId", pickedBlockId != null ? pickedBlockId : "minecraft:air");
-                pickedBlock.put("x", pickedBlockPosition.x());
-                pickedBlock.put("y", pickedBlockPosition.y());
-                pickedBlock.put("z", pickedBlockPosition.z());
-                
-                // 显式处理BlockStateData的序列化
-                if (pickedBlockStateData != null && !pickedBlockStateData.isEmpty()) {
-                    // 创建一个新的HashMap来确保类型安全
-                    Map<String, String> stateDataCopy = new HashMap<>();
-                    for (Map.Entry<String, String> entry : pickedBlockStateData.entrySet()) {
-                        if (entry.getKey() != null && entry.getValue() != null) {
-                            stateDataCopy.put(entry.getKey(), entry.getValue());
-                        }
-                    }
-                    pickedBlock.put("blockStateData", stateDataCopy);
-                } else {
-                    // 显式保存空映射，确保序列化一致性
-                    pickedBlock.put("blockStateData", new HashMap<String, String>());
-                }
-                
-                state.put("pickedBlock", pickedBlock);
-            }
+            // Do not persist pickedBlock — pick is session/runtime only.
             
             NodeCraft.LOGGER.debug("节点 {} 状态序列化完成，包含 {} 个属性", getId(), state.size());
             
@@ -1659,9 +1602,9 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             NodeCraft.LOGGER.error("节点 {} 状态序列化失败", getId(), e);
             // 返回基本状态，确保不会完全失败
             Map<String, Object> fallbackState = new HashMap<>();
+            fallbackState.put("sourceMode", SourceMode.AUTO.name());
             fallbackState.put("maxDistance", 100.0f);
             fallbackState.put("includeFluids", false);
-            fallbackState.put("useHandItem", false);
             fallbackState.put("showBlockPreview", true);
             return fallbackState;
         }
@@ -1713,8 +1656,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 NodeCraft.LOGGER.debug("节点 {} 恢复 showBlockPreview: {}", getId(), showPreview);
             }
             
-            // 恢复拾取的方块信息
-            restorePickedBlockData(stateMap);
+            // Ignore legacy pickedBlock map — do not restore pick from save.
             
             // 状态恢复完成后，统一更新方块预览
             refreshBlockPreview();

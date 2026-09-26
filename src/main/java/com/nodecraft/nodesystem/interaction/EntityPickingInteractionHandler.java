@@ -4,6 +4,7 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.minecraft.client.MinecraftClientController;
 import com.nodecraft.nodesystem.util.Coordinate;
 import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.math.Vec3d;
 
 final class EntityPickingInteractionHandler implements NodeEditorInteractionManager.InteractionModeHandler {
 
@@ -43,11 +44,13 @@ final class EntityPickingInteractionHandler implements NodeEditorInteractionMana
 
         if (isLeftMouseClicked) {
             try {
+                // Stub picker until full entity raycast is wired: use hovered block cell center as continuous position.
+                Coordinate entityPos = hoveredBlock != null ? hoveredBlock : new Coordinate(0, 0, 0);
                 String entityId = "example_entity_" + System.currentTimeMillis();
                 String entityType = "minecraft:pig";
-                Coordinate entityPos = hoveredBlock != null ? hoveredBlock : new Coordinate(0, 0, 0);
+                Vec3d exact = new Vec3d(entityPos.x() + 0.5d, entityPos.y() + 0.5d, entityPos.z() + 0.5d);
 
-                currentCallback.onEntityPicked(entityId, entityType, entityPos);
+                currentCallback.onEntityPicked(entityId, entityType, exact, null);
                 completeInteraction.run();
 
                 NodeCraft.LOGGER.info("实体拾取完成: {} ({})", entityType, entityId);

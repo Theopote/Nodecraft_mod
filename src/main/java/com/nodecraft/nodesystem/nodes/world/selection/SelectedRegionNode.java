@@ -19,7 +19,6 @@ import imgui.flag.ImGuiCol;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,7 +27,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    effect = NodeEffect.WORLD_READ,
+    effect = NodeEffect.CONTEXT_READ,
     id = "world.selection.selected_region",
     displayName = "Selected Region",
     description = "Gets the player's selected region defined by two corner points.",
@@ -45,22 +44,12 @@ public class SelectedRegionNode extends BaseCustomUINode {
     )
     private boolean autoUpdate = true;
 
-    private static final String OUTPUT_POS1_ID = "output_pos1";
-    private static final String OUTPUT_POS2_ID = "output_pos2";
-    private static final String OUTPUT_POS1_X_ID = "output_pos1_x";
-    private static final String OUTPUT_POS1_Y_ID = "output_pos1_y";
-    private static final String OUTPUT_POS1_Z_ID = "output_pos1_z";
-    private static final String OUTPUT_POS2_X_ID = "output_pos2_x";
-    private static final String OUTPUT_POS2_Y_ID = "output_pos2_y";
-    private static final String OUTPUT_POS2_Z_ID = "output_pos2_z";
-    private static final String OUTPUT_MIN_POS_ID = "output_min_pos";
-    private static final String OUTPUT_MAX_POS_ID = "output_max_pos";
     private static final String OUTPUT_REGION_ID = "output_region";
-    private static final String OUTPUT_SIZE_X_ID = "output_size_x";
-    private static final String OUTPUT_SIZE_Y_ID = "output_size_y";
-    private static final String OUTPUT_SIZE_Z_ID = "output_size_z";
-    private static final String OUTPUT_VOLUME_ID = "output_volume";
+    private static final String OUTPUT_MIN_BLOCK_ID = "output_min_block";
+    private static final String OUTPUT_MAX_BLOCK_ID = "output_max_block";
     private static final String OUTPUT_HAS_SELECTION_ID = "output_has_selection";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     private volatile Vector3 pos1;
     private volatile Vector3 pos2;
@@ -96,11 +85,8 @@ public class SelectedRegionNode extends BaseCustomUINode {
             selectionHint = "First point selected. Choose the second point.";
             clearCompletedRegionPreview();
             clearCompletedBlocksPreview();
-            outputValues.put(OUTPUT_POS1_ID, toVector3d(pos1));
-            outputValues.put(OUTPUT_POS1_X_ID, (int) pos1.x());
-            outputValues.put(OUTPUT_POS1_Y_ID, (int) pos1.y());
-            outputValues.put(OUTPUT_POS1_Z_ID, (int) pos1.z());
             outputValues.put(OUTPUT_HAS_SELECTION_ID, false);
+            outputValues.put(OUTPUT_VALID_ID, true);
             invalidateCache();
             markDirty();
         }
@@ -117,22 +103,12 @@ public class SelectedRegionNode extends BaseCustomUINode {
     public SelectedRegionNode() {
         super(UUID.randomUUID(), "world.selection.selected_region");
 
-        addOutputPort(new BasePort(OUTPUT_POS1_ID, "Position 1", "The first corner position", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_POS2_ID, "Position 2", "The second corner position", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_POS1_X_ID, "Pos1 X", "X coordinate of position 1", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_POS1_Y_ID, "Pos1 Y", "Y coordinate of position 1", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_POS1_Z_ID, "Pos1 Z", "Z coordinate of position 1", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_POS2_X_ID, "Pos2 X", "X coordinate of position 2", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_POS2_Y_ID, "Pos2 Y", "Y coordinate of position 2", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_POS2_Z_ID, "Pos2 Z", "Z coordinate of position 2", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_MIN_POS_ID, "Min Position", "The minimum corner position", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_MAX_POS_ID, "Max Position", "The maximum corner position", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Selected region data for downstream world nodes", NodeDataType.REGION, this));
-        addOutputPort(new BasePort(OUTPUT_SIZE_X_ID, "Size X", "Width of the selection on X", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_SIZE_Y_ID, "Size Y", "Height of the selection on Y", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_SIZE_Z_ID, "Size Z", "Depth of the selection on Z", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Total selection volume in blocks", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_HAS_SELECTION_ID, "Has Selection", "Whether a valid selection exists", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_MIN_BLOCK_ID, "Min Block", "Minimum corner as a block position", NodeDataType.BLOCK_POS, this));
+        addOutputPort(new BasePort(OUTPUT_MAX_BLOCK_ID, "Max Block", "Maximum corner as a block position", NodeDataType.BLOCK_POS, this));
+        addOutputPort(new BasePort(OUTPUT_HAS_SELECTION_ID, "Has Selection", "Whether a complete two-corner selection exists", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether selection outputs are valid", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when Valid is false", NodeDataType.STRING, this));
 
         resetOutputs();
     }
@@ -287,11 +263,8 @@ public class SelectedRegionNode extends BaseCustomUINode {
         if (pos2 != null) {
             updateOutputsFromPositions();
         } else {
-            outputValues.put(OUTPUT_POS1_ID, toVector3d(pos1));
-            outputValues.put(OUTPUT_POS1_X_ID, (int) pos1.x());
-            outputValues.put(OUTPUT_POS1_Y_ID, (int) pos1.y());
-            outputValues.put(OUTPUT_POS1_Z_ID, (int) pos1.z());
             outputValues.put(OUTPUT_HAS_SELECTION_ID, false);
+            outputValues.put(OUTPUT_VALID_ID, true);
         }
         invalidateCache();
         markDirty();
@@ -302,11 +275,8 @@ public class SelectedRegionNode extends BaseCustomUINode {
         if (pos1 != null) {
             updateOutputsFromPositions();
         } else {
-            outputValues.put(OUTPUT_POS2_ID, toVector3d(pos2));
-            outputValues.put(OUTPUT_POS2_X_ID, (int) pos2.x());
-            outputValues.put(OUTPUT_POS2_Y_ID, (int) pos2.y());
-            outputValues.put(OUTPUT_POS2_Z_ID, (int) pos2.z());
             outputValues.put(OUTPUT_HAS_SELECTION_ID, false);
+            outputValues.put(OUTPUT_VALID_ID, true);
         }
         invalidateCache();
         markDirty();
@@ -334,65 +304,32 @@ public class SelectedRegionNode extends BaseCustomUINode {
             return;
         }
 
-        outputValues.put(OUTPUT_POS1_ID, toVector3d(pos1));
-        outputValues.put(OUTPUT_POS1_X_ID, (int) pos1.x());
-        outputValues.put(OUTPUT_POS1_Y_ID, (int) pos1.y());
-        outputValues.put(OUTPUT_POS1_Z_ID, (int) pos1.z());
-        outputValues.put(OUTPUT_POS2_ID, toVector3d(pos2));
-        outputValues.put(OUTPUT_POS2_X_ID, (int) pos2.x());
-        outputValues.put(OUTPUT_POS2_Y_ID, (int) pos2.y());
-        outputValues.put(OUTPUT_POS2_Z_ID, (int) pos2.z());
+        BlockPos minBlock = new BlockPos(
+            (int) Math.min(pos1.x(), pos2.x()),
+            (int) Math.min(pos1.y(), pos2.y()),
+            (int) Math.min(pos1.z(), pos2.z())
+        );
+        BlockPos maxBlock = new BlockPos(
+            (int) Math.max(pos1.x(), pos2.x()),
+            (int) Math.max(pos1.y(), pos2.y()),
+            (int) Math.max(pos1.z(), pos2.z())
+        );
 
-        float minX = Math.min(pos1.x(), pos2.x());
-        float minY = Math.min(pos1.y(), pos2.y());
-        float minZ = Math.min(pos1.z(), pos2.z());
-        float maxX = Math.max(pos1.x(), pos2.x());
-        float maxY = Math.max(pos1.y(), pos2.y());
-        float maxZ = Math.max(pos1.z(), pos2.z());
-
-        outputValues.put(OUTPUT_MIN_POS_ID, new Vector3d(minX, minY, minZ));
-        outputValues.put(OUTPUT_MAX_POS_ID, new Vector3d(maxX, maxY, maxZ));
-        outputValues.put(OUTPUT_REGION_ID, new RegionData(
-            new BlockPos((int) minX, (int) minY, (int) minZ),
-            new BlockPos((int) maxX, (int) maxY, (int) maxZ)
-        ));
-
-        int sizeX = (int) (maxX - minX) + 1;
-        int sizeY = (int) (maxY - minY) + 1;
-        int sizeZ = (int) (maxZ - minZ) + 1;
-
-        outputValues.put(OUTPUT_SIZE_X_ID, sizeX);
-        outputValues.put(OUTPUT_SIZE_Y_ID, sizeY);
-        outputValues.put(OUTPUT_SIZE_Z_ID, sizeZ);
-        outputValues.put(OUTPUT_VOLUME_ID, sizeX * sizeY * sizeZ);
+        outputValues.put(OUTPUT_REGION_ID, new RegionData(minBlock, maxBlock));
+        outputValues.put(OUTPUT_MIN_BLOCK_ID, minBlock);
+        outputValues.put(OUTPUT_MAX_BLOCK_ID, maxBlock);
         outputValues.put(OUTPUT_HAS_SELECTION_ID, true);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     private void resetOutputs() {
-        Vector3d zeroVec = new Vector3d();
-        outputValues.put(OUTPUT_POS1_ID, zeroVec);
-        outputValues.put(OUTPUT_POS2_ID, zeroVec);
-        outputValues.put(OUTPUT_POS1_X_ID, 0);
-        outputValues.put(OUTPUT_POS1_Y_ID, 0);
-        outputValues.put(OUTPUT_POS1_Z_ID, 0);
-        outputValues.put(OUTPUT_POS2_X_ID, 0);
-        outputValues.put(OUTPUT_POS2_Y_ID, 0);
-        outputValues.put(OUTPUT_POS2_Z_ID, 0);
-        outputValues.put(OUTPUT_MIN_POS_ID, zeroVec);
-        outputValues.put(OUTPUT_MAX_POS_ID, zeroVec);
         outputValues.put(OUTPUT_REGION_ID, null);
-        outputValues.put(OUTPUT_SIZE_X_ID, 0);
-        outputValues.put(OUTPUT_SIZE_Y_ID, 0);
-        outputValues.put(OUTPUT_SIZE_Z_ID, 0);
-        outputValues.put(OUTPUT_VOLUME_ID, 0);
+        outputValues.put(OUTPUT_MIN_BLOCK_ID, BlockPos.ORIGIN);
+        outputValues.put(OUTPUT_MAX_BLOCK_ID, BlockPos.ORIGIN);
         outputValues.put(OUTPUT_HAS_SELECTION_ID, false);
-    }
-
-    private Vector3d toVector3d(@Nullable Vector3 vector) {
-        if (vector == null) {
-            return new Vector3d();
-        }
-        return new Vector3d(vector.x(), vector.y(), vector.z());
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     public boolean isAutoUpdate() {
@@ -418,20 +355,6 @@ public class SelectedRegionNode extends BaseCustomUINode {
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
         state.put("autoUpdate", isAutoUpdate());
-        if (pos1 != null) {
-            Map<String, Float> pos1Map = new HashMap<>();
-            pos1Map.put("x", pos1.x());
-            pos1Map.put("y", pos1.y());
-            pos1Map.put("z", pos1.z());
-            state.put("pos1", pos1Map);
-        }
-        if (pos2 != null) {
-            Map<String, Float> pos2Map = new HashMap<>();
-            pos2Map.put("x", pos2.x());
-            pos2Map.put("y", pos2.y());
-            pos2Map.put("z", pos2.z());
-            state.put("pos2", pos2Map);
-        }
         return state;
     }
 
@@ -444,36 +367,12 @@ public class SelectedRegionNode extends BaseCustomUINode {
                     setAutoUpdate(bool);
                 }
             }
-            if (map.containsKey("pos1")) {
-                Object pos = map.get("pos1");
-                if (pos instanceof Map<?, ?> posMap
-                    && posMap.get("x") instanceof Number x
-                    && posMap.get("y") instanceof Number y
-                    && posMap.get("z") instanceof Number z) {
-                    pos1 = new Vector3(x.floatValue(), y.floatValue(), z.floatValue());
-                }
-            } else {
-                pos1 = null;
-            }
-            if (map.containsKey("pos2")) {
-                Object pos = map.get("pos2");
-                if (pos instanceof Map<?, ?> posMap
-                    && posMap.get("x") instanceof Number x
-                    && posMap.get("y") instanceof Number y
-                    && posMap.get("z") instanceof Number z) {
-                    pos2 = new Vector3(x.floatValue(), y.floatValue(), z.floatValue());
-                }
-            } else {
-                pos2 = null;
-            }
-
-            if (pos1 != null && pos2 != null) {
-                updateOutputsFromPositions();
-                syncCompletedRegionPreview();
-            } else {
-                clearCompletedRegionPreview();
-                resetOutputs();
-            }
+            // Ignore legacy pos1/pos2 — selection is session/runtime only.
+            pos1 = null;
+            pos2 = null;
+            clearCompletedRegionPreview();
+            clearCompletedBlocksPreview();
+            resetOutputs();
 
             selecting = false;
             waitingSecondPoint = false;

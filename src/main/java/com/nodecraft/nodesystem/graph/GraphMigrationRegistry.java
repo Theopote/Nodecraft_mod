@@ -120,6 +120,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V58 -> migrateV58ToV59(graph);
             case GraphFormatVersion.V59 -> migrateV59ToV60(graph);
             case GraphFormatVersion.V60 -> migrateV60ToV61(graph);
+            case GraphFormatVersion.V61 -> migrateV61ToV62(graph);
             default -> graph;
         };
     }
@@ -4314,5 +4315,205 @@ public final class GraphMigrationRegistry {
             }
             return false;
         });
+    }
+
+    private static final String SNAP_VECTOR_TO_BLOCK_TYPE = "world.selection.snap_vector_to_block";
+    private static final String SNAP_POINTS_TO_BLOCKS_TYPE = "world.selection.snap_points_to_blocks";
+    private static final String MULTI_REGION_TYPE = "world.selection.multi_region";
+    private static final String SELECTED_BLOCK_TYPE = "world.selection.selected_block";
+    private static final String SELECTED_REGION_TYPE = "world.selection.selected_region";
+    private static final String SELECTED_ENTITY_TYPE = "world.selection.selected_entity";
+    private static final String SELECTED_BLOCK_SEQUENCE_TYPE = "world.selection.selected_block_sequence";
+
+    /**
+     * World Selection v1: delete Snap Vector To Block, drop removed selection ports,
+     * remap snap modes and Multi-Region min/max list port ids, strip transient picks.
+     */
+    private static SavedGraph migrateV61ToV62(SavedGraph graph) {
+        applyWorldSelectionV62ToGraph(graph);
+        if (graph.subgraphDefinitions != null) {
+            for (SavedGraph definition : graph.subgraphDefinitions.values()) {
+                if (definition != null) {
+                    applyWorldSelectionV62ToGraph(definition);
+                }
+            }
+        }
+        return graph;
+    }
+
+    private static void applyWorldSelectionV62ToGraph(SavedGraph graph) {
+        Set<String> removedNodeIds = new HashSet<>();
+
+        if (graph.nodes != null) {
+            graph.nodes = new ArrayList<>(graph.nodes);
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                String type = node.typeId.toLowerCase(Locale.ROOT);
+                if (SNAP_POINT_TO_BLOCK_TYPE.equals(type) || SNAP_POINTS_TO_BLOCKS_TYPE.equals(type)) {
+                    migrateSnapModeState(node);
+                }
+                if (SELECTED_BLOCK_TYPE.equals(type)
+                        || SELECTED_REGION_TYPE.equals(type)
+                        || SELECTED_ENTITY_TYPE.equals(type)
+                        || SELECTED_BLOCK_SEQUENCE_TYPE.equals(type)) {
+                    stripTransientSelectionState(node);
+                }
+            }
+            graph.nodes.removeIf(node -> {
+                if (node == null || node.typeId == null) {
+                    return false;
+                }
+                if (SNAP_VECTOR_TO_BLOCK_TYPE.equalsIgnoreCase(node.typeId)) {
+                    if (node.nodeId != null) {
+                        removedNodeIds.add(node.nodeId);
+                    }
+                    return true;
+                }
+                return false;
+            });
+        }
+
+        if (graph.nodePositions != null && !removedNodeIds.isEmpty()) {
+            for (String nodeId : removedNodeIds) {
+                graph.nodePositions.remove(nodeId);
+            }
+        }
+
+        if (graph.connections == null) {
+            return;
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node != null && node.nodeId != null && node.typeId != null) {
+                    nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+                }
+            }
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String targetPort = normalizePortId(connection.targetPortId);
+            if (MULTI_REGION_TYPE.equals(targetType)) {
+                if ("input_min_points".equals(targetPort)) {
+                    connection.targetPortId = "input_min_blocks";
+                } else if ("input_max_points".equals(targetPort)) {
+                    connection.targetPortId = "input_max_blocks";
+                }
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            if (removedNodeIds.contains(connection.sourceNodeId)
+                    || removedNodeIds.contains(connection.targetNodeId)) {
+                return true;
+            }
+
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourcePort = normalizePortId(connection.sourcePortId);
+            String targetPort = normalizePortId(connection.targetPortId);
+
+            if (SNAP_POINTS_TO_BLOCKS_TYPE.equals(sourceType)) {
+                return "output_valid_count".equals(sourcePort) || "output_skipped_count".equals(sourcePort);
+            }
+            if (MULTI_REGION_TYPE.equals(sourceType)) {
+                return "output_min".equals(sourcePort) || "output_max".equals(sourcePort);
+            }
+            if (SELECTED_BLOCK_TYPE.equals(sourceType)) {
+                return "output_block_id".equals(sourcePort)
+                        || "output_block_name".equals(sourcePort)
+                        || "output_center".equals(sourcePort)
+                        || "output_block_state".equals(sourcePort)
+                        || "output_has_block_entity".equals(sourcePort)
+                        || "output_block_x".equals(sourcePort)
+                        || "output_block_y".equals(sourcePort)
+                        || "output_block_z".equals(sourcePort);
+            }
+            if (SELECTED_REGION_TYPE.equals(sourceType)) {
+                return "output_pos1".equals(sourcePort)
+                        || "output_pos2".equals(sourcePort)
+                        || "output_pos1_x".equals(sourcePort)
+                        || "output_pos1_y".equals(sourcePort)
+                        || "output_pos1_z".equals(sourcePort)
+                        || "output_pos2_x".equals(sourcePort)
+                        || "output_pos2_y".equals(sourcePort)
+                        || "output_pos2_z".equals(sourcePort)
+                        || "output_min_pos".equals(sourcePort)
+                        || "output_max_pos".equals(sourcePort)
+                        || "output_size_x".equals(sourcePort)
+                        || "output_size_y".equals(sourcePort)
+                        || "output_size_z".equals(sourcePort)
+                        || "output_volume".equals(sourcePort);
+            }
+            if (SELECTED_ENTITY_TYPE.equals(sourceType)) {
+                return "output_entity_id".equals(sourcePort)
+                        || "output_entity_x".equals(sourcePort)
+                        || "output_entity_y".equals(sourcePort)
+                        || "output_entity_z".equals(sourcePort);
+            }
+            if (SELECTED_BLOCK_SEQUENCE_TYPE.equals(sourceType)) {
+                return "output_point_list".equals(sourcePort)
+                        || "output_line".equals(sourcePort)
+                        || "output_polyline".equals(sourcePort)
+                        || "output_segment_count".equals(sourcePort);
+            }
+            return false;
+        });
+    }
+
+    private static void migrateSnapModeState(SavedNode node) {
+        if (!(node.state instanceof Map<?, ?> state)) {
+            return;
+        }
+        Map<String, Object> cleaned = new HashMap<>();
+        for (Map.Entry<?, ?> entry : state.entrySet()) {
+            if (!(entry.getKey() instanceof String key)) {
+                continue;
+            }
+            if ("snapMode".equals(key) && entry.getValue() instanceof String mode) {
+                cleaned.put(key, switch (mode.trim().toUpperCase(Locale.ROOT)) {
+                    case "FLOOR" -> "CONTAINING_CELL";
+                    case "NEAREST" -> "NEAREST_CENTER";
+                    case "CEIL" -> "NEAREST_CENTER";
+                    default -> mode;
+                });
+            } else {
+                cleaned.put(key, entry.getValue());
+            }
+        }
+        node.state = cleaned;
+    }
+
+    private static void stripTransientSelectionState(SavedNode node) {
+        if (!(node.state instanceof Map<?, ?> state)) {
+            return;
+        }
+        Map<String, Object> cleaned = new HashMap<>();
+        for (Map.Entry<?, ?> entry : state.entrySet()) {
+            if (!(entry.getKey() instanceof String key)) {
+                continue;
+            }
+            String lower = key.toLowerCase(Locale.ROOT);
+            if ("pickedblock".equals(lower)
+                    || "pickedblocks".equals(lower)
+                    || "pickedentity".equals(lower)
+                    || "pos1".equals(lower)
+                    || "pos2".equals(lower)) {
+                continue;
+            }
+            cleaned.put(key, entry.getValue());
+        }
+        node.state = cleaned;
     }
 }

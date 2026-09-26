@@ -7,21 +7,23 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.BlockListUtils;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
-    effect = NodeEffect.WORLD_READ,
+    effect = NodeEffect.PURE,
     id = "world.selection.multi_region",
     displayName = "Multi-Region Selection",
-    description = "Aggregates multiple non-contiguous region selections into a region list.",
+    description = "Aggregates region inputs and strict min/max block pairs into a region list with overall bounds.",
     category = "world.selection",
-    order = 7
+    order = 6
 )
 public class MultiRegionSelectionNode extends BaseNode {
 
@@ -29,68 +31,84 @@ public class MultiRegionSelectionNode extends BaseNode {
     private static final String INPUT_REGION_A_ID = "input_region_a";
     private static final String INPUT_REGION_B_ID = "input_region_b";
     private static final String INPUT_REGION_C_ID = "input_region_c";
-    private static final String INPUT_MIN_POINTS_ID = "input_min_points";
-    private static final String INPUT_MAX_POINTS_ID = "input_max_points";
+    private static final String INPUT_MIN_BLOCKS_ID = "input_min_blocks";
+    private static final String INPUT_MAX_BLOCKS_ID = "input_max_blocks";
 
     private static final String OUTPUT_REGIONS_ID = "output_regions";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_BOUNDS_REGION_ID = "output_bounds_region";
-    private static final String OUTPUT_MIN_ID = "output_min";
-    private static final String OUTPUT_MAX_ID = "output_max";
     private static final String OUTPUT_MIN_BLOCK_ID = "output_min_block";
     private static final String OUTPUT_MAX_BLOCK_ID = "output_max_block";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public MultiRegionSelectionNode() {
         super(UUID.randomUUID(), "world.selection.multi_region");
 
-        addInputPort(new BasePort(INPUT_REGIONS_ID, "Regions", "Optional existing region list", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_REGIONS_ID, "Regions", "Optional REGION_LIST to aggregate", NodeDataType.REGION_LIST, this));
         addInputPort(new BasePort(INPUT_REGION_A_ID, "Region A", "Optional region input A", NodeDataType.REGION, this));
         addInputPort(new BasePort(INPUT_REGION_B_ID, "Region B", "Optional region input B", NodeDataType.REGION, this));
         addInputPort(new BasePort(INPUT_REGION_C_ID, "Region C", "Optional region input C", NodeDataType.REGION, this));
-        addInputPort(new BasePort(INPUT_MIN_POINTS_ID, "Min Points", "Optional region min corners list", NodeDataType.LIST, this));
-        addInputPort(new BasePort(INPUT_MAX_POINTS_ID, "Max Points", "Optional region max corners list", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_MIN_BLOCKS_ID, "Min Blocks", "Optional BLOCK_LIST of region min corners", NodeDataType.BLOCK_LIST, this));
+        addInputPort(new BasePort(INPUT_MAX_BLOCKS_ID, "Max Blocks", "Optional BLOCK_LIST of region max corners", NodeDataType.BLOCK_LIST, this));
 
         addOutputPort(new BasePort(OUTPUT_REGIONS_ID, "Regions", "Resolved region list", NodeDataType.REGION_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Region count", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDS_REGION_ID, "Bounds Region", "Overall bounds covering all regions", NodeDataType.REGION, this));
-        addOutputPort(new BasePort(OUTPUT_MIN_ID, "Bounds Min", "Overall min corner", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_MAX_ID, "Bounds Max", "Overall max corner", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_MIN_BLOCK_ID, "Bounds Min Block", "Overall min corner as a block position", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_MAX_BLOCK_ID, "Bounds Max Block", "Overall max corner as a block position", NodeDataType.BLOCK_POS, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether at least one region exists", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether aggregation succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when aggregation fails", NodeDataType.STRING, this));
     }
 
     @Override
     public String getDescription() {
-        return "Aggregates multiple non-contiguous region selections into a region list.";
+        return "Aggregates region inputs and strict min/max block pairs into a region list with overall bounds.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<RegionData> regions = new ArrayList<>();
-        appendRegions(regions, inputValues.get(INPUT_REGIONS_ID));
-        appendRegion(regions, inputValues.get(INPUT_REGION_A_ID));
-        appendRegion(regions, inputValues.get(INPUT_REGION_B_ID));
-        appendRegion(regions, inputValues.get(INPUT_REGION_C_ID));
-        appendRegionsFromMinMaxLists(regions, inputValues.get(INPUT_MIN_POINTS_ID), inputValues.get(INPUT_MAX_POINTS_ID));
+
+        String regionListError = appendStrictRegionList(regions, inputValues.get(INPUT_REGIONS_ID), INPUT_REGIONS_ID);
+        if (regionListError != null) {
+            publishInvalid(regionListError);
+            return;
+        }
+
+        String aError = appendOptionalRegion(regions, INPUT_REGION_A_ID);
+        if (aError != null) {
+            publishInvalid(aError);
+            return;
+        }
+        String bError = appendOptionalRegion(regions, INPUT_REGION_B_ID);
+        if (bError != null) {
+            publishInvalid(bError);
+            return;
+        }
+        String cError = appendOptionalRegion(regions, INPUT_REGION_C_ID);
+        if (cError != null) {
+            publishInvalid(cError);
+            return;
+        }
+
+        String pairError = appendRegionsFromMinMaxLists(regions);
+        if (pairError != null) {
+            publishInvalid(pairError);
+            return;
+        }
 
         List<RegionData> complete = new ArrayList<>();
         for (RegionData region : regions) {
-            if (region != null && region.isComplete()) {
-                complete.add(region);
+            if (region == null || !region.isComplete()) {
+                publishInvalid("All regions must be complete (both corners set).");
+                return;
             }
+            complete.add(region);
         }
 
         if (complete.isEmpty()) {
-            outputValues.put(OUTPUT_REGIONS_ID, List.of());
-            outputValues.put(OUTPUT_COUNT_ID, 0);
-            outputValues.put(OUTPUT_BOUNDS_REGION_ID, null);
-            outputValues.put(OUTPUT_MIN_ID, null);
-            outputValues.put(OUTPUT_MAX_ID, null);
-            outputValues.put(OUTPUT_MIN_BLOCK_ID, BlockPos.ORIGIN);
-            outputValues.put(OUTPUT_MAX_BLOCK_ID, BlockPos.ORIGIN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            publishInvalid("No regions were provided.");
             return;
         }
 
@@ -100,7 +118,8 @@ public class MultiRegionSelectionNode extends BaseNode {
             BlockPos rMin = region.getMinCorner();
             BlockPos rMax = region.getMaxCorner();
             if (rMin == null || rMax == null) {
-                continue;
+                publishInvalid("Region corners are incomplete.");
+                return;
             }
             if (min == null || max == null) {
                 min = rMin.toImmutable();
@@ -119,43 +138,86 @@ public class MultiRegionSelectionNode extends BaseNode {
             }
         }
 
-        RegionData bounds = (min != null && max != null) ? new RegionData(min, max) : null;
+        RegionData bounds = new RegionData(min, max);
         outputValues.put(OUTPUT_REGIONS_ID, List.copyOf(complete));
         outputValues.put(OUTPUT_COUNT_ID, complete.size());
         outputValues.put(OUTPUT_BOUNDS_REGION_ID, bounds);
-        outputValues.put(OUTPUT_MIN_ID, min != null ? new Vector3d(min.getX(), min.getY(), min.getZ()) : null);
-        outputValues.put(OUTPUT_MAX_ID, max != null ? new Vector3d(max.getX(), max.getY(), max.getZ()) : null);
-        outputValues.put(OUTPUT_MIN_BLOCK_ID, min != null ? min : BlockPos.ORIGIN);
-        outputValues.put(OUTPUT_MAX_BLOCK_ID, max != null ? max : BlockPos.ORIGIN);
+        outputValues.put(OUTPUT_MIN_BLOCK_ID, min);
+        outputValues.put(OUTPUT_MAX_BLOCK_ID, max);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void appendRegions(List<RegionData> out, Object value) {
-        if (!(value instanceof List<?> list)) {
-            return;
+    private @Nullable String appendStrictRegionList(List<RegionData> out, Object value, String portId) {
+        boolean connected = OptionalPortDrive.isConnected(this, portId);
+        if (!connected && value == null) {
+            return null;
+        }
+        if (!(value instanceof Collection<?> list)) {
+            return "Regions must be a REGION_LIST.";
         }
         for (Object entry : list) {
-            appendRegion(out, entry);
-        }
-    }
-
-    private void appendRegion(List<RegionData> out, Object value) {
-        if (value instanceof RegionData region) {
+            if (!(entry instanceof RegionData region) || !region.isComplete()) {
+                return "Regions list contains a non-RegionData or incomplete region member.";
+            }
             out.add(region);
         }
+        return null;
     }
 
-    private void appendRegionsFromMinMaxLists(List<RegionData> out, Object minObj, Object maxObj) {
-        if (!(minObj instanceof List<?> mins) || !(maxObj instanceof List<?> maxs)) {
-            return;
+    private @Nullable String appendOptionalRegion(List<RegionData> out, String portId) {
+        boolean connected = OptionalPortDrive.isConnected(this, portId);
+        Object value = inputValues.get(portId);
+        if (!connected && value == null) {
+            return null;
         }
-        int count = Math.min(mins.size(), maxs.size());
-        for (int i = 0; i < count; i++) {
-            BlockPos min = WorldSelectionResolveUtils.resolveBlockPos(mins.get(i));
-            BlockPos max = WorldSelectionResolveUtils.resolveBlockPos(maxs.get(i));
-            if (min != null && max != null) {
-                out.add(new RegionData(min, max));
-            }
+        if (!(value instanceof RegionData region)) {
+            return portId + " must be a Region when connected or provided.";
         }
+        if (!region.isComplete()) {
+            return portId + " region is incomplete.";
+        }
+        out.add(region);
+        return null;
+    }
+
+    private @Nullable String appendRegionsFromMinMaxLists(List<RegionData> out) {
+        boolean minConnected = OptionalPortDrive.isConnected(this, INPUT_MIN_BLOCKS_ID);
+        boolean maxConnected = OptionalPortDrive.isConnected(this, INPUT_MAX_BLOCKS_ID);
+        Object minObj = inputValues.get(INPUT_MIN_BLOCKS_ID);
+        Object maxObj = inputValues.get(INPUT_MAX_BLOCKS_ID);
+
+        if (!minConnected && minObj == null && !maxConnected && maxObj == null) {
+            return null;
+        }
+        if ((minObj == null) != (maxObj == null)) {
+            return "Min Blocks and Max Blocks must both be provided together.";
+        }
+        if (minObj == null) {
+            return null;
+        }
+
+        List<BlockPos> mins = BlockListUtils.resolveStrictBlockList(minObj);
+        List<BlockPos> maxs = BlockListUtils.resolveStrictBlockList(maxObj);
+        if (mins == null || maxs == null) {
+            return "Min Blocks and Max Blocks must be strict BLOCK_LIST of BlockPos entries.";
+        }
+        if (mins.size() != maxs.size()) {
+            return "Min Blocks and Max Blocks must have the same length.";
+        }
+        for (int i = 0; i < mins.size(); i++) {
+            out.add(new RegionData(mins.get(i), maxs.get(i)));
+        }
+        return null;
+    }
+
+    private void publishInvalid(String error) {
+        outputValues.put(OUTPUT_REGIONS_ID, List.of());
+        outputValues.put(OUTPUT_COUNT_ID, 0);
+        outputValues.put(OUTPUT_BOUNDS_REGION_ID, null);
+        outputValues.put(OUTPUT_MIN_BLOCK_ID, BlockPos.ORIGIN);
+        outputValues.put(OUTPUT_MAX_BLOCK_ID, BlockPos.ORIGIN);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

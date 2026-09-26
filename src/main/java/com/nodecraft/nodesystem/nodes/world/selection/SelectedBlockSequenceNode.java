@@ -8,7 +8,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
-import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.interaction.IBlockPickerCallback;
@@ -37,26 +37,24 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    effect = NodeEffect.WORLD_READ,
+    effect = NodeEffect.CONTEXT_READ,
     id = "world.selection.selected_block_sequence",
     displayName = "Selected Block Sequence",
     description = "Collects multiple picked blocks in click order and outputs an ordered block sequence",
     category = "world.selection",
-    order = 6
+    order = 5
 )
 public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBlockPickerCallback {
 
     private static final String OUTPUT_BLOCKS_ID = "output_blocks";
-    private static final String OUTPUT_POINT_LIST_ID = "output_point_list";
-    private static final String OUTPUT_LINE_ID = "output_line";
-    private static final String OUTPUT_POLYLINE_ID = "output_polyline";
     private static final String OUTPUT_CENTERS_ID = "output_centers";
+    private static final String OUTPUT_PATH_ID = "output_path";
     private static final String OUTPUT_FIRST_ID = "output_first";
     private static final String OUTPUT_LAST_ID = "output_last";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_SEGMENT_COUNT_ID = "output_segment_count";
     private static final String OUTPUT_IS_CLOSED_ID = "output_is_closed";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     private final List<Coordinate> pickedBlocks = new ArrayList<>();
 
@@ -93,16 +91,14 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
         super(UUID.randomUUID(), "world.selection.selected_block_sequence");
 
         addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Ordered list of picked block positions", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_POINT_LIST_ID, "Point List", "Ordered geometric point list derived from the picked blocks", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_LINE_ID, "Line", "Line built directly from the ordered point list when exactly 2 points exist", NodeDataType.LINE, this));
-        addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Polyline built directly from the ordered point list when at least 2 points exist", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_CENTERS_ID, "Centers", "Ordered list of block center points", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path", "Path through block centers (line for 2 points, polyline for 3+; closed path appends first center)", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_FIRST_ID, "First", "First picked block in the sequence", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_LAST_ID, "Last", "Last picked block in the sequence", NodeDataType.BLOCK_POS, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of picked blocks in the sequence", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_SEGMENT_COUNT_ID, "Segment Count", "Number of path segments implied by the current ordered sequence", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of unique selected blocks in the sequence", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_IS_CLOSED_ID, "Is Closed", "Whether the ordered sequence is currently treated as a closed path", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the sequence currently contains at least one picked block", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when Valid is false", NodeDataType.STRING, this));
 
         updateOutputs();
     }
@@ -221,39 +217,52 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
 
     private void updateOutputs() {
         List<Coordinate> snapshot = snapshotPickedBlocks();
-        List<Coordinate> coordinates = new ArrayList<>(snapshot);
         BlockPosList blocks = new BlockPosList();
-        List<PointData> pointList = new ArrayList<>();
-        List<Vec3d> polylinePoints = new ArrayList<>();
-        List<Vector3d> centers = new ArrayList<>();
+        List<Vector3d> centers = new ArrayList<>(snapshot.size());
 
         for (Coordinate coordinate : snapshot) {
-            appendOutputs(coordinate, blocks, pointList, polylinePoints, centers);
+            blocks.add(new BlockPos(coordinate.x(), coordinate.y(), coordinate.z()));
+            centers.add(new Vector3d(
+                coordinate.x() + 0.5d,
+                coordinate.y() + 0.5d,
+                coordinate.z() + 0.5d
+            ));
         }
 
+        List<Vec3d> pathPoints = new ArrayList<>(centers.size() + 1);
+        for (Vector3d center : centers) {
+            pathPoints.add(new Vec3d(center.x, center.y, center.z));
+        }
         if (closePath && snapshot.size() >= 2) {
             Coordinate first = snapshot.getFirst();
             Coordinate last = snapshot.getLast();
             if (!first.equals(last)) {
-                coordinates.add(first);
-                appendOutputs(first, blocks, pointList, polylinePoints, centers);
+                Vector3d firstCenter = centers.getFirst();
+                pathPoints.add(new Vec3d(firstCenter.x, firstCenter.y, firstCenter.z));
             }
         }
 
-        LineData line = polylinePoints.size() == 2 ? new LineData(polylinePoints.get(0), polylinePoints.get(1)) : null;
-        PolylineData polyline = polylinePoints.size() >= 2 ? new PolylineData(polylinePoints) : null;
+        PathData path = null;
+        if (pathPoints.size() == 2) {
+            path = PathData.fromLine(new LineData(pathPoints.get(0), pathPoints.get(1)));
+        } else if (pathPoints.size() >= 3) {
+            path = PathData.fromPolyline(new PolylineData(pathPoints));
+        }
 
+        boolean valid = !snapshot.isEmpty();
         outputValues.put(OUTPUT_BLOCKS_ID, blocks);
-        outputValues.put(OUTPUT_POINT_LIST_ID, pointList);
-        outputValues.put(OUTPUT_LINE_ID, line);
-        outputValues.put(OUTPUT_POLYLINE_ID, polyline);
         outputValues.put(OUTPUT_CENTERS_ID, SpatialValueResolver.toPointDataList(centers));
-        outputValues.put(OUTPUT_FIRST_ID, snapshot.isEmpty() ? null : snapshot.getFirst());
-        outputValues.put(OUTPUT_LAST_ID, snapshot.isEmpty() ? null : snapshot.getLast());
+        outputValues.put(OUTPUT_PATH_ID, path);
+        outputValues.put(OUTPUT_FIRST_ID, snapshot.isEmpty()
+            ? null
+            : new BlockPos(snapshot.getFirst().x(), snapshot.getFirst().y(), snapshot.getFirst().z()));
+        outputValues.put(OUTPUT_LAST_ID, snapshot.isEmpty()
+            ? null
+            : new BlockPos(snapshot.getLast().x(), snapshot.getLast().y(), snapshot.getLast().z()));
         outputValues.put(OUTPUT_COUNT_ID, snapshot.size());
-        outputValues.put(OUTPUT_SEGMENT_COUNT_ID, Math.max(0, coordinates.size() - 1));
         outputValues.put(OUTPUT_IS_CLOSED_ID, closePath && snapshot.size() >= 2);
-        outputValues.put(OUTPUT_VALID_ID, !snapshot.isEmpty());
+        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     private void updatePathPreview() {
@@ -325,26 +334,6 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
                 MinecraftClientController.getInstance().showHudMessage("Path preview creation failed, please check logs");
             }
         }
-    }
-
-    private void appendOutputs(Coordinate coordinate, BlockPosList blocks, List<PointData> pointList, List<Vec3d> polylinePoints, List<Vector3d> centers) {
-        blocks.add(new BlockPos(coordinate.x(), coordinate.y(), coordinate.z()));
-        Vec3d centerPos = new Vec3d(
-            coordinate.x() + 0.5d,
-            coordinate.y() + 0.5d,
-            coordinate.z() + 0.5d
-        );
-        pointList.add(new PointData(
-            centerPos.x,
-            centerPos.y,
-            centerPos.z
-        ));
-        polylinePoints.add(centerPos);
-        centers.add(new Vector3d(
-            centerPos.x,
-            centerPos.y,
-            centerPos.z
-        ));
     }
 
     private List<Coordinate> snapshotPickedBlocks() {
@@ -456,17 +445,7 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
         state.put("autoPreviewPath", autoPreviewPath);
         state.put("closePath", closePath);
         state.put("previewPathColor", previewPathColor);
-
-        List<Coordinate> snapshot = snapshotPickedBlocks();
-        List<Map<String, Integer>> blocks = new ArrayList<>(snapshot.size());
-        for (Coordinate coordinate : snapshot) {
-            Map<String, Integer> item = new HashMap<>();
-            item.put("x", coordinate.x());
-            item.put("y", coordinate.y());
-            item.put("z", coordinate.z());
-            blocks.add(item);
-        }
-        state.put("pickedBlocks", blocks);
+        // Do not persist pickedBlocks — pick is session/runtime only.
         return state;
     }
 
@@ -501,22 +480,7 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
         if (map.get("previewPathColor") instanceof String value) {
             previewPathColor = value;
         }
-        if (map.get("pickedBlocks") instanceof List<?> list) {
-            List<Coordinate> restored = new ArrayList<>();
-            for (Object item : list) {
-                if (item instanceof Map<?, ?> blockMap) {
-                    Object x = blockMap.get("x");
-                    Object y = blockMap.get("y");
-                    Object z = blockMap.get("z");
-                    if (x instanceof Number xNum && y instanceof Number yNum && z instanceof Number zNum) {
-                        restored.add(new Coordinate(xNum.intValue(), yNum.intValue(), zNum.intValue()));
-                    }
-                }
-            }
-            synchronized (pickedBlocks) {
-                pickedBlocks.addAll(restored);
-            }
-        }
+        // Ignore legacy pickedBlocks restore — selection is session/runtime only.
 
         pickingActive = false;
         pendingRepick = false;

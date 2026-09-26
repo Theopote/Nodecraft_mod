@@ -2,59 +2,73 @@ package com.nodecraft.nodesystem.nodes.world.selection;
 
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.util.BlockSpace;
-import com.nodecraft.nodesystem.util.Coordinate;
-import com.nodecraft.nodesystem.util.Vector3;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
+/**
+ * Strict spatial helpers for world.selection — no polymorphic Point/Vector → BlockPos floor.
+ */
 final class WorldSelectionResolveUtils {
+
+    enum SnapMode {
+        /** Containing cell: {@link BlockSpace#pointToBlockFloor}. */
+        CONTAINING_CELL,
+        /** Nearest cell center: {@link BlockSpace#nearestCellBlockPos}. */
+        NEAREST_CENTER;
+
+        static SnapMode fromLegacyOrName(@Nullable String text) {
+            if (text == null || text.isBlank()) {
+                return NEAREST_CENTER;
+            }
+            String key = text.trim().toUpperCase();
+            return switch (key) {
+                case "CONTAINING_CELL", "FLOOR" -> CONTAINING_CELL;
+                case "NEAREST_CENTER", "NEAREST" -> NEAREST_CENTER;
+                default -> NEAREST_CENTER; // CEIL and unknowns → NEAREST_CENTER
+            };
+        }
+    }
 
     private WorldSelectionResolveUtils() {
     }
 
-    static @Nullable Vector3d toPointPosition(Object value) {
+    /** Strict POINT only. */
+    static @Nullable Vector3d requirePoint(@Nullable Object value) {
         if (value instanceof PointData pointData) {
-            return new Vector3d(pointData.position());
+            Vector3d position = pointData.position();
+            if (position != null
+                    && Double.isFinite(position.x)
+                    && Double.isFinite(position.y)
+                    && Double.isFinite(position.z)) {
+                return new Vector3d(position);
+            }
         }
         return null;
     }
 
-    static @Nullable Vector3d resolveVector3d(Object value) {
-        Vector3d strict = toPointPosition(value);
-        if (strict != null) {
-            return strict;
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof Vec3d vector) {
-            return new Vector3d(vector.x, vector.y, vector.z);
-        }
-        if (value instanceof Vector3(float x, float y, float z)) {
-            return new Vector3d(x, y, z);
-        }
-        if (value instanceof BlockPos blockPos) {
-            return BlockSpace.cellCenter(blockPos);
-        }
-        if (value instanceof Coordinate(int x, int y, int z)) {
-            return BlockSpace.cellCenter(x, y, z);
-        }
-        return null;
+    /** Strict BLOCK_POS only — no Point/Vector coercion. */
+    static @Nullable BlockPos requireBlockPos(@Nullable Object value) {
+        return value instanceof BlockPos pos ? pos.toImmutable() : null;
     }
 
-    static @Nullable BlockPos resolveBlockPos(Object value) {
-        if (value instanceof BlockPos pos) {
-            return pos.toImmutable();
+    static BlockPos snapPointToBlock(Vector3d point, SnapMode mode) {
+        if (point == null) {
+            return BlockPos.ORIGIN;
         }
-        if (value instanceof Coordinate(int x, int y, int z)) {
-            return new BlockPos(x, y, z);
+        SnapMode resolved = mode == null ? SnapMode.NEAREST_CENTER : mode;
+        return switch (resolved) {
+            case CONTAINING_CELL -> BlockSpace.pointToBlockFloor(point);
+            case NEAREST_CENTER -> BlockSpace.nearestCellBlockPos(point);
+        };
+    }
+
+    /** Distance from continuous point to the snapped cell center. */
+    static double distanceToSnappedCenter(Vector3d point, BlockPos snapped) {
+        if (point == null || snapped == null) {
+            return Double.NaN;
         }
-        Vector3d vector = resolveVector3d(value);
-        if (vector != null) {
-            return BlockSpace.pointToBlockFloor(vector);
-        }
-        return null;
+        Vector3d center = BlockSpace.cellCenter(snapped);
+        return point.distance(center);
     }
 }

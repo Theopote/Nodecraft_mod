@@ -381,8 +381,14 @@ public final class GraphFormatVersion {
      */
     public static final int V61 = 61;
 
+    /**
+     * World Selection v1: cell-center snaps, PURE spatial nodes, CONTEXT_READ
+     * selection sources, strict lists, delete Snap Vector To Block.
+     */
+    public static final int V62 = 62;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V61;
+    public static final int CURRENT = V62;
 
     private GraphFormatVersion() {
     }

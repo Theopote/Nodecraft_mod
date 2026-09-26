@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**527**
+- **节点总数**：**526**
 - **分类总数**：**60**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -66,7 +66,7 @@
 | `variable` | 6 |
 | `world.query` | 11 |
 | `world.read` | 11 |
-| `world.selection` | 9 |
+| `world.selection` | 8 |
 | `world.terrain` | 19 |
 | `world.write` | 18 |
 
@@ -836,19 +836,18 @@
 | Get Entity NBT | `world.read.get_entity_nbt` | Reads full entity NBT from a Minecraft entity object. Compose with world.query.Get Entity for lookup. Max String Length limits serialized output only. | `GetEntityNbtNode` |
 | Read Sign Text | `world.read.read_sign_text` | Reads plain text from the front face of a sign block entity | `ReadSignTextNode` |
 
-## world.selection（9）
+## world.selection（8）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Selected Block | `world.selection.selected_block` | 获取方块信息，支持交互拾取或坐标输入 | `SelectedBlockNode` |
+| Selected Block | `world.selection.selected_block` | Selection source only: Block Position / Has Selection / Valid / Error | `SelectedBlockNode` |
 | Selected Region | `world.selection.selected_region` | Gets the player's selected region defined by two corner points. | `SelectedRegionNode` |
-| Snap Point To Block | `world.selection.snap_point_to_block` | Explicitly snaps a geometric point onto the block grid using floor, nearest, or ceil | `SnapPointToBlockNode` |
-| Snap Vector To Block | `world.selection.snap_vector_to_block` | Converts a Vector3d position into a block coordinate using floor, round, or ceil snapping. | `SnapVectorToBlockNode` |
-| Snap Point List To Blocks | `world.selection.snap_points_to_blocks` | Snaps a point list onto the block grid using an explicit snap mode | `SnapPointListToBlocksNode` |
-| Point To Block If Grid | `world.selection.point_to_block_if_grid` | Strict conversion: outputs a block coordinate only when the point is already grid-aligned | `PointToBlockIfGridNode` |
+| Snap Point To Block | `world.selection.snap_point_to_block` | Snaps a point to a block cell using containing-cell or nearest-center modes (cell-center lattice) | `SnapPointToBlockNode` |
+| Snap Point List To Blocks | `world.selection.snap_points_to_blocks` | Snaps a strict POINT_LIST onto the block cell lattice; any malformed member fails the whole node | `SnapPointListToBlocksNode` |
+| Point To Block If Grid | `world.selection.point_to_block_if_grid` | Outputs a block cell only when the point lies on the cell-center lattice within tolerance | `PointToBlockIfGridNode` |
 | Selected Block Sequence | `world.selection.selected_block_sequence` | Collects multiple picked blocks in click order and outputs an ordered block sequence | `SelectedBlockSequenceNode` |
-| Multi-Region Selection | `world.selection.multi_region` | Aggregates multiple non-contiguous region selections into a region list. | `MultiRegionSelectionNode` |
-| Selected Entity | `world.selection.selected_entity` | Gets information about the entity selected by the player. | `SelectedEntityNode` |
+| Multi-Region Selection | `world.selection.multi_region` | Aggregates region inputs and strict min/max block pairs into a region list with overall bounds. | `MultiRegionSelectionNode` |
+| Selected Entity | `world.selection.selected_entity` | Editor selection source for a picked entity (UUID, type, exact POINT, block cell, live Entity). | `SelectedEntityNode` |
 
 ## world.terrain（19）
 
