@@ -30,7 +30,7 @@
             {
               "nodeId": "transform.basic_transforms.transform_geometry",
               "order": 0,
-              "reason": "变换几何�?,
+              "reason": "变换几何体",
               "connectPortId": "input_geometry"
             },
             {
@@ -60,7 +60,7 @@
             {
               "nodeId": "geometry.voxel.voxelize_geometry",
               "order": 40,
-              "reason": "烘焙为方�?,
+              "reason": "烘焙为方块",
               "connectPortId": "input_geometry"
             }
           ]
@@ -93,7 +93,7 @@
             {
               "nodeId": "geometry.architectural_primitives.beam_along_path",
               "order": 10,
-              "reason": "檐口�?,
+              "reason": "檐口梁",
               "connectPortId": "input_path"
             },
             {
@@ -109,7 +109,7 @@
             {
               "nodeId": "geometry.architectural_primitives.beam_along_path",
               "order": 0,
-              "reason": "屋脊�?,
+              "reason": "屋脊梁",
               "connectPortId": "input_path"
             },
             {
@@ -202,7 +202,7 @@
             {
               "nodeId": "transform.placement.place_geometry_on_frames",
               "order": 0,
-              "reason": "在梁位放置配�?,
+              "reason": "在梁位放置配件",
               "connectPortId": "input_frames"
             }
           ]
@@ -260,7 +260,7 @@
             {
               "nodeId": "geometry.boolean.difference",
               "order": 0,
-              "reason": "洞口作为差集刀�?,
+              "reason": "洞口作为差集刀具",
               "connectPortId": "input_cutter"
             }
           ]
@@ -289,7 +289,7 @@
             {
               "nodeId": "transform.placement.place_geometry_on_frames",
               "order": 0,
-              "reason": "自定义窗框布�?,
+              "reason": "自定义窗框布局",
               "connectPortId": "input_frames"
             }
           ]
@@ -579,8 +579,17 @@
     }
   },
   "placement": {
-    "defaultOffset": { "dx": 280, "dy": 0 },
-    "portDragOffset": { "dx": 220, "dy": 0 },
-    "stackOffset": { "dx": 0, "dy": 120 }
+    "defaultOffset": {
+      "dx": 280,
+      "dy": 0
+    },
+    "portDragOffset": {
+      "dx": 220,
+      "dy": 0
+    },
+    "stackOffset": {
+      "dx": 0,
+      "dy": 120
+    }
   }
 }

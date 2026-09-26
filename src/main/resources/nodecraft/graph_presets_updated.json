@@ -8,7 +8,7 @@
         {
           "id": "composite.textured_box",
           "displayName": "Textured Box",
-          "description": "Box geometry with Preview Geometry plus Voxelize â†?Assign Block Type â†?Preview Blocks. Shows Geometry Preview vs Block Preview.",
+          "description": "Box geometry with Preview Geometry plus Voxelize â†’Assign Block Type â†’Preview Blocks. Shows Geometry Preview vs Block Preview.",
           "kind": "composite",
           "nodes": [
             {
@@ -77,7 +77,7 @@
         {
           "id": "composite.array_transform_deform",
           "displayName": "Array Transform",
-          "description": "Box â†?Linear Array â†?Transform â†?Preview Geometry, with optional Voxelize â†?Preview Blocks.",
+          "description": "Box â†’Linear Array â†’Transform â†’Preview Geometry, with optional Voxelize â†’Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -169,7 +169,7 @@
         {
           "id": "composite.boolean_cut_bake",
           "displayName": "Boolean Cut + Voxelize",
-          "description": "Box A + Box B â†?Difference â†?Preview Geometry and Voxelize â†?Preview Blocks. Demonstrates boolean cut without legacy Bake naming.",
+          "description": "Box A + Box B â†’Difference â†’Preview Geometry and Voxelize â†’Preview Blocks. Demonstrates boolean cut without legacy Bake naming.",
           "kind": "composite",
           "nodes": [
             {
@@ -261,7 +261,7 @@
         {
           "id": "architectural.infrastructure.stone_bridge",
           "displayName": "Stone Arch Bridge",
-          "description": "Span path â†?Beam deck + Railing; pier boxes âˆ?Arch Opening â†?Combine â†?Preview Geometry, Voxelize â†?Material â†?Preview Blocks.",
+          "description": "Span path â†’Beam deck + Railing; pier boxes âˆ’Arch Opening â†’Combine â†’Preview Geometry, Voxelize â†’Material â†’Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -310,17 +310,8 @@
               "state": {}
             },
             {
-              "ref": "point_list",
-              "typeId": "math.list.create_list",
-              "x": 280,
-              "y": 40,
-              "state": {
-                "inputCount": 2
-              }
-            },
-            {
               "ref": "span_path",
-              "typeId": "geometry.curves.points_to_path",
+              "typeId": "geometry.primitives.sphere_from_diameter",
               "x": 560,
               "y": 40
             },
@@ -490,6 +481,18 @@
               "typeId": "output.preview.preview_blocks",
               "x": 0,
               "y": 0
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 900.0,
+              "y": 360.0
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 1120.0,
+              "y": 360.0
             }
           ],
           "connections": [
@@ -518,32 +521,14 @@
               "toPort": "input_distance"
             },
             {
-              "fromRef": "world_origin_deconstruct",
-              "fromPort": "output_origin",
-              "toRef": "point_list",
-              "toPort": "input_0"
-            },
-            {
-              "fromRef": "path_end",
-              "fromPort": "output_point",
-              "toRef": "point_list",
-              "toPort": "input_1"
-            },
-            {
-              "fromRef": "point_list",
-              "fromPort": "output_list",
-              "toRef": "span_path",
-              "toPort": "input_points"
-            },
-            {
               "fromRef": "span_path",
-              "fromPort": "output_path",
+              "fromPort": "output_diameter_line",
               "toRef": "deck",
               "toPort": "input_path"
             },
             {
               "fromRef": "span_path",
-              "fromPort": "output_path",
+              "fromPort": "output_diameter_line",
               "toRef": "railings",
               "toPort": "input_path"
             },
@@ -674,12 +659,6 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
-            },
-            {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
@@ -702,13 +681,55 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "world_origin_deconstruct",
+              "fromPort": "output_origin",
+              "toRef": "span_path",
+              "toPort": "input_start"
+            },
+            {
+              "fromRef": "path_end",
+              "fromPort": "output_point",
+              "toRef": "span_path",
+              "toPort": "input_end"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
             }
           ]
         },
         {
           "id": "architectural.infrastructure.watchtower",
           "displayName": "Medieval Watchtower",
-          "description": "Hollow cylinder tower + Roof Base + Eave Railing + Linear Array battlement â†?Preview Geometry and block preview chain.",
+          "description": "Hollow cylinder tower + Roof Base + Eave Railing + Linear Array battlement â†’Preview Geometry and block preview chain.",
           "kind": "composite",
           "nodes": [
             {
@@ -868,6 +889,18 @@
               "typeId": "output.preview.preview_blocks",
               "x": 0,
               "y": 0
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 640.0,
+              "y": 480.0
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 860.0,
+              "y": 480.0
             }
           ],
           "connections": [
@@ -950,12 +983,6 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
-            },
-            {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
@@ -978,13 +1005,43 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
             }
           ]
         },
         {
           "id": "architectural.residential.medieval_cottage",
           "displayName": "Medieval Cottage",
-          "description": "Building volume â†?Floor / Wall / Window / Door / Roof architectural chain â†?Preview + block preview.",
+          "description": "Building volume â†’Floor / Wall / Window / Door / Roof architectural chain â†’Preview + block preview.",
           "kind": "composite",
           "nodes": [
             {
@@ -1172,6 +1229,18 @@
               "typeId": "output.preview.preview_blocks",
               "x": 0,
               "y": 0
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 1060.0,
+              "y": 280.0
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 1280.0,
+              "y": 280.0
             }
           ],
           "connections": [
@@ -1308,12 +1377,6 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
-            },
-            {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
@@ -1336,13 +1399,43 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
             }
           ]
         },
         {
           "id": "architectural.residential.simple_house",
           "displayName": "Simple Modern House",
-          "description": "Architectural component chain with flat roof and window array â€?modern residential showcase.",
+          "description": "Architectural component chain with flat roof and window array â€“modern residential showcase.",
           "kind": "composite",
           "nodes": [
             {
@@ -1497,6 +1590,18 @@
               "typeId": "output.preview.preview_blocks",
               "x": 0,
               "y": 0
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 820.0,
+              "y": 280.0
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 1040.0,
+              "y": 280.0
             }
           ],
           "connections": [
@@ -1603,12 +1708,6 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
-            },
-            {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
@@ -1631,13 +1730,43 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
             }
           ]
         },
         {
           "id": "architectural.residential.mini_building_v1",
           "displayName": "Mini Building (Component Chain)",
-          "description": "Floor Slab â†?Wall Along Path â†?Window Array â†?Roof Base â†?Preview Geometry, Voxelize â†?Assign Block Type â†?Preview Blocks â†?Apply Changes.",
+          "description": "Floor Slab â†’Wall Along Path â†’Window Array â†’Roof Base â†’Preview Geometry, Voxelize â†’Assign Block Type â†’Preview Blocks â†’Apply Changes.",
           "kind": "composite",
           "nodes": [
             {
@@ -1856,7 +1985,7 @@
         {
           "id": "architectural.workflow.wall_with_windows",
           "displayName": "Wall + Windows",
-          "description": "Wall With Openings â†?Difference (cut holes) + Window Array frames â†?Combine â†?Preview.",
+          "description": "Wall With Openings â†’Difference (cut holes) + Window Array frames â†’Combine â†’Preview.",
           "kind": "composite",
           "nodes": [
             {
@@ -1967,7 +2096,7 @@
         {
           "id": "architectural.workflow.floor_with_beam_grid",
           "displayName": "Floor + Beam Grid",
-          "description": "Composable Floor Slab + Beam Grid on the same BOX_FACE â†?Combine â†?Preview.",
+          "description": "Composable Floor Slab + Beam Grid on the same BOX_FACE â†’Combine â†’Preview.",
           "kind": "composite",
           "nodes": [
             {
@@ -2069,7 +2198,7 @@
         {
           "id": "architectural.workflow.roof_with_eave",
           "displayName": "Roof + Eave Railing",
-          "description": "Roof Base (gable) â†?Eave Path drives Railing â†?Combine â†?Preview Geometry / Curves.",
+          "description": "Roof Base (gable) â†’Eave Path drives Railing â†’Combine â†’Preview Geometry / Curves.",
           "kind": "composite",
           "nodes": [
             {
@@ -2177,7 +2306,7 @@
         {
           "id": "building_elements.columns.classical_column",
           "displayName": "Classical Column",
-          "description": "Stacked Column nodes (base, shaft, capital) with explicit dimensions â†?Preview Geometry, Voxelize â†?Assign Block Type â†?Preview Blocks.",
+          "description": "Stacked Column nodes (base, shaft, capital) with explicit dimensions â†’Preview Geometry, Voxelize â†’Assign Block Type â†’Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -2344,6 +2473,18 @@
               "typeId": "output.preview.preview_blocks",
               "x": 2220,
               "y": 320
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 1020.0,
+              "y": 240.0
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 1240.0,
+              "y": 240.0
             }
           ],
           "connections": [
@@ -2456,12 +2597,6 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
-            },
-            {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
@@ -2484,13 +2619,43 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
             }
           ]
         },
         {
           "id": "building_elements.doors.simple_door",
           "displayName": "Simple Door Frame",
-          "description": "Outer frame box âˆ?inner opening â†?frame geometry â†?Preview Geometry, Voxelize â†?Assign Block Type â†?Preview Blocks.",
+          "description": "Outer frame box âˆ’inner opening â†’frame geometry â†’Preview Geometry, Voxelize â†’Assign Block Type â†’Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -2562,6 +2727,18 @@
               "typeId": "output.preview.preview_blocks",
               "x": 1380,
               "y": 320
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 160.0,
+              "y": 280.0
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 380.0,
+              "y": 280.0
             }
           ],
           "connections": [
@@ -2582,12 +2759,6 @@
               "fromPort": "output_geometry",
               "toRef": "move_to_pos",
               "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
             },
             {
               "fromRef": "move_to_pos",
@@ -2612,13 +2783,43 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
             }
           ]
         },
         {
           "id": "building_elements.roofs.gable_roof",
           "displayName": "Gable Roof",
-          "description": "Building volume top face â†?Roof Base (Gable) â†?Preview Geometry, Voxelize â†?Assign Block Type â†?Preview Blocks.",
+          "description": "Building volume top face â†’Roof Base (Gable) â†’Preview Geometry, Voxelize â†’Assign Block Type â†’Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -2691,6 +2892,18 @@
               "typeId": "output.preview.preview_blocks",
               "x": 1620,
               "y": 320
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 400.0,
+              "y": 260.0
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 620.0,
+              "y": 260.0
             }
           ],
           "connections": [
@@ -2719,12 +2932,6 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
-            },
-            {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
@@ -2747,13 +2954,43 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
             }
           ]
         },
         {
           "id": "building_elements.stairs.spiral_staircase",
           "displayName": "Spiral Staircase",
-          "description": "Path â†?Staircase (spiral layout) + center post â†?Preview Geometry, Voxelize â†?Assign Block Type â†?Preview Blocks. Procedural spiral with frozen parameters.",
+          "description": "Path â†’Staircase (spiral layout) + center post â†’Preview Geometry, Voxelize â†’Assign Block Type â†’Preview Blocks. Procedural spiral with frozen parameters.",
           "kind": "composite",
           "nodes": [
             {
@@ -2802,17 +3039,8 @@
               "state": {}
             },
             {
-              "ref": "point_list",
-              "typeId": "math.list.create_list",
-              "x": 280,
-              "y": 40,
-              "state": {
-                "inputCount": 2
-              }
-            },
-            {
               "ref": "stair_path",
-              "typeId": "geometry.curves.points_to_path",
+              "typeId": "geometry.primitives.sphere_from_diameter",
               "x": 560,
               "y": 40
             },
@@ -2954,6 +3182,18 @@
               "typeId": "output.preview.preview_blocks",
               "x": 2140,
               "y": 660
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 940.0,
+              "y": 620.0
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 1160.0,
+              "y": 620.0
             }
           ],
           "connections": [
@@ -2982,26 +3222,8 @@
               "toPort": "input_distance"
             },
             {
-              "fromRef": "world_origin_deconstruct",
-              "fromPort": "output_origin",
-              "toRef": "point_list",
-              "toPort": "input_0"
-            },
-            {
-              "fromRef": "path_end",
-              "fromPort": "output_point",
-              "toRef": "point_list",
-              "toPort": "input_1"
-            },
-            {
-              "fromRef": "point_list",
-              "fromPort": "output_list",
-              "toRef": "stair_path",
-              "toPort": "input_points"
-            },
-            {
               "fromRef": "stair_path",
-              "fromPort": "output_path",
+              "fromPort": "output_diameter_line",
               "toRef": "staircase",
               "toPort": "input_path"
             },
@@ -3078,12 +3300,6 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
-            },
-            {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
@@ -3106,13 +3322,55 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "world_origin_deconstruct",
+              "fromPort": "output_origin",
+              "toRef": "stair_path",
+              "toPort": "input_start"
+            },
+            {
+              "fromRef": "path_end",
+              "fromPort": "output_point",
+              "toRef": "stair_path",
+              "toPort": "input_end"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
             }
           ]
         },
         {
           "id": "building_elements.stairs.straight_staircase",
           "displayName": "Straight Staircase",
-          "description": "Player Position â†?Path â†?Staircase (straight layout) â†?Preview Geometry, Voxelize â†?Assign Block Type â†?Preview Blocks.",
+          "description": "Player Position â†’Path â†’Staircase (straight layout) â†’Preview Geometry, Voxelize â†’Assign Block Type â†’Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -3149,17 +3407,8 @@
               "state": {}
             },
             {
-              "ref": "point_list",
-              "typeId": "math.list.create_list",
-              "x": 280,
-              "y": 80,
-              "state": {
-                "inputCount": 2
-              }
-            },
-            {
               "ref": "stair_path",
-              "typeId": "geometry.curves.points_to_path",
+              "typeId": "geometry.primitives.sphere_from_diameter",
               "x": 560,
               "y": 80
             },
@@ -3260,26 +3509,8 @@
               "toPort": "input_distance"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "point_list",
-              "toPort": "input_0"
-            },
-            {
-              "fromRef": "path_end",
-              "fromPort": "output_point",
-              "toRef": "point_list",
-              "toPort": "input_1"
-            },
-            {
-              "fromRef": "point_list",
-              "fromPort": "output_list",
-              "toRef": "stair_path",
-              "toPort": "input_points"
-            },
-            {
               "fromRef": "stair_path",
-              "fromPort": "output_path",
+              "fromPort": "output_diameter_line",
               "toRef": "staircase",
               "toPort": "input_path"
             },
@@ -3336,13 +3567,25 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "stair_path",
+              "toPort": "input_start"
+            },
+            {
+              "fromRef": "path_end",
+              "fromPort": "output_point",
+              "toRef": "stair_path",
+              "toPort": "input_end"
             }
           ]
         },
         {
           "id": "building_elements.windows.arched_window",
           "displayName": "Arched Window",
-          "description": "Rectangle + sector profiles â†?extruded opening â†?subtract from frame box â†?Preview Geometry, Voxelize â†?Assign Block Type â†?Preview Blocks.",
+          "description": "Rectangle + sector profiles â†’extruded opening â†’subtract from frame box â†’Preview Geometry, Voxelize â†’Assign Block Type â†’Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -3448,6 +3691,18 @@
               "typeId": "output.preview.preview_blocks",
               "x": 1880,
               "y": 380
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 660.0,
+              "y": 360.0
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 880.0,
+              "y": 360.0
             }
           ],
           "connections": [
@@ -3494,12 +3749,6 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
-            },
-            {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
@@ -3522,13 +3771,43 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
             }
           ]
         },
         {
           "id": "building_elements.windows.modern_window",
           "displayName": "Modern Window",
-          "description": "Facade panel â†?Wall With Openings âˆ?opening volumes â†?frame; Window Array inset glass â†?Combine â†?Preview Geometry and block preview chain.",
+          "description": "Facade panel â†’Wall With Openings âˆ’opening volumes â†’frame; Window Array inset glass â†’Combine â†’Preview Geometry and block preview chain.",
           "kind": "composite",
           "nodes": [
             {
@@ -3676,6 +3955,18 @@
               "typeId": "output.preview.preview_blocks",
               "x": 2120,
               "y": 320
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 920.0,
+              "y": 280.0
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 1140.0,
+              "y": 280.0
             }
           ],
           "connections": [
@@ -3800,12 +4091,6 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
-            },
-            {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
@@ -3828,6 +4113,36 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
             }
           ]
         }
@@ -3840,7 +4155,7 @@
         {
           "id": "decorative.fountain_circular",
           "displayName": "Circular Fountain",
-          "description": "Outer basin âˆ?inner hollow + tier + center spout with explicit dimensions â†?Preview Geometry and block preview chain.",
+          "description": "Outer basin âˆ’inner hollow + tier + center spout with explicit dimensions â†’Preview Geometry and block preview chain.",
           "kind": "composite",
           "nodes": [
             {
@@ -3953,6 +4268,18 @@
               "typeId": "output.preview.preview_blocks",
               "x": 0,
               "y": 0
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 380.0,
+              "y": 420.0
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 600.0,
+              "y": 420.0
             }
           ],
           "connections": [
@@ -3993,12 +4320,6 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
-            },
-            {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
@@ -4021,13 +4342,43 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
             }
           ]
         },
         {
           "id": "decorative.gazebo",
           "displayName": "Garden Gazebo",
-          "description": "Floor slab + Polar Array columns + Roof Base on host volume â†?Preview Geometry and block preview chain.",
+          "description": "Floor slab + Polar Array columns + Roof Base on host volume â†’Preview Geometry and block preview chain.",
           "kind": "composite",
           "nodes": [
             {
@@ -4167,6 +4518,18 @@
               "typeId": "output.preview.preview_blocks",
               "x": 0,
               "y": 0
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 620.0,
+              "y": 280.0
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 840.0,
+              "y": 280.0
             }
           ],
           "connections": [
@@ -4243,12 +4606,6 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
-            },
-            {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
@@ -4271,6 +4628,36 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
             }
           ]
         }
@@ -4283,7 +4670,7 @@
         {
           "id": "quickstart.basic_box",
           "displayName": "Basic Box",
-          "description": "Player Position â†?Box â†?Preview Geometry, and Voxelize â†?Assign Block Type â†?Preview Blocks. Canonical NodeCraft v1 quickstart chain.",
+          "description": "Player Position â†’Box â†’Preview Geometry, and Voxelize â†’Assign Block Type â†’Preview Blocks. Canonical NodeCraft v1 quickstart chain.",
           "kind": "composite",
           "nodes": [
             {
@@ -4364,7 +4751,7 @@
         {
           "id": "quickstart.basic_sphere",
           "displayName": "Basic Sphere",
-          "description": "Player Position â†?Sphere â†?Preview Geometry, and Voxelize â†?Assign Block Type â†?Preview Blocks.",
+          "description": "Player Position â†’Sphere â†’Preview Geometry, and Voxelize â†’Assign Block Type â†’Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -4443,7 +4830,7 @@
         {
           "id": "quickstart.garden_wall",
           "displayName": "Garden Wall with Gate",
-          "description": "Wall Box âˆ?Gate Cutter â†?Move to player â†?Preview Geometry, and Voxelize â†?Assign Block Type â†?Preview Blocks.",
+          "description": "Wall Box âˆ’Gate Cutter â†’Move to player â†’Preview Geometry, and Voxelize â†’Assign Block Type â†’Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -4515,6 +4902,18 @@
               "typeId": "output.preview.preview_blocks",
               "x": 1420,
               "y": 320
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 160.0,
+              "y": 280.0
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 380.0,
+              "y": 280.0
             }
           ],
           "connections": [
@@ -4535,12 +4934,6 @@
               "fromPort": "output_geometry",
               "toRef": "move_to_pos",
               "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
             },
             {
               "fromRef": "move_to_pos",
@@ -4565,13 +4958,43 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
             }
           ]
         },
         {
           "id": "quickstart.simple_tower",
           "displayName": "Simple Tower",
-          "description": "Outer âˆ?Inner Cylinder â†?Move to player â†?Preview Geometry, and Voxelize â†?Assign Block Type â†?Preview Blocks.",
+          "description": "Outer âˆ’Inner Cylinder â†’Move to player â†’Preview Geometry, and Voxelize â†’Assign Block Type â†’Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -4645,6 +5068,18 @@
               "typeId": "output.preview.preview_blocks",
               "x": 1420,
               "y": 320
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 160.0,
+              "y": 280.0
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 380.0,
+              "y": 280.0
             }
           ],
           "connections": [
@@ -4665,12 +5100,6 @@
               "fromPort": "output_geometry",
               "toRef": "move_to_pos",
               "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
             },
             {
               "fromRef": "move_to_pos",
@@ -4695,6 +5124,36 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
             }
           ]
         }
@@ -4707,7 +5166,7 @@
         {
           "id": "styles.fantasy.wizard_tower",
           "displayName": "Wizard Tower",
-          "description": "Hollow cylinder shell + Cone roof + balcony ring with explicit dimensions â†?Preview Geometry and block preview chain.",
+          "description": "Hollow cylinder shell + Cone roof + balcony ring with explicit dimensions â†’Preview Geometry and block preview chain.",
           "kind": "composite",
           "nodes": [
             {
@@ -4841,6 +5300,18 @@
               "typeId": "output.preview.preview_blocks",
               "x": 0,
               "y": 0
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 380.0,
+              "y": 520.0
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 600.0,
+              "y": 520.0
             }
           ],
           "connections": [
@@ -4893,12 +5364,6 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
-            },
-            {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
@@ -4921,13 +5386,43 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
             }
           ]
         },
         {
           "id": "styles.medieval.castle_keep",
           "displayName": "Castle Keep",
-          "description": "Keep body + Column Grid corner towers on footprint (not 4 duplicate boxes) â†?Preview Geometry and block preview chain.",
+          "description": "Keep body + Column Grid corner towers on footprint (not 4 duplicate boxes) â†’Preview Geometry and block preview chain.",
           "kind": "composite",
           "nodes": [
             {
@@ -5047,6 +5542,18 @@
               "typeId": "output.preview.preview_blocks",
               "x": 0,
               "y": 0
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 640.0,
+              "y": 280.0
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 860.0,
+              "y": 280.0
             }
           ],
           "connections": [
@@ -5105,12 +5612,6 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
-            },
-            {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
@@ -5133,13 +5634,43 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
             }
           ]
         },
         {
           "id": "styles.modern.glass_box_building",
           "displayName": "Modern Glass Box Building",
-          "description": "Glass shell âˆ?inner void; separate frame columns; dual Assign Block Type â†?Merge Placements â†?Preview Blocks (geometry semantics preserved).",
+          "description": "Glass shell âˆ’inner void; separate frame columns; dual Assign Block Type â†’Merge Placements â†’Preview Blocks (geometry semantics preserved).",
           "kind": "composite",
           "nodes": [
             {
@@ -5329,6 +5860,42 @@
               "typeId": "output.preview.preview_blocks",
               "x": 2100,
               "y": 480
+            },
+            {
+              "ref": "move_frame_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 640.0,
+              "y": 680.0
+            },
+            {
+              "ref": "move_frame_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 860.0,
+              "y": 680.0
+            },
+            {
+              "ref": "move_glass_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 640.0,
+              "y": 520.0
+            },
+            {
+              "ref": "move_glass_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 860.0,
+              "y": 520.0
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 640.0,
+              "y": 360.0
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 860.0,
+              "y": 360.0
             }
           ],
           "connections": [
@@ -5405,12 +5972,6 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
-            },
-            {
               "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
@@ -5427,18 +5988,6 @@
               "fromPort": "output_geometry",
               "toRef": "move_frame",
               "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_glass",
-              "toPort": "input_translation"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_frame",
-              "toPort": "input_translation"
             },
             {
               "fromRef": "move_glass",
@@ -5493,6 +6042,96 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_frame_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_frame_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_frame_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_frame_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_frame_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_frame_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_frame_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_frame_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_frame",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_glass_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_glass_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_glass_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_glass_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_glass_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_glass_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_glass_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_glass_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_glass",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
             }
           ]
         }
