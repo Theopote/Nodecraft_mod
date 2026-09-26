@@ -4106,7 +4106,7 @@
             },
             {
               "ref": "columns",
-              "typeId": "pattern.radial.polar_array_geometry",
+              "typeId": "pattern.radial.polar_array",
               "x": 560,
               "y": 480,
               "state": {

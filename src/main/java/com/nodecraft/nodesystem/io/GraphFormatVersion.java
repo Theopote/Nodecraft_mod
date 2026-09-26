@@ -266,8 +266,14 @@ public final class GraphFormatVersion {
      */
     public static final int V42 = 42;
 
+    /**
+     * Pattern Radial v1: three canonical radial nodes; geometry-first Polar Array;
+     * Spiral/Phyllotaxis layout producers emit POINT_LIST + VECTOR_LIST + FRAME_LIST.
+     */
+    public static final int V43 = 43;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V42;
+    public static final int CURRENT = V43;
 
     private GraphFormatVersion() {
     }

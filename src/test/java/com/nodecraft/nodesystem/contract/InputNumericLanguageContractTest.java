@@ -50,7 +50,7 @@ class InputNumericLanguageContractTest {
         assertEquals(34, GraphFormatVersion.V34);
         assertEquals(35, GraphFormatVersion.V35);
         assertEquals(36, GraphFormatVersion.V36);
-        assertEquals(GraphFormatVersion.V42, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V43, GraphFormatVersion.CURRENT);
     }
 
     @Test

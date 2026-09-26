@@ -3,245 +3,195 @@ package com.nodecraft.nodesystem.nodes.pattern.radial;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
+import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GenerationLimits;
-
-import net.minecraft.util.math.BlockPos;
+import com.nodecraft.nodesystem.util.GeometryTransform;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.AxisAngle4d;
-import org.joml.Matrix4d;
+import org.joml.Matrix3d;
 import org.joml.Quaterniond;
 import org.joml.Vector3d;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
-/**
- * Polar Array 节点: 将Coordinate列表绕中心点重复旋转
- */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "pattern.radial.polar_array",
     displayName = "Polar Array",
-    description = "将坐标列表绕中心点重复旋转排列",
+    description = "Creates repeated geometry copies around a center point and axis",
     category = "pattern.radial",
     order = 0
 )
 public class PolarArrayNode extends BaseNode {
 
-    // --- 节点属性 ---
-    private boolean includeOriginal = true; // 默认包含原始坐标
+    private static final double ANGLE_EPS = 1.0e-9d;
 
-    // --- 输入端口 IDs ---
-    private static final String INPUT_COORDINATES_ID = "input_coordinates";
+    @NodeProperty(
+        displayName = "Include End",
+        category = "Array",
+        order = 1,
+        description = "When true and Count >= 2, the last instance sits at Total Angle. Ignored for exact full-circle angles (multiple of 360°) so the start is not duplicated."
+    )
+    private boolean includeEnd = false;
+
+    private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_AXIS_ID = "input_axis";
     private static final String INPUT_COUNT_ID = "input_count";
     private static final String INPUT_TOTAL_ANGLE_ID = "input_total_angle";
 
-    // --- 输出端口 IDs ---
-    private static final String OUTPUT_ARRAY_COORDINATES_ID = "output_array_coordinates";
-    private static final String OUTPUT_ARRAY_TREE_ID = "output_array_tree";
+    private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
+    private static final String OUTPUT_GEOMETRIES_ID = "output_geometries";
+    private static final String OUTPUT_GEOMETRY_TREE_ID = "output_geometry_tree";
+    private static final String OUTPUT_COUNT_ID = "output_count";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
-    // --- 构造函数 ---
     public PolarArrayNode() {
         super(UUID.randomUUID(), "pattern.radial.polar_array");
-        
-        // 创建并添加输入端口
-        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", 
-                "The coordinates to rotate in a circular pattern", NodeDataType.BLOCK_LIST, this));
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", 
-                "Center point of rotation", NodeDataType.BLOCK_POS, this));
-        addInputPort(new BasePort(INPUT_AXIS_ID, "Axis", 
-                "Axis of rotation", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", 
-                "Total number of rotated instance groups (including the original at 0°)", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_TOTAL_ANGLE_ID, "Total Angle", 
-                "Total angle span in degrees. Full circles never emit a duplicate at 360°.", NodeDataType.DOUBLE, this));
 
-        // 创建并添加输出端口
-        addOutputPort(new BasePort(OUTPUT_ARRAY_COORDINATES_ID, "Array Coordinates", 
-                "The resulting polar array of coordinates", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_ARRAY_TREE_ID, "Array Tree",
-                "One branch per emitted coordinate copy", NodeDataType.DATA_TREE, this));
+        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to copy", NodeDataType.GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Array center point", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_AXIS_ID, "Axis", "Rotation axis vector", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Total number of emitted instances around the center", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_TOTAL_ANGLE_ID, "Total Angle", "Total angle span in degrees. Full circles (multiple of 360°) never emit a duplicate at 360°.", NodeDataType.DOUBLE, this));
+
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing all copies", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRIES_ID, "Geometries", "List of copied geometry values", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_TREE_ID, "Geometry Tree", "One branch per emitted geometry copy", NodeDataType.DATA_TREE, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of emitted geometry copies", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the array was generated", NodeDataType.BOOLEAN, this));
     }
 
-    // 添加 getDescription 方法
     @Override
     public String getDescription() {
-        return "Creates a circular pattern by rotating coordinates around a center point";
+        return "Creates repeated geometry copies around a center point and axis";
     }
 
-    // 添加 getDisplayName 方法
-    @Override
-    public String getDisplayName() {
-        return "Polar Array";
-    }
-
-    // --- 核心逻辑 ---
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        // 获取输入值
-        Object coordinatesObj = inputValues.get(INPUT_COORDINATES_ID);
-        Object centerObj = inputValues.get(INPUT_CENTER_ID);
-        Object axisObj = inputValues.get(INPUT_AXIS_ID);
-        Object countObj = inputValues.get(INPUT_COUNT_ID);
-        Object totalAngleObj = inputValues.get(INPUT_TOTAL_ANGLE_ID);
-        
-        // 默认空的坐标列表
-        BlockPosList result = new BlockPosList();
-        List<DataTreeData.Branch> branches = new ArrayList<>();
-        
-        // 检查输入是否合法
-        if (coordinatesObj instanceof BlockPosList coordinates &&
-                centerObj instanceof BlockPos centerPos &&
-                axisObj instanceof Vector3d axis &&
-            countObj instanceof Number && 
-            totalAngleObj instanceof Number) {
-
-            int count = ((Number) countObj).intValue();
-            double totalAngleDegrees = ((Number) totalAngleObj).doubleValue();
-            
-            // 如果输入坐标列表为空，直接返回空结果
-            if (coordinates.isEmpty()) {
-                outputValues.put(OUTPUT_ARRAY_COORDINATES_ID, result);
-                outputValues.put(OUTPUT_ARRAY_TREE_ID, DataTreeData.empty());
-                return;
-            }
-            
-            // 确保旋转轴不是零向量
-            if (axis.length() < 0.0001) {
-                axis = new Vector3d(0, 1, 0); // 默认使用Y轴
-            } else {
-                axis.normalize(); // 标准化旋转轴
-            }
-            
-            // 确保计数为正数 — Count = total emitted instance groups (including original at 0°)
-            count = GenerationLimits.clampRepeatCount(Math.max(1, count), coordinates.size());
-            
-            // 创建极坐标阵列（full-circle never emits a duplicate at 360°）
-            createPolarArray(coordinates, centerPos, axis, count, totalAngleDegrees, result, branches);
+        Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
+        if (!(geometryObj instanceof GeometryData geometry)) {
+            writeResult(List.of(), false);
+            return;
         }
-        
-        // 设置输出值
-        outputValues.put(OUTPUT_ARRAY_COORDINATES_ID, result);
-        outputValues.put(OUTPUT_ARRAY_TREE_ID, new DataTreeData(branches));
-    }
-    
-    /**
-     * 创建极坐标阵列. Count = total instance groups at angles {@code totalAngle * i / count}.
-     */
-    private void createPolarArray(BlockPosList sourceCoords, BlockPos center, Vector3d axis, 
-                               int count, double totalAngleDegrees,
-                               BlockPosList result, List<DataTreeData.Branch> branches) {
-        Vector3d centerVec = new Vector3d(center.getX(), center.getY(), center.getZ());
-        
+
+        Vector3d center = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_CENTER_ID));
+        if (center == null) {
+            center = new Vector3d();
+        }
+        Vector3d axis = SpatialValueResolver.resolveVector(inputValues.get(INPUT_AXIS_ID));
+        if (axis == null) {
+            axis = new Vector3d(0.0d, 1.0d, 0.0d);
+        }
+        int count = GenerationLimits.clampGeometryInstanceCount(getInputInteger(INPUT_COUNT_ID, 1));
+        double totalAngle = getInputDouble(INPUT_TOTAL_ANGLE_ID, 360.0d);
+        if (count == 0 || !isFinite(center) || !isFinite(axis) || axis.lengthSquared() <= 1.0e-12d || !Double.isFinite(totalAngle)) {
+            writeResult(List.of(), false);
+            return;
+        }
+
+        axis.normalize();
+        boolean fullCircle = isFullCircle(totalAngle);
+        boolean useInclusiveEnd = includeEnd && !fullCircle && count >= 2;
+        List<GeometryData> copies = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            double angle = Math.toRadians(totalAngleDegrees * i / (double) count);
-            List<BlockPos> copyPositions = new ArrayList<>();
-            
-            if (Math.abs(angle) <= 1.0e-12d) {
-                result.addAll(sourceCoords.getPositions());
-                addCopyBranch(branches, sourceCoords.getPositions());
+            double degrees = useInclusiveEnd
+                ? totalAngle * i / (double) (count - 1)
+                : totalAngle * i / (double) count;
+            if (Math.abs(degrees) <= ANGLE_EPS) {
+                copies.add(geometry);
                 continue;
             }
-            
-            Matrix4d rotationMatrix = createRotationMatrix(centerVec, axis, angle);
-            
-            for (BlockPos pos : sourceCoords) {
-                Vector3d posVec = new Vector3d(pos.getX(), pos.getY(), pos.getZ());
-                Vector3d rotatedVec = transformPoint(posVec, rotationMatrix);
-                
-                BlockPos rotatedPos = new BlockPos(
-                    (int) Math.round(rotatedVec.x),
-                    (int) Math.round(rotatedVec.y),
-                    (int) Math.round(rotatedVec.z)
-                );
-                
-                result.add(rotatedPos);
-                copyPositions.add(rotatedPos);
+            Quaterniond quaternion = new Quaterniond(new AxisAngle4d(Math.toRadians(degrees), axis.x, axis.y, axis.z));
+            Matrix3d rotation = new Matrix3d().set(quaternion);
+            GeometryData copy = GeometryTransform.transformAround(geometry, center, rotation, 1.0d);
+            if (copy != null) {
+                copies.add(copy);
             }
-            addCopyBranch(branches, copyPositions);
+        }
+
+        writeResult(copies, !copies.isEmpty());
+    }
+
+    static boolean isFullCircle(double totalAngleDegrees) {
+        if (!Double.isFinite(totalAngleDegrees) || Math.abs(totalAngleDegrees) <= ANGLE_EPS) {
+            return false;
+        }
+        double mod = Math.abs(totalAngleDegrees) % 360.0d;
+        return mod <= ANGLE_EPS || Math.abs(mod - 360.0d) <= ANGLE_EPS;
+    }
+
+    public boolean isIncludeEnd() {
+        return includeEnd;
+    }
+
+    public void setIncludeEnd(boolean includeEnd) {
+        if (this.includeEnd != includeEnd) {
+            this.includeEnd = includeEnd;
+            markDirty();
         }
     }
 
-    private void addCopyBranch(List<DataTreeData.Branch> branches, List<BlockPos> positions) {
-        branches.add(new DataTreeData.Branch(List.of(branches.size()), new ArrayList<>(positions)));
-    }
-    
-    /**
-     * 创建绕轴旋转的变换矩阵
-     * @param center 旋转中心
-     * @param axis 旋转轴
-     * @param angle 旋转角度（弧度）
-     * @return 变换矩阵
-     */
-    private Matrix4d createRotationMatrix(Vector3d center, Vector3d axis, double angle) {
-        // 创建基于轴角的旋转四元数
-        Quaterniond rotation = new Quaterniond(new AxisAngle4d(angle, axis.x, axis.y, axis.z));
-        
-        // 创建变换矩阵
-        Matrix4d matrix = new Matrix4d();
-        
-        // 构建变换矩阵：平移到原点 -> 旋转 -> 平移回去
-        matrix.translate(-center.x, -center.y, -center.z)  // 平移到原点
-              .rotate(rotation)                           // 应用旋转
-              .translate(center.x, center.y, center.z);   // 平移回原位置
-        
-        return matrix;
-    }
-    
-    /**
-     * 使用变换矩阵变换点
-     * @param point 要变换的点
-     * @param matrix 变换矩阵
-     * @return 变换后的点
-     */
-    private Vector3d transformPoint(Vector3d point, Matrix4d matrix) {
-        // 创建点的副本
-        Vector3d result = new Vector3d(point);
-        
-        // 应用变换
-        result.mulPosition(matrix);
-        
-        return result;
-    }
-    
-    // --- Getters/Setters for Properties ---
-    
-    public boolean isIncludeOriginal() {
-        return includeOriginal;
-    }
-    
-    public void setIncludeOriginal(boolean includeOriginal) {
-        this.includeOriginal = includeOriginal;
-        markDirty();
-    }
-    
-    // --- 节点状态序列化 ---
-    
     @Override
     public Object getNodeState() {
-        java.util.Map<String, Object> state = new java.util.HashMap<>();
-        state.put("includeOriginal", includeOriginal);
-        return state;
+        return Map.of("includeEnd", includeEnd);
     }
-    
+
     @Override
     public void setNodeState(Object state) {
-        if (state instanceof java.util.Map) {
-            java.util.Map<?, ?> stateMap = (java.util.Map<?, ?>) state;
-
-            if (stateMap.containsKey("includeOriginal")) {
-                Object includeOriginalObj = stateMap.get("includeOriginal");
-                if (includeOriginalObj instanceof Boolean) {
-                    setIncludeOriginal((Boolean) includeOriginalObj);
-                }
-            }
+        if (!(state instanceof Map<?, ?> map)) {
+            return;
+        }
+        if (map.get("includeEnd") instanceof Boolean value) {
+            setIncludeEnd(value);
+        } else if (map.get("includeOriginal") instanceof Boolean ignored) {
+            setIncludeEnd(false);
         }
     }
-} 
+
+    private double getInputDouble(String portId, double fallback) {
+        Object value = inputValues.get(portId);
+        return value instanceof Number number ? number.doubleValue() : fallback;
+    }
+
+    private int getInputInteger(String portId, int fallback) {
+        Object value = inputValues.get(portId);
+        return value instanceof Integer i ? i : fallback;
+    }
+
+    private boolean isFinite(Vector3d vector) {
+        return Double.isFinite(vector.x) && Double.isFinite(vector.y) && Double.isFinite(vector.z);
+    }
+
+    private void writeResult(List<GeometryData> copies, boolean valid) {
+        outputValues.put(OUTPUT_GEOMETRIES_ID, List.copyOf(copies));
+        outputValues.put(OUTPUT_GEOMETRY_TREE_ID, buildCopyTree(copies));
+        if (copies.isEmpty()) {
+            outputValues.put(OUTPUT_GEOMETRY_ID, null);
+        } else if (copies.size() == 1) {
+            outputValues.put(OUTPUT_GEOMETRY_ID, copies.getFirst());
+        } else {
+            outputValues.put(OUTPUT_GEOMETRY_ID, new CompositeGeometryData(copies));
+        }
+        outputValues.put(OUTPUT_COUNT_ID, copies.size());
+        outputValues.put(OUTPUT_VALID_ID, valid);
+    }
+
+    private DataTreeData buildCopyTree(List<GeometryData> copies) {
+        List<DataTreeData.Branch> branches = new ArrayList<>(copies.size());
+        for (int i = 0; i < copies.size(); i++) {
+            branches.add(new DataTreeData.Branch(List.of(i), List.of(copies.get(i))));
+        }
+        return new DataTreeData(branches);
+    }
+}

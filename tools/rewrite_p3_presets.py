@@ -355,7 +355,7 @@ P3_PRESETS: dict[str, dict] = {
             }),
             node("column_count", "input.numeric.integer", 280, 480, {"value": 8}),
             node("column_span", "input.numeric.float", 280, 620, {"value": 360.0}),
-            node("columns", "pattern.radial.polar_array_geometry", 560, 480, {"includeEnd": False}),
+            node("columns", "pattern.radial.polar_array", 560, 480, {"includeEnd": False}),
             node("roof", "geometry.architectural_primitives.roof_base", 520, 320),
             node("roof_type", "input.values.text_input", 280, 760, {"text": "gable", "multiline": False}),
             node("combine", "geometry.combine.geometry", 800, 280, {"inputCount": 3}),

@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **536**
+- Total nodes: **535**
 - Total categories: **59**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -47,7 +47,7 @@
 | `pattern.grid` | 5 |
 | `pattern.linear` | 4 |
 | `pattern.lsystem` | 2 |
-| `pattern.radial` | 4 |
+| `pattern.radial` | 3 |
 | `pattern.surface_volume_distribution` | 9 |
 | `pattern.voronoi_3d` | 1 |
 | `reference.frames` | 8 |
@@ -603,14 +603,13 @@
 | L-System Expand String | `pattern.lsystem.expand_string` | Expands an L-system axiom using production rules for a fixed number of iterations (longest symbol match; probabilities as weights) | `LSystemExpandStringNode` |
 | L-System Turtle 3D | `pattern.lsystem.turtle_3d` | Traces a 3D polyline from L-system commands: F/f forward, +- yaw, & and ^ pitch, / and \ roll, [] stack (local turns; angle in degrees) | `LSystemTurtle3DNode` |
 
-## pattern.radial (4)
+## pattern.radial (3)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Polar Array | `pattern.radial.polar_array` | 将坐标列表绕中心点重复旋转排列 | `PolarArrayNode` |
-| Spiral Array | `pattern.radial.spiral_array` | Repeats coordinates along a spiral path around a center point | `SpiralArrayNode` |
-| Phyllotaxis | `pattern.radial.phyllotaxis` | Repeats coordinates using sunflower-like golden-angle distribution. | `PhyllotaxisNode` |
-| Polar Array Geometry | `pattern.radial.polar_array_geometry` | Creates repeated geometry copies around a center point and axis | `PolarArrayGeometryNode` |
+| Polar Array | `pattern.radial.polar_array` | Creates repeated geometry copies around a center point and axis | `PolarArrayNode` |
+| Spiral | `pattern.radial.spiral` | Generates spiral anchor points with tangents and placement frames | `SpiralNode` |
+| Phyllotaxis | `pattern.radial.phyllotaxis` | Generates golden-angle phyllotaxis anchor points with tangents and placement frames | `PhyllotaxisNode` |
 
 ## pattern.surface_volume_distribution (9)
 

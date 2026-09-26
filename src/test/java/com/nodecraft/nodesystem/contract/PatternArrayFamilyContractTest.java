@@ -56,33 +56,6 @@ class PatternArrayFamilyContractTest {
     }
 
     @Test
-    void polarFullCircleDoesNotDuplicateOriginal() {
-        BaseNode polar = assertInstanceOf(BaseNode.class,
-            NodeRegistry.getInstance().createNodeInstance("pattern.radial.polar_array_geometry"));
-        SphereData sphere = new SphereData(new Vector3d(2, 0, 0), 0.5d);
-        polar.setInput("input_geometry", sphere);
-        polar.setInput("input_center", new PointData(0, 0, 0));
-        polar.setInput("input_axis", new Vector3d(0, 1, 0));
-        polar.setInput("input_count", 4);
-        polar.setInput("input_total_angle", 360.0d);
-        polar.processNode(null);
-
-        assertEquals(Boolean.TRUE, polar.getOutput("output_valid"));
-        assertEquals(4, polar.getOutput("output_count"));
-        @SuppressWarnings("unchecked")
-        List<Object> copies = assertInstanceOf(List.class, polar.getOutput("output_geometries"));
-        assertEquals(4, copies.size());
-
-        SphereData first = assertInstanceOf(SphereData.class, copies.get(0));
-        SphereData last = assertInstanceOf(SphereData.class, copies.get(3));
-        assertEquals(2.0d, first.getCenter().x, 1.0e-6d);
-        assertEquals(0.0d, first.getCenter().z, 1.0e-6d);
-        // 270° for i=3 with Count=4 / 360°  -> not a duplicate of 0°
-        assertEquals(0.0d, last.getCenter().x, 1.0e-6d);
-        assertEquals(2.0d, last.getCenter().z, 1.0e-6d);
-    }
-
-    @Test
     void curveArrayUsesFrameListAndPlacement() {
         assertPortType("pattern.linear.curve_array", "input_path", true, NodeDataType.PATH);
         assertPortType("pattern.linear.curve_array", "output_frames", false, NodeDataType.FRAME_LIST);

@@ -19,24 +19,21 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "pattern.radial.phyllotaxis",
-    displayName = "Phyllotaxis",
-    description = "Generates golden-angle phyllotaxis anchor points with tangents and placement frames",
+    id = "pattern.radial.spiral",
+    displayName = "Spiral",
+    description = "Generates spiral anchor points with tangents and placement frames",
     category = "pattern.radial",
-    order = 2
+    order = 1
 )
-public class PhyllotaxisNode extends BaseNode {
-
-    private static final double DEFAULT_ANGLE_STEP_DEGREES = 137.507764d;
-    private static final double DEFAULT_RADIAL_EXPONENT = 0.5d;
+public class SpiralNode extends BaseNode {
 
     private static final String INPUT_ORIGIN_ID = "input_origin";
+    private static final String INPUT_TURNS_ID = "input_turns";
     private static final String INPUT_COUNT_ID = "input_count";
-    private static final String INPUT_RADIUS_SCALE_ID = "input_radius_scale";
-    private static final String INPUT_ANGLE_STEP_ID = "input_angle_step";
-    private static final String INPUT_START_ANGLE_ID = "input_start_angle";
+    private static final String INPUT_START_RADIUS_ID = "input_start_radius";
+    private static final String INPUT_RADIUS_STEP_ID = "input_radius_step";
     private static final String INPUT_HEIGHT_STEP_ID = "input_height_step";
-    private static final String INPUT_RADIAL_EXPONENT_ID = "input_radial_exponent";
+    private static final String INPUT_START_ANGLE_ID = "input_start_angle";
 
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_TANGENTS_ID = "output_tangents";
@@ -44,26 +41,26 @@ public class PhyllotaxisNode extends BaseNode {
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
-    public PhyllotaxisNode() {
-        super(UUID.randomUUID(), "pattern.radial.phyllotaxis");
-        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Distribution origin anchor point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Number of phyllotaxis anchors", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_RADIUS_SCALE_ID, "Radius Scale", "Base radial scale factor", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_ANGLE_STEP_ID, "Angle Step", "Angle step in degrees (137.507764 for golden angle)", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_START_ANGLE_ID, "Start Angle", "Initial angle in degrees", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_HEIGHT_STEP_ID, "Height Step", "Per-anchor vertical offset", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_RADIAL_EXPONENT_ID, "Radial Exponent", "Exponent in radius = scale * index^exponent", NodeDataType.DOUBLE, this));
+    public SpiralNode() {
+        super(UUID.randomUUID(), "pattern.radial.spiral");
+        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Spiral origin anchor point", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_TURNS_ID, "Turns", "Number of spiral turns", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Number of spiral anchors", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_START_RADIUS_ID, "Start Radius", "Initial spiral radius", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_RADIUS_STEP_ID, "Radius Step", "Radius change per anchor", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_HEIGHT_STEP_ID, "Height Step", "Vertical step per anchor", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_START_ANGLE_ID, "Start Angle", "Initial angle offset in degrees", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Phyllotaxis anchor points", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Spiral anchor points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_TANGENTS_ID, "Tangents", "Unit tangent at each anchor", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Placement frame at each anchor", NodeDataType.FRAME_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of emitted anchors", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a phyllotaxis layout was generated", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a spiral layout was generated", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Generates golden-angle phyllotaxis anchor points with tangents and placement frames";
+        return "Generates spiral anchor points with tangents and placement frames";
     }
 
     @Override
@@ -77,22 +74,22 @@ public class PhyllotaxisNode extends BaseNode {
             return;
         }
 
-        int requestedCount = getInputInteger(INPUT_COUNT_ID, 256);
+        int requestedCount = getInputInteger(INPUT_COUNT_ID, 24);
         if (requestedCount <= 0) {
             writeEmpty();
             return;
         }
 
-        double radiusScale = getInputDouble(INPUT_RADIUS_SCALE_ID, 0.75d);
-        double angleStepRadians = Math.toRadians(getInputDouble(INPUT_ANGLE_STEP_ID, DEFAULT_ANGLE_STEP_DEGREES));
+        double turns = getInputDouble(INPUT_TURNS_ID, 2.0d);
+        double startRadius = getInputDouble(INPUT_START_RADIUS_ID, 2.0d);
+        double radiusStep = getInputDouble(INPUT_RADIUS_STEP_ID, 0.15d);
+        double heightStep = getInputDouble(INPUT_HEIGHT_STEP_ID, 0.25d);
         double startAngleRadians = Math.toRadians(getInputDouble(INPUT_START_ANGLE_ID, 0.0d));
-        double heightStep = getInputDouble(INPUT_HEIGHT_STEP_ID, 0.0d);
-        double radialExponent = getInputDouble(INPUT_RADIAL_EXPONENT_ID, DEFAULT_RADIAL_EXPONENT);
-        if (!Double.isFinite(radiusScale)
-                || !Double.isFinite(angleStepRadians)
-                || !Double.isFinite(startAngleRadians)
+        if (!Double.isFinite(turns)
+                || !Double.isFinite(startRadius)
+                || !Double.isFinite(radiusStep)
                 || !Double.isFinite(heightStep)
-                || !Double.isFinite(radialExponent)) {
+                || !Double.isFinite(startAngleRadians)) {
             writeEmpty();
             return;
         }
@@ -103,15 +100,17 @@ public class PhyllotaxisNode extends BaseNode {
             return;
         }
 
+        double invSteps = count == 1 ? 1.0d : 1.0d / (count - 1);
+        double angleStepPerIndex = turns * Math.PI * 2.0d * invSteps;
+
         List<Vector3d> points = new ArrayList<>(count);
+        List<Vector3d> tangents = new ArrayList<>(count);
+        List<FrameData> frames = new ArrayList<>(count);
 
         for (int i = 0; i < count; i++) {
-            double angle = startAngleRadians + angleStepRadians * i;
-            double radius = radiusScale * Math.pow(i, radialExponent);
-            if (!Double.isFinite(radius)) {
-                writeEmpty();
-                return;
-            }
+            double t = count == 1 ? 0.0d : (double) i * invSteps;
+            double angle = turns * Math.PI * 2.0d * t + startAngleRadians;
+            double radius = startRadius + radiusStep * i;
 
             double cosA = Math.cos(angle);
             double sinA = Math.sin(angle);
@@ -120,19 +119,19 @@ public class PhyllotaxisNode extends BaseNode {
                 writeEmpty();
                 return;
             }
-            points.add(point);
-        }
 
-        List<Vector3d> tangents = new ArrayList<>(count);
-        List<FrameData> frames = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
-            Vector3d tangent = tangentFromPoints(points, i);
+            double dx = -sinA * radius * angleStepPerIndex + cosA * radiusStep;
+            double dy = heightStep;
+            double dz = cosA * radius * angleStepPerIndex + sinA * radiusStep;
+            Vector3d tangent = RadialFrameUtils.normalizeTangent(new Vector3d(dx, dy, dz));
             if (tangent == null) {
                 writeEmpty();
                 return;
             }
+
+            points.add(point);
             tangents.add(tangent);
-            frames.add(RadialFrameUtils.placementFrame(points.get(i), tangent));
+            frames.add(RadialFrameUtils.placementFrame(point, tangent));
         }
 
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(points));
@@ -140,21 +139,6 @@ public class PhyllotaxisNode extends BaseNode {
         outputValues.put(OUTPUT_FRAMES_ID, List.copyOf(frames));
         outputValues.put(OUTPUT_COUNT_ID, points.size());
         outputValues.put(OUTPUT_VALID_ID, true);
-    }
-
-    private static @Nullable Vector3d tangentFromPoints(List<Vector3d> points, int index) {
-        if (points.size() == 1) {
-            return RadialFrameUtils.normalizeTangent(new Vector3d(1.0d, 0.0d, 0.0d));
-        }
-        Vector3d delta;
-        if (index == 0) {
-            delta = new Vector3d(points.get(1)).sub(points.get(0));
-        } else if (index == points.size() - 1) {
-            delta = new Vector3d(points.get(index)).sub(points.get(index - 1));
-        } else {
-            delta = new Vector3d(points.get(index + 1)).sub(points.get(index - 1));
-        }
-        return RadialFrameUtils.normalizeTangent(delta);
     }
 
     private double getInputDouble(String portId, double fallback) {

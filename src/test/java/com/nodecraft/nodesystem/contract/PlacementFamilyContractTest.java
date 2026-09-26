@@ -56,7 +56,7 @@ class PlacementFamilyContractTest {
         assertPortType("pattern.linear.path_frames", "output_points", false, NodeDataType.POINT_LIST);
         assertPortType("pattern.linear.curve_array", "input_pivot", true, NodeDataType.POINT);
         assertPortType("pattern.linear.curve_array", "output_frames", false, NodeDataType.FRAME_LIST);
-        assertPortType("pattern.radial.polar_array_geometry", "input_center", true, NodeDataType.POINT);
+        assertPortType("pattern.radial.polar_array", "input_center", true, NodeDataType.POINT);
     }
 
     @Test
