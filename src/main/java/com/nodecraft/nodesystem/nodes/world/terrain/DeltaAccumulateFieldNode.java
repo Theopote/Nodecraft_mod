@@ -16,9 +16,11 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "world.terrain.delta_accumulate_field",
     displayName = "Delta Accumulate Field",
-    description = "Applies or reverts delta fields and accumulates them into a combined terrain delta field.",
+    description = "Applies or reverts delta fields and accumulates them into a combined terrain delta field. "
+        + "Delta output stays signed finite (no [-1,1] clamp); height output is clamped to [-1,1]. "
+        + "Validates inputs at process time; lazy samples may propagate NaN to materialize consumers.",
     category = "world.terrain",
-    order = 13
+    order = 12
 )
 public class DeltaAccumulateFieldNode extends BaseNode {
 
@@ -34,6 +36,8 @@ public class DeltaAccumulateFieldNode extends BaseNode {
 
     private static final String OUTPUT_HEIGHT_FIELD_ID = "output_height_field";
     private static final String OUTPUT_DELTA_FIELD_ID = "output_delta_field";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     @NodeProperty(displayName = "Mode", category = "Delta", order = 1)
     private DeltaMode mode = DeltaMode.APPLY;
@@ -49,16 +53,23 @@ public class DeltaAccumulateFieldNode extends BaseNode {
         addInputPort(new BasePort(INPUT_ACCUMULATED_DELTA_FIELD_ID, "Accumulated Delta Field", "Optional existing accumulated delta for chaining", NodeDataType.SCALAR_FIELD, this));
         addInputPort(new BasePort(INPUT_STRENGTH_ID, "Strength", "Delta scaling factor", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_HEIGHT_FIELD_ID, "Height Field", "Base field plus accumulated delta", NodeDataType.SCALAR_FIELD, this));
-        addOutputPort(new BasePort(OUTPUT_DELTA_FIELD_ID, "Delta Field", "Accumulated signed delta field", NodeDataType.SCALAR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_HEIGHT_FIELD_ID, "Height Field", "Base field plus accumulated delta (normalized [-1,1])", NodeDataType.SCALAR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_DELTA_FIELD_ID, "Delta Field", "Accumulated signed delta field (finite, unclamped)", NodeDataType.SCALAR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether delta accumulation was set up", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when delta accumulation setup failed", NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object deltaObj = inputValues.get(INPUT_DELTA_FIELD_ID);
         if (!(deltaObj instanceof ScalarFieldData deltaField)) {
-            outputValues.put(OUTPUT_HEIGHT_FIELD_ID, null);
-            outputValues.put(OUTPUT_DELTA_FIELD_ID, null);
+            publishInvalid("Missing delta field input.");
+            return;
+        }
+
+        Double resolvedStrengthRaw = TerrainNodeUtils.resolveOptionalFiniteDouble(this, INPUT_STRENGTH_ID, strength);
+        if (resolvedStrengthRaw == null) {
+            publishInvalid("Strength must be a finite DOUBLE.");
             return;
         }
 
@@ -70,34 +81,44 @@ public class DeltaAccumulateFieldNode extends BaseNode {
             : null;
 
         DeltaMode resolvedMode = mode == null ? DeltaMode.APPLY : mode;
-        double resolvedStrength = Math.max(0.0d, getInputDouble(INPUT_STRENGTH_ID, strength));
+        double resolvedStrength = Math.max(0.0d, resolvedStrengthRaw);
 
         ScalarFieldData mergedDeltaField = point -> {
-            double incomingDelta = sanitizeFinite(deltaField.sampleScalar(point), 0.0d);
-            double previousDelta = accumulatedDeltaField == null
-                ? 0.0d
-                : sanitizeFinite(accumulatedDeltaField.sampleScalar(point), 0.0d);
+            double incomingDelta = deltaField.sampleScalar(point);
+            if (!Double.isFinite(incomingDelta)) {
+                return Double.NaN;
+            }
+            double previousDelta = 0.0d;
+            if (accumulatedDeltaField != null) {
+                previousDelta = accumulatedDeltaField.sampleScalar(point);
+                if (!Double.isFinite(previousDelta)) {
+                    return Double.NaN;
+                }
+            }
 
             double signedDelta = resolvedMode == DeltaMode.SUBTRACT ? -incomingDelta : incomingDelta;
-            return sanitizeFinite(previousDelta + signedDelta * resolvedStrength, previousDelta);
+            return previousDelta + signedDelta * resolvedStrength;
         };
 
         ScalarFieldData updatedHeightField = point -> {
-            double baseHeight = sanitizeFinite(baseField.sampleScalar(point), 0.0d);
-            double accumulatedDelta = sanitizeFinite(mergedDeltaField.sampleScalar(point), 0.0d);
-            return sanitizeFinite(baseHeight + accumulatedDelta, baseHeight);
+            double baseHeight = baseField.sampleScalar(point);
+            double accumulatedDelta = mergedDeltaField.sampleScalar(point);
+            if (!Double.isFinite(baseHeight) || !Double.isFinite(accumulatedDelta)) {
+                return Double.NaN;
+            }
+            return TerrainNodeUtils.clampNormalizedHeight(baseHeight + accumulatedDelta);
         };
 
         outputValues.put(OUTPUT_HEIGHT_FIELD_ID, updatedHeightField);
         outputValues.put(OUTPUT_DELTA_FIELD_ID, mergedDeltaField);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
-    }
-
-    private double sanitizeFinite(double value, double fallback) {
-        return Double.isFinite(value) ? value : fallback;
+    private void publishInvalid(String error) {
+        outputValues.put(OUTPUT_HEIGHT_FIELD_ID, null);
+        outputValues.put(OUTPUT_DELTA_FIELD_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error);
     }
 }

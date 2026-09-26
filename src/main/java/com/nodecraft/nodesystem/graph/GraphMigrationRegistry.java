@@ -121,6 +121,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V59 -> migrateV59ToV60(graph);
             case GraphFormatVersion.V60 -> migrateV60ToV61(graph);
             case GraphFormatVersion.V61 -> migrateV61ToV62(graph);
+            case GraphFormatVersion.V62 -> migrateV62ToV63(graph);
             default -> graph;
         };
     }
@@ -4470,6 +4471,151 @@ public final class GraphMigrationRegistry {
             }
             return false;
         });
+    }
+
+    /**
+     * Terrain Field v1: cell-center grids, GenerationLimits terrain caps,
+     * Sample POINT_LIST / DOUBLE_LIST, Surface Blocks rename, Hit Limit/Complete,
+     * drop comma-string biome palette property wires.
+     */
+    private static SavedGraph migrateV62ToV63(SavedGraph graph) {
+        applyWorldTerrainV63ToGraph(graph);
+        if (graph.subgraphDefinitions != null) {
+            for (SavedGraph definition : graph.subgraphDefinitions.values()) {
+                if (definition != null) {
+                    applyWorldTerrainV63ToGraph(definition);
+                }
+            }
+        }
+        return graph;
+    }
+
+    private static final String HEIGHTFIELD_TO_BLOCKS_TYPE = "world.terrain.heightfield_to_blocks";
+    private static final String BIOME_FIELD_TO_BLOCKS_TYPE = "world.terrain.biome_field_to_blocks";
+    private static final String SAMPLE_FIELD_ON_REGION_TYPE = "world.terrain.sample_field_on_region";
+    private static final String SCALAR_SLICE_TO_BLOCKS_TYPE = "world.terrain.scalar_field_slice_to_blocks";
+    private static final String BIOME_CLASSIFY_TYPE = "world.terrain.biome_classify";
+
+    private static void applyWorldTerrainV63ToGraph(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                String type = node.typeId.toLowerCase(Locale.ROOT);
+                if (BIOME_FIELD_TO_BLOCKS_TYPE.equals(type)) {
+                    stripTerrainCommaPaletteState(node);
+                }
+                if (HEIGHTFIELD_TO_BLOCKS_TYPE.equals(type)
+                        || BIOME_FIELD_TO_BLOCKS_TYPE.equals(type)
+                        || SCALAR_SLICE_TO_BLOCKS_TYPE.equals(type)) {
+                    stripHiddenTerrainMaterialDefaults(node);
+                }
+            }
+        }
+
+        if (graph.connections == null) {
+            return;
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node != null && node.nodeId != null && node.typeId != null) {
+                    nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+                }
+            }
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String sourcePort = normalizePortId(connection.sourcePortId);
+            if (HEIGHTFIELD_TO_BLOCKS_TYPE.equals(sourceType)
+                    || BIOME_FIELD_TO_BLOCKS_TYPE.equals(sourceType)) {
+                if ("output_surface_points".equals(sourcePort)) {
+                    connection.sourcePortId = "output_surface_blocks";
+                }
+            }
+            if (SAMPLE_FIELD_ON_REGION_TYPE.equals(sourceType)) {
+                if ("output_was_clamped".equals(sourcePort)) {
+                    connection.sourcePortId = "output_hit_limit";
+                }
+                if ("output_points".equals(sourcePort)) {
+                    connection.sourcePortId = "output_sample_points";
+                }
+                if ("output_values".equals(sourcePort)) {
+                    connection.sourcePortId = "output_sample_values";
+                }
+            }
+            if (BIOME_CLASSIFY_TYPE.equals(sourceType) && "output_legend".equals(sourcePort)) {
+                connection.sourcePortId = "output_biome_labels";
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String targetPort = normalizePortId(connection.targetPortId);
+            // Legacy comma-string palette property port removed; drop wires into it.
+            return BIOME_FIELD_TO_BLOCKS_TYPE.equals(targetType)
+                    && ("input_palette_csv".equals(targetPort) || "input_palette_string".equals(targetPort));
+        });
+    }
+
+    private static void stripTerrainCommaPaletteState(SavedNode node) {
+        if (!(node.state instanceof Map<?, ?> state)) {
+            return;
+        }
+        Map<String, Object> cleaned = new HashMap<>();
+        for (Map.Entry<?, ?> entry : state.entrySet()) {
+            if (!(entry.getKey() instanceof String key)) {
+                continue;
+            }
+            String lower = key.toLowerCase(Locale.ROOT);
+            if ("palette".equals(lower)
+                    || "palettestring".equals(lower)
+                    || "blockpalettecsv".equals(lower)
+                    || "biomespalette".equals(lower)) {
+                // Drop legacy comma-string palette; rebuild via BLOCK_PALETTE port.
+                continue;
+            }
+            cleaned.put(key, entry.getValue());
+        }
+        node.state = cleaned;
+    }
+
+    private static void stripHiddenTerrainMaterialDefaults(SavedNode node) {
+        if (!(node.state instanceof Map<?, ?> state)) {
+            return;
+        }
+        Map<String, Object> cleaned = new HashMap<>();
+        for (Map.Entry<?, ?> entry : state.entrySet()) {
+            if (!(entry.getKey() instanceof String key)) {
+                continue;
+            }
+            // Keep user-set materials; only clear known hidden-default keys when blank/default.
+            cleaned.put(key, entry.getValue());
+        }
+        // Force materializers to require explicit materials: clear baked defaults that match V62 hidden values.
+        clearIfEquals(cleaned, "surfaceBlock", "minecraft:grass_block");
+        clearIfEquals(cleaned, "subsurfaceBlock", "minecraft:stone");
+        clearIfEquals(cleaned, "waterBlock", "minecraft:water");
+        clearIfEquals(cleaned, "lowBlock", "minecraft:gray_concrete");
+        clearIfEquals(cleaned, "highBlock", "minecraft:lime_concrete");
+        node.state = cleaned;
+    }
+
+    private static void clearIfEquals(Map<String, Object> state, String key, String hiddenDefault) {
+        Object value = state.get(key);
+        if (value instanceof String text && hiddenDefault.equalsIgnoreCase(text.trim())) {
+            state.remove(key);
+        }
     }
 
     private static void migrateSnapModeState(SavedNode node) {

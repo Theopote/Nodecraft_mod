@@ -18,9 +18,10 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "world.terrain.thermal_erosion_step",
     displayName = "Thermal Erosion Step",
-    description = "Applies one thermal weathering step based on local slope exceeding talus angle.",
+    description = "Applies one thermal weathering step based on local slope exceeding talus angle. "
+        + "Unconnected Region defaults to local 64×64 domain. Non-finite materialize → Valid=false. Height output clamped to [-1,1].",
     category = "world.terrain",
-    order = 10
+    order = 9
 )
 public class ThermalErosionStepNode extends BaseNode {
 
@@ -31,6 +32,8 @@ public class ThermalErosionStepNode extends BaseNode {
 
     private static final String OUTPUT_HEIGHT_FIELD_ID = "output_height_field";
     private static final String OUTPUT_DELTA_FIELD_ID = "output_delta_field";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     @NodeProperty(displayName = "Talus", category = "Thermal", order = 1)
     private double talus = 0.7d;
@@ -41,43 +44,60 @@ public class ThermalErosionStepNode extends BaseNode {
     public ThermalErosionStepNode() {
         super(UUID.randomUUID(), "world.terrain.thermal_erosion_step");
 
-        addInputPort(new BasePort(INPUT_REGION_ID, "Region", "Optional raster bounds; defaults to a safe 64x64 area when omitted", NodeDataType.REGION, this));
+        addInputPort(new BasePort(INPUT_REGION_ID, "Region", "Optional raster bounds; unconnected → local 64×64 domain", NodeDataType.REGION, this));
         addInputPort(new BasePort(INPUT_HEIGHT_FIELD_ID, "Height Field", "Input elevation field", NodeDataType.SCALAR_FIELD, this));
         addInputPort(new BasePort(INPUT_TALUS_ID, "Talus", "Slope threshold before material starts to creep", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_RATE_ID, "Rate", "Single-step thermal smoothing strength", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_HEIGHT_FIELD_ID, "Height Field", "Thermally eroded height field", NodeDataType.SCALAR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_HEIGHT_FIELD_ID, "Height Field", "Thermally eroded height field (normalized [-1,1])", NodeDataType.SCALAR_FIELD, this));
         addOutputPort(new BasePort(OUTPUT_DELTA_FIELD_ID, "Delta Field", "Signed height delta after thermal erosion (new - old)", NodeDataType.SCALAR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether thermal erosion succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when thermal erosion failed", NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object heightObj = inputValues.get(INPUT_HEIGHT_FIELD_ID);
         if (!(heightObj instanceof ScalarFieldData heightField)) {
-            outputValues.put(OUTPUT_HEIGHT_FIELD_ID, null);
-            outputValues.put(OUTPUT_DELTA_FIELD_ID, null);
+            publishInvalid("Missing height field input.");
             return;
         }
 
-        RegionData region = inputValues.get(INPUT_REGION_ID) instanceof RegionData value ? value : null;
-        ScalarFieldGrids.FieldGridBounds bounds = ScalarFieldGrids.resolveBounds(region, heightField);
-        GridScalarFieldData inputGrid = ScalarFieldGrids.materialize(heightField, bounds);
+        RegionData region = TerrainNodeUtils.resolveOptionalRegion(this, INPUT_REGION_ID);
+        if (TerrainNodeUtils.isInvalidRegionMarker(region)) {
+            publishInvalid("Connected Region is incomplete or invalid.");
+            return;
+        }
+
+        Double resolvedTalusRaw = TerrainNodeUtils.resolveOptionalFiniteDouble(this, INPUT_TALUS_ID, talus);
+        if (resolvedTalusRaw == null) {
+            publishInvalid("Talus must be a finite DOUBLE.");
+            return;
+        }
+
+        Double resolvedRateRaw = TerrainNodeUtils.resolveOptionalFiniteDouble(this, INPUT_RATE_ID, rate);
+        if (resolvedRateRaw == null) {
+            publishInvalid("Rate must be a finite DOUBLE.");
+            return;
+        }
+
+        TerrainGridDomain domain = ScalarFieldGrids.resolveDomain(region, heightField);
+        GridScalarFieldData inputGrid = ScalarFieldGrids.materialize(heightField, domain);
         if (inputGrid == null) {
-            outputValues.put(OUTPUT_HEIGHT_FIELD_ID, null);
-            outputValues.put(OUTPUT_DELTA_FIELD_ID, null);
+            publishInvalid("Height field materialization failed (non-finite sample or grid over cap).");
             return;
         }
 
-        double resolvedTalus = Math.max(0.0d, getInputDouble(INPUT_TALUS_ID, talus));
-        double resolvedRate = clamp01(getInputDouble(INPUT_RATE_ID, rate));
+        double resolvedTalus = Math.max(0.0d, resolvedTalusRaw);
+        double resolvedRate = clamp01(resolvedRateRaw);
         int step = 1;
 
         int cellCount = inputGrid.cellCount();
         double[] erodedValues = new double[cellCount];
         double[] deltaValues = new double[cellCount];
         int index = 0;
-        for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
-            for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
+        for (int z = domain.minBlockZ(); z <= domain.maxBlockZ(); z++) {
+            for (int x = domain.minBlockX(); x <= domain.maxBlockX(); x++) {
                 double center = inputGrid.getAt(x, z);
                 double hxNeg = inputGrid.getAtClamped(x - step, z);
                 double hxPos = inputGrid.getAtClamped(x + step, z);
@@ -93,26 +113,37 @@ public class ThermalErosionStepNode extends BaseNode {
                     eroded = center - direction * excess * resolvedRate;
                 }
 
-                erodedValues[index] = sanitizeFinite(eroded, center);
-                deltaValues[index] = erodedValues[index] - center;
+                if (!Double.isFinite(eroded)) {
+                    publishInvalid("Thermal erosion produced a non-finite height.");
+                    return;
+                }
+
+                double clampedHeight = TerrainNodeUtils.clampNormalizedHeight(eroded);
+                if (!Double.isFinite(clampedHeight)) {
+                    publishInvalid("Thermal erosion produced a non-finite height.");
+                    return;
+                }
+
+                erodedValues[index] = clampedHeight;
+                deltaValues[index] = clampedHeight - center;
                 index++;
             }
         }
 
-        outputValues.put(OUTPUT_HEIGHT_FIELD_ID, ScalarFieldGrids.buildGrid(bounds, erodedValues));
-        outputValues.put(OUTPUT_DELTA_FIELD_ID, ScalarFieldGrids.buildGrid(bounds, deltaValues));
+        outputValues.put(OUTPUT_HEIGHT_FIELD_ID, ScalarFieldGrids.buildGrid(domain, erodedValues));
+        outputValues.put(OUTPUT_DELTA_FIELD_ID, ScalarFieldGrids.buildGrid(domain, deltaValues));
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
+    private void publishInvalid(String error) {
+        outputValues.put(OUTPUT_HEIGHT_FIELD_ID, null);
+        outputValues.put(OUTPUT_DELTA_FIELD_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error);
     }
 
     private double clamp01(double value) {
         return Math.max(0.0d, Math.min(1.0d, value));
-    }
-
-    private double sanitizeFinite(double value, double fallback) {
-        return Double.isFinite(value) ? value : fallback;
     }
 }

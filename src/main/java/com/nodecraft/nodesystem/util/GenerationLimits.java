@@ -144,6 +144,27 @@ public final class GenerationLimits {
     /** Hard safety ceiling for world.read Max Results (Find Blocks) budgets. */
     public static final int MAX_WORLD_READ_RESULTS = 262_144;
 
+    /** Hard cap for materialized terrain X/Z lattice cells (512×512). */
+    public static final int MAX_TERRAIN_GRID_CELLS = 262_144;
+
+    /**
+     * Hard cap for terrain simulation work: gridCells × iterations
+     * (Flow Accumulation and similar).
+     */
+    public static final long MAX_TERRAIN_SIMULATION_WORK = 16_777_216L;
+
+    /** Hard safety ceiling for terrain Max Placements budgets. */
+    public static final int MAX_TERRAIN_PLACEMENTS = 262_144;
+
+    /** Hard safety ceiling for terrain Max Samples / Max Columns budgets. */
+    public static final int MAX_TERRAIN_SAMPLES = 65_536;
+
+    /** Hard safety ceiling for Plate Partition plate count. */
+    public static final int MAX_TERRAIN_PLATES = 1_024;
+
+    /** Hard upper bound for Flow Accumulation iterations (independent of work product). */
+    public static final int MAX_TERRAIN_FLOW_ITERATIONS = 4_096;
+
     private GenerationLimits() {
     }
 

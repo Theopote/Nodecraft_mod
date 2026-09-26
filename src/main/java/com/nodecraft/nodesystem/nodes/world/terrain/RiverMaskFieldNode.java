@@ -16,9 +16,10 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "world.terrain.river_mask_field",
     displayName = "River Mask Field",
-    description = "Creates a river-channel mask field from flow accumulation.",
+    description = "Creates a river-channel mask field from flow accumulation. "
+        + "Validates inputs at process time; lazy samples may propagate NaN to materialize consumers.",
     category = "world.terrain",
-    order = 8
+    order = 7
 )
 public class RiverMaskFieldNode extends BaseNode {
 
@@ -27,6 +28,8 @@ public class RiverMaskFieldNode extends BaseNode {
     private static final String INPUT_MIN_ORDER_ID = "input_min_order";
 
     private static final String OUTPUT_RIVER_MASK_FIELD_ID = "output_river_mask_field";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     @NodeProperty(displayName = "Threshold", category = "River", order = 1)
     private double threshold = 0.62d;
@@ -39,26 +42,42 @@ public class RiverMaskFieldNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_ACCUMULATION_FIELD_ID, "Accumulation Field", "Drainage accumulation input", NodeDataType.SCALAR_FIELD, this));
         addInputPort(new BasePort(INPUT_THRESHOLD_ID, "Threshold", "Base river extraction threshold", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_MIN_ORDER_ID, "Min Order", "Higher values keep only stronger channels", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_MIN_ORDER_ID, "Min Order", "Exact INTEGER (>=1); higher values keep only stronger channels", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_RIVER_MASK_FIELD_ID, "River Mask Field", "0..1 river channel mask", NodeDataType.SCALAR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the river mask was created", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when mask creation failed", NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object accumulationObj = inputValues.get(INPUT_ACCUMULATION_FIELD_ID);
         if (!(accumulationObj instanceof ScalarFieldData accumulationField)) {
-            outputValues.put(OUTPUT_RIVER_MASK_FIELD_ID, null);
+            publishInvalid("Missing accumulation field input.");
             return;
         }
 
-        double resolvedThreshold = Math.max(0.0d, getInputDouble(INPUT_THRESHOLD_ID, threshold));
-        int resolvedMinOrder = Math.max(1, getInputInt(INPUT_MIN_ORDER_ID, minOrder));
+        Double resolvedThresholdRaw = TerrainNodeUtils.resolveOptionalFiniteDouble(this, INPUT_THRESHOLD_ID, threshold);
+        if (resolvedThresholdRaw == null) {
+            publishInvalid("Threshold must be a finite DOUBLE.");
+            return;
+        }
+
+        Integer resolvedMinOrder = TerrainNodeUtils.resolveOptionalExactInteger(this, INPUT_MIN_ORDER_ID, minOrder);
+        if (resolvedMinOrder == null || resolvedMinOrder < 1) {
+            publishInvalid("Min Order must be an exact INTEGER >= 1.");
+            return;
+        }
+
+        double resolvedThreshold = Math.max(0.0d, resolvedThresholdRaw);
         double orderScale = 1.0d + (resolvedMinOrder - 1) * 0.25d;
         double effectiveThreshold = resolvedThreshold * orderScale;
 
         ScalarFieldData maskField = point -> {
             double accumulation = accumulationField.sampleScalar(point);
+            if (!Double.isFinite(accumulation)) {
+                return Double.NaN;
+            }
             if (accumulation <= effectiveThreshold) {
                 return 0.0d;
             }
@@ -68,16 +87,14 @@ public class RiverMaskFieldNode extends BaseNode {
         };
 
         outputValues.put(OUTPUT_RIVER_MASK_FIELD_ID, maskField);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private int getInputInt(String portId, int fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.intValue() : fallback;
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
+    private void publishInvalid(String error) {
+        outputValues.put(OUTPUT_RIVER_MASK_FIELD_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error);
     }
 
     private double clamp01(double value) {

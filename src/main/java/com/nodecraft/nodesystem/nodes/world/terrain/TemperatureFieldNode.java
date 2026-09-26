@@ -18,9 +18,11 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "world.terrain.temperature_field",
     displayName = "Temperature Field",
-    description = "Builds temperature from latitude bands and elevation lapse-rate cooling.",
+    description = "Builds temperature from latitude bands and elevation lapse-rate cooling. "
+        + "Unconnected Region defaults to continental soft domain ±4096. "
+        + "Validates inputs at process time; lazy samples may propagate NaN to materialize consumers.",
     category = "world.terrain",
-    order = 14
+    order = 13
 )
 public class TemperatureFieldNode extends BaseNode {
 
@@ -30,6 +32,8 @@ public class TemperatureFieldNode extends BaseNode {
     private static final String INPUT_LAPSE_RATE_ID = "input_lapse_rate";
 
     private static final String OUTPUT_TEMPERATURE_FIELD_ID = "output_temperature_field";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     @NodeProperty(displayName = "Equator Temp", category = "Climate", order = 1)
     private double equatorTemp = 1.0d;
@@ -40,25 +44,44 @@ public class TemperatureFieldNode extends BaseNode {
     public TemperatureFieldNode() {
         super(UUID.randomUUID(), "world.terrain.temperature_field");
 
-        addInputPort(new BasePort(INPUT_REGION_ID, "Region", "Optional region for latitude normalization", NodeDataType.REGION, this));
+        addInputPort(new BasePort(INPUT_REGION_ID, "Region", "Optional region for latitude normalization; unconnected → continental ±4096", NodeDataType.REGION, this));
         addInputPort(new BasePort(INPUT_HEIGHT_FIELD_ID, "Height Field", "Terrain elevation field", NodeDataType.SCALAR_FIELD, this));
         addInputPort(new BasePort(INPUT_EQUATOR_TEMP_ID, "Equator Temp", "Base equatorial temperature", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_LAPSE_RATE_ID, "Lapse Rate", "Temperature decrease with elevation", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_TEMPERATURE_FIELD_ID, "Temperature Field", "Temperature intensity field in [0,1]", NodeDataType.SCALAR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the temperature field was created", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when temperature field creation failed", NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object heightObj = inputValues.get(INPUT_HEIGHT_FIELD_ID);
         if (!(heightObj instanceof ScalarFieldData heightField)) {
-            outputValues.put(OUTPUT_TEMPERATURE_FIELD_ID, null);
+            publishInvalid("Missing height field input.");
             return;
         }
 
-        RegionData region = inputValues.get(INPUT_REGION_ID) instanceof RegionData value ? value : null;
-        double resolvedEquatorTemp = clamp01(getInputDouble(INPUT_EQUATOR_TEMP_ID, equatorTemp));
-        double resolvedLapseRate = Math.max(0.0d, getInputDouble(INPUT_LAPSE_RATE_ID, lapseRate));
+        RegionData region = TerrainNodeUtils.resolveOptionalRegion(this, INPUT_REGION_ID);
+        if (TerrainNodeUtils.isInvalidRegionMarker(region)) {
+            publishInvalid("Connected Region is incomplete or invalid.");
+            return;
+        }
+
+        Double resolvedEquatorTempRaw = TerrainNodeUtils.resolveOptionalFiniteDouble(this, INPUT_EQUATOR_TEMP_ID, equatorTemp);
+        if (resolvedEquatorTempRaw == null) {
+            publishInvalid("Equator Temp must be a finite DOUBLE.");
+            return;
+        }
+
+        Double resolvedLapseRateRaw = TerrainNodeUtils.resolveOptionalFiniteDouble(this, INPUT_LAPSE_RATE_ID, lapseRate);
+        if (resolvedLapseRateRaw == null) {
+            publishInvalid("Lapse Rate must be a finite DOUBLE.");
+            return;
+        }
+
+        double resolvedEquatorTemp = clamp01(resolvedEquatorTempRaw);
+        double resolvedLapseRate = Math.max(0.0d, resolvedLapseRateRaw);
 
         LatitudeBounds latitudeBounds = LatitudeBounds.fromRegion(region);
 
@@ -67,6 +90,9 @@ public class TemperatureFieldNode extends BaseNode {
             double latitudeCooling = latitude01 * 0.75d;
 
             double elevation = heightField.sampleScalar(point);
+            if (!Double.isFinite(elevation)) {
+                return Double.NaN;
+            }
             double elevation01 = clamp01((elevation + 1.0d) * 0.5d);
             double elevationCooling = elevation01 * resolvedLapseRate;
 
@@ -75,11 +101,14 @@ public class TemperatureFieldNode extends BaseNode {
         };
 
         outputValues.put(OUTPUT_TEMPERATURE_FIELD_ID, temperatureField);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
+    private void publishInvalid(String error) {
+        outputValues.put(OUTPUT_TEMPERATURE_FIELD_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error);
     }
 
     private double clamp01(double value) {
@@ -90,19 +119,27 @@ public class TemperatureFieldNode extends BaseNode {
 
         private static LatitudeBounds fromRegion(@Nullable RegionData region) {
             if (region == null || !region.isComplete()) {
-                return new LatitudeBounds(-4096.0d, 4096.0d, 0.0d, 4096.0d);
+                return continentalDefault();
             }
 
             BlockPos min = region.getMinCorner();
             BlockPos max = region.getMaxCorner();
             if (min == null || max == null) {
-                return new LatitudeBounds(-4096.0d, 4096.0d, 0.0d, 4096.0d);
+                return continentalDefault();
             }
 
             double minZ = min.getZ();
             double maxZ = max.getZ();
-            double centerZ = (minZ + maxZ) * 0.5d;
-            double halfSpan = Math.max(1.0d, Math.abs(maxZ - minZ) * 0.5d);
+            double centerZ = ((double) min.getZ() + (double) max.getZ()) * 0.5d;
+            double halfSpan = Math.max(1.0d, Math.abs((long) max.getZ() - (long) min.getZ()) * 0.5d);
+            return new LatitudeBounds(minZ, maxZ, centerZ, halfSpan);
+        }
+
+        private static LatitudeBounds continentalDefault() {
+            double minZ = TerrainNodeUtils.CONTINENTAL_MIN_XZ;
+            double maxZ = TerrainNodeUtils.CONTINENTAL_MAX_XZ;
+            double centerZ = ((double) TerrainNodeUtils.CONTINENTAL_MIN_XZ + (double) TerrainNodeUtils.CONTINENTAL_MAX_XZ) * 0.5d;
+            double halfSpan = Math.max(1.0d, Math.abs((long) TerrainNodeUtils.CONTINENTAL_MAX_XZ - (long) TerrainNodeUtils.CONTINENTAL_MIN_XZ) * 0.5d);
             return new LatitudeBounds(minZ, maxZ, centerZ, halfSpan);
         }
 

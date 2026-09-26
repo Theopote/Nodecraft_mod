@@ -84,9 +84,9 @@ class WorldSelectionLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV62() {
+    void currentGraphFormatIsAtLeastV62() {
         assertEquals(62, GraphFormatVersion.V62);
-        assertEquals(GraphFormatVersion.V62, GraphFormatVersion.CURRENT);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V62);
     }
 
     @Test
@@ -356,7 +356,8 @@ class WorldSelectionLanguageContractTest {
         graph.connections.add(wire("t6", "output_stub", "m1", "input_min_points"));
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.V62, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
+        assertTrue(migrated.formatVersion >= GraphFormatVersion.V62);
         assertTrue(migrated.nodes.stream().noneMatch(n -> "v1".equals(n.nodeId)));
         assertEquals("CONTAINING_CELL",
                 ((Map<?, ?>) nodeOf(migrated, "p1").state).get("snapMode"));

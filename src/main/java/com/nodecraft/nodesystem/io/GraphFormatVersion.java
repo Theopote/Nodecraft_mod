@@ -387,8 +387,14 @@ public final class GraphFormatVersion {
      */
     public static final int V62 = 62;
 
+    /**
+     * Terrain Field v1: cell-center raster, GenerationLimits terrain caps,
+     * finite Field contract, explicit materializers, Valid/Error on all terrain nodes.
+     */
+    public static final int V63 = 63;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V62;
+    public static final int CURRENT = V63;
 
     private GraphFormatVersion() {
     }

@@ -10,6 +10,9 @@ import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.BlockSpace;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -20,9 +23,10 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "world.terrain.flow_accumulation_field",
     displayName = "Flow Accumulation Field",
-    description = "Routes runoff with selectable fast or high-quality (MFD) flow accumulation.",
+    description = "Routes runoff with selectable fast or high-quality (MFD) flow accumulation. "
+        + "Samples at block cell centers; auto-downsamples when the region exceeds the grid cell cap.",
     category = "world.terrain",
-    order = 7
+    order = 6
 )
 public class FlowAccumulationFieldNode extends BaseNode {
 
@@ -63,58 +67,131 @@ public class FlowAccumulationFieldNode extends BaseNode {
     public FlowAccumulationFieldNode() {
         super(UUID.randomUUID(), "world.terrain.flow_accumulation_field");
 
-        addInputPort(new BasePort(INPUT_REGION_ID, "Region", "Simulation bounds", NodeDataType.REGION, this));
-        addInputPort(new BasePort(INPUT_FLOW_FIELD_ID, "Flow Field", "Normalized downslope direction field", NodeDataType.VECTOR_FIELD, this));
-        addInputPort(new BasePort(INPUT_RAIN_FIELD_ID, "Rain Field", "Optional precipitation input", NodeDataType.SCALAR_FIELD, this));
-        addInputPort(new BasePort(INPUT_ITERATIONS_ID, "Iterations", "Routing iterations", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_REGION_ID, "Region",
+            "Optional simulation bounds; defaults to local 64x64 (−32..31, sample Y=64) when omitted",
+            NodeDataType.REGION, this));
+        addInputPort(new BasePort(INPUT_FLOW_FIELD_ID, "Flow Field",
+            "Normalized downslope direction field", NodeDataType.VECTOR_FIELD, this));
+        addInputPort(new BasePort(INPUT_RAIN_FIELD_ID, "Rain Field",
+            "Optional precipitation input", NodeDataType.SCALAR_FIELD, this));
+        addInputPort(new BasePort(INPUT_ITERATIONS_ID, "Iterations",
+            "Routing iterations (exact INTEGER, hard-capped)", NodeDataType.INTEGER, this));
 
-        addOutputPort(new BasePort(OUTPUT_ACCUMULATION_FIELD_ID, "Accumulation Field", "Drainage accumulation estimate", NodeDataType.SCALAR_FIELD, this));
-        addOutputPort(new BasePort(OUTPUT_STRIDE_ID, "Stride", "Actual grid stride used for routing", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_GRID_WIDTH_ID, "Grid Width", "Internal routing grid width", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_GRID_DEPTH_ID, "Grid Depth", "Internal routing grid depth", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_CELL_COUNT_ID, "Cell Count", "Internal routing cell count", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_WAS_DOWNSAMPLED_ID, "Was Downsampled", "True when the region was routed with stride > 1", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether accumulation succeeded", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when accumulation failed", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_ACCUMULATION_FIELD_ID, "Accumulation Field",
+            "Drainage accumulation estimate", NodeDataType.SCALAR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_STRIDE_ID, "Stride",
+            "Actual grid stride used for routing", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_GRID_WIDTH_ID, "Grid Width",
+            "Internal routing grid width", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_GRID_DEPTH_ID, "Grid Depth",
+            "Internal routing grid depth", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_CELL_COUNT_ID, "Cell Count",
+            "Internal routing cell count", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_WAS_DOWNSAMPLED_ID, "Was Downsampled",
+            "True when the region was routed with stride > 1", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
+            "Whether accumulation succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Error message when accumulation failed", NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object regionObj = inputValues.get(INPUT_REGION_ID);
-        Object flowObj = inputValues.get(INPUT_FLOW_FIELD_ID);
-
-        if (!(regionObj instanceof RegionData region) || !region.isComplete() || !(flowObj instanceof VectorFieldData flowField)) {
-            writeInvalid("Missing complete region or flow field input.");
+        if (!(inputValues.get(INPUT_FLOW_FIELD_ID) instanceof VectorFieldData flowField)) {
+            writeInvalid("Missing flow field input.");
             return;
         }
 
-        BlockPos min = region.getMinCorner();
-        BlockPos max = region.getMaxCorner();
-        if (min == null || max == null) {
-            writeInvalid("Region bounds are incomplete.");
+        RegionData region = TerrainNodeUtils.resolveOptionalRegion(this, INPUT_REGION_ID);
+        if (TerrainNodeUtils.isInvalidRegionMarker(region)) {
+            writeInvalid("Region is connected but incomplete or invalid.");
             return;
         }
 
-        ScalarFieldData rainField = inputValues.get(INPUT_RAIN_FIELD_ID) instanceof ScalarFieldData field ? field : null;
-        int resolvedIterations = Math.max(1, getInputInt(INPUT_ITERATIONS_ID, iterations));
+        ScalarFieldData rainField = null;
+        if (OptionalPortDrive.isConnected(this, INPUT_RAIN_FIELD_ID)) {
+            if (!(inputValues.get(INPUT_RAIN_FIELD_ID) instanceof ScalarFieldData connectedRain)) {
+                writeInvalid("Rain Field is connected but null or invalid.");
+                return;
+            }
+            rainField = connectedRain;
+        } else if (inputValues.get(INPUT_RAIN_FIELD_ID) instanceof ScalarFieldData localRain) {
+            rainField = localRain;
+        }
+
+        Integer resolvedIterations = TerrainNodeUtils.resolveBoundedExactInteger(
+            this, INPUT_ITERATIONS_ID, iterations, 1, GenerationLimits.MAX_TERRAIN_FLOW_ITERATIONS);
+        if (resolvedIterations == null) {
+            writeInvalid("Iterations must be an exact INTEGER between 1 and "
+                + GenerationLimits.MAX_TERRAIN_FLOW_ITERATIONS + ".");
+            return;
+        }
+
         AccumulationMode resolvedMode = mode == null ? AccumulationMode.HIGH_QUALITY_MFD : mode;
         double resolvedFastRoutedRatio = clamp01(fastRoutedRatio);
         double resolvedRoutingRate = clamp01(routingRate);
 
-        int minX = min.getX();
-        int minZ = min.getZ();
-        int baseY = min.getY();
-        int width = max.getX() - minX + 1;
-        int depth = max.getZ() - minZ + 1;
+        int minX;
+        int maxX;
+        int minZ;
+        int maxZ;
+        int baseY;
+        if (region != null && region.isComplete()) {
+            BlockPos min = region.getMinCorner();
+            BlockPos max = region.getMaxCorner();
+            if (min == null || max == null) {
+                writeInvalid("Region bounds are incomplete.");
+                return;
+            }
+            minX = min.getX();
+            maxX = max.getX();
+            minZ = min.getZ();
+            maxZ = max.getZ();
+            baseY = min.getY();
+        } else {
+            minX = TerrainNodeUtils.DEFAULT_MIN_X;
+            maxX = TerrainNodeUtils.DEFAULT_MAX_X;
+            minZ = TerrainNodeUtils.DEFAULT_MIN_Z;
+            maxZ = TerrainNodeUtils.DEFAULT_MAX_Z;
+            baseY = TerrainNodeUtils.DEFAULT_BASE_Y;
+        }
 
-        if (width <= 0 || depth <= 0) {
+        long widthLong = (long) maxX - (long) minX + 1L;
+        long depthLong = (long) maxZ - (long) minZ + 1L;
+        if (widthLong <= 0L || depthLong <= 0L) {
             writeInvalid("Region has no X/Z area.");
             return;
         }
+        if (widthLong > Integer.MAX_VALUE || depthLong > Integer.MAX_VALUE) {
+            writeInvalid("Region X/Z extent overflows integer range.");
+            return;
+        }
+        int width = (int) widthLong;
+        int depth = (int) depthLong;
 
-        int stride = resolveStride(width, depth, 262_144);
+        int stride = resolveStride(width, depth, GenerationLimits.MAX_TERRAIN_GRID_CELLS);
         int gridWidth = Math.max(1, ((width - 1) / stride) + 1);
         int gridDepth = Math.max(1, ((depth - 1) / stride) + 1);
+        long gridCells;
+        try {
+            gridCells = Math.multiplyExact((long) gridWidth, (long) gridDepth);
+        } catch (ArithmeticException e) {
+            writeInvalid("Routing grid cell count overflows.");
+            return;
+        }
+
+        long work;
+        try {
+            work = Math.multiplyExact(gridCells, (long) resolvedIterations);
+        } catch (ArithmeticException e) {
+            writeInvalid("Simulation work overflows.");
+            return;
+        }
+        if (work > GenerationLimits.MAX_TERRAIN_SIMULATION_WORK) {
+            writeInvalid("Simulation work (" + work + ") exceeds MAX_TERRAIN_SIMULATION_WORK ("
+                + GenerationLimits.MAX_TERRAIN_SIMULATION_WORK + ").");
+            return;
+        }
 
         double[][] accumulation = new double[gridDepth][gridWidth];
         double[][] mobile = new double[gridDepth][gridWidth];
@@ -125,8 +202,20 @@ public class FlowAccumulationFieldNode extends BaseNode {
             int worldZ = minZ + gz * stride;
             for (int gx = 0; gx < gridWidth; gx++) {
                 int worldX = minX + gx * stride;
-                samplePoint.set(worldX, baseY, worldZ);
-                double rain = rainField == null ? 1.0d : Math.max(0.0d, rainField.sampleScalar(samplePoint));
+                samplePoint.set(
+                    worldX + BlockSpace.CELL_CENTER_OFFSET,
+                    baseY + BlockSpace.CELL_CENTER_OFFSET,
+                    worldZ + BlockSpace.CELL_CENTER_OFFSET
+                );
+                double rain = 1.0d;
+                if (rainField != null) {
+                    rain = rainField.sampleScalar(samplePoint);
+                    if (!Double.isFinite(rain)) {
+                        writeInvalid("Rain field returned a non-finite sample.");
+                        return;
+                    }
+                    rain = Math.max(0.0d, rain);
+                }
                 rainfall[gz][gx] = rain;
                 mobile[gz][gx] = rain;
             }
@@ -147,8 +236,16 @@ public class FlowAccumulationFieldNode extends BaseNode {
                     accumulation[gz][gx] += mass;
 
                     int worldX = minX + gx * stride;
-                    samplePoint.set(worldX, baseY, worldZ);
+                    samplePoint.set(
+                        worldX + BlockSpace.CELL_CENTER_OFFSET,
+                        baseY + BlockSpace.CELL_CENTER_OFFSET,
+                        worldZ + BlockSpace.CELL_CENTER_OFFSET
+                    );
                     flowField.sampleVector(samplePoint, flow);
+                    if (!Double.isFinite(flow.x) || !Double.isFinite(flow.y) || !Double.isFinite(flow.z)) {
+                        writeInvalid("Flow field returned a non-finite sample.");
+                        return;
+                    }
 
                     if (resolvedMode == AccumulationMode.FAST_APPROXIMATE) {
                         routeFast(gx, gz, mass, flow, resolvedFastRoutedRatio, gridWidth, gridDepth, next);
@@ -171,7 +268,7 @@ public class FlowAccumulationFieldNode extends BaseNode {
         outputValues.put(OUTPUT_STRIDE_ID, stride);
         outputValues.put(OUTPUT_GRID_WIDTH_ID, gridWidth);
         outputValues.put(OUTPUT_GRID_DEPTH_ID, gridDepth);
-        outputValues.put(OUTPUT_CELL_COUNT_ID, gridWidth * gridDepth);
+        outputValues.put(OUTPUT_CELL_COUNT_ID, (int) Math.min(Integer.MAX_VALUE, gridCells));
         outputValues.put(OUTPUT_WAS_DOWNSAMPLED_ID, stride > 1);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
@@ -293,8 +390,11 @@ public class FlowAccumulationFieldNode extends BaseNode {
 
     private int resolveStride(int width, int depth, int maxCells) {
         int stride = 1;
-        while ((((width - 1) / stride) + 1L) * (((depth - 1) / stride) + 1L) > maxCells) {
+        while ((((width - 1L) / stride) + 1L) * (((depth - 1L) / stride) + 1L) > maxCells) {
             stride++;
+            if (stride > width && stride > depth) {
+                break;
+            }
         }
         return stride;
     }
@@ -303,20 +403,20 @@ public class FlowAccumulationFieldNode extends BaseNode {
         return x >= 0 && x < width && z >= 0 && z < depth;
     }
 
-    private int getInputInt(String portId, int fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.intValue() : fallback;
-    }
-
     private double clamp01(double value) {
+        if (!Double.isFinite(value)) {
+            return 0.0d;
+        }
         return Math.max(0.0d, Math.min(1.0d, value));
     }
 
     private record FlowGrid(int minX, int minZ, int baseY, int stride, int width, int depth, double[][] values) {
 
         private double sample(double worldX, double worldZ) {
-            int gx = clamp((int) Math.floor((worldX - minX) / stride), 0, width - 1);
-            int gz = clamp((int) Math.floor((worldZ - minZ) / stride), 0, depth - 1);
+            int cellX = BlockSpace.nearestCellIndex(worldX);
+            int cellZ = BlockSpace.nearestCellIndex(worldZ);
+            int gx = clamp((cellX - minX) / stride, 0, width - 1);
+            int gz = clamp((cellZ - minZ) / stride, 0, depth - 1);
             return values[gz][gx];
         }
 

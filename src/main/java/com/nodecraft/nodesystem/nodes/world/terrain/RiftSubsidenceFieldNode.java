@@ -16,9 +16,10 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "world.terrain.rift_subsidence_field",
     displayName = "Rift Subsidence Field",
-    description = "Builds rift/trench subsidence strength from boundary intensity.",
+    description = "Builds rift/trench subsidence strength from boundary intensity. "
+        + "Validates inputs at process time; lazy samples may propagate NaN to materialize consumers.",
     category = "world.terrain",
-    order = 4
+    order = 3
 )
 public class RiftSubsidenceFieldNode extends BaseNode {
 
@@ -52,17 +53,31 @@ public class RiftSubsidenceFieldNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object boundaryObj = inputValues.get(INPUT_BOUNDARY_FIELD_ID);
         if (!(boundaryObj instanceof ScalarFieldData boundaryField)) {
-            outputValues.put(OUTPUT_SUBSIDENCE_FIELD_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            outputValues.put(OUTPUT_ERROR_ID, "Missing boundary field input.");
+            publishInvalid("Missing boundary field input.");
             return;
         }
 
-        double resolvedStrength = Math.max(0.0d, getInputDouble(INPUT_STRENGTH_ID, strength));
-        double resolvedWidth = Math.max(0.05d, getInputDouble(INPUT_WIDTH_ID, width));
+        Double resolvedStrengthRaw = TerrainNodeUtils.resolveOptionalFiniteDouble(this, INPUT_STRENGTH_ID, strength);
+        if (resolvedStrengthRaw == null) {
+            publishInvalid("Strength must be a finite DOUBLE.");
+            return;
+        }
+
+        Double resolvedWidthRaw = TerrainNodeUtils.resolveOptionalFiniteDouble(this, INPUT_WIDTH_ID, width);
+        if (resolvedWidthRaw == null) {
+            publishInvalid("Width must be a finite DOUBLE.");
+            return;
+        }
+
+        double resolvedStrength = Math.max(0.0d, resolvedStrengthRaw);
+        double resolvedWidth = Math.max(0.05d, resolvedWidthRaw);
 
         ScalarFieldData subsidenceField = point -> {
-            double boundary = clamp01(boundaryField.sampleScalar(point));
+            double boundarySample = boundaryField.sampleScalar(point);
+            if (!Double.isFinite(boundarySample)) {
+                return Double.NaN;
+            }
+            double boundary = clamp01(boundarySample);
             double shaped = Math.pow(boundary, resolvedWidth);
             return shaped * resolvedStrength;
         };
@@ -72,9 +87,10 @@ public class RiftSubsidenceFieldNode extends BaseNode {
         outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
+    private void publishInvalid(String error) {
+        outputValues.put(OUTPUT_SUBSIDENCE_FIELD_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error);
     }
 
     private double clamp01(double value) {

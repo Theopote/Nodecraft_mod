@@ -18,9 +18,10 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "world.terrain.height_seed_field",
     displayName = "Height Seed Field",
-    description = "Builds a deterministic continental-scale seed height field over X/Z.",
+    description = "Builds a deterministic continental-scale seed height field over X/Z (normalized [-1,1]). "
+        + "Unconnected Region defaults to continental soft domain ±4096.",
     category = "world.terrain",
-    order = 1
+    order = 0
 )
 public class HeightSeedFieldNode extends BaseNode {
 
@@ -30,6 +31,8 @@ public class HeightSeedFieldNode extends BaseNode {
     private static final String INPUT_CONTINENT_BIAS_ID = "input_continent_bias";
 
     private static final String OUTPUT_HEIGHT_FIELD_ID = "output_height_field";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     @NodeProperty(displayName = "Seed", category = "Terrain", order = 1)
     private int seed = 1337;
@@ -44,31 +47,56 @@ public class HeightSeedFieldNode extends BaseNode {
     public HeightSeedFieldNode() {
         super(UUID.randomUUID(), "world.terrain.height_seed_field");
 
-        addInputPort(new BasePort(INPUT_REGION_ID, "Region", "Optional bounds used for broad-scale shaping", NodeDataType.REGION, this));
-        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Deterministic seed", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_REGION_ID, "Region", "Optional bounds used for broad-scale shaping; unconnected → continental ±4096", NodeDataType.REGION, this));
+        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Deterministic exact INTEGER seed", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SCALE_KM_ID, "Scale Km", "Macro terrain wavelength in pseudo-kilometers", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_CONTINENT_BIAS_ID, "Continent Bias", "Land/ocean ratio control in [0,1]", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_HEIGHT_FIELD_ID, "Height Field", "Seed scalar field for downstream terrain simulation", NodeDataType.SCALAR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_HEIGHT_FIELD_ID, "Height Field", "Seed scalar field for downstream terrain simulation (normalized [-1,1])", NodeDataType.SCALAR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the seed field was created", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when field creation failed", NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        RegionData region = inputValues.get(INPUT_REGION_ID) instanceof RegionData r ? r : null;
-        int resolvedSeed = getInputInt(INPUT_SEED_ID, seed);
-        double resolvedScaleKm = Math.max(1.0d, getInputDouble(INPUT_SCALE_KM_ID, scaleKm));
-        double resolvedBias = clamp01(getInputDouble(INPUT_CONTINENT_BIAS_ID, continentBias));
+        RegionData region = TerrainNodeUtils.resolveOptionalRegion(this, INPUT_REGION_ID);
+        if (TerrainNodeUtils.isInvalidRegionMarker(region)) {
+            publishInvalid("Connected Region is incomplete or invalid.");
+            return;
+        }
+
+        Integer resolvedSeed = TerrainNodeUtils.resolveOptionalExactInteger(this, INPUT_SEED_ID, seed);
+        if (resolvedSeed == null) {
+            publishInvalid("Seed must be an exact INTEGER.");
+            return;
+        }
+
+        Double resolvedScaleKmRaw = TerrainNodeUtils.resolveOptionalFiniteDouble(this, INPUT_SCALE_KM_ID, scaleKm);
+        if (resolvedScaleKmRaw == null) {
+            publishInvalid("Scale Km must be a finite DOUBLE.");
+            return;
+        }
+
+        Double resolvedBiasRaw = TerrainNodeUtils.resolveOptionalFiniteDouble(this, INPUT_CONTINENT_BIAS_ID, continentBias);
+        if (resolvedBiasRaw == null) {
+            publishInvalid("Continent Bias must be a finite DOUBLE.");
+            return;
+        }
+
+        double resolvedScaleKm = Math.max(1.0d, resolvedScaleKmRaw);
+        double resolvedBias = clamp01(resolvedBiasRaw);
 
         // Higher bias means a lower sea level threshold, producing larger landmasses.
         double seaLevel = lerp(0.62d, 0.38d, resolvedBias);
 
         Bounds bounds = Bounds.fromRegion(region);
+        int seedValue = resolvedSeed;
         ScalarFieldData field = point -> {
             double nx = (point.x - bounds.centerX) / resolvedScaleKm;
             double nz = (point.z - bounds.centerZ) / resolvedScaleKm;
 
-            double continents = sampleFbm2d(nx * 0.55d, nz * 0.55d, resolvedSeed, 5, 0.5d, 2.0d);
-            double ridges = 1.0d - Math.abs(sampleFbm2d(nx * 1.35d, nz * 1.35d, resolvedSeed + 991, 3, 0.55d, 2.1d));
+            double continents = sampleFbm2d(nx * 0.55d, nz * 0.55d, seedValue, 5, 0.5d, 2.0d);
+            double ridges = 1.0d - Math.abs(sampleFbm2d(nx * 1.35d, nz * 1.35d, seedValue + 991, 3, 0.55d, 2.1d));
 
             double blended = 0.72d * normalizeSigned(continents) + 0.28d * clamp01(ridges);
 
@@ -76,20 +104,18 @@ public class HeightSeedFieldNode extends BaseNode {
             double radial = 1.0d - Math.min(1.0d, distanceToCenter01(point.x, point.z, bounds));
             double continentalMask = lerp(0.6d, 1.0d, radial);
 
-            return sanitizeFinite(blended * continentalMask - seaLevel, 0.0d);
+            return TerrainNodeUtils.clampNormalizedHeight(blended * continentalMask - seaLevel);
         };
 
         outputValues.put(OUTPUT_HEIGHT_FIELD_ID, field);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private int getInputInt(String portId, int fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.intValue() : fallback;
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
+    private void publishInvalid(String error) {
+        outputValues.put(OUTPUT_HEIGHT_FIELD_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error);
     }
 
     private double sampleFbm2d(double x, double z, int seed, int octaves, double persistence, double lacunarity) {
@@ -114,7 +140,8 @@ public class HeightSeedFieldNode extends BaseNode {
         if (amplitudeSum <= 1.0e-9d) {
             return 0.0d;
         }
-        return sanitizeFinite(sum / amplitudeSum, 0.0d);
+        double normalized = sum / amplitudeSum;
+        return Double.isFinite(normalized) ? normalized : 0.0d;
     }
 
     private double sampleValueNoise2d(double x, double z, int seed) {
@@ -123,8 +150,8 @@ public class HeightSeedFieldNode extends BaseNode {
         int x1 = x0 + 1;
         int z1 = z0 + 1;
 
-        double tx = smoothStep(sanitizeFinite(x - x0, 0.0d));
-        double tz = smoothStep(sanitizeFinite(z - z0, 0.0d));
+        double tx = smoothStep(finiteOrZero(x - x0));
+        double tz = smoothStep(finiteOrZero(z - z0));
 
         double c00 = randomSigned(x0, z0, seed);
         double c10 = randomSigned(x1, z0, seed);
@@ -133,7 +160,7 @@ public class HeightSeedFieldNode extends BaseNode {
 
         double a = lerp(c00, c10, tx);
         double b = lerp(c01, c11, tx);
-        return sanitizeFinite(lerp(a, b, tz), 0.0d);
+        return finiteOrZero(lerp(a, b, tz));
     }
 
     private double randomSigned(int x, int z, int seed) {
@@ -169,8 +196,8 @@ public class HeightSeedFieldNode extends BaseNode {
         return Math.max(0.0d, Math.min(1.0d, value));
     }
 
-    private static double sanitizeFinite(double value, double fallback) {
-        return Double.isFinite(value) ? value : fallback;
+    private static double finiteOrZero(double value) {
+        return Double.isFinite(value) ? value : 0.0d;
     }
 
     private static double lerp(double a, double b, double t) {
@@ -186,20 +213,26 @@ public class HeightSeedFieldNode extends BaseNode {
     private record Bounds(double centerX, double centerZ, double halfWidth, double halfDepth) {
         private static Bounds fromRegion(@Nullable RegionData region) {
             if (region == null || !region.isComplete()) {
-                return new Bounds(0.0d, 0.0d, 4096.0d, 4096.0d);
+                return continentalDefault();
             }
 
             BlockPos min = region.getMinCorner();
             BlockPos max = region.getMaxCorner();
             if (min == null || max == null) {
-                return new Bounds(0.0d, 0.0d, 4096.0d, 4096.0d);
+                return continentalDefault();
             }
 
-            double centerX = (min.getX() + max.getX()) * 0.5d;
-            double centerZ = (min.getZ() + max.getZ()) * 0.5d;
-            double halfWidth = Math.max(1.0d, Math.abs(max.getX() - min.getX()) * 0.5d);
-            double halfDepth = Math.max(1.0d, Math.abs(max.getZ() - min.getZ()) * 0.5d);
+            double centerX = ((double) min.getX() + (double) max.getX()) * 0.5d;
+            double centerZ = ((double) min.getZ() + (double) max.getZ()) * 0.5d;
+            double halfWidth = Math.max(1.0d, Math.abs((long) max.getX() - (long) min.getX()) * 0.5d);
+            double halfDepth = Math.max(1.0d, Math.abs((long) max.getZ() - (long) min.getZ()) * 0.5d);
             return new Bounds(centerX, centerZ, halfWidth, halfDepth);
+        }
+
+        private static Bounds continentalDefault() {
+            double half = Math.abs((long) TerrainNodeUtils.CONTINENTAL_MAX_XZ - (long) TerrainNodeUtils.CONTINENTAL_MIN_XZ) * 0.5d;
+            double center = ((double) TerrainNodeUtils.CONTINENTAL_MIN_XZ + (double) TerrainNodeUtils.CONTINENTAL_MAX_XZ) * 0.5d;
+            return new Bounds(center, center, Math.max(1.0d, half), Math.max(1.0d, half));
         }
     }
 }
