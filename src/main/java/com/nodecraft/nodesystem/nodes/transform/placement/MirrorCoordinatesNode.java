@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.transform.basic_transforms;
+package com.nodecraft.nodesystem.nodes.transform.placement;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -9,6 +9,9 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GeometryMirror;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -19,11 +22,11 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "transform.basic_transforms.mirror_coordinates",
+    id = "transform.placement.mirror_coordinates",
     displayName = "Mirror Coordinates",
     description = "Mirrors a block coordinate list across a plane and snaps results to the block grid",
-    category = "transform.basic_transforms",
-    order = 4
+    category = "transform.placement",
+    order = 7
 )
 public class MirrorCoordinatesNode extends BaseNode {
 
@@ -52,11 +55,11 @@ public class MirrorCoordinatesNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public MirrorCoordinatesNode() {
-        super(UUID.randomUUID(), "transform.basic_transforms.mirror_coordinates");
+        super(UUID.randomUUID(), "transform.placement.mirror_coordinates");
 
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "The coordinates to mirror", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Mirror plane override", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_POINT_ID, "Point", "Point on mirror plane", NodeDataType.BLOCK_POS, this));
+        addInputPort(new BasePort(INPUT_POINT_ID, "Point", "Point on mirror plane", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_NORMAL_ID, "Normal", "Normal vector of mirror plane", NodeDataType.VECTOR, this));
 
         addOutputPort(new BasePort(OUTPUT_COORDINATES_ID, "Coordinates", "Mirrored coordinates", NodeDataType.BLOCK_LIST, this));
@@ -84,51 +87,44 @@ public class MirrorCoordinatesNode extends BaseNode {
         }
 
         PlaneData plane = resolvePlane();
-        if (plane == null || !isUsableVector(plane.getNormal())) {
+        if (plane == null) {
             writeResult(new BlockPosList(), coordinates.size(), false);
             return;
         }
 
         BlockPosList result = new BlockPosList();
         for (BlockPos pos : coordinates) {
-            Vector3d mirrored = mirrorPoint(new Vector3d(pos.getX(), pos.getY(), pos.getZ()), plane);
+            Vector3d mirrored = GeometryMirror.mirrorPoint(new Vector3d(pos.getX(), pos.getY(), pos.getZ()), plane);
             result.add(new BlockPos(roundToBlock(mirrored.x), roundToBlock(mirrored.y), roundToBlock(mirrored.z)));
         }
 
         writeResult(result, coordinates.size(), true);
     }
 
-    private PlaneData resolvePlane() {
-        Object planeObj = inputValues.get(INPUT_PLANE_ID);
-        if (planeObj instanceof PlaneData plane) {
-            return plane;
+    private @Nullable PlaneData resolvePlane() {
+        if (OptionalPortDrive.isConnected(this, INPUT_PLANE_ID)) {
+            return OptionalPortDrive.resolveOptionalPlane(this, INPUT_PLANE_ID, null);
         }
 
-        Object pointObj = inputValues.get(INPUT_POINT_ID);
-        Object normalObj = inputValues.get(INPUT_NORMAL_ID);
-        if (pointObj instanceof BlockPos point && normalObj instanceof Vector3d normalInput) {
-            Vector3d normal = new Vector3d(normalInput);
-            if (!isUsableVector(normal)) {
+        boolean pointConnected = OptionalPortDrive.isConnected(this, INPUT_POINT_ID);
+        boolean normalConnected = OptionalPortDrive.isConnected(this, INPUT_NORMAL_ID);
+        if (pointConnected || normalConnected) {
+            if (!pointConnected || !normalConnected) {
                 return null;
             }
-            normal.normalize();
-            return new PlaneData(new Vector3d(point.getX(), point.getY(), point.getZ()), normal);
+            Vector3d point = OptionalPortDrive.resolveOptionalPoint(this, INPUT_POINT_ID, null);
+            Vector3d normal = OptionalPortDrive.resolveOptionalVector(this, INPUT_NORMAL_ID, null);
+            if (point == null || normal == null || !VectorUtils.isNonZero(normal)) {
+                return null;
+            }
+            return PlaneData.canonical(point, normal);
         }
 
         return switch (mirrorPlane == null ? MirrorPlane.XZ : mirrorPlane) {
-            case XY -> new PlaneData(new Vector3d(), new Vector3d(0.0d, 0.0d, 1.0d));
-            case YZ -> new PlaneData(new Vector3d(), new Vector3d(1.0d, 0.0d, 0.0d));
-            case XZ, CUSTOM -> new PlaneData(new Vector3d(), new Vector3d(0.0d, 1.0d, 0.0d));
+            case XY -> PlaneData.XY_PLANE;
+            case YZ -> PlaneData.YZ_PLANE;
+            case XZ, CUSTOM -> PlaneData.XZ_PLANE;
         };
-    }
-
-    private Vector3d mirrorPoint(Vector3d point, PlaneData plane) {
-        Vector3d normal = new Vector3d(plane.getNormal());
-        if (normal.lengthSquared() > 1.0e-12d) {
-            normal.normalize();
-        }
-        double distance = plane.signedDistanceTo(point);
-        return new Vector3d(point).sub(normal.mul(2.0d * distance));
     }
 
     private int roundToBlock(double value) {
@@ -138,14 +134,6 @@ public class MirrorCoordinatesNode extends BaseNode {
             case CEIL -> (int) Math.ceil(value);
             case ROUND -> (int) Math.round(value);
         };
-    }
-
-    private boolean isUsableVector(Vector3d vector) {
-        return vector != null
-            && Double.isFinite(vector.x)
-            && Double.isFinite(vector.y)
-            && Double.isFinite(vector.z)
-            && vector.lengthSquared() > 1.0e-12d;
     }
 
     private void writeResult(BlockPosList result, int inputCount, boolean valid) {

@@ -173,9 +173,10 @@ public final class GeometryTransform {
             List<GeometryData> out = new ArrayList<>(composite.size());
             for (GeometryData child : composite.getGeometries()) {
                 GeometryData transformed = transform0(child, spec);
-                if (transformed != null) {
-                    out.add(transformed);
+                if (transformed == null) {
+                    return null;
                 }
+                out.add(transformed);
             }
             return out.isEmpty() ? null : new CompositeGeometryData(out);
         }

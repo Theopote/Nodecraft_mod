@@ -93,7 +93,7 @@ class TransformFamilyContractTest {
         BaseNode transform = assertInstanceOf(BaseNode.class,
             NodeRegistry.getInstance().createNodeInstance("transform.basic_transforms.transform_geometry"));
         transform.setInput("input_geometry", new SphereData(new Vector3d(), 2.0d));
-        transform.setInput("input_scale", -1.0d);
+        transform.setNodeState(java.util.Map.of("scale", -1.0d));
         transform.processNode(null);
         assertEquals(Boolean.FALSE, transform.getOutput("output_valid"));
         String error = String.valueOf(transform.getOutput("output_error")).toLowerCase();
@@ -103,7 +103,7 @@ class TransformFamilyContractTest {
             NodeRegistry.getInstance().createNodeInstance("transform.basic_transforms.scale_geometry_point"));
         scale.setInput("input_geometry", new SphereData(new Vector3d(10, 0, 0), 2.0d));
         scale.setInput("input_center", new PointData(new Vector3d(10, 0, 0)));
-        scale.setInput("input_scale", -1.0d);
+        scale.setNodeState(java.util.Map.of("defaultScale", -1.0d));
         scale.processNode(null);
         assertEquals(Boolean.FALSE, scale.getOutput("output_valid"));
         assertNull(scale.getOutput("output_geometry"));
@@ -128,6 +128,17 @@ class TransformFamilyContractTest {
 
         GeometryData movedInter = GeometryTransform.transform(intersection, new Vector3d(1, 0, 0), 0, 0, 0, 1);
         assertInstanceOf(IntersectionGeometryData.class, movedInter);
+    }
+
+    @Test
+    void compositeTransformFailsClosedWhenAnyChildFails() {
+        BoxGeometryData a = new BoxGeometryData(new Vector3d(2, 2, 2), new Vector3d(1, 1, 1));
+        GeometryData unsupported = new GeometryData() {};
+        CompositeGeometryData withFailingChild = new CompositeGeometryData(List.of(a, unsupported));
+        assertNull(GeometryTransform.transform(withFailingChild, new Vector3d(1, 0, 0), 0, 0, 0, 1));
+
+        PlaneData yz = new PlaneData(new Vector3d(), new Vector3d(1, 0, 0));
+        assertNull(GeometryMirror.mirror(withFailingChild, yz));
     }
 
     @Test

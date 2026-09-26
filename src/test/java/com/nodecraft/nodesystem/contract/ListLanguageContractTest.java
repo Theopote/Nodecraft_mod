@@ -260,7 +260,7 @@ class ListLanguageContractTest {
 
     @Test
     void insertItemTypeVariableConnectionOrderIsInvariant() {
-        // Order A: STRING â†’ Value first, then POINT_LIST â†’ List must reject
+        // Order A: STRING â†?Value first, then POINT_LIST â†?List must reject
         InsertItemNode insertA = new InsertItemNode();
         BasePort stringOutA = outputPort("string_out", NodeDataType.STRING);
         BasePort pointListOutA = outputPort("point_list_out", NodeDataType.POINT_LIST);
@@ -268,7 +268,7 @@ class ListLanguageContractTest {
         assertFalse(pointListOutA.connectTo(findPort(insertA, "input_list")),
                 "POINT_LIST must not bind T=POINT while STRING already occupies Value<T>");
 
-        // Order B: POINT_LIST â†’ List first, then STRING â†’ Value must reject
+        // Order B: POINT_LIST â†?List first, then STRING â†?Value must reject
         InsertItemNode insertB = new InsertItemNode();
         BasePort stringOutB = outputPort("string_out", NodeDataType.STRING);
         BasePort pointListOutB = outputPort("point_list_out", NodeDataType.POINT_LIST);

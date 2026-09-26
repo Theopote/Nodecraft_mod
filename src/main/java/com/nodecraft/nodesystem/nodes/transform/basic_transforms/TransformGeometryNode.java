@@ -14,7 +14,7 @@ import com.nodecraft.nodesystem.preview.gizmo.GizmoOrientation;
 import com.nodecraft.nodesystem.preview.gizmo.GizmoPortConstraints;
 import com.nodecraft.nodesystem.preview.gizmo.GizmoTransformTarget;
 import com.nodecraft.nodesystem.util.GeometryTransform;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -29,7 +29,7 @@ import java.util.UUID;
     displayName = "Transform Geometry",
     description = "Applies translation, Euler XYZ rotation, and uniform scale to analytic geometry (primitives, composites, booleans, SDF wrappers)",
     category = "transform.basic_transforms",
-    order = 9
+    order = 3
 )
 public class TransformGeometryNode extends BaseNode implements GizmoTransformTarget {
 
@@ -102,22 +102,22 @@ public class TransformGeometryNode extends BaseNode implements GizmoTransformTar
         }
 
         Vector3d translation = resolveTranslation();
-        double rx = getInputDouble(INPUT_ROT_X_ID, rotationX);
-        double ry = getInputDouble(INPUT_ROT_Y_ID, rotationY);
-        double rz = getInputDouble(INPUT_ROT_Z_ID, rotationZ);
-        double s = getInputDouble(INPUT_SCALE_ID, scale);
+        Double rx = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ROT_X_ID, rotationX);
+        Double ry = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ROT_Y_ID, rotationY);
+        Double rz = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ROT_Z_ID, rotationZ);
+        Double s = OptionalPortDrive.resolveOptionalDouble(this, INPUT_SCALE_ID, scale);
 
-        if (!isFinite(translation)) {
+        if (translation == null) {
             hideGizmoPreview();
-            writeResult(null, false, "Translation contains NaN or Infinity");
+            writeResult(null, false, "Translation connected but invalid, or property translation invalid");
             return;
         }
-        if (!Double.isFinite(rx) || !Double.isFinite(ry) || !Double.isFinite(rz)) {
+        if (rx == null || ry == null || rz == null) {
             hideGizmoPreview();
-            writeResult(null, false, "Rotation contains NaN or Infinity");
+            writeResult(null, false, "Rotation connected but invalid, or property rotation invalid");
             return;
         }
-        if (!Double.isFinite(s) || s <= 1.0e-9d) {
+        if (s == null || s <= 1.0e-9d) {
             hideGizmoPreview();
             writeResult(null, false, "Scale must be greater than zero. Use Mirror for reflection.");
             return;
@@ -188,9 +188,15 @@ public class TransformGeometryNode extends BaseNode implements GizmoTransformTar
         }
 
         Vector3d translation = resolveTranslation();
-        double effectiveRx = getInputDouble(INPUT_ROT_X_ID, rotationX);
-        double effectiveRy = getInputDouble(INPUT_ROT_Y_ID, rotationY);
-        double effectiveRz = getInputDouble(INPUT_ROT_Z_ID, rotationZ);
+        if (translation == null) {
+            return null;
+        }
+        Double effectiveRx = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ROT_X_ID, rotationX);
+        Double effectiveRy = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ROT_Y_ID, rotationY);
+        Double effectiveRz = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ROT_Z_ID, rotationZ);
+        if (effectiveRx == null || effectiveRy == null || effectiveRz == null) {
+            return null;
+        }
         GizmoOrientation.LocalAxes axes = GizmoOrientation.fromEulerDegrees(effectiveRx, effectiveRy, effectiveRz);
         return new TransformGizmoPreviewData(
             new Vec3d(translation.x, translation.y, translation.z),
@@ -239,10 +245,11 @@ public class TransformGeometryNode extends BaseNode implements GizmoTransformTar
     }
 
     private Vector3d resolveTranslation() {
-        Vector3d connected = SpatialValueResolver.resolveVector(inputValues.get(INPUT_TRANSLATION_ID));
-        return connected != null
-            ? connected
-            : new Vector3d(translationX, translationY, translationZ);
+        return OptionalPortDrive.resolveOptionalVector(
+            this,
+            INPUT_TRANSLATION_ID,
+            new Vector3d(translationX, translationY, translationZ)
+        );
     }
 
     @Override
@@ -274,18 +281,6 @@ public class TransformGeometryNode extends BaseNode implements GizmoTransformTar
         if (map.get("scale") instanceof Number value) scale = value.doubleValue();
         if (map.get("showGizmo") instanceof Boolean value) showGizmo = value;
         if (map.get("gizmoMode") instanceof String value) gizmoMode = value;
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
-    }
-
-    private boolean isFinite(Vector3d vector) {
-        return vector != null
-            && Double.isFinite(vector.x)
-            && Double.isFinite(vector.y)
-            && Double.isFinite(vector.z);
     }
 
     private void writeResult(@Nullable GeometryData geometry, boolean valid, String error) {

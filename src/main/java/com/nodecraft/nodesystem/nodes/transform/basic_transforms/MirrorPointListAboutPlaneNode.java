@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryMirror;
+import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -16,29 +17,25 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Reflects a list of 3D positions about a plane (useful for mesh control points and paths).
- */
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "transform.basic_transforms.mirror_vector_list_plane",
-    displayName = "Mirror Vector List About Plane",
-    description = "Mirrors each point in a list about a plane and outputs Vector3d positions",
+    id = "transform.basic_transforms.mirror_point_list_plane",
+    displayName = "Mirror Point List About Plane",
+    description = "Mirrors each point in a POINT_LIST about a plane",
     category = "transform.basic_transforms",
-    order = 10
+    order = 5
 )
-public class MirrorVectorListAboutPlaneNode extends BaseNode {
+public class MirrorPointListAboutPlaneNode extends BaseNode {
 
     private static final String INPUT_POINTS_ID = "input_points";
     private static final String INPUT_PLANE_ID = "input_plane";
 
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_SKIPPED_COUNT_ID = "output_skipped_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
-    public MirrorVectorListAboutPlaneNode() {
-        super(UUID.randomUUID(), "transform.basic_transforms.mirror_vector_list_plane");
+    public MirrorPointListAboutPlaneNode() {
+        super(UUID.randomUUID(), "transform.basic_transforms.mirror_point_list_plane");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points",
             "Point list to mirror",
@@ -53,9 +50,6 @@ public class MirrorVectorListAboutPlaneNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
             "Number of mirrored points",
             NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_SKIPPED_COUNT_ID, "Skipped Count",
-            "Number of input items that could not be parsed as points",
-            NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when mirroring succeeded",
             NodeDataType.BOOLEAN, this));
@@ -63,52 +57,46 @@ public class MirrorVectorListAboutPlaneNode extends BaseNode {
 
     @Override
     public String getDisplayName() {
-        return "Mirror Vector List About Plane";
+        return "Mirror Point List About Plane";
     }
 
     @Override
     public String getDescription() {
-        return "Mirrors each point in a list about a plane and outputs Vector3d positions";
+        return "Mirrors each point in a POINT_LIST about a plane";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object planeObj = inputValues.get(INPUT_PLANE_ID);
-        if (!(planeObj instanceof PlaneData plane)) {
+        if (!(planeObj instanceof PlaneData planeRaw)) {
+            writeInvalid();
+            return;
+        }
+        PlaneData plane = planeRaw.normalized();
+        if (plane == null) {
             writeInvalid();
             return;
         }
 
-        List<Vector3d> sources = resolveInputPoints(inputValues.get(INPUT_POINTS_ID));
-        if (sources.isEmpty()) {
+        List<Vector3d> sources = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        if (sources == null) {
             writeInvalid();
             return;
         }
 
         List<Vector3d> mirrored = new ArrayList<>(sources.size());
-        for (Vector3d p : sources) {
-            mirrored.add(GeometryMirror.mirrorPoint(p, plane));
+        for (Vector3d point : sources) {
+            mirrored.add(GeometryMirror.mirrorPoint(point, plane));
         }
 
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(mirrored));
         outputValues.put(OUTPUT_COUNT_ID, mirrored.size());
-        outputValues.put(OUTPUT_SKIPPED_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private void writeInvalid() {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_SKIPPED_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private static List<Vector3d> resolveInputPoints(Object value) {
-        List<Vector3d> points = SpatialValueResolver.resolvePointList(value);
-        if (!points.isEmpty()) {
-            return points;
-        }
-        Vector3d single = SpatialValueResolver.resolveVector3d(value);
-        return single != null ? List.of(single) : List.of();
     }
 }

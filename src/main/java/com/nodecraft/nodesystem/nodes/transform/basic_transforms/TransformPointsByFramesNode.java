@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -19,9 +20,9 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "transform.basic_transforms.transform_by_frames",
     displayName = "Transform Points by Frames",
-    description = "Transforms local points by FRAME_LIST into world-space positions.",
+    description = "Transforms local POINT_LIST by FRAME_LIST into world-space positions (cartesian: Frame0 x all points, Frame1 x all points, ...).",
     category = "transform.basic_transforms",
-    order = 12
+    order = 6
 )
 public class TransformPointsByFramesNode extends BaseNode {
 
@@ -45,10 +46,10 @@ public class TransformPointsByFramesNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> localPoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_LOCAL_POINTS_ID));
+        List<Vector3d> localPoints = PointUtils.resolveStrictPointList(inputValues.get(INPUT_LOCAL_POINTS_ID));
         List<FrameData> frames = resolveFrameList(inputValues.get(INPUT_FRAMES_ID));
 
-        if (localPoints.isEmpty() || frames.isEmpty()) {
+        if (localPoints == null || frames.isEmpty()) {
             writeInvalid();
             return;
         }
@@ -70,10 +71,6 @@ public class TransformPointsByFramesNode extends BaseNode {
             Vector3d z = basis.getZAxis();
 
             for (Vector3d local : localPoints) {
-                if (!isFinite(local)) {
-                    writeInvalid();
-                    return;
-                }
                 Vector3d world = new Vector3d(origin)
                     .add(new Vector3d(x).mul(local.x))
                     .add(new Vector3d(y).mul(local.y))
@@ -82,26 +79,21 @@ public class TransformPointsByFramesNode extends BaseNode {
             }
         }
 
-        if (out.isEmpty()) {
-            writeInvalid();
-            return;
-        }
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(out));
         outputValues.put(OUTPUT_COUNT_ID, out.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private static List<FrameData> resolveFrameList(@Nullable Object value) {
-        if (!(value instanceof List<?> raw)) {
+        if (!(value instanceof List<?> raw) || raw.isEmpty()) {
             return List.of();
         }
         List<FrameData> frames = new ArrayList<>(raw.size());
         for (Object element : raw) {
-            if (element instanceof FrameData frame) {
-                frames.add(frame);
-            } else {
+            if (!(element instanceof FrameData frame)) {
                 return List.of();
             }
+            frames.add(frame);
         }
         return frames;
     }
@@ -110,12 +102,5 @@ public class TransformPointsByFramesNode extends BaseNode {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private static boolean isFinite(Vector3d vector) {
-        return vector != null
-            && Double.isFinite(vector.x)
-            && Double.isFinite(vector.y)
-            && Double.isFinite(vector.z);
     }
 }

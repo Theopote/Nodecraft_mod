@@ -9,7 +9,8 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryTransform;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -22,7 +23,7 @@ import java.util.UUID;
     displayName = "Move Geometry",
     description = "Moves analytic geometry by a translation vector",
     category = "transform.basic_transforms",
-    order = 13
+    order = 0
 )
 public class MoveGeometryNode extends BaseNode {
 
@@ -64,16 +65,13 @@ public class MoveGeometryNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
         if (!(geometryObj instanceof GeometryData geometry)) {
-            writeResult(null, new Vector3d(), false, "Missing geometry input");
+            writeResult(null, null, false, "Missing geometry input");
             return;
         }
 
-        Vector3d translation = SpatialValueResolver.resolveVector(inputValues.get(INPUT_TRANSLATION_ID));
+        Vector3d translation = OptionalPortDrive.resolveOptionalVector(this, INPUT_TRANSLATION_ID, new Vector3d(x, y, z));
         if (translation == null) {
-            translation = new Vector3d(x, y, z);
-        }
-        if (!isFinite(translation)) {
-            writeResult(null, new Vector3d(), false, "Translation contains NaN or Infinity");
+            writeResult(null, null, false, "Translation connected but invalid, or property translation invalid");
             return;
         }
         GeometryData moved = GeometryTransform.transform(geometry, translation, 0.0d, 0.0d, 0.0d, 1.0d);
@@ -128,16 +126,9 @@ public class MoveGeometryNode extends BaseNode {
         if (map.get("z") instanceof Number value) setZ(value.doubleValue());
     }
 
-    private boolean isFinite(Vector3d vector) {
-        return vector != null
-            && Double.isFinite(vector.x)
-            && Double.isFinite(vector.y)
-            && Double.isFinite(vector.z);
-    }
-
-    private void writeResult(@Nullable GeometryData geometry, Vector3d effectiveTranslation, boolean valid, String error) {
+    private void writeResult(@Nullable GeometryData geometry, @Nullable Vector3d effectiveTranslation, boolean valid, String error) {
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
-        outputValues.put(OUTPUT_EFFECTIVE_TRANSLATION_ID, effectiveTranslation);
+        outputValues.put(OUTPUT_EFFECTIVE_TRANSLATION_ID, VectorUtils.toVectorPort(effectiveTranslation));
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
         outputValues.put(OUTPUT_VALID_ID, valid);
     }

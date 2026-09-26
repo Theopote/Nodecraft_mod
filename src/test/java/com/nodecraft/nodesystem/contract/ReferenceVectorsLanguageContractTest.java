@@ -67,10 +67,9 @@ class ReferenceVectorsLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV51() {
+    void referenceVectorsFreezeVersionIsV51() {
         assertEquals(50, GraphFormatVersion.V50);
         assertEquals(51, GraphFormatVersion.V51);
-        assertEquals(GraphFormatVersion.V51, GraphFormatVersion.CURRENT);
     }
 
     @Test

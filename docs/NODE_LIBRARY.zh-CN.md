@@ -55,10 +55,10 @@
 | `reference.planes` | 7 |
 | `reference.points` | 19 |
 | `reference.vectors` | 17 |
-| `transform.basic_transforms` | 15 |
-| `transform.deformations` | 10 |
+| `transform.basic_transforms` | 9 |
+| `transform.deformations` | 11 |
 | `transform.orientation` | 6 |
-| `transform.placement` | 3 |
+| `transform.placement` | 8 |
 | `utilities.assist` | 6 |
 | `utilities.fileio` | 3 |
 | `utilities.morphology` | 1 |
@@ -707,27 +707,21 @@
 | Reflect Vector | `reference.vectors.reflect` | Reflects an input vector around a normal vector using v - 2(v·n)n. | `ReflectVectorNode` |
 | Project Vector onto Vector | `reference.vectors.project` | Projects vector A onto vector B as (A·B / \|B\|^2)B. | `ProjectVectorNode` |
 
-## transform.basic_transforms（15）
+## transform.basic_transforms（9）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Offset Coordinate | `transform.basic_transforms.offset_coordinate` | Offsets a single block coordinate by integer X, Y, Z amounts or a rounded vector | `OffsetCoordinateNode` |
-| Offset Coordinates | `transform.basic_transforms.offset_coordinates` | Offsets a list of block coordinates by a rounded vector | `OffsetCoordinatesNode` |
-| Rotate Coordinates | `transform.basic_transforms.rotate_coordinates` | Rotates a list of block coordinates around a point and axis | `RotateCoordinatesNode` |
-| Scale Coordinates | `transform.basic_transforms.scale_coordinates` | Scales a list of block coordinates relative to a center point | `ScaleCoordinatesNode` |
-| Mirror Coordinates | `transform.basic_transforms.mirror_coordinates` | Mirrors a block coordinate list across a plane and snaps results to the block grid | `MirrorCoordinatesNode` |
-| Offset Box Face | `transform.basic_transforms.offset_face` | Offsets a box face along its normal without modifying the source box geometry | `OffsetBoxFaceNode` |
-| Inset Box Face | `transform.basic_transforms.inset_face` | Creates an inset or outset reference face boundary from a box face without modifying the source box | `InsetBoxFaceNode` |
-| Mirror Geometry About Plane | `transform.basic_transforms.mirror_geometry_plane` | Mirrors analytic geometry about a plane (recursive for composites and boolean geometry nodes) | `MirrorGeometryAboutPlaneNode` |
-| Transform Geometry | `transform.basic_transforms.transform_geometry` | Applies translation, Euler XYZ rotation, and uniform scale to analytic geometry (primitives, composites, booleans, SDF wrappers) | `TransformGeometryNode` |
-| Mirror Vector List About Plane | `transform.basic_transforms.mirror_vector_list_plane` | Mirrors each point in a list about a plane and outputs Vector3d positions | `MirrorVectorListAboutPlaneNode` |
-| Shear Point List | `transform.basic_transforms.shear` | Applies axial shear deformation to a point list around an origin. | `ShearPointListNode` |
-| Transform Points by Frames | `transform.basic_transforms.transform_by_frames` | Transforms local points by FRAME_LIST into world-space positions. | `TransformPointsByFramesNode` |
 | Move Geometry | `transform.basic_transforms.move_geometry` | Moves analytic geometry by a translation vector | `MoveGeometryNode` |
 | Rotate Geometry Around Axis | `transform.basic_transforms.rotate_geometry_axis` | Rotates analytic geometry around a center point and arbitrary axis | `RotateGeometryAroundAxisNode` |
 | Scale Geometry Around Point | `transform.basic_transforms.scale_geometry_point` | Uniformly scales analytic geometry around a center point (scale must be greater than zero; use Mirror for reflection) | `ScaleGeometryAroundPointNode` |
+| Transform Geometry | `transform.basic_transforms.transform_geometry` | Applies translation, Euler XYZ rotation, and uniform scale to analytic geometry (primitives, composites, booleans, SDF wrappers) | `TransformGeometryNode` |
+| Mirror Geometry About Plane | `transform.basic_transforms.mirror_geometry_plane` | Mirrors analytic geometry about a plane (recursive for composites and boolean geometry nodes) | `MirrorGeometryAboutPlaneNode` |
+| Mirror Point List About Plane | `transform.basic_transforms.mirror_point_list_plane` | Mirrors each point in a POINT_LIST about a plane | `MirrorPointListAboutPlaneNode` |
+| Transform Points by Frames | `transform.basic_transforms.transform_by_frames` | Transforms local POINT_LIST by FRAME_LIST into world-space positions (cartesian: Frame0 x all points, Frame1 x all points, ...). | `TransformPointsByFramesNode` |
+| Offset Box Face | `transform.basic_transforms.offset_face` | Offsets a box face along its normal without modifying the source box geometry | `OffsetBoxFaceNode` |
+| Inset Box Face | `transform.basic_transforms.inset_face` | Creates an inset or outset reference face boundary from a box face without modifying the source box | `InsetBoxFaceNode` |
 
-## transform.deformations（10）
+## transform.deformations（11）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -741,6 +735,7 @@
 | Spherical Displace | `transform.deformations.spherical_displace` | Applies radial displacement with spherical distance falloff around a center point. | `SphericalDisplaceNode` |
 | Twist Geometry | `transform.deformations.twist_geometry` | Applies an axial twist domain deformation to SDF or geometry, outputting a twisted SDF-backed Geometry | `TwistGeometryNode` |
 | Bend Geometry | `transform.deformations.bend_geometry` | Applies an axial bend domain deformation to SDF or geometry before voxelization | `BendGeometryNode` |
+| Shear Point List | `transform.deformations.shear_point_list` | Applies axial shear deformation to a point list around an origin. | `ShearPointListNode` |
 
 ## transform.orientation（6）
 
@@ -753,13 +748,18 @@
 | Project Curve To Plane | `transform.orientation.project_curve_to_plane` | Projects a curve, polyline, or line onto a target plane | `ProjectCurveToPlaneNode` |
 | Project Profile To Plane | `transform.orientation.project_profile_to_plane` | Projects a polygon profile boundary onto a target plane | `ProjectProfileToPlaneNode` |
 
-## transform.placement（3）
+## transform.placement（8）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Place Geometry On Frames | `transform.placement.place_geometry_on_frames` | Places geometry copies onto FRAME / FRAME_LIST: pivot maps to each frame origin and local axes align to frame X/Y/Z | `PlaceGeometryOnFramesNode` |
 | Place Geometry On Plane | `transform.placement.place_geometry_on_plane` | Places geometry onto a plane: builds a FRAME (Z=normal, X from hint) then maps pivot to plane origin | `PlaceGeometryOnPlaneNode` |
 | Orient Geometry To Frame | `transform.placement.orient_geometry_to_frame` | Rotates geometry so local axes match FRAME X/Y/Z while keeping the pivot point fixed in world space | `OrientGeometryToFrameNode` |
+| Offset Coordinate | `transform.placement.offset_coordinate` | Offsets a single block coordinate by integer X, Y, Z amounts or a rounded vector | `OffsetCoordinateNode` |
+| Offset Coordinates | `transform.placement.offset_coordinates` | Offsets a list of block coordinates by a rounded vector | `OffsetCoordinatesNode` |
+| Rotate Coordinates | `transform.placement.rotate_coordinates` | Rotates a list of block coordinates around a point and axis | `RotateCoordinatesNode` |
+| Scale Coordinates | `transform.placement.scale_coordinates` | Scales a list of block coordinates relative to a center point | `ScaleCoordinatesNode` |
+| Mirror Coordinates | `transform.placement.mirror_coordinates` | Mirrors a block coordinate list across a plane and snaps results to the block grid | `MirrorCoordinatesNode` |
 
 ## utilities.assist（6）
 

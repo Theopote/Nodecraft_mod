@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.transform.basic_transforms;
+package com.nodecraft.nodesystem.nodes.transform.placement;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -8,6 +8,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -18,11 +20,11 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "transform.basic_transforms.offset_coordinates",
+    id = "transform.placement.offset_coordinates",
     displayName = "Offset Coordinates",
     description = "Offsets a list of block coordinates by a rounded vector",
-    category = "transform.basic_transforms",
-    order = 1
+    category = "transform.placement",
+    order = 4
 )
 public class OffsetCoordinatesNode extends BaseNode {
 
@@ -42,7 +44,7 @@ public class OffsetCoordinatesNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public OffsetCoordinatesNode() {
-        super(UUID.randomUUID(), "transform.basic_transforms.offset_coordinates");
+        super(UUID.randomUUID(), "transform.placement.offset_coordinates");
 
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "The coordinates to offset", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_OFFSET_VECTOR_ID, "Offset Vector", "Vector to translate by", NodeDataType.VECTOR, this));
@@ -66,11 +68,15 @@ public class OffsetCoordinatesNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object coordinatesObj = inputValues.get(INPUT_COORDINATES_ID);
-        Object offsetObj = inputValues.get(INPUT_OFFSET_VECTOR_ID);
-
         BlockPosList result = new BlockPosList();
-        if (!(coordinatesObj instanceof BlockPosList coordinates) || !(offsetObj instanceof Vector3d offset) || !isFinite(offset)) {
-            writeResult(result, false);
+        if (!(coordinatesObj instanceof BlockPosList coordinates)) {
+            writeResult(result, false, null);
+            return;
+        }
+
+        Vector3d offset = OptionalPortDrive.resolveOptionalVector(this, INPUT_OFFSET_VECTOR_ID, null);
+        if (offset == null) {
+            writeResult(result, false, null);
             return;
         }
 
@@ -85,13 +91,9 @@ public class OffsetCoordinatesNode extends BaseNode {
         writeResult(result, true, new Vector3d(offsetX, offsetY, offsetZ));
     }
 
-    private void writeResult(BlockPosList result, boolean valid) {
-        writeResult(result, valid, new Vector3d());
-    }
-
-    private void writeResult(BlockPosList result, boolean valid, Vector3d effectiveOffset) {
+    private void writeResult(BlockPosList result, boolean valid, @Nullable Vector3d effectiveOffset) {
         outputValues.put(OUTPUT_COORDINATES_ID, result);
-        outputValues.put(OUTPUT_EFFECTIVE_OFFSET_ID, effectiveOffset);
+        outputValues.put(OUTPUT_EFFECTIVE_OFFSET_ID, VectorUtils.toVectorPort(effectiveOffset));
         outputValues.put(OUTPUT_COUNT_ID, result.size());
         outputValues.put(OUTPUT_VALID_ID, valid);
     }
@@ -103,10 +105,6 @@ public class OffsetCoordinatesNode extends BaseNode {
             case CEIL -> (int) Math.ceil(value);
             case ROUND -> (int) Math.round(value);
         };
-    }
-
-    private boolean isFinite(Vector3d vector) {
-        return Double.isFinite(vector.x) && Double.isFinite(vector.y) && Double.isFinite(vector.z);
     }
 
     public RoundingMode getRoundingMode() {

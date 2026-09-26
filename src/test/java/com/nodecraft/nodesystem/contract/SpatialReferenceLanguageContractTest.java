@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Spatial P1 freeze: Closest Point continuous POINT output;
  * Deconstruct Block Position vs Deconstruct Point;
- * Block To Vector removed â€” canonical path is Block To Point.
+ * Block To Vector removed â€?canonical path is Block To Point.
  */
 class SpatialReferenceLanguageContractTest {
 

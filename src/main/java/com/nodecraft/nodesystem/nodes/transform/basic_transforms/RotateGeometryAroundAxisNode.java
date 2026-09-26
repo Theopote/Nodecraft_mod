@@ -9,7 +9,8 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryTransform;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.AxisAngle4d;
 import org.joml.Matrix3d;
@@ -25,7 +26,7 @@ import java.util.UUID;
     displayName = "Rotate Geometry Around Axis",
     description = "Rotates analytic geometry around a center point and arbitrary axis",
     category = "transform.basic_transforms",
-    order = 14
+    order = 1
 )
 public class RotateGeometryAroundAxisNode extends BaseNode {
 
@@ -67,21 +68,15 @@ public class RotateGeometryAroundAxisNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
         if (!(geometryObj instanceof GeometryData geometry)) {
-            writeResult(null, new Vector3d(), 0.0d, false, "Missing geometry input");
+            writeResult(null, null, Double.NaN, false, "Missing geometry input");
             return;
         }
 
-        Vector3d center = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_CENTER_ID));
-        if (center == null) {
-            center = new Vector3d();
-        }
-        Vector3d axis = SpatialValueResolver.resolveVector(inputValues.get(INPUT_AXIS_ID));
-        if (axis == null) {
-            axis = new Vector3d(0.0d, 1.0d, 0.0d);
-        }
-        double angle = getInputDouble(INPUT_ANGLE_ID, defaultAngle);
-        if (!isFinite(center) || !isFinite(axis) || axis.lengthSquared() <= 1.0e-12d || !Double.isFinite(angle)) {
-            writeResult(null, new Vector3d(), 0.0d, false, "Center, axis, or angle is invalid");
+        Vector3d center = OptionalPortDrive.resolveOptionalPoint(this, INPUT_CENTER_ID, new Vector3d());
+        Vector3d axis = OptionalPortDrive.resolveOptionalVector(this, INPUT_AXIS_ID, new Vector3d(0.0d, 1.0d, 0.0d));
+        Double angle = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ANGLE_ID, defaultAngle);
+        if (center == null || axis == null || angle == null || !VectorUtils.isNonZero(axis)) {
+            writeResult(null, null, Double.NaN, false, "Center, axis, or angle is invalid");
             return;
         }
 
@@ -115,19 +110,16 @@ public class RotateGeometryAroundAxisNode extends BaseNode {
         }
     }
 
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
-    }
-
-    private boolean isFinite(Vector3d vector) {
-        return Double.isFinite(vector.x) && Double.isFinite(vector.y) && Double.isFinite(vector.z);
-    }
-
-    private void writeResult(@Nullable GeometryData geometry, Vector3d effectiveAxis, double effectiveAngle, boolean valid, String error) {
+    private void writeResult(
+            @Nullable GeometryData geometry,
+            @Nullable Vector3d effectiveAxis,
+            double effectiveAngle,
+            boolean valid,
+            String error
+    ) {
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
-        outputValues.put(OUTPUT_EFFECTIVE_AXIS_ID, effectiveAxis);
-        outputValues.put(OUTPUT_EFFECTIVE_ANGLE_ID, effectiveAngle);
+        outputValues.put(OUTPUT_EFFECTIVE_AXIS_ID, VectorUtils.toVectorPort(effectiveAxis));
+        outputValues.put(OUTPUT_EFFECTIVE_ANGLE_ID, valid ? effectiveAngle : Double.NaN);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
         outputValues.put(OUTPUT_VALID_ID, valid);
     }

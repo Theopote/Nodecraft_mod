@@ -9,7 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryTransform;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -22,7 +22,7 @@ import java.util.UUID;
     displayName = "Scale Geometry Around Point",
     description = "Uniformly scales analytic geometry around a center point (scale must be greater than zero; use Mirror for reflection)",
     category = "transform.basic_transforms",
-    order = 15
+    order = 2
 )
 public class ScaleGeometryAroundPointNode extends BaseNode {
 
@@ -60,23 +60,20 @@ public class ScaleGeometryAroundPointNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
         if (!(geometryObj instanceof GeometryData geometry)) {
-            writeResult(null, false);
+            writeResult(null, Double.NaN, false);
             return;
         }
 
-        Vector3d center = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_CENTER_ID));
-        if (center == null) {
-            center = new Vector3d();
-        }
-        double scale = getInputDouble(INPUT_SCALE_ID, defaultScale);
-        if (!isFinite(center) || !Double.isFinite(scale) || scale <= EPS) {
-            writeResult(null, false);
+        Vector3d center = OptionalPortDrive.resolveOptionalPoint(this, INPUT_CENTER_ID, new Vector3d());
+        Double scale = OptionalPortDrive.resolveOptionalDouble(this, INPUT_SCALE_ID, defaultScale);
+        if (center == null || scale == null || scale <= EPS) {
+            writeResult(null, Double.NaN, false);
             return;
         }
 
         Vector3d translation = new Vector3d(center).mul(1.0d - scale);
         GeometryData scaled = GeometryTransform.transform(geometry, translation, 0.0d, 0.0d, 0.0d, scale);
-        writeResult(scaled, scaled != null);
+        writeResult(scaled, scale, scaled != null);
     }
 
     public double getDefaultScale() {
@@ -102,18 +99,9 @@ public class ScaleGeometryAroundPointNode extends BaseNode {
         }
     }
 
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
-    }
-
-    private boolean isFinite(Vector3d vector) {
-        return Double.isFinite(vector.x) && Double.isFinite(vector.y) && Double.isFinite(vector.z);
-    }
-
-    private void writeResult(@Nullable GeometryData geometry, boolean valid) {
+    private void writeResult(@Nullable GeometryData geometry, double effectiveScale, boolean valid) {
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
-        outputValues.put(OUTPUT_EFFECTIVE_SCALE_ID, valid ? getInputDouble(INPUT_SCALE_ID, defaultScale) : 0.0d);
+        outputValues.put(OUTPUT_EFFECTIVE_SCALE_ID, valid ? effectiveScale : Double.NaN);
         outputValues.put(OUTPUT_VALID_ID, valid);
     }
 }

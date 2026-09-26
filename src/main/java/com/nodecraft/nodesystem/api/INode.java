@@ -77,6 +77,13 @@ public interface INode {
      * @return 输出数据
      */
     Object getOutput(String portId);
+
+    /**
+     * 从输入端口获取当前值（可能为 null；请勿用 null 推断“未连接”）
+     * @param portId 输入端口ID
+     * @return 输入数据
+     */
+    Object getInput(String portId);
     
     /**
      * 设置输入端口的值

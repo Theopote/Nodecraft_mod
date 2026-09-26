@@ -185,6 +185,11 @@ public abstract class BaseNode implements INode {
     }
 
     @Override
+    public Object getInput(String portId) {
+        return inputValues.get(portId);
+    }
+
+    @Override
     public void setInput(String portId, Object value) {
         for (IPort port : inputPorts) {
             if (!port.getId().equals(portId)) {

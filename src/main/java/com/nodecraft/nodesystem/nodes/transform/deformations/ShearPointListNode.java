@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.transform.basic_transforms;
+package com.nodecraft.nodesystem.nodes.transform.deformations;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -7,6 +7,8 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -19,11 +21,11 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "transform.basic_transforms.shear",
+    id = "transform.deformations.shear_point_list",
     displayName = "Shear Point List",
     description = "Applies axial shear deformation to a point list around an origin.",
-    category = "transform.basic_transforms",
-    order = 11
+    category = "transform.deformations",
+    order = 10
 )
 public class ShearPointListNode extends BaseNode {
 
@@ -49,11 +51,10 @@ public class ShearPointListNode extends BaseNode {
 
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_SKIPPED_COUNT_ID = "output_skipped_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ShearPointListNode() {
-        super(UUID.randomUUID(), "transform.basic_transforms.shear");
+        super(UUID.randomUUID(), "transform.deformations.shear_point_list");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Points to shear", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Shear origin", NodeDataType.POINT, this));
@@ -62,7 +63,6 @@ public class ShearPointListNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sheared point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output points", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_SKIPPED_COUNT_ID, "Skipped Count", "Number of input items that could not be parsed as points", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when shear was applied", NodeDataType.BOOLEAN, this));
     }
 
@@ -78,39 +78,27 @@ public class ShearPointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object pointsObj = inputValues.get(INPUT_POINTS_ID);
-        List<Vector3d> points = SpatialValueResolver.resolvePointList(pointsObj);
-        if (points.isEmpty()) {
+        List<Vector3d> points = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        if (points == null) {
             writeInvalid();
             return;
         }
-        int skippedCount = pointsObj instanceof java.util.Collection<?> collection
-            ? Math.max(0, collection.size() - points.size())
-            : 0;
 
-        Vector3d origin = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_ORIGIN_ID));
-        if (origin == null) {
-            origin = new Vector3d(0.0d, 0.0d, 0.0d);
-        }
-        double kU = resolveDouble(inputValues.get(INPUT_FACTOR_U_ID), factorU);
-        double kV = resolveDouble(inputValues.get(INPUT_FACTOR_V_ID), factorV);
-        if (!isFinite(origin) || !Double.isFinite(kU) || !Double.isFinite(kV)) {
+        Vector3d origin = OptionalPortDrive.resolveOptionalPoint(this, INPUT_ORIGIN_ID, new Vector3d());
+        Double kU = OptionalPortDrive.resolveOptionalDouble(this, INPUT_FACTOR_U_ID, factorU);
+        Double kV = OptionalPortDrive.resolveOptionalDouble(this, INPUT_FACTOR_V_ID, factorV);
+        if (origin == null || kU == null || kV == null) {
             writeInvalid();
             return;
         }
 
         List<Vector3d> out = new ArrayList<>(points.size());
-        for (Vector3d p : points) {
-            out.add(applyShear(p, origin, kU, kV));
+        for (Vector3d point : points) {
+            out.add(applyShear(point, origin, kU, kV));
         }
 
-        if (out.isEmpty()) {
-            writeInvalid();
-            return;
-        }
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(out));
         outputValues.put(OUTPUT_COUNT_ID, out.size());
-        outputValues.put(OUTPUT_SKIPPED_COUNT_ID, skippedCount);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
@@ -135,19 +123,7 @@ public class ShearPointListNode extends BaseNode {
     private void writeInvalid() {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_SKIPPED_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private double resolveDouble(Object value, double fallback) {
-        return value instanceof Number n ? n.doubleValue() : fallback;
-    }
-
-    private boolean isFinite(Vector3d vector) {
-        return vector != null
-            && Double.isFinite(vector.x)
-            && Double.isFinite(vector.y)
-            && Double.isFinite(vector.z);
     }
 
     @Override

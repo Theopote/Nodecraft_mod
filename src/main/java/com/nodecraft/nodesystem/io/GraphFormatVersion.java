@@ -320,8 +320,15 @@ public final class GraphFormatVersion {
      */
     public static final int V51 = 51;
 
+    /**
+     * Basic Transforms v1: continuous Geometry/Point/BoxFace transforms only; block-grid moved to
+     * placement; Shear to deformations; transactional Composite transform/mirror; optional-drive;
+     * strict POINT_LIST; unique order 0-8.
+     */
+    public static final int V52 = 52;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V51;
+    public static final int CURRENT = V52;
 
     private GraphFormatVersion() {
     }

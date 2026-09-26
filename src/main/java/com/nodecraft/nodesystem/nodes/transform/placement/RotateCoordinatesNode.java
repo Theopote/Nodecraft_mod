@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.transform.basic_transforms;
+package com.nodecraft.nodesystem.nodes.transform.placement;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -8,6 +8,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.AxisAngle4d;
@@ -20,11 +22,11 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "transform.basic_transforms.rotate_coordinates",
+    id = "transform.placement.rotate_coordinates",
     displayName = "Rotate Coordinates",
     description = "Rotates a list of block coordinates around a point and axis",
-    category = "transform.basic_transforms",
-    order = 2
+    category = "transform.placement",
+    order = 5
 )
 public class RotateCoordinatesNode extends BaseNode {
 
@@ -50,10 +52,10 @@ public class RotateCoordinatesNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public RotateCoordinatesNode() {
-        super(UUID.randomUUID(), "transform.basic_transforms.rotate_coordinates");
+        super(UUID.randomUUID(), "transform.placement.rotate_coordinates");
 
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "The coordinates to rotate", NodeDataType.BLOCK_LIST, this));
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Rotation center point", NodeDataType.BLOCK_POS, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Rotation center point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_AXIS_ID, "Axis", "Rotation axis vector", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_ANGLE_ID, "Angle", "Rotation angle in degrees", NodeDataType.DOUBLE, this));
 
@@ -77,27 +79,22 @@ public class RotateCoordinatesNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object coordinatesObj = inputValues.get(INPUT_COORDINATES_ID);
-        Object centerObj = inputValues.get(INPUT_CENTER_ID);
-        Object axisObj = inputValues.get(INPUT_AXIS_ID);
-        Object angleObj = inputValues.get(INPUT_ANGLE_ID);
-
         BlockPosList result = new BlockPosList();
         if (!(coordinatesObj instanceof BlockPosList coordinates)) {
-            writeResult(result, false);
+            writeResult(result, false, null, Double.NaN);
             return;
         }
 
-        BlockPos centerPos = centerObj instanceof BlockPos pos ? pos : BlockPos.ORIGIN;
-        Vector3d axis = axisObj instanceof Vector3d axisInput ? new Vector3d(axisInput) : axisFromProperty();
-        double angleDegrees = angleObj instanceof Number angleNumber ? angleNumber.doubleValue() : defaultAngle;
-        if (!isFinite(axis) || axis.lengthSquared() <= 1.0e-12d || !Double.isFinite(angleDegrees)) {
-            writeResult(result, false);
+        Vector3d center = OptionalPortDrive.resolveOptionalPoint(this, INPUT_CENTER_ID, new Vector3d());
+        Vector3d axis = OptionalPortDrive.resolveOptionalVector(this, INPUT_AXIS_ID, axisFromProperty());
+        Double angleDegrees = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ANGLE_ID, defaultAngle);
+        if (center == null || axis == null || angleDegrees == null || !VectorUtils.isNonZero(axis)) {
+            writeResult(result, false, null, Double.NaN);
             return;
         }
 
         axis.normalize();
         Quaterniond rotation = new Quaterniond(new AxisAngle4d(Math.toRadians(angleDegrees), axis.x, axis.y, axis.z));
-        Vector3d center = new Vector3d(centerPos.getX(), centerPos.getY(), centerPos.getZ());
 
         for (BlockPos pos : coordinates) {
             Vector3d transformed = new Vector3d(pos.getX(), pos.getY(), pos.getZ())
@@ -114,14 +111,15 @@ public class RotateCoordinatesNode extends BaseNode {
         writeResult(result, true, axis, angleDegrees);
     }
 
-    private void writeResult(BlockPosList result, boolean valid) {
-        writeResult(result, valid, new Vector3d(), 0.0d);
-    }
-
-    private void writeResult(BlockPosList result, boolean valid, Vector3d effectiveAxis, double effectiveAngle) {
+    private void writeResult(
+            BlockPosList result,
+            boolean valid,
+            @Nullable Vector3d effectiveAxis,
+            double effectiveAngle
+    ) {
         outputValues.put(OUTPUT_COORDINATES_ID, result);
-        outputValues.put(OUTPUT_EFFECTIVE_AXIS_ID, effectiveAxis);
-        outputValues.put(OUTPUT_EFFECTIVE_ANGLE_ID, effectiveAngle);
+        outputValues.put(OUTPUT_EFFECTIVE_AXIS_ID, VectorUtils.toVectorPort(effectiveAxis));
+        outputValues.put(OUTPUT_EFFECTIVE_ANGLE_ID, valid ? effectiveAngle : Double.NaN);
         outputValues.put(OUTPUT_COUNT_ID, result.size());
         outputValues.put(OUTPUT_VALID_ID, valid);
     }
@@ -133,10 +131,6 @@ public class RotateCoordinatesNode extends BaseNode {
             case Z_AXIS -> new Vector3d(0.0d, 0.0d, 1.0d);
             case Y_AXIS, CUSTOM -> new Vector3d(0.0d, 1.0d, 0.0d);
         };
-    }
-
-    private boolean isFinite(Vector3d vector) {
-        return Double.isFinite(vector.x) && Double.isFinite(vector.y) && Double.isFinite(vector.z);
     }
 
     public RotationAxis getRotationAxis() {

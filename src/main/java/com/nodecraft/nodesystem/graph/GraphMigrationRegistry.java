@@ -108,6 +108,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V39 -> migrateV39ToV40(graph);
             case GraphFormatVersion.V49 -> migrateV49ToV50(graph);
             case GraphFormatVersion.V50 -> migrateV50ToV51(graph);
+            case GraphFormatVersion.V51 -> migrateV51ToV52(graph);
             default -> graph;
         };
     }
@@ -2887,6 +2888,117 @@ public final class GraphMigrationRegistry {
             }
         }
         return graph;
+    }
+
+    private static final String LEGACY_OFFSET_COORDINATE_TYPE = "transform.basic_transforms.offset_coordinate";
+    private static final String LEGACY_OFFSET_COORDINATES_TYPE = "transform.basic_transforms.offset_coordinates";
+    private static final String LEGACY_ROTATE_COORDINATES_TYPE = "transform.basic_transforms.rotate_coordinates";
+    private static final String LEGACY_SCALE_COORDINATES_TYPE = "transform.basic_transforms.scale_coordinates";
+    private static final String LEGACY_MIRROR_COORDINATES_TYPE = "transform.basic_transforms.mirror_coordinates";
+    private static final String LEGACY_MIRROR_VECTOR_LIST_TYPE = "transform.basic_transforms.mirror_vector_list_plane";
+    private static final String LEGACY_SHEAR_TYPE = "transform.basic_transforms.shear";
+
+    private static final String PLACEMENT_OFFSET_COORDINATE_TYPE = "transform.placement.offset_coordinate";
+    private static final String PLACEMENT_OFFSET_COORDINATES_TYPE = "transform.placement.offset_coordinates";
+    private static final String PLACEMENT_ROTATE_COORDINATES_TYPE = "transform.placement.rotate_coordinates";
+    private static final String PLACEMENT_SCALE_COORDINATES_TYPE = "transform.placement.scale_coordinates";
+    private static final String PLACEMENT_MIRROR_COORDINATES_TYPE = "transform.placement.mirror_coordinates";
+    private static final String MIRROR_POINT_LIST_TYPE = "transform.basic_transforms.mirror_point_list_plane";
+    private static final String DEFORMATIONS_SHEAR_TYPE = "transform.deformations.shear_point_list";
+    private static final String OFFSET_FACE_TYPE = "transform.basic_transforms.offset_face";
+    private static final String INSET_FACE_TYPE = "transform.basic_transforms.inset_face";
+
+    private static final Set<String> BASIC_TRANSFORMS_FACE_ECHO_PORTS = Set.of(
+            "output_polyline",
+            "output_points",
+            "output_corners",
+            "output_center",
+            "output_normal",
+            "output_plane",
+            "output_edges",
+            "output_effective_distance"
+    );
+
+    private static final Set<String> OFFSET_COORDINATE_ECHO_PORTS = Set.of(
+            "output_x",
+            "output_y",
+            "output_z"
+    );
+
+    /**
+     * Basic Transforms v1: move block-grid to placement, Shear to deformations,
+     * rename mirror vector list → point list, drop removed echo / skipped ports.
+     */
+    private static SavedGraph migrateV51ToV52(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                String remapped = remapBasicTransformsV52TypeId(node.typeId);
+                if (!remapped.equals(node.typeId)) {
+                    LOGGER.debug("Remapped {} -> {}", node.typeId, remapped);
+                    node.typeId = remapped;
+                }
+            }
+        }
+
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null || connection.sourcePortId == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            if (sourceType == null) {
+                return false;
+            }
+            String sourcePort = connection.sourcePortId.toLowerCase(Locale.ROOT);
+
+            if ((OFFSET_FACE_TYPE.equals(sourceType) || INSET_FACE_TYPE.equals(sourceType))
+                    && BASIC_TRANSFORMS_FACE_ECHO_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped Basic Transforms face echo {}#{}", connection.sourceNodeId, connection.sourcePortId);
+                return true;
+            }
+            if (PLACEMENT_OFFSET_COORDINATE_TYPE.equals(sourceType)
+                    && OFFSET_COORDINATE_ECHO_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped Offset Coordinate echo {}#{}", connection.sourceNodeId, connection.sourcePortId);
+                return true;
+            }
+            if ((MIRROR_POINT_LIST_TYPE.equals(sourceType) || DEFORMATIONS_SHEAR_TYPE.equals(sourceType))
+                    && "output_skipped_count".equals(sourcePort)) {
+                LOGGER.debug("Dropped Skipped Count {}#{}", connection.sourceNodeId, connection.sourcePortId);
+                return true;
+            }
+            return false;
+        });
+
+        return graph;
+    }
+
+    private static String remapBasicTransformsV52TypeId(String typeId) {
+        String normalized = typeId.toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case LEGACY_OFFSET_COORDINATE_TYPE -> PLACEMENT_OFFSET_COORDINATE_TYPE;
+            case LEGACY_OFFSET_COORDINATES_TYPE -> PLACEMENT_OFFSET_COORDINATES_TYPE;
+            case LEGACY_ROTATE_COORDINATES_TYPE -> PLACEMENT_ROTATE_COORDINATES_TYPE;
+            case LEGACY_SCALE_COORDINATES_TYPE -> PLACEMENT_SCALE_COORDINATES_TYPE;
+            case LEGACY_MIRROR_COORDINATES_TYPE -> PLACEMENT_MIRROR_COORDINATES_TYPE;
+            case LEGACY_MIRROR_VECTOR_LIST_TYPE -> MIRROR_POINT_LIST_TYPE;
+            case LEGACY_SHEAR_TYPE -> DEFORMATIONS_SHEAR_TYPE;
+            default -> typeId;
+        };
     }
 
     private static String remapBlockStateTypeId(String typeId) {

@@ -229,6 +229,11 @@ class PreviewSideEffectContractTest {
         }
 
         @Override
+        public Object getInput(String portId) {
+            return null;
+        }
+
+        @Override
         public void setInput(String portId, Object value) {
         }
 

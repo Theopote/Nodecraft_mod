@@ -71,7 +71,7 @@ class PointVectorLanguageContractTest {
         assertEquals(34, GraphFormatVersion.V34);
         assertEquals(35, GraphFormatVersion.V35);
         assertEquals(36, GraphFormatVersion.V36);
-        assertEquals(GraphFormatVersion.V51, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V52, GraphFormatVersion.CURRENT);
     }
 
     @Test

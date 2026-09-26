@@ -13,16 +13,13 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
-/**
- * Reflects supported {@link GeometryData} primitives about a plane (including composites and boolean wrappers).
- */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "transform.basic_transforms.mirror_geometry_plane",
     displayName = "Mirror Geometry About Plane",
     description = "Mirrors analytic geometry about a plane (recursive for composites and boolean geometry nodes)",
     category = "transform.basic_transforms",
-    order = 7
+    order = 4
 )
 public class MirrorGeometryAboutPlaneNode extends BaseNode {
 
@@ -68,8 +65,13 @@ public class MirrorGeometryAboutPlaneNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object geomObj = inputValues.get(INPUT_GEOMETRY_ID);
         Object planeObj = inputValues.get(INPUT_PLANE_ID);
-        if (!(geomObj instanceof GeometryData geometry) || !(planeObj instanceof PlaneData plane)) {
+        if (!(geomObj instanceof GeometryData geometry) || !(planeObj instanceof PlaneData planeRaw)) {
             writeResult(null, false, "Missing geometry or plane input");
+            return;
+        }
+        PlaneData plane = planeRaw.normalized();
+        if (plane == null) {
+            writeResult(null, false, "Invalid mirror plane");
             return;
         }
         GeometryData mirrored = GeometryMirror.mirror(geometry, plane);
