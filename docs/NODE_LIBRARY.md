@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **539**
+- Total nodes: **537**
 - Total categories: **59**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -44,8 +44,8 @@
 | `output.execute` | 8 |
 | `output.export` | 4 |
 | `output.preview` | 12 |
-| `pattern.grid` | 5 |
-| `pattern.linear` | 7 |
+| `pattern.grid` | 6 |
+| `pattern.linear` | 4 |
 | `pattern.lsystem` | 2 |
 | `pattern.radial` | 4 |
 | `pattern.surface_volume_distribution` | 9 |
@@ -577,7 +577,7 @@
 | Preview Profiles | `output.preview.preview_profiles` | Previews polygon profile boundaries and optional normal indicators | `PreviewPolygonProfilesNode` |
 | Preview Geometry | `output.preview.preview_geometry` | Previews analytic geometry as surfaces; voxel boolean (Difference/Intersection) as evaluated block ghosts matching bake | `PreviewGeometryNode` |
 
-## pattern.grid (5)
+## pattern.grid (6)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -585,19 +585,17 @@
 | Facade Grid | `pattern.grid.facade_grid` | Generates facade cell centers and boundaries on a box face | `FacadeGridNode` |
 | Grid Array Geometry | `pattern.grid.grid_array_geometry` | Creates rectangular or box arrays of geometry using X, Y, and optional Z directions | `GridArrayGeometryNode` |
 | Hex Grid | `pattern.grid.hex_grid` | Repeats coordinates on a flat-top hexagonal lattice (X/Z) with configurable spacing | `HexGridNode` |
+| Staggered Grid | `pattern.grid.staggered_grid` | Repeats coordinates in rows with parity-controlled staggering and optional alternate row height | `StaggeredGridNode` |
 | Triangular Grid | `pattern.grid.triangle_grid` | Repeats coordinates on a triangular lattice with alternating row offsets. | `TriangularGridNode` |
 
-## pattern.linear (7)
+## pattern.linear (4)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Linear Array | `pattern.linear.linear_array` | 将坐标列表沿直线方向重复排列 | `LinearArrayNode` |
-| Along Path | `pattern.linear.along_path` | Repeats a block pattern at each resolved path point from a path or point list | `AlongPathNode` |
-| Staggered Array | `pattern.linear.staggered_array` | Repeats coordinates in rows and applies an alternating offset for brick-like staggering | `StaggeredArrayNode` |
+| Linear Array | `pattern.linear.linear_array_geometry` | Creates repeated geometry copies along a direction vector | `LinearArrayGeometryNode` |
 | Path Frames | `pattern.linear.path_instances` | Generates parallel-transport frames at path vertices. | `PathInstancesNode` |
-| Instance on Points | `pattern.linear.instance_on_points` | Instances a block or block-placement template at each input point. | `InstanceOnPointsNode` |
-| Linear Array Geometry | `pattern.linear.linear_array_geometry` | Creates repeated geometry copies along a direction vector | `LinearArrayGeometryNode` |
-| Curve Array Geometry | `pattern.linear.curve_array_geometry` | Creates repeated geometry copies along a curve using parallel-transport frames and placement | `CurveArrayGeometryNode` |
+| Instance on Points | `pattern.linear.instance_on_points` | Instances a block-placement template at each input point. | `InstanceOnPointsNode` |
+| Curve Array | `pattern.linear.curve_array_geometry` | Creates repeated geometry copies along a curve using parallel-transport frames and placement | `CurveArrayGeometryNode` |
 
 ## pattern.lsystem (2)
 

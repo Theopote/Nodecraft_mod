@@ -18,8 +18,11 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Linear Array 节点: 将Coordinate列表沿直线方向重复
+ * Legacy voxel/block linear array. Prefer {@link LinearArrayGeometryNode} for new graphs.
+ *
+ * @deprecated Legacy BLOCK_LIST array; hidden from the node library.
  */
+@Deprecated
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "pattern.linear.linear_array",

@@ -27,10 +27,10 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "pattern.linear.curve_array_geometry",
-    displayName = "Curve Array Geometry",
+    displayName = "Curve Array",
     description = "Creates repeated geometry copies along a curve using parallel-transport frames and placement",
     category = "pattern.linear",
-    order = 6
+    order = 3
 )
 public class CurveArrayGeometryNode extends BaseNode {
 
@@ -64,7 +64,7 @@ public class CurveArrayGeometryNode extends BaseNode {
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to copy along the path", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_PIVOT_ID, "Pivot", "Local pivot point in the source geometry that maps to each path frame", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Path to sample (line, polyline, or curve)", NodeDataType.PATH, this));
-        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Total number of instances along the path. Overrides Spacing when >= 2.", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Total number of instances along the path. Overrides Spacing when connected.", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing", "Distance between instances when Count is not set", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_UP_VECTOR_ID, "Up Vector", "Reference up vector for path frames", NodeDataType.VECTOR, this));
 
@@ -106,7 +106,7 @@ public class CurveArrayGeometryNode extends BaseNode {
         }
 
         double total = cumulative[cumulative.length - 1];
-        List<Double> distances = resolveDistances(total);
+        List<Double> distances = resolveDistances(total, closed);
         if (distances.isEmpty()) {
             writeResult(List.of(), List.of(), List.of(), false);
             return;
@@ -141,17 +141,20 @@ public class CurveArrayGeometryNode extends BaseNode {
             return;
         }
 
-        List<FrameData> frames = orientToPath
+        List<FrameData> candidateFrames = orientToPath
             ? PathFrameUtils.placementFramesFromSamples(sampleOrigins, sampleTangents, up)
             : identityFrames(sampleOrigins);
 
-        List<GeometryData> copies = new ArrayList<>(frames.size());
-        List<Vector3d> origins = new ArrayList<>(frames.size());
-        for (FrameData frame : frames) {
+        List<GeometryData> copies = new ArrayList<>(candidateFrames.size());
+        List<Vector3d> origins = new ArrayList<>(candidateFrames.size());
+        List<FrameData> frames = new ArrayList<>(candidateFrames.size());
+        for (int i = 0; i < candidateFrames.size(); i++) {
+            FrameData frame = candidateFrames.get(i);
             GeometryData copy = PlaceGeometryOnFramesNode.placeOnFrame(geometry, pivot, frame);
             if (copy != null) {
                 copies.add(copy);
                 origins.add(new Vector3d(frame.getOrigin()));
+                frames.add(frame);
             }
         }
 
@@ -176,17 +179,25 @@ public class CurveArrayGeometryNode extends BaseNode {
         return points == null ? null : List.copyOf(points);
     }
 
-    private List<Double> resolveDistances(double total) {
-        int count = inputValues.get(INPUT_COUNT_ID) instanceof Number n ? n.intValue() : -1;
+    private List<Double> resolveDistances(double total, boolean closed) {
+        Integer countValue = inputValues.get(INPUT_COUNT_ID) instanceof Integer i ? i : null;
         double spacing = inputValues.get(INPUT_SPACING_ID) instanceof Number n ? n.doubleValue() : 0.0d;
         List<Double> distances = new ArrayList<>();
-        if (count >= 2) {
-            count = GenerationLimits.clampPositiveGeometryInstanceCount(count);
-            int denominator = includeEnds ? count - 1 : count + 1;
-            int start = includeEnds ? 0 : 1;
-            int end = includeEnds ? count - 1 : count;
-            for (int i = start; i <= end; i++) {
-                distances.add(total * i / (double) denominator);
+        if (countValue != null && countValue >= 1) {
+            int count = GenerationLimits.clampPositiveGeometryInstanceCount(countValue);
+            if (closed) {
+                for (int i = 0; i < count; i++) {
+                    distances.add(total * i / (double) count);
+                }
+            } else if (count == 1) {
+                distances.add(includeEnds ? 0.0d : total * 0.5d);
+            } else {
+                int denominator = includeEnds ? count - 1 : count + 1;
+                int start = includeEnds ? 0 : 1;
+                int end = includeEnds ? count - 1 : count;
+                for (int i = start; i <= end; i++) {
+                    distances.add(total * i / (double) denominator);
+                }
             }
             return distances;
         }
@@ -194,10 +205,13 @@ public class CurveArrayGeometryNode extends BaseNode {
             int maxInstances = GenerationLimits.clampGeometrySpacingInstanceCount(total, spacing);
             int emitted = 0;
             for (double d = includeEnds ? 0.0d : spacing; d <= total + EPS && emitted < maxInstances; d += spacing) {
+                if (closed && d >= total - EPS) {
+                    break;
+                }
                 distances.add(Math.min(d, total));
                 emitted++;
             }
-            if (includeEnds && emitted < maxInstances
+            if (!closed && includeEnds && emitted < maxInstances
                 && (distances.isEmpty() || distances.getLast() < total - EPS)) {
                 distances.add(total);
             }
@@ -224,7 +238,13 @@ public class CurveArrayGeometryNode extends BaseNode {
 
     private void writeResult(List<GeometryData> copies, List<Vector3d> origins, List<FrameData> frames, boolean valid) {
         outputValues.put(OUTPUT_GEOMETRIES_ID, List.copyOf(copies));
-        outputValues.put(OUTPUT_GEOMETRY_ID, copies.isEmpty() ? null : new CompositeGeometryData(copies));
+        if (copies.isEmpty()) {
+            outputValues.put(OUTPUT_GEOMETRY_ID, null);
+        } else if (copies.size() == 1) {
+            outputValues.put(OUTPUT_GEOMETRY_ID, copies.getFirst());
+        } else {
+            outputValues.put(OUTPUT_GEOMETRY_ID, new CompositeGeometryData(copies));
+        }
         outputValues.put(OUTPUT_ORIGINS_ID, SpatialValueResolver.toPointDataList(origins));
         outputValues.put(OUTPUT_FRAMES_ID, List.copyOf(frames));
         outputValues.put(OUTPUT_GEOMETRY_TREE_ID, buildTree(copies));

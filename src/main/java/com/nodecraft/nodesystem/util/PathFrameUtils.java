@@ -254,10 +254,26 @@ public final class PathFrameUtils {
     }
 
     public static Vector3d computeTangent(List<Vector3d> points, int index) {
+        return computeTangent(points, index, false);
+    }
+
+    /**
+     * Tangent at a polyline vertex. When {@code closed}, endpoints use wrap-around neighbors
+     * (same rule as polar full-circle: no duplicate seam vertex in the point list).
+     */
+    public static Vector3d computeTangent(List<Vector3d> points, int index, boolean closed) {
+        int n = points.size();
+        if (n < 2) {
+            return new Vector3d(0.0d, 0.0d, 1.0d);
+        }
         Vector3d tangent;
-        if (index <= 0) {
+        if (closed && n >= 3) {
+            int prev = (index - 1 + n) % n;
+            int next = (index + 1) % n;
+            tangent = new Vector3d(points.get(next)).sub(points.get(prev));
+        } else if (index <= 0) {
             tangent = new Vector3d(points.get(1)).sub(points.get(0));
-        } else if (index >= points.size() - 1) {
+        } else if (index >= n - 1) {
             tangent = new Vector3d(points.get(index)).sub(points.get(index - 1));
         } else {
             tangent = new Vector3d(points.get(index + 1)).sub(points.get(index - 1));

@@ -24,7 +24,10 @@ import java.util.UUID;
 
 /**
  * Repeats a block pattern at each point along a resolved path.
+ *
+ * @deprecated Superseded by Path Frames + Instance on Points / Curve Array.
  */
+@Deprecated
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "pattern.linear.along_path",

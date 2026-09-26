@@ -1,9 +1,9 @@
 package com.nodecraft.nodesystem.flow;
 
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.nodes.pattern.linear.InstanceOnPointsNode;
 import com.nodecraft.nodesystem.nodes.world.query.FilterPointsByRuleNode;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
-import com.nodecraft.nodesystem.util.BlockPosList;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.Test;
@@ -13,13 +13,14 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FlowAndInstanceNodeTest {
 
     @Test
     void instanceOnPointsCopiesTemplateAtEveryAnchor() {
         InstanceOnPointsNode node = new InstanceOnPointsNode();
-        BlockPosList anchors = new BlockPosList(List.of(new BlockPos(10, 64, 10), new BlockPos(20, 64, 20)));
+        List<PointData> anchors = List.of(new PointData(10, 64, 10), new PointData(20, 64, 20));
         List<BlockPlacementData> template = List.of(
                 new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_fence"),
                 new BlockPlacementData(new BlockPos(0, 1, 0), "minecraft:lantern")
@@ -32,9 +33,10 @@ class FlowAndInstanceNodeTest {
 
         assertEquals(true, outputs.get("output_valid"));
         assertEquals(2, outputs.get("output_instance_count"));
-        assertEquals(4, outputs.get("output_count"));
-        BlockPosList positions = assertInstanceOf(BlockPosList.class, outputs.get("output_positions"));
-        assertEquals(true, positions.contains(new BlockPos(20, 65, 20)));
+        assertEquals(4, outputs.get("output_placement_count"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> placements = assertInstanceOf(List.class, outputs.get("output_placements"));
+        assertTrue(placements.stream().anyMatch(p -> p.pos().equals(new BlockPos(20, 65, 20))));
     }
 
     @Test

@@ -106,6 +106,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V37 -> migrateV37ToV38(graph);
             case GraphFormatVersion.V38 -> migrateV38ToV39(graph);
             case GraphFormatVersion.V39 -> migrateV39ToV40(graph);
+            case GraphFormatVersion.V40 -> migrateV40ToV41(graph);
             default -> graph;
         };
     }
@@ -2269,6 +2270,17 @@ public final class GraphMigrationRegistry {
     private static final String WEIGHTED_WEIGHTS_PORT = "input_weights";
     private static final String FALLBACK_BLOCK_TYPE_PORT = "input_fallback_block_type";
 
+    private static final String INSTANCE_ON_POINTS_TYPE = "pattern.linear.instance_on_points";
+    private static final Set<String> INSTANCE_ON_POINTS_DROPPED_OUTPUT_PORTS = Set.of(
+            "output_positions",
+            "output_block_ids",
+            "output_count"
+    );
+    private static final Set<String> INSTANCE_ON_POINTS_DROPPED_INPUT_PORTS = Set.of(
+            "input_template_coordinates",
+            "input_block_info"
+    );
+
     /**
      * Type Selectors v1: Block Type {@code BLOCK_TYPE} port; remove Block State Selector.
      */
@@ -2787,6 +2799,53 @@ public final class GraphMigrationRegistry {
                     && !isDeclaredConnectionStillCompatible(sourceType, connection.sourcePortId,
                     targetType, connection.targetPortId)) {
                 LOGGER.debug("Dropped Basic Assignment v1 incompatible Weighted Palette weights wire {}#{} → {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId,
+                        connection.targetNodeId, connection.targetPortId);
+                return true;
+            }
+
+            return false;
+        });
+
+        return graph;
+    }
+
+    /**
+     * Pattern Linear v1: drop Instance on Points deconstruct outputs and cross-role input ports.
+     */
+    private static SavedGraph migrateV40ToV41(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            String targetPort = connection.targetPortId == null ? "" : connection.targetPortId.toLowerCase(Locale.ROOT);
+
+            if (INSTANCE_ON_POINTS_TYPE.equals(sourceType)
+                    && INSTANCE_ON_POINTS_DROPPED_OUTPUT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped Pattern Linear v1 deconstruct output wire {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId);
+                return true;
+            }
+
+            if (INSTANCE_ON_POINTS_TYPE.equals(targetType)
+                    && INSTANCE_ON_POINTS_DROPPED_INPUT_PORTS.contains(targetPort)) {
+                LOGGER.debug("Dropped Pattern Linear v1 cross-role input wire {}#{} → {}#{}",
                         connection.sourceNodeId, connection.sourcePortId,
                         connection.targetNodeId, connection.targetPortId);
                 return true;

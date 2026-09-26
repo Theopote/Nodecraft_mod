@@ -25,10 +25,10 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "pattern.linear.linear_array_geometry",
-    displayName = "Linear Array Geometry",
+    displayName = "Linear Array",
     description = "Creates repeated geometry copies along a direction vector",
     category = "pattern.linear",
-    order = 5
+    order = 0
 )
 public class LinearArrayGeometryNode extends BaseNode {
 
@@ -114,7 +114,7 @@ public class LinearArrayGeometryNode extends BaseNode {
 
     private int getInputInteger(String portId, int fallback) {
         Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.intValue() : fallback;
+        return value instanceof Integer i ? i : fallback;
     }
 
     private boolean isFinite(Vector3d vector) {
@@ -124,7 +124,13 @@ public class LinearArrayGeometryNode extends BaseNode {
     private void writeResult(List<GeometryData> copies, boolean valid) {
         outputValues.put(OUTPUT_GEOMETRIES_ID, List.copyOf(copies));
         outputValues.put(OUTPUT_GEOMETRY_TREE_ID, buildCopyTree(copies));
-        outputValues.put(OUTPUT_GEOMETRY_ID, copies.isEmpty() ? null : new CompositeGeometryData(copies));
+        if (copies.isEmpty()) {
+            outputValues.put(OUTPUT_GEOMETRY_ID, null);
+        } else if (copies.size() == 1) {
+            outputValues.put(OUTPUT_GEOMETRY_ID, copies.getFirst());
+        } else {
+            outputValues.put(OUTPUT_GEOMETRY_ID, new CompositeGeometryData(copies));
+        }
         outputValues.put(OUTPUT_COUNT_ID, copies.size());
         outputValues.put(OUTPUT_VALID_ID, valid);
     }

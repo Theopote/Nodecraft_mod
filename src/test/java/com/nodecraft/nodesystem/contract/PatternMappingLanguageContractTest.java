@@ -60,7 +60,7 @@ class PatternMappingLanguageContractTest {
     void currentGraphFormatIsV38() {
         assertEquals(37, GraphFormatVersion.V37);
         assertEquals(38, GraphFormatVersion.V38);
-        assertEquals(GraphFormatVersion.V40, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V41, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -101,7 +101,7 @@ class PatternMappingLanguageContractTest {
     @Test
     void checkerPreservesSecondaryWhenOnlyPrimaryConnected() {
         CheckerPatternMapNode node = new CheckerPatternMapNode();
-        // (0,0,0) even â†’ primary; (1,0,0) odd â†’ secondary (preserve)
+        // (0,0,0) even â†?primary; (1,0,0) odd â†?secondary (preserve)
         node.setInput("input_placements", List.of(
                 new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks", null),
                 new BlockPlacementData(new BlockPos(1, 0, 0), "minecraft:oak_planks", null)
@@ -270,7 +270,7 @@ class PatternMappingLanguageContractTest {
         auto.setBrickDirection(BrickPatternMapNode.BrickDirection.Auto);
         auto.setBrickLength(2);
         auto.setCourseHeight(1);
-        // North-south wall â†’ Auto prefers Z
+        // North-south wall â†?Auto prefers Z
         List<BlockPlacementData> wall = new ArrayList<>();
         for (int z = 0; z < 6; z++) {
             wall.add(new BlockPlacementData(new BlockPos(0, 0, z), "minecraft:oak_planks", null));
@@ -295,7 +295,7 @@ class PatternMappingLanguageContractTest {
         List<BlockPlacementData> autoOut = assertInstanceOf(List.class, auto.getOutput("output_placements"));
         @SuppressWarnings("unchecked")
         List<BlockPlacementData> xOut = assertInstanceOf(List.class, lockedX.getOutput("output_placements"));
-        // Locked X on a Z-wall: all along-X indices identical â†’ all primary
+        // Locked X on a Z-wall: all along-X indices identical â†?all primary
         assertEquals(findAt(xOut, 0, 0, 0).blockId(), findAt(xOut, 0, 0, 2).blockId());
         assertNotEqualsIds(findAt(autoOut, 0, 0, 0).blockId(), findAt(autoOut, 0, 0, 2).blockId());
     }

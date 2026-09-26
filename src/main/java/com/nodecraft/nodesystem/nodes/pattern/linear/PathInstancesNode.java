@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.pattern.linear;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
@@ -16,7 +15,6 @@ import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
@@ -25,18 +23,12 @@ import java.util.UUID;
     displayName = "Path Frames",
     description = "Generates parallel-transport frames at path vertices.",
     category = "pattern.linear",
-    order = 4
+    order = 1
 )
 public class PathInstancesNode extends BaseNode {
 
+    private static final double DEDUPE_EPSILON = 1.0e-6d;
     private static final double EPSILON = 1.0e-9d;
-
-    @NodeProperty(displayName = "Deduplicate Near Duplicates", category = "Instances", order = 10,
-        description = "When true, skips consecutive samples closer than Epsilon.")
-    private boolean deduplicateNearDuplicates = false;
-
-    @NodeProperty(displayName = "Deduplicate Epsilon", category = "Instances", order = 11)
-    private double deduplicateEpsilon = 1.0e-6d;
 
     private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_UP_VECTOR_ID = "input_up_vector";
@@ -75,28 +67,31 @@ public class PathInstancesNode extends BaseNode {
             return;
         }
 
-        boolean closed = PathUtils.isClosed(verts);
-        List<Vector3d> samples = new ArrayList<>(verts);
-        if (deduplicateNearDuplicates) {
-            samples = deduplicateContinuous(samples, Math.max(EPSILON, deduplicateEpsilon));
-        }
+        List<Vector3d> samples = deduplicateContinuous(new ArrayList<>(verts), DEDUPE_EPSILON);
         if (samples.size() < 2) {
             writeInvalid();
             return;
         }
 
-        List<Vector3d> unique = closed && samples.size() > 1 && samples.getFirst().equals(samples.getLast())
-            ? samples.subList(0, samples.size() - 1) : samples;
-        double[] cumulative = PathUtils.buildCumulative(unique, closed);
+        boolean closed = PathUtils.isClosed(samples);
+        List<Vector3d> vertices = closed && samples.size() > 1 && samples.getFirst().equals(samples.getLast())
+            ? new ArrayList<>(samples.subList(0, samples.size() - 1))
+            : samples;
+        if (vertices.size() < 2) {
+            writeInvalid();
+            return;
+        }
+
+        double[] cumulative = PathUtils.buildCumulative(vertices, closed);
         double total = cumulative != null && cumulative.length > 0 ? cumulative[cumulative.length - 1] : 0.0d;
 
-        List<Vector3d> tangents = new ArrayList<>(samples.size());
-        for (int i = 0; i < samples.size(); i++) {
-            tangents.add(computeTangent(samples, i));
+        List<Vector3d> tangents = new ArrayList<>(vertices.size());
+        for (int i = 0; i < vertices.size(); i++) {
+            tangents.add(PathFrameUtils.computeTangent(vertices, i, closed));
         }
 
         Vector3d up = resolveUp(inputValues.get(INPUT_UP_VECTOR_ID));
-        List<FrameData> frames = PathFrameUtils.placementFramesFromSamples(samples, tangents, up);
+        List<FrameData> frames = PathFrameUtils.placementFramesFromSamples(vertices, tangents, up);
         if (frames.isEmpty()) {
             writeInvalid();
             return;
@@ -108,28 +103,11 @@ public class PathInstancesNode extends BaseNode {
         }
 
         outputValues.put(OUTPUT_FRAMES_ID, List.copyOf(frames));
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(samples));
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(vertices));
         outputValues.put(OUTPUT_TANGENTS_ID, List.copyOf(tangentCopy));
         outputValues.put(OUTPUT_COUNT_ID, frames.size());
         outputValues.put(OUTPUT_LENGTH_ID, total);
         outputValues.put(OUTPUT_VALID_ID, true);
-    }
-
-    private static Vector3d computeTangent(List<Vector3d> points, int index) {
-        if (points.size() < 2) {
-            return new Vector3d(0.0d, 1.0d, 0.0d);
-        }
-        if (index <= 0) {
-            return new Vector3d(points.get(1)).sub(points.get(0)).normalize();
-        }
-        if (index >= points.size() - 1) {
-            return new Vector3d(points.get(index)).sub(points.get(index - 1)).normalize();
-        }
-        Vector3d forward = new Vector3d(points.get(index + 1)).sub(points.get(index));
-        if (forward.lengthSquared() > EPSILON) {
-            return forward.normalize();
-        }
-        return new Vector3d(points.get(index)).sub(points.get(index - 1)).normalize();
     }
 
     private void writeInvalid() {
@@ -162,48 +140,13 @@ public class PathInstancesNode extends BaseNode {
         return new Vector3d(0.0d, 1.0d, 0.0d);
     }
 
-    public boolean isDeduplicateNearDuplicates() {
-        return deduplicateNearDuplicates;
-    }
-
-    public void setDeduplicateNearDuplicates(boolean deduplicateNearDuplicates) {
-        if (this.deduplicateNearDuplicates != deduplicateNearDuplicates) {
-            this.deduplicateNearDuplicates = deduplicateNearDuplicates;
-            markDirty();
-        }
-    }
-
-    public double getDeduplicateEpsilon() {
-        return deduplicateEpsilon;
-    }
-
-    public void setDeduplicateEpsilon(double deduplicateEpsilon) {
-        if (Double.compare(this.deduplicateEpsilon, deduplicateEpsilon) != 0) {
-            this.deduplicateEpsilon = deduplicateEpsilon;
-            markDirty();
-        }
-    }
-
     @Override
     public Object getNodeState() {
-        return Map.of(
-            "deduplicateNearDuplicates", deduplicateNearDuplicates,
-            "deduplicateEpsilon", deduplicateEpsilon
-        );
+        return null;
     }
 
     @Override
     public void setNodeState(Object state) {
-        if (!(state instanceof Map<?, ?> map)) {
-            return;
-        }
-        if (map.get("deduplicateNearDuplicates") instanceof Boolean value) {
-            setDeduplicateNearDuplicates(value);
-        } else if (map.get("deduplicateAnchors") instanceof Boolean) {
-            setDeduplicateNearDuplicates(false);
-        }
-        if (map.get("deduplicateEpsilon") instanceof Number value) {
-            setDeduplicateEpsilon(value.doubleValue());
-        }
+        // Legacy deduplicateNearDuplicates / deduplicateEpsilon keys are ignored.
     }
 }

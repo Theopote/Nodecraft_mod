@@ -28,6 +28,7 @@ Last updated: 2026-09-25
 | Pattern mapping / role-based patterns | [`node-language-v1-pattern-mapping.md`](./node-language-v1-pattern-mapping.md) + `PatternMaterialUtils` **(PASSED / FROZEN, V38)** |
 | Surface aging / topology RandomOps | [`node-language-v1-surface-aging.md`](./node-language-v1-surface-aging.md) + `SurfaceAgingUtils` **(PASSED / FROZEN, V39)** |
 | Basic assignment / material entry | [`node-language-v1-basic-assignment.md`](./node-language-v1-basic-assignment.md) + `BasicAssignmentUtils` **(PASSED / FROZEN, V40)** |
+| Pattern linear / arrays & instancing | [`node-language-v1-pattern-linear.md`](./node-language-v1-pattern-linear.md) **(PASSED / FROZEN, V41)** |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 
@@ -52,6 +53,7 @@ Last updated: 2026-09-25
 | Pattern Mapping v1 | **PASSED / FROZEN** | V38 |
 | Surface Aging v1 | **PASSED / FROZEN** | V39 |
 | Basic Assignment v1 | **PASSED / FROZEN** | V40 |
+| Pattern Linear v1 | **PASSED / FROZEN** | V41 |
 | List / Collection v1 | FROZEN | V23 |
 | Data Tree v1 | FROZEN | V24 |
 

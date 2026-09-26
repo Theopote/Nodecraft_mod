@@ -67,7 +67,7 @@ class GradientMappingLanguageContractTest {
     void currentGraphFormatIsAtLeastV37() {
         assertEquals(36, GraphFormatVersion.V36);
         assertEquals(37, GraphFormatVersion.V37);
-        assertEquals(GraphFormatVersion.V40, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V41, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -133,7 +133,7 @@ class GradientMappingLanguageContractTest {
 
         node.setInput("input_placements", List.of(low, high));
         node.setInput("input_bottom", "minecraft:dirt");
-        // middle/top/peak unconnected â†’ preserve source for those bands
+        // middle/top/peak unconnected â†?preserve source for those bands
         node.processNode(null);
 
         assertTrue((Boolean) node.getOutput("output_valid"));

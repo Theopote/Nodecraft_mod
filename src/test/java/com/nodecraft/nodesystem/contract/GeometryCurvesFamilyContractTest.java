@@ -160,12 +160,11 @@ class GeometryCurvesFamilyContractTest {
     }
 
     @Test
-    void sweepAndAlongPathUseSinglePathInput() {
+    void sweepAndPathConsumersUseSinglePathInput() {
         assertPortType("geometry.solids.sweep", "input_path", true, NodeDataType.PATH);
         assertPortType("geometry.solids.sweep_from_points", "input_path", true, NodeDataType.PATH);
         assertFalse(hasInputPort("geometry.solids.sweep", "input_path_points"));
         assertFalse(hasInputPort("geometry.solids.sweep_from_points", "input_path_points"));
-        assertPortType("pattern.linear.along_path", "input_path", true, NodeDataType.PATH);
         assertPortType("pattern.linear.path_instances", "input_path", true, NodeDataType.PATH);
         assertFalse(hasInputPort("pattern.linear.path_instances", "input_path_points"));
         assertFalse(hasInputPort("pattern.linear.path_instances", "input_mode"));
