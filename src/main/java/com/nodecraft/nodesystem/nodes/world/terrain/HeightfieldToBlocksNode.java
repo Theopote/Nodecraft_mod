@@ -108,7 +108,8 @@ public class HeightfieldToBlocksNode extends BaseNode {
         addInputPort(new BasePort(INPUT_FILL_DEPTH_ID, "Fill Depth",
             "Maximum filled layers below the surface; 0 emits surface only", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_MAX_COLUMNS_ID, "Max Columns",
-            "Maximum sampled columns before stopping (hard-capped)", NodeDataType.INTEGER, this));
+            "Maximum output terrain columns before stopping (hard-capped; includes Fill Tiles expansion)",
+            NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_MAX_PLACEMENTS_ID, "Max Placements",
             "Maximum block placements before stopping (hard-capped)", NodeDataType.INTEGER, this));
 
@@ -238,14 +239,24 @@ public class HeightfieldToBlocksNode extends BaseNode {
                 }
 
                 int columnTop = toColumnTopY(sampled, bounds.minY, bounds.maxY);
-                int tileMaxX = resolvedFillTiles ? Math.min(bounds.maxX, x + resolvedStep - 1) : x;
-                int tileMaxZ = resolvedFillTiles ? Math.min(bounds.maxZ, z + resolvedStep - 1) : z;
+                int tileMaxX = resolvedFillTiles
+                    ? TerrainGridDomain.safeTileEnd(x, resolvedStep, bounds.maxX)
+                    : x;
+                int tileMaxZ = resolvedFillTiles
+                    ? TerrainGridDomain.safeTileEnd(z, resolvedStep, bounds.maxZ)
+                    : z;
 
                 int tx = x;
                 tileX:
                 while (true) {
                     int tz = z;
                     while (true) {
+                        if (columnCount >= resolvedMaxColumns) {
+                            hitLimit = true;
+                            stoppedReason = "max_columns";
+                            break tileX;
+                        }
+
                         int fillBottom = Math.max(bounds.minY, columnTop - resolvedFillDepth);
                         for (int y = fillBottom; y <= columnTop; y++) {
                             if (placements.size() >= resolvedMaxPlacements) {
@@ -337,7 +348,8 @@ public class HeightfieldToBlocksNode extends BaseNode {
             return minY;
         }
         double t = (normalized + 1.0d) * 0.5d;
-        int y = (int) Math.round(minY + t * (maxY - minY));
+        double spanY = (double) maxY - (double) minY;
+        int y = (int) Math.round(minY + t * spanY);
         return TerrainNodeUtils.clamp(y, minY, maxY);
     }
 

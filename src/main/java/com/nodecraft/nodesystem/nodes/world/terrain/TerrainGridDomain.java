@@ -109,4 +109,19 @@ record TerrainGridDomain(int minBlockX, int maxBlockX, int minBlockZ, int maxBlo
         }
         return (int) next;
     }
+
+    /**
+     * Inclusive tile end for Fill Tiles expansion: {@code start + step - 1},
+     * clamped to {@code maxInclusive}, using long arithmetic to avoid int wrap.
+     */
+    static int safeTileEnd(int start, int step, int maxInclusive) {
+        long candidate = (long) start + (long) Math.max(1, step) - 1L;
+        if (candidate > maxInclusive) {
+            return maxInclusive;
+        }
+        if (candidate > Integer.MAX_VALUE) {
+            return maxInclusive;
+        }
+        return (int) candidate;
+    }
 }

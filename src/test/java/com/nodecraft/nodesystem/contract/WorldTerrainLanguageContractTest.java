@@ -8,6 +8,9 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GridScalarFieldData;
+import com.nodecraft.nodesystem.datatypes.RegionData;
+import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
+import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
@@ -21,6 +24,7 @@ import com.nodecraft.nodesystem.nodes.world.terrain.SampleFieldOnRegionNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.BlockSpace;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -202,12 +206,66 @@ class WorldTerrainLanguageContractTest {
 
     @Test
     void flowAccumulationRejectsWorkOverHardCap() {
-        FlowAccumulationFieldNode node = new FlowAccumulationFieldNode();
-        // Small grid but absurd iterations → work product fails closed.
-        node.setInput("input_iterations", GenerationLimits.MAX_TERRAIN_FLOW_ITERATIONS);
-        // Missing flow field also invalid; assert iterations bound path via connected max.
+        FlowAccumulationProbe node = new FlowAccumulationProbe();
+        // 128×128 cells × 1025 iterations = 16_793_600 > MAX_TERRAIN_SIMULATION_WORK.
+        node.setInput("input_flow_field", (VectorFieldData) (point, dest) -> dest.set(1.0d, 0.0d, 0.0d));
+        node.connectInput("input_region", NodeDataType.REGION);
+        node.setInput("input_region", new RegionData(
+                new BlockPos(0, 64, 0),
+                new BlockPos(127, 64, 127)));
+        node.connectInput("input_iterations", NodeDataType.INTEGER);
+        node.setInput("input_iterations", 1025);
         node.processNode(null);
         assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        String error = String.valueOf(node.getOutput("output_error"));
+        assertTrue(error.contains("MAX_TERRAIN_SIMULATION_WORK"), error);
+    }
+
+    @Test
+    void flowAccumulationOutsideDomainReturnsNaN() {
+        FlowAccumulationProbe node = new FlowAccumulationProbe();
+        node.setInput("input_flow_field", (VectorFieldData) (point, dest) -> dest.set(0.0d, 0.0d, 0.0d));
+        node.connectInput("input_region", NodeDataType.REGION);
+        node.setInput("input_region", new RegionData(
+                new BlockPos(0, 64, 0),
+                new BlockPos(7, 64, 7)));
+        node.connectInput("input_iterations", NodeDataType.INTEGER);
+        node.setInput("input_iterations", 1);
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
+        ScalarFieldData field = (ScalarFieldData) node.getOutput("output_accumulation_field");
+        assertNotNull(field);
+        double inside = field.sampleScalar(new Vector3d(0.5d, 64.5d, 0.5d));
+        assertTrue(Double.isFinite(inside), "inside domain should be finite");
+        double outside = field.sampleScalar(new Vector3d(100_000.5d, 64.5d, 0.5d));
+        assertTrue(Double.isNaN(outside), "outside domain must be NaN, not clamp-to-edge");
+    }
+
+    @Test
+    void fillTilesHonorsMaxColumnsExactly() {
+        HeightfieldProbe node = new HeightfieldProbe();
+        node.setInput("input_height_field", (ScalarFieldData) point -> 1.0d);
+        node.connectInput("input_region", NodeDataType.REGION);
+        node.setInput("input_region", new RegionData(
+                new BlockPos(0, 0, 0),
+                new BlockPos(15, 64, 15)));
+        node.connectInput("input_surface_block", NodeDataType.BLOCK_TYPE);
+        node.setInput("input_surface_block", "minecraft:stone");
+        node.connectInput("input_fill_depth", NodeDataType.INTEGER);
+        node.setInput("input_fill_depth", 0);
+        node.connectInput("input_step", NodeDataType.INTEGER);
+        node.setInput("input_step", 4);
+        node.connectInput("input_fill_tiles", NodeDataType.BOOLEAN);
+        node.setInput("input_fill_tiles", true);
+        node.connectInput("input_max_columns", NodeDataType.INTEGER);
+        node.setInput("input_max_columns", 3);
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"),
+                String.valueOf(node.getOutput("output_error")));
+        assertEquals(3, node.getOutput("output_column_count"));
+        assertEquals(Boolean.TRUE, node.getOutput("output_hit_limit"));
+        assertEquals(Boolean.FALSE, node.getOutput("output_complete"));
+        assertEquals("max_columns", node.getOutput("output_stopped_reason"));
     }
 
     @Test
@@ -276,6 +334,18 @@ class WorldTerrainLanguageContractTest {
     }
 
     private static final class PlatePartitionProbe extends PlatePartitionFieldNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            WorldTerrainLanguageContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class FlowAccumulationProbe extends FlowAccumulationFieldNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            WorldTerrainLanguageContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class HeightfieldProbe extends HeightfieldToBlocksNode {
         void connectInput(String portId, NodeDataType outputType) {
             WorldTerrainLanguageContractTest.connectInput(this, portId, outputType);
         }

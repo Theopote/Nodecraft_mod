@@ -5,7 +5,6 @@ import com.nodecraft.nodesystem.datatypes.GridScalarFieldData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.util.GenerationLimits;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -33,19 +32,6 @@ final class ScalarFieldGrids {
 
     static TerrainGridDomain resolveDomain(@Nullable RegionData region) {
         return TerrainNodeUtils.localDomainFromRegion(region);
-    }
-
-    /** @deprecated use {@link #resolveDomain(RegionData, ScalarFieldData)} */
-    @Deprecated
-    static FieldGridBounds resolveBounds(@Nullable RegionData region, @Nullable ScalarFieldData field) {
-        TerrainGridDomain domain = resolveDomain(region, field);
-        return FieldGridBounds.from(domain);
-    }
-
-    /** @deprecated use {@link #resolveDomain(RegionData)} */
-    @Deprecated
-    static FieldGridBounds resolveBounds(@Nullable RegionData region) {
-        return FieldGridBounds.from(resolveDomain(region));
     }
 
     /**
@@ -109,15 +95,6 @@ final class ScalarFieldGrids {
         );
     }
 
-    /** @deprecated prefer {@link #materialize(ScalarFieldData, TerrainGridDomain)} */
-    @Deprecated
-    static @Nullable GridScalarFieldData materialize(@Nullable ScalarFieldData field, FieldGridBounds bounds) {
-        if (bounds == null) {
-            return null;
-        }
-        return materialize(field, bounds.toDomain());
-    }
-
     static GridScalarFieldData buildGrid(TerrainGridDomain domain, double[] values) {
         return GridScalarFieldData.fromValues(
             domain.minBlockX(),
@@ -127,10 +104,6 @@ final class ScalarFieldGrids {
             domain.sampleYBlock(),
             values
         );
-    }
-
-    static GridScalarFieldData buildGrid(FieldGridBounds bounds, double[] values) {
-        return buildGrid(bounds.toDomain(), values);
     }
 
     static double sampleSlopeFromGrid(GridScalarFieldData heightGrid, int x, int z, double step) {
@@ -154,49 +127,5 @@ final class ScalarFieldGrids {
             }
         }
         return true;
-    }
-
-    /**
-     * Legacy adapter kept for callers not yet migrated to {@link TerrainGridDomain}.
-     */
-    record FieldGridBounds(int minX, int maxX, int minZ, int maxZ, int sampleY) {
-
-        static FieldGridBounds defaults() {
-            return from(TerrainGridDomain.localDefault());
-        }
-
-        static FieldGridBounds from(TerrainGridDomain domain) {
-            return new FieldGridBounds(
-                domain.minBlockX(),
-                domain.maxBlockX(),
-                domain.minBlockZ(),
-                domain.maxBlockZ(),
-                domain.sampleYBlock()
-            );
-        }
-
-        TerrainGridDomain toDomain() {
-            return TerrainGridDomain.of(minX, maxX, minZ, maxZ, sampleY);
-        }
-
-        int width() {
-            long width = (long) maxX - minX + 1L;
-            if (width <= 0L || width > Integer.MAX_VALUE) {
-                throw new IllegalStateException("Terrain grid width overflow: " + width);
-            }
-            return (int) width;
-        }
-
-        int depth() {
-            long depth = (long) maxZ - minZ + 1L;
-            if (depth <= 0L || depth > Integer.MAX_VALUE) {
-                throw new IllegalStateException("Terrain grid depth overflow: " + depth);
-            }
-            return (int) depth;
-        }
-
-        long cellCount() {
-            return toDomain().cellCountLong();
-        }
     }
 }

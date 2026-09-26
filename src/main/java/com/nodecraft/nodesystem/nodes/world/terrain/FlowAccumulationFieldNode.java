@@ -262,7 +262,7 @@ public class FlowAccumulationFieldNode extends BaseNode {
             normalizeGrid(accumulation);
         }
 
-        FlowGrid flowGrid = new FlowGrid(minX, minZ, baseY, stride, gridWidth, gridDepth, accumulation);
+        FlowGrid flowGrid = new FlowGrid(minX, maxX, minZ, maxZ, stride, gridWidth, gridDepth, accumulation);
         ScalarFieldData accumulationField = point -> flowGrid.sample(point.x, point.z);
         outputValues.put(OUTPUT_ACCUMULATION_FIELD_ID, accumulationField);
         outputValues.put(OUTPUT_STRIDE_ID, stride);
@@ -410,21 +410,33 @@ public class FlowAccumulationFieldNode extends BaseNode {
         return Math.max(0.0d, Math.min(1.0d, value));
     }
 
-    private record FlowGrid(int minX, int minZ, int baseY, int stride, int width, int depth, double[][] values) {
+    /**
+     * Domain-aware routing grid: outside {@code [minX..maxX] × [minZ..maxZ]} → NaN
+     * (no CLAMP_TO_EDGE), matching the Terrain Field v1 / GridScalarFieldData contract.
+     */
+    private record FlowGrid(
+        int minX,
+        int maxX,
+        int minZ,
+        int maxZ,
+        int stride,
+        int width,
+        int depth,
+        double[][] values
+    ) {
 
         private double sample(double worldX, double worldZ) {
             int cellX = BlockSpace.nearestCellIndex(worldX);
             int cellZ = BlockSpace.nearestCellIndex(worldZ);
-            int gx = clamp((cellX - minX) / stride, 0, width - 1);
-            int gz = clamp((cellZ - minZ) / stride, 0, depth - 1);
-            return values[gz][gx];
-        }
-
-        private static int clamp(int value, int min, int max) {
-            if (value < min) {
-                return min;
+            if (cellX < minX || cellX > maxX || cellZ < minZ || cellZ > maxZ) {
+                return Double.NaN;
             }
-            return Math.min(value, max);
+            int gx = (cellX - minX) / stride;
+            int gz = (cellZ - minZ) / stride;
+            if (gx < 0 || gx >= width || gz < 0 || gz >= depth) {
+                return Double.NaN;
+            }
+            return values[gz][gx];
         }
     }
 }

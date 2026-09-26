@@ -50,7 +50,7 @@ Hard safety cap exceeded → `Valid=false`, empty outputs.
 | 3 | Rift Subsidence Field | `world.terrain.rift_subsidence_field` | |
 | 4 | Combine Height Fields | `world.terrain.combine_height_fields` | |
 | 5 | Flow Direction Field | `world.terrain.flow_direction_field` | |
-| 6 | Flow Accumulation Field | `world.terrain.flow_accumulation_field` | auto-downsample + work cap |
+| 6 | Flow Accumulation Field | `world.terrain.flow_accumulation_field` | auto-downsample + work cap; outside domain → NaN |
 | 7 | River Mask Field | `world.terrain.river_mask_field` | |
 | 8 | Precipitation Field | `world.terrain.precipitation_field` | |
 | 9 | Thermal Erosion Step | `world.terrain.thermal_erosion_step` | |
@@ -72,6 +72,8 @@ All nodes: `PURE`, `Valid` / `Error`.
 - Surface Block required; Fill Depth > 0 ⇒ Subsurface required
 - Water only when Water Level connected **and** Water Block provided
 - Surface Blocks = `BLOCK_LIST` (renamed from Surface Points)
+- **Max Columns** is a strict output-column budget (Fill Tiles expansion counts toward it)
+- Tile end / Y span use overflow-safe arithmetic
 
 ### Sample Field On Region
 

@@ -83,7 +83,8 @@ public class BiomeFieldToBlocksNode extends BaseNode {
         addInputPort(new BasePort(INPUT_FILL_TILES_ID, "Fill Tiles",
             "Expand each sample to a Step-sized tile for smoother previews", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_MAX_COLUMNS_ID, "Max Columns",
-            "Maximum sampled columns before stopping (hard-capped)", NodeDataType.INTEGER, this));
+            "Maximum output terrain columns before stopping (hard-capped; includes Fill Tiles expansion)",
+            NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_MAX_PLACEMENTS_ID, "Max Placements",
             "Maximum block placements before stopping (hard-capped)", NodeDataType.INTEGER, this));
 
@@ -203,14 +204,23 @@ public class BiomeFieldToBlocksNode extends BaseNode {
                     return;
                 }
 
-                int tileMaxX = resolvedFillTiles ? Math.min(bounds.maxX, x + resolvedStep - 1) : x;
-                int tileMaxZ = resolvedFillTiles ? Math.min(bounds.maxZ, z + resolvedStep - 1) : z;
+                int tileMaxX = resolvedFillTiles
+                    ? TerrainGridDomain.safeTileEnd(x, resolvedStep, bounds.maxX)
+                    : x;
+                int tileMaxZ = resolvedFillTiles
+                    ? TerrainGridDomain.safeTileEnd(z, resolvedStep, bounds.maxZ)
+                    : z;
 
                 int tx = x;
                 tileX:
                 while (true) {
                     int tz = z;
                     while (true) {
+                        if (columnCount >= resolvedMaxColumns) {
+                            hitLimit = true;
+                            stoppedReason = "max_columns";
+                            break tileX;
+                        }
                         if (placements.size() >= resolvedMaxPlacements) {
                             hitLimit = true;
                             stoppedReason = "max_placements";
@@ -282,7 +292,8 @@ public class BiomeFieldToBlocksNode extends BaseNode {
             return minY;
         }
         double t = (normalized + 1.0d) * 0.5d;
-        int y = (int) Math.round(minY + t * (maxY - minY));
+        double spanY = (double) maxY - (double) minY;
+        int y = (int) Math.round(minY + t * spanY);
         return TerrainNodeUtils.clamp(y, minY, maxY);
     }
 
