@@ -86,9 +86,9 @@ class FileIoLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV56() {
+    void currentGraphFormatIsAtLeastV56() {
         assertEquals(56, GraphFormatVersion.V56);
-        assertEquals(GraphFormatVersion.V56, GraphFormatVersion.CURRENT);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V56);
     }
 
     @Test

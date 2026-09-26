@@ -43,7 +43,7 @@ class ArchitecturalPathFollowingContractTest {
         assertEquals(Boolean.TRUE, railing.getOutput("output_valid"));
         CompositeGeometryData geometry = assertInstanceOf(CompositeGeometryData.class, railing.getOutput("output_geometry"));
 
-        // Evenly spaced posts on a 20-unit L path land at start, corner, end â€” not chord midpoints.
+        // Evenly spaced posts on a 20-unit L path land at start, corner, end â€?not chord midpoints.
         List<Vector3d> postBases = geometry.getGeometries().stream()
             .filter(CylinderGeometryData.class::isInstance)
             .map(CylinderGeometryData.class::cast)
@@ -79,7 +79,7 @@ class ArchitecturalPathFollowingContractTest {
         assertEquals(2, wall.getOutput("output_count"));
         assertNotNull(wall.getOutput("output_top_edge"));
         assertNotNull(wall.getOutput("output_exterior_face"));
-        // Primary geometry must remain a single solid slab â€” not wall+opening composite.
+        // Primary geometry must remain a single solid slab â€?not wall+opening composite.
         assertFalse(wall.getOutput("output_geometry") instanceof CompositeGeometryData);
     }
 
@@ -113,7 +113,7 @@ class ArchitecturalPathFollowingContractTest {
             .map(ArchitecturalPathFollowingContractTest::boxCenter)
             .toList();
 
-        // First half of steps stay on the +X leg (z â‰ˆ 0); second half turn onto +Z (x â‰ˆ 10).
+        // First half of steps stay on the +X leg (z â‰?0); second half turn onto +Z (x â‰?10).
         assertTrue(centers.stream().limit(4).allMatch(c -> Math.abs(c.z) < TOL), "early steps on first leg: " + centers);
         assertTrue(centers.stream().skip(6).allMatch(c -> Math.abs(c.x - 10.0d) < TOL), "late steps on second leg: " + centers);
 

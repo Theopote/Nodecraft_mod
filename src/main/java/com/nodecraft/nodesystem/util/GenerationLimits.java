@@ -102,6 +102,12 @@ public final class GenerationLimits {
     /** Maximum solid voxels accepted from a single .vox import. */
     public static final int MAX_IMPORTED_VOXELS = 262_144;
 
+    /** Maximum unique blocks for morphology input, intermediate, and output sets. */
+    public static final int MAX_MORPHOLOGY_BLOCKS = 262_144;
+
+    /** Maximum dilate/erode iterations per morphology operation. */
+    public static final int MAX_MORPHOLOGY_ITERATIONS = 64;
+
     private GenerationLimits() {
     }
 

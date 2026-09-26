@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 /**
  * Freezes Spatial Convention v1: when BlockPos is coerced to a continuous location,
- * it must be the cell center â€” never the min corner.
+ * it must be the cell center â€?never the min corner.
  */
 class BlockPosCellCenterCoercionContractTest {
 

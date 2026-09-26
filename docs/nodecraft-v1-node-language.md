@@ -30,6 +30,7 @@ Last updated: 2026-09-25
 | Basic assignment / material entry | [`node-language-v1-basic-assignment.md`](./node-language-v1-basic-assignment.md) + `BasicAssignmentUtils` **(PASSED / FROZEN, V40)** |
 | Pattern linear / arrays & instancing | [`node-language-v1-pattern-linear.md`](./node-language-v1-pattern-linear.md) **(PASSED / FROZEN, V41)** |
 | FileIO / IMAGE import | [`node-language-v1-fileio.md`](./node-language-v1-fileio.md) **(PASSED / FROZEN, V56)** |
+| Block Morphology | [`node-language-v1-morphology.md`](./node-language-v1-morphology.md) **(PASSED / FROZEN, V57)** |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 
@@ -58,6 +59,7 @@ Last updated: 2026-09-25
 | List / Collection v1 | FROZEN | V23 |
 | Data Tree v1 | FROZEN | V24 |
 | FileIO v1 | **PASSED / FROZEN** | V56 |
+| Block Morphology v1 | **PASSED / FROZEN** | V57 |
 
 If a node’s current implementation disagrees with this freeze, **treat the gap as debt to
 remediate** (with graph/preset migration). Do not copy the gap into new nodes.

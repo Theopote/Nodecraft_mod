@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Spatial Convention v1 alignment: Selected Block Center â†’ geometry â†’ voxelize â†’ preview cells.
+ * Spatial Convention v1 alignment: Selected Block Center â†?geometry â†?voxelize â†?preview cells.
  */
 class GeometryVoxelAlignmentContractTest {
 
@@ -48,7 +48,7 @@ class GeometryVoxelAlignmentContractTest {
         assertEquals(1, blocks.size());
         assertEquals(SELECTED, blocks.getPositions().getFirst());
 
-        // PreviewBlock stores cell index; ghost draws [n, n+1] â€” matches continuous AABB.
+        // PreviewBlock stores cell index; ghost draws [n, n+1] â€?matches continuous AABB.
         PreviewBlock preview = new PreviewBlock(SELECTED.getX(), SELECTED.getY(), SELECTED.getZ(), "minecraft:stone");
         assertEquals(100.0d, preview.x(), 1e-12);
         assertEquals(BlockSpace.blockCellMin(SELECTED).x, preview.x(), 1e-12);
@@ -71,9 +71,9 @@ class GeometryVoxelAlignmentContractTest {
 
     @Test
     void evenContinuousSizeOnBlockCenterCannotHaveUniqueCentralVoxel() {
-        // Size 2 centered on cell (0,0,0) center â†’ continuous AABB [-0.5, 1.5].
-        // Cell centers in that AABB: -0.5, 0.5, 1.5 â†’ three cells/axis (not two).
-        // This is expected: even continuous size + cell-center center â‰  unique central Minecraft block.
+        // Size 2 centered on cell (0,0,0) center â†?continuous AABB [-0.5, 1.5].
+        // Cell centers in that AABB: -0.5, 0.5, 1.5 â†?three cells/axis (not two).
+        // This is expected: even continuous size + cell-center center â‰?unique central Minecraft block.
         Vector3d center = BlockSpace.cellCenter(0, 0, 0);
         BoxGeometryData box = new BoxGeometryData(center, new Vector3d(1.0d, 1.0d, 1.0d));
 
@@ -102,7 +102,7 @@ class GeometryVoxelAlignmentContractTest {
         BoxGeometryData box = new BoxGeometryData(center, half);
         RegionData region = GeometryVoxelizer.createAxisAlignedRegion(box);
 
-        // Ghost/Region draw inclusive max + 1 â†’ world exclusive corner equals continuous max.
+        // Ghost/Region draw inclusive max + 1 â†?world exclusive corner equals continuous max.
         assertEquals(center.x - half.x, region.getMinCorner().getX(), 1e-12);
         assertEquals(center.x + half.x, region.getMaxCorner().getX() + 1.0d, 1e-12);
         assertEquals(center.y - half.y, region.getMinCorner().getY(), 1e-12);

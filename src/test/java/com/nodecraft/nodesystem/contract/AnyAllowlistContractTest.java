@@ -44,7 +44,7 @@ class AnyAllowlistContractTest {
     /**
      * Prefixes still allowed to expose ANY (polymorphic containers / flow).
      * Adding a new prefix here is an explicit architecture decision.
-     * Batch 11 removed blanket {@code math.list.} / {@code math.data_tree.} â€”
+     * Batch 11 removed blanket {@code math.list.} / {@code math.data_tree.} â€?
      * only the polymorphic item/value type ids below remain.
      */
     private static final Set<String> ANY_ALLOWED_PREFIXES = Set.of(
@@ -78,7 +78,7 @@ class AnyAllowlistContractTest {
         "math.data_tree.item"
     );
 
-    /** Families frozen in Batch 10 / 10.1 / 11 / reference ANY cleanup â€” must never regress to ANY. */
+    /** Families frozen in Batch 10 / 10.1 / 11 / reference ANY cleanup â€?must never regress to ANY. */
     private static final Set<String> ANY_FORBIDDEN_PREFIXES = Set.of(
         "math.trigonometry.",
         "math.scalar_math.",
@@ -120,7 +120,7 @@ class AnyAllowlistContractTest {
                 continue;
             }
             if ("utilities.assist.string_format".equals(nodeId)) {
-                continue; // ANY sinks only â€” format to STRING
+                continue; // ANY sinks only â€?format to STRING
             }
             INode instance = tryCreate(nodeId);
             assertNotNull(instance, nodeId);

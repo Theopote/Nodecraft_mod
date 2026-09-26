@@ -164,7 +164,7 @@ class DeformationsLanguageContractTest {
         negative.setInput("input_axis_origin", new PointData(0, 0, 0));
         negative.setInput("input_axis_direction", new Vector3d(0, 1, 0));
         negative.setNodeState(Map.of("startScale", -1.0d, "endScale", 1.0d, "taperLength", 5.0d));
-        // negative startScale rejected by setter â†’ property stays default 1; drive negative instead
+        // negative startScale rejected by setter â†?property stays default 1; drive negative instead
         TaperProbe probe = new TaperProbe();
         probe.setInput("input_points", List.of(new PointData(1, 0, 0)));
         probe.setInput("input_axis_origin", new PointData(0, 0, 0));

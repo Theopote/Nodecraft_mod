@@ -226,7 +226,7 @@ class RandomLanguageContractTest {
         assertEquals(34, GraphFormatVersion.V34);
         assertEquals(35, GraphFormatVersion.V35);
         assertEquals(36, GraphFormatVersion.V36);
-        assertEquals(GraphFormatVersion.V56, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V57, GraphFormatVersion.CURRENT);
     }
 
     @Test

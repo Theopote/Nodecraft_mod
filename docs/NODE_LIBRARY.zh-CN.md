@@ -783,7 +783,7 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Block List Morphology | `utilities.morphology.block_list_morphology` | Dilates or erodes a block list using 6- or 26-neighbor morphology iterations (Connectivity property) | `BlockListMorphologyNode` |
+| Block Morphology | `utilities.morphology.block_list_morphology` | Dilate or erode a block set. | `BlockListMorphologyNode` |
 
 ## utilities.organization（7）
 

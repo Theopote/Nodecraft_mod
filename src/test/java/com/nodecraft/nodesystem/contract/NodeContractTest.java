@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Thin Node Contract suite â€” invariant checks over the full registered catalog.
+ * Thin Node Contract suite â€?invariant checks over the full registered catalog.
  * <p>
  * Prefer these shared invariants over per-node unit tests for the 500+ node library.
  */

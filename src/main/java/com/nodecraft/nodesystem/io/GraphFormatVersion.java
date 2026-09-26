@@ -351,8 +351,14 @@ public final class GraphFormatVersion {
      */
     public static final int V56 = 56;
 
+    /**
+     * Block Morphology v1: BLOCK_LIST strict payload, GenerationLimits workload cap,
+     * exact INTEGER iterations, fail-closed morphology (no partial output).
+     */
+    public static final int V57 = 57;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V56;
+    public static final int CURRENT = V57;
 
     private GraphFormatVersion() {
     }

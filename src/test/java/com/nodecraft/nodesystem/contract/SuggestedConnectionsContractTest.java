@@ -64,7 +64,7 @@ class SuggestedConnectionsContractTest {
                 .filter(port -> port.dataType() == NodeDataType.DATA_TREE)
                 .findFirst()
                 .orElse(null);
-        assertNotNull(treeCandidate, "Port index must expose LIST â†’ DATA_TREE candidates");
+        assertNotNull(treeCandidate, "Port index must expose LIST â†?DATA_TREE candidates");
 
         NodeGraph graph = new NodeGraph();
         INode listNode = new CreateListNode();

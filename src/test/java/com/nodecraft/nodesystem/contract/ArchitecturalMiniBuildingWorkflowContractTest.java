@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Batch 13.1 product acceptance: Floor Slab ‚Üí Wall Along Path ‚Üí Window Array ‚Üí Roof Base ‚Üí Voxelize ‚Üí Preview.
+ * Batch 13.1 product acceptance: Floor Slab ‚Ü?Wall Along Path ‚Ü?Window Array ‚Ü?Roof Base ‚Ü?Voxelize ‚Ü?Preview.
  * <p>
  * Asserts the typed host/placement chain can assemble a small building without ANY,
  * without hidden BlockPos snap, and without world-write side effects in the PURE stage.
@@ -69,7 +69,7 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         BoxFaceData frontFace = requireFace(box, "Front");
         BoxFaceData roofFace = requireFace(box, "Top");
 
-        // Floor Slab ‚Üê BOX_FACE
+        // Floor Slab ‚Ü?BOX_FACE
         FloorSlabNode floor = new FloorSlabNode();
         floor.setInput("input_face", floorFace);
         floor.setInput("input_thickness", 0.3d);
@@ -78,7 +78,7 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         GeometryData floorGeom = assertInstanceOf(GeometryData.class, floor.getOutput("output_geometry"));
         assertNotNull(floor.getOutput("output_top_face"));
 
-        // Perimeter PATH ‚Üê face boundary polyline (implicit PATH connect)
+        // Perimeter PATH ‚Ü?face boundary polyline (implicit PATH connect)
         BoxFaceBoundaryPathNode boundary = new BoxFaceBoundaryPathNode();
         boundary.setInput("input_face", floorFace);
         boundary.processNode(null);
@@ -86,7 +86,7 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         PolylineData perimeter = assertInstanceOf(PolylineData.class, boundary.getOutput("output_polyline"));
         assertTrue(NodeDataType.isConnectableTo(NodeDataType.POLYLINE, NodeDataType.PATH));
 
-        // Walls ‚Üê PATH
+        // Walls ‚Ü?PATH
         WallAlongPathNode walls = new WallAlongPathNode();
         walls.setInput("input_path", perimeter);
         walls.setInput("input_height", 3.0d);
@@ -97,7 +97,7 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
             "closed rectangle should yield 4 wall segments");
         GeometryData wallGeom = assertInstanceOf(GeometryData.class, walls.getOutput("output_geometry"));
 
-        // Windows ‚Üê vertical BOX_FACE
+        // Windows ‚Ü?vertical BOX_FACE
         WindowArrayNode windows = new WindowArrayNode();
         windows.setInput("input_face", frontFace);
         windows.setInput("input_columns", 2);
@@ -112,7 +112,7 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         assertNotNull(windows.getOutput("output_frames"));
         GeometryData windowGeom = assertInstanceOf(GeometryData.class, windows.getOutput("output_geometry"));
 
-        // Roof Base ‚Üê top BOX_FACE
+        // Roof Base ‚Ü?top BOX_FACE
         RoofBaseNode roof = new RoofBaseNode();
         roof.setInput("input_face", roofFace);
         roof.setInput("input_roof_type", "gable");
@@ -125,7 +125,7 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         assertNotNull(roof.getOutput("output_eave_path"));
         assertNotNull(roof.getOutput("output_ridge_path"));
 
-        // Combine ‚Üí Voxelize (PURE, no world write)
+        // Combine ‚Ü?Voxelize (PURE, no world write)
         BaseNode combine = (BaseNode) registry.createNodeInstance("geometry.combine.geometry");
         combine.setInput("input_geometry_0", floorGeom);
         combine.setInput("input_geometry_1", wallGeom);

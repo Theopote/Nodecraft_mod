@@ -88,7 +88,7 @@ class MaterialFamilyContractTest {
         );
 
         // Exercise toPreviewBlock path via process without world write by checking remapped payload construction
-        // through Height Gradient â†’ PreviewBlocks signature: construct PreviewBlock directly as protocol contract.
+        // through Height Gradient â†?PreviewBlocks signature: construct PreviewBlock directly as protocol contract.
         PreviewBlock block = new PreviewBlock(3, 4, 5, placement.blockId(), placement.stateData());
         assertEquals("minecraft:oak_stairs", block.blockId());
         assertNotNull(block.stateData());
@@ -105,7 +105,7 @@ class MaterialFamilyContractTest {
             NodeRegistry.getInstance().createNodeInstance("material.directional_mapping.slope_map"));
 
         BlockPosList positions = new BlockPosList();
-        // Flat column at (0,0) height 5, neighbor only at -X with height 7 â†’ grade 2 â†’ steep
+        // Flat column at (0,0) height 5, neighbor only at -X with height 7 â†?grade 2 â†?steep
         // Interior voxel at Y=4 must preserve source blockId (surface-only remap).
         positions.add(new BlockPos(0, 5, 0));
         positions.add(new BlockPos(0, 4, 0));

@@ -113,6 +113,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V53 -> migrateV53ToV54(graph);
             case GraphFormatVersion.V54 -> migrateV54ToV55(graph);
             case GraphFormatVersion.V55 -> migrateV55ToV56(graph);
+            case GraphFormatVersion.V56 -> migrateV56ToV57(graph);
             default -> graph;
         };
     }
@@ -3190,6 +3191,16 @@ public final class GraphMigrationRegistry {
     private static final String IMAGE_SAMPLER_TYPE = "utilities.fileio.image_sampler";
     private static final String IMPORT_VOX_TYPE = "utilities.fileio.import_vox";
 
+    private static final String BLOCK_LIST_MORPHOLOGY_TYPE = "utilities.morphology.block_list_morphology";
+
+    private static final Set<String> MORPHOLOGY_V57_STRIP_STATE_KEYS = Set.of(
+            "maxoutputblocks"
+    );
+
+    private static final Set<String> MORPHOLOGY_V57_DROP_PORTS = Set.of(
+            "input_max_output_blocks"
+    );
+
     private static final Set<String> FILEIO_V56_STRIP_STATE_KEYS = Set.of(
             "allowexternalpaths",
             "maxpixels",
@@ -3353,6 +3364,114 @@ public final class GraphMigrationRegistry {
                         "Dropped FileIO obsolete wire {}#{} -> {}#{}",
                         connection.sourceNodeId,
                         connection.sourcePortId,
+                        connection.targetNodeId,
+                        connection.targetPortId
+                );
+                return true;
+            }
+            return false;
+        });
+
+        return graph;
+    }
+
+    /**
+     * Block Morphology v1: strip maxOutputBlocks state; drop max-output port wires;
+     * rename Stopped Reason → Error port id.
+     */
+    private static SavedGraph migrateV56ToV57(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                if (!BLOCK_LIST_MORPHOLOGY_TYPE.equalsIgnoreCase(node.typeId)) {
+                    continue;
+                }
+                if (!(node.state instanceof Map<?, ?> state)) {
+                    continue;
+                }
+                Map<String, Object> cleaned = new HashMap<>();
+                for (Map.Entry<?, ?> entry : state.entrySet()) {
+                    if (!(entry.getKey() instanceof String key)) {
+                        continue;
+                    }
+                    if (MORPHOLOGY_V57_STRIP_STATE_KEYS.contains(key.toLowerCase(Locale.ROOT))) {
+                        LOGGER.debug("Stripped Morphology state key {} from {}", key, node.nodeId);
+                        continue;
+                    }
+                    cleaned.put(key, entry.getValue());
+                }
+                node.state = cleaned.isEmpty() ? null : cleaned;
+            }
+        }
+
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            if (BLOCK_LIST_MORPHOLOGY_TYPE.equals(sourceType)
+                    && "output_stopped_reason".equalsIgnoreCase(connection.sourcePortId)) {
+                LOGGER.debug(
+                        "Remapped Morphology output port {} -> output_error on {}",
+                        connection.sourcePortId,
+                        connection.sourceNodeId
+                );
+                connection.sourcePortId = "output_error";
+            }
+            if (BLOCK_LIST_MORPHOLOGY_TYPE.equals(targetType)
+                    && "output_stopped_reason".equalsIgnoreCase(connection.targetPortId)) {
+                LOGGER.debug(
+                        "Remapped Morphology input port {} -> output_error on {}",
+                        connection.targetPortId,
+                        connection.targetNodeId
+                );
+                connection.targetPortId = "output_error";
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourcePort = connection.sourcePortId == null
+                    ? null
+                    : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            String targetPort = connection.targetPortId == null
+                    ? null
+                    : connection.targetPortId.toLowerCase(Locale.ROOT);
+
+            if (BLOCK_LIST_MORPHOLOGY_TYPE.equals(sourceType)
+                    && sourcePort != null
+                    && MORPHOLOGY_V57_DROP_PORTS.contains(sourcePort)) {
+                LOGGER.debug(
+                        "Dropped Morphology obsolete wire {}#{}",
+                        connection.sourceNodeId,
+                        connection.sourcePortId
+                );
+                return true;
+            }
+            if (BLOCK_LIST_MORPHOLOGY_TYPE.equals(targetType)
+                    && targetPort != null
+                    && MORPHOLOGY_V57_DROP_PORTS.contains(targetPort)) {
+                LOGGER.debug(
+                        "Dropped Morphology obsolete wire {}#{}",
                         connection.targetNodeId,
                         connection.targetPortId
                 );
