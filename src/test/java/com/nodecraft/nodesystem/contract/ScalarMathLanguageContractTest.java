@@ -60,7 +60,7 @@ class ScalarMathLanguageContractTest {
             if (!(created instanceof BaseNode instance)) {
                 continue;
             }
-            // Smoke: after empty process, Valid=false â‡?numeric outs are NaN (not Inf).
+            // Smoke: after empty process, Valid=false  -> numeric outs are NaN (not Inf).
             instance.processNode(null);
             Object validObj = instance.getOutput("output_valid");
             if (!(validObj instanceof Boolean valid) || valid) {
@@ -217,7 +217,7 @@ class ScalarMathLanguageContractTest {
         assertEquals(34, GraphFormatVersion.V34);
         assertEquals(35, GraphFormatVersion.V35);
         assertEquals(36, GraphFormatVersion.V36);
-        assertEquals(GraphFormatVersion.V41, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V42, GraphFormatVersion.CURRENT);
     }
 
     @Test

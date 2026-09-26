@@ -53,7 +53,7 @@ class InputValuesLanguageContractTest {
         assertEquals(34, GraphFormatVersion.V34);
         assertEquals(35, GraphFormatVersion.V35);
         assertEquals(36, GraphFormatVersion.V36);
-        assertEquals(GraphFormatVersion.V41, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V42, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -119,7 +119,7 @@ class InputValuesLanguageContractTest {
 
         node.setOptions("A, B, C");
         node.setSelectedIndex(1);
-        node.setInput("input_index", 2.0d); // Number but not Integer â†?ignored
+        node.setInput("input_index", 2.0d); // Number but not Integer  -> ignored
         node.processNode(null);
         assertEquals(1, node.getOutput("output_index"));
         assertEquals("B", node.getOutput("output_value"));
@@ -243,11 +243,11 @@ class InputValuesLanguageContractTest {
 
         v33.nodes = new ArrayList<>(List.of(text, color, toggle, dropdown, createList, ramp, viewer));
         v33.connections = new ArrayList<>(List.of(
-                // Former FLOAT channel â†?FLOAT target stays (DOUBLEâ†”FLOAT numeric)
+                // Former FLOAT channel  -> FLOAT target stays (DOUBLEâ†”FLOAT numeric)
                 wire("color", "output_red", "viewer", "input_transparency"),
-                // Channel â†?STRING_LIST options: incompatible after DOUBLE tighten
+                // Channel  -> STRING_LIST options: incompatible after DOUBLE tighten
                 wire("color", "output_green", "dropdown", "input_options"),
-                // ANY/LIST options â†?STRING_LIST: drop
+                // ANY/LIST options  -> STRING_LIST: drop
                 wire("list", "output_list", "dropdown", "input_options"),
                 // Gradient ramp port removed
                 wire("ramp", "output_ramp", "list", "input_0")

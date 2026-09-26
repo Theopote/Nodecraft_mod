@@ -12,8 +12,6 @@ import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
-import com.nodecraft.nodesystem.util.BlockPosList;
-import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Vector3d;
@@ -24,8 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.stream.IntStream;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -54,9 +50,8 @@ class PatternLinearLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV41() {
+    void patternLinearFreezeVersionIsV41() {
         assertEquals(41, GraphFormatVersion.V41);
-        assertEquals(GraphFormatVersion.V41, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -112,61 +107,6 @@ class PatternLinearLanguageContractTest {
         assertEquals(Boolean.TRUE, linear.getOutput("output_valid"));
         assertEquals(1, linear.getOutput("output_count"));
         assertInstanceOf(SphereData.class, linear.getOutput("output_geometry"));
-    }
-
-    @Test
-    void staggeredGridCountMeansTotalEmittedPositions() {
-        BaseNode grid = assertInstanceOf(BaseNode.class,
-                registry.createNodeInstance("pattern.grid.staggered_grid"));
-        grid.setInput("input_coordinates", new BlockPosList(List.of(new BlockPos(0, 64, 0))));
-        grid.setInput("input_step_direction", new Vector3d(1, 0, 0));
-        grid.setInput("input_row_direction", new Vector3d(0, 0, 1));
-        grid.setInput("input_step_distance", 1.0d);
-        grid.setInput("input_row_distance", 1.0d);
-        grid.setInput("input_step_count", 5);
-        grid.setInput("input_row_count", 3);
-        grid.processNode(null);
-
-        BlockPosList result = assertInstanceOf(BlockPosList.class, grid.getOutput("output_array_coordinates"));
-        assertEquals(15, result.size());
-    }
-
-    @Test
-    void staggeredGridZeroCountProducesEmpty() {
-        BaseNode grid = assertInstanceOf(BaseNode.class,
-                registry.createNodeInstance("pattern.grid.staggered_grid"));
-        grid.setInput("input_coordinates", new BlockPosList(List.of(new BlockPos(0, 64, 0))));
-        grid.setInput("input_step_direction", new Vector3d(1, 0, 0));
-        grid.setInput("input_row_direction", new Vector3d(0, 0, 1));
-        grid.setInput("input_step_distance", 1.0d);
-        grid.setInput("input_row_distance", 1.0d);
-        grid.setInput("input_step_count", 0);
-        grid.setInput("input_row_count", 3);
-        grid.processNode(null);
-
-        BlockPosList result = assertInstanceOf(BlockPosList.class, grid.getOutput("output_array_coordinates"));
-        assertTrue(result.isEmpty());
-    }
-
-    @Test
-    void staggeredGridRespectsMaxListElements() {
-        BaseNode grid = assertInstanceOf(BaseNode.class,
-                registry.createNodeInstance("pattern.grid.staggered_grid"));
-        List<BlockPos> template = IntStream.range(0, 10)
-                .mapToObj(i -> new BlockPos(i, 64, 0))
-                .toList();
-        grid.setInput("input_coordinates", new BlockPosList(template));
-        grid.setInput("input_step_direction", new Vector3d(1, 0, 0));
-        grid.setInput("input_row_direction", new Vector3d(0, 0, 1));
-        grid.setInput("input_step_distance", 1.0d);
-        grid.setInput("input_row_distance", 1.0d);
-        grid.setInput("input_step_count", 1024);
-        grid.setInput("input_row_count", 1024);
-        grid.processNode(null);
-
-        BlockPosList result = assertInstanceOf(BlockPosList.class, grid.getOutput("output_array_coordinates"));
-        assertTrue(result.size() <= GenerationLimits.MAX_LIST_ELEMENTS);
-        assertTrue(result.size() < 1024 * 1024 * 10);
     }
 
     @Test

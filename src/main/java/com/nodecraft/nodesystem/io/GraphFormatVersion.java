@@ -260,8 +260,14 @@ public final class GraphFormatVersion {
      */
     public static final int V41 = 41;
 
+    /**
+     * Pattern Grid v1: five canonical grid nodes; geometry-first Grid Array;
+     * layout producers emit POINT_LIST; typed spatial ports; Count semantics unified.
+     */
+    public static final int V42 = 42;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V41;
+    public static final int CURRENT = V42;
 
     private GraphFormatVersion() {
     }

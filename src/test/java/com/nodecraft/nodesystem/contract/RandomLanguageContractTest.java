@@ -126,7 +126,7 @@ class RandomLanguageContractTest {
     @Test
     void strictCountSeedAndAllowDuplicates() {
         RandomNumbersNode numbers = new RandomNumbersNode();
-        // Count 1.9 is ignored â†?property default 10
+        // Count 1.9 is ignored  -> property default 10
         @SuppressWarnings("unchecked")
         List<Double> fromDoubleCount = (List<Double>) numbers.compute(Map.of(
                 "input_domain", new NumericRangeData(0.0d, 1.0d),
@@ -153,7 +153,7 @@ class RandomLanguageContractTest {
                 "input_allow_duplicates", 1,
                 "input_seed", 0
         ));
-        // AllowDuplicates=1 is not Boolean â†?false â†?unique picks, size 2
+        // AllowDuplicates=1 is not Boolean  -> false  -> unique picks, size 2
         assertEquals(2, ((List<?>) outputs.get("output_items")).size());
         assertEquals(2, ((List<?>) outputs.get("output_items")).stream().distinct().count());
     }
@@ -226,7 +226,7 @@ class RandomLanguageContractTest {
         assertEquals(34, GraphFormatVersion.V34);
         assertEquals(35, GraphFormatVersion.V35);
         assertEquals(36, GraphFormatVersion.V36);
-        assertEquals(GraphFormatVersion.V41, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V42, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -273,17 +273,17 @@ class RandomLanguageContractTest {
 
         v28.nodes = new ArrayList<>(List.of(listItem, numbers, text, createList, sortText, equals, sinkList));
         v28.connections = new ArrayList<>(List.of(
-                // STRING â†?LIST input: was ANY-legal in V28, illegal in V29
+                // STRING  -> LIST input: was ANY-legal in V28, illegal in V29
                 wire("text", "output_text", "rli", "input_list"),
-                // LIST â†?LIST input: keep
+                // LIST  -> LIST input: keep
                 wire("clist", "output_list", "rli", "input_list"),
-                // LIST items â†?STRING_LIST: drop
+                // LIST items  -> STRING_LIST: drop
                 wire("rli", "output_items", "sort", "input_list"),
-                // Item (ANY/T) â†?Equals: keep
+                // Item (ANY/T)  -> Equals: keep
                 wire("rli", "output_item", "eq", "input_a"),
-                // DOUBLE_LIST â†?STRING_LIST: drop
+                // DOUBLE_LIST  -> STRING_LIST: drop
                 wire("rns", "output_values", "sort", "input_list"),
-                // DOUBLE_LIST â†?LIST: keep
+                // DOUBLE_LIST  -> LIST: keep
                 wire("rns", "output_values", "sink", "input_0")
         ));
         v28.nodePositions = Map.of();

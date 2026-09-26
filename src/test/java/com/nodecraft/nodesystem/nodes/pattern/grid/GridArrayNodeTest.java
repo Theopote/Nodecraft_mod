@@ -1,8 +1,8 @@
 package com.nodecraft.nodesystem.nodes.pattern.grid;
 
-import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.util.GenerationLimits;
-import net.minecraft.util.math.BlockPos;
+import org.joml.Vector3d;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -14,19 +14,17 @@ class GridArrayNodeTest {
     @Test
     void hugeGridCountsAreClampedBeforeGeneration() {
         GridArrayNode node = new GridArrayNode();
-        node.setGridType(GridArrayNode.GridType.GRID_3D);
-
-        BlockPosList source = new BlockPosList();
-        source.add(new BlockPos(0, 0, 0));
+        SphereData sphere = new SphereData(new Vector3d(0, 0, 0), 0.5d);
 
         Map<String, Object> outputs = node.compute(Map.of(
-            "input_coordinates", source,
+            "input_geometry", sphere,
             "input_x_count", Integer.MAX_VALUE,
             "input_y_count", Integer.MAX_VALUE,
             "input_z_count", Integer.MAX_VALUE
         ));
 
-        BlockPosList result = (BlockPosList) outputs.get("output_grid_coordinates");
-        assertTrue(result.size() <= GenerationLimits.MAX_LIST_ELEMENTS);
+        @SuppressWarnings("unchecked")
+        java.util.List<Object> geometries = (java.util.List<Object>) outputs.get("output_geometries");
+        assertTrue(geometries.size() <= GenerationLimits.MAX_GEOMETRY_INSTANCES);
     }
 }

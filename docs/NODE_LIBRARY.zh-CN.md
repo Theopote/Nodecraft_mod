@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**537**
+- **节点总数**：**536**
 - **分类总数**：**59**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -44,7 +44,7 @@
 | `output.execute` | 8 |
 | `output.export` | 4 |
 | `output.preview` | 12 |
-| `pattern.grid` | 6 |
+| `pattern.grid` | 5 |
 | `pattern.linear` | 4 |
 | `pattern.lsystem` | 2 |
 | `pattern.radial` | 4 |
@@ -577,16 +577,15 @@
 | Preview Profiles | `output.preview.preview_profiles` | Previews polygon profile boundaries and optional normal indicators | `PreviewPolygonProfilesNode` |
 | Preview Geometry | `output.preview.preview_geometry` | Previews analytic geometry as surfaces; voxel boolean (Difference/Intersection) as evaluated block ghosts matching bake | `PreviewGeometryNode` |
 
-## pattern.grid（6）
+## pattern.grid（5）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Grid Array | `pattern.grid.grid_array` | 在平面或三维网格上重复坐标列表 | `GridArrayNode` |
+| Grid Array | `pattern.grid.grid_array` | Creates rectangular or box arrays of geometry using X, Y, and optional Z directions | `GridArrayNode` |
 | Facade Grid | `pattern.grid.facade_grid` | Generates facade cell centers and boundaries on a box face | `FacadeGridNode` |
-| Grid Array Geometry | `pattern.grid.grid_array_geometry` | Creates rectangular or box arrays of geometry using X, Y, and optional Z directions | `GridArrayGeometryNode` |
-| Hex Grid | `pattern.grid.hex_grid` | Repeats coordinates on a flat-top hexagonal lattice (X/Z) with configurable spacing | `HexGridNode` |
-| Staggered Grid | `pattern.grid.staggered_grid` | Repeats coordinates in rows with parity-controlled staggering and optional alternate row height | `StaggeredGridNode` |
-| Triangular Grid | `pattern.grid.triangle_grid` | Repeats coordinates on a triangular lattice with alternating row offsets. | `TriangularGridNode` |
+| Staggered Grid | `pattern.grid.staggered_grid` | Generates staggered grid anchor points with parity-controlled row offsets | `StaggeredGridNode` |
+| Hex Grid | `pattern.grid.hex_grid` | Generates hexagonal lattice anchor points on the X/Z plane | `HexGridNode` |
+| Triangular Grid | `pattern.grid.triangular_grid` | Generates triangular lattice anchor points with alternating row offsets | `TriangularGridNode` |
 
 ## pattern.linear（4）
 

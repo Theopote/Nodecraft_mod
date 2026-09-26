@@ -60,7 +60,7 @@ class DirectionalMappingLanguageContractTest {
     void currentGraphFormatIsV36() {
         assertEquals(35, GraphFormatVersion.V35);
         assertEquals(36, GraphFormatVersion.V36);
-        assertEquals(GraphFormatVersion.V41, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V42, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -223,7 +223,7 @@ class DirectionalMappingLanguageContractTest {
 
         node.setInput("input_coordinates", coordinates);
         node.setInput("input_default_block", "minecraft:stone");
-        // No normals â€?must fail closed even when source is coordinates, not placements
+        // No normals  -> must fail closed even when source is coordinates, not placements
         node.processNode(null);
 
         assertFalse((Boolean) node.getOutput("output_valid"));

@@ -77,7 +77,7 @@ class PatternArrayFamilyContractTest {
         SphereData last = assertInstanceOf(SphereData.class, copies.get(3));
         assertEquals(2.0d, first.getCenter().x, 1.0e-6d);
         assertEquals(0.0d, first.getCenter().z, 1.0e-6d);
-        // 270° for i=3 with Count=4 / 360° �?not a duplicate of 0°
+        // 270° for i=3 with Count=4 / 360°  -> not a duplicate of 0°
         assertEquals(0.0d, last.getCenter().x, 1.0e-6d);
         assertEquals(2.0d, last.getCenter().z, 1.0e-6d);
     }

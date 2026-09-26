@@ -6,10 +6,10 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GenerationLimits;
-import net.minecraft.util.math.BlockPos;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,76 +17,85 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "pattern.grid.triangle_grid",
+    id = "pattern.grid.triangular_grid",
     displayName = "Triangular Grid",
-    description = "Repeats coordinates on a triangular lattice with alternating row offsets.",
+    description = "Generates triangular lattice anchor points with alternating row offsets",
     category = "pattern.grid",
-    order = 3
+    order = 4
 )
 public class TriangularGridNode extends BaseNode {
 
-    private static final String INPUT_COORDINATES_ID = "input_coordinates";
+    private static final String INPUT_ORIGIN_ID = "input_origin";
     private static final String INPUT_SIDE_LENGTH_ID = "input_side_length";
     private static final String INPUT_U_COUNT_ID = "input_u_count";
     private static final String INPUT_V_COUNT_ID = "input_v_count";
 
-    private static final String OUTPUT_COORDINATES_ID = "output_grid_coordinates";
-    private static final String OUTPUT_ANCHORS_ID = "output_anchors";
+    private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_TRIANGLE_UP_ID = "output_triangle_up";
+    private static final String OUTPUT_COUNT_ID = "output_count";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public TriangularGridNode() {
-        super(UUID.randomUUID(), "pattern.grid.triangle_grid");
-        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Coordinates to repeat", NodeDataType.BLOCK_LIST, this));
+        super(UUID.randomUUID(), "pattern.grid.triangular_grid");
+        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Grid origin anchor point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_SIDE_LENGTH_ID, "Side Length", "Triangle side length / grid spacing", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_U_COUNT_ID, "U Count", "Repetitions on U axis", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_V_COUNT_ID, "V Count", "Repetitions on V axis", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_U_COUNT_ID, "U Count", "Number of positions along the U axis", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_V_COUNT_ID, "V Count", "Number of positions along the V axis", NodeDataType.INTEGER, this));
 
-        addOutputPort(new BasePort(OUTPUT_COORDINATES_ID, "Grid Coordinates", "Coordinates repeated on triangular lattice anchors", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_ANCHORS_ID, "Anchors", "Triangular lattice anchor points", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_TRIANGLE_UP_ID, "Triangle Up", "Per-anchor orientation flag list (true=up, false=down)", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Triangular lattice anchor points", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_TRIANGLE_UP_ID, "Triangle Up", "Per-anchor orientation flag (true=up, false=down)", NodeDataType.BOOLEAN_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of emitted anchor points", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a triangular grid was generated", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Repeats coordinates on a triangular lattice with alternating row offsets.";
+        return "Generates triangular lattice anchor points with alternating row offsets";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object coordsObj = inputValues.get(INPUT_COORDINATES_ID);
-        if (!(coordsObj instanceof BlockPosList source) || source.isEmpty()) {
-            outputValues.put(OUTPUT_COORDINATES_ID, new BlockPosList());
-            outputValues.put(OUTPUT_ANCHORS_ID, new BlockPosList());
-            outputValues.put(OUTPUT_TRIANGLE_UP_ID, List.of());
+        Vector3d origin = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_ORIGIN_ID));
+        if (origin == null) {
+            origin = new Vector3d(0.0d, 0.0d, 0.0d);
+        }
+
+        int uCount = getInteger(INPUT_U_COUNT_ID, 8);
+        int vCount = getInteger(INPUT_V_COUNT_ID, 8);
+        if (uCount <= 0 || vCount <= 0) {
+            writeEmpty();
             return;
         }
 
-        double side = Math.max(0.25d, getDouble(INPUT_SIDE_LENGTH_ID, 2.0d));
-        int uCount = GenerationLimits.clampGridAxis(getInt(INPUT_U_COUNT_ID, 8));
-        int vCount = GenerationLimits.clampGridAxis(getInt(INPUT_V_COUNT_ID, 8));
-        double rowStep = side * Math.sqrt(3.0d) * 0.5d;
+        double side = getDouble(INPUT_SIDE_LENGTH_ID, 2.0d);
+        if (!Double.isFinite(side) || side <= 0.0d) {
+            writeEmpty();
+            return;
+        }
 
-        BlockPosList anchors = new BlockPosList();
-        List<Boolean> orientation = new ArrayList<>();
-        BlockPosList result = new BlockPosList();
-        for (int v = -vCount; v <= vCount; v++) {
-            boolean oddRow = (Math.floorMod(v, 2) != 0);
+        GenerationLimits.GridAxisCounts gridCounts = GenerationLimits.clampExclusiveGridCounts(uCount, vCount, 1, 1);
+        uCount = gridCounts.xCount();
+        vCount = gridCounts.yCount();
+
+        double rowStep = side * Math.sqrt(3.0d) * 0.5d;
+        List<Vector3d> points = new ArrayList<>(uCount * vCount);
+        List<Boolean> orientation = new ArrayList<>(uCount * vCount);
+
+        for (int v = 0; v < vCount; v++) {
+            boolean oddRow = (v & 1) == 1;
             double rowOffsetX = oddRow ? side * 0.5d : 0.0d;
-            for (int u = -uCount; u <= uCount; u++) {
+            for (int u = 0; u < uCount; u++) {
                 double x = u * side + rowOffsetX;
                 double z = v * rowStep;
-                BlockPos anchor = BlockPos.ofFloored(x, 0.0d, z);
-                anchors.add(anchor);
+                points.add(new Vector3d(origin).add(x, 0.0d, z));
                 orientation.add(((u + v) & 1) == 0);
-                for (BlockPos sourcePos : source) {
-                    result.add(sourcePos.add(anchor.getX(), 0, anchor.getZ()));
-                }
             }
         }
 
-        outputValues.put(OUTPUT_COORDINATES_ID, result);
-        outputValues.put(OUTPUT_ANCHORS_ID, anchors);
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(points));
         outputValues.put(OUTPUT_TRIANGLE_UP_ID, List.copyOf(orientation));
+        outputValues.put(OUTPUT_COUNT_ID, points.size());
+        outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private double getDouble(String portId, double fallback) {
@@ -94,8 +103,15 @@ public class TriangularGridNode extends BaseNode {
         return v instanceof Number n ? n.doubleValue() : fallback;
     }
 
-    private int getInt(String portId, int fallback) {
+    private int getInteger(String portId, int fallback) {
         Object v = inputValues.get(portId);
-        return v instanceof Number n ? n.intValue() : fallback;
+        return v instanceof Integer i ? i : fallback;
+    }
+
+    private void writeEmpty() {
+        outputValues.put(OUTPUT_POINTS_ID, List.of());
+        outputValues.put(OUTPUT_TRIANGLE_UP_ID, List.of());
+        outputValues.put(OUTPUT_COUNT_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
     }
 }

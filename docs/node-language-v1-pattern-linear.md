@@ -57,11 +57,9 @@ Equivalent explicit chain: `Path -> Path Frames -> Place Geometry On Frames`.
 
 ## Staggered Grid
 
-Two-dimensional staggered block coordinates live under **`pattern.grid.staggered_grid`**
-(not `pattern.linear`). Row Count and Step Count are total emitted rows/steps per row.
-`Count <= 0` on either axis emits an empty coordinate list.
-Total output is capped by `GenerationLimits.clampExclusiveGridCounts` so
-`step * row * templateSize <= MAX_LIST_ELEMENTS`.
+Staggered grid layout lives under **`pattern.grid.staggered_grid`** (see
+[`node-language-v1-pattern-grid.md`](./node-language-v1-pattern-grid.md)).
+It is no longer part of `pattern.linear`.
 
 ## Closed path helpers
 
