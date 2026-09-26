@@ -6,7 +6,6 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PointUtils;
@@ -86,11 +85,47 @@ public class FilterPointsByRuleNode extends BaseNode {
             return;
         }
 
+        OptionalRuleDouble minHeight = resolveOptionalRuleDouble(INPUT_MIN_HEIGHT_ID, "Min Height");
+        if (!minHeight.ok()) {
+            return;
+        }
+        OptionalRuleDouble maxHeight = resolveOptionalRuleDouble(INPUT_MAX_HEIGHT_ID, "Max Height");
+        if (!maxHeight.ok()) {
+            return;
+        }
+        OptionalRuleDouble minSlope = resolveOptionalRuleDouble(INPUT_MIN_SLOPE_ID, "Min Slope");
+        if (!minSlope.ok()) {
+            return;
+        }
+        OptionalRuleDouble maxSlope = resolveOptionalRuleDouble(INPUT_MAX_SLOPE_ID, "Max Slope");
+        if (!maxSlope.ok()) {
+            return;
+        }
+
+        Double minHeightValue = minHeight.value();
+        Double maxHeightValue = maxHeight.value();
+        Double minSlopeValue = minSlope.value();
+        Double maxSlopeValue = maxSlope.value();
+
+        if (minHeightValue != null && maxHeightValue != null && minHeightValue > maxHeightValue) {
+            writeFailure("Min Height must be less than or equal to Max Height.");
+            return;
+        }
+        if (minSlopeValue != null && maxSlopeValue != null && minSlopeValue > maxSlopeValue) {
+            writeFailure("Min Slope must be less than or equal to Max Slope.");
+            return;
+        }
+
+        boolean hasSlopeBound = minSlopeValue != null || maxSlopeValue != null;
         List<Vector3d> normals = null;
-        if (OptionalPortDrive.isConnected(this, INPUT_NORMALS_ID)) {
+        boolean normalsPresent = OptionalPortDrive.isConnected(this, INPUT_NORMALS_ID)
+                || inputValues.get(INPUT_NORMALS_ID) != null;
+        if (normalsPresent) {
             normals = VectorUtils.resolveStrictVectorList(inputValues.get(INPUT_NORMALS_ID));
             if (normals == null || normals.size() != points.size()) {
-                writeFailure("Normals must be a VECTOR_LIST with the same count as Points.");
+                writeFailure(OptionalPortDrive.isConnected(this, INPUT_NORMALS_ID)
+                        ? "Normals is connected but null or invalid."
+                        : "Normals must be a VECTOR_LIST with the same count as Points.");
                 return;
             }
             for (Vector3d normal : normals) {
@@ -99,12 +134,11 @@ public class FilterPointsByRuleNode extends BaseNode {
                     return;
                 }
             }
+        } else if (hasSlopeBound) {
+            writeFailure("Normals are required when Min Slope or Max Slope is set.");
+            return;
         }
 
-        Double minHeight = resolveFiniteDouble(inputValues.get(INPUT_MIN_HEIGHT_ID));
-        Double maxHeight = resolveFiniteDouble(inputValues.get(INPUT_MAX_HEIGHT_ID));
-        Double minSlope = resolveFiniteDouble(inputValues.get(INPUT_MIN_SLOPE_ID));
-        Double maxSlope = resolveFiniteDouble(inputValues.get(INPUT_MAX_SLOPE_ID));
         Boolean invertValue = OptionalPortDrive.resolveOptionalBoolean(this, INPUT_INVERT_ID, false);
         if (invertValue == null) {
             writeFailure("Invert is connected but null or invalid.");
@@ -113,6 +147,8 @@ public class FilterPointsByRuleNode extends BaseNode {
 
         boolean anyMode = ruleMode == RuleMode.ANY;
         boolean invert = invertValue;
+        boolean hasHeightRule = minHeightValue != null || maxHeightValue != null;
+        boolean hasSlopeRule = hasSlopeBound;
 
         List<Vector3d> kept = new ArrayList<>();
         List<Vector3d> removed = new ArrayList<>();
@@ -121,12 +157,10 @@ public class FilterPointsByRuleNode extends BaseNode {
 
         for (int i = 0; i < points.size(); i++) {
             Vector3d point = points.get(i);
-            boolean hasHeightRule = minHeight != null || maxHeight != null;
-            boolean hasSlopeRule = (minSlope != null || maxSlope != null) && normals != null;
 
-            boolean heightPass = !hasHeightRule || inRange(point.y, minHeight, maxHeight);
+            boolean heightPass = !hasHeightRule || inRange(point.y, minHeightValue, maxHeightValue);
             Double slope = normals != null ? slopeDegrees(normals.get(i)) : null;
-            boolean slopePass = !hasSlopeRule || inRange(slope, minSlope, maxSlope);
+            boolean slopePass = !hasSlopeRule || inRange(slope, minSlopeValue, maxSlopeValue);
             slopes.add(slope);
 
             boolean keep;
@@ -150,15 +184,50 @@ public class FilterPointsByRuleNode extends BaseNode {
         writeSuccess(kept, removed, mask, slopes);
     }
 
-    private @Nullable Double resolveFiniteDouble(@Nullable Object value) {
-        if (value == null) {
-            return null;
+    /**
+     * Optional rule DOUBLE: unconnected+null → disabled;
+     * unconnected/local finite or connected finite → enabled;
+     * connected null/NaN/Infinity/wrong type → fail closed.
+     */
+    private OptionalRuleDouble resolveOptionalRuleDouble(String portId, String displayName) {
+        boolean connected = OptionalPortDrive.isConnected(this, portId);
+        Object raw = inputValues.get(portId);
+        if (raw == null) {
+            if (connected) {
+                writeFailure(displayName + " is connected but null or invalid.");
+                return OptionalRuleDouble.invalid();
+            }
+            return OptionalRuleDouble.disabled();
         }
-        if (!(value instanceof Number number)) {
-            return null;
+        if (!(raw instanceof Number number)) {
+            if (connected) {
+                writeFailure(displayName + " is connected but null or invalid.");
+                return OptionalRuleDouble.invalid();
+            }
+            return OptionalRuleDouble.disabled();
         }
         double resolved = number.doubleValue();
-        return Double.isFinite(resolved) ? resolved : null;
+        if (!Double.isFinite(resolved)) {
+            writeFailure(displayName + (connected
+                    ? " is connected but null or invalid."
+                    : " must be a finite number when provided."));
+            return OptionalRuleDouble.invalid();
+        }
+        return OptionalRuleDouble.enabled(resolved);
+    }
+
+    private record OptionalRuleDouble(boolean ok, @Nullable Double value) {
+        static OptionalRuleDouble disabled() {
+            return new OptionalRuleDouble(true, null);
+        }
+
+        static OptionalRuleDouble enabled(double value) {
+            return new OptionalRuleDouble(true, value);
+        }
+
+        static OptionalRuleDouble invalid() {
+            return new OptionalRuleDouble(false, null);
+        }
     }
 
     private boolean inRange(double value, @Nullable Double min, @Nullable Double max) {

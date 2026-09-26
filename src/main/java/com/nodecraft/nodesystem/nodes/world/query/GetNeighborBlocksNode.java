@@ -96,12 +96,17 @@ public class GetNeighborBlocksNode extends BaseNode {
             return;
         }
 
+        List<BlockPos> neighbors = diagonals ? build26(center, radius) : build6(center, radius);
+        if (neighbors == null) {
+            writeInvalid("Neighbor block position overflows integer coordinate range.");
+            return;
+        }
+
         if (context == null || context.getWorld() == null) {
             writeInvalid("Execution context or world is missing.");
             return;
         }
 
-        List<BlockPos> neighbors = diagonals ? build26(center, radius) : build6(center, radius);
         BlockPosList coordinates = new BlockPosList();
         List<String> ids = new ArrayList<>(neighbors.size());
         List<Map<String, Object>> infos = new ArrayList<>(neighbors.size());
@@ -139,18 +144,23 @@ public class GetNeighborBlocksNode extends BaseNode {
         return StrictIntegerUtils.requireExactInteger(value);
     }
 
-    private List<BlockPos> build6(BlockPos center, int radius) {
+    /** Builds axis-ray neighbors, or {@code null} when any offset overflows. */
+    private @Nullable List<BlockPos> build6(BlockPos center, int radius) {
         List<BlockPos> out = new ArrayList<>();
         for (int r = 1; r <= radius; r++) {
             for (int[] d : OFFSETS_6) {
                 Optional<BlockPos> offset = BlockPosMath.tryOffset(center, d[0] * r, d[1] * r, d[2] * r);
-                offset.ifPresent(pos -> out.add(pos.toImmutable()));
+                if (offset.isEmpty()) {
+                    return null;
+                }
+                out.add(offset.get().toImmutable());
             }
         }
         return out;
     }
 
-    private List<BlockPos> build26(BlockPos center, int radius) {
+    /** Builds cube-volume neighbors excluding center, or {@code null} when any offset overflows. */
+    private @Nullable List<BlockPos> build26(BlockPos center, int radius) {
         List<BlockPos> out = new ArrayList<>();
         for (int x = -radius; x <= radius; x++) {
             for (int y = -radius; y <= radius; y++) {
@@ -158,7 +168,11 @@ public class GetNeighborBlocksNode extends BaseNode {
                     if (x == 0 && y == 0 && z == 0) {
                         continue;
                     }
-                    BlockPosMath.tryOffset(center, x, y, z).ifPresent(pos -> out.add(pos.toImmutable()));
+                    Optional<BlockPos> offset = BlockPosMath.tryOffset(center, x, y, z);
+                    if (offset.isEmpty()) {
+                        return null;
+                    }
+                    out.add(offset.get().toImmutable());
                 }
             }
         }

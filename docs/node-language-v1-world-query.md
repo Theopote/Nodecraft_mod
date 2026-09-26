@@ -14,11 +14,13 @@ Spatial Convention v1 (`BlockSpace` cell-center lattice).
 grid = block cell-center lattice (n + 0.5), not integer-corner round(x)
 BLOCK_POS index → POINT at cell center via BlockSpace
 PURE predicates never touch ExecutionContext world
-WORLD_READ nodes require context + world; bounded volume / count caps
+WORLD_READ nodes require context + world; bounded volume / count / distance caps
 strict typed ports: POINT_LIST, VECTOR_LIST, MINECRAFT_ENTITY_LIST, STRING_LIST
-OptionalPortDrive on optional booleans / distances: unconnected → property/default; connected-null → fail closed
+OptionalPortDrive / connection-aware optionals: unconnected → default/disabled;
+  connected-null/invalid → fail closed (never silent no-op)
 Valid + Error outputs on query nodes that can reject input
 no hidden POINT → BLOCK_POS floor in spatial filters
+BlockPos overflow → whole query Valid=false (no partial neighbor/fill set)
 ```
 
 ## Grid semantics (V60 freeze)
@@ -78,6 +80,12 @@ Grid nodes **classify only** — no silent snap-to-grid.
 - Outputs: filtered/removed **point lists**, `Mask` (`BOOLEAN_LIST`), `Slopes` (`DOUBLE_LIST`), counts, `Valid`, `Error`
 - `Mode` is a **node property** (`ALL` / `ANY`), not an input port
 - Removed V60: `Filtered Blocks`, `Removed Blocks`, `Mode` input port
+- Optional height/slope DOUBLEs are connection-aware:
+  - unconnected + null → rule disabled
+  - finite value (wired or local) → rule enabled
+  - connected null / NaN / Infinity → `Valid=false`
+- Any slope bound set → Normals required (`Valid=false` if missing)
+- `Min Height ≤ Max Height` and `Min Slope ≤ Max Slope` required when both ends are set
 
 ## World-read nodes
 
@@ -86,6 +94,7 @@ Grid nodes **classify only** — no silent snap-to-grid.
 - Center: `BLOCK_POS`; radius: exact `INTEGER` ≥ 1
 - Optional `Include Diagonals` (`OptionalPortDrive`, default false)
 - Pre-check estimated volume against `GenerationLimits.MAX_NEIGHBOR_QUERY_BLOCKS` (262144)
+- Any `BlockPos` offset overflow → `Valid=false` (no partial neighbor list)
 - Block IDs: `STRING_LIST`
 
 ### Flood Fill
@@ -93,12 +102,14 @@ Grid nodes **classify only** — no silent snap-to-grid.
 - Seed: `BLOCK_POS`; `Max Distance` / `Max Blocks`: exact `INTEGER`
 - `Max Blocks` hard cap: `GenerationLimits.MAX_FLOOD_FILL_BLOCKS` (262144)
 - Outputs include `Complete`, `Hit Limit`, `Stopped Reason`, `Valid`, `Error`
-- Offset stepping uses `BlockPosMath.tryOffset` (overflow-safe)
+- Offset stepping uses `BlockPosMath.tryOffset`; overflow → abort, `Valid=false`
+- Chebyshev distance uses `long` arithmetic
 
 ### Raycast
 
 - Origin / Hit Position: `POINT`; Direction / Hit Normal: `VECTOR`
 - `Max Distance` / `Entity Radius`: finite; optional drives where applicable
+- `Max Distance` hard cap: `GenerationLimits.MAX_WORLD_QUERY_DISTANCE` (8192) — fail closed, never clamp
 - Block raycast requires player in execution context — **fail closed** when missing (no silent skip)
 - Hit Entity: `MINECRAFT_ENTITY`
 
@@ -110,18 +121,20 @@ Grid nodes **classify only** — no silent snap-to-grid.
 
 - Typed outputs: `Entities List` (`MINECRAFT_ENTITY_LIST`), `Entity Type IDs` (`STRING_LIST`), `Entity Positions` (`POINT_LIST`)
 - Filter booleans: `OptionalPortDrive` with property fallback
+- Entity Type: unconnected → no filter; connected null/invalid/blank → `Valid=false`
 
 ### Get Entity
 
 - UUID connected → UUID lookup; else entity type + nearest search near player
 - `Find Nearest` / `Max Distance`: `OptionalPortDrive`
+- `Max Distance` hard cap: `GenerationLimits.MAX_WORLD_QUERY_DISTANCE` (8192) — fail closed, never clamp
 - Entity position output: `POINT`
 
 ## Shared helpers
 
 - `BlockSpace` — cell-center grid helpers
 - `BlockPosMath.tryOffset` — safe block offset
-- `GenerationLimits.MAX_NEIGHBOR_QUERY_BLOCKS`, `MAX_FLOOD_FILL_BLOCKS`, `estimateCubeVolume`
+- `GenerationLimits.MAX_NEIGHBOR_QUERY_BLOCKS`, `MAX_FLOOD_FILL_BLOCKS`, `MAX_WORLD_QUERY_DISTANCE`, `estimateCubeVolume`
 - `PointUtils.resolveStrictPointList`, `VectorUtils.resolveStrictVectorList`
 - `OptionalPortDrive`
 

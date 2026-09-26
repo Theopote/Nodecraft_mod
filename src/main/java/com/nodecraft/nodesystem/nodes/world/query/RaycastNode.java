@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.VectorUtils;
@@ -97,6 +98,10 @@ public class RaycastNode extends BaseNode {
         Double maxDistanceValue = resolveMaxDistance();
         if (maxDistanceValue == null || maxDistanceValue <= 0.0d) {
             writeNoHit(false, "Max Distance must be a finite number greater than zero.");
+            return;
+        }
+        if (maxDistanceValue > GenerationLimits.MAX_WORLD_QUERY_DISTANCE) {
+            writeNoHit(false, "Max Distance exceeds hard cap of " + GenerationLimits.MAX_WORLD_QUERY_DISTANCE + ".");
             return;
         }
         double maxDistance = maxDistanceValue;

@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import net.minecraft.entity.Entity;
 import net.minecraft.registry.Registries;
@@ -72,11 +73,6 @@ public class GetEntityNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        if (context == null || context.getWorld() == null) {
-            publish(null, false, false, "Execution context or world is missing.", context);
-            return;
-        }
-
         Boolean findNearest = OptionalPortDrive.resolveOptionalBoolean(this, INPUT_FIND_NEAREST_ID, true);
         if (findNearest == null) {
             publish(null, false, false, "Find Nearest is connected but null or invalid.", context);
@@ -86,6 +82,17 @@ public class GetEntityNode extends BaseNode {
         Double maxDistance = resolveMaxDistance();
         if (maxDistance == null || maxDistance <= 0.0d) {
             publish(null, false, false, "Max Distance must be a finite number greater than zero.", context);
+            return;
+        }
+        if (maxDistance > GenerationLimits.MAX_WORLD_QUERY_DISTANCE) {
+            publish(null, false, false,
+                    "Max Distance exceeds hard cap of " + GenerationLimits.MAX_WORLD_QUERY_DISTANCE + ".",
+                    context);
+            return;
+        }
+
+        if (context == null || context.getWorld() == null) {
+            publish(null, false, false, "Execution context or world is missing.", context);
             return;
         }
 

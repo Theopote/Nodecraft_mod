@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.VectorData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
@@ -19,6 +20,7 @@ import com.nodecraft.nodesystem.nodes.world.query.FilterGridPointsNode;
 import com.nodecraft.nodesystem.nodes.world.query.FilterPointsByRuleNode;
 import com.nodecraft.nodesystem.nodes.world.query.FloodFillNode;
 import com.nodecraft.nodesystem.nodes.world.query.GetEntitiesInRegionNode;
+import com.nodecraft.nodesystem.nodes.world.query.GetEntityNode;
 import com.nodecraft.nodesystem.nodes.world.query.GetNeighborBlocksNode;
 import com.nodecraft.nodesystem.nodes.world.query.IsGridPointNode;
 import com.nodecraft.nodesystem.nodes.world.query.RaycastNode;
@@ -279,6 +281,97 @@ class WorldQueryLanguageContractTest {
         assertEquals("output_filtered_points", migrated.connections.getFirst().sourcePortId);
     }
 
+    @Test
+    void filterPointsConnectedNullHeightFailsClosed() {
+        FilterPointsByRuleProbe node = new FilterPointsByRuleProbe();
+        node.setInput("input_points", List.of(new PointData(0, 10, 0)));
+        node.connectInput("input_min_height", NodeDataType.DOUBLE);
+        node.setInput("input_min_height", null);
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertTrue(String.valueOf(node.getOutput("output_error")).contains("Min Height"));
+    }
+
+    @Test
+    void filterPointsSlopeRuleRequiresNormals() {
+        FilterPointsByRuleNode node = new FilterPointsByRuleNode();
+        node.setInput("input_points", List.of(new PointData(0, 10, 0)));
+        node.setInput("input_min_slope", 20.0d);
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertTrue(String.valueOf(node.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("normal"));
+    }
+
+    @Test
+    void filterPointsRejectsReversedBounds() {
+        FilterPointsByRuleNode height = new FilterPointsByRuleNode();
+        height.setInput("input_points", List.of(new PointData(0, 10, 0)));
+        height.setInput("input_min_height", 20.0d);
+        height.setInput("input_max_height", 10.0d);
+        height.processNode(null);
+        assertEquals(Boolean.FALSE, height.getOutput("output_valid"));
+        assertTrue(String.valueOf(height.getOutput("output_error")).contains("Min Height"));
+
+        FilterPointsByRuleNode slope = new FilterPointsByRuleNode();
+        slope.setInput("input_points", List.of(new PointData(0, 10, 0)));
+        slope.setInput("input_normals", List.of(new VectorData(0, 1, 0)));
+        slope.setInput("input_min_slope", 50.0d);
+        slope.setInput("input_max_slope", 10.0d);
+        slope.processNode(null);
+        assertEquals(Boolean.FALSE, slope.getOutput("output_valid"));
+        assertTrue(String.valueOf(slope.getOutput("output_error")).contains("Min Slope"));
+    }
+
+    @Test
+    void getEntitiesConnectedNullEntityTypeFailsClosed() {
+        GetEntitiesInRegionProbe node = new GetEntitiesInRegionProbe();
+        node.connectInput("input_entity_type", NodeDataType.ENTITY_TYPE);
+        node.setInput("input_entity_type", null);
+        node.processNode(ExecutionContext.createEmpty(null));
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertTrue(String.valueOf(node.getOutput("output_error")).contains("Entity Type"));
+    }
+
+    @Test
+    void neighborOverflowFailsClosed() {
+        GetNeighborBlocksProbe node = new GetNeighborBlocksProbe();
+        node.setInput("input_center", new BlockPos(Integer.MAX_VALUE, 0, 0));
+        node.setInput("input_radius", 1);
+        node.processNode(ExecutionContext.createEmpty(null));
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertTrue(String.valueOf(node.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("overflow"));
+    }
+
+    @Test
+    void floodFillCoordinateOverflowFailsClosed() {
+        FloodFillProbe node = new FloodFillProbe();
+        node.setInput("input_seed", new BlockPos(Integer.MAX_VALUE, 0, 0));
+        node.setInput("input_max_distance", 1);
+        node.setInput("input_max_blocks", 10);
+        node.processNode(ExecutionContext.createEmpty(null));
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertTrue(String.valueOf(node.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("overflow"));
+    }
+
+    @Test
+    void raycastAndGetEntityRejectDistanceAboveHardCap() {
+        RaycastProbe raycast = new RaycastProbe();
+        raycast.setInput("input_origin", new PointData(0, 0, 0));
+        raycast.setInput("input_direction", new VectorData(0, -1, 0));
+        raycast.setInput("input_max_distance", GenerationLimits.MAX_WORLD_QUERY_DISTANCE + 1.0d);
+        raycast.processNode(ExecutionContext.createEmpty(null));
+        assertEquals(Boolean.FALSE, raycast.getOutput("output_valid"));
+        assertTrue(String.valueOf(raycast.getOutput("output_error"))
+                .contains(String.valueOf(GenerationLimits.MAX_WORLD_QUERY_DISTANCE)));
+
+        GetEntityProbe getEntity = new GetEntityProbe();
+        getEntity.setInput("input_max_distance", GenerationLimits.MAX_WORLD_QUERY_DISTANCE + 1.0d);
+        getEntity.processNode(ExecutionContext.createEmpty(null));
+        assertEquals(Boolean.FALSE, getEntity.getOutput("output_valid"));
+        assertTrue(String.valueOf(getEntity.getOutput("output_error"))
+                .contains(String.valueOf(GenerationLimits.MAX_WORLD_QUERY_DISTANCE)));
+    }
+
     private static void assertPortType(INode node, String portId, NodeDataType expected) {
         IPort port = findPort(node, portId);
         assertNotNull(port, portId);
@@ -360,5 +453,14 @@ class WorldQueryLanguageContractTest {
     }
 
     private static final class FloodFillProbe extends FloodFillNode {
+    }
+
+    private static final class GetEntitiesInRegionProbe extends GetEntitiesInRegionNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            WorldQueryLanguageContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class GetEntityProbe extends GetEntityNode {
     }
 }

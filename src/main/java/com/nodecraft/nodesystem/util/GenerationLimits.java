@@ -117,6 +117,12 @@ public final class GenerationLimits {
     /** Hard safety ceiling for flood-fill block budgets (user Max Blocks must not exceed). */
     public static final int MAX_FLOOD_FILL_BLOCKS = 262_144;
 
+    /**
+     * Hard upper bound for continuous world-query distances (Raycast / Get Entity Max Distance).
+     * Values above this fail closed — never clamped.
+     */
+    public static final double MAX_WORLD_QUERY_DISTANCE = 8192.0d;
+
     private GenerationLimits() {
     }
 

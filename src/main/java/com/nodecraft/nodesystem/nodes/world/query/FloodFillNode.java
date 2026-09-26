@@ -115,6 +115,15 @@ public class FloodFillNode extends BaseNode {
         }
         int[][] offsets = diagonals ? OFFSETS_26 : OFFSETS_6;
 
+        if (maxDistance >= 1) {
+            for (int[] d : offsets) {
+                if (BlockPosMath.tryOffset(seed, d[0], d[1], d[2]).isEmpty()) {
+                    writeInvalid("Block position overflow while expanding flood fill.");
+                    return;
+                }
+            }
+        }
+
         if (context == null || context.getWorld() == null) {
             writeInvalid("Execution context or world is missing.");
             return;
@@ -149,7 +158,8 @@ public class FloodFillNode extends BaseNode {
             for (int[] d : offsets) {
                 Optional<BlockPos> nextOpt = BlockPosMath.tryOffset(pos, d[0], d[1], d[2]);
                 if (nextOpt.isEmpty()) {
-                    continue;
+                    writeInvalid("Block position overflow while expanding flood fill.");
+                    return;
                 }
                 BlockPos next = nextOpt.get().toImmutable();
                 if (visited.contains(next)) {
@@ -251,11 +261,11 @@ public class FloodFillNode extends BaseNode {
         return boundary;
     }
 
-    private int distanceChebyshev(BlockPos a, BlockPos b) {
-        return Math.max(
-            Math.max(Math.abs(a.getX() - b.getX()), Math.abs(a.getY() - b.getY())),
-            Math.abs(a.getZ() - b.getZ())
-        );
+    private long distanceChebyshev(BlockPos a, BlockPos b) {
+        long dx = Math.abs((long) a.getX() - b.getX());
+        long dy = Math.abs((long) a.getY() - b.getY());
+        long dz = Math.abs((long) a.getZ() - b.getZ());
+        return Math.max(dx, Math.max(dy, dz));
     }
 
     private void writeInvalid(String error) {

@@ -82,14 +82,6 @@ public class GetEntitiesInRegionNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        if (context == null || context.getWorld() == null) {
-            writeFailure("Execution context or world is missing.");
-            return;
-        }
-
-        Object regionObj = inputValues.get(INPUT_REGION_ID);
-        Object entityTypeObj = inputValues.get(INPUT_ENTITY_TYPE_ID);
-
         Boolean excludePlayersValue = OptionalPortDrive.resolveOptionalBoolean(this, INPUT_EXCLUDE_PLAYERS_ID, excludePlayers);
         if (excludePlayersValue == null) {
             writeFailure("Exclude Players is connected but null or invalid.");
@@ -101,6 +93,19 @@ public class GetEntitiesInRegionNode extends BaseNode {
             return;
         }
 
+        String entityTypeFilter = null;
+        if (OptionalPortDrive.isConnected(this, INPUT_ENTITY_TYPE_ID)) {
+            Object entityTypeObj = inputValues.get(INPUT_ENTITY_TYPE_ID);
+            if (!(entityTypeObj instanceof String value) || value.isBlank()) {
+                writeFailure("Entity Type is connected but null or invalid.");
+                return;
+            }
+            entityTypeFilter = value;
+        } else if (inputValues.get(INPUT_ENTITY_TYPE_ID) instanceof String localType && !localType.isBlank()) {
+            entityTypeFilter = localType;
+        }
+
+        Object regionObj = inputValues.get(INPUT_REGION_ID);
         if (!(regionObj instanceof RegionData region) || !region.isComplete()) {
             writeFailure("Region input must be a complete region.");
             return;
@@ -112,7 +117,10 @@ public class GetEntitiesInRegionNode extends BaseNode {
             return;
         }
 
-        String entityTypeFilter = entityTypeObj instanceof String value && !value.isBlank() ? value : null;
+        if (context == null || context.getWorld() == null) {
+            writeFailure("Execution context or world is missing.");
+            return;
+        }
 
         List<Entity> entitiesList = new ArrayList<>();
         int count = 0;
