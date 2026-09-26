@@ -1,7 +1,6 @@
 package com.nodecraft.nodesystem.nodes.geometry.solids;
 
 import com.nodecraft.core.exception.GeometryException;
-import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
@@ -26,7 +25,7 @@ final class SolidNodeUtils {
 
     static @Nullable Vector3d resolvePoint(@Nullable Object value) {
         if (value instanceof PointData pointData) {
-            return new Vector3d(pointData.getPosition());
+            return new Vector3d(pointData.position());
         }
         if (value instanceof Vector3d vector) {
             return new Vector3d(vector);
@@ -53,7 +52,7 @@ final class SolidNodeUtils {
             return new Vector3d(vector.x, vector.y, vector.z);
         }
         if (value instanceof Vector3 vector) {
-            return new Vector3d(vector.getX(), vector.getY(), vector.getZ());
+            return new Vector3d(vector.x(), vector.y(), vector.z());
         }
         return null;
     }

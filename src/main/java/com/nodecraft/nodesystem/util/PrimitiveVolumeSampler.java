@@ -59,8 +59,8 @@ public final class PrimitiveVolumeSampler {
     private static Vector3d sampleRandomInteriorPoint(GeometryData geometry, Random random) {
         if (geometry instanceof SphereData sphere) {
             Vector3d direction = SphereSurfaceSampling.sampleRandomUnitNormal(random);
-            double r = sphere.getRadius() * Math.cbrt(random.nextDouble());
-            return new Vector3d(direction).mul(r).add(sphere.getCenter());
+            double r = sphere.radius() * Math.cbrt(random.nextDouble());
+            return new Vector3d(direction).mul(r).add(sphere.center());
         }
         if (geometry instanceof BoxGeometryData box) {
             return sampleBoxInterior(box, random);
@@ -166,8 +166,8 @@ public final class PrimitiveVolumeSampler {
     private static Vector3d sampleHemisphereInterior(HemisphereGeometryData hemisphere, Random random) {
         for (int attempt = 0; attempt < MAX_REJECTION_ATTEMPTS; attempt++) {
             Vector3d direction = SphereSurfaceSampling.sampleRandomUnitNormal(random);
-            double r = hemisphere.getRadius() * Math.cbrt(random.nextDouble());
-            Vector3d point = new Vector3d(direction).mul(r).add(hemisphere.getCenter());
+            double r = hemisphere.radius() * Math.cbrt(random.nextDouble());
+            Vector3d point = new Vector3d(direction).mul(r).add(hemisphere.center());
             if (containsPoint(hemisphere, point)) {
                 return point;
             }
@@ -177,7 +177,7 @@ public final class PrimitiveVolumeSampler {
 
     public static boolean containsPoint(GeometryData geometry, Vector3d point) {
         if (geometry instanceof SphereData sphere) {
-            return point.distanceSquared(sphere.getCenter()) <= sphere.getRadius() * sphere.getRadius() + 1.0e-9d;
+            return point.distanceSquared(sphere.center()) <= sphere.radius() * sphere.radius() + 1.0e-9d;
         }
         if (geometry instanceof BoxGeometryData box) {
             return containsBoxPoint(box, point);
@@ -195,11 +195,11 @@ public final class PrimitiveVolumeSampler {
             return containsEllipsoidPoint(ellipsoid, point);
         }
         if (geometry instanceof HemisphereGeometryData hemisphere) {
-            Vector3d offset = new Vector3d(point).sub(hemisphere.getCenter());
-            if (offset.lengthSquared() > hemisphere.getRadius() * hemisphere.getRadius() + 1.0e-9d) {
+            Vector3d offset = new Vector3d(point).sub(hemisphere.center());
+            if (offset.lengthSquared() > hemisphere.radius() * hemisphere.radius() + 1.0e-9d) {
                 return false;
             }
-            return offset.dot(hemisphere.getAxis()) >= 0.0d;
+            return offset.dot(hemisphere.axis()) >= 0.0d;
         }
         return false;
     }
@@ -232,14 +232,14 @@ public final class PrimitiveVolumeSampler {
     }
 
     private static boolean containsTorusPoint(TorusGeometryData torus, Vector3d point) {
-        Vector3d axis = torus.getAxis();
-        Vector3d offset = new Vector3d(point).sub(torus.getCenter());
+        Vector3d axis = torus.axis();
+        Vector3d offset = new Vector3d(point).sub(torus.center());
         Vector3d axial = new Vector3d(axis).mul(offset.dot(axis));
         Vector3d radial = new Vector3d(offset).sub(axial);
         double ringDistance = radial.length();
         double tubeDistance = axial.length();
-        double major = torus.getMajorRadius();
-        double minor = torus.getMinorRadius();
+        double major = torus.majorRadius();
+        double minor = torus.minorRadius();
         double dx = ringDistance - major;
         return (dx * dx + tubeDistance * tubeDistance) <= minor * minor + 1.0e-9d;
     }

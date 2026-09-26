@@ -16,7 +16,7 @@ final class WorldSelectionResolveUtils {
 
     static @Nullable Vector3d toPointPosition(Object value) {
         if (value instanceof PointData pointData) {
-            return new Vector3d(pointData.getPosition());
+            return new Vector3d(pointData.position());
         }
         return null;
     }
@@ -33,13 +33,13 @@ final class WorldSelectionResolveUtils {
             return new Vector3d(vector.x, vector.y, vector.z);
         }
         if (value instanceof Vector3 vector) {
-            return new Vector3d(vector.getX(), vector.getY(), vector.getZ());
+            return new Vector3d(vector.x(), vector.y(), vector.z());
         }
         if (value instanceof BlockPos blockPos) {
             return BlockSpace.cellCenter(blockPos);
         }
         if (value instanceof Coordinate coordinate) {
-            return BlockSpace.cellCenter(coordinate.getX(), coordinate.getY(), coordinate.getZ());
+            return BlockSpace.cellCenter(coordinate.x(), coordinate.y(), coordinate.z());
         }
         return null;
     }
@@ -49,7 +49,7 @@ final class WorldSelectionResolveUtils {
             return pos.toImmutable();
         }
         if (value instanceof Coordinate coordinate) {
-            return new BlockPos(coordinate.getX(), coordinate.getY(), coordinate.getZ());
+            return new BlockPos(coordinate.x(), coordinate.y(), coordinate.z());
         }
         Vector3d vector = resolveVector3d(value);
         if (vector != null) {

@@ -77,8 +77,8 @@ class PlacementFamilyContractTest {
 
         assertEquals(Boolean.TRUE, place.getOutput("output_valid"));
         SphereData out = assertInstanceOf(SphereData.class, place.getOutput("output_geometry"));
-        assertEquals(10.0d, out.getCenter().x, 1.0e-6d);
-        assertEquals(2.0d, out.getRadius(), 1.0e-9d);
+        assertEquals(10.0d, out.center().x, 1.0e-6d);
+        assertEquals(2.0d, out.radius(), 1.0e-9d);
     }
 
     @Test
@@ -174,7 +174,7 @@ class PlacementFamilyContractTest {
 
         assertEquals(Boolean.TRUE, place.getOutput("output_valid"));
         SphereData out = assertInstanceOf(SphereData.class, place.getOutput("output_geometry"));
-        assertVectorEquals(frame.getOrigin(), out.getCenter(), 1.0e-6d);
+        assertVectorEquals(frame.getOrigin(), out.center(), 1.0e-6d);
     }
 
     private static void assertVectorEquals(Vector3d expected, Vector3d actual, double eps) {

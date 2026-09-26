@@ -7,11 +7,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.LineData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -76,8 +73,8 @@ public class FrustumByTwoCentersRadiiNode extends BaseNode {
                 axisLineInput = line;
             }
             if (axisLineInput != null) {
-                Vec3d lineStart = axisLineInput.getStart();
-                Vec3d lineEnd = axisLineInput.getEnd();
+                Vec3d lineStart = axisLineInput.start();
+                Vec3d lineEnd = axisLineInput.end();
                 if (base == null) {
                     base = new Vector3d(lineStart.x, lineStart.y, lineStart.z);
                 }

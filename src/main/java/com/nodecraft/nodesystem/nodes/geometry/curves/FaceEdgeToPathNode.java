@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.geometry.curves;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
@@ -74,8 +73,8 @@ public class FaceEdgeToPathNode extends AbstractCurveNode {
             return;
         }
 
-        Vec3d start = edge.getStart();
-        Vec3d end = edge.getEnd();
+        Vec3d start = edge.start();
+        Vec3d end = edge.end();
         Vector3d startPoint = new Vector3d(start.x, start.y, start.z);
         Vector3d endPoint = new Vector3d(end.x, end.y, end.z);
         PolylineData polyline = new PolylineData(List.of(start, end));

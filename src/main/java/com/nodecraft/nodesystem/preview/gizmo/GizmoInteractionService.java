@@ -39,8 +39,8 @@ public final class GizmoInteractionService {
             return;
         }
 
-        Vec3d rayStart = ray.origin;
-        Vec3d rayDirection = ray.direction;
+        Vec3d rayStart = ray.origin();
+        Vec3d rayDirection = ray.direction();
         PreviewRenderer renderer = PreviewRenderer.getInstance();
 
         if (isLeftMouseReleased) {

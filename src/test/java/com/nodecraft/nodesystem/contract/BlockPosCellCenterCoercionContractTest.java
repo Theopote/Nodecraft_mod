@@ -66,14 +66,14 @@ class BlockPosCellCenterCoercionContractTest {
         PointData centerMin = assertInstanceOf(PointData.class, fromCenter.getOutput("output_bounds_min"));
         PointData cornerMin = assertInstanceOf(PointData.class, fromCorner.getOutput("output_bounds_min"));
 
-        assertEquals(centerMin.getPosition().x, blockMin.getPosition().x, 1.0e-9);
-        assertEquals(centerMin.getPosition().y, blockMin.getPosition().y, 1.0e-9);
-        assertEquals(centerMin.getPosition().z, blockMin.getPosition().z, 1.0e-9);
+        assertEquals(centerMin.position().x, blockMin.position().x, 1.0e-9);
+        assertEquals(centerMin.position().y, blockMin.position().y, 1.0e-9);
+        assertEquals(centerMin.position().z, blockMin.position().z, 1.0e-9);
 
         // Corner origin must differ from cell-center origin under a non-zero twist.
-        double dx = Math.abs(cornerMin.getPosition().x - blockMin.getPosition().x);
-        double dy = Math.abs(cornerMin.getPosition().y - blockMin.getPosition().y);
-        double dz = Math.abs(cornerMin.getPosition().z - blockMin.getPosition().z);
+        double dx = Math.abs(cornerMin.position().x - blockMin.position().x);
+        double dy = Math.abs(cornerMin.position().y - blockMin.position().y);
+        double dz = Math.abs(cornerMin.position().z - blockMin.position().z);
         assertEquals(true, dx + dy + dz > 1.0e-6,
             "BlockPos coercion must not match integer min-corner origin under twist");
     }

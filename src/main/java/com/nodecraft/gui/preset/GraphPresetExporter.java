@@ -79,8 +79,8 @@ public final class GraphPresetExporter {
 
         List<GraphPresetRules.PresetConnection> presetConnections = new ArrayList<>();
         for (Connection conn : graph.getConnections()) {
-            UUID sourceId = conn.sourceNode.getId();
-            UUID targetId = conn.targetNode.getId();
+            UUID sourceId = conn.sourceNode().getId();
+            UUID targetId = conn.targetNode().getId();
             if (!selectedNodeIds.contains(sourceId) || !selectedNodeIds.contains(targetId)) {
                 continue;
             }
@@ -92,9 +92,9 @@ public final class GraphPresetExporter {
 
             GraphPresetRules.PresetConnection presetConnection = new GraphPresetRules.PresetConnection();
             presetConnection.fromRef = fromRef;
-            presetConnection.fromPort = conn.sourcePort.getId();
+            presetConnection.fromPort = conn.sourcePort().getId();
             presetConnection.toRef = toRef;
-            presetConnection.toPort = conn.targetPort.getId();
+            presetConnection.toPort = conn.targetPort().getId();
             presetConnections.add(presetConnection);
         }
 

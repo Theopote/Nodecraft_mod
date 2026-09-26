@@ -15,7 +15,7 @@ final class WorldQueryPointResolver {
 
     static @Nullable Vector3d resolveVector(Object value) {
         if (value instanceof PointData pointData) {
-            return new Vector3d(pointData.getPosition());
+            return new Vector3d(pointData.position());
         }
         if (value instanceof Vector3d vector) {
             return new Vector3d(vector);
@@ -24,7 +24,7 @@ final class WorldQueryPointResolver {
             return new Vector3d(vector.x, vector.y, vector.z);
         }
         if (value instanceof Vector3 vector) {
-            return new Vector3d(vector.getX(), vector.getY(), vector.getZ());
+            return new Vector3d(vector.x(), vector.y(), vector.z());
         }
         if (value instanceof BlockPos pos) {
             // Spatial Convention v1: BlockPos as continuous location = cell center, not min corner.

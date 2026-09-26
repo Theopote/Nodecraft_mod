@@ -543,21 +543,10 @@ public class NodeGraph {
             execConnectionCount = Math.max(0, execConnectionCount - 1);
         }
     }
-    
+
     /**
-     * 表示节点图中两个端口之间的连接
-     */
-    public static class Connection {
-        public final INode sourceNode;
-        public final IPort sourcePort;
-        public final INode targetNode;
-        public final IPort targetPort;
-        
-        public Connection(INode sourceNode, IPort sourcePort, INode targetNode, IPort targetPort) {
-            this.sourceNode = sourceNode;
-            this.sourcePort = sourcePort;
-            this.targetNode = targetNode;
-            this.targetPort = targetPort;
-        }
+         * 表示节点图中两个端口之间的连接
+         */
+        public record Connection(INode sourceNode, IPort sourcePort, INode targetNode, IPort targetPort) {
     }
 } 

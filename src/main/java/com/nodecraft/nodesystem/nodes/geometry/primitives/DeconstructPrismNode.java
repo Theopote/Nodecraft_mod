@@ -68,9 +68,9 @@ public class DeconstructPrismNode extends BaseNode {
             return;
         }
 
-        List<Vector3d> basePoints = prism.getBaseVertices();
+        List<Vector3d> basePoints = prism.baseVertices();
         List<Vector3d> topPoints = prism.getTopVertices();
-        Vector3d extrusionVector = prism.getExtrusionVector();
+        Vector3d extrusionVector = prism.extrusionVector();
         double height = prism.getHeight();
         int sideCount = prism.getSideCount();
         RegionData region = GeometryVoxelizer.createBoundingRegion(prism);

@@ -475,12 +475,12 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 UUID tgtId = interaction.getHoveredConnectionTargetNodeId();
                 String tgtPortId = interaction.getHoveredConnectionTargetPortId();
                 for (NodeGraph.Connection c : document.getGraph().getConnections()) {
-                    if (c.sourceNode.getId().equals(srcId) && c.sourcePort.getId().equals(srcPortId)
-                            && c.targetNode.getId().equals(tgtId) && c.targetPort.getId().equals(tgtPortId)) {
-                        if (!NodeDataType.isConnectableTo(c.sourcePort.getDataType(), c.targetPort.getDataType())) {
+                    if (c.sourceNode().getId().equals(srcId) && c.sourcePort().getId().equals(srcPortId)
+                            && c.targetNode().getId().equals(tgtId) && c.targetPort().getId().equals(tgtPortId)) {
+                        if (!NodeDataType.isConnectableTo(c.sourcePort().getDataType(), c.targetPort().getDataType())) {
                             String msg = String.format("类型不匹配: 输出 %s 无法连接到输入 %s",
-                                    c.sourcePort.getDataType().getDisplayName(),
-                                    c.targetPort.getDataType().getDisplayName());
+                                    c.sourcePort().getDataType().getDisplayName(),
+                                    c.targetPort().getDataType().getDisplayName());
                             ImGui.setTooltip(msg);
                         }
                         break;

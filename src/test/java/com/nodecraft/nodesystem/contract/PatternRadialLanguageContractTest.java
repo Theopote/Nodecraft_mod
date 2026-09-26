@@ -4,7 +4,6 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
-import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
@@ -118,10 +117,10 @@ class PatternRadialLanguageContractTest {
 
         SphereData first = assertInstanceOf(SphereData.class, copies.get(0));
         SphereData last = assertInstanceOf(SphereData.class, copies.get(3));
-        assertEquals(2.0d, first.getCenter().x, 1.0e-6d);
-        assertEquals(0.0d, first.getCenter().z, 1.0e-6d);
-        assertEquals(0.0d, last.getCenter().x, 1.0e-6d);
-        assertEquals(2.0d, last.getCenter().z, 1.0e-6d);
+        assertEquals(2.0d, first.center().x, 1.0e-6d);
+        assertEquals(0.0d, first.center().z, 1.0e-6d);
+        assertEquals(0.0d, last.center().x, 1.0e-6d);
+        assertEquals(2.0d, last.center().z, 1.0e-6d);
     }
 
     @Test
@@ -141,7 +140,7 @@ class PatternRadialLanguageContractTest {
         List<Object> copies = assertInstanceOf(List.class, polar.getOutput("output_geometries"));
         SphereData first = assertInstanceOf(SphereData.class, copies.get(0));
         SphereData last = assertInstanceOf(SphereData.class, copies.get(4));
-        assertNotEquals(first.getCenter().x, last.getCenter().x, 1.0e-6d);
+        assertNotEquals(first.center().x, last.center().x, 1.0e-6d);
     }
 
     @Test
@@ -170,8 +169,8 @@ class PatternRadialLanguageContractTest {
         List<Object> exclusiveCopies = assertInstanceOf(List.class, exclusive.getOutput("output_geometries"));
         SphereData inclusiveLast = assertInstanceOf(SphereData.class, inclusiveCopies.get(3));
         SphereData exclusiveLast = assertInstanceOf(SphereData.class, exclusiveCopies.get(3));
-        assertEquals(-2.0d, inclusiveLast.getCenter().x, 1.0e-6d);
-        assertEquals(-1.4142135d, exclusiveLast.getCenter().x, 1.0e-3d);
+        assertEquals(-2.0d, inclusiveLast.center().x, 1.0e-6d);
+        assertEquals(-1.4142135d, exclusiveLast.center().x, 1.0e-3d);
     }
 
     @Test
@@ -251,8 +250,8 @@ class PatternRadialLanguageContractTest {
         @SuppressWarnings("unchecked")
         List<PointData> points = assertInstanceOf(List.class, spiral.getOutput("output_points"));
         PointData third = points.get(2);
-        assertTrue(Math.abs(third.getPosition().x - Math.round(third.getPosition().x)) > 1.0e-6d
-                || Math.abs(third.getPosition().z - Math.round(third.getPosition().z)) > 1.0e-6d);
+        assertTrue(Math.abs(third.position().x - Math.round(third.position().x)) > 1.0e-6d
+                || Math.abs(third.position().z - Math.round(third.position().z)) > 1.0e-6d);
     }
 
     @Test
@@ -296,8 +295,8 @@ class PatternRadialLanguageContractTest {
         @SuppressWarnings("unchecked")
         List<PointData> points = assertInstanceOf(List.class, phyllotaxis.getOutput("output_points"));
         PointData third = points.get(2);
-        assertTrue(Math.abs(third.getPosition().x - Math.round(third.getPosition().x)) > 1.0e-6d
-                || Math.abs(third.getPosition().z - Math.round(third.getPosition().z)) > 1.0e-6d);
+        assertTrue(Math.abs(third.position().x - Math.round(third.position().x)) > 1.0e-6d
+                || Math.abs(third.position().z - Math.round(third.position().z)) > 1.0e-6d);
     }
 
     @Test

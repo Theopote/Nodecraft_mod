@@ -1,6 +1,5 @@
 package com.nodecraft.nodesystem.preset;
 
-import com.nodecraft.nodesystem.graph.NodeGraph;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.io.TempDir;
@@ -8,7 +7,6 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -83,10 +81,10 @@ public class PresetSystemTest {
         PresetDefinition preset = PresetLoader.load(presetFile);
 
         assertNotNull(preset);
-        assertEquals("test.simple_box", preset.getPresetId());
-        assertEquals("1.0.0", preset.getVersion());
-        assertEquals("Test Box", preset.getMetadata().getName());
-        assertEquals(1, preset.getParameters().size());
+        assertEquals("test.simple_box", preset.presetId());
+        assertEquals("1.0.0", preset.version());
+        assertEquals("Test Box", preset.metadata().getName());
+        assertEquals(1, preset.parameters().size());
     }
 
     @Test
@@ -138,7 +136,7 @@ public class PresetSystemTest {
         Path presetFile = tempDir.resolve("preset.json");
         PresetDefinition preset = PresetLoader.load(presetFile);
 
-        assertEquals("Test Box", preset.getMetadata().getName());
-        assertEquals("Test Box", preset.getMetadata().getName("en_US"));
+        assertEquals("Test Box", preset.metadata().getName());
+        assertEquals("Test Box", preset.metadata().getName("en_US"));
     }
 }

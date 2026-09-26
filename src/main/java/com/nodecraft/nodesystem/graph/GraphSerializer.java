@@ -72,10 +72,10 @@ public class GraphSerializer {
 
         for (NodeGraph.Connection conn : graph.getConnections()) {
             SavedConnection savedConn = new SavedConnection();
-            savedConn.sourceNodeId = conn.sourceNode.getId().toString();
-            savedConn.sourcePortId = conn.sourcePort.getId();
-            savedConn.targetNodeId = conn.targetNode.getId().toString();
-            savedConn.targetPortId = conn.targetPort.getId();
+            savedConn.sourceNodeId = conn.sourceNode().getId().toString();
+            savedConn.sourcePortId = conn.sourcePort().getId();
+            savedConn.targetNodeId = conn.targetNode().getId().toString();
+            savedConn.targetPortId = conn.targetPort().getId();
             savedGraph.connections.add(savedConn);
         }
 

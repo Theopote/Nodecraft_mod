@@ -130,7 +130,7 @@ public class ColumnNode extends BaseNode {
 
     private static @Nullable Vector3d resolveBasePoint(Object value) {
         if (value instanceof PointData point) {
-            Vector3d position = point.getPosition();
+            Vector3d position = point.position();
             if (Double.isFinite(position.x) && Double.isFinite(position.y) && Double.isFinite(position.z)) {
                 return new Vector3d(position);
             }

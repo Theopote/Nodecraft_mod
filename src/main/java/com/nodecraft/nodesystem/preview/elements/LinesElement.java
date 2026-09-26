@@ -64,8 +64,8 @@ public class LinesElement extends AbstractPreviewElement {
         List<Vec3d> nextPoints = new ArrayList<>();
 
         if (data instanceof LineData line) {
-            nextPoints.add(line.getStart());
-            nextPoints.add(line.getEnd());
+            nextPoints.add(line.start());
+            nextPoints.add(line.end());
         } else if (data instanceof PolylineData polyline) {
             nextPoints.addAll(polyline.points());
         } else if (data instanceof Curve curve) {

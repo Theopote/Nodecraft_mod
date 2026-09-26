@@ -22,10 +22,10 @@ public final class PrismGeometryPropertyRenderer {
                 return;
             }
 
-            ImGui.text("Base Vertices: " + prism.getBaseVertices().size());
+            ImGui.text("Base Vertices: " + prism.baseVertices().size());
             ImGui.text("Side Count: " + prism.getSideCount());
             ImGui.text(String.format("Height: %.2f", prism.getHeight()));
-            ImGui.text("Extrusion: " + PropertyValueFormatters.formatVector3d(prism.getExtrusionVector()));
+            ImGui.text("Extrusion: " + PropertyValueFormatters.formatVector3d(prism.extrusionVector()));
         } catch (Throwable e) {
             panel.handlePropertyError(prop, e);
         }

@@ -22,9 +22,9 @@ public final class HemisphereGeometryPropertyRenderer {
                 return;
             }
 
-            ImGui.text("Center: " + PropertyValueFormatters.formatVector3d(hemisphere.getCenter()));
-            ImGui.text("Axis: " + PropertyValueFormatters.formatVector3d(hemisphere.getAxis()));
-            ImGui.text(String.format("Radius: %.2f", hemisphere.getRadius()));
+            ImGui.text("Center: " + PropertyValueFormatters.formatVector3d(hemisphere.center()));
+            ImGui.text("Axis: " + PropertyValueFormatters.formatVector3d(hemisphere.axis()));
+            ImGui.text(String.format("Radius: %.2f", hemisphere.radius()));
         } catch (Throwable e) {
             panel.handlePropertyError(prop, e);
         }

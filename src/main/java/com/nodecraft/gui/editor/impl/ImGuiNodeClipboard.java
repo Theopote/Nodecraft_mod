@@ -12,7 +12,6 @@ import com.google.gson.GsonBuilder;
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.core.exception.NodeValidationException;
 import com.nodecraft.nodesystem.api.INode;
-import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.graph.NodeGraph.Connection;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -109,8 +108,8 @@ public class ImGuiNodeClipboard implements ClipboardOwner {
             
             // 遍历所有连接，筛选出选中节点之间的连接
             for (Connection conn : graph.getConnections()) {
-                UUID sourceId = conn.sourceNode.getId();
-                UUID targetId = conn.targetNode.getId();
+                UUID sourceId = conn.sourceNode().getId();
+                UUID targetId = conn.targetNode().getId();
                 
                 // 只保留两端都在选中节点中的连接
                 if (selectedNodeIds.contains(sourceId) && selectedNodeIds.contains(targetId)) {
@@ -121,9 +120,9 @@ public class ImGuiNodeClipboard implements ClipboardOwner {
                     
                     ConnectionData connData = new ConnectionData();
                     connData.sourceNodeIndex = nodeIndexMap.get(sourceId);
-                    connData.sourcePortId = conn.sourcePort.getId();
+                    connData.sourcePortId = conn.sourcePort().getId();
                     connData.targetNodeIndex = nodeIndexMap.get(targetId);
-                    connData.targetPortId = conn.targetPort.getId();
+                    connData.targetPortId = conn.targetPort().getId();
                     connections.add(connData);
                     
                     NodeCraft.LOGGER.debug("收集连接: 节点{}({}) -> 节点{}({})", 

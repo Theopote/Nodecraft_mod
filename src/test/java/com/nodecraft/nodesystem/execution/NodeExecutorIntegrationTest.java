@@ -238,7 +238,7 @@ class NodeExecutorIntegrationTest {
 
         NodeExecutor executor = new NodeExecutor(graph);
         assertTrue(executor.executeSync());
-        assertFalse(executor.getExecFrontierSnapshot().isActive());
+        assertFalse(executor.getExecFrontierSnapshot().active());
     }
 
     @Test

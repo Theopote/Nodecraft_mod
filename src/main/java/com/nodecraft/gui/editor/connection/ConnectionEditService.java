@@ -144,16 +144,16 @@ public final class ConnectionEditService {
 
         int removedCount = 0;
         for (NodeGraph.Connection connection : document.getGraph().getConnections()) {
-            INode sourceNode = connection.sourceNode;
-            INode targetNode = connection.targetNode;
+            INode sourceNode = connection.sourceNode();
+            INode targetNode = connection.targetNode();
             if (sourceNode == null || targetNode == null) {
                 document.getGraph().removeConnection(connection);
                 removedCount++;
                 continue;
             }
 
-            if (!hasPort(sourceNode.getOutputPorts(), connection.sourcePort.getId())
-                    || !hasPort(targetNode.getInputPorts(), connection.targetPort.getId())) {
+            if (!hasPort(sourceNode.getOutputPorts(), connection.sourcePort().getId())
+                    || !hasPort(targetNode.getInputPorts(), connection.targetPort().getId())) {
                 document.getGraph().removeConnection(connection);
                 removedCount++;
             }

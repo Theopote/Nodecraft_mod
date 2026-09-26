@@ -54,7 +54,7 @@ public final class PreviewPayloadAdapters {
         List<PreviewPoint> pts = new ArrayList<>(coords.size());
         for (Coordinate c : coords) {
             if (c != null) {
-                pts.add(new PreviewPoint(c.getX() + 0.5d, c.getY() + 0.5d, c.getZ() + 0.5d));
+                pts.add(new PreviewPoint(c.x() + 0.5d, c.y() + 0.5d, c.z() + 0.5d));
             }
         }
         return new PreviewPointsPayload(pts);
@@ -111,8 +111,8 @@ public final class PreviewPayloadAdapters {
     }
 
     public static PreviewCurvePayload curveFromLineData(LineData line, boolean closed) {
-        Vec3d a = line.getStart();
-        Vec3d b = line.getEnd();
+        Vec3d a = line.start();
+        Vec3d b = line.end();
         return new PreviewCurvePayload(
             List.of(
                 new PreviewPoint(a.x, a.y, a.z),
@@ -172,7 +172,7 @@ public final class PreviewPayloadAdapters {
             return vec;
         }
         if (value instanceof PointData pointData) {
-            Vector3d p = pointData.getPosition();
+            Vector3d p = pointData.position();
             return new Vec3d(p.x, p.y, p.z);
         }
         if (value instanceof Vector3d vector) {
@@ -182,7 +182,7 @@ public final class PreviewPayloadAdapters {
             return new Vec3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
         }
         if (value instanceof Coordinate coordinate) {
-            return new Vec3d(coordinate.getX(), coordinate.getY(), coordinate.getZ());
+            return new Vec3d(coordinate.x(), coordinate.y(), coordinate.z());
         }
         return null;
     }

@@ -14,7 +14,7 @@ final class PlaneUtils {
 
     static Vector3d resolvePoint(Object value) {
         if (value instanceof PointData pointData) {
-            return pointData.getPosition();
+            return pointData.position();
         }
         if (value instanceof Vector3d vector) {
             return new Vector3d(vector);

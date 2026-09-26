@@ -5,21 +5,15 @@ import org.joml.Vector3d;
 /**
  * Sphere SDF primitive.
  */
-public class SphereSdfData implements SignedDistanceFieldData {
-    private final Vector3d center;
-    private final double radius;
-
+public record SphereSdfData(Vector3d center, double radius) implements SignedDistanceFieldData {
     public SphereSdfData(Vector3d center, double radius) {
         this.center = new Vector3d(center);
         this.radius = Math.max(0.0d, radius);
     }
 
-    public Vector3d getCenter() {
+    @Override
+    public Vector3d center() {
         return new Vector3d(center);
-    }
-
-    public double getRadius() {
-        return radius;
     }
 
     @Override

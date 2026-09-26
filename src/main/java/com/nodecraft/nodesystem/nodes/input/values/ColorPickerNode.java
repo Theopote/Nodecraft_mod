@@ -168,7 +168,7 @@ public class ColorPickerNode extends BaseCustomUINode {
     }
 
     private void onColorChangedFromUI() {
-        float alpha = includeAlpha ? colorArray[3] : color.getAlpha();
+        float alpha = includeAlpha ? colorArray[3] : color.alpha();
         Color newColor = new Color(colorArray[0], colorArray[1], colorArray[2], alpha);
         if (!this.color.equals(newColor)) {
             this.color = newColor;
@@ -178,10 +178,10 @@ public class ColorPickerNode extends BaseCustomUINode {
     }
 
     private void updateColorArray() {
-        colorArray[0] = color.getRed();
-        colorArray[1] = color.getGreen();
-        colorArray[2] = color.getBlue();
-        colorArray[3] = color.getAlpha();
+        colorArray[0] = color.red();
+        colorArray[1] = color.green();
+        colorArray[2] = color.blue();
+        colorArray[3] = color.alpha();
     }
 
     public Color getColor() {
@@ -191,7 +191,7 @@ public class ColorPickerNode extends BaseCustomUINode {
     public void setColor(Color color) {
         Color normalized = color != null ? color : new Color(1.0f, 1.0f, 1.0f, 1.0f);
         if (!includeAlpha) {
-            normalized = new Color(normalized.getRed(), normalized.getGreen(), normalized.getBlue(), this.color.getAlpha());
+            normalized = new Color(normalized.red(), normalized.green(), normalized.blue(), this.color.alpha());
         }
         if (!this.color.equals(normalized)) {
             this.color = normalized;
@@ -203,7 +203,7 @@ public class ColorPickerNode extends BaseCustomUINode {
 
     public void setColor(float red, float green, float blue, float alpha) {
         if (!includeAlpha) {
-            alpha = this.color.getAlpha();
+            alpha = this.color.alpha();
         }
         setColor(new Color(red, green, blue, alpha));
     }
@@ -211,19 +211,19 @@ public class ColorPickerNode extends BaseCustomUINode {
     public void setColorFromHex(String hexColor) {
         Color parsed = Color.fromHex(hexColor);
         if (!includeAlpha) {
-            parsed = new Color(parsed.getRed(), parsed.getGreen(), parsed.getBlue(), this.color.getAlpha());
+            parsed = new Color(parsed.red(), parsed.green(), parsed.blue(), this.color.alpha());
         }
         setColor(parsed);
     }
 
     private void updateOutput() {
         ColorData colorData = ValueInputUtils.toColorData(
-                color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
+                color.red(), color.green(), color.blue(), color.alpha());
         outputValues.put(OUTPUT_COLOR_ID, colorData);
-        outputValues.put(OUTPUT_RED_ID, (double) color.getRed());
-        outputValues.put(OUTPUT_GREEN_ID, (double) color.getGreen());
-        outputValues.put(OUTPUT_BLUE_ID, (double) color.getBlue());
-        outputValues.put(OUTPUT_ALPHA_ID, (double) color.getAlpha());
+        outputValues.put(OUTPUT_RED_ID, (double) color.red());
+        outputValues.put(OUTPUT_GREEN_ID, (double) color.green());
+        outputValues.put(OUTPUT_BLUE_ID, (double) color.blue());
+        outputValues.put(OUTPUT_ALPHA_ID, (double) color.alpha());
         syncOutputPorts();
     }
 

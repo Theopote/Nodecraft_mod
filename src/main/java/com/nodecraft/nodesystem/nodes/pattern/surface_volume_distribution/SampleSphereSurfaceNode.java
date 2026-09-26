@@ -101,8 +101,8 @@ public class SampleSphereSurfaceNode extends BaseNode {
         };
 
         List<Vector3d> normals = SphereSurfaceSampling.sampleUnitNormals(mode, resolvedCount, resolvedSeed);
-        Vector3d center = sphere.getCenter();
-        double radius = sphere.getRadius();
+        Vector3d center = sphere.center();
+        double radius = sphere.radius();
         List<Vector3d> points = new ArrayList<>(normals.size());
         List<Vector3d> outwardNormals = new ArrayList<>(normals.size());
 

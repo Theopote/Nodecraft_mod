@@ -328,11 +328,11 @@ public class ImGuiNodeHistory implements GraphApplyHistoryView {
         
         if (graph != null) {
             connectionInfos = graph.getConnections().stream()
-                .filter(conn -> conn.sourceNode.getId().equals(node.getId()) || 
-                               conn.targetNode.getId().equals(node.getId()))
+                .filter(conn -> conn.sourceNode().getId().equals(node.getId()) ||
+                               conn.targetNode().getId().equals(node.getId()))
                 .map(conn -> new ConnectionInfo(
-                    conn.sourceNode.getId(), conn.sourcePort.getId(),
-                    conn.targetNode.getId(), conn.targetPort.getId()
+                    conn.sourceNode().getId(), conn.sourcePort().getId(),
+                    conn.targetNode().getId(), conn.targetPort().getId()
                 ))
                 .collect(Collectors.toList());
         }
@@ -368,11 +368,11 @@ public class ImGuiNodeHistory implements GraphApplyHistoryView {
         List<ConnectionInfo> connectionInfos = new ArrayList<>();
         if (graph != null) {
             connectionInfos = graph.getConnections().stream()
-                .filter(conn -> conn.sourceNode.getId().equals(node.getId()) ||
-                               conn.targetNode.getId().equals(node.getId()))
+                .filter(conn -> conn.sourceNode().getId().equals(node.getId()) ||
+                               conn.targetNode().getId().equals(node.getId()))
                 .map(conn -> new ConnectionInfo(
-                    conn.sourceNode.getId(), conn.sourcePort.getId(),
-                    conn.targetNode.getId(), conn.targetPort.getId()
+                    conn.sourceNode().getId(), conn.sourcePort().getId(),
+                    conn.targetNode().getId(), conn.targetPort().getId()
                 ))
                 .collect(Collectors.toList());
         }

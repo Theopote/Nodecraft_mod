@@ -154,7 +154,7 @@ public class PreviewPolygonProfilesNode extends BaseNode {
 
     private PreviewOptions buildOptions(Color color) {
         PreviewOptions options = new PreviewOptions()
-            .setColor(color.getRed(), color.getGreen(), color.getBlue())
+            .setColor(color.red(), color.green(), color.blue())
             .setLineWidth(Math.max(0.25f, lineWidth))
             .setDuration(duration);
         options.showArrows = false;

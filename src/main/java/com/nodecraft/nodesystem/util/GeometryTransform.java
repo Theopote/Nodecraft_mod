@@ -180,8 +180,8 @@ public final class GeometryTransform {
             return out.isEmpty() ? null : new CompositeGeometryData(out);
         }
         if (geometry instanceof IntersectionGeometryData intersection) {
-            GeometryData left = transform0(intersection.getLeft(), spec);
-            GeometryData right = transform0(intersection.getRight(), spec);
+            GeometryData left = transform0(intersection.left(), spec);
+            GeometryData right = transform0(intersection.right(), spec);
             if (left == null || right == null) {
                 return null;
             }
@@ -196,7 +196,7 @@ public final class GeometryTransform {
             return new DifferenceGeometryData(minuend, subtrahend);
         }
         if (geometry instanceof SphereData sphere) {
-            return new SphereData(transformPoint(sphere.getCenter(), t, r, s), sphere.getRadius() * s);
+            return new SphereData(transformPoint(sphere.center(), t, r, s), sphere.radius() * s);
         }
         if (geometry instanceof CylinderGeometryData cylinder) {
             return new CylinderGeometryData(
@@ -231,14 +231,14 @@ public final class GeometryTransform {
             );
         }
         if (geometry instanceof HemisphereGeometryData hemisphere) {
-            Vector3d ax = rotateUnitDirection(r, hemisphere.getAxis());
+            Vector3d ax = rotateUnitDirection(r, hemisphere.axis());
             if (ax == null) {
                 return null;
             }
             return new HemisphereGeometryData(
-                transformPoint(hemisphere.getCenter(), t, r, s),
+                transformPoint(hemisphere.center(), t, r, s),
                 ax,
-                hemisphere.getRadius() * s
+                hemisphere.radius() * s
             );
         }
         if (geometry instanceof BoxGeometryData box) {
@@ -253,24 +253,24 @@ public final class GeometryTransform {
             );
         }
         if (geometry instanceof PrismGeometryData prism) {
-            List<Vector3d> base = prism.getBaseVertices();
+            List<Vector3d> base = prism.baseVertices();
             List<Vector3d> outBase = new ArrayList<>(base.size());
             for (Vector3d v : base) {
                 outBase.add(transformPoint(v, t, r, s));
             }
-            Vector3d extrusion = transformVector(prism.getExtrusionVector(), r, s);
+            Vector3d extrusion = transformVector(prism.extrusionVector(), r, s);
             return new PrismGeometryData(outBase, extrusion);
         }
         if (geometry instanceof TorusGeometryData torus) {
-            Vector3d axis = rotateUnitDirection(r, torus.getAxis());
+            Vector3d axis = rotateUnitDirection(r, torus.axis());
             if (axis == null) {
                 return null;
             }
             return new TorusGeometryData(
-                transformPoint(torus.getCenter(), t, r, s),
+                transformPoint(torus.center(), t, r, s),
                 axis,
-                torus.getMajorRadius() * s,
-                torus.getMinorRadius() * s
+                torus.majorRadius() * s,
+                torus.minorRadius() * s
             );
         }
         if (geometry instanceof SquarePyramidGeometryData pyramid) {
@@ -322,7 +322,7 @@ public final class GeometryTransform {
             return new DodecahedronGeometryData(transformPoint(dod.getCenter(), t, r, s), dod.getEdgeLength() * s, rLocal);
         }
         if (geometry instanceof SdfGeometryData sdfGeom) {
-            SignedDistanceFieldData sdf = sdfGeom.getSdf();
+            SignedDistanceFieldData sdf = sdfGeom.sdf();
             if (sdf == null) {
                 return null;
             }
@@ -336,8 +336,8 @@ public final class GeometryTransform {
                     s
                 )
                 : new TransformedSdfData(sdf, spec.translation(), r, s);
-            Vector3d min = sdfGeom.getMin();
-            Vector3d max = sdfGeom.getMax();
+            Vector3d min = sdfGeom.min();
+            Vector3d max = sdfGeom.max();
             Vector3d[] corners = {
                 new Vector3d(min.x, min.y, min.z),
                 new Vector3d(max.x, min.y, min.z),
@@ -355,7 +355,7 @@ public final class GeometryTransform {
                 newMin.min(p);
                 newMax.max(p);
             }
-            return new SdfGeometryData(wrapped, newMin, newMax, sdfGeom.getIsoValue());
+            return new SdfGeometryData(wrapped, newMin, newMax, sdfGeom.isoValue());
         }
         return null;
     }

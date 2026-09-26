@@ -140,12 +140,12 @@ final class AreaSelectionInteractionHandler implements NodeEditorInteractionMana
     }
 
     private void updateAreaPreview(Coordinate start, Coordinate end) {
-        int minX = Math.min(start.getX(), end.getX());
-        int minY = Math.min(start.getY(), end.getY());
-        int minZ = Math.min(start.getZ(), end.getZ());
-        int maxX = Math.max(start.getX(), end.getX());
-        int maxY = Math.max(start.getY(), end.getY());
-        int maxZ = Math.max(start.getZ(), end.getZ());
+        int minX = Math.min(start.x(), end.x());
+        int minY = Math.min(start.y(), end.y());
+        int minZ = Math.min(start.z(), end.z());
+        int maxX = Math.max(start.x(), end.x());
+        int maxY = Math.max(start.y(), end.y());
+        int maxZ = Math.max(start.z(), end.z());
 
         PreviewOptions options = areaPreviewStyle.createRegionBoxPreviewOptions();
         Vec3d min = new Vec3d(minX, minY, minZ);

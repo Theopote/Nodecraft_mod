@@ -29,7 +29,7 @@ class ExecFrontierSnapshotTest {
     @Test
     void emptySnapshotDoesNotHighlight() {
         UUID nodeId = UUID.randomUUID();
-        assertFalse(ExecFrontierSnapshot.EMPTY.isActive());
+        assertFalse(ExecFrontierSnapshot.EMPTY.active());
         assertFalse(ExecFrontierSnapshot.EMPTY.isActiveNode(nodeId));
         assertFalse(ExecFrontierSnapshot.EMPTY.isPendingNode(nodeId));
     }

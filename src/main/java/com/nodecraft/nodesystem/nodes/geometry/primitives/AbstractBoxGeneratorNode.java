@@ -419,7 +419,7 @@ public abstract class AbstractBoxGeneratorNode extends BaseNode {
 
     protected @Nullable BlockPos resolveBlockPosInput(@Nullable Object value) {
         if (value instanceof LineData lineData) {
-            Vec3d start = lineData.getStart();
+            Vec3d start = lineData.start();
             return BlockPos.ofFloored(start.x, start.y, start.z);
         }
         if (value instanceof PlaneData planeData) {
@@ -431,7 +431,7 @@ public abstract class AbstractBoxGeneratorNode extends BaseNode {
 
     protected @Nullable Vector3d resolveVectorInput(@Nullable Object value) {
         if (value instanceof LineData lineData) {
-            Vec3d start = lineData.getStart();
+            Vec3d start = lineData.start();
             return new Vector3d(start.x, start.y, start.z);
         }
         if (value instanceof PlaneData planeData) {

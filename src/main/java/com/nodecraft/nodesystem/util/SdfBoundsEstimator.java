@@ -81,8 +81,8 @@ public final class SdfBoundsEstimator {
                 return null;
             }
             case SphereSdfData sphere -> {
-                Vector3d center = sphere.getCenter();
-                double r = sphere.getRadius();
+                Vector3d center = sphere.center();
+                double r = sphere.radius();
                 return boxAround(center, r, r, r);
             }
             case BoxSdfData box -> {
@@ -94,9 +94,9 @@ public final class SdfBoundsEstimator {
                 return boundsForCapsule(capsule);
             }
             case TorusSdfData torus -> {
-                Vector3d center = torus.getCenter();
-                double outer = torus.getMajorRadius() + torus.getMinorRadius();
-                return boxAround(center, outer, torus.getMinorRadius(), outer);
+                Vector3d center = torus.center();
+                double outer = torus.majorRadius() + torus.minorRadius();
+                return boxAround(center, outer, torus.minorRadius(), outer);
             }
             case BooleanSdfData booleanSdf -> {
                 return boundsForBoolean(booleanSdf);

@@ -54,7 +54,7 @@ final class AttractorFieldUtils {
                 return true;
             }
             case SphereData sphere -> {
-                dest.set(sphere.getCenter());
+                dest.set(sphere.center());
                 return true;
             }
             case BoxGeometryData box -> {
@@ -62,8 +62,8 @@ final class AttractorFieldUtils {
                 return true;
             }
             case SdfGeometryData sdfGeometry -> {
-                Vector3d min = sdfGeometry.getMin();
-                Vector3d max = sdfGeometry.getMax();
+                Vector3d min = sdfGeometry.min();
+                Vector3d max = sdfGeometry.max();
                 dest.set(min).add(max).mul(0.5d);
                 return true;
             }
@@ -87,7 +87,7 @@ final class AttractorFieldUtils {
             return sdf;
         }
         if (source instanceof SdfGeometryData sdfGeometry) {
-            return sdfGeometry.getSdf();
+            return sdfGeometry.sdf();
         }
         return null;
     }
@@ -126,7 +126,7 @@ final class AttractorFieldUtils {
     }
 
     private static boolean vectorToSphereSurface(SphereData sphere, Vector3d query, Vector3d dest) {
-        Vector3d center = sphere.getCenter();
+        Vector3d center = sphere.center();
         Vector3d radial = new Vector3d(query).sub(center);
         double len = radial.length();
         if (len <= EPS) {
@@ -134,7 +134,7 @@ final class AttractorFieldUtils {
             len = 1.0d;
         }
         radial.mul(1.0d / len);
-        Vector3d surface = new Vector3d(radial).mul(sphere.getRadius()).add(center);
+        Vector3d surface = new Vector3d(radial).mul(sphere.radius()).add(center);
         dest.set(surface).sub(query);
         return true;
     }

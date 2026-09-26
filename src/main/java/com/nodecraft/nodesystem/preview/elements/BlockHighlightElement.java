@@ -169,12 +169,12 @@ public class BlockHighlightElement extends AbstractPreviewElement {
         // 遍历所有要高亮的方块位置
         for (Coordinate pos : blockPositionsSnapshot) {
             // 检查是否在渲染距离内
-            double distanceSq = cameraPos.squaredDistanceTo(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+            double distanceSq = cameraPos.squaredDistanceTo(pos.x() + 0.5, pos.y() + 0.5, pos.z() + 0.5);
             if (distanceSq > maxRenderDistanceSq) {
                 continue;
             }
 
-            BlockPos blockPos = new BlockPos(pos.getX(), pos.getY(), pos.getZ());
+            BlockPos blockPos = new BlockPos(pos.x(), pos.y(), pos.z());
             BlockState blockState = world.getBlockState(blockPos);
             
             // 如果方块是空气，跳过
@@ -370,7 +370,7 @@ public class BlockHighlightElement extends AbstractPreviewElement {
 
         // 检查是否有任何方块在渲染距离内
         for (Coordinate pos : blockPositions) {
-            double distanceSq = cameraPos.squaredDistanceTo(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+            double distanceSq = cameraPos.squaredDistanceTo(pos.x() + 0.5, pos.y() + 0.5, pos.z() + 0.5);
             if (distanceSq <= maxRenderDistanceSq) {
                 return true;
             }

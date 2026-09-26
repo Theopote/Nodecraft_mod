@@ -37,13 +37,13 @@ public final class EditorExampleLoader {
 
         List<EditorExampleEntry> examples = new ArrayList<>();
         for (PresetDefinition preset : PresetRegistry.getInstance().getPresetsByCategory(QUICKSTART_CATEGORY_ID)) {
-            if (preset == null || preset.getPresetId() == null) {
+            if (preset == null || preset.presetId() == null) {
                 continue;
             }
             examples.add(new EditorExampleEntry(
-                    preset.getPresetId(),
-                    preset.getMetadata().getName(),
-                    preset.getMetadata().getDescription()
+                    preset.presetId(),
+                    preset.metadata().getName(),
+                    preset.metadata().getDescription()
             ));
         }
 
@@ -86,7 +86,7 @@ public final class EditorExampleLoader {
         try {
             PresetInstantiator.InstantiateResult instantiated = PresetInstantiator.instantiateWithLayout(preset);
             NodeGraph graph = instantiated.graph();
-            graph.setName(preset.getMetadata().getName());
+            graph.setName(preset.metadata().getName());
 
             editor.setCurrentGraph(graph);
             editor.setNodePositions(toEditorPositions(instantiated.nodePositions()));
@@ -95,7 +95,7 @@ public final class EditorExampleLoader {
             editor.setCanvasView(1.0f, 0.0f, 0.0f);
 
             return GraphPresetApplier.ApplyResult.success(
-                    "已加载示例: " + preset.getMetadata().getName(),
+                    "已加载示例: " + preset.metadata().getName(),
                     List.copyOf(instantiated.nodePositions().keySet())
             );
         } catch (PresetInstantiator.PresetInstantiationException e) {

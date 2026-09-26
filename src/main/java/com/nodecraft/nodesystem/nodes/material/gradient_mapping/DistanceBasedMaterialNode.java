@@ -185,7 +185,7 @@ public class DistanceBasedMaterialNode extends BaseNode {
         if (pointObj != null) {
             count++;
             if (pointObj instanceof PointData point) {
-                Vector3d position = point.getPosition();
+                Vector3d position = point.position();
                 chosen = sample -> sample.distance(position);
             } else {
                 error = "Reference Point must be a POINT value";
@@ -228,8 +228,8 @@ public class DistanceBasedMaterialNode extends BaseNode {
         if (lineObj != null) {
             count++;
             if (lineObj instanceof LineData line) {
-                Vector3d start = toVector(line.getStart());
-                Vector3d end = toVector(line.getEnd());
+                Vector3d start = toVector(line.start());
+                Vector3d end = toVector(line.end());
                 chosen = sample -> distanceToSegment(sample, start, end);
             } else {
                 error = "Reference Line must be a LINE value";

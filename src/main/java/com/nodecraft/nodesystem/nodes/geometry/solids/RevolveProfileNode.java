@@ -184,8 +184,8 @@ public class RevolveProfileNode extends BaseNode {
     private @Nullable Axis resolveAxis() {
         Object axisLineObj = inputValues.get(INPUT_AXIS_LINE_ID);
         if (axisLineObj instanceof LineData line) {
-            Vector3d start = new Vector3d(line.getStart().x, line.getStart().y, line.getStart().z);
-            Vector3d end = new Vector3d(line.getEnd().x, line.getEnd().y, line.getEnd().z);
+            Vector3d start = new Vector3d(line.start().x, line.start().y, line.start().z);
+            Vector3d end = new Vector3d(line.end().x, line.end().y, line.end().z);
             Vector3d direction = end.sub(start, new Vector3d());
             if (direction.lengthSquared() > EPSILON) {
                 return new Axis(start, direction.normalize());

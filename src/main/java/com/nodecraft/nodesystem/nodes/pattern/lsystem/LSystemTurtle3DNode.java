@@ -151,7 +151,7 @@ public class LSystemTurtle3DNode extends BaseNode {
 
     private static Vector3d resolveOrigin(Object value) {
         if (value instanceof PointData pd) {
-            return new Vector3d(pd.getPosition());
+            return new Vector3d(pd.position());
         }
         if (value instanceof Vector3d v) {
             return new Vector3d(v);

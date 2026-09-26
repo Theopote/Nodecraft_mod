@@ -1,27 +1,18 @@
 package com.nodecraft.nodesystem.datatypes;
 
 import net.minecraft.util.math.Vec3d;
+import org.jspecify.annotations.NonNull;
+
 import java.util.Objects;
 
 /**
  * Represents a line segment defined by a start and end point.
  */
-public class LineData {
-    private final Vec3d start;
-    private final Vec3d end;
-
+public record LineData(Vec3d start, Vec3d end) {
     public LineData(Vec3d start, Vec3d end) {
         // Use non-null defaults if needed, or throw exception
         this.start = Objects.requireNonNull(start, "Line start point cannot be null");
         this.end = Objects.requireNonNull(end, "Line end point cannot be null");
-    }
-
-    public Vec3d getStart() {
-        return start;
-    }
-
-    public Vec3d getEnd() {
-        return end;
     }
 
     public double getLength() {
@@ -35,13 +26,13 @@ public class LineData {
     public Vec3d getDirection() {
         return end.subtract(start).normalize(); // Return normalized direction vector
     }
-    
+
     public Vec3d getVector() {
-         return end.subtract(start); // Return the full vector from start to end
+        return end.subtract(start); // Return the full vector from start to end
     }
 
     @Override
-    public String toString() {
+    public @NonNull String toString() {
         return "Line[" + start + " -> " + end + "]";
     }
 
@@ -52,7 +43,7 @@ public class LineData {
         LineData lineData = (LineData) o;
         // Consider lines equal if start/end match or if they are reversed
         return (Objects.equals(start, lineData.start) && Objects.equals(end, lineData.end)) ||
-               (Objects.equals(start, lineData.end) && Objects.equals(end, lineData.start));
+                (Objects.equals(start, lineData.end) && Objects.equals(end, lineData.start));
     }
 
     @Override

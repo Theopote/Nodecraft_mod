@@ -43,9 +43,9 @@ final class NodeOutputResolver {
         }
 
         for (NodeGraph.Connection connection : graph.getConnections()) {
-            if (connection.targetNode.getId().equals(node.getId())) {
-                Object value = resolveNodeOutput(graph, connection.sourceNode, connection.sourcePort.getId(), visiting, depth + 1);
-                mergeCollectedInput(inputs, inputPortsById.get(connection.targetPort.getId()), value);
+            if (connection.targetNode().getId().equals(node.getId())) {
+                Object value = resolveNodeOutput(graph, connection.sourceNode(), connection.sourcePort().getId(), visiting, depth + 1);
+                mergeCollectedInput(inputs, inputPortsById.get(connection.targetPort().getId()), value);
             }
         }
         return inputs;
@@ -99,7 +99,7 @@ final class NodeOutputResolver {
 
         boolean hasIncomingConnections = false;
         for (NodeGraph.Connection connection : graph.getConnections()) {
-            if (connection.targetNode.getId().equals(node.getId())) {
+            if (connection.targetNode().getId().equals(node.getId())) {
                 hasIncomingConnections = true;
                 break;
             }

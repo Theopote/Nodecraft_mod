@@ -69,7 +69,7 @@ public class PointsElement extends AbstractPreviewElement {
 
     private void addPoint(List<Vec3d> target, Object data) {
         if (data instanceof Coordinate coordinate) {
-            target.add(new Vec3d(coordinate.getX() + 0.5d, coordinate.getY() + 0.5d, coordinate.getZ() + 0.5d));
+            target.add(new Vec3d(coordinate.x() + 0.5d, coordinate.y() + 0.5d, coordinate.z() + 0.5d));
         } else if (data instanceof BlockPos pos) {
             target.add(pos.toCenterPos());
         } else if (data instanceof Vec3d vec) {

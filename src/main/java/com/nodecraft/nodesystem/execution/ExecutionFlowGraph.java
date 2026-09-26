@@ -49,9 +49,9 @@ public final class ExecutionFlowGraph {
                     continue;
                 }
                 hasExecEdges = true;
-                UUID sourceId = connection.sourceNode.getId();
-                UUID targetId = connection.targetNode.getId();
-                String sourcePortId = connection.sourcePort.getId();
+                UUID sourceId = connection.sourceNode().getId();
+                UUID targetId = connection.targetNode().getId();
+                String sourcePortId = connection.sourcePort().getId();
                 execParticipatingNodes.add(sourceId);
                 execParticipatingNodes.add(targetId);
                 successorsByPort

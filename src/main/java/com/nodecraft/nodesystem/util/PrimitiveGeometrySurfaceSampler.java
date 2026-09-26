@@ -91,7 +91,7 @@ public final class PrimitiveGeometrySurfaceSampler {
     private static SurfaceSample sampleRandomSurfacePoint(GeometryData geometry, Random random) {
         if (geometry instanceof SphereData sphere) {
             Vector3d normal = SphereSurfaceSampling.sampleRandomUnitNormal(random);
-            Vector3d point = new Vector3d(normal).mul(sphere.getRadius()).add(sphere.getCenter());
+            Vector3d point = new Vector3d(normal).mul(sphere.radius()).add(sphere.center());
             return new SurfaceSample(point, normal);
         }
         if (geometry instanceof BoxGeometryData box) {
@@ -167,17 +167,17 @@ public final class PrimitiveGeometrySurfaceSampler {
     }
 
     private static SurfaceSample sampleTorusSurface(TorusGeometryData torus, Random random) {
-        Vector3d axis = new Vector3d(torus.getAxis()).normalize();
+        Vector3d axis = new Vector3d(torus.axis()).normalize();
         Vector3d tangent = orthonormalTangent(axis, random);
         Vector3d bitangent = new Vector3d(axis).cross(tangent).normalize();
 
         double u = random.nextDouble() * Math.PI * 2.0d;
         double v = random.nextDouble() * Math.PI * 2.0d;
-        double major = torus.getMajorRadius();
-        double minor = torus.getMinorRadius();
+        double major = torus.majorRadius();
+        double minor = torus.minorRadius();
 
         Vector3d ring = new Vector3d(tangent).mul(Math.cos(u)).add(new Vector3d(bitangent).mul(Math.sin(u)));
-        Vector3d centerOnRing = new Vector3d(torus.getCenter()).add(ring.mul(major));
+        Vector3d centerOnRing = new Vector3d(torus.center()).add(ring.mul(major));
         Vector3d normal = new Vector3d(ring).mul(Math.cos(v)).add(new Vector3d(axis).mul(Math.sin(v)));
         Vector3d point = new Vector3d(centerOnRing).add(normal.mul(minor));
         if (normal.lengthSquared() > 1.0e-12d) {
@@ -248,11 +248,11 @@ public final class PrimitiveGeometrySurfaceSampler {
 
     private static SurfaceSample sampleHemisphereSurface(HemisphereGeometryData hemisphere, Random random) {
         Vector3d normal = SphereSurfaceSampling.sampleRandomUnitNormal(random);
-        Vector3d axis = new Vector3d(hemisphere.getAxis()).normalize();
+        Vector3d axis = new Vector3d(hemisphere.axis()).normalize();
         if (normal.dot(axis) < 0.0d) {
             normal.negate();
         }
-        Vector3d point = new Vector3d(normal).mul(hemisphere.getRadius()).add(hemisphere.getCenter());
+        Vector3d point = new Vector3d(normal).mul(hemisphere.radius()).add(hemisphere.center());
         return new SurfaceSample(point, new Vector3d(normal));
     }
 

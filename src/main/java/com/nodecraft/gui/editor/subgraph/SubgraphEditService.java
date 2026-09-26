@@ -346,9 +346,9 @@ public final class SubgraphEditService {
             List<NodeGraph.Connection> wrapperInputs = new ArrayList<>();
             List<NodeGraph.Connection> wrapperOutputs = new ArrayList<>();
             for (NodeGraph.Connection connection : document.getGraph().getConnections()) {
-                if (connection.targetNode.getId().equals(wrapperNodeId)) {
+                if (connection.targetNode().getId().equals(wrapperNodeId)) {
                     wrapperInputs.add(connection);
-                } else if (connection.sourceNode.getId().equals(wrapperNodeId)) {
+                } else if (connection.sourceNode().getId().equals(wrapperNodeId)) {
                     wrapperOutputs.add(connection);
                 }
             }
@@ -408,7 +408,7 @@ public final class SubgraphEditService {
             host.removeSelectedNode(wrapperNodeId);
 
             for (NodeGraph.Connection wrapperInput : wrapperInputs) {
-                String inputKey = dynamicKeyFromInputPortId(wrapperInput.targetPort.getId());
+                String inputKey = dynamicKeyFromInputPortId(wrapperInput.targetPort().getId());
                 List<BoundaryInputTarget> targets = inputTargets.get(inputKey);
                 if (targets == null) {
                     continue;
@@ -417,8 +417,8 @@ public final class SubgraphEditService {
                     UUID restoredTargetId = restoredNodeIds.get(target.nodeId());
                     if (restoredTargetId != null) {
                         document.getGraph().connect(
-                                wrapperInput.sourceNode.getId(),
-                                wrapperInput.sourcePort.getId(),
+                                wrapperInput.sourceNode().getId(),
+                                wrapperInput.sourcePort().getId(),
                                 restoredTargetId,
                                 target.portId()
                         );
@@ -427,7 +427,7 @@ public final class SubgraphEditService {
             }
 
             for (NodeGraph.Connection wrapperOutput : wrapperOutputs) {
-                String outputKey = dynamicKeyFromOutputPortId(wrapperOutput.sourcePort.getId());
+                String outputKey = dynamicKeyFromOutputPortId(wrapperOutput.sourcePort().getId());
                 List<BoundaryOutputSource> sources = outputSources.get(outputKey);
                 if (sources == null) {
                     continue;
@@ -438,8 +438,8 @@ public final class SubgraphEditService {
                         document.getGraph().connect(
                                 restoredSourceId,
                                 source.portId(),
-                                wrapperOutput.targetNode.getId(),
-                                wrapperOutput.targetPort.getId()
+                                wrapperOutput.targetNode().getId(),
+                                wrapperOutput.targetPort().getId()
                         );
                     }
                 }

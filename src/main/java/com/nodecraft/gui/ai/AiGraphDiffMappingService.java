@@ -81,13 +81,13 @@ final class AiGraphDiffMappingService {
         Set<String> currentConnScoped = new HashSet<>();
         for (NodeGraph.Connection conn : graph.getConnections()) {
             String signature = buildMappedConnectionSignature(
-                    "CUR:" + conn.sourceNode.getId(),
-                    conn.sourcePort.getId(),
-                    "CUR:" + conn.targetNode.getId(),
-                    conn.targetPort.getId()
+                    "CUR:" + conn.sourceNode().getId(),
+                    conn.sourcePort().getId(),
+                    "CUR:" + conn.targetNode().getId(),
+                    conn.targetPort().getId()
             );
             currentConnAll.add(signature);
-            if (usedCurrent.contains(conn.sourceNode.getId()) && usedCurrent.contains(conn.targetNode.getId())) {
+            if (usedCurrent.contains(conn.sourceNode().getId()) && usedCurrent.contains(conn.targetNode().getId())) {
                 currentConnScoped.add(signature);
             }
         }

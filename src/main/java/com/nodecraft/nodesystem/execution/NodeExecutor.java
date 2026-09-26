@@ -547,13 +547,13 @@ public class NodeExecutor {
             if (!ExecutionPortKind.isExecConnection(connection)) {
                 continue;
             }
-            if (connection.sourcePort.getId().equals(sourcePortId)
-                    && connection.targetNode.getId().equals(targetNodeId)) {
+            if (connection.sourcePort().getId().equals(sourcePortId)
+                    && connection.targetNode().getId().equals(targetNodeId)) {
                 return new ExecFrontierSnapshot.ExecWire(
                         sourceNodeId,
                         sourcePortId,
                         targetNodeId,
-                        connection.targetPort.getId()
+                        connection.targetPort().getId()
                 );
             }
         }
@@ -594,7 +594,7 @@ public class NodeExecutor {
                 continue;
             }
 
-            INode upstream = connection.sourceNode;
+            INode upstream = connection.sourceNode();
             UUID upstreamId = upstream.getId();
             if (nodeStates.get(upstreamId) == NodeState.VISITED) {
                 continue;
@@ -709,7 +709,7 @@ public class NodeExecutor {
             if (!ExecutionPortKind.isDataConnection(connection)) {
                 continue;
             }
-            UUID sourceId = connection.sourceNode.getId();
+            UUID sourceId = connection.sourceNode().getId();
             if (!executionScopeNodeIds.contains(sourceId)) {
                 continue;
             }
@@ -720,7 +720,7 @@ public class NodeExecutor {
             if (upstreamState == null || upstreamState == NodeState.NOT_VISITED) {
                 return true;
             }
-            if (connection.sourceNode instanceof BaseNode baseSource && baseSource.isDirty()) {
+            if (connection.sourceNode() instanceof BaseNode baseSource && baseSource.isDirty()) {
                 return true;
             }
         }
@@ -738,8 +738,8 @@ public class NodeExecutor {
             if (!ExecutionPortKind.isDataConnection(connection)) {
                 continue;
             }
-            Object value = connection.sourceNode.getOutput(connection.sourcePort.getId());
-            mergeCollectedInput(inputs, inputPortsById.get(connection.targetPort.getId()), value);
+            Object value = connection.sourceNode().getOutput(connection.sourcePort().getId());
+            mergeCollectedInput(inputs, inputPortsById.get(connection.targetPort().getId()), value);
         }
 
         return inputs;

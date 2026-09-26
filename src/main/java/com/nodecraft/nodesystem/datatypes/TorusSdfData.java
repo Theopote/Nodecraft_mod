@@ -6,27 +6,16 @@ import org.joml.Vector3d;
 /**
  * Torus SDF primitive around Y axis.
  */
-public class TorusSdfData implements SignedDistanceFieldData {
-    private final Vector3d center;
-    private final double majorRadius;
-    private final double minorRadius;
-
+public record TorusSdfData(Vector3d center, double majorRadius, double minorRadius) implements SignedDistanceFieldData {
     public TorusSdfData(Vector3d center, double majorRadius, double minorRadius) {
         this.center = new Vector3d(center);
         this.majorRadius = Math.max(0.0d, majorRadius);
         this.minorRadius = Math.max(0.0d, minorRadius);
     }
 
-    public Vector3d getCenter() {
+    @Override
+    public Vector3d center() {
         return new Vector3d(center);
-    }
-
-    public double getMajorRadius() {
-        return majorRadius;
-    }
-
-    public double getMinorRadius() {
-        return minorRadius;
     }
 
     @Override

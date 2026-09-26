@@ -530,8 +530,8 @@ public final class PathUtils {
     }
 
     private static List<Vector3d> verticesFromLine(@Nullable LineData line) {
-        Vec3d a = line.getStart();
-        Vec3d b = line.getEnd();
+        Vec3d a = line.start();
+        Vec3d b = line.end();
         return List.of(new Vector3d(a.x, a.y, a.z), new Vector3d(b.x, b.y, b.z));
     }
 

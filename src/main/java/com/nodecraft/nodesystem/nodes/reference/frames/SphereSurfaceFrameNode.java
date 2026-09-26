@@ -59,8 +59,8 @@ public class SphereSurfaceFrameNode extends BaseNode {
             return;
         }
 
-        Vector3d center = sphere.getCenter();
-        double radius = sphere.getRadius();
+        Vector3d center = sphere.center();
+        double radius = sphere.radius();
         if (!FrameUtils.isFinite(center) || !Double.isFinite(radius) || radius <= FrameUtils.EPS) {
             writeEmptyOutputs();
             return;

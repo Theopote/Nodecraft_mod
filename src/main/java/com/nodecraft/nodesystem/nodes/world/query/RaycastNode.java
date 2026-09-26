@@ -106,13 +106,16 @@ public class RaycastNode extends BaseNode {
         RaycastContext.FluidHandling fluidHandling = includeFluids
             ? RaycastContext.FluidHandling.ANY
             : RaycastContext.FluidHandling.NONE;
-        BlockHitResult blockHit = context.getWorld().raycast(new RaycastContext(
-            start,
-            end,
-            RaycastContext.ShapeType.OUTLINE,
-            fluidHandling,
-            sourceEntity
-        ));
+        BlockHitResult blockHit = null;
+        if (sourceEntity != null) {
+            blockHit = context.getWorld().raycast(new RaycastContext(
+                start,
+                end,
+                RaycastContext.ShapeType.OUTLINE,
+                fluidHandling,
+                sourceEntity
+            ));
+        }
 
         HitCandidate blockCandidate = null;
         if (blockHit != null && blockHit.getType() != HitResult.Type.MISS) {
@@ -165,7 +168,6 @@ public class RaycastNode extends BaseNode {
                 continue;
             }
             Box box = entity.getBoundingBox().expand(extraRadius);
-            @SuppressWarnings("OptionalGetWithoutIsPresent")
             Vec3d hitPos = box.raycast(start, end).orElse(null);
             if (hitPos == null) {
                 continue;

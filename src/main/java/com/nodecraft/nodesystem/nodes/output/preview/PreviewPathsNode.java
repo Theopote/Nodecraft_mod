@@ -112,7 +112,7 @@ public class PreviewPathsNode extends BaseNode {
             lastNonEmptyInputAt = now;
             Color parsedColor = Color.fromHex(pathColor);
             PreviewOptions options = new PreviewOptions()
-                .setColor(parsedColor.getRed(), parsedColor.getGreen(), parsedColor.getBlue())
+                .setColor(parsedColor.red(), parsedColor.green(), parsedColor.blue())
                 .setLineWidth(Math.max(0.25f, lineWidth))
                 .setDuration(duration);
             options.smoothCurves = smoothCurves;
@@ -318,7 +318,7 @@ public class PreviewPathsNode extends BaseNode {
 
     private @Nullable Vec3d resolveVec(Object value) {
         if (value instanceof PointData pointData) {
-            Vector3d p = pointData.getPosition();
+            Vector3d p = pointData.position();
             return new Vec3d(p.x, p.y, p.z);
         }
         if (value instanceof Vector3d vector) {
@@ -328,7 +328,7 @@ public class PreviewPathsNode extends BaseNode {
             return new Vec3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
         }
         if (value instanceof Coordinate coordinate) {
-            return new Vec3d(coordinate.getX(), coordinate.getY(), coordinate.getZ());
+            return new Vec3d(coordinate.x(), coordinate.y(), coordinate.z());
         }
         if (value instanceof Vec3d vec) {
             return vec;

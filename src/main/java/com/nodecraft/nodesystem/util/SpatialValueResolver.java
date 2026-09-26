@@ -32,14 +32,14 @@ public final class SpatialValueResolver {
     /** Resolves a graph {@code POINT} or location-like value to a continuous position. */
     public static @Nullable Vector3d resolvePoint(@Nullable Object value) {
         if (value instanceof PointData pointData) {
-            return pointData.getPosition();
+            return pointData.position();
         }
         if (value instanceof Coordinate coordinate) {
             // Coordinate is a block-grid alias → canonical Point is cell center.
-            return BlockSpace.cellCenter(coordinate.getX(), coordinate.getY(), coordinate.getZ());
+            return BlockSpace.cellCenter(coordinate.x(), coordinate.y(), coordinate.z());
         }
         if (value instanceof Vector3 vector) {
-            return new Vector3d(vector.getX(), vector.getY(), vector.getZ());
+            return new Vector3d(vector.x(), vector.y(), vector.z());
         }
         if (value instanceof Vector3d vector) {
             return new Vector3d(vector);
@@ -66,7 +66,7 @@ public final class SpatialValueResolver {
             return new Vector3d(vec3d.x, vec3d.y, vec3d.z);
         }
         if (value instanceof Vector3 vector) {
-            return new Vector3d(vector.getX(), vector.getY(), vector.getZ());
+            return new Vector3d(vector.x(), vector.y(), vector.z());
         }
         return null;
     }
@@ -141,7 +141,7 @@ public final class SpatialValueResolver {
             return blockPos;
         }
         if (value instanceof Coordinate coordinate) {
-            return new BlockPos(coordinate.getX(), coordinate.getY(), coordinate.getZ());
+            return new BlockPos(coordinate.x(), coordinate.y(), coordinate.z());
         }
         Vector3d resolved = resolvePoint(value);
         if (resolved == null) {

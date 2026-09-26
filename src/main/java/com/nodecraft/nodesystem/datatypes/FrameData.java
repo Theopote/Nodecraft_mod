@@ -31,7 +31,7 @@ public class FrameData {
     }
 
     public FrameData(PointData origin, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
-        this(origin.getPosition(), xAxis, yAxis, zAxis);
+        this(origin.position(), xAxis, yAxis, zAxis);
     }
 
     /**

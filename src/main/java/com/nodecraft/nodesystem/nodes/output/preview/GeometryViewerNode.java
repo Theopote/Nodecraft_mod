@@ -17,7 +17,6 @@ import com.nodecraft.nodesystem.preview.gizmo.GizmoNodeSupport;
 import com.nodecraft.nodesystem.preview.gizmo.GizmoTransformTarget;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.nodesystem.preview.PreviewSampling;
-import com.nodecraft.nodesystem.preview.TextLabelPreviewData;
 import com.nodecraft.nodesystem.preview.protocol.PreviewBlocksPayload;
 import com.nodecraft.nodesystem.preview.protocol.PreviewPayloadAdapters;
 import com.nodecraft.nodesystem.preview.protocol.PreviewRequest;
@@ -356,12 +355,12 @@ public class GeometryViewerNode extends BaseCustomUINode {
         Color parsedColor = Color.fromHex(effectiveColorHex);
         Color parsedOutlineColor = Color.fromHex(effectiveOutlineColorHex);
         PreviewStyle style = PreviewStyle.forGhostBlocksWithOutline(
-            parsedColor.getRed(),
-            parsedColor.getGreen(),
-            parsedColor.getBlue(),
-            parsedOutlineColor.getRed(),
-            parsedOutlineColor.getGreen(),
-            parsedOutlineColor.getBlue(),
+            parsedColor.red(),
+            parsedColor.green(),
+            parsedColor.blue(),
+            parsedOutlineColor.red(),
+            parsedOutlineColor.green(),
+            parsedOutlineColor.blue(),
             trans,
             showOutline,
             ghostRenderMode.textureMode(),

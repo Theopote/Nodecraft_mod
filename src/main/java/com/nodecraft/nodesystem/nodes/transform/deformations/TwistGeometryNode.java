@@ -174,10 +174,10 @@ public class TwistGeometryNode extends BaseNode {
         Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
         if (geometryObj instanceof SdfGeometryData sdfGeometry) {
             return new SourceData(
-                sdfGeometry.getSdf(),
-                sdfGeometry.getMin(),
-                sdfGeometry.getMax(),
-                sdfGeometry.getIsoValue(),
+                sdfGeometry.sdf(),
+                sdfGeometry.min(),
+                sdfGeometry.max(),
+                sdfGeometry.isoValue(),
                 false,
                 0
             );
@@ -278,7 +278,7 @@ public class TwistGeometryNode extends BaseNode {
 
     private static @Nullable Vector3d resolvePoint(@Nullable Object value) {
         if (value instanceof PointData pointData) {
-            return pointData.getPosition();
+            return pointData.position();
         }
         if (value instanceof Vector3d vector) {
             return new Vector3d(vector);

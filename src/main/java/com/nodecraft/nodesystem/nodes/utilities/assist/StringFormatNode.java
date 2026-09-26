@@ -175,7 +175,7 @@ public class StringFormatNode extends BaseNode {
                 return "(" + String.format(Locale.ROOT, f, v.x) + ", " + String.format(Locale.ROOT, f, v.y) + ", " + String.format(Locale.ROOT, f, v.z) + ")";
             }
             case PointData p -> {
-                return valueToString(p.getPosition());
+                return valueToString(p.position());
             }
             case BlockPos b -> {
                 return "(" + b.getX() + ", " + b.getY() + ", " + b.getZ() + ")";

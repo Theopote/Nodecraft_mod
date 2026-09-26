@@ -1,13 +1,11 @@
 package com.nodecraft.nodesystem.datatypes;
 
 import org.joml.Vector3d;
+import org.jspecify.annotations.NonNull;
 
 import java.util.Objects;
 
-public class SphereData implements GeometryData {
-    private final Vector3d center;
-    private final double radius;
-
+public record SphereData(Vector3d center, double radius) implements GeometryData {
     public SphereData(Vector3d center, double radius) {
         if (radius < 0) {
             throw new IllegalArgumentException("Radius cannot be negative");
@@ -16,16 +14,13 @@ public class SphereData implements GeometryData {
         this.radius = radius;
     }
 
-    public Vector3d getCenter() {
+    @Override
+    public Vector3d center() {
         return new Vector3d(center); // Return defensive copy
     }
 
-    public double getRadius() {
-        return radius;
-    }
-
     @Override
-    public String toString() {
+    public @NonNull String toString() {
         return "Sphere[center=" + center + ", radius=" + radius + "]";
     }
 
@@ -37,8 +32,4 @@ public class SphereData implements GeometryData {
         return Double.compare(that.radius, radius) == 0 && Objects.equals(center, that.center);
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(center, radius);
-    }
-} 
+}

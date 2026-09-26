@@ -51,10 +51,10 @@ final class WorldWriteUtils {
             return pos.toImmutable();
         }
         if (value instanceof Coordinate coordinate) {
-            return new BlockPos(coordinate.getX(), coordinate.getY(), coordinate.getZ());
+            return new BlockPos(coordinate.x(), coordinate.y(), coordinate.z());
         }
         if (value instanceof PointData pointData) {
-            Vector3d position = pointData.getPosition();
+            Vector3d position = pointData.position();
             return BlockPos.ofFloored(position.x, position.y, position.z);
         }
         if (value instanceof Vector3d vector) {
@@ -64,7 +64,7 @@ final class WorldWriteUtils {
             return BlockPos.ofFloored(vector.x, vector.y, vector.z);
         }
         if (value instanceof Vector3 vector) {
-            return BlockPos.ofFloored(vector.getX(), vector.getY(), vector.getZ());
+            return BlockPos.ofFloored(vector.x(), vector.y(), vector.z());
         }
         return null;
     }

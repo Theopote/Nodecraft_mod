@@ -86,55 +86,55 @@ public final class SubgraphExtractionService {
         Set<String> usedKeys = new HashSet<>();
 
         for (NodeGraph.Connection connection : sourceGraph.getConnections()) {
-            UUID sourceId = connection.sourceNode.getId();
-            UUID targetId = connection.targetNode.getId();
+            UUID sourceId = connection.sourceNode().getId();
+            UUID targetId = connection.targetNode().getId();
             boolean sourceSelected = selected.contains(sourceId);
             boolean targetSelected = selected.contains(targetId);
 
             if (sourceSelected && targetSelected) {
                 subgraph.connections.add(savedConnection(
                     sourceId.toString(),
-                    connection.sourcePort.getId(),
+                    connection.sourcePort().getId(),
                     targetId.toString(),
-                    connection.targetPort.getId()
+                    connection.targetPort().getId()
                 ));
                 continue;
             }
 
             if (!sourceSelected && targetSelected) {
-                BoundaryInputKey boundary = new BoundaryInputKey(sourceId, connection.sourcePort.getId(), targetId, connection.targetPort.getId());
+                BoundaryInputKey boundary = new BoundaryInputKey(sourceId, connection.sourcePort().getId(), targetId, connection.targetPort().getId());
                 String inputKey = inputKeyByBoundary.computeIfAbsent(boundary,
-                    ignored -> uniqueKey("in", connection.targetNode, connection.targetPort, usedKeys));
+                    ignored -> uniqueKey("in", connection.targetNode(), connection.targetPort(), usedKeys));
                 String graphInputNodeId = UUID.randomUUID().toString();
-                subgraph.nodes.add(graphInputNode(graphInputNodeId, inputKey, connection.targetPort));
+                subgraph.nodes.add(graphInputNode(graphInputNodeId, inputKey, connection.targetPort()));
                 subgraph.connections.add(savedConnection(
                     graphInputNodeId,
                     GRAPH_INPUT_OUTPUT_PORT_ID,
                     targetId.toString(),
-                    connection.targetPort.getId()
+                    connection.targetPort().getId()
                 ));
                 inputBindings.add(new InputBinding(
                     inputKey,
                     sourceId,
-                    connection.sourcePort.getId(),
+                    connection.sourcePort().getId(),
                     targetId,
-                    connection.targetPort.getId(),
-                    dataTypeId(connection.sourcePort),
-                    dataTypeId(connection.targetPort)
+                    connection.targetPort().getId(),
+                    dataTypeId(connection.sourcePort()),
+                    dataTypeId(connection.targetPort())
                 ));
                 continue;
             }
 
             if (sourceSelected) {
-                BoundaryOutputKey boundary = new BoundaryOutputKey(sourceId, connection.sourcePort.getId());
+                BoundaryOutputKey boundary = new BoundaryOutputKey(sourceId, connection.sourcePort().getId());
                 String outputKey = outputKeyByBoundary.computeIfAbsent(boundary,
-                    ignored -> uniqueKey("out", connection.sourceNode, connection.sourcePort, usedKeys));
+                    ignored -> uniqueKey("out", connection.sourceNode(), connection.sourcePort(), usedKeys));
                 if (outputBindings.stream().noneMatch(binding -> binding.outputKey().equals(outputKey))) {
                     String graphOutputNodeId = UUID.randomUUID().toString();
-                    subgraph.nodes.add(graphOutputNode(graphOutputNodeId, outputKey, connection.sourcePort));
+                    subgraph.nodes.add(graphOutputNode(graphOutputNodeId, outputKey, connection.sourcePort()));
                     subgraph.connections.add(savedConnection(
                         sourceId.toString(),
-                        connection.sourcePort.getId(),
+                        connection.sourcePort().getId(),
                         graphOutputNodeId,
                         GRAPH_OUTPUT_INPUT_PORT_ID
                     ));
@@ -142,11 +142,11 @@ public final class SubgraphExtractionService {
                 outputBindings.add(new OutputBinding(
                     outputKey,
                     sourceId,
-                    connection.sourcePort.getId(),
+                    connection.sourcePort().getId(),
                     targetId,
-                    connection.targetPort.getId(),
-                    dataTypeId(connection.sourcePort),
-                    dataTypeId(connection.targetPort)
+                    connection.targetPort().getId(),
+                    dataTypeId(connection.sourcePort()),
+                    dataTypeId(connection.targetPort())
                 ));
             }
         }

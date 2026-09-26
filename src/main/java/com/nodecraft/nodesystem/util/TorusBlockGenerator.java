@@ -14,8 +14,8 @@ public final class TorusBlockGenerator {
     }
 
     public static RegionData createBoundingRegion(TorusGeometryData geometry) {
-        Vector3d center = geometry.getCenter();
-        double bound = geometry.getMajorRadius() + geometry.getMinorRadius();
+        Vector3d center = geometry.center();
+        double bound = geometry.majorRadius() + geometry.minorRadius();
         BlockPos minCorner = BlockPos.ofFloored(center.x - bound, center.y - bound, center.z - bound);
         BlockPos maxCorner = BlockPos.ofFloored(center.x + bound, center.y + bound, center.z + bound);
         return new RegionData(minCorner, maxCorner);
@@ -32,13 +32,13 @@ public final class TorusBlockGenerator {
             return;
         }
 
-        Vector3d axis = geometry.getAxis();
+        Vector3d axis = geometry.axis();
         Vector3d tangent = buildOrthogonalBasisVector(axis);
         Vector3d bitangent = new Vector3d(axis).cross(tangent).normalize();
-        double majorRadius = geometry.getMajorRadius();
-        double minorRadius = geometry.getMinorRadius();
+        double majorRadius = geometry.majorRadius();
+        double minorRadius = geometry.minorRadius();
         double minorRadiusSquared = minorRadius * minorRadius;
-        Vector3d center = geometry.getCenter();
+        Vector3d center = geometry.center();
 
         for (int x = minCorner.getX(); x <= maxCorner.getX(); x++) {
             for (int y = minCorner.getY(); y <= maxCorner.getY(); y++) {

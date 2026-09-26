@@ -54,8 +54,8 @@ public final class GeometryMirror {
                 return mirrored.isEmpty() ? null : new CompositeGeometryData(mirrored);
             }
             case IntersectionGeometryData intersection -> {
-                GeometryData left = mirror(intersection.getLeft(), plane);
-                GeometryData right = mirror(intersection.getRight(), plane);
+                GeometryData left = mirror(intersection.left(), plane);
+                GeometryData right = mirror(intersection.right(), plane);
                 if (left == null || right == null) {
                     return null;
                 }
@@ -70,7 +70,7 @@ public final class GeometryMirror {
                 return new DifferenceGeometryData(minuend, subtrahend);
             }
             case SphereData sphere -> {
-                return new SphereData(mirrorPoint(sphere.getCenter(), plane), sphere.getRadius());
+                return new SphereData(mirrorPoint(sphere.center(), plane), sphere.radius());
             }
             case CylinderGeometryData cylinder -> {
                 return new CylinderGeometryData(
@@ -105,9 +105,9 @@ public final class GeometryMirror {
             }
             case HemisphereGeometryData hemisphere -> {
                 return new HemisphereGeometryData(
-                        mirrorPoint(hemisphere.getCenter(), plane),
-                        mirrorDirection(hemisphere.getAxis(), plane),
-                        hemisphere.getRadius()
+                        mirrorPoint(hemisphere.center(), plane),
+                        mirrorDirection(hemisphere.axis(), plane),
+                        hemisphere.radius()
                 );
             }
             case BoxGeometryData box -> {
@@ -117,20 +117,20 @@ public final class GeometryMirror {
                 return new BoxGeometryData(center, box.getHalfExtents(), rm, box.isOriented());
             }
             case PrismGeometryData prism -> {
-                List<Vector3d> base = prism.getBaseVertices();
+                List<Vector3d> base = prism.baseVertices();
                 List<Vector3d> mirroredBase = new ArrayList<>(base.size());
                 for (Vector3d v : base) {
                     mirroredBase.add(mirrorPoint(v, plane));
                 }
-                Vector3d extrusion = mirrorDirection(prism.getExtrusionVector(), plane);
+                Vector3d extrusion = mirrorDirection(prism.extrusionVector(), plane);
                 return new PrismGeometryData(mirroredBase, extrusion);
             }
             case TorusGeometryData torus -> {
                 return new TorusGeometryData(
-                        mirrorPoint(torus.getCenter(), plane),
-                        mirrorDirection(torus.getAxis(), plane),
-                        torus.getMajorRadius(),
-                        torus.getMinorRadius()
+                        mirrorPoint(torus.center(), plane),
+                        mirrorDirection(torus.axis(), plane),
+                        torus.majorRadius(),
+                        torus.minorRadius()
                 );
             }
             case SquarePyramidGeometryData pyramid -> {
@@ -176,7 +176,7 @@ public final class GeometryMirror {
                 return new DodecahedronGeometryData(mirrorPoint(dod.getCenter(), plane), dod.getEdgeLength(), rm);
             }
             case SdfGeometryData sdfGeom -> {
-                SignedDistanceFieldData sdf = sdfGeom.getSdf();
+                SignedDistanceFieldData sdf = sdfGeom.sdf();
                 if (sdf == null) {
                     return null;
                 }
@@ -189,7 +189,7 @@ public final class GeometryMirror {
                     newMin.min(p);
                     newMax.max(p);
                 }
-                return new SdfGeometryData(mirroredSdf, newMin, newMax, sdfGeom.getIsoValue());
+                return new SdfGeometryData(mirroredSdf, newMin, newMax, sdfGeom.isoValue());
             }
             default -> {
             }
@@ -198,8 +198,8 @@ public final class GeometryMirror {
     }
 
     private static Vector3d @NonNull [] getVector3ds(SdfGeometryData sdfGeom) {
-        Vector3d min = sdfGeom.getMin();
-        Vector3d max = sdfGeom.getMax();
+        Vector3d min = sdfGeom.min();
+        Vector3d max = sdfGeom.max();
         return new Vector3d[]{
                 new Vector3d(min.x, min.y, min.z),
                 new Vector3d(max.x, min.y, min.z),

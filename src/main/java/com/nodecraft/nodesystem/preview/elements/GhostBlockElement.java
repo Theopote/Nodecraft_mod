@@ -836,29 +836,25 @@ public class GhostBlockElement extends AbstractPreviewElement {
     }
     
     // ================= 内部类 =================
-    
-    /**
-     * 方块数据
-     */
-    public static class BlockData {
-        public final Vec3d position;
-        public final String blockId;
-        public final BlockStateData stateData;
-        
-        public BlockData(Vec3d position, String blockId) {
-            this(position, blockId, null);
-        }
 
-        public BlockData(Vec3d position, String blockId, BlockStateData stateData) {
-            this.position = position;
-            this.blockId = blockId;
-            this.stateData = stateData != null && !stateData.isEmpty() ? stateData.copy() : null;
-        }
-        
+    /**
+         * 方块数据
+         */
+        public record BlockData(Vec3d position, String blockId, BlockStateData stateData) {
+            public BlockData(Vec3d position, String blockId) {
+                this(position, blockId, null);
+            }
+
+            public BlockData(Vec3d position, String blockId, BlockStateData stateData) {
+                this.position = position;
+                this.blockId = blockId;
+                this.stateData = stateData != null && !stateData.isEmpty() ? stateData.copy() : null;
+            }
+
         @Override
-        public String toString() {
-            return String.format("BlockData{pos=%.1f,%.1f,%.1f, block=%s, state=%s}", 
-                position.x, position.y, position.z, blockId, stateData);
+            public String toString() {
+                return String.format("BlockData{pos=%.1f,%.1f,%.1f, block=%s, state=%s}",
+                        position.x, position.y, position.z, blockId, stateData);
+            }
         }
-    }
 } 

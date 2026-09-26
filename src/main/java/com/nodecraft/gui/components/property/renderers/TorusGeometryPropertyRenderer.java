@@ -22,10 +22,10 @@ public final class TorusGeometryPropertyRenderer {
                 return;
             }
 
-            ImGui.text("Center: " + PropertyValueFormatters.formatVector3d(torus.getCenter()));
-            ImGui.text("Axis: " + PropertyValueFormatters.formatVector3d(torus.getAxis()));
-            ImGui.text(String.format("Major Radius: %.2f", torus.getMajorRadius()));
-            ImGui.text(String.format("Minor Radius: %.2f", torus.getMinorRadius()));
+            ImGui.text("Center: " + PropertyValueFormatters.formatVector3d(torus.center()));
+            ImGui.text("Axis: " + PropertyValueFormatters.formatVector3d(torus.axis()));
+            ImGui.text(String.format("Major Radius: %.2f", torus.majorRadius()));
+            ImGui.text(String.format("Minor Radius: %.2f", torus.minorRadius()));
         } catch (Throwable e) {
             panel.handlePropertyError(prop, e);
         }

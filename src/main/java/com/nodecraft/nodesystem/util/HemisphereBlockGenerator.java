@@ -16,8 +16,8 @@ public final class HemisphereBlockGenerator {
     }
 
     public static RegionData createBoundingRegion(HemisphereGeometryData geometry) {
-        Vector3d center = geometry.getCenter();
-        double radius = Math.max(1.0d, geometry.getRadius());
+        Vector3d center = geometry.center();
+        double radius = Math.max(1.0d, geometry.radius());
         BlockPos minCorner = BlockPos.ofFloored(
             center.x - radius,
             center.y - radius,
@@ -45,9 +45,9 @@ public final class HemisphereBlockGenerator {
             return;
         }
 
-        Vector3d center = geometry.getCenter();
-        Vector3d axis = geometry.getAxis();
-        double radius = Math.max(1.0d, geometry.getRadius());
+        Vector3d center = geometry.center();
+        Vector3d axis = geometry.axis();
+        double radius = Math.max(1.0d, geometry.radius());
         double shellThickness = 1.0d;
         double shellThreshold = Math.max(0.0d, radius - Math.max(0.0d, shellThickness));
 

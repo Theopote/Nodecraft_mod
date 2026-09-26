@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.util;
 
+import com.nodecraft.nodesystem.nodes.material.basic_assignment.BasicAssignmentUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -11,9 +12,7 @@ import java.util.List;
  * <p>
  * Prefer this over raw {@code List<String>} on palette ports.
  */
-public final class BlockPaletteData {
-
-    private final List<BlockPaletteEntry> entries;
+public record BlockPaletteData(List<BlockPaletteEntry> entries) {
 
     public BlockPaletteData(List<BlockPaletteEntry> entries) {
         List<BlockPaletteEntry> copy = new ArrayList<>();
@@ -45,7 +44,7 @@ public final class BlockPaletteData {
     }
 
     /**
-     * @deprecated Use {@link com.nodecraft.nodesystem.nodes.material.basic_assignment.BasicAssignmentUtils#buildPalette}
+     * @deprecated Use {@link BasicAssignmentUtils#buildPalette}
      * with validated weights instead.
      */
     @Deprecated
@@ -60,8 +59,8 @@ public final class BlockPaletteData {
                 continue;
             }
             double weight = weights != null && i < weights.size() && weights.get(i) != null
-                ? weights.get(i)
-                : 1.0d;
+                    ? weights.get(i)
+                    : 1.0d;
             entries.add(new BlockPaletteEntry(blockId, weight));
         }
         return new BlockPaletteData(entries);
@@ -99,10 +98,6 @@ public final class BlockPaletteData {
      */
     public static BlockPaletteData requireTyped(@Nullable Object value) {
         return value instanceof BlockPaletteData palette ? palette : empty();
-    }
-
-    public List<BlockPaletteEntry> entries() {
-        return entries;
     }
 
     public boolean isEmpty() {

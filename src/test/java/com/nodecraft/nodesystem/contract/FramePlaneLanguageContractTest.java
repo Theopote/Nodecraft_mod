@@ -187,9 +187,9 @@ class FramePlaneLanguageContractTest {
         List<?> points = (List<?>) transform.getOutput("output_points");
         assertEquals(1, points.size());
         PointData world = assertInstanceOf(PointData.class, points.getFirst());
-        assertEquals(11.0d, world.getPosition().x, 1.0e-6d);
-        assertEquals(2.0d, world.getPosition().y, 1.0e-6d);
-        assertEquals(3.0d, world.getPosition().z, 1.0e-6d);
+        assertEquals(11.0d, world.position().x, 1.0e-6d);
+        assertEquals(2.0d, world.position().y, 1.0e-6d);
+        assertEquals(3.0d, world.position().z, 1.0e-6d);
     }
 
     @Test
@@ -208,9 +208,9 @@ class FramePlaneLanguageContractTest {
 
         assertEquals(Boolean.TRUE, transform.getOutput("output_valid"));
         PointData world = assertInstanceOf(PointData.class, ((List<?>) transform.getOutput("output_points")).getFirst());
-        assertEquals(1.0d, world.getPosition().x, 1.0e-6d);
-        assertEquals(1.0d, world.getPosition().y, 1.0e-6d);
-        assertEquals(1.0d, world.getPosition().z, 1.0e-6d);
+        assertEquals(1.0d, world.position().x, 1.0e-6d);
+        assertEquals(1.0d, world.position().y, 1.0e-6d);
+        assertEquals(1.0d, world.position().z, 1.0e-6d);
     }
 
     @Test

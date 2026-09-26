@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.datatypes;
 
 import org.joml.Vector3d;
+import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,10 +10,7 @@ import java.util.Objects;
 /**
  * Represents a prism defined by an ordered base polygon and an extrusion vector.
  */
-public class PrismGeometryData implements GeometryData {
-    private final List<Vector3d> baseVertices;
-    private final Vector3d extrusionVector;
-
+public record PrismGeometryData(List<Vector3d> baseVertices, Vector3d extrusionVector) implements GeometryData {
     public PrismGeometryData(List<Vector3d> baseVertices, Vector3d extrusionVector) {
         if (baseVertices == null || baseVertices.size() < 3) {
             throw new IllegalArgumentException("Prism requires at least three base vertices");
@@ -27,7 +25,8 @@ public class PrismGeometryData implements GeometryData {
         this.extrusionVector = new Vector3d(extrusionVector);
     }
 
-    public List<Vector3d> getBaseVertices() {
+    @Override
+    public List<Vector3d> baseVertices() {
         List<Vector3d> copiedVertices = new ArrayList<>(baseVertices.size());
         for (Vector3d vertex : baseVertices) {
             copiedVertices.add(new Vector3d(vertex));
@@ -45,12 +44,13 @@ public class PrismGeometryData implements GeometryData {
 
     public SurfaceStripData getSideSurfaceStrip() {
         return new SurfaceStripData(
-            List.of(getBaseVertices(), getTopVertices()),
-            List.of(true, true)
+                List.of(baseVertices(), getTopVertices()),
+                List.of(true, true)
         );
     }
 
-    public Vector3d getExtrusionVector() {
+    @Override
+    public Vector3d extrusionVector() {
         return new Vector3d(extrusionVector);
     }
 
@@ -67,17 +67,12 @@ public class PrismGeometryData implements GeometryData {
         if (this == o) return true;
         if (!(o instanceof PrismGeometryData that)) return false;
         return Objects.equals(baseVertices, that.baseVertices)
-            && Objects.equals(extrusionVector, that.extrusionVector);
+                && Objects.equals(extrusionVector, that.extrusionVector);
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(baseVertices, extrusionVector);
-    }
-
-    @Override
-    public String toString() {
+    public @NonNull String toString() {
         return "PrismGeometryData{sideCount=" + getSideCount()
-            + ", height=" + getHeight() + "}";
+                + ", height=" + getHeight() + "}";
     }
 }

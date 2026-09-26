@@ -120,10 +120,10 @@ public class ImGuiNodeIO {
         // Save connections
         for (NodeGraph.Connection connection : currentGraph.getConnections()) {
             SavedConnection savedConnection = new SavedConnection();
-            savedConnection.sourceNodeId = connection.sourceNode.getId().toString();
-            savedConnection.sourcePortId = connection.sourcePort.getId();
-            savedConnection.targetNodeId = connection.targetNode.getId().toString();
-            savedConnection.targetPortId = connection.targetPort.getId();
+            savedConnection.sourceNodeId = connection.sourceNode().getId().toString();
+            savedConnection.sourcePortId = connection.sourcePort().getId();
+            savedConnection.targetNodeId = connection.targetNode().getId().toString();
+            savedConnection.targetPortId = connection.targetPort().getId();
             savedGraph.connections.add(savedConnection);
         }
 

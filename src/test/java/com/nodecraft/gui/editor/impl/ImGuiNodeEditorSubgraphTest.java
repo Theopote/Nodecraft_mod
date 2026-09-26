@@ -245,12 +245,12 @@ class ImGuiNodeEditorSubgraphTest {
 
     private static boolean hasConnectionFrom(NodeGraph graph, UUID sourceNodeId) {
         return graph.getConnections().stream()
-            .anyMatch(connection -> connection.sourceNode.getId().equals(sourceNodeId));
+            .anyMatch(connection -> connection.sourceNode().getId().equals(sourceNodeId));
     }
 
     private static boolean hasConnectionTo(NodeGraph graph, UUID targetNodeId) {
         return graph.getConnections().stream()
-            .anyMatch(connection -> connection.targetNode.getId().equals(targetNodeId));
+            .anyMatch(connection -> connection.targetNode().getId().equals(targetNodeId));
     }
 
     public static final class PassNode extends BaseNode {

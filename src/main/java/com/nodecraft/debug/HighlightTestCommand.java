@@ -90,7 +90,7 @@ public class HighlightTestCommand {
             
             context.getSource().sendFeedback(Text.literal(
                 String.format("已在玩家上方 (%d, %d, %d) 创建测试高亮", 
-                    position.getX(), position.getY(), position.getZ())
+                    position.x(), position.y(), position.z())
             ));
             
             NodeCraft.LOGGER.info("测试命令: 在玩家上方 {} 创建高亮", position);

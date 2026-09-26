@@ -6,22 +6,7 @@ import org.joml.Vector3d;
 /**
  * Reflects an SDF about a plane via domain transform (isometry — no voxel fallback).
  */
-public class MirroredSdfData implements SignedDistanceFieldData {
-    private final SignedDistanceFieldData source;
-    private final PlaneData plane;
-
-    public MirroredSdfData(SignedDistanceFieldData source, PlaneData plane) {
-        this.source = source;
-        this.plane = plane;
-    }
-
-    public SignedDistanceFieldData getSource() {
-        return source;
-    }
-
-    public PlaneData getPlane() {
-        return plane;
-    }
+public record MirroredSdfData(SignedDistanceFieldData source, PlaneData plane) implements SignedDistanceFieldData {
 
     @Override
     public double sampleDistance(Vector3d point) {

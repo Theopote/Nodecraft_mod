@@ -26,11 +26,11 @@ public final class NodeActionGraphSupport {
         for (NodeGraph.Connection connection : graph.getConnections()) {
             boolean matched;
             if (inputPort) {
-                matched = connection.targetNode.getId().equals(nodeId)
-                        && connection.targetPort.getId().equals(portId);
+                matched = connection.targetNode().getId().equals(nodeId)
+                        && connection.targetPort().getId().equals(portId);
             } else {
-                matched = connection.sourceNode.getId().equals(nodeId)
-                        && connection.sourcePort.getId().equals(portId);
+                matched = connection.sourceNode().getId().equals(nodeId)
+                        && connection.sourcePort().getId().equals(portId);
             }
 
             if (matched) {

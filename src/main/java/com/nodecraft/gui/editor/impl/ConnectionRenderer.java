@@ -69,8 +69,8 @@ public class ConnectionRenderer {
         java.util.List<NodeGraph.Connection> normalConnections = new java.util.ArrayList<>();
 
         for (NodeGraph.Connection connection : graph.getConnections()) {
-            UUID sourceNodeId = connection.sourceNode.getId();
-            UUID targetNodeId = connection.targetNode.getId();
+            UUID sourceNodeId = connection.sourceNode().getId();
+            UUID targetNodeId = connection.targetNode().getId();
 
             boolean isHighlightedConnection = selectedNodeIds.contains(sourceNodeId) ||
                     selectedNodeIds.contains(targetNodeId);
@@ -118,8 +118,8 @@ public class ConnectionRenderer {
         if (selectedNodeIds != null && !selectedNodeIds.isEmpty()) {
             java.util.List<NodeGraph.Connection> highlightedConnections = new java.util.ArrayList<>();
             for (NodeGraph.Connection connection : graph.getConnections()) {
-                UUID sourceNodeId = connection.sourceNode.getId();
-                UUID targetNodeId = connection.targetNode.getId();
+                UUID sourceNodeId = connection.sourceNode().getId();
+                UUID targetNodeId = connection.targetNode().getId();
 
                 if (selectedNodeIds.contains(sourceNodeId) || selectedNodeIds.contains(targetNodeId)) {
                     highlightedConnections.add(connection);
@@ -190,8 +190,8 @@ public class ConnectionRenderer {
         ExecFrontierSnapshot execFrontier = editor.getActiveExecFrontierSnapshot();
 
         for (NodeGraph.Connection connection : connections) {
-            ImVec2 sourcePortPos = getPortScreenPosition(connection.sourceNode.getId(), connection.sourcePort.getId(), portScreenPositions);
-            ImVec2 targetPortPos = getPortScreenPosition(connection.targetNode.getId(), connection.targetPort.getId(), portScreenPositions);
+            ImVec2 sourcePortPos = getPortScreenPosition(connection.sourceNode().getId(), connection.sourcePort().getId(), portScreenPositions);
+            ImVec2 targetPortPos = getPortScreenPosition(connection.targetNode().getId(), connection.targetPort().getId(), portScreenPositions);
 
             if (sourcePortPos != null && targetPortPos != null) {
                 float startX = sourcePortPos.x;
@@ -205,12 +205,12 @@ public class ConnectionRenderer {
                 float ctrl2X = endX - scaledControlOffset;
 
                 boolean isCurrentConnectionHovered = isHoveringConnection &&
-                        connection.sourceNode.getId().equals(hoveredSourceNodeId) &&
-                        connection.sourcePort.getId().equals(hoveredSourcePortId) &&
-                        connection.targetNode.getId().equals(hoveredTargetNodeId) &&
-                        connection.targetPort.getId().equals(hoveredTargetPortId);
+                        connection.sourceNode().getId().equals(hoveredSourceNodeId) &&
+                        connection.sourcePort().getId().equals(hoveredSourcePortId) &&
+                        connection.targetNode().getId().equals(hoveredTargetNodeId) &&
+                        connection.targetPort().getId().equals(hoveredTargetPortId);
 
-                boolean typeMismatch = !NodeDataType.isConnectableTo(connection.sourcePort.getDataType(), connection.targetPort.getDataType());
+                boolean typeMismatch = !NodeDataType.isConnectableTo(connection.sourcePort().getDataType(), connection.targetPort().getDataType());
                 boolean isExecConnection = ExecutionPortKind.isExecConnection(connection);
                 int normalColor;
                 if (typeMismatch) {
@@ -221,12 +221,12 @@ public class ConnectionRenderer {
                     normalColor = lineColor;
                 }
 
-                boolean isActiveExecWire = isExecConnection && execFrontier.isActive()
+                boolean isActiveExecWire = isExecConnection && execFrontier.active()
                         && execFrontier.highlightsExecWire(
-                        connection.sourceNode.getId(),
-                        connection.sourcePort.getId(),
-                        connection.targetNode.getId(),
-                        connection.targetPort.getId()
+                        connection.sourceNode().getId(),
+                        connection.sourcePort().getId(),
+                        connection.targetNode().getId(),
+                        connection.targetPort().getId()
                 );
 
                 int currentLineColor;

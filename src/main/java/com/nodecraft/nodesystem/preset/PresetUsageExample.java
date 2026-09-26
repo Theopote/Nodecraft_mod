@@ -110,7 +110,7 @@ public class PresetUsageExample {
             return;
         }
 
-        PresetMetadata metadata = preset.getMetadata();
+        PresetMetadata metadata = preset.metadata();
 
         LOGGER.info("Preset: {}", metadata.getName());
         LOGGER.info("Description: {}", metadata.getDescription());
@@ -121,13 +121,13 @@ public class PresetUsageExample {
 
         // List parameters
         LOGGER.info("Parameters:");
-        for (PresetParameter param : preset.getParameters()) {
+        for (PresetParameter param : preset.parameters()) {
             LOGGER.info("  - {} ({}): default={}, range=[{}, {}]",
-                param.getName(),
-                param.getType(),
-                param.getDefaultValue(),
-                param.getMinValue(),
-                param.getMaxValue()
+                param.name(),
+                param.type(),
+                param.defaultValue(),
+                param.minValue(),
+                param.maxValue()
             );
         }
     }
@@ -143,9 +143,9 @@ public class PresetUsageExample {
 
         for (PresetDefinition preset : registry.getAllPresets()) {
             LOGGER.info("  - {} ({}): {}",
-                preset.getPresetId(),
-                preset.getMetadata().getCategory(),
-                preset.getMetadata().getName()
+                preset.presetId(),
+                preset.metadata().getCategory(),
+                preset.metadata().getName()
             );
         }
     }

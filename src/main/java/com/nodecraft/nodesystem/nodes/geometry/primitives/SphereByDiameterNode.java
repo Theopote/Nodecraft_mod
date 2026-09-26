@@ -71,8 +71,8 @@ public class SphereByDiameterNode extends BaseNode {
                 diameterLine = extractLine(endInput);
             }
             if (diameterLine != null) {
-                Vec3d lineStart = diameterLine.getStart();
-                Vec3d lineEnd = diameterLine.getEnd();
+                Vec3d lineStart = diameterLine.start();
+                Vec3d lineEnd = diameterLine.end();
                 if (start == null) {
                     start = new Vector3d(lineStart.x, lineStart.y, lineStart.z);
                 }

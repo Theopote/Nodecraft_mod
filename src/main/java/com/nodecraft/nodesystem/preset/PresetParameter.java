@@ -8,82 +8,12 @@ import java.util.Map;
  *
  * <p>Parameters allow users to customize preset behavior without editing the node graph.
  * Each parameter has a type, default value, constraints, and display properties.</p>
+ *
+ * @param options For dropdown type
  */
-public class PresetParameter {
-    private final String id;
-    private final String name;
-    private final ParameterType type;
-    private final Object defaultValue;
-    private final Object minValue;
-    private final Object maxValue;
-    private final Object step;
-    private final String description;
-    private final String group;
-    private final List<ParameterOption> options; // For dropdown type
-
-    public PresetParameter(
-            String id,
-            String name,
-            ParameterType type,
-            Object defaultValue,
-            Object minValue,
-            Object maxValue,
-            Object step,
-            String description,
-            String group,
-            List<ParameterOption> options
-    ) {
-        this.id = id;
-        this.name = name;
-        this.type = type;
-        this.defaultValue = defaultValue;
-        this.minValue = minValue;
-        this.maxValue = maxValue;
-        this.step = step;
-        this.description = description;
-        this.group = group;
-        this.options = options;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public ParameterType getType() {
-        return type;
-    }
-
-    public Object getDefaultValue() {
-        return defaultValue;
-    }
-
-    public Object getMinValue() {
-        return minValue;
-    }
-
-    public Object getMaxValue() {
-        return maxValue;
-    }
-
-    public Object getStep() {
-        return step;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public String getGroup() {
-        return group;
-    }
-
-    public List<ParameterOption> getOptions() {
-        return options;
-    }
+public record PresetParameter(String id, String name, ParameterType type, Object defaultValue, Object minValue,
+                              Object maxValue, Object step, String description, String group,
+                              List<ParameterOption> options) {
 
     /**
      * Validates and constrains a parameter value.
@@ -99,14 +29,13 @@ public class PresetParameter {
 
         return switch (type) {
             case INTEGER -> validateInteger(value);
-            case FLOAT -> validateFloat(value);
+            case FLOAT, ANGLE -> validateFloat(value);
             case BOOLEAN -> validateBoolean(value);
             case STRING -> validateString(value);
             case DROPDOWN -> validateDropdown(value);
             case BLOCK_SELECTOR -> validateString(value); // Block ID as string
             case COLOR -> validateString(value); // Color as hex string
             case VECTOR3 -> validateVector3(value);
-            case ANGLE -> validateFloat(value);
         };
     }
 
@@ -173,7 +102,7 @@ public class PresetParameter {
         String strValue = value.toString();
         if (options != null) {
             boolean validOption = options.stream()
-                    .anyMatch(opt -> opt.getValue().equals(strValue));
+                    .anyMatch(opt -> opt.value().equals(strValue));
             if (!validOption) {
                 return defaultValue;
             }
@@ -181,7 +110,6 @@ public class PresetParameter {
         return strValue;
     }
 
-    @SuppressWarnings("unchecked")
     private Object validateVector3(Object value) {
         if (value instanceof Map) {
             return value; // Already a map with x, y, z
@@ -192,21 +120,6 @@ public class PresetParameter {
     /**
      * Represents an option for dropdown parameters.
      */
-    public static class ParameterOption {
-        private final String value;
-        private final String label;
-
-        public ParameterOption(String value, String label) {
-            this.value = value;
-            this.label = label;
-        }
-
-        public String getValue() {
-            return value;
-        }
-
-        public String getLabel() {
-            return label;
-        }
+    public record ParameterOption(String value, String label) {
     }
 }

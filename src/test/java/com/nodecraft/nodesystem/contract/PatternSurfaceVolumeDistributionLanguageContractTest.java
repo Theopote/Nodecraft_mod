@@ -152,9 +152,9 @@ class PatternSurfaceVolumeDistributionLanguageContractTest {
         List<PointData> points = assertInstanceOf(List.class, node.getOutput("output_points"));
         assertFalse(points.isEmpty());
         PointData first = points.getFirst();
-        assertTrue(Math.abs(first.getPosition().x - Math.round(first.getPosition().x)) > 1.0e-6d
-                || Math.abs(first.getPosition().y - Math.round(first.getPosition().y)) > 1.0e-6d
-                || Math.abs(first.getPosition().z - Math.round(first.getPosition().z)) > 1.0e-6d);
+        assertTrue(Math.abs(first.position().x - Math.round(first.position().x)) > 1.0e-6d
+                || Math.abs(first.position().y - Math.round(first.position().y)) > 1.0e-6d
+                || Math.abs(first.position().z - Math.round(first.position().z)) > 1.0e-6d);
     }
 
     @Test
@@ -261,7 +261,7 @@ class PatternSurfaceVolumeDistributionLanguageContractTest {
         List<PointData> points = assertInstanceOf(List.class, node.getOutput("output_points"));
         for (int i = 0; i < points.size(); i++) {
             for (int j = i + 1; j < points.size(); j++) {
-                double distSq = points.get(i).getPosition().distanceSquared(points.get(j).getPosition());
+                double distSq = points.get(i).position().distanceSquared(points.get(j).position());
                 assertTrue(distSq >= 2.5d * 2.5d - 1.0e-6d);
             }
         }

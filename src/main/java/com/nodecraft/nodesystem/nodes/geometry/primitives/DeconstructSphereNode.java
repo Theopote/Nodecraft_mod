@@ -72,8 +72,8 @@ public class DeconstructSphereNode extends BaseNode {
             return;
         }
 
-        Vector3d center = sphere.getCenter();
-        double radius = sphere.getRadius();
+        Vector3d center = sphere.center();
+        double radius = sphere.radius();
         double diameter = radius * 2.0d;
         double surfaceArea = 4.0d * Math.PI * radius * radius;
         double volume = (4.0d / 3.0d) * Math.PI * radius * radius * radius;

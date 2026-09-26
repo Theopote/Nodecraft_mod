@@ -191,7 +191,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             return "";
         }
         Coordinate position = active.position();
-        return position.getX() + ", " + position.getY() + ", " + position.getZ();
+        return position.x() + ", " + position.y() + ", " + position.z();
     }
 
     // --- 输入验证状态 ---
@@ -438,7 +438,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 return;
             }
             
-            BlockPos blockPos = new BlockPos(position.getX(), position.getY(), position.getZ());
+            BlockPos blockPos = new BlockPos(position.x(), position.y(), position.z());
             
             // 检查区块是否已加载
             try {
@@ -625,15 +625,15 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
 
         outputValues.put(OUTPUT_BLOCK_ID, blockId);
         outputValues.put(OUTPUT_BLOCK_NAME, getBlockDisplayName(blockId));
-        outputValues.put(OUTPUT_POSITION, new BlockPos(position.getX(), position.getY(), position.getZ()));
+        outputValues.put(OUTPUT_POSITION, new BlockPos(position.x(), position.y(), position.z()));
         outputValues.put(OUTPUT_CENTER, new PointData(
-            position.getX() + 0.5,
-            position.getY() + 0.5,
-            position.getZ() + 0.5
+            position.x() + 0.5,
+            position.y() + 0.5,
+            position.z() + 0.5
         ));
-        outputValues.put(OUTPUT_BLOCK_X_ID, position.getX());
-        outputValues.put(OUTPUT_BLOCK_Y_ID, position.getY());
-        outputValues.put(OUTPUT_BLOCK_Z_ID, position.getZ());
+        outputValues.put(OUTPUT_BLOCK_X_ID, position.x());
+        outputValues.put(OUTPUT_BLOCK_Y_ID, position.y());
+        outputValues.put(OUTPUT_BLOCK_Z_ID, position.z());
         outputValues.put(OUTPUT_BLOCK_STATE, stateData);
         outputValues.put(OUTPUT_HAS_BLOCK_ENTITY, checkHasBlockEntity(blockId, position));
         syncOutputPorts();
@@ -773,7 +773,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 return ValidationResult.failure("世界未加载，跳过方块验证");
             }
             
-            BlockPos pos = new BlockPos(position.getX(), position.getY(), position.getZ());
+            BlockPos pos = new BlockPos(position.x(), position.y(), position.z());
             
                     // 检查区块是否已加载
         try {
@@ -793,7 +793,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             if (!actualBlockId.equals(expectedBlockId)) {
                 String warningMessage = String.format(
                     "拾取方块 %s 与世界状态 %s 不一致 at (%d, %d, %d) - 可能由网络延迟引起", 
-                    expectedBlockId, actualBlockId, position.getX(), position.getY(), position.getZ());
+                    expectedBlockId, actualBlockId, position.x(), position.y(), position.z());
                 return ValidationResult.warning(warningMessage, new BlockValidationData(actualBlockId, false));
             }
             
@@ -804,7 +804,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 if (!stateMatches) {
                     String warningMessage = String.format(
                         "方块 %s 的状态属性不一致 at (%d, %d, %d) - 可能由网络延迟引起", 
-                        expectedBlockId, position.getX(), position.getY(), position.getZ());
+                        expectedBlockId, position.x(), position.y(), position.z());
                     return ValidationResult.warning(warningMessage, new BlockValidationData(actualBlockId, false));
                 }
             }
@@ -1017,9 +1017,9 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 
                 PreviewBlocksPayload payload = new PreviewBlocksPayload(List.of(
                     new PreviewBlock(
-                        position.getX(),
-                        position.getY(),
-                        position.getZ(),
+                        position.x(),
+                        position.y(),
+                        position.z(),
                         blockId
                     )
                 ));
@@ -1346,16 +1346,16 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                         ImGui.textDisabled("位置:");
                         ImGui.sameLine();
                         ImGui.text(String.format("%d, %d, %d", 
-                            activePosition.getX(), 
-                            activePosition.getY(), 
-                            activePosition.getZ()));
+                            activePosition.x(),
+                            activePosition.y(),
+                            activePosition.z()));
                         
                         // 悬停时显示中心点坐标
                         if (ImGui.isItemHovered()) {
                             Vector3d center = new Vector3d(
-                                activePosition.getX() + 0.5,
-                                activePosition.getY() + 0.5,
-                                activePosition.getZ() + 0.5
+                                activePosition.x() + 0.5,
+                                activePosition.y() + 0.5,
+                                activePosition.z() + 0.5
                             );
                             ImGui.setTooltip(String.format("中心点: %.2f, %.2f, %.2f", 
                                 center.x, center.y, center.z));
@@ -1631,9 +1631,9 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 
                 // 确保方块ID不为null
                 pickedBlock.put("blockId", pickedBlockId != null ? pickedBlockId : "minecraft:air");
-                pickedBlock.put("x", pickedBlockPosition.getX());
-                pickedBlock.put("y", pickedBlockPosition.getY());
-                pickedBlock.put("z", pickedBlockPosition.getZ());
+                pickedBlock.put("x", pickedBlockPosition.x());
+                pickedBlock.put("y", pickedBlockPosition.y());
+                pickedBlock.put("z", pickedBlockPosition.z());
                 
                 // 显式处理BlockStateData的序列化
                 if (pickedBlockStateData != null && !pickedBlockStateData.isEmpty()) {
@@ -1995,7 +1995,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             
             // 优先从世界中获取实际的方块状态（如果有位置信息）
             if (position != null && client.world != null) {
-                BlockPos blockPos = new BlockPos(position.getX(), position.getY(), position.getZ());
+                BlockPos blockPos = new BlockPos(position.x(), position.y(), position.z());
                 blockState = client.world.getBlockState(blockPos);
             } else {
                 // 否则从方块ID获取默认状态

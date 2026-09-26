@@ -37,14 +37,14 @@ public class PresetInstantiator {
     public static InstantiateResult instantiateWithLayout(PresetDefinition preset, Map<String, Object> parameterValues)
             throws PresetInstantiationException {
 
-        LOGGER.debug("Instantiating preset: {}", preset.getPresetId());
+        LOGGER.debug("Instantiating preset: {}", preset.presetId());
 
         // Merge provided values with defaults
         Map<String, Object> resolvedParams = resolveParameters(preset, parameterValues);
 
         // Validate all parameters
-        for (PresetParameter param : preset.getParameters()) {
-            resolvedParams.compute(param.getId(), (k, value) -> param.validateValue(value));
+        for (PresetParameter param : preset.parameters()) {
+            resolvedParams.compute(param.id(), (k, value) -> param.validateValue(value));
         }
 
         NodeGraph graph = new NodeGraph();
@@ -52,12 +52,12 @@ public class PresetInstantiator {
         Map<UUID, LayoutPoint> nodePositions = new LinkedHashMap<>();
 
         try {
-            for (PresetGraph.PresetNodeDefinition nodeDef : preset.getGraph().getNodes()) {
+            for (PresetGraph.PresetNodeDefinition nodeDef : preset.graph().nodes()) {
                 INode node = createNode(nodeDef, resolvedParams);
                 graph.addNode(node);
-                nodeIdMapping.put(nodeDef.getId(), node.getId());
+                nodeIdMapping.put(nodeDef.id(), node.getId());
 
-                Map<String, Double> position = nodeDef.getPosition();
+                Map<String, Double> position = nodeDef.position();
                 if (position != null) {
                     float x = position.getOrDefault("x", 0.0).floatValue();
                     float y = position.getOrDefault("y", 0.0).floatValue();
@@ -65,44 +65,44 @@ public class PresetInstantiator {
                 }
             }
 
-            for (PresetGraph.PresetConnectionDefinition connDef : preset.getGraph().getConnections()) {
-                UUID fromNodeId = nodeIdMapping.get(connDef.getFrom().getNode());
-                UUID toNodeId = nodeIdMapping.get(connDef.getTo().getNode());
+            for (PresetGraph.PresetConnectionDefinition connDef : preset.graph().connections()) {
+                UUID fromNodeId = nodeIdMapping.get(connDef.from().node());
+                UUID toNodeId = nodeIdMapping.get(connDef.to().node());
 
                 if (fromNodeId == null || toNodeId == null) {
                     throw new PresetInstantiationException(
                             "Connection references unknown node: "
-                                    + connDef.getFrom().getNode() + " -> " + connDef.getTo().getNode()
+                                    + connDef.from().node() + " -> " + connDef.to().node()
                     );
                 }
 
-                String fromPortId = connDef.getFrom().getPort();
-                String toPortId = connDef.getTo().getPort();
+                String fromPortId = connDef.from().port();
+                String toPortId = connDef.to().port();
 
                 try {
                     graph.connect(fromNodeId, fromPortId, toNodeId, toPortId);
                 } catch (Exception e) {
                     LOGGER.warn(
                             "Failed to create connection {}.{} -> {}.{} in preset {}: {}",
-                            connDef.getFrom().getNode(),
+                            connDef.from().node(),
                             fromPortId,
-                            connDef.getTo().getNode(),
+                            connDef.to().node(),
                             toPortId,
-                            preset.getPresetId(),
+                            preset.presetId(),
                             e.getMessage()
                     );
                 }
             }
 
             if (graph.getNodes().isEmpty()) {
-                throw new PresetInstantiationException("Preset produced no nodes: " + preset.getPresetId());
+                throw new PresetInstantiationException("Preset produced no nodes: " + preset.presetId());
             }
 
             LOGGER.info(
                     "Successfully instantiated preset: {} with {} nodes, {} connections",
-                    preset.getPresetId(),
+                    preset.presetId(),
                     graph.getNodes().size(),
-                    preset.getGraph().getConnections().size()
+                    preset.graph().connections().size()
             );
 
             return new InstantiateResult(graph, Map.copyOf(nodePositions));
@@ -110,7 +110,7 @@ public class PresetInstantiator {
         } catch (PresetInstantiationException e) {
             throw e;
         } catch (Exception e) {
-            LOGGER.error("Failed to instantiate preset: {}", preset.getPresetId(), e);
+            LOGGER.error("Failed to instantiate preset: {}", preset.presetId(), e);
             throw new PresetInstantiationException("Failed to instantiate preset: " + e.getMessage(), e);
         }
     }
@@ -150,14 +150,14 @@ public class PresetInstantiator {
 
         try {
             // Create node instance
-            INode node = NodeRegistry.getInstance().createNodeInstance(nodeDef.getType());
+            INode node = NodeRegistry.getInstance().createNodeInstance(nodeDef.type());
 
             if (node == null) {
-                throw new PresetInstantiationException("Unknown node type: " + nodeDef.getType());
+                throw new PresetInstantiationException("Unknown node type: " + nodeDef.type());
             }
 
             // Set node parameters with substitution
-            for (Map.Entry<String, Object> entry : nodeDef.getParameters().entrySet()) {
+            for (Map.Entry<String, Object> entry : nodeDef.parameters().entrySet()) {
                 String paramName = entry.getKey();
                 Object paramValue = entry.getValue();
 
@@ -168,7 +168,7 @@ public class PresetInstantiator {
                 try {
                     node.setInput(paramName, resolvedValue);
                 } catch (Exception e) {
-                    LOGGER.warn("Failed to set parameter {} on node {}: {}", paramName, nodeDef.getType(), e.getMessage());
+                    LOGGER.warn("Failed to set parameter {} on node {}: {}", paramName, nodeDef.type(), e.getMessage());
                     // Continue - some parameters might be optional
                 }
             }
@@ -176,7 +176,7 @@ public class PresetInstantiator {
             return node;
 
         } catch (Exception e) {
-            throw new PresetInstantiationException("Failed to create node: " + nodeDef.getType(), e);
+            throw new PresetInstantiationException("Failed to create node: " + nodeDef.type(), e);
         }
     }
 
@@ -191,8 +191,8 @@ public class PresetInstantiator {
         Map<String, Object> resolved = new HashMap<>();
 
         // Start with defaults
-        for (PresetParameter param : preset.getParameters()) {
-            resolved.put(param.getId(), param.getDefaultValue());
+        for (PresetParameter param : preset.parameters()) {
+            resolved.put(param.id(), param.defaultValue());
         }
 
         // Override with provided values

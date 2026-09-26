@@ -94,13 +94,13 @@ public final class AiPromptContextService {
         for (int i = 0; i < connections.size() && i < maxConnections; i++) {
             NodeGraph.Connection conn = connections.get(i);
             sb.append("- ")
-                    .append(shortNodeId(conn.sourceNode))
+                    .append(shortNodeId(conn.sourceNode()))
                     .append(".")
-                    .append(conn.sourcePort.getId())
+                    .append(conn.sourcePort().getId())
                     .append(" -> ")
-                    .append(shortNodeId(conn.targetNode))
+                    .append(shortNodeId(conn.targetNode()))
                     .append(".")
-                    .append(conn.targetPort.getId())
+                    .append(conn.targetPort().getId())
                     .append("\n");
         }
         if (connections.size() > maxConnections) {

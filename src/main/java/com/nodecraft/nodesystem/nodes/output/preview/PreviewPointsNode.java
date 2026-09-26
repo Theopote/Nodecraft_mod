@@ -103,7 +103,7 @@ public class PreviewPointsNode extends BaseNode {
         if (value instanceof Coordinate coordinate) {
             out.add(coordinate);
         } else if (value instanceof PointData pointData) {
-            Vector3d p = pointData.getPosition();
+            Vector3d p = pointData.position();
             out.add(new Coordinate((int) Math.round(p.x), (int) Math.round(p.y), (int) Math.round(p.z)));
         } else if (value instanceof Vector3d vector) {
             out.add(new Coordinate((int) Math.round(vector.x), (int) Math.round(vector.y), (int) Math.round(vector.z)));

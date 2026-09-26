@@ -142,12 +142,12 @@ class TransformFamilyContractTest {
 
         GeometryData moved = GeometryTransform.transform(sdfGeom, new Vector3d(5, 0, 0), 0, 0, 0, 1);
         assertInstanceOf(SdfGeometryData.class, moved);
-        assertInstanceOf(TransformedSdfData.class, ((SdfGeometryData) moved).getSdf());
+        assertInstanceOf(TransformedSdfData.class, ((SdfGeometryData) moved).sdf());
 
         Matrix3d rotation = new Matrix3d().set(new Quaterniond(new AxisAngle4d(Math.toRadians(45), 0, 1, 0)));
         GeometryData rotated = GeometryTransform.transformAround(sdfGeom, new Vector3d(), rotation, 1.0d);
         assertInstanceOf(SdfGeometryData.class, rotated);
-        assertInstanceOf(TransformedSdfData.class, ((SdfGeometryData) rotated).getSdf());
+        assertInstanceOf(TransformedSdfData.class, ((SdfGeometryData) rotated).sdf());
     }
 
     @Test
@@ -162,7 +162,7 @@ class TransformFamilyContractTest {
         PlaneData yz = new PlaneData(new Vector3d(), new Vector3d(1, 0, 0));
         GeometryData mirrored = GeometryMirror.mirror(sdfGeom, yz);
         assertInstanceOf(SdfGeometryData.class, mirrored);
-        assertInstanceOf(MirroredSdfData.class, ((SdfGeometryData) mirrored).getSdf());
+        assertInstanceOf(MirroredSdfData.class, ((SdfGeometryData) mirrored).sdf());
     }
 
     @Test

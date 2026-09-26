@@ -16,8 +16,8 @@ public final class SphereBlockGenerator {
     }
 
     public static RegionData createBoundingRegion(SphereData geometry) {
-        Vector3d center = geometry.getCenter();
-        double radius = Math.max(0.0d, geometry.getRadius());
+        Vector3d center = geometry.center();
+        double radius = Math.max(0.0d, geometry.radius());
         return BlockSpace.inclusiveRegionFromClosedAabb(
             center.x - radius,
             center.y - radius,
@@ -47,8 +47,8 @@ public final class SphereBlockGenerator {
             return;
         }
 
-        Vector3d center = geometry.getCenter();
-        double radius = Math.max(0.0d, geometry.getRadius());
+        Vector3d center = geometry.center();
+        double radius = Math.max(0.0d, geometry.radius());
         double shellThreshold = Math.max(0.0d, radius - Math.max(0.0d, shellThickness));
         boolean fillSolid = voxelMode == null || voxelMode == VoxelMode.SOLID;
 

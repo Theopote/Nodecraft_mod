@@ -107,9 +107,9 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
 
         if (pickedEntityPosition != null) {
             outputValues.put(OUTPUT_ENTITY_POSITION, pickedEntityPosition);
-            outputValues.put(OUTPUT_ENTITY_X, pickedEntityPosition.getX());
-            outputValues.put(OUTPUT_ENTITY_Y, pickedEntityPosition.getY());
-            outputValues.put(OUTPUT_ENTITY_Z, pickedEntityPosition.getZ());
+            outputValues.put(OUTPUT_ENTITY_X, pickedEntityPosition.x());
+            outputValues.put(OUTPUT_ENTITY_Y, pickedEntityPosition.y());
+            outputValues.put(OUTPUT_ENTITY_Z, pickedEntityPosition.z());
         } else {
             outputValues.put(OUTPUT_ENTITY_POSITION, new Coordinate(0, 0, 0));
             outputValues.put(OUTPUT_ENTITY_X, 0);
@@ -140,7 +140,7 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
         this.pickedEntityId = entityId;
         this.pickedEntityType = entityType;
         this.pickedEntityPosition = position;
-        this.pickedEntityExactPosition = new Vec3d(position.getX(), position.getY(), position.getZ());
+        this.pickedEntityExactPosition = new Vec3d(position.x(), position.y(), position.z());
         this.hasPickedEntity = true;
 
         markDirty();
@@ -286,9 +286,9 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
             Map<String, Object> pickedEntity = new HashMap<>();
             pickedEntity.put("entityId", pickedEntityId);
             pickedEntity.put("entityType", pickedEntityType);
-            pickedEntity.put("x", pickedEntityPosition.getX());
-            pickedEntity.put("y", pickedEntityPosition.getY());
-            pickedEntity.put("z", pickedEntityPosition.getZ());
+            pickedEntity.put("x", pickedEntityPosition.x());
+            pickedEntity.put("y", pickedEntityPosition.y());
+            pickedEntity.put("z", pickedEntityPosition.z());
             state.put("pickedEntity", pickedEntity);
         }
 

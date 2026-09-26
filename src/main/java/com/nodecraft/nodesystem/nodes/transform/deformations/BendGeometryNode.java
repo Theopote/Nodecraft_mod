@@ -136,7 +136,7 @@ public class BendGeometryNode extends BaseNode {
     private @Nullable SourceData resolveSource() {
         Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
         if (geometryObj instanceof SdfGeometryData sdfGeometry) {
-            return new SourceData(sdfGeometry.getSdf(), sdfGeometry.getMin(), sdfGeometry.getMax(), sdfGeometry.getIsoValue(), false, 0);
+            return new SourceData(sdfGeometry.sdf(), sdfGeometry.min(), sdfGeometry.max(), sdfGeometry.isoValue(), false, 0);
         }
         if (geometryObj instanceof GeometryData geometry) {
             RegionData region = GeometryVoxelizer.createBoundingRegion(geometry);

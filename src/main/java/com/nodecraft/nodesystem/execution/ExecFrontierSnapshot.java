@@ -9,15 +9,10 @@ import java.util.UUID;
  *
  * <p>Published by {@link NodeExecutor} during exec-flow runs; readers should treat instances as immutable.</p>
  */
-public final class ExecFrontierSnapshot {
+public record ExecFrontierSnapshot(boolean active, Set<UUID> activeNodeIds, Set<ExecWire> activeExecWires,
+                                   Set<UUID> pendingNodeIds, long step) {
 
     public static final ExecFrontierSnapshot EMPTY = new ExecFrontierSnapshot(false, Set.of(), Set.of(), Set.of(), 0L);
-
-    private final boolean active;
-    private final Set<UUID> activeNodeIds;
-    private final Set<ExecWire> activeExecWires;
-    private final Set<UUID> pendingNodeIds;
-    private final long step;
 
     public ExecFrontierSnapshot(
             boolean active,
@@ -31,26 +26,6 @@ public final class ExecFrontierSnapshot {
         this.activeExecWires = activeExecWires == null ? Set.of() : Set.copyOf(activeExecWires);
         this.pendingNodeIds = pendingNodeIds == null ? Set.of() : Set.copyOf(pendingNodeIds);
         this.step = step;
-    }
-
-    public boolean isActive() {
-        return active;
-    }
-
-    public Set<UUID> activeNodeIds() {
-        return activeNodeIds;
-    }
-
-    public Set<ExecWire> activeExecWires() {
-        return activeExecWires;
-    }
-
-    public Set<UUID> pendingNodeIds() {
-        return pendingNodeIds;
-    }
-
-    public long step() {
-        return step;
     }
 
     public boolean highlightsNode(UUID nodeId) {

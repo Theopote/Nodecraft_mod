@@ -28,7 +28,7 @@ final class WorldReadUtils {
             return BlockPos.ofFloored(vector.x, vector.y, vector.z);
         }
         if (value instanceof Vector3 vector) {
-            return BlockPos.ofFloored(vector.getX(), vector.getY(), vector.getZ());
+            return BlockPos.ofFloored(vector.x(), vector.y(), vector.z());
         }
         return null;
     }

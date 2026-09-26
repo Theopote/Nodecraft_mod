@@ -22,8 +22,8 @@ public final class LinePropertyRenderer {
                 return;
             }
 
-            ImGui.text("Start: " + PropertyValueFormatters.formatVec3d(line.getStart()));
-            ImGui.text("End: " + PropertyValueFormatters.formatVec3d(line.getEnd()));
+            ImGui.text("Start: " + PropertyValueFormatters.formatVec3d(line.start()));
+            ImGui.text("End: " + PropertyValueFormatters.formatVec3d(line.end()));
             ImGui.text("Direction: " + PropertyValueFormatters.formatVec3d(line.getDirection()));
             ImGui.text(String.format("Length: %.2f", line.getLength()));
         } catch (Throwable e) {

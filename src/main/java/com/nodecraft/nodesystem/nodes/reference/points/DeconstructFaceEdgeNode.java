@@ -62,8 +62,8 @@ public class DeconstructFaceEdgeNode extends BaseNode {
             return;
         }
 
-        Vec3d start = edge.getStart();
-        Vec3d end = edge.getEnd();
+        Vec3d start = edge.start();
+        Vec3d end = edge.end();
         Vec3d direction = edge.getDirection();
         Vec3d vector = edge.getVector();
         Vec3d midpoint = start.add(end).multiply(0.5d);

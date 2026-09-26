@@ -76,8 +76,8 @@ public class SelectedRegionNode extends BaseCustomUINode {
     private class AreaSelectionCallback implements NodeEditorInteractionManager.IAreaSelectionCallback {
         @Override
         public void onAreaSelected(Coordinate startPos, Coordinate endPos) {
-            pos1 = new Vector3(startPos.getX(), startPos.getY(), startPos.getZ());
-            pos2 = new Vector3(endPos.getX(), endPos.getY(), endPos.getZ());
+            pos1 = new Vector3(startPos.x(), startPos.y(), startPos.z());
+            pos2 = new Vector3(endPos.x(), endPos.y(), endPos.z());
             selecting = false;
             waitingSecondPoint = false;
             selectionHint = "Area selection complete.";
@@ -89,7 +89,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
 
         @Override
         public void onFirstPointSelected(Coordinate position) {
-            pos1 = new Vector3(position.getX(), position.getY(), position.getZ());
+            pos1 = new Vector3(position.x(), position.y(), position.z());
             pos2 = null;
             selecting = true;
             waitingSecondPoint = true;
@@ -97,9 +97,9 @@ public class SelectedRegionNode extends BaseCustomUINode {
             clearCompletedRegionPreview();
             clearCompletedBlocksPreview();
             outputValues.put(OUTPUT_POS1_ID, toVector3d(pos1));
-            outputValues.put(OUTPUT_POS1_X_ID, (int) pos1.getX());
-            outputValues.put(OUTPUT_POS1_Y_ID, (int) pos1.getY());
-            outputValues.put(OUTPUT_POS1_Z_ID, (int) pos1.getZ());
+            outputValues.put(OUTPUT_POS1_X_ID, (int) pos1.x());
+            outputValues.put(OUTPUT_POS1_Y_ID, (int) pos1.y());
+            outputValues.put(OUTPUT_POS1_Z_ID, (int) pos1.z());
             outputValues.put(OUTPUT_HAS_SELECTION_ID, false);
             invalidateCache();
             markDirty();
@@ -250,12 +250,12 @@ public class SelectedRegionNode extends BaseCustomUINode {
             layout.addVerticalSpacing(getSmallPadding());
 
             if (pos1 != null) {
-                ImGui.text("Pos1: (" + (int) pos1.getX() + ", " + (int) pos1.getY() + ", " + (int) pos1.getZ() + ")");
+                ImGui.text("Pos1: (" + (int) pos1.x() + ", " + (int) pos1.y() + ", " + (int) pos1.z() + ")");
             } else {
                 ImGui.textDisabled("Pos1: Not set");
             }
             if (pos2 != null) {
-                ImGui.text("Pos2: (" + (int) pos2.getX() + ", " + (int) pos2.getY() + ", " + (int) pos2.getZ() + ")");
+                ImGui.text("Pos2: (" + (int) pos2.x() + ", " + (int) pos2.y() + ", " + (int) pos2.z() + ")");
             } else if (waitingSecondPoint) {
                 ImGui.textDisabled("Pos2: Waiting for second point...");
             } else {
@@ -288,9 +288,9 @@ public class SelectedRegionNode extends BaseCustomUINode {
             updateOutputsFromPositions();
         } else {
             outputValues.put(OUTPUT_POS1_ID, toVector3d(pos1));
-            outputValues.put(OUTPUT_POS1_X_ID, (int) pos1.getX());
-            outputValues.put(OUTPUT_POS1_Y_ID, (int) pos1.getY());
-            outputValues.put(OUTPUT_POS1_Z_ID, (int) pos1.getZ());
+            outputValues.put(OUTPUT_POS1_X_ID, (int) pos1.x());
+            outputValues.put(OUTPUT_POS1_Y_ID, (int) pos1.y());
+            outputValues.put(OUTPUT_POS1_Z_ID, (int) pos1.z());
             outputValues.put(OUTPUT_HAS_SELECTION_ID, false);
         }
         invalidateCache();
@@ -303,9 +303,9 @@ public class SelectedRegionNode extends BaseCustomUINode {
             updateOutputsFromPositions();
         } else {
             outputValues.put(OUTPUT_POS2_ID, toVector3d(pos2));
-            outputValues.put(OUTPUT_POS2_X_ID, (int) pos2.getX());
-            outputValues.put(OUTPUT_POS2_Y_ID, (int) pos2.getY());
-            outputValues.put(OUTPUT_POS2_Z_ID, (int) pos2.getZ());
+            outputValues.put(OUTPUT_POS2_X_ID, (int) pos2.x());
+            outputValues.put(OUTPUT_POS2_Y_ID, (int) pos2.y());
+            outputValues.put(OUTPUT_POS2_Z_ID, (int) pos2.z());
             outputValues.put(OUTPUT_HAS_SELECTION_ID, false);
         }
         invalidateCache();
@@ -335,20 +335,20 @@ public class SelectedRegionNode extends BaseCustomUINode {
         }
 
         outputValues.put(OUTPUT_POS1_ID, toVector3d(pos1));
-        outputValues.put(OUTPUT_POS1_X_ID, (int) pos1.getX());
-        outputValues.put(OUTPUT_POS1_Y_ID, (int) pos1.getY());
-        outputValues.put(OUTPUT_POS1_Z_ID, (int) pos1.getZ());
+        outputValues.put(OUTPUT_POS1_X_ID, (int) pos1.x());
+        outputValues.put(OUTPUT_POS1_Y_ID, (int) pos1.y());
+        outputValues.put(OUTPUT_POS1_Z_ID, (int) pos1.z());
         outputValues.put(OUTPUT_POS2_ID, toVector3d(pos2));
-        outputValues.put(OUTPUT_POS2_X_ID, (int) pos2.getX());
-        outputValues.put(OUTPUT_POS2_Y_ID, (int) pos2.getY());
-        outputValues.put(OUTPUT_POS2_Z_ID, (int) pos2.getZ());
+        outputValues.put(OUTPUT_POS2_X_ID, (int) pos2.x());
+        outputValues.put(OUTPUT_POS2_Y_ID, (int) pos2.y());
+        outputValues.put(OUTPUT_POS2_Z_ID, (int) pos2.z());
 
-        float minX = Math.min(pos1.getX(), pos2.getX());
-        float minY = Math.min(pos1.getY(), pos2.getY());
-        float minZ = Math.min(pos1.getZ(), pos2.getZ());
-        float maxX = Math.max(pos1.getX(), pos2.getX());
-        float maxY = Math.max(pos1.getY(), pos2.getY());
-        float maxZ = Math.max(pos1.getZ(), pos2.getZ());
+        float minX = Math.min(pos1.x(), pos2.x());
+        float minY = Math.min(pos1.y(), pos2.y());
+        float minZ = Math.min(pos1.z(), pos2.z());
+        float maxX = Math.max(pos1.x(), pos2.x());
+        float maxY = Math.max(pos1.y(), pos2.y());
+        float maxZ = Math.max(pos1.z(), pos2.z());
 
         outputValues.put(OUTPUT_MIN_POS_ID, new Vector3d(minX, minY, minZ));
         outputValues.put(OUTPUT_MAX_POS_ID, new Vector3d(maxX, maxY, maxZ));
@@ -392,7 +392,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
         if (vector == null) {
             return new Vector3d();
         }
-        return new Vector3d(vector.getX(), vector.getY(), vector.getZ());
+        return new Vector3d(vector.x(), vector.y(), vector.z());
     }
 
     public boolean isAutoUpdate() {
@@ -420,16 +420,16 @@ public class SelectedRegionNode extends BaseCustomUINode {
         state.put("autoUpdate", isAutoUpdate());
         if (pos1 != null) {
             Map<String, Float> pos1Map = new HashMap<>();
-            pos1Map.put("x", pos1.getX());
-            pos1Map.put("y", pos1.getY());
-            pos1Map.put("z", pos1.getZ());
+            pos1Map.put("x", pos1.x());
+            pos1Map.put("y", pos1.y());
+            pos1Map.put("z", pos1.z());
             state.put("pos1", pos1Map);
         }
         if (pos2 != null) {
             Map<String, Float> pos2Map = new HashMap<>();
-            pos2Map.put("x", pos2.getX());
-            pos2Map.put("y", pos2.getY());
-            pos2Map.put("z", pos2.getZ());
+            pos2Map.put("x", pos2.x());
+            pos2Map.put("y", pos2.y());
+            pos2Map.put("z", pos2.z());
             state.put("pos2", pos2Map);
         }
         return state;
@@ -489,14 +489,14 @@ public class SelectedRegionNode extends BaseCustomUINode {
         }
 
         Vec3d min = new Vec3d(
-            Math.min(pos1.getX(), pos2.getX()),
-            Math.min(pos1.getY(), pos2.getY()),
-            Math.min(pos1.getZ(), pos2.getZ())
+            Math.min(pos1.x(), pos2.x()),
+            Math.min(pos1.y(), pos2.y()),
+            Math.min(pos1.z(), pos2.z())
         );
         Vec3d max = new Vec3d(
-            Math.max(pos1.getX(), pos2.getX()) + 1.0d,
-            Math.max(pos1.getY(), pos2.getY()) + 1.0d,
-            Math.max(pos1.getZ(), pos2.getZ()) + 1.0d
+            Math.max(pos1.x(), pos2.x()) + 1.0d,
+            Math.max(pos1.y(), pos2.y()) + 1.0d,
+            Math.max(pos1.z(), pos2.z()) + 1.0d
         );
 
         PreviewOptions options = createCompletedRegionPreviewOptions();
@@ -551,12 +551,12 @@ public class SelectedRegionNode extends BaseCustomUINode {
             return;
         }
 
-        int minX = (int) Math.min(pos1.getX(), pos2.getX());
-        int minY = (int) Math.min(pos1.getY(), pos2.getY());
-        int minZ = (int) Math.min(pos1.getZ(), pos2.getZ());
-        int maxX = (int) Math.max(pos1.getX(), pos2.getX());
-        int maxY = (int) Math.max(pos1.getY(), pos2.getY());
-        int maxZ = (int) Math.max(pos1.getZ(), pos2.getZ());
+        int minX = (int) Math.min(pos1.x(), pos2.x());
+        int minY = (int) Math.min(pos1.y(), pos2.y());
+        int minZ = (int) Math.min(pos1.z(), pos2.z());
+        int maxX = (int) Math.max(pos1.x(), pos2.x());
+        int maxY = (int) Math.max(pos1.y(), pos2.y());
+        int maxZ = (int) Math.max(pos1.z(), pos2.z());
 
         int sizeX = maxX - minX + 1;
         int sizeY = maxY - minY + 1;

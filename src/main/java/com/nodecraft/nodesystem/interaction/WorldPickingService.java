@@ -11,6 +11,7 @@ import net.minecraft.world.RaycastContext;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+import org.jspecify.annotations.NonNull;
 
 /**
  * 世界射线与方块拾取：屏幕坐标 → 世界射线 → {@link BlockHitResult}。
@@ -368,20 +369,13 @@ public final class WorldPickingService {
     }
 
     /**
-     * 世界空间射线（原点 + 单位方向）。
-     */
-    public static final class Ray {
-        public final Vec3d origin;
-        public final Vec3d direction;
-
-        public Ray(Vec3d origin, Vec3d direction) {
-            this.origin = origin;
-            this.direction = direction;
-        }
+         * 世界空间射线（原点 + 单位方向）。
+         */
+        public record Ray(Vec3d origin, Vec3d direction) {
 
         @Override
-        public String toString() {
-            return String.format("Ray{origin=%s, direction=%s}", origin, direction);
+            public @NonNull String toString() {
+                return String.format("Ray{origin=%s, direction=%s}", origin, direction);
+            }
         }
-    }
 }

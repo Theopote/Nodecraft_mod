@@ -102,9 +102,9 @@ class PatternArrayFamilyContractTest {
         List<PointData> origins = assertInstanceOf(List.class, pathFrames.getOutput("output_points"));
         assertFalse(origins.isEmpty());
         PointData first = origins.getFirst();
-        assertEquals(1.8d, first.getPosition().x, 1.0e-9d);
-        assertEquals(2.4d, first.getPosition().y, 1.0e-9d);
-        assertEquals(3.9d, first.getPosition().z, 1.0e-9d);
+        assertEquals(1.8d, first.position().x, 1.0e-9d);
+        assertEquals(2.4d, first.position().y, 1.0e-9d);
+        assertEquals(3.9d, first.position().z, 1.0e-9d);
     }
 
     @Test

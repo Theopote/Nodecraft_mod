@@ -99,7 +99,7 @@ public class TorusByCenterAxisRadiiNode extends BaseNode {
         TorusGeometryData torus = new TorusGeometryData(center, axis, major, minor);
         outputValues.put(OUTPUT_TORUS_ID, torus);
         outputValues.put(OUTPUT_GEOMETRY_ID, torus);
-        outputValues.put(OUTPUT_AXIS_NORMALIZED_ID, torus.getAxis());
+        outputValues.put(OUTPUT_AXIS_NORMALIZED_ID, torus.axis());
         outputValues.put(OUTPUT_MAJOR_RADIUS_ID, major);
         outputValues.put(OUTPUT_MINOR_RADIUS_ID, minor);
         outputValues.put(OUTPUT_VALID_ID, true);
@@ -117,7 +117,7 @@ public class TorusByCenterAxisRadiiNode extends BaseNode {
             return new Vector3d(vector);
         }
         if (value instanceof Vector3 vector) {
-            return new Vector3d(vector.getX(), vector.getY(), vector.getZ());
+            return new Vector3d(vector.x(), vector.y(), vector.z());
         }
         if (value instanceof Vec3d vector) {
             return new Vector3d(vector.x, vector.y, vector.z);

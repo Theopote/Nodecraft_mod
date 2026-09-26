@@ -152,7 +152,7 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
 
     private void appendGeometryMesh(MeshBuilder builder, GeometryData geometry, int quality) {
         if (geometry instanceof SphereData sphere) {
-            appendSphere(builder, sphere.getCenter(), sphere.getRadius(), quality);
+            appendSphere(builder, sphere.center(), sphere.radius(), quality);
         } else if (geometry instanceof EllipsoidGeometryData ellipsoid) {
             appendEllipsoid(builder, ellipsoid, quality);
         } else if (geometry instanceof HemisphereGeometryData hemisphere) {
@@ -239,9 +239,9 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
     }
 
     private void appendHemisphere(MeshBuilder builder, HemisphereGeometryData hemisphere, int quality) {
-        Vector3d center = hemisphere.getCenter();
-        Vector3d pole = hemisphere.getAxis();
-        double radius = hemisphere.getRadius();
+        Vector3d center = hemisphere.center();
+        Vector3d pole = hemisphere.axis();
+        double radius = hemisphere.radius();
         if (radius <= 1.0e-6d) {
             return;
         }
@@ -495,10 +495,10 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
     }
 
     private void appendTorus(MeshBuilder builder, TorusGeometryData torus, int quality) {
-        Vector3d center = torus.getCenter();
-        Vector3d axis = torus.getAxis();
-        double major = torus.getMajorRadius();
-        double minor = torus.getMinorRadius();
+        Vector3d center = torus.center();
+        Vector3d axis = torus.axis();
+        double major = torus.majorRadius();
+        double minor = torus.minorRadius();
 
         if (major <= 1.0e-6d || minor <= 1.0e-6d || axis.lengthSquared() <= 1.0e-12d) {
             return;
@@ -568,7 +568,7 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
     }
 
     private void appendPrism(MeshBuilder builder, PrismGeometryData prism) {
-        List<Vector3d> base = prism.getBaseVertices();
+        List<Vector3d> base = prism.baseVertices();
         List<Vector3d> top = prism.getTopVertices();
         int n = Math.min(base.size(), top.size());
         if (n < 3) {

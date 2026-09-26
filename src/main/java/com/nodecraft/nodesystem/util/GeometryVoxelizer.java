@@ -206,8 +206,8 @@ public final class GeometryVoxelizer {
         }
         if (geometry instanceof SdfGeometryData sdfGeometry) {
             return new RegionData(
-                BlockPos.ofFloored(sdfGeometry.getMin().x, sdfGeometry.getMin().y, sdfGeometry.getMin().z),
-                BlockPos.ofFloored(sdfGeometry.getMax().x, sdfGeometry.getMax().y, sdfGeometry.getMax().z)
+                BlockPos.ofFloored(sdfGeometry.min().x, sdfGeometry.min().y, sdfGeometry.min().z),
+                BlockPos.ofFloored(sdfGeometry.max().x, sdfGeometry.max().y, sdfGeometry.max().z)
             );
         }
         if (geometry instanceof TetrahedronGeometryData tetrahedronGeometry) {
@@ -294,8 +294,8 @@ public final class GeometryVoxelizer {
     }
 
     public static BlockPosList voxelizeIntersection(IntersectionGeometryData geometry, boolean fillSolid) {
-        BlockPosList leftBlocks = voxelize(geometry.getLeft(), fillSolid);
-        BlockPosList rightBlocks = voxelize(geometry.getRight(), fillSolid);
+        BlockPosList leftBlocks = voxelize(geometry.left(), fillSolid);
+        BlockPosList rightBlocks = voxelize(geometry.right(), fillSolid);
 
         Set<BlockPos> rightSet = new HashSet<>();
         for (BlockPos pos : rightBlocks) {
@@ -320,8 +320,8 @@ public final class GeometryVoxelizer {
     }
 
     public static @Nullable RegionData createIntersectionBoundingRegion(IntersectionGeometryData geometry) {
-        RegionData leftRegion = createBoundingRegion(geometry.getLeft());
-        RegionData rightRegion = createBoundingRegion(geometry.getRight());
+        RegionData leftRegion = createBoundingRegion(geometry.left());
+        RegionData rightRegion = createBoundingRegion(geometry.right());
         if (leftRegion == null || rightRegion == null || !leftRegion.isComplete() || !rightRegion.isComplete()) {
             return null;
         }
@@ -486,7 +486,7 @@ public final class GeometryVoxelizer {
             return new BlockPosList();
         }
         final double eps = 1.0e-9;
-        Vector3d extrusion = geometry.getExtrusionVector();
+        Vector3d extrusion = geometry.extrusionVector();
         double extrusionLengthSquared = extrusion.lengthSquared();
         if (extrusionLengthSquared <= eps) {
             return new BlockPosList();
@@ -503,7 +503,7 @@ public final class GeometryVoxelizer {
             return new BlockPosList();
         }
 
-        List<Vector3d> baseVertices = geometry.getBaseVertices();
+        List<Vector3d> baseVertices = geometry.baseVertices();
         Vector3d baseOrigin = new Vector3d(baseVertices.getFirst());
         Vector3d axis = new Vector3d(extrusion).normalize();
 
@@ -784,8 +784,8 @@ public final class GeometryVoxelizer {
         for (int x = minCorner.getX(); x <= maxCorner.getX(); x++) {
             for (int y = minCorner.getY(); y <= maxCorner.getY(); y++) {
                 for (int z = minCorner.getZ(); z <= maxCorner.getZ(); z++) {
-                    double d = geometry.getSdf().sampleDistance(new Vector3d(x + 0.5d, y + 0.5d, z + 0.5d));
-                    if (d <= geometry.getIsoValue()) {
+                    double d = geometry.sdf().sampleDistance(new Vector3d(x + 0.5d, y + 0.5d, z + 0.5d));
+                    if (d <= geometry.isoValue()) {
                         solid.add(new BlockPos(x, y, z));
                     }
                 }
@@ -854,7 +854,7 @@ public final class GeometryVoxelizer {
         double maxY = Double.NEGATIVE_INFINITY;
         double maxZ = Double.NEGATIVE_INFINITY;
 
-        for (Vector3d point : geometry.getBaseVertices()) {
+        for (Vector3d point : geometry.baseVertices()) {
             minX = Math.min(minX, point.x);
             minY = Math.min(minY, point.y);
             minZ = Math.min(minZ, point.z);

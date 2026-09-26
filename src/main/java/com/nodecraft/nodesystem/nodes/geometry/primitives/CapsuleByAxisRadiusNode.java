@@ -76,8 +76,8 @@ public class CapsuleByAxisRadiusNode extends BaseNode {
                 axisLineInput = line;
             }
             if (axisLineInput != null) {
-                Vec3d lineStart = axisLineInput.getStart();
-                Vec3d lineEnd = axisLineInput.getEnd();
+                Vec3d lineStart = axisLineInput.start();
+                Vec3d lineEnd = axisLineInput.end();
                 if (start == null) {
                     start = new Vector3d(lineStart.x, lineStart.y, lineStart.z);
                 }

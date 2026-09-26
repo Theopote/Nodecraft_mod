@@ -52,7 +52,7 @@ class SdfNodeSystemTest {
         assertTrue(blocks.getPositions().contains(new BlockPos(0, 0, 0)));
         assertNotNull(outputs.get("output_region"));
         SdfGeometryData geometry = assertInstanceOf(SdfGeometryData.class, outputs.get("output_geometry"));
-        assertEquals(0.0d, geometry.getIsoValue(), 1.0e-9d);
+        assertEquals(0.0d, geometry.isoValue(), 1.0e-9d);
     }
 
     @Test
@@ -93,7 +93,7 @@ class SdfNodeSystemTest {
         assertEquals(false, outputs.get("output_approximate"));
         assertInstanceOf(BentSdfData.class, outputs.get("output_sdf"));
         SdfGeometryData geometry = assertInstanceOf(SdfGeometryData.class, outputs.get("output_geometry"));
-        assertInstanceOf(BentSdfData.class, geometry.getSdf());
+        assertInstanceOf(BentSdfData.class, geometry.sdf());
         assertNotNull(outputs.get("output_bounds_min"));
         assertNotNull(outputs.get("output_bounds_max"));
     }

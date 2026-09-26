@@ -69,9 +69,9 @@ public class DeconstructHemisphereNode extends BaseNode {
             return;
         }
 
-        Vector3d center = hemisphere.getCenter();
-        Vector3d axis = hemisphere.getAxis();
-        double r = hemisphere.getRadius();
+        Vector3d center = hemisphere.center();
+        Vector3d axis = hemisphere.axis();
+        double r = hemisphere.radius();
         double curved = 2.0d * Math.PI * r * r;
         double flat = Math.PI * r * r;
         double surface = curved + flat;

@@ -1,7 +1,6 @@
 package com.nodecraft.nodesystem.execution;
 
 import com.nodecraft.nodesystem.api.INode;
-import com.nodecraft.nodesystem.execution.ExecutionPortKind;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 
 import java.util.ArrayList;
@@ -66,7 +65,7 @@ public final class GraphExecutionPlanner {
                 if (!ExecutionPortKind.isDataConnection(connection)) {
                     continue;
                 }
-                Integer predecessorLevel = levelById.get(connection.sourceNode.getId());
+                Integer predecessorLevel = levelById.get(connection.sourceNode().getId());
                 if (predecessorLevel != null) {
                     level = Math.max(level, predecessorLevel + 1);
                 }
@@ -99,7 +98,7 @@ public final class GraphExecutionPlanner {
                 if (!ExecutionPortKind.isDataConnection(connection)) {
                     continue;
                 }
-                if (!visit(connection.sourceNode, graph, visited, temporaryMarked, result)) {
+                if (!visit(connection.sourceNode(), graph, visited, temporaryMarked, result)) {
                     return false;
                 }
             }

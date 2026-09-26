@@ -295,7 +295,10 @@ class PatternVoronoi3DLanguageContractTest {
         BaseNode node = createLloydRelax();
         List<PointData> sites = new ArrayList<>(100);
         for (int i = 0; i < 100; i++) {
-            sites.add(new PointData(1 + (i % 8), 1 + (i % 8), 1 + (i % 8)));
+            double x = 0.5d + (i % 10) * 0.9d;
+            double y = 0.5d + ((i / 10) % 10) * 0.9d;
+            double z = 5.0d;
+            sites.add(new PointData(x, y, z));
         }
         node.setInput("input_sites", sites);
         node.setInput("input_corner_a", new PointData(0, 0, 0));
@@ -327,8 +330,8 @@ class PatternVoronoi3DLanguageContractTest {
     }
 
     private static void assertPointEquals(PointData expected, PointData actual) {
-        Vector3d e = expected.getPosition();
-        Vector3d a = actual.getPosition();
+        Vector3d e = expected.position();
+        Vector3d a = actual.position();
         assertEquals(e.x, a.x, 1.0e-9d);
         assertEquals(e.y, a.y, 1.0e-9d);
         assertEquals(e.z, a.z, 1.0e-9d);

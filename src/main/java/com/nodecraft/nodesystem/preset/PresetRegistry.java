@@ -112,10 +112,10 @@ public class PresetRegistry {
     }
 
     private void registerPresetIfAbsent(PresetDefinition preset) {
-        if (preset == null || preset.getPresetId() == null) {
+        if (preset == null || preset.presetId() == null) {
             return;
         }
-        if (presets.containsKey(preset.getPresetId())) {
+        if (presets.containsKey(preset.presetId())) {
             return;
         }
         registerPreset(preset);
@@ -127,13 +127,13 @@ public class PresetRegistry {
      * @param preset the preset definition to register
      */
     public void registerPreset(PresetDefinition preset) {
-        presets.put(preset.getPresetId(), preset);
+        presets.put(preset.presetId(), preset);
 
         // Index by category
-        String category = preset.getMetadata().getCategory();
+        String category = preset.metadata().getCategory();
         presetsByCategory.computeIfAbsent(category, k -> new ArrayList<>()).add(preset);
 
-        LOGGER.debug("Registered preset: {}", preset.getPresetId());
+        LOGGER.debug("Registered preset: {}", preset.presetId());
     }
 
     /**
@@ -187,22 +187,22 @@ public class PresetRegistry {
         return presets.values().stream()
             .filter(preset -> {
                 // Match query
-                if (!preset.getMetadata().matchesQuery(query)) {
+                if (!preset.metadata().matchesQuery(query)) {
                     return false;
                 }
 
                 // Match tags
-                if (tags != null && !tags.isEmpty() && !preset.getMetadata().hasTags(tags)) {
+                if (tags != null && !tags.isEmpty() && !preset.metadata().hasTags(tags)) {
                     return false;
                 }
 
                 // Match difficulty
-                if (difficulty != null && preset.getMetadata().getDifficulty() != difficulty) {
+                if (difficulty != null && preset.metadata().getDifficulty() != difficulty) {
                     return false;
                 }
 
                 // Match category
-                if (category != null && !preset.getMetadata().getCategory().equals(category)) {
+                if (category != null && !preset.metadata().getCategory().equals(category)) {
                     return false;
                 }
 

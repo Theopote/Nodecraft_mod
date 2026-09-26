@@ -252,7 +252,7 @@ public class PreviewBlocksNode extends BaseCustomUINode {
             return new PreviewBlock(pos.getX(), pos.getY(), pos.getZ(), placement.blockId(), placement.stateData());
         }
         if (value instanceof Coordinate coordinate) {
-            return new PreviewBlock(coordinate.getX(), coordinate.getY(), coordinate.getZ(), effectiveBlockType);
+            return new PreviewBlock(coordinate.x(), coordinate.y(), coordinate.z(), effectiveBlockType);
         }
         if (value instanceof BlockPos pos) {
             return new PreviewBlock(pos.getX(), pos.getY(), pos.getZ(), effectiveBlockType);

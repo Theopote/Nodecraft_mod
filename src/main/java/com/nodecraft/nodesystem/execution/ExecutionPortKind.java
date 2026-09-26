@@ -21,16 +21,16 @@ public final class ExecutionPortKind {
     }
 
     public static boolean isExecConnection(NodeGraph.Connection connection) {
-        if (connection == null || connection.sourcePort == null || connection.targetPort == null) {
+        if (connection == null || connection.sourcePort() == null || connection.targetPort() == null) {
             return false;
         }
-        return isExecPort(connection.sourcePort) && isExecPort(connection.targetPort);
+        return isExecPort(connection.sourcePort()) && isExecPort(connection.targetPort());
     }
 
     public static boolean isDataConnection(NodeGraph.Connection connection) {
-        if (connection == null || connection.sourcePort == null || connection.targetPort == null) {
+        if (connection == null || connection.sourcePort() == null || connection.targetPort() == null) {
             return false;
         }
-        return isDataPort(connection.sourcePort) && isDataPort(connection.targetPort);
+        return isDataPort(connection.sourcePort()) && isDataPort(connection.targetPort());
     }
 }

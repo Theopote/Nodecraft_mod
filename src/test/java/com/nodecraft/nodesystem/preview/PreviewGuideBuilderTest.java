@@ -26,7 +26,7 @@ class PreviewGuideBuilderTest {
         assertEquals(4, guide.width());
         assertEquals(5, guide.height());
         assertEquals(new Vec3d(11.5d, 66.5d, 22.0d), guide.pivot());
-        assertEquals("L3 x W4 x H5", guide.dimensionsLabel().getText());
+        assertEquals("L3 x W4 x H5", guide.dimensionsLabel().text());
         assertEquals(new Vec3d(0.0d, 1.0d, 0.0d), guide.tangentDirection());
     }
 

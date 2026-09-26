@@ -172,8 +172,8 @@ public class PreviewGeometryNode extends BaseNode {
             Color parsed = Color.fromHex(fillColor);
             Color outlineParsed = Color.fromHex(outlineColor);
             PreviewOptions options = new PreviewOptions()
-                .setColor(parsed.getRed(), parsed.getGreen(), parsed.getBlue())
-                .setTintColor(outlineParsed.getRed(), outlineParsed.getGreen(), outlineParsed.getBlue())
+                .setColor(parsed.red(), parsed.green(), parsed.blue())
+                .setTintColor(outlineParsed.red(), outlineParsed.green(), outlineParsed.blue())
                 .setOpacity(clamp01(transparency))
                 .setShowFill(showFill)
                 .setShowOutline(showOutline)

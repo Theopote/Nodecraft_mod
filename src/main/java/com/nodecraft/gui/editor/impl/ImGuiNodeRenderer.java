@@ -508,7 +508,7 @@ public class ImGuiNodeRenderer {
 
             boolean isPortHighlighted = shouldHighlight && nodeId.equals(hoveredNodeId) && port.getId().equals(hoveredPortId) && !isHoveredPortOutput;
             ExecFrontierSnapshot execFrontier = editor.getActiveExecFrontierSnapshot();
-            boolean execPortActive = execFrontier.isActive()
+            boolean execPortActive = execFrontier.active()
                     && NodeRenderConstants.isExecPort(port)
                     && execFrontier.isActiveNode(nodeId);
             int portColor = NodeRenderConstants.getInputPortFillColor(port, isPortHighlighted || execPortActive);
@@ -557,7 +557,7 @@ public class ImGuiNodeRenderer {
 
             boolean isPortHighlighted = shouldHighlight && nodeId.equals(hoveredNodeId) && port.getId().equals(hoveredPortId) && isHoveredPortOutput;
             ExecFrontierSnapshot execFrontier = editor.getActiveExecFrontierSnapshot();
-            boolean execPortActive = execFrontier.isActive()
+            boolean execPortActive = execFrontier.active()
                     && NodeRenderConstants.isExecPort(port)
                     && execFrontier.isActiveNode(nodeId);
             int portColor = NodeRenderConstants.getOutputPortFillColor(port, isPortHighlighted || execPortActive);

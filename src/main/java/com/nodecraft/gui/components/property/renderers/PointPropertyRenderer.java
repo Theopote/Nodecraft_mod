@@ -22,7 +22,7 @@ public final class PointPropertyRenderer {
                 return;
             }
 
-            ImGui.text("Position: " + PropertyValueFormatters.formatVector3d(point.getPosition()));
+            ImGui.text("Position: " + PropertyValueFormatters.formatVector3d(point.position()));
         } catch (Throwable e) {
             panel.handlePropertyError(prop, e);
         }

@@ -3,7 +3,6 @@ package com.nodecraft.gui.components.property.renderers;
 import com.nodecraft.gui.components.PropertyPanelComponent;
 import com.nodecraft.gui.components.property.core.PropertyDescriptor;
 import com.nodecraft.gui.components.property.core.PropertyRenderer;
-import com.nodecraft.gui.components.property.core.PropertyValueFormatters;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.datatypes.ColorData;
 import com.nodecraft.nodesystem.util.Color;
@@ -83,14 +82,14 @@ public final class ColorPropertyRenderer {
             String tempKey = panel.getTempValueKey(node, prop.name + "_node_color");
             float[] values = panel.getOrCreateTempValue(
                     tempKey,
-                    () -> new float[]{color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()}
+                    () -> new float[]{color.red(), color.green(), color.blue(), color.alpha()}
             );
 
             if (!panel.isPropertyBeingEdited(node, prop.name)) {
-                values[0] = color.getRed();
-                values[1] = color.getGreen();
-                values[2] = color.getBlue();
-                values[3] = color.getAlpha();
+                values[0] = color.red();
+                values[1] = color.green();
+                values[2] = color.blue();
+                values[3] = color.alpha();
             }
 
             if (isReadOnly) {

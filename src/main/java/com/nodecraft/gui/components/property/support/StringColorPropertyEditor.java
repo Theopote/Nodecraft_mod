@@ -45,14 +45,14 @@ public final class StringColorPropertyEditor {
         String tempKey = panel.getTempValueKey(node, prop.name + "_hex_color");
         float[] rgb = panel.getOrCreateTempValue(tempKey, () -> {
             Color parsed = Color.fromHex(normalized);
-            return new float[]{parsed.getRed(), parsed.getGreen(), parsed.getBlue()};
+            return new float[]{parsed.red(), parsed.green(), parsed.blue()};
         });
 
         if (!panel.isPropertyBeingEdited(node, prop.name)) {
             Color parsed = Color.fromHex(normalized);
-            rgb[0] = parsed.getRed();
-            rgb[1] = parsed.getGreen();
-            rgb[2] = parsed.getBlue();
+            rgb[0] = parsed.red();
+            rgb[1] = parsed.green();
+            rgb[2] = parsed.blue();
         }
 
         if (isReadOnly) {

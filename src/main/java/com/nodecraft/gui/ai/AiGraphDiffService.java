@@ -117,10 +117,10 @@ public final class AiGraphDiffService {
         Map<String, Integer> counts = new HashMap<>();
         for (NodeGraph.Connection conn : graph.getConnections()) {
             String signature = buildConnectionSignature(
-                    conn.sourceNode.getTypeId(),
-                    conn.sourcePort.getId(),
-                    conn.targetNode.getTypeId(),
-                    conn.targetPort.getId()
+                    conn.sourceNode().getTypeId(),
+                    conn.sourcePort().getId(),
+                    conn.targetNode().getTypeId(),
+                    conn.targetPort().getId()
             );
             counts.merge(signature, 1, Integer::sum);
         }

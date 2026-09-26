@@ -282,9 +282,9 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
         List<Vec3d> points = new ArrayList<>();
         for (Coordinate coordinate : snapshot) {
             points.add(new Vec3d(
-                coordinate.getX() + 0.5d,
-                coordinate.getY() + previewYOffset,
-                coordinate.getZ() + 0.5d
+                coordinate.x() + 0.5d,
+                coordinate.y() + previewYOffset,
+                coordinate.z() + 0.5d
             ));
         }
         if (closePath) {
@@ -292,16 +292,16 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
             Coordinate last = snapshot.getLast();
             if (!first.equals(last)) {
                 points.add(new Vec3d(
-                    first.getX() + 0.5d,
-                    first.getY() + previewYOffset,
-                    first.getZ() + 0.5d
+                    first.x() + 0.5d,
+                    first.y() + previewYOffset,
+                    first.z() + 0.5d
                 ));
             }
         }
 
         Color color = Color.fromHex(previewPathColor);
         PreviewOptions options = new PreviewOptions()
-            .setColor(color.getRed(), color.getGreen(), color.getBlue())
+            .setColor(color.red(), color.green(), color.blue())
             .setLineWidth(3.0f)
             .setDuration(30);
         options.showArrows = true;
@@ -328,11 +328,11 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
     }
 
     private void appendOutputs(Coordinate coordinate, BlockPosList blocks, List<PointData> pointList, List<Vec3d> polylinePoints, List<Vector3d> centers) {
-        blocks.add(new BlockPos(coordinate.getX(), coordinate.getY(), coordinate.getZ()));
+        blocks.add(new BlockPos(coordinate.x(), coordinate.y(), coordinate.z()));
         Vec3d centerPos = new Vec3d(
-            coordinate.getX() + 0.5d,
-            coordinate.getY() + 0.5d,
-            coordinate.getZ() + 0.5d
+            coordinate.x() + 0.5d,
+            coordinate.y() + 0.5d,
+            coordinate.z() + 0.5d
         );
         pointList.add(new PointData(
             centerPos.x,
@@ -461,9 +461,9 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
         List<Map<String, Integer>> blocks = new ArrayList<>(snapshot.size());
         for (Coordinate coordinate : snapshot) {
             Map<String, Integer> item = new HashMap<>();
-            item.put("x", coordinate.getX());
-            item.put("y", coordinate.getY());
-            item.put("z", coordinate.getZ());
+            item.put("x", coordinate.x());
+            item.put("y", coordinate.y());
+            item.put("z", coordinate.z());
             blocks.add(item);
         }
         state.put("pickedBlocks", blocks);

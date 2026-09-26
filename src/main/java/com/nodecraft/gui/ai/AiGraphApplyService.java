@@ -197,17 +197,17 @@ public final class AiGraphApplyService {
                 Map<String, Integer> plannedScopedCounts = buildPlannedScopedConnectionCounts(connections, planRefToNodeId);
                 List<NodeGraph.Connection> existingConnections = graph.getConnections();
                 for (NodeGraph.Connection conn : existingConnections) {
-                    UUID currentSource = conn.sourceNode.getId();
-                    UUID currentTarget = conn.targetNode.getId();
+                    UUID currentSource = conn.sourceNode().getId();
+                    UUID currentTarget = conn.targetNode().getId();
                     if (!usedCurrent.contains(currentSource) || !usedCurrent.contains(currentTarget)) {
                         continue;
                     }
 
                     String signature = buildMappedConnectionSignature(
                             "CUR:" + currentSource,
-                            conn.sourcePort.getId(),
+                            conn.sourcePort().getId(),
                             "CUR:" + currentTarget,
-                            conn.targetPort.getId()
+                            conn.targetPort().getId()
                     );
 
                     int remain = plannedScopedCounts.getOrDefault(signature, 0);
@@ -218,9 +218,9 @@ public final class AiGraphApplyService {
 
                     boolean disconnected = applyTarget.disconnectPorts(
                             currentSource,
-                            conn.sourcePort.getId(),
+                            conn.sourcePort().getId(),
                             currentTarget,
-                            conn.targetPort.getId()
+                            conn.targetPort().getId()
                     );
                     if (!disconnected) {
                         rollbackAiApply(applyTarget, undoSteps);

@@ -78,16 +78,16 @@ public class TextLabelsElement extends AbstractPreviewElement {
         int background = showBackground ? ((int) (Math.max(0.0f, Math.min(1.0f, opacity * globalOpacity)) * 255.0f) << 24) : 0;
 
         for (TextLabelPreviewData label : labelsSnapshot) {
-            Vec3d pos = label.getPosition().subtract(cameraPos);
+            Vec3d pos = label.position().subtract(cameraPos);
             matrices.push();
             matrices.translate(pos.x, pos.y, pos.z);
             matrices.multiply(camera.getRotation());
             matrices.scale(-fontSize, -fontSize, fontSize);
 
             Matrix4f matrix = matrices.peek().getPositionMatrix();
-            float x = -textRenderer.getWidth(label.getText()) / 2.0f;
+            float x = -textRenderer.getWidth(label.text()) / 2.0f;
             textRenderer.draw(
-                Text.literal(label.getText()).asOrderedText(),
+                Text.literal(label.text()).asOrderedText(),
                 x,
                 0.0f,
                 textColor,
@@ -121,7 +121,7 @@ public class TextLabelsElement extends AbstractPreviewElement {
         float maxDistance = PreviewRenderer.getInstance().getSettings().maxRenderDistance;
         Vec3d cameraPos = camera.getCameraPos();
         for (TextLabelPreviewData label : labelsSnapshot) {
-            if (cameraPos.distanceTo(label.getPosition()) <= maxDistance) {
+            if (cameraPos.distanceTo(label.position()) <= maxDistance) {
                 return true;
             }
         }

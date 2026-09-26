@@ -204,7 +204,7 @@ public class ExportDataNode extends BaseNode {
                 return "{\"x\":" + v.x + ",\"y\":" + v.y + ",\"z\":" + v.z + "}";
             }
             case PointData p -> {
-                return toJson(p.getPosition(), pretty, depth);
+                return toJson(p.position(), pretty, depth);
             }
             case Map<?, ?> map -> {
                 List<String> parts = new ArrayList<>();
@@ -263,7 +263,7 @@ public class ExportDataNode extends BaseNode {
             case null -> "";
             case BlockPos b -> b.getX() + "," + b.getY() + "," + b.getZ();
             case Vector3d v -> v.x + "," + v.y + "," + v.z;
-            case PointData p -> stringify(p.getPosition());
+            case PointData p -> stringify(p.position());
             default -> String.valueOf(value);
         };
     }

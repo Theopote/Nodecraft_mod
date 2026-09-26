@@ -177,7 +177,7 @@ public class SquarePyramidNode extends BaseNode {
             return new Vector3d(vector);
         }
         if (value instanceof Vector3 vector) {
-            return new Vector3d(vector.getX(), vector.getY(), vector.getZ());
+            return new Vector3d(vector.x(), vector.y(), vector.z());
         }
         if (value instanceof Vec3d vector) {
             return new Vector3d(vector.x, vector.y, vector.z);
