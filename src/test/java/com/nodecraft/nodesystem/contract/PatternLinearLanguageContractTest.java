@@ -132,6 +132,23 @@ class PatternLinearLanguageContractTest {
     }
 
     @Test
+    void staggeredGridZeroCountProducesEmpty() {
+        BaseNode grid = assertInstanceOf(BaseNode.class,
+                registry.createNodeInstance("pattern.grid.staggered_grid"));
+        grid.setInput("input_coordinates", new BlockPosList(List.of(new BlockPos(0, 64, 0))));
+        grid.setInput("input_step_direction", new Vector3d(1, 0, 0));
+        grid.setInput("input_row_direction", new Vector3d(0, 0, 1));
+        grid.setInput("input_step_distance", 1.0d);
+        grid.setInput("input_row_distance", 1.0d);
+        grid.setInput("input_step_count", 0);
+        grid.setInput("input_row_count", 3);
+        grid.processNode(null);
+
+        BlockPosList result = assertInstanceOf(BlockPosList.class, grid.getOutput("output_array_coordinates"));
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
     void staggeredGridRespectsMaxListElements() {
         BaseNode grid = assertInstanceOf(BaseNode.class,
                 registry.createNodeInstance("pattern.grid.staggered_grid"));
@@ -217,6 +234,27 @@ class PatternLinearLanguageContractTest {
         FrameData last = frames.get(3);
         assertTrue(first.getOrigin().distanceSquared(last.getOrigin()) > 1.0e-6d,
                 "Closed curve array must not duplicate seam at start/end");
+    }
+
+    @Test
+    void curveArrayConnectedZeroCountDoesNotFallBackToSpacing() {
+        BaseNode curve = assertInstanceOf(BaseNode.class,
+                registry.createNodeInstance("pattern.linear.curve_array"));
+        SphereData sphere = new SphereData(new Vector3d(0, 0, 0), 0.5d);
+        PolylineData path = new PolylineData(List.of(
+                new Vec3d(0, 0, 0),
+                new Vec3d(10, 0, 0)
+        ));
+        curve.setInput("input_geometry", sphere);
+        curve.setInput("input_pivot", new PointData(0, 0, 0));
+        curve.setInput("input_path", path);
+        curve.setInput("input_count", 0);
+        curve.setInput("input_spacing", 2.0d);
+        curve.processNode(null);
+
+        assertEquals(Boolean.FALSE, curve.getOutput("output_valid"));
+        assertEquals(0, curve.getOutput("output_count"));
+        assertEquals(null, curve.getOutput("output_geometry"));
     }
 
     @Test

@@ -183,7 +183,10 @@ public class CurveArrayNode extends BaseNode {
         Integer countValue = inputValues.get(INPUT_COUNT_ID) instanceof Integer i ? i : null;
         double spacing = inputValues.get(INPUT_SPACING_ID) instanceof Number n ? n.doubleValue() : 0.0d;
         List<Double> distances = new ArrayList<>();
-        if (countValue != null && countValue >= 1) {
+        if (countValue != null) {
+            if (countValue <= 0) {
+                return distances;
+            }
             int count = GenerationLimits.clampPositiveGeometryInstanceCount(countValue);
             if (closed) {
                 for (int i = 0; i < count; i++) {
