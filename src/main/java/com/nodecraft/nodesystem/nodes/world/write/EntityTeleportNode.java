@@ -56,7 +56,7 @@ public class EntityTeleportNode extends BaseNode {
         addInputPort(new BasePort(INPUT_ENTITY_ID, "Entity", 
                 "要传送的单个实体", NodeDataType.MINECRAFT_ENTITY, this));
         addInputPort(new BasePort(INPUT_ENTITY_LIST_ID, "Entity List", 
-                "要传送的实体列表", NodeDataType.LIST, this));
+                "要传送的实体列表", NodeDataType.MINECRAFT_ENTITY_LIST, this));
         addInputPort(new BasePort(INPUT_DESTINATION_ID, "Destination", 
                 "目标位置", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_PRESERVE_ROTATION_ID, "Preserve Rotation", 

@@ -5,7 +5,11 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.BlockSpace;
+import com.nodecraft.nodesystem.util.PointUtils;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -15,15 +19,15 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Checks whether a geometric point already lies on the integer block grid.
+ * Checks whether a geometric point lies on the block cell-center lattice.
  */
 @NodeInfo(
-    effect = NodeEffect.WORLD_READ,
+    effect = NodeEffect.PURE,
     id = "world.query.is_grid_point",
     displayName = "Is Grid Point",
-    description = "Checks whether a geometric point already lies on the block grid without snapping",
+    description = "Checks whether a point lies on a block cell-center grid position without snapping",
     category = "world.query",
-    order = 2
+    order = 0
 )
 public class IsGridPointNode extends BaseNode {
 
@@ -41,19 +45,19 @@ public class IsGridPointNode extends BaseNode {
         super(UUID.randomUUID(), "world.query.is_grid_point");
 
         addInputPort(new BasePort(INPUT_POINT_ID, "Point",
-            "Point to test against the integer block grid. Supports Point, Vector, Position, or Block Coordinate.",
-            NodeDataType.ANY, this));
+            "Point to test against the block cell-center grid",
+            NodeDataType.POINT, this));
 
         addOutputPort(new BasePort(OUTPUT_IS_GRID_POINT_ID, "Is Grid Point",
-            "True when the point lies on an integer block grid position", NodeDataType.BOOLEAN, this));
+            "True when the point lies on a block cell-center grid position", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when the input could be resolved to a geometric point", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_NEAREST_COORDINATE_ID, "Nearest Coordinate",
-            "Nearest integer block coordinate", NodeDataType.BLOCK_POS, this));
+            "Nearest block cell index for this point", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_OFFSET_VECTOR_ID, "Offset Vector",
-            "Vector from the nearest integer grid coordinate to the point", NodeDataType.VECTOR, this));
+            "Vector from the nearest cell center to the point", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_DISTANCE_ID, "Distance",
-            "Distance from the point to the nearest integer grid coordinate", NodeDataType.DOUBLE, this));
+            "Distance from the point to the nearest cell center", NodeDataType.DOUBLE, this));
     }
 
     @Override
@@ -63,38 +67,30 @@ public class IsGridPointNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Checks whether a geometric point already lies on the block grid without snapping";
+        return "Checks whether a point lies on a block cell-center grid position without snapping";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d point = WorldQueryPointResolver.resolveVector(inputValues.get(INPUT_POINT_ID));
-        if (point == null) {
+        Vector3d point = PointUtils.toPointPosition(inputValues.get(INPUT_POINT_ID));
+        if (!PointUtils.isFinite(point)) {
             outputValues.put(OUTPUT_IS_GRID_POINT_ID, false);
             outputValues.put(OUTPUT_VALID_ID, false);
             outputValues.put(OUTPUT_NEAREST_COORDINATE_ID, BlockPos.ORIGIN);
-            outputValues.put(OUTPUT_OFFSET_VECTOR_ID, new Vector3d());
+            outputValues.put(OUTPUT_OFFSET_VECTOR_ID, new VectorData(0, 0, 0));
             outputValues.put(OUTPUT_DISTANCE_ID, 0.0D);
             return;
         }
 
-        int nearestX = (int) Math.round(point.x);
-        int nearestY = (int) Math.round(point.y);
-        int nearestZ = (int) Math.round(point.z);
-
-        BlockPos nearest = new BlockPos(nearestX, nearestY, nearestZ);
-        Vector3d offset = new Vector3d(
-            point.x - nearestX,
-            point.y - nearestY,
-            point.z - nearestZ
-        );
+        BlockPos nearest = BlockSpace.nearestCellBlockPos(point);
+        Vector3d offset = BlockSpace.offsetFromNearestCellCenter(point);
         double distance = offset.length();
-        boolean isGridPoint = distance <= Math.max(0.0D, tolerance);
+        boolean isGridPoint = BlockSpace.isCellCenter(point, tolerance);
 
         outputValues.put(OUTPUT_IS_GRID_POINT_ID, isGridPoint);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_NEAREST_COORDINATE_ID, nearest);
-        outputValues.put(OUTPUT_OFFSET_VECTOR_ID, offset);
+        outputValues.put(OUTPUT_OFFSET_VECTOR_ID, VectorUtils.toVectorPort(offset));
         outputValues.put(OUTPUT_DISTANCE_ID, distance);
     }
 
@@ -123,5 +119,4 @@ public class IsGridPointNode extends BaseNode {
             }
         }
     }
-
 }

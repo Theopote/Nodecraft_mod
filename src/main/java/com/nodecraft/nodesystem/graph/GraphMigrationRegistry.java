@@ -117,6 +117,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V56 -> migrateV56ToV57(graph);
             case GraphFormatVersion.V57 -> migrateV57ToV58(graph);
             case GraphFormatVersion.V58 -> migrateV58ToV59(graph);
+            case GraphFormatVersion.V59 -> migrateV59ToV60(graph);
             default -> graph;
         };
     }
@@ -4130,5 +4131,62 @@ public final class GraphMigrationRegistry {
             cleaned.put(key, entry.getValue());
         }
         node.state = cleaned;
+    }
+
+    private static final String FILTER_POINTS_BY_RULE_TYPE = "world.query.filter_points_by_rule";
+    private static final String FILTER_GRID_POINTS_TYPE = "world.query.filter_grid_points";
+
+    /**
+     * World Query v1: drop removed Filter Points By Rule block outputs and Mode port wires,
+     * drop Filter Grid Points Skipped Count port wires.
+     */
+    private static SavedGraph migrateV59ToV60(SavedGraph graph) {
+        applyWorldQueryV60ToGraph(graph);
+        if (graph.subgraphDefinitions != null) {
+            for (SavedGraph definition : graph.subgraphDefinitions.values()) {
+                if (definition != null) {
+                    applyWorldQueryV60ToGraph(definition);
+                }
+            }
+        }
+        return graph;
+    }
+
+    private static void applyWorldQueryV60ToGraph(SavedGraph graph) {
+        if (graph.connections == null) {
+            return;
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node != null && node.nodeId != null && node.typeId != null) {
+                    nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+                }
+            }
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourcePort = normalizePortId(connection.sourcePortId);
+            String targetPort = normalizePortId(connection.targetPortId);
+
+            if (FILTER_POINTS_BY_RULE_TYPE.equals(sourceType)) {
+                return "output_filtered_blocks".equals(sourcePort)
+                        || "output_removed_blocks".equals(sourcePort);
+            }
+            if (FILTER_POINTS_BY_RULE_TYPE.equals(targetType)) {
+                return "input_mode".equals(targetPort);
+            }
+            if (FILTER_GRID_POINTS_TYPE.equals(sourceType)) {
+                return "output_skipped_count".equals(sourcePort);
+            }
+            return false;
+        });
     }
 }

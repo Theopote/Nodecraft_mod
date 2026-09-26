@@ -19,7 +19,7 @@ import java.util.UUID;
     displayName = "Get Light Level",
     description = "Gets the combined, sky, and block light values for a block position",
     category = "world.query",
-    order = 0
+    order = 6
 )
 public class GetLightLevelNode extends BaseNode {
 

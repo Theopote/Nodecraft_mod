@@ -369,8 +369,14 @@ public final class GraphFormatVersion {
      */
     public static final int V59 = 59;
 
+    /**
+     * World Query v1: cell-center grid semantics, strict typed spatial ports,
+     * PURE predicates, bounded world access, Valid/Error on query nodes.
+     */
+    public static final int V60 = 60;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V59;
+    public static final int CURRENT = V60;
 
     private GraphFormatVersion() {
     }

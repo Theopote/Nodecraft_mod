@@ -57,6 +57,46 @@ public final class BlockSpace {
         return new Vector3d(x + CELL_CENTER_OFFSET, y + CELL_CENTER_OFFSET, z + CELL_CENTER_OFFSET);
     }
 
+    /** Nearest block cell index for a continuous axis coordinate. */
+    public static int nearestCellIndex(double axis) {
+        return (int) Math.round(axis - CELL_CENTER_OFFSET);
+    }
+
+    /** Nearest block cell index for a continuous axis coordinate. */
+    public static BlockPos nearestCellBlockPos(Vector3d point) {
+        if (point == null) {
+            return BlockPos.ORIGIN;
+        }
+        return new BlockPos(
+            nearestCellIndex(point.x),
+            nearestCellIndex(point.y),
+            nearestCellIndex(point.z)
+        );
+    }
+
+    /** Continuous center of the nearest block cell to {@code point}. */
+    public static Vector3d nearestCellCenter(Vector3d point) {
+        return cellCenter(nearestCellBlockPos(point));
+    }
+
+    /** Whether {@code point} lies on the block cell-center lattice within {@code tolerance}. */
+    public static boolean isCellCenter(Vector3d point, double tolerance) {
+        if (point == null) {
+            return false;
+        }
+        Vector3d nearest = nearestCellCenter(point);
+        return point.distance(nearest) <= Math.max(0.0d, tolerance);
+    }
+
+    /** Offset from the nearest block cell center to {@code point}. */
+    public static Vector3d offsetFromNearestCellCenter(Vector3d point) {
+        if (point == null) {
+            return new Vector3d();
+        }
+        Vector3d nearest = nearestCellCenter(point);
+        return new Vector3d(point.x - nearest.x, point.y - nearest.y, point.z - nearest.z);
+    }
+
     /**
      * Sample point used by voxelizers for membership tests — the cell center.
      * Same as {@link #cellCenter(BlockPos)}.

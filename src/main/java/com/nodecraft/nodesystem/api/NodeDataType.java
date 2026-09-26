@@ -80,6 +80,7 @@ public enum NodeDataType {
     ENTITY_TYPE("entity_type", "Entity Type", String.class),
     ENTITY_INFO("entity_info", "Entity Info", Object.class),
     MINECRAFT_ENTITY("minecraft_entity", "Minecraft Entity", Object.class),
+    MINECRAFT_ENTITY_LIST("minecraft_entity_list", "Minecraft Entity List", List.class, ListElementKind.MINECRAFT_ENTITY),
     MINECRAFT_BLOCK("minecraft_block", "Minecraft Block", Object.class),
     BIOME("biome", "Biome", String.class),
     WORLD("world", "World", Object.class),
@@ -214,6 +215,7 @@ public enum NodeDataType {
             case L_SYSTEM_RULE -> L_SYSTEM_RULE;
             case PLANT_BLOCK -> PLANT_BLOCK;
             case COLOR -> COLOR;
+            case MINECRAFT_ENTITY -> MINECRAFT_ENTITY;
         };
     }
 
@@ -337,6 +339,7 @@ public enum NodeDataType {
             case L_SYSTEM_RULE -> value instanceof LSystemRule;
             case PLANT_BLOCK -> value instanceof PlantStructure.PlantBlock;
             case COLOR -> value instanceof ColorData;
+            case MINECRAFT_ENTITY -> net.minecraft.entity.Entity.class.isInstance(value);
         };
     }
 

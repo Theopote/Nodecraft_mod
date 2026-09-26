@@ -14,12 +14,12 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 @NodeInfo(
-    effect = NodeEffect.WORLD_READ,
+    effect = NodeEffect.PURE,
     id = "world.query.is_point_in_region",
     displayName = "Point In Region",
     description = "Tests whether the center of a block position lies inside a region.",
     category = "world.query",
-    order = 4
+    order = 2
 )
 public class IsPointInRegionNode extends BaseNode {
 

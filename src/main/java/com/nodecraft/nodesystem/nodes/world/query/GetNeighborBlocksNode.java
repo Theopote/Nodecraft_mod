@@ -7,6 +7,10 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.BlockPosMath;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import net.minecraft.block.BlockState;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.math.BlockPos;
@@ -16,6 +20,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @NodeInfo(
@@ -24,7 +29,7 @@ import java.util.UUID;
     displayName = "Get Neighbor Blocks",
     description = "Returns axis-ray neighbors or cube-volume neighbors around a center position.",
     category = "world.query",
-    order = 10
+    order = 3
 )
 public class GetNeighborBlocksNode extends BaseNode {
 
@@ -37,6 +42,7 @@ public class GetNeighborBlocksNode extends BaseNode {
     private static final String OUTPUT_BLOCK_INFOS_ID = "output_block_infos";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     private static final int[][] OFFSETS_6 = new int[][] {
         {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}
@@ -50,10 +56,11 @@ public class GetNeighborBlocksNode extends BaseNode {
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Neighbor radius in blocks; six-neighbor mode returns axis rays, diagonal mode returns the surrounding cube volume", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_COORDINATES_ID, "Coordinates", "Neighbor block positions", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCK_IDS_ID, "Block IDs", "Neighbor block ids", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCK_IDS_ID, "Block IDs", "Neighbor block ids", NodeDataType.STRING_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BLOCK_INFOS_ID, "Block Infos", "Neighbor info map list", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Neighbor count", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether neighbor query was executed", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when neighbor query fails", NodeDataType.STRING, this));
     }
 
     @Override
@@ -63,12 +70,36 @@ public class GetNeighborBlocksNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        if (context == null || context.getWorld() == null || !(inputValues.get(INPUT_CENTER_ID) instanceof BlockPos center)) {
-            writeInvalid();
+        if (!(inputValues.get(INPUT_CENTER_ID) instanceof BlockPos center)) {
+            writeInvalid("Center input must be a block position.");
             return;
         }
-        boolean diagonals = inputValues.get(INPUT_INCLUDE_DIAGONALS_ID) instanceof Boolean b && b;
-        int radius = inputValues.get(INPUT_RADIUS_ID) instanceof Number n ? Math.max(1, n.intValue()) : 1;
+
+        Boolean diagonals = OptionalPortDrive.resolveOptionalBoolean(this, INPUT_INCLUDE_DIAGONALS_ID, false);
+        if (diagonals == null) {
+            writeInvalid("Include Diagonals is connected but null or invalid.");
+            return;
+        }
+
+        Integer radius = resolveRadius();
+        if (radius == null || radius < 1) {
+            writeInvalid("Radius must be an exact INTEGER greater than or equal to 1.");
+            return;
+        }
+
+        long estimatedVolume = diagonals
+            ? GenerationLimits.estimateCubeVolume(radius)
+            : (long) OFFSETS_6.length * radius;
+        if (estimatedVolume < 0 || estimatedVolume > GenerationLimits.MAX_NEIGHBOR_QUERY_BLOCKS) {
+            writeInvalid("Neighbor query volume exceeds the hard cap of "
+                    + GenerationLimits.MAX_NEIGHBOR_QUERY_BLOCKS + " blocks.");
+            return;
+        }
+
+        if (context == null || context.getWorld() == null) {
+            writeInvalid("Execution context or world is missing.");
+            return;
+        }
 
         List<BlockPos> neighbors = diagonals ? build26(center, radius) : build6(center, radius);
         BlockPosList coordinates = new BlockPosList();
@@ -94,13 +125,26 @@ public class GetNeighborBlocksNode extends BaseNode {
         outputValues.put(OUTPUT_BLOCK_INFOS_ID, infos);
         outputValues.put(OUTPUT_COUNT_ID, neighbors.size());
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private @Nullable Integer resolveRadius() {
+        if (OptionalPortDrive.isConnected(this, INPUT_RADIUS_ID)) {
+            return StrictIntegerUtils.requireExactInteger(inputValues.get(INPUT_RADIUS_ID));
+        }
+        Object value = inputValues.get(INPUT_RADIUS_ID);
+        if (value == null) {
+            return 1;
+        }
+        return StrictIntegerUtils.requireExactInteger(value);
     }
 
     private List<BlockPos> build6(BlockPos center, int radius) {
         List<BlockPos> out = new ArrayList<>();
         for (int r = 1; r <= radius; r++) {
             for (int[] d : OFFSETS_6) {
-                out.add(center.add(d[0] * r, d[1] * r, d[2] * r).toImmutable());
+                Optional<BlockPos> offset = BlockPosMath.tryOffset(center, d[0] * r, d[1] * r, d[2] * r);
+                offset.ifPresent(pos -> out.add(pos.toImmutable()));
             }
         }
         return out;
@@ -114,18 +158,19 @@ public class GetNeighborBlocksNode extends BaseNode {
                     if (x == 0 && y == 0 && z == 0) {
                         continue;
                     }
-                    out.add(center.add(x, y, z).toImmutable());
+                    BlockPosMath.tryOffset(center, x, y, z).ifPresent(pos -> out.add(pos.toImmutable()));
                 }
             }
         }
         return out;
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_COORDINATES_ID, new BlockPosList());
         outputValues.put(OUTPUT_BLOCK_IDS_ID, List.of());
         outputValues.put(OUTPUT_BLOCK_INFOS_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

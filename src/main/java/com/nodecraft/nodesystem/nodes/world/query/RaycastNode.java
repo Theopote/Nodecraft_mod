@@ -5,7 +5,12 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.PointUtils;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.hit.BlockHitResult;
@@ -28,7 +33,7 @@ import java.util.UUID;
     displayName = "Raycast",
     description = "Casts a ray in world space and returns nearest block/entity hit information.",
     category = "world.query",
-    order = 8
+    order = 5
 )
 public class RaycastNode extends BaseNode {
 
@@ -52,7 +57,7 @@ public class RaycastNode extends BaseNode {
     public RaycastNode() {
         super(UUID.randomUUID(), "world.query.raycast");
 
-        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Ray origin", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Ray origin", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_DIRECTION_ID, "Direction", "Ray direction vector", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_MAX_DISTANCE_ID, "Max Distance", "Maximum ray distance", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_INCLUDE_FLUIDS_ID, "Include Fluids", "Whether fluids are considered by block hit test", NodeDataType.BOOLEAN, this));
@@ -61,7 +66,7 @@ public class RaycastNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_HIT_ID, "Hit", "Whether any hit was found", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_HIT_TYPE_ID, "Hit Type", "none/block/entity", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_HIT_POS_ID, "Hit Position", "World-space hit point", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_HIT_POS_ID, "Hit Position", "World-space hit point", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_HIT_BLOCK_POS_ID, "Hit Block Position", "Block position when block hit", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_HIT_NORMAL_ID, "Hit Normal", "Hit surface normal vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_HIT_ENTITY_ID, "Hit Entity", "Entity object when entity hit", NodeDataType.MINECRAFT_ENTITY, this));
@@ -77,22 +82,51 @@ public class RaycastNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        if (context == null || context.getWorld() == null) {
+        if (context == null) {
             writeNoHit(false, "Execution context or world is missing.");
             return;
         }
 
-        Vector3d origin = WorldQueryPointResolver.resolveVector(inputValues.get(INPUT_ORIGIN_ID));
-        Vector3d direction = WorldQueryPointResolver.resolveVector(inputValues.get(INPUT_DIRECTION_ID));
-        if (origin == null || direction == null || direction.lengthSquared() <= 1.0e-12d) {
+        Vector3d origin = PointUtils.toPointPosition(inputValues.get(INPUT_ORIGIN_ID));
+        Vector3d direction = VectorUtils.toVector(inputValues.get(INPUT_DIRECTION_ID));
+        if (!PointUtils.isFinite(origin) || !VectorUtils.isNonZero(direction)) {
             writeNoHit(false, "Origin and non-zero Direction inputs are required.");
             return;
         }
 
-        double maxDistance = inputValues.get(INPUT_MAX_DISTANCE_ID) instanceof Number n ? Math.max(1.0e-3d, n.doubleValue()) : 16.0d;
-        boolean includeFluids = inputValues.get(INPUT_INCLUDE_FLUIDS_ID) instanceof Boolean b && b;
-        boolean checkEntities = inputValues.get(INPUT_CHECK_ENTITIES_ID) instanceof Boolean b && b;
-        double entityRadius = inputValues.get(INPUT_ENTITY_RADIUS_ID) instanceof Number n ? Math.max(0.0d, n.doubleValue()) : 0.15d;
+        Double maxDistanceValue = resolveMaxDistance();
+        if (maxDistanceValue == null || maxDistanceValue <= 0.0d) {
+            writeNoHit(false, "Max Distance must be a finite number greater than zero.");
+            return;
+        }
+        double maxDistance = maxDistanceValue;
+
+        Boolean includeFluids = OptionalPortDrive.resolveOptionalBoolean(this, INPUT_INCLUDE_FLUIDS_ID, false);
+        if (includeFluids == null) {
+            writeNoHit(false, "Include Fluids is connected but null or invalid.");
+            return;
+        }
+        Boolean checkEntities = OptionalPortDrive.resolveOptionalBoolean(this, INPUT_CHECK_ENTITIES_ID, true);
+        if (checkEntities == null) {
+            writeNoHit(false, "Check Entities is connected but null or invalid.");
+            return;
+        }
+        Double entityRadiusValue = resolveEntityRadius();
+        if (entityRadiusValue == null || entityRadiusValue < 0.0d) {
+            writeNoHit(false, "Entity Radius must be a finite number greater than or equal to zero.");
+            return;
+        }
+        double entityRadius = entityRadiusValue;
+
+        Entity sourceEntity = context.getPlayer();
+        if (sourceEntity == null) {
+            writeNoHit(false, "Player or raycast context is required for block hits.");
+            return;
+        }
+        if (context.getWorld() == null) {
+            writeNoHit(false, "Execution context or world is missing.");
+            return;
+        }
 
         Vector3d dir = new Vector3d(direction).normalize();
         Vec3d start = new Vec3d(origin.x, origin.y, origin.z);
@@ -102,23 +136,20 @@ public class RaycastNode extends BaseNode {
             origin.z + dir.z * maxDistance
         );
 
-        Entity sourceEntity = context.getPlayer();
         RaycastContext.FluidHandling fluidHandling = includeFluids
             ? RaycastContext.FluidHandling.ANY
             : RaycastContext.FluidHandling.NONE;
-        BlockHitResult blockHit = null;
-        if (sourceEntity != null) {
-            blockHit = context.getWorld().raycast(new RaycastContext(
-                start,
-                end,
-                RaycastContext.ShapeType.OUTLINE,
-                fluidHandling,
-                sourceEntity
-            ));
-        }
+
+        BlockHitResult blockHit = context.getWorld().raycast(new RaycastContext(
+            start,
+            end,
+            RaycastContext.ShapeType.OUTLINE,
+            fluidHandling,
+            sourceEntity
+        ));
 
         HitCandidate blockCandidate = null;
-        if (blockHit != null && blockHit.getType() != HitResult.Type.MISS) {
+        if (blockHit.getType() != HitResult.Type.MISS) {
             Vec3d hitPos = blockHit.getPos();
             double d = start.distanceTo(hitPos);
             Direction side = blockHit.getSide();
@@ -141,13 +172,47 @@ public class RaycastNode extends BaseNode {
 
         outputValues.put(OUTPUT_HIT_ID, true);
         outputValues.put(OUTPUT_HIT_TYPE_ID, best.type);
-        outputValues.put(OUTPUT_HIT_POS_ID, new Vector3d(best.hitPos.x, best.hitPos.y, best.hitPos.z));
-        outputValues.put(OUTPUT_HIT_BLOCK_POS_ID, best.blockPos);
-        outputValues.put(OUTPUT_HIT_NORMAL_ID, best.normal != null ? new Vector3d(best.normal) : new Vector3d());
+        outputValues.put(OUTPUT_HIT_POS_ID, new PointData(best.hitPos.x, best.hitPos.y, best.hitPos.z));
+        outputValues.put(OUTPUT_HIT_BLOCK_POS_ID, best.blockPos == null ? BlockPos.ORIGIN : best.blockPos);
+        outputValues.put(OUTPUT_HIT_NORMAL_ID, VectorUtils.toVectorPort(best.normal != null ? best.normal : new Vector3d()));
         outputValues.put(OUTPUT_HIT_ENTITY_ID, best.entity);
         outputValues.put(OUTPUT_DISTANCE_ID, best.distance);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private @Nullable Double resolveMaxDistance() {
+        if (OptionalPortDrive.isConnected(this, INPUT_MAX_DISTANCE_ID)) {
+            Object value = inputValues.get(INPUT_MAX_DISTANCE_ID);
+            if (!(value instanceof Number number)) {
+                return null;
+            }
+            double resolved = number.doubleValue();
+            return Double.isFinite(resolved) ? resolved : null;
+        }
+        Object value = inputValues.get(INPUT_MAX_DISTANCE_ID);
+        if (value instanceof Number number) {
+            double resolved = number.doubleValue();
+            return Double.isFinite(resolved) ? resolved : null;
+        }
+        return 16.0d;
+    }
+
+    private @Nullable Double resolveEntityRadius() {
+        if (OptionalPortDrive.isConnected(this, INPUT_ENTITY_RADIUS_ID)) {
+            Object value = inputValues.get(INPUT_ENTITY_RADIUS_ID);
+            if (!(value instanceof Number number)) {
+                return null;
+            }
+            double resolved = number.doubleValue();
+            return Double.isFinite(resolved) ? resolved : null;
+        }
+        Object value = inputValues.get(INPUT_ENTITY_RADIUS_ID);
+        if (value instanceof Number number) {
+            double resolved = number.doubleValue();
+            return Double.isFinite(resolved) ? resolved : null;
+        }
+        return 0.15d;
     }
 
     private HitCandidate raycastEntities(ExecutionContext context,
@@ -211,9 +276,9 @@ public class RaycastNode extends BaseNode {
     private void writeNoHit(boolean valid, String error) {
         outputValues.put(OUTPUT_HIT_ID, false);
         outputValues.put(OUTPUT_HIT_TYPE_ID, "none");
-        outputValues.put(OUTPUT_HIT_POS_ID, new Vector3d());
+        outputValues.put(OUTPUT_HIT_POS_ID, new PointData(0, 0, 0));
         outputValues.put(OUTPUT_HIT_BLOCK_POS_ID, BlockPos.ORIGIN);
-        outputValues.put(OUTPUT_HIT_NORMAL_ID, new Vector3d());
+        outputValues.put(OUTPUT_HIT_NORMAL_ID, new VectorData(0, 0, 0));
         outputValues.put(OUTPUT_HIT_ENTITY_ID, null);
         outputValues.put(OUTPUT_DISTANCE_ID, -1.0d);
         outputValues.put(OUTPUT_VALID_ID, valid);
@@ -223,10 +288,10 @@ public class RaycastNode extends BaseNode {
     private static final class HitCandidate {
         final String type;
         final Vec3d hitPos;
-        final BlockPos blockPos;
-        final Vector3d normal;
+        final @Nullable BlockPos blockPos;
+        final @Nullable Vector3d normal;
         final double distance;
-        final Entity entity;
+        final @Nullable Entity entity;
 
         private HitCandidate(String type, Vec3d hitPos, @Nullable BlockPos blockPos, @Nullable Vector3d normal, double distance, @Nullable Entity entity) {
             this.type = type;

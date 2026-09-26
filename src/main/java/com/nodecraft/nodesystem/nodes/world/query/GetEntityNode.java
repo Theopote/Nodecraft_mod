@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import net.minecraft.entity.Entity;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.world.ServerWorld;
@@ -22,7 +23,8 @@ import java.util.UUID;
     id = "world.query.get_entity",
     displayName = "Get Entity",
     description = "Finds an entity by UUID or by type near the current player.",
-    category = "world.query"
+    category = "world.query",
+    order = 10
 )
 public class GetEntityNode extends BaseNode {
 
@@ -44,7 +46,7 @@ public class GetEntityNode extends BaseNode {
         super(UUID.randomUUID(), "world.query.get_entity");
 
         addInputPort(new BasePort(INPUT_UUID_ID, "UUID", "Entity UUID string", NodeDataType.STRING, this));
-        addInputPort(new BasePort(INPUT_ENTITY_TYPE_ID, "Entity Type", "Entity type id used when UUID is empty", NodeDataType.ENTITY_TYPE, this));
+        addInputPort(new BasePort(INPUT_ENTITY_TYPE_ID, "Entity Type", "Entity type id used when UUID is unconnected", NodeDataType.ENTITY_TYPE, this));
         addInputPort(new BasePort(INPUT_FIND_NEAREST_ID, "Find Nearest", "Choose nearest matching entity to the current player", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_MAX_DISTANCE_ID, "Max Distance", "Search radius for type lookup around the current player", NodeDataType.DOUBLE, this));
 
@@ -75,16 +77,27 @@ public class GetEntityNode extends BaseNode {
             return;
         }
 
-        boolean findNearest = !(inputValues.get(INPUT_FIND_NEAREST_ID) instanceof Boolean b) || b;
-        double maxDistance = inputValues.get(INPUT_MAX_DISTANCE_ID) instanceof Number n ? Math.max(1.0d, n.doubleValue()) : 64.0d;
+        Boolean findNearest = OptionalPortDrive.resolveOptionalBoolean(this, INPUT_FIND_NEAREST_ID, true);
+        if (findNearest == null) {
+            publish(null, false, false, "Find Nearest is connected but null or invalid.", context);
+            return;
+        }
+
+        Double maxDistance = resolveMaxDistance();
+        if (maxDistance == null || maxDistance <= 0.0d) {
+            publish(null, false, false, "Max Distance must be a finite number greater than zero.", context);
+            return;
+        }
 
         Entity entity;
-        Object uuidObj = inputValues.get(INPUT_UUID_ID);
-        Object entityTypeObj = inputValues.get(INPUT_ENTITY_TYPE_ID);
-
-        if (uuidObj instanceof String uuidText && !uuidText.isBlank()) {
+        if (OptionalPortDrive.isConnected(this, INPUT_UUID_ID)) {
+            String uuidText = OptionalPortDrive.resolveOptionalString(this, INPUT_UUID_ID, null);
+            if (uuidText == null) {
+                publish(null, false, false, "UUID is connected but null or invalid.", context);
+                return;
+            }
             try {
-                entity = findByUuid(context, uuidText.trim());
+                entity = findByUuid(context, uuidText);
             } catch (IllegalArgumentException e) {
                 publish(null, false, false, "Invalid UUID: " + uuidText, context);
                 return;
@@ -93,18 +106,37 @@ public class GetEntityNode extends BaseNode {
                 publish(null, false, false, "Entity UUID query failed: " + e.getMessage(), context);
                 return;
             }
-        } else if (entityTypeObj instanceof String typeId && !typeId.isBlank()) {
+        } else {
+            Object entityTypeObj = inputValues.get(INPUT_ENTITY_TYPE_ID);
+            if (!(entityTypeObj instanceof String typeId) || typeId.isBlank()) {
+                publish(null, false, false, "Entity Type is required when UUID is unconnected.", context);
+                return;
+            }
             if (context.getPlayer() == null) {
                 publish(null, false, false, "Current player is required for entity type lookup.", context);
                 return;
             }
             entity = findByType(context, typeId.trim(), findNearest, maxDistance);
-        } else {
-            publish(null, false, false, "UUID or Entity Type is required.", context);
-            return;
         }
 
         publish(entity, true, entity != null, "", context);
+    }
+
+    private @Nullable Double resolveMaxDistance() {
+        if (OptionalPortDrive.isConnected(this, INPUT_MAX_DISTANCE_ID)) {
+            Object value = inputValues.get(INPUT_MAX_DISTANCE_ID);
+            if (!(value instanceof Number number)) {
+                return null;
+            }
+            double resolved = number.doubleValue();
+            return Double.isFinite(resolved) ? resolved : null;
+        }
+        Object value = inputValues.get(INPUT_MAX_DISTANCE_ID);
+        if (value instanceof Number number) {
+            double resolved = number.doubleValue();
+            return Double.isFinite(resolved) ? resolved : null;
+        }
+        return 64.0d;
     }
 
     private @Nullable Entity findByUuid(ExecutionContext context, String uuidText) {
@@ -116,10 +148,7 @@ public class GetEntityNode extends BaseNode {
     }
 
     private @Nullable Entity findByType(ExecutionContext context, String typeId, boolean findNearest, double maxDistance) {
-        Box box = null;
-        if (context.getPlayer() != null) {
-            box = context.getPlayer().getBoundingBox().expand(maxDistance);
-        }
+        Box box = context.getPlayer().getBoundingBox().expand(maxDistance);
         List<Entity> nearby = context.getWorld().getOtherEntities(context.getPlayer(), box);
         Entity best = null;
         double bestDistance = Double.MAX_VALUE;

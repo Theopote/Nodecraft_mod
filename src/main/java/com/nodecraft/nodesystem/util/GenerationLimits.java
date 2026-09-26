@@ -111,7 +111,32 @@ public final class GenerationLimits {
     /** Maximum nested subgraph call depth (hard budget; not user-tunable). */
     public static final int MAX_SUBGRAPH_CALL_DEPTH = 8;
 
+    /** Hard cap on neighbor cube-volume queries: {@code (2r+1)^3 - 1}. */
+    public static final int MAX_NEIGHBOR_QUERY_BLOCKS = 262_144;
+
+    /** Hard safety ceiling for flood-fill block budgets (user Max Blocks must not exceed). */
+    public static final int MAX_FLOOD_FILL_BLOCKS = 262_144;
+
     private GenerationLimits() {
+    }
+
+    /**
+     * Estimates inclusive cube volume {@code (2 * radius + 1)^3 - 1} excluding center.
+     * Returns {@code -1} when the estimate overflows {@code long}.
+     */
+    public static long estimateCubeVolume(int radius) {
+        if (radius < 0) {
+            return -1L;
+        }
+        long edge = 2L * radius + 1L;
+        if (edge > Integer.MAX_VALUE) {
+            return -1L;
+        }
+        long volume = edge * edge * edge;
+        if (volume <= 0L || volume == Long.MAX_VALUE) {
+            return -1L;
+        }
+        return volume - 1L;
     }
 
     public static boolean exceedsLloydWorkBudget(int cellsPerAxis, int siteCount, int iterations) {

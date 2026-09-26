@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.datatypes.SphereSdfData;
 import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.transform.deformations.TwistGeometryNode;
-import com.nodecraft.nodesystem.nodes.world.query.IsGridPointNode;
 import com.nodecraft.nodesystem.util.BlockSpace;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
@@ -28,41 +27,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class BlockPosCellCenterCoercionContractTest {
 
     @Test
-    void isGridPointTreatsBlockPosAsCellCenterNotMinCorner() {
-        IsGridPointNode node = new IsGridPointNode();
-        node.setInput("input_point", new BlockPos(0, 0, 0));
-        node.processNode(null);
-
-        assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
-        // Cell center (0.5,0.5,0.5) is not on the integer grid.
-        assertEquals(Boolean.FALSE, node.getOutput("output_is_grid_point"));
-
-        Vector3d offset = (Vector3d) node.getOutput("output_offset_vector");
-        Vector3d center = BlockSpace.cellCenter(0, 0, 0);
-        int nearestX = (int) Math.round(center.x);
-        int nearestY = (int) Math.round(center.y);
-        int nearestZ = (int) Math.round(center.z);
-        assertEquals(center.x - nearestX, offset.x, 1.0e-12);
-        assertEquals(center.y - nearestY, offset.y, 1.0e-12);
-        assertEquals(center.z - nearestZ, offset.z, 1.0e-12);
-    }
-
-    @Test
-    void isGridPointAcceptsExplicitPointAtIntegerCorner() {
-        IsGridPointNode node = new IsGridPointNode();
-        node.setInput("input_point", new PointData(0, 0, 0));
-        node.processNode(null);
-
-        assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
-        assertEquals(Boolean.TRUE, node.getOutput("output_is_grid_point"));
-    }
-
-    @Test
     void twistGeometryAxisOriginBlockPosMatchesCellCenterPoint() {
         SdfGeometryData geometry = sampleSphereGeometry();
 
-        // Connected ports + BlockPos value exercises SpatialValueResolver cell-center coerce
-        // under OptionalPortDrive (unconnected putInput alone is ignored).
         TwistProbe fromBlock = twistWithConnectedOrigin(geometry, new BlockPos(0, 0, 0));
         TwistProbe fromCenter = twistWithConnectedOrigin(geometry, new PointData(BlockSpace.cellCenter(0, 0, 0)));
         TwistProbe fromCorner = twistWithConnectedOrigin(geometry, new PointData(0, 0, 0));
@@ -79,7 +46,6 @@ class BlockPosCellCenterCoercionContractTest {
         assertEquals(centerMin.position().y, blockMin.position().y, 1.0e-9);
         assertEquals(centerMin.position().z, blockMin.position().z, 1.0e-9);
 
-        // Corner origin must differ from cell-center origin under a non-zero twist.
         double dx = Math.abs(cornerMin.position().x - blockMin.position().x);
         double dy = Math.abs(cornerMin.position().y - blockMin.position().y);
         double dz = Math.abs(cornerMin.position().z - blockMin.position().z);
@@ -116,8 +82,7 @@ class BlockPosCellCenterCoercionContractTest {
                 .findFirst()
                 .orElseThrow();
         assertTrue(output.connectTo(input), portId + " connect failed");
-        target.getInput(portId); // ensure port list is live
-        // Bypass typed setInput so BlockPos can land on a POINT port for coerce testing.
+        target.getInput(portId);
         ((TwistProbe) target).putInput(portId, value);
     }
 

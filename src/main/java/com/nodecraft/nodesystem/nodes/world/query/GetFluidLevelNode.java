@@ -21,7 +21,7 @@ import java.util.UUID;
     displayName = "Get Fluid Level",
     description = "Gets the fluid state, type, and level for a block position",
     category = "world.query",
-    order = 1
+    order = 7
 )
 public class GetFluidLevelNode extends BaseNode {
 

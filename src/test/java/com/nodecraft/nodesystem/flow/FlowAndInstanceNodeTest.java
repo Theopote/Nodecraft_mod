@@ -1,11 +1,11 @@
 package com.nodecraft.nodesystem.flow;
 
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.nodes.pattern.linear.InstanceOnPointsNode;
 import com.nodecraft.nodesystem.nodes.world.query.FilterPointsByRuleNode;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import net.minecraft.util.math.BlockPos;
-import org.joml.Vector3d;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -45,12 +45,12 @@ class FlowAndInstanceNodeTest {
 
         Map<String, Object> outputs = node.compute(Map.of(
                 "input_points", List.of(
-                        new Vector3d(0.0d, 80.0d, 0.0d),
-                        new Vector3d(0.0d, 120.0d, 0.0d)
+                        new PointData(0.0d, 80.0d, 0.0d),
+                        new PointData(0.0d, 120.0d, 0.0d)
                 ),
                 "input_normals", List.of(
-                        new Vector3d(0.0d, 1.0d, 0.0d),
-                        new Vector3d(1.0d, 1.0d, 0.0d)
+                        new VectorData(0.0d, 1.0d, 0.0d),
+                        new VectorData(1.0d, 1.0d, 0.0d)
                 ),
                 "input_min_height", 100.0d,
                 "input_min_slope", 40.0d

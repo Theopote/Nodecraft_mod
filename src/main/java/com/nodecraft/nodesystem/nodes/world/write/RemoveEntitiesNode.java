@@ -48,7 +48,7 @@ public class RemoveEntitiesNode extends BaseNode {
         addInputPort(new BasePort(INPUT_ENTITY_ID, "Entity", 
                 "要移除的单个实体", NodeDataType.MINECRAFT_ENTITY, this));
         addInputPort(new BasePort(INPUT_ENTITY_LIST_ID, "Entity List", 
-                "要移除的实体列表", NodeDataType.LIST, this));
+                "要移除的实体列表", NodeDataType.MINECRAFT_ENTITY_LIST, this));
         addInputPort(new BasePort(INPUT_ENTITY_UUID_ID, "Entity UUID", 
                 "要移除的实体UUID", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_DROP_ITEMS_ID, "Drop Items", 

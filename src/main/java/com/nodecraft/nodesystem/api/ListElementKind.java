@@ -26,5 +26,6 @@ public enum ListElementKind {
     PLANT_STRUCTURE,
     L_SYSTEM_RULE,
     PLANT_BLOCK,
-    COLOR
+    COLOR,
+    MINECRAFT_ENTITY
 }

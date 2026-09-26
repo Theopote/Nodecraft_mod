@@ -65,9 +65,8 @@ class VariableLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV59() {
+    void graphFormatV59ConstantExists() {
         assertEquals(59, GraphFormatVersion.V59);
-        assertEquals(GraphFormatVersion.V59, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -352,7 +351,7 @@ class VariableLanguageContractTest {
         graph.connections.add(wire("l1", "output_entries", "t2", "input_stub"));
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.V59, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
         assertEquals("output_valid", migrated.connections.getFirst().sourcePortId);
         assertEquals(1, migrated.connections.size());
         @SuppressWarnings("unchecked")
