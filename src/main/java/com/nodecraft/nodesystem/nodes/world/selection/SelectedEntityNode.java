@@ -159,6 +159,11 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
         // No-op.
     }
 
+    @Override
+    public float getEntityPickMaxDistance() {
+        return maxDistance;
+    }
+
     public void clearPickedEntity() {
         hasPickedEntity = false;
         pickedEntityUuid = null;

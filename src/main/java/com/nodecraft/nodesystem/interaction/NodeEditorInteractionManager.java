@@ -103,6 +103,13 @@ public class NodeEditorInteractionManager {
          * @param entity        live entity when available (may be null)
          */
         void onEntityPicked(String entityUuid, String entityType, Vec3d exactPosition, @Nullable Entity entity);
+
+        /**
+         * Maximum ray distance for entity picking (blocks).
+         */
+        default float getEntityPickMaxDistance() {
+            return 100.0f;
+        }
     }
     
     /**
@@ -178,6 +185,7 @@ public class NodeEditorInteractionManager {
         modeHandlers.put(
             EditorInteractionMode.ENTITY_PICKING,
             new EntityPickingInteractionHandler(
+                worldPicking,
                     interactionState::clear,
                     interactionState::complete
             )

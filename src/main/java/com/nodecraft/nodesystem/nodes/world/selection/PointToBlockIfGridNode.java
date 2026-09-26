@@ -5,7 +5,6 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockSpace;
 import com.nodecraft.nodesystem.util.VectorUtils;
@@ -79,9 +78,10 @@ public class PointToBlockIfGridNode extends BaseNode {
             outputValues.put(OUTPUT_VALID_ID, false);
             outputValues.put(OUTPUT_ERROR_ID, "Point input must be a finite POINT.");
             outputValues.put(OUTPUT_IS_GRID_POINT_ID, false);
-            outputValues.put(OUTPUT_NEAREST_COORDINATE_ID, BlockPos.ORIGIN);
+            // null-on-invalid: do not emit ORIGIN / zero that look like real diagnostics
+            outputValues.put(OUTPUT_NEAREST_COORDINATE_ID, null);
             outputValues.put(OUTPUT_DISTANCE_ID, Double.NaN);
-            outputValues.put(OUTPUT_OFFSET_VECTOR_ID, new VectorData(0, 0, 0));
+            outputValues.put(OUTPUT_OFFSET_VECTOR_ID, null);
             return;
         }
 

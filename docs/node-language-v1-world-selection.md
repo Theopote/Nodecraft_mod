@@ -52,7 +52,8 @@ Deleted in V62: `world.selection.snap_vector_to_block`.
 ### Point To Block If Grid
 
 - Same cell-center test as Is Grid Point
-- Coordinate output only when on-grid; always emits Nearest Coordinate / Distance / Offset
+- Coordinate output only when on-grid; when Valid, emits Nearest Coordinate / Distance / Offset
+- Invalid input → Valid=false; Nearest / Offset = null; Distance = NaN (no ORIGIN placeholders)
 
 ### Multi-Region Selection
 
@@ -82,6 +83,7 @@ Deleted in V62: `world.selection.snap_vector_to_block`.
 
 - Outputs: UUID, Entity Type (`ENTITY_TYPE`), Entity (`MINECRAFT_ENTITY`), Exact Position (`POINT`), Block Position, Distance, Has Entity, Valid, Error
 - Block Position = containing cell of Exact Position
+- Entity picking uses a real world-space entity raycast (nearest hittable entity along the editor mouse ray); no placeholder UUID/type stubs
 
 ## Migration (V61 → V62)
 
@@ -94,7 +96,6 @@ Deleted in V62: `world.selection.snap_vector_to_block`.
 
 - New `NodeEffect` (`INTERACTION_READ`)
 - Quantize Vector / Snap Direction
-- Full entity-raycast picker implementation beyond callback contract
 
 ## Verification
 

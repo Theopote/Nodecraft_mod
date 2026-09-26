@@ -3,11 +3,18 @@ package com.nodecraft.nodesystem.interaction;
 import com.nodecraft.core.NodeCraft;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -96,6 +103,52 @@ public final class WorldPickingService {
         } catch (Exception e) {
             NodeCraft.LOGGER.error("计算鼠标射线时出错", e);
             return getFallbackRayFromMouse();
+        }
+    }
+
+    /**
+     * Nearest entity hit along a world-space ray (bounding-box sweep).
+     */
+    public @Nullable EntityHitResult pickEntityWithRay(Ray ray, double maxDistance, double extraRadius) {
+        try {
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client.world == null || ray == null || maxDistance <= 0.0d) {
+                return null;
+            }
+
+            Entity sourceEntity = client.getCameraEntity();
+            Vec3d start = ray.origin;
+            Vec3d end = ray.origin.add(ray.direction.multiply(maxDistance));
+            double radius = Math.max(0.0d, extraRadius);
+
+            Box sweep = new Box(start, end).expand(radius + 1.0d);
+            List<Entity> entities = new ArrayList<>(client.world.getOtherEntities(sourceEntity, sweep));
+            if (sourceEntity instanceof PlayerEntity player) {
+                entities.remove(player);
+            }
+
+            EntityHitResult best = null;
+            for (Entity entity : entities) {
+                if (!isRaycastableEntity(entity)) {
+                    continue;
+                }
+                Box box = entity.getBoundingBox().expand(radius);
+                Vec3d hitPos = box.raycast(start, end).orElse(null);
+                if (hitPos == null) {
+                    continue;
+                }
+                double distance = start.distanceTo(hitPos);
+                if (distance > maxDistance) {
+                    continue;
+                }
+                if (best == null || distance < best.distance()) {
+                    best = new EntityHitResult(entity, hitPos, distance);
+                }
+            }
+            return best;
+        } catch (Exception e) {
+            NodeCraft.LOGGER.error("射线拾取实体时出错", e);
+            return null;
         }
     }
 
@@ -366,6 +419,19 @@ public final class WorldPickingService {
             NodeCraft.LOGGER.error("备用射线计算也失败", e);
             return Vec3d.fromPolar(camera.getPitch(), camera.getYaw()).normalize();
         }
+    }
+
+    private static boolean isRaycastableEntity(@Nullable Entity entity) {
+        if (entity == null || !entity.isAlive() || entity.isRemoved()) {
+            return false;
+        }
+        return !(entity instanceof PlayerEntity player && player.isSpectator());
+    }
+
+    /**
+     * Entity hit along a pick ray.
+     */
+    public record EntityHitResult(Entity entity, Vec3d hitPos, double distance) {
     }
 
     /**

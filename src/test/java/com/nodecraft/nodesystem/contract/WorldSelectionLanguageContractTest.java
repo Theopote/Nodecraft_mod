@@ -5,7 +5,11 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
@@ -20,7 +24,9 @@ import com.nodecraft.nodesystem.nodes.world.selection.SelectedRegionNode;
 import com.nodecraft.nodesystem.nodes.world.selection.SnapPointListToBlocksNode;
 import com.nodecraft.nodesystem.nodes.world.selection.SnapPointToBlockNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BlockSpace;
+import com.nodecraft.nodesystem.util.Coordinate;
 import net.minecraft.util.math.BlockPos;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -31,9 +37,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -155,6 +163,18 @@ class WorldSelectionLanguageContractTest {
     }
 
     @Test
+    void pointIfGridInvalidInputEmitsNullDiagnostics() {
+        PointToBlockIfGridNode node = new PointToBlockIfGridNode();
+        node.setInput("input_point", "not-a-point");
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertNull(node.getOutput("output_coordinate"));
+        assertNull(node.getOutput("output_nearest_coordinate"));
+        assertNull(node.getOutput("output_offset_vector"));
+        assertTrue(Double.isNaN((Double) node.getOutput("output_distance")));
+    }
+
+    @Test
     void snapPointListFailsClosedOnMalformedMember() {
         SnapPointListToBlocksNode node = new SnapPointListToBlocksNode();
         node.setInput("input_points", List.of(new PointData(0.5, 0.5, 0.5), "bad"));
@@ -215,6 +235,96 @@ class WorldSelectionLanguageContractTest {
     }
 
     @Test
+    void multiRegionFailsOnMinMaxLengthMismatch() {
+        MultiRegionSelectionNode node = new MultiRegionSelectionNode();
+        node.setInput("input_min_blocks", new BlockPosList(List.of(new BlockPos(0, 0, 0))));
+        node.setInput("input_max_blocks", new BlockPosList(List.of(
+                new BlockPos(1, 1, 1),
+                new BlockPos(2, 2, 2)
+        )));
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertFalse(String.valueOf(node.getOutput("output_error")).isBlank());
+    }
+
+    @Test
+    void multiRegionFailsOnMalformedBlockList() {
+        MultiRegionSelectionNode node = new MultiRegionSelectionNode();
+        node.setInput("input_min_blocks", List.of(new BlockPos(0, 0, 0), "bad"));
+        node.setInput("input_max_blocks", List.of(new BlockPos(1, 1, 1)));
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+    }
+
+    @Test
+    void selectedBlockRequiresExactIntegerCoordinates() {
+        SelectedBlockProbe node = new SelectedBlockProbe();
+        node.connectInput("input_x", NodeDataType.INTEGER);
+        node.connectInput("input_y", NodeDataType.INTEGER);
+        node.connectInput("input_z", NodeDataType.INTEGER);
+        node.setInput("input_x", 3.9d);
+        node.setInput("input_y", 4);
+        node.setInput("input_z", 5);
+        node.processNode(ExecutionContext.createEmpty(null));
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertEquals(Boolean.FALSE, node.getOutput("output_has_selection"));
+    }
+
+    @Test
+    void selectedBlockInvalidCoordinatesNeverFallbackToPick() {
+        SelectedBlockProbe node = new SelectedBlockProbe();
+        node.connectInput("input_x", NodeDataType.INTEGER);
+        node.onBlockPicked(new Coordinate(9, 9, 9), "minecraft:stone", null);
+        node.setInput("input_x", 3.9d);
+        node.setInput("input_y", 4);
+        node.setInput("input_z", 5);
+        node.processNode(ExecutionContext.createEmpty(null));
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertEquals(Boolean.FALSE, node.getOutput("output_has_selection"));
+        assertNotEquals(new BlockPos(9, 9, 9), node.getOutput("output_position"));
+    }
+
+    @Test
+    void selectedBlockSequenceClosedPathDoesNotInflateCount() {
+        SelectedBlockSequenceNode sequence = new SelectedBlockSequenceNode();
+        sequence.setNodeState(Map.of("closePath", true));
+        sequence.onBlockPicked(new Coordinate(0, 0, 0), "minecraft:stone", null);
+        sequence.onBlockPicked(new Coordinate(1, 0, 0), "minecraft:stone", null);
+        sequence.processNode(null);
+
+        assertEquals(2, sequence.getOutput("output_count"));
+        assertEquals(Boolean.TRUE, sequence.getOutput("output_is_closed"));
+        PathData path = (PathData) sequence.getOutput("output_path");
+        assertNotNull(path);
+        assertEquals(PathData.Kind.POLYLINE, path.getKind());
+        assertNotNull(path.getPolyline());
+        assertEquals(3, path.getPolyline().getPointCount());
+        assertTrue(path.getPolyline().isClosed());
+        @SuppressWarnings("unchecked")
+        List<PointData> centers = (List<PointData>) sequence.getOutput("output_centers");
+        assertEquals(2, centers.size());
+    }
+
+    @Test
+    void transientSelectionStateIsNotRestoredFromSave() {
+        SelectedBlockNode block = new SelectedBlockNode();
+        block.setNodeState(Map.of(
+                "sourceMode", "AUTO",
+                "pickedBlock", Map.of("x", 1, "y", 2, "z", 3, "blockId", "minecraft:stone")
+        ));
+        block.processNode(ExecutionContext.createEmpty(null));
+        assertEquals(Boolean.FALSE, block.getOutput("output_has_selection"));
+
+        SelectedBlockSequenceNode sequence = new SelectedBlockSequenceNode();
+        sequence.setNodeState(Map.of(
+                "closePath", false,
+                "pickedBlocks", List.of(Map.of("x", 0, "y", 0, "z", 0))
+        ));
+        sequence.processNode(null);
+        assertEquals(0, sequence.getOutput("output_count"));
+    }
+
+    @Test
     void migrateV61ToV62DeletesSnapVectorAndDropsPorts() {
         SavedGraph graph = new SavedGraph();
         graph.formatVersion = GraphFormatVersion.V61;
@@ -260,6 +370,55 @@ class WorldSelectionLanguageContractTest {
                 "b1:output_position->t3:input_stub",
                 "t6:output_stub->m1:input_min_blocks"
         ), kept);
+    }
+
+    @Test
+    void migrateV61ToV62RemapsLegacySnapModes() {
+        SavedGraph graph = new SavedGraph();
+        graph.formatVersion = GraphFormatVersion.V61;
+        graph.nodes = new ArrayList<>();
+        graph.connections = new ArrayList<>();
+
+        SavedNode floor = savedNode("f", "world.selection.snap_point_to_block");
+        floor.state = Map.of("snapMode", "FLOOR");
+        SavedNode nearest = savedNode("n", "world.selection.snap_point_to_block");
+        nearest.state = Map.of("snapMode", "NEAREST");
+        SavedNode ceil = savedNode("c", "world.selection.snap_point_to_block");
+        ceil.state = Map.of("snapMode", "CEIL");
+        graph.nodes.addAll(List.of(floor, nearest, ceil));
+
+        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
+        assertEquals("CONTAINING_CELL", ((Map<?, ?>) nodeOf(migrated, "f").state).get("snapMode"));
+        assertEquals("NEAREST_CENTER", ((Map<?, ?>) nodeOf(migrated, "n").state).get("snapMode"));
+        assertEquals("NEAREST_CENTER", ((Map<?, ?>) nodeOf(migrated, "c").state).get("snapMode"));
+    }
+
+    private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
+        PortStubNode stub = new PortStubNode(outputType);
+        BasePort output = (BasePort) stub.getOutputPorts().getFirst();
+        BasePort input = (BasePort) target.getInputPorts().stream()
+                .filter(port -> inputPortId.equals(port.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertTrue(output.connectTo(input), inputPortId + " connect failed");
+        target.getInput(inputPortId);
+    }
+
+    private static final class PortStubNode extends BaseNode {
+        PortStubNode(NodeDataType outputType) {
+            super(UUID.randomUUID(), "test.port_stub");
+            addOutputPort(new BasePort("output_stub", "Stub", "", outputType, this));
+        }
+
+        @Override
+        public void processNode(ExecutionContext context) {
+        }
+    }
+
+    private static final class SelectedBlockProbe extends SelectedBlockNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            WorldSelectionLanguageContractTest.connectInput(this, portId, outputType);
+        }
     }
 
     private static void assertPortType(INode node, String portId, NodeDataType expected) {

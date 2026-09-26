@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.util.Coordinate;
-import com.nodecraft.nodesystem.util.BlockStateData;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -33,20 +32,11 @@ import java.util.List;
 import java.util.UUID;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.Optional;
 
-// Minecraft 相关导入，用于世界状态检查
+// Minecraft 相关导入，用于世界状态检查与预览时的瞬时方块 ID 读取
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.block.Block;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.BlockState;
 import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.client.world.ClientWorld;
-
-// 新增导入，用于获取方块的详细信息
-import net.minecraft.text.Text;
 import org.joml.Vector3d;
 
 /**
@@ -119,14 +109,11 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     private boolean showBlockPreview = true;
     
     // --- 核心数据状态：拾取与坐标输入分开存储，由 Source Mode 选择谁驱动输出 ---
+    // Position-only selection source — no cached block id / BlockState (compose Get Block for world data).
     private volatile Coordinate pickedBlockPosition = null;
-    private volatile String pickedBlockId = "minecraft:air";
-    private volatile BlockStateData pickedBlockStateData = null;
     private volatile boolean hasPickedBlock = false;
 
     private volatile Coordinate inputBlockPosition = null;
-    private volatile String inputBlockId = "minecraft:air";
-    private volatile BlockStateData inputBlockStateData = null;
     private volatile boolean hasInputBlock = false;
 
     @NodeProperty(
@@ -156,30 +143,6 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     }
 
     @NodeProperty(
-        displayName = "Selected Block Name",
-        readOnly = true,
-        category = "Selection",
-        order = 11,
-        description = "Human-readable name of the current block."
-    )
-    public String getSelectedBlockDisplayName() {
-        ActiveBlock active = resolveActiveBlock();
-        return getBlockDisplayName(active != null ? active.blockId() : "minecraft:air");
-    }
-
-    @NodeProperty(
-        displayName = "Selected Block ID",
-        readOnly = true,
-        category = "Selection",
-        order = 12,
-        description = "Identifier of the current block."
-    )
-    public String getSelectedBlockIdForPanel() {
-        ActiveBlock active = resolveActiveBlock();
-        return active != null ? active.blockId() : "minecraft:air";
-    }
-
-    @NodeProperty(
         displayName = "Selected Position",
         readOnly = true,
         category = "Selection",
@@ -197,11 +160,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
 
     // --- 输入验证状态 ---
     private volatile String inputValidationError = null;
-    private volatile boolean hasInputValidationWarning = false;
-    private volatile String inputValidationWarning = null;
     private transient boolean infoSectionExpanded = true;
     private transient boolean settingsSectionExpanded = false;
-    private transient boolean blockStateTreeExpanded = false;
 
     // --- UI折叠状态（影响节点高度计算） ---
     
@@ -303,16 +263,16 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         };
     }
 
-    private record ActiveBlock(Coordinate position, String blockId, BlockStateData state) {
+    private record ActiveBlock(Coordinate position) {
     }
 
     private @Nullable ActiveBlock resolveActiveBlock() {
         return switch (resolveActiveSource()) {
             case PICKED -> hasPickedBlock && pickedBlockPosition != null
-                ? new ActiveBlock(pickedBlockPosition, pickedBlockId, pickedBlockStateData)
+                ? new ActiveBlock(pickedBlockPosition)
                 : null;
             case COORDINATES -> hasInputBlock && inputBlockPosition != null
-                ? new ActiveBlock(inputBlockPosition, inputBlockId, inputBlockStateData)
+                ? new ActiveBlock(inputBlockPosition)
                 : null;
             case NONE -> null;
         };
@@ -385,10 +345,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             
             Coordinate inputPosition = new Coordinate(x, y, z);
             
-            // Store coordinates only — no world lookup / processBlockAtPosition.
+            // Store coordinates only — no world lookup / block-id cache.
             this.inputBlockPosition = inputPosition;
-            this.inputBlockId = "unknown";
-            this.inputBlockStateData = null;
             this.hasInputBlock = true;
 
             refreshBlockPreview();
@@ -407,101 +365,10 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     }
     
     /**
-     * 处理指定位置的方块
-     * 从世界中获取方块信息
-     */
-    private void processBlockAtPosition(Coordinate position) {
-        try {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client == null || client.world == null) {
-                inputValidationError = "世界未加载，无法获取方块信息";
-                NodeCraft.LOGGER.debug("节点 {} 无法处理位置 {}: 世界未加载", getId(), position);
-                return;
-            }
-            
-            BlockPos blockPos = new BlockPos(position.x(), position.y(), position.z());
-            
-            // 检查区块是否已加载
-            try {
-                if (client.world.getChunk(blockPos) == null) {
-                    inputValidationError = "目标区块未加载，请等待区块加载完成";
-                    NodeCraft.LOGGER.debug("节点 {} 无法处理位置 {}: 区块未加载", getId(), position);
-                    return;
-                }
-            } catch (Exception e) {
-                inputValidationError = "目标区块未加载，请等待区块加载完成";
-                NodeCraft.LOGGER.debug("节点 {} 无法处理位置 {}: 区块未加载", getId(), position);
-                return;
-            }
-            
-            // 获取方块状态
-            BlockState blockState = client.world.getBlockState(blockPos);
-            Block block = blockState.getBlock();
-            
-            if (block == null) {
-                NodeCraft.LOGGER.debug("节点 {} 位置 {} 的方块为null", getId(), position);
-                return;
-            }
-            
-            // 获取方块ID
-            String blockId = Registries.BLOCK.getId(block).toString();
-            
-            // 创建方块状态数据
-            BlockStateData blockStateData = new BlockStateData();
-            try {
-                blockState.getProperties().forEach(property -> {
-                    try {
-                        String key = property.getName();
-                        String value = blockState.get(property).toString();
-                        blockStateData.put(key, value);
-                    } catch (Exception e) {
-                        // 忽略无法获取的属性
-                    }
-                });
-            } catch (Exception e) {
-                NodeCraft.LOGGER.debug("节点 {} 获取方块状态失败", getId(), e);
-            }
-            
-            // 更新方块数据（坐标输入存储，不影响拾取存储）
-            this.inputBlockPosition = position;
-            this.inputBlockId = blockId;
-            this.inputBlockStateData = blockStateData;
-            this.hasInputBlock = true;
-            
-            // 实时验证方块状态一致性
-            ValidationResult<BlockValidationData> blockValidation = validatePickedBlock(position, blockId, blockStateData);
-            if (!blockValidation.isValid()) {
-                hasInputValidationWarning = true;
-                inputValidationWarning = blockValidation.getMessage();
-                NodeCraft.LOGGER.debug("节点 {} 输入坐标方块验证警告: {}", getId(), blockValidation.getMessage());
-            }
-            
-            // 更新方块预览
-            refreshBlockPreview();
-
-            // 输入坐标驱动的选中也显示方块高亮（与交互拾取保持一致）。
-            SelectionVisualFeedback.getInstance().showBlockSelection(
-                getId().toString(),
-                position,
-                SelectionVisualFeedback.SelectionState.SELECTED
-            );
-            updateOutputsWithActiveBlock();
-            
-            NodeCraft.LOGGER.debug("节点 {} 从输入坐标获取方块: {} at {}", getId(), blockId, position);
-            
-        } catch (Exception e) {
-            inputValidationError = "获取方块信息时发生异常: " + e.getMessage();
-            NodeCraft.LOGGER.error("节点 {} 处理位置 {} 的方块失败: {}", getId(), position, e.getMessage(), e);
-        }
-    }
-    
-    /**
      * 清除输入方块数据（不影响拾取存储）
      */
     private void clearInputBlockData() {
         this.inputBlockPosition = null;
-        this.inputBlockId = "minecraft:air";
-        this.inputBlockStateData = null;
         this.hasInputBlock = false;
 
         if (resolveActiveSource() != ActiveSource.PICKED) {
@@ -525,33 +392,12 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         }
         return null;
     }
-    
-    /**
-     * 获取输入值的辅助方法
-     * @param portId 端口ID
-     * @param defaultValue 默认值
-     * @return 输入值或默认值
-     */
-    @SuppressWarnings("unchecked")
-    private <T> T getInputValue(String portId, T defaultValue) {
-        Object value = inputValues.get(portId);
-        if (value != null) {
-            try {
-                return (T) value;
-            } catch (ClassCastException e) {
-                return defaultValue;
-            }
-        }
-        return defaultValue;
-    }
-    
+
     /**
      * 清除输入验证状态
      */
     private void clearInputValidationState() {
         inputValidationError = null;
-        hasInputValidationWarning = false;
-        inputValidationWarning = null;
     }
     
     /**
@@ -622,15 +468,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         syncOutputPorts();
     }
     
-    // === 数据记录和验证结果 ===
-    
-
-    
-    /**
-     * 方块验证数据记录
-     * 包含实际方块ID和验证状态
-     */
-    private record BlockValidationData(String actualBlockId, boolean stateMatches) {}
+    // === 验证结果 ===
     
     /**
      * 验证结果类 - 使用泛型简化多种验证场景
@@ -659,24 +497,12 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             return new ValidationResult<>(false, message, null);
         }
         
-        public static <T> ValidationResult<T> warning(String message, T data) {
-            return new ValidationResult<>(false, message, data);
-        }
-        
         public boolean isValid() {
             return valid;
         }
         
         public String getMessage() {
             return message;
-        }
-        
-        public Optional<T> getData() {
-            return Optional.ofNullable(data);
-        }
-        
-        public boolean hasData() {
-            return data != null;
         }
     }
     
@@ -697,193 +523,45 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 return ValidationResult.failure("玩家未加载");
             }
             
-            ClientWorld world = client.world;
-            if (world == null) {
+            if (client.world == null) {
                 return ValidationResult.failure("世界未加载");
             }
             
-                    // 可选：检查玩家所在区块是否已加载
-        BlockPos playerPos = client.player.getBlockPos();
-        if (client.isInSingleplayer()) {
-            try {
-                // 使用 getChunk 替代已弃用的 isChunkLoaded
-                // 如果区块未加载，getChunk 会返回 null 或抛出异常
-                if (world.getChunk(playerPos) == null) {
-                    return ValidationResult.failure("玩家所在区块未加载");
-                }
-            } catch (Exception e) {
-                return ValidationResult.failure("玩家所在区块未加载");
-            }
-        }
-            
             return ValidationResult.success();
-            
         } catch (Exception e) {
-            return ValidationResult.failure("世界状态检查异常: " + e.getMessage());
+            return ValidationResult.failure("世界状态检查失败: " + e.getMessage());
         }
     }
     
-    /**
-     * 验证拾取的方块是否与客户端世界状态一致
-     * 这对于多人游戏中的网络延迟和状态同步问题很重要
-     * 
-     * @param position 方块位置
-     * @param expectedBlockId 期望的方块ID
-     * @param expectedBlockStateData 期望的方块状态数据
-     * @return ValidationResult<BlockValidationData> 验证结果
-     */
-    private ValidationResult<BlockValidationData> validatePickedBlock(Coordinate position, String expectedBlockId, 
-                                                                    BlockStateData expectedBlockStateData) {
-        try {
-            MinecraftClient client = MinecraftClient.getInstance();
-            ClientWorld world = client.world;
-            
-            // 如果世界状态无效，跳过验证
-            if (world == null) {
-                return ValidationResult.failure("世界未加载，跳过方块验证");
-            }
-            
-            BlockPos pos = new BlockPos(position.x(), position.y(), position.z());
-            
-                    // 检查区块是否已加载
-        try {
-            // 使用 getChunk 替代已弃用的 isChunkLoaded
-            if (world.getChunk(pos) == null) {
-                return ValidationResult.failure("目标区块未加载，跳过方块验证");
-            }
-        } catch (Exception e) {
-            return ValidationResult.failure("目标区块未加载，跳过方块验证");
-        }
-            
-            // 获取世界中的实际方块状态
-            BlockState actualBlockState = world.getBlockState(pos);
-            String actualBlockId = Registries.BLOCK.getId(actualBlockState.getBlock()).toString();
-            
-            // 比较方块ID
-            if (!actualBlockId.equals(expectedBlockId)) {
-                String warningMessage = String.format(
-                    "拾取方块 %s 与世界状态 %s 不一致 at (%d, %d, %d) - 可能由网络延迟引起", 
-                    expectedBlockId, actualBlockId, position.x(), position.y(), position.z());
-                return ValidationResult.warning(warningMessage, new BlockValidationData(actualBlockId, false));
-            }
-            
-            // 可选：比较方块状态属性（更严格的验证）
-            boolean stateMatches;
-            if (expectedBlockStateData != null && !expectedBlockStateData.isEmpty()) {
-                stateMatches = validateBlockStateProperties(actualBlockState, expectedBlockStateData);
-                if (!stateMatches) {
-                    String warningMessage = String.format(
-                        "方块 %s 的状态属性不一致 at (%d, %d, %d) - 可能由网络延迟引起", 
-                        expectedBlockId, position.x(), position.y(), position.z());
-                    return ValidationResult.warning(warningMessage, new BlockValidationData(actualBlockId, false));
-                }
-            }
-            
-            return ValidationResult.success(new BlockValidationData(actualBlockId, true));
-            
-        } catch (Exception e) {
-            String warningMessage = "方块验证异常: " + e.getMessage();
-            return ValidationResult.failure(warningMessage);
-        }
-    }
-    
-    /**
-     * 验证方块状态属性是否匹配
-     * 
-     * @param actualBlockState 世界中的实际方块状态
-     * @param expectedBlockStateData 期望的方块状态数据
-     * @return true 如果状态匹配，false 否则
-     */
-    private boolean validateBlockStateProperties(BlockState actualBlockState, BlockStateData expectedBlockStateData) {
-        try {
-            // 检查每个期望的属性是否与实际状态匹配
-            for (Map.Entry<String, String> entry : expectedBlockStateData.entrySet()) {
-                String propertyName = entry.getKey();
-                String expectedValue = entry.getValue();
-                
-                // 查找对应的属性
-                boolean propertyFound = false;
-                for (var property : actualBlockState.getProperties()) {
-                    if (property.getName().equals(propertyName)) {
-                        String actualValue = actualBlockState.get(property).toString();
-                        if (!actualValue.equals(expectedValue)) {
-                            NodeCraft.LOGGER.debug("方块属性 {} 不匹配: 期望 {}, 实际 {}", 
-                                propertyName, expectedValue, actualValue);
-                            return false;
-                        }
-                        propertyFound = true;
-                        break;
-                    }
-                }
-                
-                if (!propertyFound) {
-                    NodeCraft.LOGGER.debug("方块属性 {} 在实际状态中未找到", propertyName);
-                    return false;
-                }
-            }
-            
-            return true;
-            
-        } catch (Exception e) {
-            NodeCraft.LOGGER.debug("验证方块状态属性时发生异常", e);
-            return false;
-        }
-    }
-    
-        // === IBlockPickerCallback 实现 ===
+    // === IBlockPickerCallback 实现 ===
     
     @Override
-    public void onBlockPicked(Coordinate position, String blockId, BlockStateData blockStateData) {
-        // 首先检查 Minecraft 世界状态
+    public void onBlockPicked(Coordinate position, String blockId, com.nodecraft.nodesystem.util.BlockStateData blockStateData) {
         ValidationResult<Void> worldValidation = validateWorldState();
         if (!worldValidation.isValid()) {
             NodeCraft.LOGGER.warn("节点 {} 无法拾取方块: {}", getId(), worldValidation.getMessage());
             onPickingCancelled();
             return;
         }
-        
-        // 验证拾取的方块是否与客户端世界状态一致（可选但推荐）
-        ValidationResult<BlockValidationData> blockValidation = validatePickedBlock(position, blockId, blockStateData);
-        if (!blockValidation.isValid()) {
-            NodeCraft.LOGGER.warn("节点 {} 方块验证失败: {}", getId(), blockValidation.getMessage());
-            // 注意：这里不返回，而是继续使用传入的方块信息，但会记录警告
-            // 这样可以处理网络延迟导致的状态不一致问题
-        }
-        
 
-        
-        // 外部交互管理器通知方块被拾取
+        // Position-only: ignore blockId / BlockState from picker (compose Get Block for world data).
         this.pickedBlockPosition = position;
-        this.pickedBlockId = blockId;
-        this.pickedBlockStateData = blockStateData;
         this.hasPickedBlock = true;
         updateOutputsWithActiveBlock();
-        
-        // 标记节点为脏，触发重新计算
         markDirty();
         
-        // 显示选择视觉反馈（不受节点可见性开关影响，确保拾取时总有反馈）。
         try {
             SelectionVisualFeedback.getInstance().showBlockSelection(
                 getId().toString(),
                 position,
                 SelectionVisualFeedback.SelectionState.SELECTED
             );
-            NodeCraft.LOGGER.info("节点 {} 选择视觉反馈已请求显示，位置: {}", getId(), position);
         } catch (Exception e) {
             NodeCraft.LOGGER.error("节点 {} 显示选择视觉反馈失败: {}", getId(), e.getMessage(), e);
         }
         
-        // 统一更新方块预览
         refreshBlockPreview();
-        
-        NodeCraft.LOGGER.info("节点 {} 接收到拾取的方块: {} at {}", getId(), blockId, position);
-        if (NodeCraft.LOGGER.isDebugEnabled()) {
-            NodeCraft.LOGGER.debug("节点 {} 方块状态数据: {}", getId(), 
-                (blockStateData != null ? blockStateData.toString() : "无"));
-            blockValidation.getData().ifPresent(validationData -> NodeCraft.LOGGER.debug("节点 {} 世界中实际方块: {}, 状态匹配: {}",
-                getId(), validationData.actualBlockId(), validationData.stateMatches()));
-        }
+        NodeCraft.LOGGER.info("节点 {} 接收到拾取位置: {}", getId(), position);
     }
     
     @Override
@@ -904,8 +582,6 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     public void clearPickedBlock() {
         hasPickedBlock = false;
         pickedBlockPosition = null;
-        pickedBlockId = "minecraft:air";
-        pickedBlockStateData = null;
         
         // 清除选择视觉反馈（仅当拾取不是当前活动源时，或没有坐标活动源）
         if (resolveActiveSource() != ActiveSource.COORDINATES) {
@@ -945,8 +621,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             
             if (showBlockPreview) {
                 ActiveBlock active = resolveActiveBlock();
-                if (active != null && active.position() != null && active.blockId() != null) {
-                    createBlockPreview(active.position(), active.blockId());
+                if (active != null && active.position() != null) {
+                    createBlockPreview(active.position());
                 } else {
                     clearBlockPreview();
                 }
@@ -965,57 +641,70 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         }
     }
     
-    private void createBlockPreview() {
-        ActiveBlock active = resolveActiveBlock();
-        if (active != null) {
-            createBlockPreview(active.position(), active.blockId());
+    private void createBlockPreview(Coordinate position) {
+        if (position == null) {
+            return;
+        }
+        try {
+            ValidationResult<Void> worldValidation = validateWorldState();
+            if (!worldValidation.isValid()) {
+                NodeCraft.LOGGER.debug("节点 {} 跳过幽灵方块预览: {}", getId(), worldValidation.getMessage());
+                return;
+            }
+
+            // Live world lookup for preview only — not cached as node selection state.
+            String blockId = resolveLiveBlockId(position);
+            if (blockId == null) {
+                clearBlockPreview();
+                return;
+            }
+            
+            clearBlockPreview();
+            
+            PreviewBlocksPayload payload = new PreviewBlocksPayload(List.of(
+                new PreviewBlock(
+                    position.x(),
+                    position.y(),
+                    position.z(),
+                    blockId
+                )
+            ));
+            PreviewStyle style = PreviewStyle.forGhostBlocks(1.0f, 1.0f, 1.0f, 0.5f, false, "block_model", 2.0f, 0.1f, 0);
+            PreviewOptions options = style.toPreviewOptions(PreviewKind.BLOCKS);
+            currentGhostBlockPreviewId = PreviewRenderer.getInstance()
+                    .showPreview(getId().toString(), "ghost_block", payload, options);
+            
+            if (currentGhostBlockPreviewId != null) {
+                NodeCraft.LOGGER.debug("节点 {} 幽灵方块预览已显示: {} at {}, 预览ID: {}", 
+                    getId(), blockId, position, currentGhostBlockPreviewId);
+            } else {
+                NodeCraft.LOGGER.warn("节点 {} 幽灵方块预览创建失败: {} at {}", 
+                    getId(), blockId, position);
+            }
+        } catch (NullPointerException e) {
+            NodeCraft.LOGGER.error("节点 {} 显示方块预览失败: 空指针异常 - PreviewRenderer或方块数据为null", getId(), e);
+            currentGhostBlockPreviewId = null;
+        } catch (IllegalArgumentException e) {
+            NodeCraft.LOGGER.error("节点 {} 显示方块预览失败: 参数异常 - 无效坐标 {}", getId(), position, e);
+            currentGhostBlockPreviewId = null;
+        } catch (Exception e) {
+            NodeCraft.LOGGER.error("节点 {} 显示方块预览失败: {} - {}", getId(), 
+                e.getClass().getSimpleName(), e.getMessage(), e);
+            currentGhostBlockPreviewId = null;
         }
     }
 
-    private void createBlockPreview(Coordinate position, String blockId) {
-        if (position != null && blockId != null) {
-            try {
-                // 检查世界状态，确保预览可以正常显示
-                ValidationResult<Void> worldValidation = validateWorldState();
-                if (!worldValidation.isValid()) {
-                    NodeCraft.LOGGER.debug("节点 {} 跳过幽灵方块预览: {}", getId(), worldValidation.getMessage());
-                    return;
-                }
-                
-                // 先隐藏之前的预览
-                clearBlockPreview();
-                
-                PreviewBlocksPayload payload = new PreviewBlocksPayload(List.of(
-                    new PreviewBlock(
-                        position.x(),
-                        position.y(),
-                        position.z(),
-                        blockId
-                    )
-                ));
-                PreviewStyle style = PreviewStyle.forGhostBlocks(1.0f, 1.0f, 1.0f, 0.5f, false, "block_model", 2.0f, 0.1f, 0);
-                PreviewOptions options = style.toPreviewOptions(PreviewKind.BLOCKS);
-                currentGhostBlockPreviewId = PreviewRenderer.getInstance()
-                        .showPreview(getId().toString(), "ghost_block", payload, options);
-                
-                if (currentGhostBlockPreviewId != null) {
-                    NodeCraft.LOGGER.debug("节点 {} 幽灵方块预览已显示: {} at {}, 预览ID: {}", 
-                        getId(), blockId, position, currentGhostBlockPreviewId);
-                } else {
-                    NodeCraft.LOGGER.warn("节点 {} 幽灵方块预览创建失败: {} at {}", 
-                        getId(), blockId, position);
-                }
-            } catch (NullPointerException e) {
-                NodeCraft.LOGGER.error("节点 {} 显示方块预览失败: 空指针异常 - PreviewRenderer或方块数据为null", getId(), e);
-                currentGhostBlockPreviewId = null;
-            } catch (IllegalArgumentException e) {
-                NodeCraft.LOGGER.error("节点 {} 显示方块预览失败: 参数异常 - 无效的方块ID: {}", getId(), blockId, e);
-                currentGhostBlockPreviewId = null;
-            } catch (Exception e) {
-                NodeCraft.LOGGER.error("节点 {} 显示方块预览失败: {} - {}", getId(), 
-                    e.getClass().getSimpleName(), e.getMessage(), e);
-                currentGhostBlockPreviewId = null;
+    private @Nullable String resolveLiveBlockId(Coordinate position) {
+        try {
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client == null || client.world == null || position == null) {
+                return null;
             }
+            BlockPos blockPos = new BlockPos(position.x(), position.y(), position.z());
+            return Registries.BLOCK.getId(client.world.getBlockState(blockPos).getBlock()).toString();
+        } catch (Exception e) {
+            NodeCraft.LOGGER.debug("节点 {} 瞬时读取预览方块 ID 失败: {}", getId(), e.getMessage());
+            return null;
         }
     }
     
@@ -1076,29 +765,15 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             baseHeight += smallGap;
             baseHeight += textLine;
         }
-        if (hasInputValidationWarning && inputValidationWarning != null && !inputValidationWarning.isEmpty()) {
-            baseHeight += smallGap;
-            baseHeight += textLine;
-        }
 
         ActiveBlock activeBlock = resolveActiveBlock();
         if (resolveActiveSource() != ActiveSource.NONE && activeBlock != null) {
             baseHeight += smallGap;
-            baseHeight += headerHeight; // 「已选方块信息」折叠头
+            baseHeight += headerHeight; // 「已选位置」折叠头
             if (infoSectionExpanded) {
                 baseHeight += smallGap;
-                // 来源 / 名称 / ID / 位置
-                baseHeight += textLine * 4;
-                BlockStateData activeState = activeBlock.state();
-                if (activeState != null && !activeState.isEmpty()) {
-                    baseHeight += textLine; // 状态树节点行
-                    if (blockStateTreeExpanded) {
-                        baseHeight += textLine * activeState.size();
-                    }
-                }
-                if (checkHasBlockEntity(activeBlock.blockId(), activeBlock.position())) {
-                    baseHeight += textLine;
-                }
+                // 来源 / 位置
+                baseHeight += textLine * 2;
                 baseHeight += smallGap;
                 baseHeight += 1f; // separator
                 baseHeight += smallGap;
@@ -1283,34 +958,20 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             ActiveSource activeSource = resolveActiveSource();
             ActiveBlock activeBlock = resolveActiveBlock();
             if (activeSource != ActiveSource.NONE && activeBlock != null) {
-                // 默认展开状态显示区；展开变化必须 syncExpandableUiState → markDirty，节点高度才会跟着变
                 String headerText = activeSource == ActiveSource.PICKED
-                    ? "已选方块信息##info"
-                    : "输入坐标方块##info";
+                    ? "已选位置##info"
+                    : "输入坐标##info";
                 int infoHeaderFlags = infoSectionExpanded ? ImGuiTreeNodeFlags.DefaultOpen : 0;
                 boolean infoExpandedNow = ImGui.collapsingHeader(headerText, infoHeaderFlags);
                 infoSectionExpanded = syncExpandableUiState(infoSectionExpanded, infoExpandedNow);
                 if (infoSectionExpanded) {
-                    ImGui.indent(); // 缩进内容
+                    ImGui.indent();
                     addVerticalSpacing(getSmallPadding(), zoom);
                     
-                    // 显示数据来源
                     ImGui.textDisabled("来源:");
                     ImGui.sameLine();
                     ImGui.text(getActiveSourceLabel());
                     
-                    // 方块名称和ID（紧凑布局）
-                    String activeBlockId = activeBlock.blockId() != null ? activeBlock.blockId() : "minecraft:air";
-                    String blockName = getBlockDisplayName(activeBlockId);
-                    ImGui.textDisabled("名称:");
-                    ImGui.sameLine();
-                    ImGui.text(blockName);
-                    
-                    ImGui.textDisabled("ID:");
-                    ImGui.sameLine();
-                    ImGui.text(activeBlockId);
-                    
-                    // 位置信息（带悬停提示显示中心点）
                     Coordinate activePosition = activeBlock.position();
                     if (activePosition != null) {
                         ImGui.textDisabled("位置:");
@@ -1320,7 +981,6 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                             activePosition.y(),
                             activePosition.z()));
                         
-                        // 悬停时显示中心点坐标
                         if (ImGui.isItemHovered()) {
                             Vector3d center = new Vector3d(
                                 activePosition.x() + 0.5,
@@ -1332,39 +992,14 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                         }
                     }
                     
-                    // 方块状态属性（可展开的树形结构）
-                    BlockStateData activeState = activeBlock.state();
-                    if (activeState != null && !activeState.isEmpty()) {
-                        ImGui.textDisabled("状态:");
-                        ImGui.sameLine();
-                        
-                        // 使用树形节点展示属性列表
-                        String stateLabel = "属性 (" + activeState.size() + ")";
-                        boolean treeExpandedNow = ImGui.treeNode(stateLabel + "##blockState");
-                        blockStateTreeExpanded = syncExpandableUiState(blockStateTreeExpanded, treeExpandedNow);
-                        if (treeExpandedNow) {
-                            for (Map.Entry<String, String> entry : activeState.entrySet()) {
-                                ImGui.bulletText(entry.getKey() + ": " + entry.getValue());
-                            }
-                            ImGui.treePop();
-                        }
-                    }
-                    
-                    // 方块实体信息
-                    boolean hasBlockEntity = checkHasBlockEntity(activeBlockId, activePosition);
-                    if (hasBlockEntity) {
-                        ImGui.bulletText("包含方块实体");
-                    }
-                    
                     ImGui.unindent();
                     addVerticalSpacing(getSmallPadding(), zoom);
-                    ImGui.separator(); // 分隔线
+                    ImGui.separator();
                     addVerticalSpacing(getSmallPadding(), zoom);
                     
-                    // 清除按钮（红色警告色）
-                    ImGui.pushStyleColor(ImGuiCol.Button, 0.8f, 0.2f, 0.2f, 1.0f); // 红色按钮
-                    ImGui.pushStyleColor(ImGuiCol.ButtonHovered, 0.9f, 0.3f, 0.3f, 1.0f); // 悬停时稍亮
-                    ImGui.pushStyleColor(ImGuiCol.ButtonActive, 0.7f, 0.1f, 0.1f, 1.0f); // 按下时稍暗
+                    ImGui.pushStyleColor(ImGuiCol.Button, 0.8f, 0.2f, 0.2f, 1.0f);
+                    ImGui.pushStyleColor(ImGuiCol.ButtonHovered, 0.9f, 0.3f, 0.3f, 1.0f);
+                    ImGui.pushStyleColor(ImGuiCol.ButtonActive, 0.7f, 0.1f, 0.1f, 1.0f);
                     if (ImGui.button("清除选择##clearBlock", availableWidth, buttonHeight)) {
                         if (activeSource == ActiveSource.PICKED || hasPickedBlock) {
                             clearPickedBlock();
@@ -1375,7 +1010,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                         updateOutputsWithActiveBlock();
                         changed = true;
                     }
-                    ImGui.popStyleColor(3); // 弹出三个颜色样式
+                    ImGui.popStyleColor(3);
                     
                     addVerticalSpacing(getSmallPadding(), zoom);
                 }
@@ -1494,18 +1129,9 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
      * @param zoom 缩放级别
      */
     private void renderInputValidationErrors(float zoom) {
-        // 显示输入验证错误
         if (inputValidationError != null && !inputValidationError.isEmpty()) {
-            ImGui.pushStyleColor(ImGuiCol.Text, 1.0f, 0.3f, 0.3f, 1.0f); // 红色
+            ImGui.pushStyleColor(ImGuiCol.Text, 1.0f, 0.3f, 0.3f, 1.0f);
             ImGui.text("错误: " + inputValidationError);
-            ImGui.popStyleColor();
-            addVerticalSpacing(getSmallPadding(), zoom);
-        }
-        
-        // 显示输入验证警告
-        if (hasInputValidationWarning && inputValidationWarning != null && !inputValidationWarning.isEmpty()) {
-            ImGui.pushStyleColor(ImGuiCol.Text, 1.0f, 0.8f, 0.2f, 1.0f); // 橙色
-            ImGui.text("警告: " + inputValidationWarning);
             ImGui.popStyleColor();
             addVerticalSpacing(getSmallPadding(), zoom);
         }
@@ -1702,264 +1328,24 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 getId(), key, stateMap.get(key).getClass().getSimpleName());
         }
     }
-    
-    /**
-     * 恢复拾取的方块数据
-     */
-    private void restorePickedBlockData(Map<String, Object> stateMap) {
-        if (!(stateMap.get("pickedBlock") instanceof Map pickedBlockObj)) {
-            if (stateMap.containsKey("pickedBlock")) {
-                NodeCraft.LOGGER.warn("节点 {} 恢复拾取方块数据失败: 无效类型 {}", 
-                    getId(), stateMap.get("pickedBlock").getClass().getSimpleName());
-            }
-            return;
-        }
-        
-        try {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> pickedBlockMap = (Map<String, Object>) pickedBlockObj;
-            
-            // 严格验证必需字段
-            String blockId = validateAndGetString(pickedBlockMap, "blockId");
-            Integer x = validateAndGetInteger(pickedBlockMap, "x");
-            Integer y = validateAndGetInteger(pickedBlockMap, "y");
-            Integer z = validateAndGetInteger(pickedBlockMap, "z");
-            
-            if (blockId == null || x == null || y == null || z == null) {
-                NodeCraft.LOGGER.warn("节点 {} 恢复拾取方块数据失败: 缺少必需字段 - blockId={}, x={}, y={}, z={}", 
-                    getId(), blockId, x, y, z);
-                return;
-            }
-            
-            // 恢复基本方块信息
-            this.pickedBlockId = blockId;
-            this.pickedBlockPosition = new Coordinate(x, y, z);
-            this.hasPickedBlock = true;
-            
-            // 恢复方块状态数据
-            restoreBlockStateData(pickedBlockMap);
-            
-            NodeCraft.LOGGER.debug("节点 {} 恢复拾取方块数据: {} at ({}, {}, {})", 
-                getId(), blockId, x, y, z);
-                
-        } catch (ClassCastException e) {
-            NodeCraft.LOGGER.error("节点 {} 恢复拾取方块数据失败: 类型转换异常", getId(), e);
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("节点 {} 恢复拾取方块数据失败: 未知异常", getId(), e);
-        }
-    }
-    
-    /**
-     * 恢复方块状态数据
-     */
-    private void restoreBlockStateData(Map<String, Object> pickedBlockMap) {
-        Object stateDataObj = pickedBlockMap.get("blockStateData");
-        
-        if (stateDataObj == null) {
-            this.pickedBlockStateData = null;
-            return;
-        }
-        
-        if (!(stateDataObj instanceof Map stateDataMap)) {
-            NodeCraft.LOGGER.warn("节点 {} 恢复方块状态数据失败: 无效类型 {}", 
-                getId(), stateDataObj.getClass().getSimpleName());
-            this.pickedBlockStateData = null;
-            return;
-        }
-        
-            	 try {
-                BlockStateData restoredStateData = new BlockStateData();
-            int validEntries = 0;
-            int totalEntries = stateDataMap.size();
-            
-            for (Object entryObj : stateDataMap.entrySet()) {
-                if (entryObj instanceof Map.Entry<?, ?> entry) {
-                    if (entry.getKey() instanceof String key && entry.getValue() instanceof String value) {
-                            restoredStateData.put(key, value);
-                        validEntries++;
-                    } else {
-                        NodeCraft.LOGGER.debug("节点 {} 跳过无效的状态数据条目: {} -> {}", 
-                            getId(), entry.getKey(), entry.getValue());
-                    }
-                }
-            }
 
-                this.pickedBlockStateData = restoredStateData;
-            
-            NodeCraft.LOGGER.debug("节点 {} 恢复方块状态数据: {}/{} 个有效条目", 
-                getId(), validEntries, totalEntries);
-                
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("节点 {} 恢复方块状态数据失败", getId(), e);
-            this.pickedBlockStateData = null;
-        }
-    }
-    
     /**
-     * 验证并获取字符串值
-     */
-    private String validateAndGetString(Map<String, Object> map, String key) {
-        Object value = map.get(key);
-        if (value instanceof String str && !str.trim().isEmpty()) {
-            return str;
-        }
-        return null;
-    }
-    
-    /**
-     * 验证并获取整数值
-     */
-    private Integer validateAndGetInteger(Map<String, Object> map, String key) {
-        Object value = map.get(key);
-        if (value instanceof Integer integer) {
-            return integer;
-        } else if (value instanceof Number number) {
-            return number.intValue();
-        }
-        return null;
-    }
-    
-    // === 预览状态管理 ===
-    
-    /**
-     * 检查节点是否在游戏中可见
-     * 通过编辑器的可见性设置来控制预览显示
-     *
-     * @return true 如果节点在游戏中可见，false 如果被设置为 "Hide in Game"
+     * 检查节点是否在游戏中可见（控制幽灵预览是否显示）。
      */
     private boolean isNodeVisibleInGame() {
         try {
-            // 尝试获取当前的节点编辑器实例
             com.nodecraft.gui.editor.impl.ImGuiNodeEditor editor =
                 com.nodecraft.gui.editor.impl.ImGuiNodeEditor.getInstance();
 
             if (editor != null) {
-                // 检查节点是否在编辑器中被标记为可见
                 boolean isVisible = editor.isNodeVisible(getId());
                 NodeCraft.LOGGER.debug("节点 {} 游戏内可见性检查: {}", getId(), isVisible);
                 return isVisible;
-            } else {
-                // 如果无法获取编辑器实例，默认为可见
-                NodeCraft.LOGGER.debug("节点 {} 无法获取编辑器实例，默认为可见", getId());
-                return true;
             }
+            return true;
         } catch (Exception e) {
-            // 如果检查过程中出现异常，默认为可见，避免影响正常功能
             NodeCraft.LOGGER.warn("节点 {} 检查游戏内可见性时出现异常，默认为可见: {}", getId(), e.getMessage());
             return true;
         }
     }
-
-    // === 新增的辅助方法 ===
-    
-    /**
-     * 获取方块的显示名称
-     * 
-     * @param blockId 方块ID
-     * @return 人类可读的方块名称
-     */
-    private String getBlockDisplayName(String blockId) {
-        if (blockId == null || blockId.isEmpty()) {
-            return "未知方块";
-        }
-        
-        try {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client == null) {
-                return getDefaultBlockName(blockId);
-            }
-            
-                         // 尝试从注册表获取方块
-             Identifier identifier = Identifier.tryParse(blockId);
-             if (identifier == null) {
-                 return getDefaultBlockName(blockId);
-             }
-             Block block = Registries.BLOCK.get(identifier);
-            
-            if (block != Blocks.AIR) {
-                // 获取方块的翻译文本
-                Text displayName = block.getName();
-                if (displayName != null) {
-                    return displayName.getString();
-                }
-            }
-            
-            return getDefaultBlockName(blockId);
-            
-        } catch (Exception e) {
-            NodeCraft.LOGGER.debug("节点 {} 获取方块显示名称失败: {}", getId(), e.getMessage());
-            return getDefaultBlockName(blockId);
-        }
-    }
-    
-    /**
-     * 获取默认的方块名称（当无法从游戏获取时）
-     */
-    private String getDefaultBlockName(String blockId) {
-        if (blockId == null) return "未知方块";
-        
-        // 简单的名称转换：去掉命名空间，将下划线替换为空格，首字母大写
-        String name = blockId;
-        if (name.contains(":")) {
-            name = name.substring(name.indexOf(":") + 1);
-        }
-        
-        name = name.replace("_", " ");
-        if (!name.isEmpty()) {
-            name = name.substring(0, 1).toUpperCase() + name.substring(1);
-        }
-        
-        return name;
-    }
-    
-
-    
-    /**
-     * 检查方块是否有方块实体
-     * 使用 Minecraft 的 BlockState.hasBlockEntity() 方法，100% 准确且无需手动维护列表
-     * 
-     * @param blockId 方块ID
-     * @param position 方块位置
-     * @return 是否有方块实体
-     */
-    private boolean checkHasBlockEntity(String blockId, Coordinate position) {
-        if (blockId == null || blockId.isEmpty()) {
-            return false;
-        }
-        
-        try {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client == null) {
-                return false;
-            }
-            
-            BlockState blockState;
-            
-            // 优先从世界中获取实际的方块状态（如果有位置信息）
-            if (position != null && client.world != null) {
-                BlockPos blockPos = new BlockPos(position.x(), position.y(), position.z());
-                blockState = client.world.getBlockState(blockPos);
-            } else {
-                // 否则从方块ID获取默认状态
-                Identifier identifier = Identifier.tryParse(blockId);
-                if (identifier == null) {
-                    return false;
-                }
-                
-                Block block = Registries.BLOCK.get(identifier);
-                if (block == Blocks.AIR) {
-                    return false;
-                }
-                
-                blockState = block.getDefaultState();
-            }
-            
-            // 使用 Minecraft 内置的方法检查是否有方块实体
-            return blockState.hasBlockEntity();
-            
-        } catch (Exception e) {
-            NodeCraft.LOGGER.debug("节点 {} 检查方块实体失败: {}", getId(), e.getMessage());
-            return false;
-        }
-    }
-} 
+}
