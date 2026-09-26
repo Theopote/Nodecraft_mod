@@ -221,6 +221,23 @@ class AssistUtilitiesLanguageContractTest {
     }
 
     @Test
+    void coalesceConnectedNullPreferPrimaryFailsClosed() {
+        CoalesceProbe coalesce = new CoalesceProbe();
+        PointData primary = new PointData(1, 0, 0);
+        PointData secondary = new PointData(2, 0, 0);
+        coalesce.connectInput("input_primary", NodeDataType.POINT);
+        coalesce.connectInput("input_secondary", NodeDataType.POINT);
+        coalesce.connectInput("input_prefer_primary", NodeDataType.BOOLEAN);
+        coalesce.setInput("input_primary", primary);
+        coalesce.setInput("input_secondary", secondary);
+        coalesce.setInput("input_prefer_primary", null);
+        coalesce.processNode(null);
+        assertEquals(Boolean.FALSE, coalesce.getOutput("output_valid"));
+        assertEquals(null, coalesce.getOutput("output_signal"));
+        assertEquals("none", coalesce.getOutput("output_source"));
+    }
+
+    @Test
     void stringFormatTemplateEmptyStringIsValidWhenConnected() {
         StringFormatProbe format = new StringFormatProbe();
         format.connectInput("input_template", NodeDataType.STRING);

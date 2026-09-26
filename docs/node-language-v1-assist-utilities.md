@@ -65,6 +65,16 @@ Prefer-Primary order among **connected** branches; first **non-null** wins (`??`
 Unconnected branches skipped. All connected-null → `Signal=null` / `Source=none` / `Valid=true`.
 All branch ports share the same `T` at connect time.
 
+Prefer Primary control (distinct from branch null):
+
+```text
+unconnected              → property Prefer Primary
+connected + true/false   → input override
+connected null/invalid   → Valid=false (fail closed; no property fallback)
+```
+
+Branch `null` is coalesce data semantics; Prefer Primary `null` is an invalid control parameter.
+
 ## Validate
 
 - Condition: `OptionalPortDrive.resolveOptionalBoolean` — unconnected→property; connected

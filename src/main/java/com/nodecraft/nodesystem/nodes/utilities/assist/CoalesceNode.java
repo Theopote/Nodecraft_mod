@@ -242,7 +242,14 @@ public class CoalesceNode extends BaseCustomUINode {
     public void processNode(@Nullable ExecutionContext context) {
         Boolean preferOverride = OptionalPortDrive.resolveOptionalBoolean(
             this, INPUT_PREFER_PRIMARY_ID, preferPrimary);
-        boolean usePrimaryFirst = preferOverride != null ? preferOverride : preferPrimary;
+        // Connected Prefer Primary with null/invalid → fail closed (not property fallback).
+        if (preferOverride == null) {
+            outputValues.put(OUTPUT_SIGNAL_ID, null);
+            outputValues.put(OUTPUT_SOURCE_ID, "none");
+            outputValues.put(OUTPUT_VALID_ID, false);
+            return;
+        }
+        boolean usePrimaryFirst = preferOverride;
 
         Object result = null;
         String source = "none";
