@@ -154,8 +154,6 @@ public class PolarArrayNode extends BaseNode {
         }
         if (map.get("includeEnd") instanceof Boolean value) {
             setIncludeEnd(value);
-        } else if (map.get("includeOriginal") instanceof Boolean ignored) {
-            setIncludeEnd(false);
         }
     }
 

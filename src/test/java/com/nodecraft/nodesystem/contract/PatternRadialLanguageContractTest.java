@@ -220,6 +220,43 @@ class PatternRadialLanguageContractTest {
     }
 
     @Test
+    void spiralOutputsStayIndexAligned() {
+        BaseNode spiral = assertInstanceOf(BaseNode.class, registry.createNodeInstance("pattern.radial.spiral"));
+        spiral.setInput("input_count", 6);
+        spiral.setInput("input_radius_step", 0.17d);
+        spiral.setInput("input_height_step", 0.31d);
+        spiral.processNode(null);
+
+        assertEquals(Boolean.TRUE, spiral.getOutput("output_valid"));
+        int count = assertInstanceOf(Integer.class, spiral.getOutput("output_count"));
+        @SuppressWarnings("unchecked")
+        List<PointData> points = assertInstanceOf(List.class, spiral.getOutput("output_points"));
+        @SuppressWarnings("unchecked")
+        List<Vector3d> tangents = assertInstanceOf(List.class, spiral.getOutput("output_tangents"));
+        @SuppressWarnings("unchecked")
+        List<FrameData> frames = assertInstanceOf(List.class, spiral.getOutput("output_frames"));
+        assertEquals(count, points.size());
+        assertEquals(count, tangents.size());
+        assertEquals(count, frames.size());
+    }
+
+    @Test
+    void spiralUsesContinuousCoordinates() {
+        BaseNode spiral = assertInstanceOf(BaseNode.class, registry.createNodeInstance("pattern.radial.spiral"));
+        spiral.setInput("input_count", 4);
+        spiral.setInput("input_start_radius", 2.0d);
+        spiral.setInput("input_radius_step", 0.15d);
+        spiral.setInput("input_height_step", 0.25d);
+        spiral.processNode(null);
+
+        @SuppressWarnings("unchecked")
+        List<PointData> points = assertInstanceOf(List.class, spiral.getOutput("output_points"));
+        PointData third = points.get(2);
+        assertTrue(Math.abs(third.getPosition().x - Math.round(third.getPosition().x)) > 1.0e-6d
+                || Math.abs(third.getPosition().z - Math.round(third.getPosition().z)) > 1.0e-6d);
+    }
+
+    @Test
     void spiralNonFiniteTurnsFailClosed() {
         BaseNode spiral = assertInstanceOf(BaseNode.class, registry.createNodeInstance("pattern.radial.spiral"));
         spiral.setInput("input_turns", Double.NaN);
@@ -265,6 +302,17 @@ class PatternRadialLanguageContractTest {
     }
 
     @Test
+    void phyllotaxisNegativeRadialExponentFailClosed() {
+        BaseNode phyllotaxis = assertInstanceOf(BaseNode.class,
+                registry.createNodeInstance("pattern.radial.phyllotaxis"));
+        phyllotaxis.setInput("input_count", 4);
+        phyllotaxis.setInput("input_radial_exponent", -0.5d);
+        phyllotaxis.processNode(null);
+
+        assertEquals(Boolean.FALSE, phyllotaxis.getOutput("output_valid"));
+    }
+
+    @Test
     void layoutProducersDoNotOutputBlockList() {
         for (String typeId : LAYOUT_PRODUCER_IDS) {
             INode node = registry.createNodeInstance(typeId);
@@ -276,14 +324,15 @@ class PatternRadialLanguageContractTest {
     }
 
     @Test
-    void layoutProducersRespectMaxListElements() {
+    void layoutProducersRespectLayoutInstanceCap() {
         BaseNode spiral = assertInstanceOf(BaseNode.class, registry.createNodeInstance("pattern.radial.spiral"));
         spiral.setInput("input_count", Integer.MAX_VALUE);
         spiral.processNode(null);
 
         @SuppressWarnings("unchecked")
         List<PointData> points = assertInstanceOf(List.class, spiral.getOutput("output_points"));
-        assertTrue(points.size() <= GenerationLimits.MAX_LIST_ELEMENTS);
+        assertTrue(points.size() <= GenerationLimits.MAX_LAYOUT_INSTANCES);
+        assertEquals(GenerationLimits.MAX_LAYOUT_INSTANCES, spiral.getOutput("output_count"));
     }
 
     private static BaseNode createPolarArray() {

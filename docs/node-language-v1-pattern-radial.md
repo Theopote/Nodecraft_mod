@@ -76,7 +76,13 @@ Spiral / Phyllotaxis -> Place Geometry on Frames
 **Phyllotaxis** inputs: Origin, Count, Radius Scale, Angle Step (default 137.507764°),
 Start Angle, Height Step, Radial Exponent (DOUBLE port, default 0.5).
 
+Radial Exponent must be >= 0 — negative values are invalid because index 0 is singular
+(`pow(0, negative)`); the node fails closed with Valid=false.
+
 No Align To Tangent property — choose Points or Frames downstream instead.
+
+Layout producers cap Count via `GenerationLimits.clampLayoutInstanceCount()` (max
+16,384 aligned Points/Tangents/Frames).
 
 ## Removed legacy
 

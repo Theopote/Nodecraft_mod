@@ -92,12 +92,13 @@ public class PhyllotaxisNode extends BaseNode {
                 || !Double.isFinite(angleStepRadians)
                 || !Double.isFinite(startAngleRadians)
                 || !Double.isFinite(heightStep)
-                || !Double.isFinite(radialExponent)) {
+                || !Double.isFinite(radialExponent)
+                || radialExponent < 0.0d) {
             writeEmpty();
             return;
         }
 
-        int count = GenerationLimits.clampGeometryInstanceCount(requestedCount);
+        int count = GenerationLimits.clampLayoutInstanceCount(requestedCount);
         if (count == 0) {
             writeEmpty();
             return;

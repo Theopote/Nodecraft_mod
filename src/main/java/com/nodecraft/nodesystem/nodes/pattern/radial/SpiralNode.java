@@ -94,7 +94,7 @@ public class SpiralNode extends BaseNode {
             return;
         }
 
-        int count = GenerationLimits.clampGeometryInstanceCount(requestedCount);
+        int count = GenerationLimits.clampLayoutInstanceCount(requestedCount);
         if (count == 0) {
             writeEmpty();
             return;

@@ -17,6 +17,12 @@ public final class GenerationLimits {
     public static final int MAX_GEOMETRY_INSTANCES = 16_384;
 
     /**
+     * Hard cap for layout producers that emit POINT_LIST / VECTOR_LIST / FRAME_LIST together
+     * (Spiral, Phyllotaxis, path-frame producers).
+     */
+    public static final int MAX_LAYOUT_INSTANCES = 16_384;
+
+    /**
      * Maximum repetitions per axis for 2D grid/array nodes before multiplying by source size.
      */
     public static final int MAX_GRID_AXIS = 1024;
@@ -64,6 +70,17 @@ public final class GenerationLimits {
             return 0;
         }
         return Math.min(count, MAX_GEOMETRY_INSTANCES);
+    }
+
+    /**
+     * Caps layout producer instance counts to {@link #MAX_LAYOUT_INSTANCES}.
+     * Returns 0 when {@code count <= 0}.
+     */
+    public static int clampLayoutInstanceCount(int count) {
+        if (count <= 0) {
+            return 0;
+        }
+        return Math.min(count, MAX_LAYOUT_INSTANCES);
     }
 
     /**
