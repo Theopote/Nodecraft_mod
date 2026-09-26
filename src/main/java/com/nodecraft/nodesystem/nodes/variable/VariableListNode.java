@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +65,7 @@ public class VariableListNode extends BaseNode {
 
         List<Map.Entry<String, Object>> entries = new ArrayList<>(snapshot.entrySet());
         if (sortNames) {
-            entries.sort(Map.Entry.comparingByKey(String.CASE_INSENSITIVE_ORDER));
+            entries.sort(Comparator.comparing(Map.Entry::getKey, String.CASE_INSENSITIVE_ORDER));
         }
 
         List<Object> names = new ArrayList<>();
@@ -75,7 +76,7 @@ public class VariableListNode extends BaseNode {
             if (!showInternalVariables && VariableScopeBridge.isInternalVariableName(name)) {
                 continue;
             }
-            if (!prefix.isEmpty() && (name == null || !name.startsWith(prefix))) {
+            if (prefix != null && !prefix.isEmpty() && (name == null || !name.startsWith(prefix))) {
                 continue;
             }
 

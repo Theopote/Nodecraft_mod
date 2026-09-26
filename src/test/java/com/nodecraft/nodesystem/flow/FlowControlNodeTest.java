@@ -224,10 +224,10 @@ class FlowControlNodeTest {
         graph.addNode(trueSink);
         graph.addNode(falseSink);
 
-        graph.connect(condition.getId(), "out", branch.getId(), "input_condition");
-        graph.connect(signal.getId(), "out", branch.getId(), "input_signal");
-        graph.connect(branch.getId(), "output_true", trueSink.getId(), "in");
-        graph.connect(branch.getId(), "output_false", falseSink.getId(), "in");
+        assertTrue(graph.connect(condition.getId(), "out", branch.getId(), "input_condition"));
+        assertTrue(graph.connect(signal.getId(), "out", branch.getId(), "input_signal"));
+        assertTrue(graph.connect(branch.getId(), "output_true", trueSink.getId(), "in"));
+        assertTrue(graph.connect(branch.getId(), "output_false", falseSink.getId(), "in"));
 
         assertTrue(new NodeExecutor(graph).executeSync());
         assertEquals("payload", trueSink.getOutput("out"));
@@ -242,13 +242,32 @@ class FlowControlNodeTest {
         private PassThroughNode(String suffix, Object payload) {
             super(java.util.UUID.randomUUID(), "test.pass." + suffix);
             this.payload = payload;
-            addOutputPort(new BasePort("out", "Out", "output", NodeDataType.ANY, this));
+            addOutputPort(new BasePort("out", "Out", "output", inferOutputType(payload), this));
         }
 
         @Override
         public void processNode(@Nullable ExecutionContext context) {
             outputValues.put("out", payload);
         }
+    }
+
+    private static NodeDataType inferOutputType(@Nullable Object payload) {
+        if (payload instanceof Boolean) {
+            return NodeDataType.BOOLEAN;
+        }
+        if (payload instanceof Integer) {
+            return NodeDataType.INTEGER;
+        }
+        if (payload instanceof Number) {
+            return NodeDataType.DOUBLE;
+        }
+        if (payload instanceof String) {
+            return NodeDataType.STRING;
+        }
+        if (payload instanceof java.util.List<?>) {
+            return NodeDataType.LIST;
+        }
+        return NodeDataType.ANY;
     }
 
     private static final class CaptureNode extends BaseNode {

@@ -79,11 +79,11 @@ class ExecFlowExecutorTest {
         graph.addNode(trueSink);
         graph.addNode(falseSink);
 
-        graph.connect(entry.getId(), "exec_out", branch.getId(), "exec_in");
-        graph.connect(condition.getId(), "out", branch.getId(), "input_condition");
-        graph.connect(signal.getId(), "out", branch.getId(), "input_signal");
-        graph.connect(branch.getId(), "exec_true", trueSink.getId(), "exec_in");
-        graph.connect(branch.getId(), "exec_false", falseSink.getId(), "exec_in");
+        assertTrue(graph.connect(entry.getId(), "exec_out", branch.getId(), "exec_in"));
+        assertTrue(graph.connect(condition.getId(), "out", branch.getId(), "input_condition"));
+        assertTrue(graph.connect(signal.getId(), "out", branch.getId(), "input_signal"));
+        assertTrue(graph.connect(branch.getId(), "exec_true", trueSink.getId(), "exec_in"));
+        assertTrue(graph.connect(branch.getId(), "exec_false", falseSink.getId(), "exec_in"));
 
         assertTrue(new NodeExecutor(graph).executeSync());
         assertEquals(1, entry.executions());
@@ -109,11 +109,11 @@ class ExecFlowExecutorTest {
         graph.addNode(trueSink);
         graph.addNode(falseSink);
 
-        graph.connect(entry.getId(), "exec_out", branch.getId(), "exec_in");
-        graph.connect(condition.getId(), "out", branch.getId(), "input_condition");
-        graph.connect(signal.getId(), "out", branch.getId(), "input_signal");
-        graph.connect(branch.getId(), "exec_true", trueSink.getId(), "exec_in");
-        graph.connect(branch.getId(), "exec_false", falseSink.getId(), "exec_in");
+        assertTrue(graph.connect(entry.getId(), "exec_out", branch.getId(), "exec_in"));
+        assertTrue(graph.connect(condition.getId(), "out", branch.getId(), "input_condition"));
+        assertTrue(graph.connect(signal.getId(), "out", branch.getId(), "input_signal"));
+        assertTrue(graph.connect(branch.getId(), "exec_true", trueSink.getId(), "exec_in"));
+        assertTrue(graph.connect(branch.getId(), "exec_false", falseSink.getId(), "exec_in"));
 
         assertTrue(new NodeExecutor(graph).executeSync());
         assertEquals(0, trueSink.executions());
@@ -155,12 +155,12 @@ class ExecFlowExecutorTest {
         graph.addNode(step2);
         graph.addNode(step3);
 
-        graph.connect(entry.getId(), "exec_out", sequence.getId(), "exec_in");
-        graph.connect(signal.getId(), "out", sequence.getId(), "input_signal");
-        graph.connect(stepCount.getId(), "out", sequence.getId(), "input_step_count");
-        graph.connect(sequence.getId(), SequenceNode.execStepPortId(1), step1.getId(), "exec_in");
-        graph.connect(sequence.getId(), SequenceNode.execStepPortId(2), step2.getId(), "exec_in");
-        graph.connect(sequence.getId(), SequenceNode.execStepPortId(3), step3.getId(), "exec_in");
+        assertTrue(graph.connect(entry.getId(), "exec_out", sequence.getId(), "exec_in"));
+        assertTrue(graph.connect(signal.getId(), "out", sequence.getId(), "input_signal"));
+        assertTrue(graph.connect(stepCount.getId(), "out", sequence.getId(), "input_step_count"));
+        assertTrue(graph.connect(sequence.getId(), SequenceNode.execStepPortId(1), step1.getId(), "exec_in"));
+        assertTrue(graph.connect(sequence.getId(), SequenceNode.execStepPortId(2), step2.getId(), "exec_in"));
+        assertTrue(graph.connect(sequence.getId(), SequenceNode.execStepPortId(3), step3.getId(), "exec_in"));
 
         assertTrue(new NodeExecutor(graph).executeSync());
         assertEquals(List.of("entry", "step1", "step2", "step3"), order);
@@ -360,14 +360,13 @@ class ExecFlowExecutorTest {
 
     private static final class PassThroughNode extends BaseNode {
         private final Object payload;
+        private final AtomicInteger executions = new AtomicInteger();
 
         private PassThroughNode(String suffix, Object payload) {
             super(UUID.randomUUID(), "test.pass." + suffix);
             this.payload = payload;
-            addOutputPort(new BasePort("out", "Out", "output", NodeDataType.ANY, this));
+            addOutputPort(new BasePort("out", "Out", "output", inferOutputType(payload), this));
         }
-
-        private final AtomicInteger executions = new AtomicInteger();
 
         @Override
         public void processNode(@Nullable ExecutionContext context) {
@@ -378,6 +377,25 @@ class ExecFlowExecutorTest {
         int executions() {
             return executions.get();
         }
+    }
+
+    private static NodeDataType inferOutputType(@Nullable Object payload) {
+        if (payload instanceof Boolean) {
+            return NodeDataType.BOOLEAN;
+        }
+        if (payload instanceof Integer) {
+            return NodeDataType.INTEGER;
+        }
+        if (payload instanceof Number) {
+            return NodeDataType.DOUBLE;
+        }
+        if (payload instanceof String) {
+            return NodeDataType.STRING;
+        }
+        if (payload instanceof List<?>) {
+            return NodeDataType.LIST;
+        }
+        return NodeDataType.ANY;
     }
 
     private static final class CaptureNode extends BaseNode {

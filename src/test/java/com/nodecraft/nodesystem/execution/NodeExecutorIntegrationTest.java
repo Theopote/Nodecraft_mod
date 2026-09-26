@@ -61,9 +61,9 @@ class NodeExecutorIntegrationTest {
         graph.addNode(condition);
         graph.addNode(ifNode);
 
-        graph.connect(trueValue.getId(), "out", ifNode.getId(), "input_true_value");
-        graph.connect(falseValue.getId(), "out", ifNode.getId(), "input_false_value");
-        graph.connect(condition.getId(), "out", ifNode.getId(), "input_condition");
+        assertTrue(graph.connect(trueValue.getId(), "out", ifNode.getId(), "input_true_value"));
+        assertTrue(graph.connect(falseValue.getId(), "out", ifNode.getId(), "input_false_value"));
+        assertTrue(graph.connect(condition.getId(), "out", ifNode.getId(), "input_condition"));
 
         assertTrue(new NodeExecutor(graph).executeSync());
         assertEquals("yes", ifNode.getOutput("output_result"));
@@ -290,7 +290,7 @@ class NodeExecutorIntegrationTest {
             super(java.util.UUID.randomUUID(), "test.pass." + suffix);
             this.payload = payload;
             addInputPort(new BasePort("in", "In", "input", NodeDataType.ANY, this));
-            addOutputPort(new BasePort("out", "Out", "output", NodeDataType.ANY, this));
+            addOutputPort(new BasePort("out", "Out", "output", inferOutputType(payload), this));
         }
 
         @Override
@@ -298,6 +298,25 @@ class NodeExecutorIntegrationTest {
             Object incoming = inputValues.get("in");
             outputValues.put("out", incoming != null ? incoming : payload);
         }
+    }
+
+    private static NodeDataType inferOutputType(@Nullable Object payload) {
+        if (payload instanceof Boolean) {
+            return NodeDataType.BOOLEAN;
+        }
+        if (payload instanceof Integer) {
+            return NodeDataType.INTEGER;
+        }
+        if (payload instanceof Number) {
+            return NodeDataType.DOUBLE;
+        }
+        if (payload instanceof String) {
+            return NodeDataType.STRING;
+        }
+        if (payload instanceof java.util.List<?>) {
+            return NodeDataType.LIST;
+        }
+        return NodeDataType.ANY;
     }
 
     private static final class CountingNode extends BaseNode {

@@ -70,7 +70,7 @@ class IncrementalExecutionPlannerTest {
     @Test
     void resolveInvalidationScopeIncludesExecDownstreamReachableFromDataDownstream() {
         NodeGraph graph = new NodeGraph("exec-from-data");
-        StubNode condition = new StubNode("condition");
+        StubNode condition = new StubNode("condition", NodeDataType.BOOLEAN);
         BranchNode branch = new BranchNode();
         ExecStubNode trueSink = new ExecStubNode("true_sink");
         ExecStubNode falseSink = new ExecStubNode("false_sink");
@@ -80,9 +80,9 @@ class IncrementalExecutionPlannerTest {
         graph.addNode(trueSink);
         graph.addNode(falseSink);
 
-        graph.connect(condition.getId(), "out", branch.getId(), "input_condition");
-        graph.connect(branch.getId(), "exec_true", trueSink.getId(), "exec_in");
-        graph.connect(branch.getId(), "exec_false", falseSink.getId(), "exec_in");
+        assertTrue(graph.connect(condition.getId(), "out", branch.getId(), "input_condition"));
+        assertTrue(graph.connect(branch.getId(), "exec_true", trueSink.getId(), "exec_in"));
+        assertTrue(graph.connect(branch.getId(), "exec_false", falseSink.getId(), "exec_in"));
 
         Set<UUID> scope = IncrementalExecutionPlanner.resolveInvalidationScope(graph, condition.getId());
 
@@ -119,9 +119,13 @@ class IncrementalExecutionPlannerTest {
 
     private static final class StubNode extends BaseNode {
         private StubNode(String suffix) {
+            this(suffix, NodeDataType.ANY);
+        }
+
+        private StubNode(String suffix, NodeDataType outputType) {
             super(UUID.randomUUID(), "test.stub." + suffix);
             addInputPort(new BasePort("in", "In", "input", NodeDataType.ANY, this));
-            addOutputPort(new BasePort("out", "Out", "output", NodeDataType.ANY, this));
+            addOutputPort(new BasePort("out", "Out", "output", outputType, this));
         }
 
         @Override
