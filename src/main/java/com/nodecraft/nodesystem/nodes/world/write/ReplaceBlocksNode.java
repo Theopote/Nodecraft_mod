@@ -149,16 +149,20 @@ public class ReplaceBlocksNode extends BaseNode {
         for (BlockPos pos : positionsToProcess) {
             checkedBlocks++;
             try {
-                BlockState currentState = context.getWorld().getBlockState(pos);
-                if (!WorldWriteUtils.matches(currentState, targetState, exact)) {
+                BlockSnapshot before = WorldWriteTransaction.captureCurrent(context, pos);
+                if (before == null) {
+                    tx.recordFailure();
                     continue;
                 }
-                if (dropItems && !currentState.isAir()) {
+                if (!WorldWriteUtils.matches(before.state(), targetState, exact)) {
+                    continue;
+                }
+                if (dropItems && !before.state().isAir()) {
                     context.getWorld().breakBlock(pos, true);
                 }
                 boolean success = context.getWorld().setBlockState(pos, replacementState, flags);
                 if (success) {
-                    tx.recordSuccess(context, pos, currentState);
+                    tx.recordSuccess(before);
                     affectedCoordinates.add(pos);
                 } else {
                     tx.recordFailure();

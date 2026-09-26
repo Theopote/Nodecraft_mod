@@ -174,21 +174,22 @@ public class SetBlocksNode extends BaseNode {
             totalCount++;
             BlockState targetState = sharedState != null ? sharedState : perPosStates.get(i);
             try {
-                BlockState previousState = context.getWorld().getBlockState(pos);
+                BlockSnapshot before = WorldWriteTransaction.captureCurrent(context, pos);
+                if (before == null) {
+                    tx.recordFailure();
+                    continue;
+                }
                 if (dropItems && !context.getWorld().isAir(pos)) {
                     context.getWorld().breakBlock(pos, true);
                 }
                 boolean success = context.getWorld().setBlockState(pos, targetState, flags);
                 if (success) {
-                    tx.recordSuccess(context, pos, previousState);
+                    tx.recordSuccess(before);
                     if (incomingNbt != null) {
                         if (WorldWriteNbtUtils.applyToBlockEntity(context, pos, incomingNbt, mergeNbt, notify)) {
                             nbtSuccessCount++;
                         } else {
                             tx.recordFailure();
-                            if (tx.failureCount() == 1) {
-                                // first NBT failure message via incomplete
-                            }
                         }
                     }
                 } else {

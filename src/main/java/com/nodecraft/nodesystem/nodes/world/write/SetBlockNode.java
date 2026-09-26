@@ -126,8 +126,12 @@ public class SetBlockNode extends BaseNode {
         Object previousBlock = null;
 
         try {
-            BlockState previousState = context.getWorld().getBlockState(pos);
-            previousBlock = previousState;
+            BlockSnapshot before = WorldWriteTransaction.captureCurrent(context, pos);
+            if (before == null) {
+                publish(false, false, false, "Missing execution world", null);
+                return;
+            }
+            previousBlock = before.state();
             WorldWriteTransaction tx = new WorldWriteTransaction(WorldWriteUtils.worldKey(context.getWorld()));
             int flags = WorldWriteUtils.flags(notify);
             if (dropItems && !context.getWorld().isAir(pos)) {
@@ -135,7 +139,7 @@ public class SetBlockNode extends BaseNode {
             }
             success = context.getWorld().setBlockState(pos, targetState, flags);
             if (success) {
-                tx.recordSuccess(context, pos, previousState);
+                tx.recordSuccess(before);
                 NbtCompound incomingNbt = nbtResult.nbt();
                 if (incomingNbt != null) {
                     nbtSuccess = WorldWriteNbtUtils.applyToBlockEntity(

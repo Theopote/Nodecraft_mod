@@ -67,7 +67,7 @@ public class RedoLastWorldWriteNode extends BaseNode {
             return;
         }
 
-        WorldWriteHistoryService.UndoApplyResult result = service.redoLast(actorId, context.getWorld());
+        WorldWriteHistoryService.UndoApplyResult result = service.redoLast(actorId, context);
         publish(
             result.success(),
             service.redoSize(actorId, context.getWorld()),

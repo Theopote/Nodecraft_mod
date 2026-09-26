@@ -7,7 +7,6 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.math.BlockPos;
@@ -112,10 +111,12 @@ public class SetBlockNbtNode extends BaseNode {
             return;
         }
 
-        BlockState previousState = context.getWorld().getBlockState(pos);
+        BlockSnapshot before = WorldWriteTransaction.captureCurrent(context, pos);
+        if (before == null) {
+            publish(false, false, null, false, "Missing execution world");
+            return;
+        }
         WorldWriteTransaction tx = new WorldWriteTransaction(WorldWriteUtils.worldKey(context.getWorld()));
-        // Snapshot before NBT apply so undo can restore prior BE payload.
-        tx.recordSuccess(context, pos, previousState);
 
         NbtCompound incoming = nbtResult.nbt();
         NbtCompound current = WorldWriteNbtUtils.extractBlockEntityNbt(blockEntity, context);
@@ -126,9 +127,10 @@ public class SetBlockNbtNode extends BaseNode {
 
         boolean success = WorldWriteNbtUtils.applyBlockEntityNbt(blockEntity, target, context);
         if (success) {
+            tx.recordSuccess(before);
             blockEntity.markDirty();
             if (notify) {
-                context.getWorld().updateListeners(pos, previousState, context.getWorld().getBlockState(pos), 3);
+                context.getWorld().updateListeners(pos, before.state(), context.getWorld().getBlockState(pos), 3);
             }
             tx.pushIfNeeded(context, recordUndo);
             publish(true, true, target, true, "");

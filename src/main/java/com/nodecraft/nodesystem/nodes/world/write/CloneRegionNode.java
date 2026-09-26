@@ -216,10 +216,14 @@ public class CloneRegionNode extends BaseNode {
         for (Map.Entry<BlockPos, BlockState> entry : blocksToCopy.entrySet()) {
             BlockPos pos = entry.getKey();
             try {
-                BlockState previousState = context.getWorld().getBlockState(pos);
+                BlockSnapshot before = WorldWriteTransaction.captureCurrent(context, pos);
+                if (before == null) {
+                    tx.recordFailure();
+                    continue;
+                }
                 boolean blockSuccess = context.getWorld().setBlockState(pos, entry.getValue(), flags);
                 if (blockSuccess) {
-                    tx.recordSuccess(context, pos, previousState);
+                    tx.recordSuccess(before);
                 } else {
                     tx.recordFailure();
                 }
@@ -236,10 +240,14 @@ public class CloneRegionNode extends BaseNode {
                     continue;
                 }
                 try {
-                    BlockState previousState = context.getWorld().getBlockState(immutablePos);
+                    BlockSnapshot before = WorldWriteTransaction.captureCurrent(context, immutablePos);
+                    if (before == null) {
+                        tx.recordFailure();
+                        continue;
+                    }
                     boolean clearSuccess = context.getWorld().setBlockState(immutablePos, airState, flags);
                     if (clearSuccess) {
-                        tx.recordSuccess(context, immutablePos, previousState);
+                        tx.recordSuccess(before);
                     } else {
                         tx.recordFailure();
                     }

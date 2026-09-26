@@ -8,7 +8,6 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
-import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.registry.Registries;
 import net.minecraft.text.Text;
@@ -133,11 +132,14 @@ public class WriteSignTextNode extends BaseNode {
                 return;
             }
 
-            BlockState previousState = context.getWorld().getBlockState(pos);
+            BlockSnapshot before = WorldWriteTransaction.captureCurrent(context, pos);
+            if (before == null) {
+                publish(false, false, "", false, "Missing execution world");
+                return;
+            }
             WorldWriteTransaction tx = new WorldWriteTransaction(WorldWriteUtils.worldKey(context.getWorld()));
-            tx.recordSuccess(context, pos, previousState);
 
-            String signType = Registries.BLOCK.getId(previousState.getBlock()).toString();
+            String signType = Registries.BLOCK.getId(before.state().getBlock()).toString();
             var signText = sign.getFrontText()
                 .withColor(DyeColor.byId(colorId.toLowerCase(), DyeColor.BLACK))
                 .withGlowing(glowing);
@@ -148,8 +150,9 @@ public class WriteSignTextNode extends BaseNode {
 
             boolean success = sign.setText(signText, true);
             if (success) {
+                tx.recordSuccess(before);
                 sign.markDirty();
-                context.getWorld().updateListeners(pos, previousState, previousState, 3);
+                context.getWorld().updateListeners(pos, before.state(), before.state(), 3);
                 tx.pushIfNeeded(context, recordUndo);
                 publish(true, true, signType, true, "");
             } else {

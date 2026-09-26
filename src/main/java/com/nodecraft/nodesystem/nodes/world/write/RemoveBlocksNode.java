@@ -129,9 +129,13 @@ public class RemoveBlocksNode extends BaseNode {
         for (BlockPos pos : coordinates) {
             totalCount++;
             try {
-                BlockState currentState = context.getWorld().getBlockState(pos);
-                previousBlocks.add(currentState);
-                if (currentState.isAir()) {
+                BlockSnapshot before = WorldWriteTransaction.captureCurrent(context, pos);
+                if (before == null) {
+                    tx.recordFailure();
+                    continue;
+                }
+                previousBlocks.add(before.state());
+                if (before.state().isAir()) {
                     successCount++;
                     continue;
                 }
@@ -142,7 +146,7 @@ public class RemoveBlocksNode extends BaseNode {
                     success = context.getWorld().setBlockState(pos, airState, flags);
                 }
                 if (success) {
-                    tx.recordSuccess(context, pos, currentState);
+                    tx.recordSuccess(before);
                     removedBlocks++;
                     successCount++;
                 } else {

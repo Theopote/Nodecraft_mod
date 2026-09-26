@@ -163,13 +163,17 @@ public class FillRegionNode extends BaseNode {
 
             affectedBlocks++;
             try {
-                BlockState previousState = context.getWorld().getBlockState(pos);
-                if (dropItems && !previousState.isAir()) {
+                BlockSnapshot before = WorldWriteTransaction.captureCurrent(context, pos);
+                if (before == null) {
+                    tx.recordFailure();
+                    continue;
+                }
+                if (dropItems && !before.state().isAir()) {
                     context.getWorld().breakBlock(pos, true);
                 }
                 boolean success = context.getWorld().setBlockState(pos, targetState, flags);
                 if (success) {
-                    tx.recordSuccess(context, pos, previousState);
+                    tx.recordSuccess(before);
                     coordinates.add(pos);
                 } else {
                     tx.recordFailure();

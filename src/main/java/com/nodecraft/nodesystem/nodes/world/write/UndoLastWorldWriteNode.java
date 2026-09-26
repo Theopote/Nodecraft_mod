@@ -68,8 +68,7 @@ public class UndoLastWorldWriteNode extends BaseNode {
             return;
         }
 
-        int expected = peek.size();
-        WorldWriteHistoryService.UndoApplyResult result = service.undoLast(actorId, context.getWorld());
+        WorldWriteHistoryService.UndoApplyResult result = service.undoLast(actorId, context);
         publish(
             result.success(),
             result.successCount(),
@@ -81,11 +80,6 @@ public class UndoLastWorldWriteNode extends BaseNode {
                 ? (result.complete() ? "Restored " + result.successCount() + " blocks" : "Partial restore")
                 : "Undo failed"
         );
-        if (!result.success()) {
-            outputValues.put(OUTPUT_RESTORED_COUNT_ID, 0);
-        } else if (result.successCount() == 0) {
-            outputValues.put(OUTPUT_RESTORED_COUNT_ID, expected);
-        }
     }
 
     private void publish(

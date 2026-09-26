@@ -14,6 +14,7 @@ import java.util.List;
 
 /**
  * Accumulates before-snapshots for a single world.write execution, then pushes undo history.
+ * Callers must {@link #captureCurrent} before mutation, then {@link #recordSuccess} with that snapshot.
  */
 public final class WorldWriteTransaction {
 
@@ -62,17 +63,31 @@ public final class WorldWriteTransaction {
     }
 
     /**
-     * Captures current block state (+ BE NBT) before mutation and records a successful write.
+     * Captures current block state + block-entity NBT at {@code pos} before any mutation.
      */
-    public void recordSuccess(ExecutionContext context, BlockPos pos, BlockState previousState) {
-        NbtCompound nbt = null;
-        if (context != null && context.getWorld() != null) {
-            BlockEntity be = context.getWorld().getBlockEntity(pos);
-            if (be != null) {
-                nbt = WorldWriteNbtUtils.extractBlockEntityNbt(be, context);
-            }
+    public static @Nullable BlockSnapshot captureCurrent(ExecutionContext context, BlockPos pos) {
+        if (context == null || context.getWorld() == null || pos == null) {
+            return null;
         }
-        beforeSnapshots.add(new BlockSnapshot(pos, previousState, nbt));
+        World world = context.getWorld();
+        BlockState state = world.getBlockState(pos);
+        NbtCompound nbt = null;
+        BlockEntity be = world.getBlockEntity(pos);
+        if (be != null) {
+            nbt = WorldWriteNbtUtils.extractBlockEntityNbt(be, context);
+        }
+        return new BlockSnapshot(pos, state, nbt);
+    }
+
+    /**
+     * Records a successful mutation using a snapshot captured before the write.
+     */
+    public void recordSuccess(BlockSnapshot before) {
+        if (before == null) {
+            recordFailure();
+            return;
+        }
+        beforeSnapshots.add(before);
         successCount++;
     }
 
@@ -102,19 +117,5 @@ public final class WorldWriteTransaction {
             worldKey,
             toUndoRecord()
         );
-    }
-
-    static @Nullable BlockSnapshot captureCurrent(ExecutionContext context, BlockPos pos) {
-        if (context == null || context.getWorld() == null || pos == null) {
-            return null;
-        }
-        World world = context.getWorld();
-        BlockState state = world.getBlockState(pos);
-        NbtCompound nbt = null;
-        BlockEntity be = world.getBlockEntity(pos);
-        if (be != null) {
-            nbt = WorldWriteNbtUtils.extractBlockEntityNbt(be, context);
-        }
-        return new BlockSnapshot(pos, state, nbt);
     }
 }

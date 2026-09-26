@@ -33,9 +33,11 @@ Region volume uses `Math.multiplyExact` (overflow → fail closed).
 
 ## Transaction / Undo
 
-- `BlockSnapshot { pos, BlockState, NBT? }`
+- Capture **before** mutation: `BlockSnapshot before = WorldWriteTransaction.captureCurrent(context, pos)` then mutate, then `tx.recordSuccess(before)`
+- `BlockSnapshot { pos, BlockState, NBT? }` — state and BE NBT from the same pre-mutation moment
+- Undo/Redo take `ExecutionContext` so inverse snapshots also capture BE NBT (registry manager available)
 - Undo stack keyed by `(actorId, worldKey)` (dimension registry id)
-- Undo/Redo restore state + block-entity NBT
+- Undo/Redo restore state + block-entity NBT; NBT restore failure → `failureCount` / `Complete=false`
 - World key mismatch → fail closed; record kept
 - Partial apply → `Complete=false`; remaining work kept on stack
 
@@ -101,4 +103,5 @@ All mutators expose `Valid` / `Error`. Batch writes also expose `Complete` / `Hi
 
 ```text
 ./gradlew.bat test --tests "com.nodecraft.nodesystem.contract.WorldWriteLanguageContractTest"
+./gradlew.bat test --tests "com.nodecraft.nodesystem.nodes.world.write.WorldWriteTransactionNbtContractTest"
 ```

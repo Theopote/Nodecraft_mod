@@ -58,12 +58,6 @@ public final class WorldWriteHistoryService {
         return size(actorId, WorldWriteUtils.worldKey(world));
     }
 
-    /** @deprecated use {@link #size(UUID, String)} or {@link #size(UUID, World)} */
-    @Deprecated
-    public synchronized int size(UUID actorId) {
-        return size(actorId, "unknown");
-    }
-
     public synchronized int redoSize(UUID actorId, String worldKey) {
         return historyFor(actorId, worldKey).redoSize();
     }
@@ -73,22 +67,23 @@ public final class WorldWriteHistoryService {
     }
 
     /**
-     * Undo last write for this actor in {@code world}. World key mismatch → fail closed; record kept.
+     * Undo last write for this actor. Requires {@link ExecutionContext} so inverse snapshots
+     * can capture block-entity NBT via the world's registry manager.
      */
-    public synchronized UndoApplyResult undoLast(UUID actorId, World world) {
-        if (world == null) {
+    public synchronized UndoApplyResult undoLast(UUID actorId, ExecutionContext context) {
+        if (context == null || context.getWorld() == null) {
             return UndoApplyResult.failed("Missing world");
         }
-        String key = WorldWriteUtils.worldKey(world);
-        return historyFor(actorId, key).undoLast(world, key);
+        String key = WorldWriteUtils.worldKey(context.getWorld());
+        return historyFor(actorId, key).undoLast(context, key);
     }
 
-    public synchronized UndoApplyResult redoLast(UUID actorId, World world) {
-        if (world == null) {
+    public synchronized UndoApplyResult redoLast(UUID actorId, ExecutionContext context) {
+        if (context == null || context.getWorld() == null) {
             return UndoApplyResult.failed("Missing world");
         }
-        String key = WorldWriteUtils.worldKey(world);
-        return historyFor(actorId, key).redoLast(world, key);
+        String key = WorldWriteUtils.worldKey(context.getWorld());
+        return historyFor(actorId, key).redoLast(context, key);
     }
 
     public synchronized void clear(UUID actorId, String worldKey) {
@@ -151,7 +146,7 @@ public final class WorldWriteHistoryService {
             return redoStack.size();
         }
 
-        private UndoApplyResult undoLast(World world, String expectedWorldKey) {
+        private UndoApplyResult undoLast(ExecutionContext context, String expectedWorldKey) {
             if (undoStack.isEmpty()) {
                 return UndoApplyResult.failed("Nothing to undo");
             }
@@ -160,10 +155,9 @@ public final class WorldWriteHistoryService {
                 return UndoApplyResult.failed("Undo record world mismatch");
             }
             undoStack.removeLast();
-            ApplyOutcome outcome = record.applyAndCaptureInverse(world);
+            ApplyOutcome outcome = record.applyAndCaptureInverse(context);
             if (outcome.inverse() != null && outcome.inverse().size() > 0) {
                 if (outcome.failureCount() > 0) {
-                    // Partial: keep remaining target snapshots on undo stack; still push inverse of successes.
                     undoStack.add(record.withoutApplied(outcome.appliedIndices()));
                 }
                 redoStack.add(outcome.inverse());
@@ -175,7 +169,7 @@ public final class WorldWriteHistoryService {
             return UndoApplyResult.ok(outcome.successCount(), outcome.failureCount());
         }
 
-        private UndoApplyResult redoLast(World world, String expectedWorldKey) {
+        private UndoApplyResult redoLast(ExecutionContext context, String expectedWorldKey) {
             if (redoStack.isEmpty()) {
                 return UndoApplyResult.failed("Nothing to redo");
             }
@@ -184,7 +178,7 @@ public final class WorldWriteHistoryService {
                 return UndoApplyResult.failed("Redo record world mismatch");
             }
             redoStack.removeLast();
-            ApplyOutcome outcome = record.applyAndCaptureInverse(world);
+            ApplyOutcome outcome = record.applyAndCaptureInverse(context);
             if (outcome.inverse() != null && outcome.inverse().size() > 0) {
                 if (outcome.failureCount() > 0) {
                     redoStack.add(record.withoutApplied(outcome.appliedIndices()));
@@ -254,6 +248,11 @@ public final class WorldWriteHistoryService {
             return Collections.unmodifiableList(positions);
         }
 
+        /** Package-visible for contract tests asserting NBT restore failure accounting. */
+        List<BlockSnapshot> snapshots() {
+            return Collections.unmodifiableList(snapshots);
+        }
+
         UndoRecord withoutApplied(List<Integer> appliedIndices) {
             UndoRecord remaining = new UndoRecord(worldKey);
             java.util.HashSet<Integer> applied = new java.util.HashSet<>(appliedIndices);
@@ -265,14 +264,19 @@ public final class WorldWriteHistoryService {
             return remaining;
         }
 
-        public boolean apply(World world) {
-            return applyAndCaptureInverse(world).failureCount() == 0;
+        public boolean apply(ExecutionContext context) {
+            return applyAndCaptureInverse(context).failureCount() == 0;
         }
 
-        private ApplyOutcome applyAndCaptureInverse(World world) {
-            if (world == null) {
+        /**
+         * Restores each snapshot. Inverse entries are captured only for cells that fully
+         * restored (state + optional BE NBT). NBT restore failure → failureCount.
+         */
+        private ApplyOutcome applyAndCaptureInverse(ExecutionContext context) {
+            if (context == null || context.getWorld() == null) {
                 return new ApplyOutcome(null, 0, snapshots.size(), List.of());
             }
+            World world = context.getWorld();
             UndoRecord inverse = new UndoRecord(worldKey);
             int success = 0;
             int failure = 0;
@@ -280,30 +284,54 @@ public final class WorldWriteHistoryService {
             for (int i = 0; i < snapshots.size(); i++) {
                 BlockSnapshot target = snapshots.get(i);
                 BlockPos pos = target.pos();
-                BlockState currentState = world.getBlockState(pos);
-                NbtCompound currentNbt = null;
-                BlockEntity be = world.getBlockEntity(pos);
-                if (be != null) {
-                    // Best-effort without ExecutionContext: skip NBT capture on inverse if unavailable
-                    currentNbt = null;
+                BlockSnapshot current = WorldWriteTransaction.captureCurrent(context, pos);
+                if (current == null) {
+                    failure++;
+                    continue;
                 }
-                inverse.add(new BlockSnapshot(pos, currentState, currentNbt));
                 boolean placed = world.setBlockState(pos, target.state(), 3);
                 if (!placed) {
                     failure++;
                     continue;
                 }
-                if (target.blockEntityNbt() != null) {
+                NbtCompound targetNbt = target.blockEntityNbt();
+                if (targetNbt != null) {
                     BlockEntity restored = world.getBlockEntity(pos);
-                    if (restored != null) {
-                        WorldWriteNbtUtils.applyBlockEntityNbt(restored, target.blockEntityNbt(), null);
-                        restored.markDirty();
+                    if (restored == null) {
+                        failure++;
+                        continue;
                     }
+                    if (!WorldWriteNbtUtils.applyBlockEntityNbt(restored, targetNbt, context)) {
+                        failure++;
+                        continue;
+                    }
+                    restored.markDirty();
                 }
+                inverse.add(current);
                 success++;
                 applied.add(i);
             }
             return new ApplyOutcome(inverse, success, failure, applied);
+        }
+
+        /**
+         * Pure outcome classifier for NBT restore accounting (unit-tested without a live world).
+         *
+         * @return {@code true} when the cell counts as a full success
+         */
+        static boolean isFullRestoreSuccess(
+            boolean statePlaced,
+            boolean targetHasNbt,
+            boolean blockEntityPresent,
+            boolean nbtApplySucceeded
+        ) {
+            if (!statePlaced) {
+                return false;
+            }
+            if (!targetHasNbt) {
+                return true;
+            }
+            return blockEntityPresent && nbtApplySucceeded;
         }
     }
 }
