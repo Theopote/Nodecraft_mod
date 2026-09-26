@@ -797,10 +797,10 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Set Variable | `variable.set` | Stores a value under a user variable name in the execution scope. Connect an output to downstream nodes when write order matters. | `SetVariableNode` |
-| Get Variable | `variable.get` | Reads a value by user variable name from the execution scope. Exists means the name exists, even when its stored value is null. | `GetVariableNode` |
+| Set Variable | `variable.set` | Stores a typed value under a user variable name. Slot type is fixed on first write; mismatched overwrites fail closed. | `SetVariableNode` |
+| Get Variable | `variable.get` | Reads a typed value by user variable name. Exists means the name exists, even when its stored value is null. Bound T must match the slot type. | `GetVariableNode` |
 | Variable List | `variable.list` | Lists user variables currently available in the execution scope. | `VariableListNode` |
-| Frame Local Variable | `variable.frame_local` | Reads or writes variables in an isolated frame-local namespace. Command order: validate frame/name, clear frame when Clear Frame=true, write when Write=true, otherwise read Name or Default. | `FrameLocalVariableNode` |
+| Frame Local Variable | `variable.frame_local` | Reads or writes typed variables in an isolated frame-local namespace. Slot type is fixed on first write. Command order: validate, clear frame, write, read. | `FrameLocalVariableNode` |
 | Remove Variable | `variable.remove` | Removes a user variable from the execution scope. | `RemoveVariableNode` |
 | Clear Variables | `variable.clear` | Clears user variables from the execution scope. Internal NodeCraft variables are always preserved. | `ClearVariablesNode` |
 

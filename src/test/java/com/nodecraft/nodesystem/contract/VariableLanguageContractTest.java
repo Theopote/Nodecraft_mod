@@ -9,11 +9,13 @@ import com.nodecraft.nodesystem.api.PortTypeResolver;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.execution.VariableEntry;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.nodes.variable.ClearVariablesNode;
 import com.nodecraft.nodesystem.nodes.variable.FrameLocalVariableNode;
 import com.nodecraft.nodesystem.nodes.variable.GetVariableNode;
@@ -213,6 +215,109 @@ class VariableLanguageContractTest {
     }
 
     @Test
+    void setVariableCannotOverwriteWithWrongType() {
+        ExecutionContext context = ExecutionContext.createEmpty(null);
+
+        SetVariableProbe first = new SetVariableProbe();
+        first.setNodeState(Map.of("defaultName", "foo"));
+        first.connectInput("input_value", NodeDataType.VECTOR);
+        first.setInput("input_value", new VectorData(1, 0, 0));
+        first.processNode(context);
+        assertTrue((Boolean) first.getOutput("output_valid"));
+
+        SetVariableProbe second = new SetVariableProbe();
+        second.setNodeState(Map.of("defaultName", "foo"));
+        second.connectInput("input_value", NodeDataType.BLOCK_POS);
+        second.setInput("input_value", new BlockPos(1, 2, 3));
+        second.processNode(context);
+
+        assertFalse((Boolean) second.getOutput("output_valid"));
+        assertNull(second.getOutput("output_previous"));
+        assertTrue(String.valueOf(second.getOutput("output_error")).contains("vector"));
+        assertTrue(String.valueOf(second.getOutput("output_error")).contains("block_pos"));
+        assertTrue(context.getVariable("foo") instanceof VectorData);
+        Object stored = context.getVariableStorage("foo");
+        assertTrue(stored instanceof VariableEntry);
+        assertEquals(NodeDataType.VECTOR, ((VariableEntry) stored).type());
+    }
+
+    @Test
+    void getVariableCannotReturnStoredValueWithDifferentBoundType() {
+        ExecutionContext context = ExecutionContext.createEmpty(null);
+
+        SetVariableProbe set = new SetVariableProbe();
+        set.setNodeState(Map.of("defaultName", "foo"));
+        set.connectInput("input_value", NodeDataType.VECTOR);
+        set.setInput("input_value", new VectorData(0, 1, 0));
+        set.processNode(context);
+        assertTrue((Boolean) set.getOutput("output_valid"));
+
+        GetVariableProbe get = new GetVariableProbe();
+        get.setNodeState(Map.of("defaultName", "foo"));
+        get.connectInput("input_default_value", NodeDataType.BLOCK_POS);
+        get.setInput("input_default_value", new BlockPos(0, 0, 0));
+        get.processNode(context);
+
+        assertFalse((Boolean) get.getOutput("output_valid"));
+        assertTrue((Boolean) get.getOutput("output_exists"));
+        assertNull(get.getOutput("output_value"));
+        assertTrue(String.valueOf(get.getOutput("output_error")).contains("vector"));
+    }
+
+    @Test
+    void frameLocalCannotOverwriteWithWrongType() {
+        ExecutionContext context = ExecutionContext.createEmpty(null);
+
+        FrameLocalProbe first = new FrameLocalProbe();
+        first.setNodeState(Map.of("defaultFrame", "f", "defaultName", "slot"));
+        first.connectInput("input_write", NodeDataType.BOOLEAN);
+        first.connectInput("input_value", NodeDataType.VECTOR);
+        first.setInput("input_write", true);
+        first.setInput("input_value", new VectorData(2, 0, 0));
+        first.processNode(context);
+        assertTrue((Boolean) first.getOutput("output_valid"));
+
+        FrameLocalProbe second = new FrameLocalProbe();
+        second.setNodeState(Map.of("defaultFrame", "f", "defaultName", "slot"));
+        second.connectInput("input_write", NodeDataType.BOOLEAN);
+        second.connectInput("input_value", NodeDataType.BLOCK_POS);
+        second.setInput("input_write", true);
+        second.setInput("input_value", new BlockPos(3, 4, 5));
+        second.processNode(context);
+
+        assertFalse((Boolean) second.getOutput("output_valid"));
+        assertTrue((Boolean) second.getOutput("output_exists"));
+        assertNull(second.getOutput("output_previous"));
+    }
+
+    @Test
+    void frameLocalCannotReturnStoredValueWithDifferentBoundType() {
+        ExecutionContext context = ExecutionContext.createEmpty(null);
+
+        FrameLocalProbe write = new FrameLocalProbe();
+        write.setNodeState(Map.of("defaultFrame", "f", "defaultName", "slot"));
+        write.connectInput("input_write", NodeDataType.BOOLEAN);
+        write.connectInput("input_value", NodeDataType.VECTOR);
+        write.setInput("input_write", true);
+        write.setInput("input_value", new VectorData(1, 0, 0));
+        write.processNode(context);
+        assertTrue((Boolean) write.getOutput("output_valid"));
+
+        FrameLocalProbe read = new FrameLocalProbe();
+        read.setNodeState(Map.of("defaultFrame", "f", "defaultName", "slot"));
+        read.connectInput("input_write", NodeDataType.BOOLEAN);
+        read.connectInput("input_default", NodeDataType.BLOCK_POS);
+        read.setInput("input_write", false);
+        read.setInput("input_default", new BlockPos(0, 0, 0));
+        read.processNode(context);
+
+        assertFalse((Boolean) read.getOutput("output_valid"));
+        assertTrue((Boolean) read.getOutput("output_exists"));
+        assertNull(read.getOutput("output_value"));
+        assertTrue(String.valueOf(read.getOutput("output_error")).contains("vector"));
+    }
+
+    @Test
     void clearNeverRemovesInternalVariables() {
         ExecutionContext context = ExecutionContext.createEmpty(null);
         context.setVariable("userVar", "x");
@@ -304,6 +409,12 @@ class VariableLanguageContractTest {
     }
 
     private static final class SetVariableProbe extends SetVariableNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            VariableLanguageContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class GetVariableProbe extends GetVariableNode {
         void connectInput(String portId, NodeDataType outputType) {
             VariableLanguageContractTest.connectInput(this, portId, outputType);
         }

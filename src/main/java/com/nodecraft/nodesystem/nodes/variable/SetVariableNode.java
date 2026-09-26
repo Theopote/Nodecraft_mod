@@ -18,7 +18,7 @@ import java.util.UUID;
     effect = NodeEffect.CONTEXT_WRITE,
     id = "variable.set",
     displayName = "Set Variable",
-    description = "Stores a value under a user variable name in the execution scope. Connect an output to downstream nodes when write order matters.",
+    description = "Stores a typed value under a user variable name. Slot type is fixed on first write; mismatched overwrites fail closed.",
     category = "variable",
     order = 0
 )
@@ -64,7 +64,7 @@ public class SetVariableNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Stores a value under a user variable name in the execution scope. Connect an output to downstream nodes when write order matters.";
+        return "Stores a typed value under a user variable name. Slot type is fixed on first write; mismatched overwrites fail closed.";
     }
 
     @Override
@@ -74,18 +74,22 @@ public class SetVariableNode extends BaseNode {
         String error = nameError(name);
 
         if (error != null) {
-            writeFailure(name, value, error);
+            writeFailure(name, value, false, error);
             return;
         }
 
-        boolean existsBefore = VariableScopeBridge.containsKey(context, name);
-        Object previous = VariableScopeBridge.put(context, name, value);
+        NodeDataType writeType = VariableTypeOps.resolveWriteType(this, INPUT_VALUE_ID, value);
+        VariableScopeBridge.PutResult result = VariableScopeBridge.putTyped(context, name, writeType, value);
+        if (!result.success()) {
+            writeFailure(name, value, result.existedBefore(), result.error());
+            return;
+        }
 
         outputValues.put(OUTPUT_VALUE_ID, value);
-        outputValues.put(OUTPUT_PREVIOUS_ID, previous);
+        outputValues.put(OUTPUT_PREVIOUS_ID, result.previous());
         outputValues.put(OUTPUT_NAME_ID, name);
         outputValues.put(OUTPUT_VALID_ID, true);
-        outputValues.put(OUTPUT_EXISTS_BEFORE_ID, existsBefore);
+        outputValues.put(OUTPUT_EXISTS_BEFORE_ID, result.existedBefore());
         outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
@@ -99,13 +103,13 @@ public class SetVariableNode extends BaseNode {
         return VariableScopeBridge.validationError(name);
     }
 
-    private void writeFailure(@Nullable String name, Object value, String error) {
+    private void writeFailure(@Nullable String name, Object value, boolean existsBefore, String error) {
         outputValues.put(OUTPUT_VALUE_ID, value);
         outputValues.put(OUTPUT_PREVIOUS_ID, null);
         outputValues.put(OUTPUT_NAME_ID, name == null ? "" : name);
         outputValues.put(OUTPUT_VALID_ID, false);
-        outputValues.put(OUTPUT_EXISTS_BEFORE_ID, false);
-        outputValues.put(OUTPUT_ERROR_ID, error);
+        outputValues.put(OUTPUT_EXISTS_BEFORE_ID, existsBefore);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     @Override

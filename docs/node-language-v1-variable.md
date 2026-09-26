@@ -11,12 +11,24 @@ Related: [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md),
 
 ```text
 VariableScopeBridge → ExecutionContext.variables (or graph/thread fallback scope)
+VariableEntry { type, value } — slot type locked on first concrete write
+ExecutionContext.getVariable unwraps VariableEntry to the payload value
+cross-type overwrite / read → Valid=false, never emit wrong-typed payload
 __nodecraft.* reserved for runtime internal keys (user nodes cannot write these names)
 containsKey semantics: null stored value is valid data, distinct from missing key
 connection-aware optional drives (OptionalPortDrive): unconnected → property; connected-null → fail closed
 value ports bind passthrough T (no ANY laundering)
 Clear Variables always preserves internal keys (no user-facing includeInternalVariables)
 ```
+
+## Typed slots (V59 freeze)
+
+- Storage is `VariableEntry(NodeDataType type, Object value)`, not bare `Object`
+- First write with a concrete `T` fixes the slot type for that name (normal scope and frame-local share the contract)
+- Later write with a different concrete type → `Valid=false`, slot unchanged, `Previous` not emitted under the wrong static `T`
+- Get / Frame Local read: bound `T` must agree with slot type, else `Valid=false` and `Value=null` (Exists still true)
+- Remove Variable `Previous` stays unbound `ANY` (no proveable deleted type)
+- Variable List `Values` stays heterogeneous `LIST`
 
 ## Inventory (6)
 
@@ -74,4 +86,4 @@ Optional `Write` / `Clear Frame` booleans use connection-aware drives (default `
 ## Contract suite
 
 `VariableLanguageContractTest` — inventory, effects, passthrough T, fail-closed drives,
-null/existence semantics, internal-key preservation, migration.
+null/existence semantics, typed-slot cross-type overwrite/read, internal-key preservation, migration.

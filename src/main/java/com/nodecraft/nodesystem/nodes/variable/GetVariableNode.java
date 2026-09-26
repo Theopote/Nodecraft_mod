@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.execution.VariableEntry;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
@@ -18,7 +19,7 @@ import java.util.UUID;
     effect = NodeEffect.CONTEXT_READ,
     id = "variable.get",
     displayName = "Get Variable",
-    description = "Reads a value by user variable name from the execution scope. Exists means the name exists, even when its stored value is null.",
+    description = "Reads a typed value by user variable name. Exists means the name exists, even when its stored value is null. Bound T must match the slot type.",
     category = "variable",
     order = 1
 )
@@ -68,7 +69,7 @@ public class GetVariableNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Reads a value by user variable name from the execution scope. Exists means the name exists, even when its stored value is null.";
+        return "Reads a typed value by user variable name. Exists means the name exists, even when its stored value is null. Bound T must match the slot type.";
     }
 
     @Override
@@ -78,22 +79,35 @@ public class GetVariableNode extends BaseNode {
         String error = nameError(name);
 
         if (error != null) {
-            outputValues.put(OUTPUT_VALUE_ID, fallback);
-            outputValues.put(OUTPUT_EXISTS_ID, false);
-            outputValues.put(OUTPUT_NAME_ID, name == null ? "" : name);
-            outputValues.put(OUTPUT_IS_NULL_ID, false);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            outputValues.put(OUTPUT_ERROR_ID, error);
+            writeFailure(name, fallback, false, error);
             return;
         }
 
-        boolean exists = VariableScopeBridge.containsKey(context, name);
-        Object value = exists ? VariableScopeBridge.get(context, name) : fallback;
+        VariableEntry entry = VariableScopeBridge.getEntry(context, name);
+        boolean exists = entry != null;
+        if (!exists) {
+            outputValues.put(OUTPUT_VALUE_ID, fallback);
+            outputValues.put(OUTPUT_EXISTS_ID, false);
+            outputValues.put(OUTPUT_NAME_ID, name);
+            outputValues.put(OUTPUT_IS_NULL_ID, false);
+            outputValues.put(OUTPUT_VALID_ID, true);
+            outputValues.put(OUTPUT_ERROR_ID, "");
+            return;
+        }
 
+        NodeDataType expected = VariableTypeOps.resolvePortType(this, INPUT_DEFAULT_VALUE_ID);
+        String typeError = VariableTypeOps.readTypeMismatchError(name, entry.type(), expected);
+        if (typeError != null) {
+            // Never emit a concrete payload under the wrong static T.
+            writeFailure(name, null, true, typeError);
+            return;
+        }
+
+        Object value = entry.value();
         outputValues.put(OUTPUT_VALUE_ID, value);
-        outputValues.put(OUTPUT_EXISTS_ID, exists);
+        outputValues.put(OUTPUT_EXISTS_ID, true);
         outputValues.put(OUTPUT_NAME_ID, name);
-        outputValues.put(OUTPUT_IS_NULL_ID, exists && value == null);
+        outputValues.put(OUTPUT_IS_NULL_ID, value == null);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }
@@ -106,6 +120,15 @@ public class GetVariableNode extends BaseNode {
             return VariableScopeBridge.validationError(null);
         }
         return VariableScopeBridge.validationError(name);
+    }
+
+    private void writeFailure(@Nullable String name, @Nullable Object value, boolean exists, String error) {
+        outputValues.put(OUTPUT_VALUE_ID, value);
+        outputValues.put(OUTPUT_EXISTS_ID, exists);
+        outputValues.put(OUTPUT_NAME_ID, name == null ? "" : name);
+        outputValues.put(OUTPUT_IS_NULL_ID, false);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     @Override

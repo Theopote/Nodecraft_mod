@@ -1,7 +1,9 @@
 package com.nodecraft.nodesystem.nodes.variable;
 
+import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.execution.VariableEntry;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
@@ -42,36 +44,95 @@ public final class VariableScopeBridge {
         return getOrCreateNullFriendlyFrameMap(root, frame);
     }
 
-    static Object get(@Nullable ExecutionContext context, String key) {
+    static @Nullable Object get(@Nullable ExecutionContext context, String key) {
+        VariableEntry entry = getEntry(context, key);
+        return entry == null ? null : entry.value();
+    }
+
+    static @Nullable VariableEntry getEntry(@Nullable ExecutionContext context, String key) {
         if (key == null || key.isBlank()) {
             return null;
         }
+        Object raw;
         if (context != null) {
-            return context.getVariable(key);
+            if (!context.getAllVariables().containsKey(key)) {
+                return null;
+            }
+            raw = context.getVariableStorage(key);
+        } else {
+            Map<String, Object> scope = fallbackScope();
+            if (!scope.containsKey(key)) {
+                return null;
+            }
+            raw = decodeFallbackValue(scope.get(key));
         }
-        return decodeFallbackValue(fallbackScope().get(key));
+        return decodeEntry(raw);
+    }
+
+    /**
+     * Typed write with slot type lock. First concrete write establishes the type;
+     * later writes with a different concrete type fail closed.
+     */
+    static PutResult putTyped(
+            @Nullable ExecutionContext context,
+            String key,
+            NodeDataType writeType,
+            @Nullable Object value
+    ) {
+        if (key == null || key.isBlank()) {
+            return PutResult.failure("Variable name is required.");
+        }
+        NodeDataType candidate = writeType == null ? NodeDataType.ANY : writeType;
+        VariableEntry existing = getEntry(context, key);
+        if (existing != null) {
+            String mismatch = VariableTypeOps.writeTypeMismatchError(key, existing.type(), candidate);
+            if (mismatch != null) {
+                return PutResult.failure(mismatch, existing.value(), existing.type(), true);
+            }
+            if (candidate == NodeDataType.ANY && value != null && !existing.type().isCompatible(value)
+                    && existing.type() != NodeDataType.ANY) {
+                return PutResult.failure(
+                        VariableTypeOps.writeTypeMismatchError(key, existing.type(), VariableTypeOps.inferFromValue(value)),
+                        existing.value(),
+                        existing.type(),
+                        true
+                );
+            }
+        }
+
+        NodeDataType slotType;
+        if (existing != null) {
+            slotType = existing.type() == NodeDataType.ANY && candidate != NodeDataType.ANY
+                    ? candidate
+                    : existing.type();
+        } else if (candidate != NodeDataType.ANY) {
+            slotType = candidate;
+        } else {
+            slotType = VariableTypeOps.inferFromValue(value);
+        }
+
+        Object previous = existing == null ? null : existing.value();
+        NodeDataType previousType = existing == null ? null : existing.type();
+        storeEntry(context, key, VariableEntry.of(slotType, value));
+        return PutResult.success(previous, previousType, existing != null);
     }
 
     static Object put(@Nullable ExecutionContext context, String key, Object value) {
-        if (key == null || key.isBlank()) {
-            return null;
-        }
-        if (context != null) {
-            Object previous = context.getVariable(key);
-            context.setVariable(key, value);
-            return previous;
-        }
-        return decodeFallbackValue(fallbackScope().put(key, encodeFallbackValue(value)));
+        PutResult result = putTyped(context, key, VariableTypeOps.inferFromValue(value), value);
+        return result.previous();
     }
 
     static Object remove(@Nullable ExecutionContext context, String key) {
         if (key == null || key.isBlank()) {
             return null;
         }
+        VariableEntry existing = getEntry(context, key);
         if (context != null) {
-            return context.removeVariable(key);
+            context.removeVariable(key);
+        } else {
+            fallbackScope().remove(key);
         }
-        return decodeFallbackValue(fallbackScope().remove(key));
+        return existing == null ? null : existing.value();
     }
 
     static int clear(@Nullable ExecutionContext context) {
@@ -102,11 +163,13 @@ public final class VariableScopeBridge {
     static Map<String, Object> snapshot(@Nullable ExecutionContext context) {
         Map<String, Object> copy = new LinkedHashMap<>();
         if (context != null) {
-            copy.putAll(context.getAllVariables());
+            for (Map.Entry<String, Object> entry : context.getAllVariables().entrySet()) {
+                copy.put(entry.getKey(), unwrapStored(entry.getValue()));
+            }
             return copy;
         }
         for (Map.Entry<String, Object> entry : fallbackScope().entrySet()) {
-            copy.put(entry.getKey(), decodeFallbackValue(entry.getValue()));
+            copy.put(entry.getKey(), unwrapStored(decodeFallbackValue(entry.getValue())));
         }
         return copy;
     }
@@ -131,6 +194,77 @@ public final class VariableScopeBridge {
 
     static boolean isInternalVariableName(String name) {
         return name != null && name.startsWith(INTERNAL_PREFIX);
+    }
+
+    // --- Frame-local typed map helpers ---
+
+    static @Nullable VariableEntry getFrameEntry(Map<String, Object> frameScope, String key) {
+        if (frameScope == null || key == null || !frameScope.containsKey(key)) {
+            return null;
+        }
+        return decodeEntry(frameScope.get(key));
+    }
+
+    static PutResult putFrameTyped(Map<String, Object> frameScope, String key, NodeDataType writeType, @Nullable Object value) {
+        if (frameScope == null || key == null || key.isBlank()) {
+            return PutResult.failure("Variable name is required.");
+        }
+        NodeDataType candidate = writeType == null ? NodeDataType.ANY : writeType;
+        VariableEntry existing = getFrameEntry(frameScope, key);
+        if (existing != null) {
+            String mismatch = VariableTypeOps.writeTypeMismatchError(key, existing.type(), candidate);
+            if (mismatch != null) {
+                return PutResult.failure(mismatch, existing.value(), existing.type(), true);
+            }
+            if (candidate == NodeDataType.ANY && value != null && !existing.type().isCompatible(value)
+                    && existing.type() != NodeDataType.ANY) {
+                return PutResult.failure(
+                        VariableTypeOps.writeTypeMismatchError(key, existing.type(), VariableTypeOps.inferFromValue(value)),
+                        existing.value(),
+                        existing.type(),
+                        true
+                );
+            }
+        }
+
+        NodeDataType slotType;
+        if (existing != null) {
+            slotType = existing.type() == NodeDataType.ANY && candidate != NodeDataType.ANY
+                    ? candidate
+                    : existing.type();
+        } else if (candidate != NodeDataType.ANY) {
+            slotType = candidate;
+        } else {
+            slotType = VariableTypeOps.inferFromValue(value);
+        }
+
+        Object previous = existing == null ? null : existing.value();
+        NodeDataType previousType = existing == null ? null : existing.type();
+        frameScope.put(key, VariableEntry.of(slotType, value));
+        return PutResult.success(previous, previousType, existing != null);
+    }
+
+    private static void storeEntry(@Nullable ExecutionContext context, String key, VariableEntry entry) {
+        if (context != null) {
+            context.setVariable(key, entry);
+            return;
+        }
+        fallbackScope().put(key, encodeFallbackValue(entry));
+    }
+
+    private static VariableEntry decodeEntry(@Nullable Object raw) {
+        if (raw instanceof VariableEntry entry) {
+            return entry;
+        }
+        // Internal keys / legacy untyped values: treat as untyped slot for user-facing reads.
+        return VariableEntry.of(VariableTypeOps.inferFromValue(raw), raw);
+    }
+
+    private static @Nullable Object unwrapStored(@Nullable Object raw) {
+        if (raw instanceof VariableEntry entry) {
+            return entry.value();
+        }
+        return raw;
     }
 
     private static Map<String, Object> fallbackScope() {
@@ -171,6 +305,26 @@ public final class VariableScopeBridge {
 
     private static Object decodeFallbackValue(Object value) {
         return value == NULL_VALUE ? null : value;
+    }
+
+    public record PutResult(
+            boolean success,
+            @Nullable Object previous,
+            @Nullable NodeDataType previousType,
+            boolean existedBefore,
+            @Nullable String error
+    ) {
+        static PutResult success(@Nullable Object previous, @Nullable NodeDataType previousType, boolean existedBefore) {
+            return new PutResult(true, previous, previousType, existedBefore, null);
+        }
+
+        static PutResult failure(String error) {
+            return new PutResult(false, null, null, false, error);
+        }
+
+        static PutResult failure(String error, @Nullable Object previous, @Nullable NodeDataType previousType, boolean existedBefore) {
+            return new PutResult(false, previous, previousType, existedBefore, error);
+        }
     }
 
     public static final class ScopeBinding implements AutoCloseable {

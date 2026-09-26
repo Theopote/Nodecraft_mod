@@ -132,12 +132,23 @@ public class ExecutionContext implements com.nodecraft.nodesystem.api.ExecutionC
     
     @Override
     public Object getVariable(String key) {
-        return variables.get(key);
+        Object raw = variables.get(key);
+        if (raw instanceof VariableEntry entry) {
+            return entry.value();
+        }
+        return raw;
     }
     
     @Override
     public Map<String, Object> getAllVariables() {
         return Collections.unmodifiableMap(variables);
+    }
+
+    /**
+     * Raw map value including {@link VariableEntry} wrappers used by typed variable slots.
+     */
+    public @Nullable Object getVariableStorage(String key) {
+        return variables.get(key);
     }
     
     @Override
@@ -187,7 +198,11 @@ public class ExecutionContext implements com.nodecraft.nodesystem.api.ExecutionC
      * @return 被删除的变量值，如果不存在则返回null
      */
     public Object removeVariable(String key) {
-        return variables.remove(key);
+        Object raw = variables.remove(key);
+        if (raw instanceof VariableEntry entry) {
+            return entry.value();
+        }
+        return raw;
     }
     
     /**

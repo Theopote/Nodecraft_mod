@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.execution.VariableEntry;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
@@ -21,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
     effect = NodeEffect.CONTEXT_WRITE,
     id = "variable.frame_local",
     displayName = "Frame Local Variable",
-    description = "Reads or writes variables in an isolated frame-local namespace. Command order: validate frame/name, clear frame when Clear Frame=true, write when Write=true, otherwise read Name or Default.",
+    description = "Reads or writes typed variables in an isolated frame-local namespace. Slot type is fixed on first write. Command order: validate, clear frame, write, read.",
     category = "variable",
     order = 3
 )
@@ -88,7 +89,7 @@ public class FrameLocalVariableNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Reads or writes variables in an isolated frame-local namespace. Command order: validate frame/name, clear frame when Clear Frame=true, write when Write=true, otherwise read Name or Default.";
+        return "Reads or writes typed variables in an isolated frame-local namespace. Slot type is fixed on first write. Command order: validate, clear frame, write, read.";
     }
 
     @Override
@@ -120,18 +121,52 @@ public class FrameLocalVariableNode extends BaseNode {
             cleared = true;
         }
 
-        boolean exists = frameScope.containsKey(name);
-        Object previous = exists ? frameScope.get(name) : null;
         Object fallback = inputValues.get(INPUT_DEFAULT_ID);
-
+        boolean exists = frameScope.containsKey(name);
+        Object previous = null;
         Object value;
+
         if (write) {
             Object writeValue = inputValues.get(INPUT_VALUE_ID);
-            frameScope.put(name, writeValue);
+            NodeDataType writeType = VariableTypeOps.resolveWriteType(this, INPUT_VALUE_ID, writeValue);
+            VariableScopeBridge.PutResult result = VariableScopeBridge.putFrameTyped(frameScope, name, writeType, writeValue);
+            if (!result.success()) {
+                outputValues.put(OUTPUT_VALUE_ID, writeValue);
+                outputValues.put(OUTPUT_PREVIOUS_ID, null);
+                outputValues.put(OUTPUT_EXISTS_ID, result.existedBefore());
+                outputValues.put(OUTPUT_FRAME_ID, frame);
+                outputValues.put(OUTPUT_NAME_ID, name);
+                outputValues.put(OUTPUT_SIZE_ID, frameScope.size());
+                outputValues.put(OUTPUT_VALID_ID, false);
+                outputValues.put(OUTPUT_CLEARED_ID, cleared);
+                outputValues.put(OUTPUT_ERROR_ID, result.error() == null ? "" : result.error());
+                return;
+            }
+            previous = result.previous();
             value = writeValue;
             exists = true;
         } else {
-            value = exists ? frameScope.get(name) : fallback;
+            VariableEntry entry = VariableScopeBridge.getFrameEntry(frameScope, name);
+            exists = entry != null;
+            if (exists) {
+                NodeDataType expected = VariableTypeOps.resolvePortType(this, INPUT_DEFAULT_ID);
+                String typeError = VariableTypeOps.readTypeMismatchError(name, entry.type(), expected);
+                if (typeError != null) {
+                    outputValues.put(OUTPUT_VALUE_ID, null);
+                    outputValues.put(OUTPUT_PREVIOUS_ID, null);
+                    outputValues.put(OUTPUT_EXISTS_ID, true);
+                    outputValues.put(OUTPUT_FRAME_ID, frame);
+                    outputValues.put(OUTPUT_NAME_ID, name);
+                    outputValues.put(OUTPUT_SIZE_ID, frameScope.size());
+                    outputValues.put(OUTPUT_VALID_ID, false);
+                    outputValues.put(OUTPUT_CLEARED_ID, cleared);
+                    outputValues.put(OUTPUT_ERROR_ID, typeError);
+                    return;
+                }
+                value = entry.value();
+            } else {
+                value = fallback;
+            }
         }
 
         outputValues.put(OUTPUT_VALUE_ID, value);
