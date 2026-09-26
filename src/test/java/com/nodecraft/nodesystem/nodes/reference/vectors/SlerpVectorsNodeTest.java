@@ -64,7 +64,39 @@ class SlerpVectorsNodeTest {
     }
 
     @Test
-    void nearlyOppositeVectorsAvoidNaN() {
+    void antiparallelIntermediateTrajectoryIsContinuousSemicircle() {
+        SlerpVectorsNode node = new SlerpVectorsNode();
+        node.setNodeState(Map.of("preserveMagnitude", false));
+
+        Vector3d a = new Vector3d(1.0d, 0.0d, 0.0d);
+        Vector3d b = new Vector3d(-1.0d, 0.0d, 0.0d);
+
+        Vector3d at025 = requireVector(node.compute(Map.of(
+            "input_a", a, "input_b", b, "input_t", 0.25d
+        )).get("output_result"));
+        Vector3d at05 = requireVector(node.compute(Map.of(
+            "input_a", a, "input_b", b, "input_t", 0.5d
+        )).get("output_result"));
+        Vector3d at075 = requireVector(node.compute(Map.of(
+            "input_a", a, "input_b", b, "input_t", 0.75d
+        )).get("output_result"));
+
+        assertEquals(1.0d, at025.length(), 1.0e-6d);
+        assertEquals(1.0d, at05.length(), 1.0e-6d);
+        assertEquals(1.0d, at075.length(), 1.0e-6d);
+
+        assertTrue(Math.abs(at025.dot(a)) < 1.0d - 1.0e-3d);
+        assertTrue(Math.abs(at025.dot(b)) < 1.0d - 1.0e-3d);
+        assertEquals(0.0d, at05.dot(a), 1.0e-6d);
+        assertTrue(Math.abs(at075.dot(a)) < 1.0d - 1.0e-3d);
+        assertTrue(Math.abs(at075.dot(b)) < 1.0d - 1.0e-3d);
+
+        assertTrue(at025.dot(at05) > 0.0d);
+        assertTrue(at05.dot(at075) > 0.0d);
+    }
+
+    @Test
+    void nearlyOppositeVectorsAvoidNaNAndLeaveStart() {
         SlerpVectorsNode node = new SlerpVectorsNode();
         node.setNodeState(Map.of("preserveMagnitude", false));
 
@@ -80,6 +112,8 @@ class SlerpVectorsNodeTest {
         assertTrue(Double.isFinite(result.x));
         assertTrue(Double.isFinite(result.y));
         assertTrue(Double.isFinite(result.z));
+        assertEquals(1.0d, result.length(), 1.0e-6d);
+        assertTrue(Math.abs(result.dot(new Vector3d(1, 0, 0))) < 1.0d - 1.0e-3d);
     }
 
     private static Vector3d requireVector(Object value) {

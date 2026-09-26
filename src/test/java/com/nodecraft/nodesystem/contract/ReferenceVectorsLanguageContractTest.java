@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -257,6 +258,40 @@ class ReferenceVectorsLanguageContractTest {
         slerp.setInput("input_t", 1.0d);
         slerp.processNode(null);
         assertVectorEquals(b, requireVector(slerp.getOutput("output_result")), 1.0e-6d);
+    }
+
+    @Test
+    void slerpAntiparallelIntermediateTrajectoryIsContinuousSemicircle() {
+        Vector3d a = new Vector3d(1, 0, 0);
+        Vector3d b = new Vector3d(-1, 0, 0);
+
+        BaseNode slerp = node("reference.vectors.slerp");
+        slerp.setNodeState(Map.of("preserveMagnitude", false));
+        slerp.setInput("input_a", a);
+        slerp.setInput("input_b", b);
+
+        slerp.setInput("input_t", 0.25d);
+        slerp.processNode(null);
+        Vector3d at025 = requireVector(slerp.getOutput("output_result"));
+        assertEquals(1.0d, at025.length(), 1.0e-6d);
+        assertTrue(Math.abs(at025.dot(a)) < 1.0d - 1.0e-3d, "T=0.25 must leave A");
+        assertTrue(Math.abs(at025.dot(b)) < 1.0d - 1.0e-3d, "T=0.25 must not reach B");
+
+        slerp.setInput("input_t", 0.5d);
+        slerp.processNode(null);
+        Vector3d at05 = requireVector(slerp.getOutput("output_result"));
+        assertEquals(1.0d, at05.length(), 1.0e-6d);
+        assertEquals(0.0d, at05.dot(a), 1.0e-6d, "T=0.5 must be perpendicular to A");
+
+        slerp.setInput("input_t", 0.75d);
+        slerp.processNode(null);
+        Vector3d at075 = requireVector(slerp.getOutput("output_result"));
+        assertEquals(1.0d, at075.length(), 1.0e-6d);
+        assertTrue(Math.abs(at075.dot(a)) < 1.0d - 1.0e-3d, "T=0.75 must leave A");
+        assertTrue(Math.abs(at075.dot(b)) < 1.0d - 1.0e-3d, "T=0.75 must not already be B");
+
+        assertTrue(at025.dot(at05) > 0.0d, "trajectory must not jump between 0.25 and 0.5");
+        assertTrue(at05.dot(at075) > 0.0d, "trajectory must not jump between 0.5 and 0.75");
     }
 
     @Test

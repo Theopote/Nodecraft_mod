@@ -1,11 +1,11 @@
 # Node Language v1 — Reference Vectors
 
-**Status: PASSED / FROZEN** (Graph **V50**; P1 follow-up at Graph **V51**)
+**Status: PASSED / FROZEN** (Graph **V51**)
 
 Language unification for the seventeen canonical `reference.vectors.*` nodes: finite VECTOR
 semantics (zero vector valid), connected-vs-unconnected optional inputs, null invalid outputs,
-Slerp geodesic fix, shared `VectorUtils`, typed `VectorData` payloads, and unique node ordering
-0–16.
+Slerp geodesic (including antiparallel semicircle), shared `VectorUtils`, typed `VectorData`
+payloads, and unique node ordering 0–16.
 
 Related: [`node-language-v1-reference-points.md`](./node-language-v1-reference-points.md),
 [`node-language-v1-reference-planes.md`](./node-language-v1-reference-planes.md),
@@ -108,10 +108,17 @@ Standard vector slerp on normalized directions:
 No quaternion-style `B.negate()` when `A·B < 0`. At `T=0` result direction matches A; at `T=1`
 matches B (including when dot is negative).
 
-Antiparallel vectors (`A·B ≈ -1`) use deterministic orthogonal-axis fallback; endpoints still
-match A at T=0 and B at T=1.
+Antiparallel vectors (`A·B ≈ -1`) use a deterministic orthogonal plane and a continuous
+semicircle:
+
+```text
+result = A * cos(πT) + perp * sin(πT)
+```
+
+Endpoints still match A at T=0 and B (= -A) at T=1; T=0.5 is perpendicular to A.
 
 Removed at V50: `shortestPath` property (was incorrect for ordinary vectors).
+Fixed at V51: antiparallel path no longer uses linear-lerp normalize (which collapsed to A/B).
 
 ## Angle Between Vectors
 
@@ -132,9 +139,7 @@ Removed at V50: `shortestPath` property (was incorrect for ordinary vectors).
 
 Use Deconstruct Vector / Normalize Vector downstream when components or unit normal are needed.
 
-## V51 P1 follow-up
+## Deferred (non-blocking)
 
-- `VectorData` datatype layer for VECTOR outputs
-- `SpatialTolerance` EPS / EPS_SQ naming across Point/Plane/Frame/Vector utils
-- `INTEGER_LIST` exact-Integer-only at runtime (`StrictIntegerUtils.resolveStrictIntegerList`)
-- Component Min/Max relocated to `math.vector.component_minmax` (V50→V51 migration remaps type id)
+- 2D Vector Input: reject non-finite property values at setter / state load (keep Vector-only)
+- `VectorData` constructor finite invariant at datatype layer (producers already use `canonical()`)

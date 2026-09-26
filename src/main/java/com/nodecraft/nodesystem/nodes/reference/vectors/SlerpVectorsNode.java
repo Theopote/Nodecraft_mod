@@ -25,8 +25,6 @@ import java.util.UUID;
 )
 public class SlerpVectorsNode extends BaseNode {
 
-    private static final double DEGENERATE_DOT_EPS = 1.0e-6d;
-
     @NodeProperty(displayName = "Preserve Magnitude", category = "Slerp", order = 1)
     private boolean preserveMagnitude = true;
 
@@ -86,16 +84,22 @@ public class SlerpVectorsNode extends BaseNode {
 
         double dot = Math.max(-1.0d, Math.min(1.0d, a.dot(b)));
         double angle = Math.acos(dot);
+
+        // Geodesic on the unit sphere: A*cos(θT) + perp*sin(θT), where perp is the
+        // component of B orthogonal to A. Linear-lerp normalize is NOT used for the
+        // antiparallel case — it collapses to A for T<0.5 and B for T>0.5.
+        Vector3d perp = new Vector3d(b).fma(-dot, a);
         Vector3d direction;
-        if (1.0d - dot < DEGENERATE_DOT_EPS) {
+        if (perp.lengthSquared() >= VectorUtils.EPS_SQ) {
+            perp.normalize();
+            direction = sphericalCombination(a, perp, angle, t);
+        } else if (dot > 0.0d) {
+            // Nearly parallel — θ≈0; lerp is numerically stable here.
             direction = new Vector3d(a).lerp(b, t).normalize();
-        } else if (1.0d + dot < DEGENERATE_DOT_EPS) {
-            direction = degenerateLongArcDirection(a, b, angle, t);
         } else {
-            double sinTheta = Math.sin(angle);
-            double wA = Math.sin((1.0d - t) * angle) / sinTheta;
-            double wB = Math.sin(t * angle) / sinTheta;
-            direction = new Vector3d(a).mul(wA).add(new Vector3d(b).mul(wB)).normalize();
+            // Exact / near antiparallel — deterministic semicircle through orthogonal(A).
+            direction = sphericalCombination(a, orthogonalAxis(a), Math.PI, t);
+            angle = Math.PI;
         }
 
         if (preserveMagnitude) {
@@ -108,12 +112,12 @@ public class SlerpVectorsNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
-    private Vector3d degenerateLongArcDirection(Vector3d a, Vector3d b, double angle, double t) {
-        Vector3d lerped = new Vector3d(a).lerp(b, t);
-        if (lerped.lengthSquared() >= VectorUtils.EPS_SQ) {
-            return lerped.normalize();
-        }
-        return rotateAroundAxis(a, orthogonalAxis(a), angle * t);
+    /** Unit result: {@code a * cos(theta * t) + perp * sin(theta * t)}. */
+    private static Vector3d sphericalCombination(Vector3d a, Vector3d perp, double theta, double t) {
+        double angleT = theta * t;
+        Vector3d direction = new Vector3d(a).mul(Math.cos(angleT));
+        direction.add(new Vector3d(perp).mul(Math.sin(angleT)));
+        return direction.normalize();
     }
 
     private static Vector3d orthogonalAxis(Vector3d a) {
@@ -122,15 +126,6 @@ public class SlerpVectorsNode extends BaseNode {
             axis = new Vector3d(a).cross(0.0d, 0.0d, 1.0d);
         }
         return axis.normalize();
-    }
-
-    private static Vector3d rotateAroundAxis(Vector3d vector, Vector3d axis, double radians) {
-        double cos = Math.cos(radians);
-        double sin = Math.sin(radians);
-        Vector3d rotated = new Vector3d(vector).mul(cos);
-        rotated.add(new Vector3d(axis).cross(vector).mul(sin));
-        rotated.add(new Vector3d(axis).mul(axis.dot(vector) * (1.0d - cos)));
-        return rotated.normalize();
     }
 
     private void writeInvalid() {
