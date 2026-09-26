@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.FrameUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -18,7 +19,7 @@ import java.util.UUID;
     displayName = "Construct Frame",
     description = "Builds an orthonormal right-handed FRAME from origin, X axis, and Y axis (Z = X × Y)",
     category = "reference.frames",
-    order = 4
+    order = 3
 )
 public class ConstructFrameNode extends BaseNode {
 
@@ -31,9 +32,9 @@ public class ConstructFrameNode extends BaseNode {
 
     public ConstructFrameNode() {
         super(UUID.randomUUID(), "reference.frames.construct_frame");
-        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Frame origin point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_X_AXIS_ID, "X Axis", "Frame X axis direction", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_Y_AXIS_ID, "Y Axis", "Frame Y axis direction", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Optional frame origin; defaults to world origin (0,0,0)", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_X_AXIS_ID, "X Axis", "Optional X direction; defaults to world +X", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_Y_AXIS_ID, "Y Axis", "Optional Y direction; defaults to world +Y", NodeDataType.VECTOR, this));
 
         addOutputPort(new BasePort(OUTPUT_FRAME_ID, "Frame", "Orthonormal right-handed frame", NodeDataType.FRAME, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when frame axes are usable", NodeDataType.BOOLEAN, this));
@@ -46,9 +47,26 @@ public class ConstructFrameNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
+        boolean originConnected = inputValues.get(INPUT_ORIGIN_ID) != null;
+        boolean xConnected = inputValues.get(INPUT_X_AXIS_ID) != null;
+        boolean yConnected = inputValues.get(INPUT_Y_AXIS_ID) != null;
+
         Vector3d origin = FrameUtils.resolvePoint(inputValues.get(INPUT_ORIGIN_ID));
         Vector3d x = FrameUtils.resolveVector(inputValues.get(INPUT_X_AXIS_ID));
         Vector3d y = FrameUtils.resolveVector(inputValues.get(INPUT_Y_AXIS_ID));
+
+        if (originConnected && origin == null) {
+            writeInvalid();
+            return;
+        }
+        if (xConnected && !FrameUtils.isUsableAxis(x)) {
+            writeInvalid();
+            return;
+        }
+        if (yConnected && !FrameUtils.isUsableAxis(y)) {
+            writeInvalid();
+            return;
+        }
 
         if (origin == null) {
             origin = new Vector3d();
@@ -60,13 +78,22 @@ public class ConstructFrameNode extends BaseNode {
             y = new Vector3d(0, 1, 0);
         }
 
+        if (xConnected && yConnected && FrameUtils.areParallel(x, y)) {
+            writeInvalid();
+            return;
+        }
+
         FrameData frame = FrameData.orthonormal(origin, x, y, null);
         if (frame == null) {
-            outputValues.put(OUTPUT_FRAME_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            writeInvalid();
             return;
         }
         outputValues.put(OUTPUT_FRAME_ID, frame);
         outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    private void writeInvalid() {
+        outputValues.put(OUTPUT_FRAME_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
     }
 }

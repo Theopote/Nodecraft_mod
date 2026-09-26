@@ -90,7 +90,7 @@ Frame â†?Plane via Deconstruct Frame (origin + Z normal)
 |------|-----|-------|
 | Path Frames | `pattern.linear.path_frames` | Frames + path sampling (Points, Tangents) |
 | Face Center Frame | `reference.frames.frame_from_face` | Frame + Center |
-| Sphere Surface Frame | `reference.frames.frame_along_surface` | Frame + Surface Point + Normal |
+| Sphere Surface Frame | `reference.frames.sphere_surface_frame` | Frame + Surface Point + Normal |
 
 ## Transform Frame
 

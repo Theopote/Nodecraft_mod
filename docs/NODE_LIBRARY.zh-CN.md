@@ -634,13 +634,13 @@
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Face Center Frame | `reference.frames.frame_from_face` | Builds an orthonormal frame at the center of a box face | `FaceCenterFrameNode` |
-| Sphere Surface Frame | `reference.frames.frame_along_surface` | Builds a local tangent frame on a sphere at the projected surface point | `SphereSurfaceFrameNode` |
+| Sphere Surface Frame | `reference.frames.sphere_surface_frame` | Builds a local tangent frame on a sphere at the projected surface point | `SphereSurfaceFrameNode` |
 | World Frame | `reference.frames.world_frame` | Outputs the world coordinate frame as FRAME | `WorldFrameNode` |
-| Transform Frame | `reference.frames.transform_frame` | Applies translation and Euler rotation (degrees) to a FRAME. Output is orthonormal orientation-only. | `TransformFrameNode` |
 | Construct Frame | `reference.frames.construct_frame` | Builds an orthonormal right-handed FRAME from origin, X axis, and Y axis (Z = X × Y) | `ConstructFrameNode` |
+| Frame From Plane | `reference.frames.frame_from_plane` | Builds a right-handed orthonormal FRAME on a plane (Z = normal, X from hint) | `FrameFromPlaneNode` |
+| Transform Frame | `reference.frames.transform_frame` | Applies translation and Euler rotation (degrees) to a FRAME. Output is orthonormal orientation-only. | `TransformFrameNode` |
 | Deconstruct Frame | `reference.frames.deconstruct_frame` | Splits a FRAME into origin point, X/Y/Z axes, and plane | `DeconstructFrameNode` |
 | Deconstruct Frames | `reference.frames.deconstruct_frames` | Splits a FRAME_LIST into origins, axes, and planes | `DeconstructFramesNode` |
-| Frame From Plane | `reference.frames.frame_from_plane` | Builds a right-handed orthonormal FRAME on a plane (Z = normal, X from hint) | `FrameFromPlaneNode` |
 
 ## reference.planes（7）
 

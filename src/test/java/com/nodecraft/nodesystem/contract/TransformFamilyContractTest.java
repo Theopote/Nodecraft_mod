@@ -197,7 +197,8 @@ class TransformFamilyContractTest {
         assertPortType("reference.frames.transform_frame", "input_frame", true, NodeDataType.FRAME);
         assertPortType("reference.frames.frame_from_plane", "input_plane", true, NodeDataType.PLANE);
         assertPortType("reference.frames.frame_from_face", "output_center", false, NodeDataType.POINT);
-        assertPortType("reference.frames.frame_along_surface", "input_point", true, NodeDataType.POINT);
+        assertPortType("reference.frames.sphere_surface_frame", "input_point", true, NodeDataType.POINT);
+        assertPortType("reference.frames.sphere_surface_frame", "input_x_hint", true, NodeDataType.VECTOR);
         assertPortType("reference.planes.deconstruct_plane", "input_plane", true, NodeDataType.PLANE);
 
         BaseNode world = assertInstanceOf(BaseNode.class,

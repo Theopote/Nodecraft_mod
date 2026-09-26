@@ -22,7 +22,7 @@ import java.util.UUID;
     displayName = "Deconstruct Frames",
     description = "Splits a FRAME_LIST into origins, axes, and planes",
     category = "reference.frames",
-    order = 6
+    order = 7
 )
 public class DeconstructFramesNode extends BaseNode {
 
@@ -68,11 +68,16 @@ public class DeconstructFramesNode extends BaseNode {
                 writeEmpty();
                 return;
             }
-            origins.add(new Vector3d(frame.getOrigin()));
-            xAxes.add(new Vector3d(frame.getXAxis()));
-            yAxes.add(new Vector3d(frame.getYAxis()));
-            zAxes.add(new Vector3d(frame.getZAxis()));
-            planes.add(frame.toPlane());
+            FrameData canonical = frame.orthonormalized();
+            if (canonical == null) {
+                writeEmpty();
+                return;
+            }
+            origins.add(new Vector3d(canonical.getOrigin()));
+            xAxes.add(new Vector3d(canonical.getXAxis()));
+            yAxes.add(new Vector3d(canonical.getYAxis()));
+            zAxes.add(new Vector3d(canonical.getZAxis()));
+            planes.add(canonical.toPlane());
         }
 
         outputValues.put(OUTPUT_ORIGINS_ID, SpatialValueResolver.toPointDataList(origins));

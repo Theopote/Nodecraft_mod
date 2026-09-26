@@ -21,7 +21,7 @@ import java.util.UUID;
     displayName = "Frame From Plane",
     description = "Builds a right-handed orthonormal FRAME on a plane (Z = normal, X from hint)",
     category = "reference.frames",
-    order = 6
+    order = 4
 )
 public class FrameFromPlaneNode extends BaseNode {
 

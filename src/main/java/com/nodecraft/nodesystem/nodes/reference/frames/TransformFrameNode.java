@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.FrameUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3d;
@@ -23,7 +24,7 @@ import java.util.UUID;
     displayName = "Transform Frame",
     description = "Applies translation and Euler rotation (degrees) to a FRAME. Output is orthonormal orientation-only.",
     category = "reference.frames",
-    order = 3
+    order = 5
 )
 public class TransformFrameNode extends BaseNode {
 

@@ -290,8 +290,14 @@ public final class GraphFormatVersion {
      */
     public static final int V46 = 46;
 
+    /**
+     * Reference Frames v1: sphere_surface_frame rename, unified FrameUtils,
+     * Construct strict parallel axes, Sphere X Hint, deconstruct orthonormal boundary.
+     */
+    public static final int V47 = 47;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V46;
+    public static final int CURRENT = V47;
 
     private GraphFormatVersion() {
     }

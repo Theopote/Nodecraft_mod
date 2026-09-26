@@ -563,7 +563,7 @@ class FieldLanguageContractTest {
         assertEquals(34, GraphFormatVersion.V34);
         assertEquals(35, GraphFormatVersion.V35);
         assertEquals(36, GraphFormatVersion.V36);
-        assertEquals(GraphFormatVersion.V46, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V47, GraphFormatVersion.CURRENT);
     }
 
     @Test

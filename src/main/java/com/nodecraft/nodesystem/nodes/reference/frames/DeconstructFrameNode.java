@@ -17,7 +17,7 @@ import java.util.UUID;
     displayName = "Deconstruct Frame",
     description = "Splits a FRAME into origin point, X/Y/Z axes, and plane",
     category = "reference.frames",
-    order = 5
+    order = 6
 )
 public class DeconstructFrameNode extends BaseNode {
 
@@ -39,7 +39,7 @@ public class DeconstructFrameNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_Y_AXIS_ID, "Y Axis", "Frame Y axis", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_Z_AXIS_ID, "Z Axis", "Frame Z axis", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Plane from origin + Z axis", NodeDataType.PLANE, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when frame input is present", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when frame input is a usable orthonormal frame", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -51,20 +51,30 @@ public class DeconstructFrameNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object frameObj = inputValues.get(INPUT_FRAME_ID);
         if (!(frameObj instanceof FrameData frame)) {
-            outputValues.put(OUTPUT_ORIGIN_ID, null);
-            outputValues.put(OUTPUT_X_AXIS_ID, null);
-            outputValues.put(OUTPUT_Y_AXIS_ID, null);
-            outputValues.put(OUTPUT_Z_AXIS_ID, null);
-            outputValues.put(OUTPUT_PLANE_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            writeInvalid();
             return;
         }
 
-        outputValues.put(OUTPUT_ORIGIN_ID, frame.getOriginPoint());
-        outputValues.put(OUTPUT_X_AXIS_ID, frame.getXAxis());
-        outputValues.put(OUTPUT_Y_AXIS_ID, frame.getYAxis());
-        outputValues.put(OUTPUT_Z_AXIS_ID, frame.getZAxis());
-        outputValues.put(OUTPUT_PLANE_ID, frame.toPlane());
+        FrameData canonical = frame.orthonormalized();
+        if (canonical == null) {
+            writeInvalid();
+            return;
+        }
+
+        outputValues.put(OUTPUT_ORIGIN_ID, canonical.getOriginPoint());
+        outputValues.put(OUTPUT_X_AXIS_ID, canonical.getXAxis());
+        outputValues.put(OUTPUT_Y_AXIS_ID, canonical.getYAxis());
+        outputValues.put(OUTPUT_Z_AXIS_ID, canonical.getZAxis());
+        outputValues.put(OUTPUT_PLANE_ID, canonical.toPlane());
         outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    private void writeInvalid() {
+        outputValues.put(OUTPUT_ORIGIN_ID, null);
+        outputValues.put(OUTPUT_X_AXIS_ID, null);
+        outputValues.put(OUTPUT_Y_AXIS_ID, null);
+        outputValues.put(OUTPUT_Z_AXIS_ID, null);
+        outputValues.put(OUTPUT_PLANE_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
     }
 }

@@ -99,7 +99,7 @@
     "spatial.analysis.point_list_center": "reference.points.point_list_center",
     "spatial.analysis.sample_sphere_surface": "pattern.surface_volume_distribution.sample_sphere_surface",
     "spatial.analysis.scatter_on_sphere_surface": "pattern.surface_volume_distribution.sample_sphere_surface",
-    "spatial.analysis.sphere_surface_frame": "reference.frames.frame_along_surface",
+    "spatial.analysis.sphere_surface_frame": "reference.frames.sphere_surface_frame",
     "spatial.arrays.grid_array": "pattern.grid.grid_array",
     "spatial.arrays.linear_array": "pattern.linear.linear_array",
     "spatial.arrays.polar_array": "pattern.radial.polar_array",

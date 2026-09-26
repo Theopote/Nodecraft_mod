@@ -321,7 +321,7 @@ pattern.surface_volume_distribution.scatter_surface_strip|pattern.surface_volume
 pattern.surface_volume_distribution.scatter_volume|pattern.surface_volume_distribution|Scatter In Volume
 pattern.surface_volume_distribution.surface_scatter|pattern.surface_volume_distribution|Scatter On Sphere Surface
 pattern.voronoi_3d.lloyd_relax|pattern.voronoi_3d|Voronoi 3D Lloyd Relax (Grid)
-reference.frames.frame_along_surface|reference.frames|Sphere Surface Frame
+reference.frames.sphere_surface_frame|reference.frames|Sphere Surface Frame
 reference.frames.frame_from_face|reference.frames|Face Center Frame
 reference.frames.transform_frame|reference.frames|Transform Frame
 reference.frames.world_frame|reference.frames|World Frame

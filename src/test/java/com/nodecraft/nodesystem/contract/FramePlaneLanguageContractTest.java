@@ -40,7 +40,7 @@ class FramePlaneLanguageContractTest {
             "reference.frames.frame_from_plane",
             "reference.frames.world_frame",
             "reference.frames.frame_from_face",
-            "reference.frames.frame_along_surface",
+            "reference.frames.sphere_surface_frame",
             "reference.planes.construct_plane",
             "reference.planes.plane_from_points",
             "reference.planes.deconstruct_plane",
@@ -250,9 +250,9 @@ class FramePlaneLanguageContractTest {
         assertFalse(hasOutputPort("reference.frames.frame_from_face", "output_x_axis"));
         assertFalse(hasOutputPort("reference.frames.frame_from_face", "output_corner_indices"));
 
-        assertFalse(hasOutputPort("reference.frames.frame_along_surface", "output_center"));
-        assertFalse(hasOutputPort("reference.frames.frame_along_surface", "output_x_axis"));
-        assertFalse(hasOutputPort("reference.frames.frame_along_surface", "output_plane"));
+        assertFalse(hasOutputPort("reference.frames.sphere_surface_frame", "output_center"));
+        assertFalse(hasOutputPort("reference.frames.sphere_surface_frame", "output_x_axis"));
+        assertFalse(hasOutputPort("reference.frames.sphere_surface_frame", "output_plane"));
 
         assertFalse(hasOutputPort("reference.frames.world_frame", "output_origin_pos"));
         assertFalse(hasOutputPort("reference.planes.block_face_plane", "output_center"));
