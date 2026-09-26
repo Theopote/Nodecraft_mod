@@ -25,7 +25,7 @@ import java.util.UUID;
     displayName = "Shear Point List",
     description = "Applies axial shear deformation to a point list around an origin.",
     category = "transform.deformations",
-    order = 10
+    order = 3
 )
 public class ShearPointListNode extends BaseNode {
 

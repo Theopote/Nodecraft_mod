@@ -7,7 +7,9 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -23,14 +25,12 @@ import java.util.UUID;
     displayName = "Lattice Deform Point List",
     description = "Free-form deformation: trilinear blend of control displacements on a uniform (nx+1)(ny+1)(nz+1) lattice in an axis-aligned box",
     category = "transform.deformations",
-    order = 6
+    order = 8
 )
 public class LatticeDeformPointListNode extends BaseNode {
 
-    private static final double EPS = 1.0e-9d;
-
     @NodeProperty(displayName = "Grid X", category = "Lattice", order = 1,
-        description = "Number of cells along X (control points = cells + 1)")
+        description = "Number of cells along X (control points = cells + 1); must be 1..8")
     private int gridX = 2;
 
     @NodeProperty(displayName = "Grid Y", category = "Lattice", order = 2)
@@ -75,54 +75,43 @@ public class LatticeDeformPointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> pointsInput = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
-        Vector3d min = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_MIN_ID));
-        Vector3d max = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_MAX_ID));
-        Object offObj = inputValues.get(INPUT_OFFSETS_ID);
-        if (pointsInput.isEmpty() || !DeformationUtils.isFinite(min) || !DeformationUtils.isFinite(max)
-            || !(offObj instanceof List<?> offsetList)) {
-            writeEmpty();
+        List<Vector3d> pointsInput = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        Vector3d min = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_MIN_ID));
+        Vector3d max = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_MAX_ID));
+        List<Vector3d> controls = VectorUtils.resolveStrictVectorList(inputValues.get(INPUT_OFFSETS_ID));
+
+        if (pointsInput == null || min == null || max == null || controls == null) {
+            writeInvalid();
+            return;
+        }
+        if (!(min.x < max.x && min.y < max.y && min.z < max.z)) {
+            writeInvalid();
+            return;
+        }
+        if (!isValidGrid(gridX) || !isValidGrid(gridY) || !isValidGrid(gridZ)) {
+            writeInvalid();
             return;
         }
 
-        int nx = clampGrid(gridX);
-        int ny = clampGrid(gridY);
-        int nz = clampGrid(gridZ);
+        int nx = gridX;
+        int ny = gridY;
+        int nz = gridZ;
         int cx = nx + 1;
         int cy = ny + 1;
         int cz = nz + 1;
         int expected = cx * cy * cz;
-
-        List<Vector3d> controls = new ArrayList<>(expected);
-        for (Object o : offsetList) {
-            if (o instanceof Vector3d v && DeformationUtils.isFinite(v)) {
-                controls.add(new Vector3d(v));
-            }
-        }
         if (controls.size() != expected) {
-            writeEmpty();
+            writeInvalid();
             return;
         }
 
-        Vector3d mn = new Vector3d(min);
-        Vector3d mx = new Vector3d(max);
-        swapIfNeeded(mn, mx);
-        Vector3d span = new Vector3d(mx).sub(mn);
-        if (span.x <= EPS || span.y <= EPS || span.z <= EPS) {
-            writeEmpty();
-            return;
-        }
-
-        List<Vector3d> out = new ArrayList<>();
+        Vector3d span = new Vector3d(max).sub(min);
+        List<Vector3d> out = new ArrayList<>(pointsInput.size());
         for (Vector3d p : pointsInput) {
-            Vector3d delta = sampleLatticeDelta(p, mn, span, nx, ny, nz, controls, cx, cy);
+            Vector3d delta = sampleLatticeDelta(p, min, span, nx, ny, nz, controls, cx, cy);
             out.add(new Vector3d(p).add(delta));
         }
 
-        if (out.isEmpty()) {
-            writeEmpty();
-            return;
-        }
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(out));
         outputValues.put(OUTPUT_COUNT_ID, out.size());
         outputValues.put(OUTPUT_VALID_ID, true);
@@ -176,36 +165,39 @@ public class LatticeDeformPointListNode extends BaseNode {
         return acc;
     }
 
-    private static int clampGrid(int g) {
-        return Math.max(1, Math.min(8, g));
+    private static boolean isValidGrid(int g) {
+        return g >= 1 && g <= 8;
     }
 
     private static double clamp01(double v) {
         return Math.max(0.0d, Math.min(1.0d, v));
     }
 
-    private static void swapIfNeeded(Vector3d min, Vector3d max) {
-        if (min.x > max.x) {
-            double t = min.x;
-            min.x = max.x;
-            max.x = t;
-        }
-        if (min.y > max.y) {
-            double t = min.y;
-            min.y = max.y;
-            max.y = t;
-        }
-        if (min.z > max.z) {
-            double t = min.z;
-            min.z = max.z;
-            max.z = t;
-        }
-    }
-
-    private void writeEmpty() {
+    private void writeInvalid() {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
+    }
+
+    public void setGridX(int gridX) {
+        if (isValidGrid(gridX)) {
+            this.gridX = gridX;
+            markDirty();
+        }
+    }
+
+    public void setGridY(int gridY) {
+        if (isValidGrid(gridY)) {
+            this.gridY = gridY;
+            markDirty();
+        }
+    }
+
+    public void setGridZ(int gridZ) {
+        if (isValidGrid(gridZ)) {
+            this.gridZ = gridZ;
+            markDirty();
+        }
     }
 
     @Override
@@ -222,9 +214,14 @@ public class LatticeDeformPointListNode extends BaseNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        gridX = clampGrid(DeformationUtils.intOrCurrent(map.get("gridX"), gridX));
-        gridY = clampGrid(DeformationUtils.intOrCurrent(map.get("gridY"), gridY));
-        gridZ = clampGrid(DeformationUtils.intOrCurrent(map.get("gridZ"), gridZ));
+        if (map.get("gridX") instanceof Integer value && isValidGrid(value)) {
+            gridX = value;
+        }
+        if (map.get("gridY") instanceof Integer value && isValidGrid(value)) {
+            gridY = value;
+        }
+        if (map.get("gridZ") instanceof Integer value && isValidGrid(value)) {
+            gridZ = value;
+        }
     }
-
 }

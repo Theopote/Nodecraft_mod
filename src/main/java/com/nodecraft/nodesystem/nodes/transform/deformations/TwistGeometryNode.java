@@ -15,12 +15,13 @@ import com.nodecraft.nodesystem.datatypes.TwistedSdfData;
 import com.nodecraft.nodesystem.datatypes.VoxelizedGeometrySdfData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
-import com.nodecraft.nodesystem.util.BlockSpace;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SdfBoundsEstimator;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -34,11 +35,9 @@ import java.util.UUID;
     displayName = "Twist Geometry",
     description = "Applies an axial twist domain deformation to SDF or geometry, outputting a twisted SDF-backed Geometry",
     category = "transform.deformations",
-    order = 8
+    order = 9
 )
 public class TwistGeometryNode extends BaseNode {
-
-    private static final double EPS = 1.0e-9d;
 
     @NodeProperty(displayName = "Angle Degrees", category = "Twist", order = 1)
     private double angleDegrees = 180.0d;
@@ -59,10 +58,6 @@ public class TwistGeometryNode extends BaseNode {
     @NodeProperty(displayName = "Fill Source Geometry", category = "Approximation", order = 6,
         description = "When twisting non-SDF geometry, voxelize it as a solid before building the approximate source SDF")
     private boolean fillSourceGeometry = true;
-
-    @NodeProperty(displayName = "Max Source Voxels", category = "Approximation", order = 7,
-        description = "Safety cap for the approximate SDF built from non-SDF geometry")
-    private int maxSourceVoxels = 32768;
 
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_SDF_ID = "input_sdf";
@@ -129,21 +124,32 @@ public class TwistGeometryNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         SourceData source = resolveSource();
-        Vector3d axisOrigin = resolvePoint(inputValues.get(INPUT_AXIS_ORIGIN_ID));
-        Vector3d axisDirection = resolveDirection(inputValues.get(INPUT_AXIS_DIRECTION_ID));
-        if (source == null || !isFinite(axisOrigin) || !isUsableDirection(axisDirection)) {
+        Vector3d axisOrigin = OptionalPortDrive.resolveOptionalPoint(this, INPUT_AXIS_ORIGIN_ID, new Vector3d());
+        Vector3d axisDirection = OptionalPortDrive.resolveOptionalVector(this, INPUT_AXIS_DIRECTION_ID, null);
+        Double resolvedAngle = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ANGLE_DEGREES_ID, angleDegrees);
+        Double resolvedLength = OptionalPortDrive.resolveOptionalDouble(this, INPUT_TWIST_LENGTH_ID, twistLength);
+
+        if (source == null
+                || axisOrigin == null
+                || !VectorUtils.isNonZero(axisDirection)
+                || resolvedAngle == null
+                || resolvedLength == null
+                || resolvedLength <= 0.0d) {
             writeInvalid();
             return;
         }
 
-        double resolvedAngle = resolveDouble(inputValues.get(INPUT_ANGLE_DEGREES_ID), angleDegrees);
-        double resolvedLength = Math.max(EPS, Math.abs(resolveDouble(inputValues.get(INPUT_TWIST_LENGTH_ID), twistLength)));
-        double iso = resolveDouble(inputValues.get(INPUT_ISO_ID), source.isoValue);
+        Double iso = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ISO_ID, source.isoValue);
+        if (iso == null) {
+            writeInvalid();
+            return;
+        }
 
+        Vector3d axis = new Vector3d(axisDirection).normalize();
         TwistedSdfData twisted = new TwistedSdfData(
             source.sdf,
             axisOrigin,
-            axisDirection,
+            axis,
             resolvedAngle,
             resolvedLength,
             clampMode
@@ -170,8 +176,18 @@ public class TwistGeometryNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
+    /**
+     * Connection-aware source precedence: Geometry connected → Geometry only (never SDF);
+     * Geometry unconnected → SDF port (unconnected+null / connected-invalid → fail).
+     */
     private @Nullable SourceData resolveSource() {
-        Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
+        if (OptionalPortDrive.isConnected(this, INPUT_GEOMETRY_ID)) {
+            return resolveGeometrySource(inputValues.get(INPUT_GEOMETRY_ID));
+        }
+        return resolveSdfSource();
+    }
+
+    private @Nullable SourceData resolveGeometrySource(@Nullable Object geometryObj) {
         if (geometryObj instanceof SdfGeometryData sdfGeometry) {
             return new SourceData(
                 sdfGeometry.sdf(),
@@ -188,7 +204,7 @@ public class TwistGeometryNode extends BaseNode {
                 return null;
             }
             BlockPosList blocks = GeometryVoxelizer.voxelize(geometry, fillSourceGeometry);
-            if (blocks.isEmpty() || blocks.size() > Math.max(1, maxSourceVoxels)) {
+            if (blocks.isEmpty() || blocks.size() > GenerationLimits.MAX_DEFORM_SOURCE_VOXELS) {
                 return null;
             }
             Bounds bounds = boundsFromRegion(region);
@@ -204,11 +220,29 @@ public class TwistGeometryNode extends BaseNode {
                 blocks.size()
             );
         }
+        return null;
+    }
 
+    private @Nullable SourceData resolveSdfSource() {
+        boolean sdfConnected = OptionalPortDrive.isConnected(this, INPUT_SDF_ID);
         Object sdfObj = inputValues.get(INPUT_SDF_ID);
+        if (sdfConnected) {
+            if (!(sdfObj instanceof SignedDistanceFieldData sdf)) {
+                return null;
+            }
+            return buildSdfSource(sdf);
+        }
+        // Unconnected: null → fail; a present valid SDF (e.g. compute() injection) is accepted.
+        if (sdfObj == null) {
+            return null;
+        }
         if (!(sdfObj instanceof SignedDistanceFieldData sdf)) {
             return null;
         }
+        return buildSdfSource(sdf);
+    }
+
+    private @Nullable SourceData buildSdfSource(SignedDistanceFieldData sdf) {
         Bounds bounds = resolveInputBounds();
         if (bounds == null || !bounds.isValid()) {
             SdfBoundsEstimator.AxisAlignedBounds estimated = SdfBoundsEstimator.estimate(sdf);
@@ -221,9 +255,14 @@ public class TwistGeometryNode extends BaseNode {
     }
 
     private @Nullable Bounds resolveInputBounds() {
-        Vector3d min = resolvePoint(inputValues.get(INPUT_BOUNDS_MIN_ID));
-        Vector3d max = resolvePoint(inputValues.get(INPUT_BOUNDS_MAX_ID));
-        if (!isFinite(min) || !isFinite(max)) {
+        boolean minConnected = OptionalPortDrive.isConnected(this, INPUT_BOUNDS_MIN_ID);
+        boolean maxConnected = OptionalPortDrive.isConnected(this, INPUT_BOUNDS_MAX_ID);
+        if (!minConnected && !maxConnected) {
+            return null;
+        }
+        Vector3d min = OptionalPortDrive.resolveOptionalPoint(this, INPUT_BOUNDS_MIN_ID, null);
+        Vector3d max = OptionalPortDrive.resolveOptionalPoint(this, INPUT_BOUNDS_MAX_ID, null);
+        if (!PointUtils.isFinite(min) || !PointUtils.isFinite(max)) {
             return null;
         }
         return new Bounds(min, max);
@@ -276,59 +315,15 @@ public class TwistGeometryNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
-    private static @Nullable Vector3d resolvePoint(@Nullable Object value) {
-        if (value instanceof PointData pointData) {
-            return pointData.position();
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof Vec3d vector) {
-            return new Vector3d(vector.x, vector.y, vector.z);
-        }
-        if (value instanceof BlockPos blockPos) {
-            // Spatial Convention v1: BlockPos as continuous location = cell center, not min corner.
-            return BlockSpace.cellCenter(blockPos);
-        }
-        return null;
-    }
-
-    private static @Nullable Vector3d resolveDirection(@Nullable Object value) {
-        if (!(value instanceof Vector3d vector)) {
-            return null;
-        }
-        Vector3d direction = new Vector3d(vector);
-        return isUsableDirection(direction) ? direction.normalize() : null;
-    }
-
-    private static boolean isFinite(@Nullable Vector3d vector) {
-        return vector != null
-            && Double.isFinite(vector.x)
-            && Double.isFinite(vector.y)
-            && Double.isFinite(vector.z);
-    }
-
-    private static boolean isUsableDirection(@Nullable Vector3d vector) {
-        return isFinite(vector) && vector.lengthSquared() > EPS;
-    }
-
-    private static double resolveDouble(@Nullable Object value, double fallback) {
-        if (value instanceof Number number) {
-            double candidate = number.doubleValue();
-            if (Double.isFinite(candidate)) {
-                return candidate;
-            }
-        }
-        return fallback;
-    }
-
     public double getAngleDegrees() {
         return angleDegrees;
     }
 
     public void setAngleDegrees(double angleDegrees) {
-        this.angleDegrees = Double.isFinite(angleDegrees) ? angleDegrees : this.angleDegrees;
-        markDirty();
+        if (Double.isFinite(angleDegrees)) {
+            this.angleDegrees = angleDegrees;
+            markDirty();
+        }
     }
 
     public double getTwistLength() {
@@ -336,8 +331,10 @@ public class TwistGeometryNode extends BaseNode {
     }
 
     public void setTwistLength(double twistLength) {
-        this.twistLength = Math.max(EPS, Math.abs(Double.isFinite(twistLength) ? twistLength : this.twistLength));
-        markDirty();
+        if (Double.isFinite(twistLength) && twistLength > 0.0d) {
+            this.twistLength = twistLength;
+            markDirty();
+        }
     }
 
     public TwistedSdfData.ClampMode getClampMode() {
@@ -366,8 +363,10 @@ public class TwistGeometryNode extends BaseNode {
     }
 
     public void setBoundsPadding(double boundsPadding) {
-        this.boundsPadding = Math.max(0.0d, boundsPadding);
-        markDirty();
+        if (Double.isFinite(boundsPadding) && boundsPadding >= 0.0d) {
+            this.boundsPadding = boundsPadding;
+            markDirty();
+        }
     }
 
     public int getBoundsSamples() {
@@ -388,15 +387,6 @@ public class TwistGeometryNode extends BaseNode {
         markDirty();
     }
 
-    public int getMaxSourceVoxels() {
-        return maxSourceVoxels;
-    }
-
-    public void setMaxSourceVoxels(int maxSourceVoxels) {
-        this.maxSourceVoxels = Math.max(1, maxSourceVoxels);
-        markDirty();
-    }
-
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
@@ -406,7 +396,6 @@ public class TwistGeometryNode extends BaseNode {
         state.put("boundsPadding", boundsPadding);
         state.put("boundsSamples", boundsSamples);
         state.put("fillSourceGeometry", fillSourceGeometry);
-        state.put("maxSourceVoxels", maxSourceVoxels);
         return state;
     }
 
@@ -433,9 +422,6 @@ public class TwistGeometryNode extends BaseNode {
         if (map.get("fillSourceGeometry") instanceof Boolean value) {
             setFillSourceGeometry(value);
         }
-        if (map.get("maxSourceVoxels") instanceof Number value) {
-            setMaxSourceVoxels(value.intValue());
-        }
     }
 
     private record SourceData(
@@ -455,7 +441,11 @@ public class TwistGeometryNode extends BaseNode {
         }
 
         boolean isValid() {
-            return isFinite(min) && isFinite(max) && min.x <= max.x && min.y <= max.y && min.z <= max.z;
+            return VectorUtils.isFinite(min)
+                && VectorUtils.isFinite(max)
+                && min.x <= max.x
+                && min.y <= max.y
+                && min.z <= max.z;
         }
 
         Bounds include(Vector3d point) {

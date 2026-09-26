@@ -327,8 +327,14 @@ public final class GraphFormatVersion {
      */
     public static final int V52 = 52;
 
+    /**
+     * Deformations v1: strict POINT_LIST/VECTOR_LIST, OptionalPortDrive, exact INTEGER,
+     * Length/Radius fail-closed, unique order 0-10, GenerationLimits budgets.
+     */
+    public static final int V53 = 53;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V52;
+    public static final int CURRENT = V53;
 
     private GraphFormatVersion() {
     }

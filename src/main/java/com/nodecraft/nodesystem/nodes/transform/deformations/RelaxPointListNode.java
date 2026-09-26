@@ -7,7 +7,10 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PointListKnn3d;
+import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -22,11 +25,13 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "transform.deformations.relax_points",
     displayName = "Relax Point List",
-    description = "Laplacian-style smoothing using k nearest neighbors (uniform grid hash for speed; capped point count)",
+    description = "Laplacian-style smoothing using k nearest neighbors (uniform grid hash for speed)",
     category = "transform.deformations",
-    order = 5
+    order = 7
 )
 public class RelaxPointListNode extends BaseNode {
+
+    private static final int MAX_ITERATIONS = 64;
 
     @NodeProperty(displayName = "Neighbors K", category = "Relax", order = 1,
         description = "Number of nearest neighbors to average (excluding self)")
@@ -38,10 +43,6 @@ public class RelaxPointListNode extends BaseNode {
     @NodeProperty(displayName = "Blend", category = "Relax", order = 3,
         description = "How much each step moves toward the neighbor centroid (0-1)")
     private double blend = 0.35d;
-
-    @NodeProperty(displayName = "Max Points", category = "Relax", order = 4,
-        description = "Safety cap; lists larger than this are rejected")
-    private int maxPoints = 2048;
 
     private static final String INPUT_POINTS_ID = "input_points";
     private static final String INPUT_K_ID = "input_k";
@@ -67,7 +68,7 @@ public class RelaxPointListNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Laplacian-style smoothing using k nearest neighbors (uniform grid hash for speed; capped point count)";
+        return "Laplacian-style smoothing using k nearest neighbors (uniform grid hash for speed)";
     }
 
     @Override
@@ -77,27 +78,29 @@ public class RelaxPointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> pts = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
-        if (pts.size() < 2) {
-            writeEmpty();
+        List<Vector3d> pts = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        if (pts == null || pts.size() < 2) {
+            writeInvalid();
+            return;
+        }
+        if (pts.size() > GenerationLimits.MAX_RELAX_POINTS) {
+            writeInvalid();
             return;
         }
 
-        int cap = Math.max(8, Math.min(8192, maxPoints));
-        if (pts.size() > cap) {
-            writeEmpty();
+        Integer k = OptionalPortDrive.resolveOptionalInteger(this, INPUT_K_ID, neighborsK);
+        Integer iters = OptionalPortDrive.resolveOptionalInteger(this, INPUT_ITERATIONS_ID, iterations);
+        Double lambda = OptionalPortDrive.resolveOptionalDouble(this, INPUT_BLEND_ID, blend);
+
+        if (k == null || iters == null || lambda == null
+                || k < 1 || k > pts.size() - 1
+                || iters < 1 || iters > MAX_ITERATIONS
+                || lambda < 0.0d || lambda > 1.0d) {
+            writeInvalid();
             return;
         }
-
-        int k = resolveInt(inputValues.get(INPUT_K_ID), neighborsK);
-        k = Math.max(1, Math.min(pts.size() - 1, k));
-        int iters = resolveInt(inputValues.get(INPUT_ITERATIONS_ID), iterations);
-        iters = Math.max(1, Math.min(64, iters));
-        double lambda = resolveDouble(inputValues.get(INPUT_BLEND_ID), blend);
-        lambda = Math.max(0.0d, Math.min(1.0d, lambda));
 
         int[] idxBuf = new int[k];
-
         List<Vector3d> current = new ArrayList<>(pts);
         for (int it = 0; it < iters; it++) {
             List<Vector3d> next = new ArrayList<>(current.size());
@@ -119,8 +122,7 @@ public class RelaxPointListNode extends BaseNode {
                     continue;
                 }
                 centroid.div(used);
-                Vector3d out = new Vector3d(p).lerp(centroid, lambda);
-                next.add(out);
+                next.add(new Vector3d(p).lerp(centroid, lambda));
             }
             current = next;
         }
@@ -130,18 +132,10 @@ public class RelaxPointListNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
-    private void writeEmpty() {
+    private void writeInvalid() {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private static int resolveInt(Object value, int fallback) {
-        return value instanceof Number n ? n.intValue() : fallback;
-    }
-
-    private static double resolveDouble(Object value, double fallback) {
-        return DeformationUtils.resolveFiniteDouble(value, fallback);
     }
 
     @Override
@@ -150,7 +144,6 @@ public class RelaxPointListNode extends BaseNode {
         state.put("neighborsK", neighborsK);
         state.put("iterations", iterations);
         state.put("blend", blend);
-        state.put("maxPoints", maxPoints);
         return state;
     }
 
@@ -159,9 +152,17 @@ public class RelaxPointListNode extends BaseNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        neighborsK = Math.max(1, DeformationUtils.intOrCurrent(map.get("neighborsK"), neighborsK));
-        iterations = Math.max(1, DeformationUtils.intOrCurrent(map.get("iterations"), iterations));
-        blend = Math.max(0.0d, Math.min(1.0d, DeformationUtils.finiteOrCurrent(map.get("blend"), blend)));
-        maxPoints = Math.max(8, Math.min(8192, DeformationUtils.intOrCurrent(map.get("maxPoints"), maxPoints)));
+        if (map.get("neighborsK") instanceof Integer value && value >= 1) {
+            neighborsK = value;
+        }
+        if (map.get("iterations") instanceof Integer value && value >= 1 && value <= MAX_ITERATIONS) {
+            iterations = value;
+        }
+        if (map.get("blend") instanceof Number value) {
+            double v = value.doubleValue();
+            if (Double.isFinite(v) && v >= 0.0d && v <= 1.0d) {
+                blend = v;
+            }
+        }
     }
 }

@@ -7,7 +7,10 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -27,8 +30,6 @@ import java.util.UUID;
 )
 public class TaperPointListNode extends BaseNode {
 
-    private static final double EPSILON = 1.0e-9d;
-
     public enum ClampMode {CLAMP, REPEAT, UNBOUNDED}
 
     @NodeProperty(displayName = "Start Scale", category = "Taper", order = 1)
@@ -42,9 +43,6 @@ public class TaperPointListNode extends BaseNode {
 
     @NodeProperty(displayName = "Clamp Mode", category = "Taper", order = 4)
     private ClampMode clampMode = ClampMode.CLAMP;
-
-    @NodeProperty(displayName = "Min Scale", category = "Taper", order = 5)
-    private double minScale = 0.05d;
 
     private static final String INPUT_POINTS_ID = "input_points";
     private static final String INPUT_AXIS_ORIGIN_ID = "input_axis_origin";
@@ -77,27 +75,27 @@ public class TaperPointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> pointsInput = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
-        Vector3d axisOrigin = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_AXIS_ORIGIN_ID));
-        if (pointsInput.isEmpty() || !DeformationUtils.isFinite(axisOrigin) || !(inputValues.get(INPUT_AXIS_DIRECTION_ID) instanceof Vector3d axisDirection)) {
-            writeEmptyOutputs();
+        List<Vector3d> pointsInput = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        Vector3d axisOrigin = OptionalPortDrive.resolveOptionalPoint(this, INPUT_AXIS_ORIGIN_ID, new Vector3d());
+        Vector3d axisDirection = SpatialValueResolver.resolveVector(inputValues.get(INPUT_AXIS_DIRECTION_ID));
+        Double resolvedStartScale = OptionalPortDrive.resolveOptionalDouble(this, INPUT_START_SCALE_ID, startScale);
+        Double resolvedEndScale = OptionalPortDrive.resolveOptionalDouble(this, INPUT_END_SCALE_ID, endScale);
+        Double resolvedLength = OptionalPortDrive.resolveOptionalDouble(this, INPUT_TAPER_LENGTH_ID, taperLength);
+
+        if (pointsInput == null
+                || axisOrigin == null
+                || !VectorUtils.isNonZero(axisDirection)
+                || resolvedStartScale == null
+                || resolvedEndScale == null
+                || resolvedLength == null
+                || resolvedLength <= 0.0d
+                || resolvedStartScale < 0.0d
+                || resolvedEndScale < 0.0d) {
+            writeInvalid();
             return;
         }
 
-        Vector3d axis = new Vector3d(axisDirection);
-        if (!DeformationUtils.isUsableDirection(axis)) {
-            writeEmptyOutputs();
-            return;
-        }
-        axis.normalize();
-
-        double resolvedStartScale = resolveDouble(inputValues.get(INPUT_START_SCALE_ID), startScale);
-        double resolvedEndScale = resolveDouble(inputValues.get(INPUT_END_SCALE_ID), endScale);
-        double resolvedLength = Math.max(EPSILON, resolveDouble(inputValues.get(INPUT_TAPER_LENGTH_ID), taperLength));
-        if (!Double.isFinite(resolvedStartScale) || !Double.isFinite(resolvedEndScale) || !Double.isFinite(resolvedLength)) {
-            writeEmptyOutputs();
-            return;
-        }
+        Vector3d axis = new Vector3d(axisDirection).normalize();
 
         List<Vector3d> taperedPoints = new ArrayList<>(pointsInput.size());
         for (Vector3d point : pointsInput) {
@@ -109,7 +107,6 @@ public class TaperPointListNode extends BaseNode {
             double normalizedDistance = axialDistance / resolvedLength;
             double taperFactor = applyClampMode(normalizedDistance);
             double scale = resolvedStartScale + (resolvedEndScale - resolvedStartScale) * taperFactor;
-            scale = Math.max(minScale, scale);
 
             taperedPoints.add(new Vector3d(axisOrigin).add(axialComponent).add(radialComponent.mul(scale)));
         }
@@ -126,7 +123,6 @@ public class TaperPointListNode extends BaseNode {
         state.put("endScale", endScale);
         state.put("taperLength", taperLength);
         state.put("clampMode", clampMode.name());
-        state.put("minScale", minScale);
         return state;
     }
 
@@ -135,10 +131,15 @@ public class TaperPointListNode extends BaseNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        startScale = DeformationUtils.finiteOrCurrent(map.get("startScale"), startScale);
-        endScale = DeformationUtils.finiteOrCurrent(map.get("endScale"), endScale);
-        taperLength = Math.max(EPSILON, DeformationUtils.finiteOrCurrent(map.get("taperLength"), taperLength));
-        minScale = Math.max(0.0d, DeformationUtils.finiteOrCurrent(map.get("minScale"), minScale));
+        if (map.get("startScale") instanceof Number value && Double.isFinite(value.doubleValue()) && value.doubleValue() >= 0.0d) {
+            startScale = value.doubleValue();
+        }
+        if (map.get("endScale") instanceof Number value && Double.isFinite(value.doubleValue()) && value.doubleValue() >= 0.0d) {
+            endScale = value.doubleValue();
+        }
+        if (map.get("taperLength") instanceof Number value && Double.isFinite(value.doubleValue()) && value.doubleValue() > 0.0d) {
+            taperLength = value.doubleValue();
+        }
         if (map.get("clampMode") instanceof String value) {
             try {
                 clampMode = ClampMode.valueOf(value.trim().toUpperCase());
@@ -148,14 +149,10 @@ public class TaperPointListNode extends BaseNode {
         }
     }
 
-    private void writeEmptyOutputs() {
+    private void writeInvalid() {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private double resolveDouble(Object value, double fallback) {
-        return DeformationUtils.resolveFiniteDouble(value, fallback);
     }
 
     private double applyClampMode(double normalizedDistance) {

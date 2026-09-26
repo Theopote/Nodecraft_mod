@@ -23,6 +23,16 @@ public final class GenerationLimits {
     public static final int MAX_LAYOUT_INSTANCES = 16_384;
 
     /**
+     * Hard cap for Relax Point List input size (implementation safety budget).
+     */
+    public static final int MAX_RELAX_POINTS = 8192;
+
+    /**
+     * Hard cap for Twist/Bend Geometry voxelization of non-SDF geometry sources.
+     */
+    public static final int MAX_DEFORM_SOURCE_VOXELS = 32768;
+
+    /**
      * Maximum repetitions per axis for 2D grid/array nodes before multiplying by source size.
      */
     public static final int MAX_GRID_AXIS = 1024;

@@ -109,6 +109,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V49 -> migrateV49ToV50(graph);
             case GraphFormatVersion.V50 -> migrateV50ToV51(graph);
             case GraphFormatVersion.V51 -> migrateV51ToV52(graph);
+            case GraphFormatVersion.V52 -> migrateV52ToV53(graph);
             default -> graph;
         };
     }
@@ -2999,6 +3000,56 @@ public final class GraphMigrationRegistry {
             case LEGACY_SHEAR_TYPE -> DEFORMATIONS_SHEAR_TYPE;
             default -> typeId;
         };
+    }
+
+    private static final String TAPER_TYPE = "transform.deformations.taper";
+    private static final String RELAX_TYPE = "transform.deformations.relax_points";
+    private static final String SPHERICAL_TYPE = "transform.deformations.spherical_displace";
+    private static final String TWIST_GEOMETRY_TYPE = "transform.deformations.twist_geometry";
+    private static final String BEND_GEOMETRY_TYPE = "transform.deformations.bend_geometry";
+
+    private static final Set<String> DEFORMATIONS_REMOVED_STATE_KEYS = Set.of(
+            "minscale",
+            "maxpoints",
+            "maxsourcevoxels",
+            "affectoutsideradius"
+    );
+
+    /**
+     * Deformations v1: strip removed properties (minScale, maxPoints, maxSourceVoxels,
+     * affectOutsideRadius). Type ids unchanged.
+     */
+    private static SavedGraph migrateV52ToV53(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return graph;
+        }
+        for (SavedNode node : graph.nodes) {
+            if (node == null || node.typeId == null || !(node.state instanceof Map<?, ?> state)) {
+                continue;
+            }
+            String type = node.typeId.toLowerCase(Locale.ROOT);
+            boolean strip = TAPER_TYPE.equals(type)
+                    || RELAX_TYPE.equals(type)
+                    || SPHERICAL_TYPE.equals(type)
+                    || TWIST_GEOMETRY_TYPE.equals(type)
+                    || BEND_GEOMETRY_TYPE.equals(type);
+            if (!strip) {
+                continue;
+            }
+            Map<String, Object> cleaned = new HashMap<>();
+            for (Map.Entry<?, ?> entry : state.entrySet()) {
+                if (!(entry.getKey() instanceof String key)) {
+                    continue;
+                }
+                if (DEFORMATIONS_REMOVED_STATE_KEYS.contains(key.toLowerCase(Locale.ROOT))) {
+                    LOGGER.debug("Stripped Deformations v1 obsolete state {} from {}", key, node.nodeId);
+                    continue;
+                }
+                cleaned.put(key, entry.getValue());
+            }
+            node.state = cleaned.isEmpty() ? null : cleaned;
+        }
+        return graph;
     }
 
     private static String remapBlockStateTypeId(String typeId) {

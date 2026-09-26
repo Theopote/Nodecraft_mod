@@ -728,14 +728,14 @@
 | Twist Point List | `transform.deformations.twist` | Twists a point list around an axis by distributing rotation along a specified axial length | `TwistPointListNode` |
 | Bend Point List | `transform.deformations.bend` | Bends a point list into an arc along an axis over a configurable bend length | `BendPointListNode` |
 | Taper Point List | `transform.deformations.taper` | Scales radial distance along an axis to create tapered forms | `TaperPointListNode` |
+| Shear Point List | `transform.deformations.shear_point_list` | Applies axial shear deformation to a point list around an origin. | `ShearPointListNode` |
 | Noise Displace Point List | `transform.deformations.noise_displace` | Applies deterministic pseudo-noise displacement to a point list | `NoiseDisplacePointListNode` |
-| Path Attract Point List | `transform.deformations.curve_attract` | Pulls points toward a path with quadratic falloff; optional displacement along full vector, tangent only, or perpendicular-to-tangent only | `CurveAttractPointListNode` |
-| Relax Point List | `transform.deformations.relax_points` | Laplacian-style smoothing using k nearest neighbors (uniform grid hash for speed; capped point count) | `RelaxPointListNode` |
-| Lattice Deform Point List | `transform.deformations.lattice_deform` | Free-form deformation: trilinear blend of control displacements on a uniform (nx+1)(ny+1)(nz+1) lattice in an axis-aligned box | `LatticeDeformPointListNode` |
 | Spherical Displace | `transform.deformations.spherical_displace` | Applies radial displacement with spherical distance falloff around a center point. | `SphericalDisplaceNode` |
+| Path Attract Point List | `transform.deformations.curve_attract` | Pulls points toward a path with quadratic falloff; optional displacement along full vector, tangent only, or perpendicular-to-tangent only | `CurveAttractPointListNode` |
+| Relax Point List | `transform.deformations.relax_points` | Laplacian-style smoothing using k nearest neighbors (uniform grid hash for speed) | `RelaxPointListNode` |
+| Lattice Deform Point List | `transform.deformations.lattice_deform` | Free-form deformation: trilinear blend of control displacements on a uniform (nx+1)(ny+1)(nz+1) lattice in an axis-aligned box | `LatticeDeformPointListNode` |
 | Twist Geometry | `transform.deformations.twist_geometry` | Applies an axial twist domain deformation to SDF or geometry, outputting a twisted SDF-backed Geometry | `TwistGeometryNode` |
 | Bend Geometry | `transform.deformations.bend_geometry` | Applies an axial bend domain deformation to SDF or geometry before voxelization | `BendGeometryNode` |
-| Shear Point List | `transform.deformations.shear_point_list` | Applies axial shear deformation to a point list around an origin. | `ShearPointListNode` |
 
 ## transform.orientation（6）
 

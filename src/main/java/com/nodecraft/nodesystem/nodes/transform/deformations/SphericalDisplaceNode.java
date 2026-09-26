@@ -7,6 +7,8 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -23,7 +25,7 @@ import java.util.UUID;
     displayName = "Spherical Displace",
     description = "Applies radial displacement with spherical distance falloff around a center point.",
     category = "transform.deformations",
-    order = 8
+    order = 5
 )
 public class SphericalDisplaceNode extends BaseNode {
 
@@ -35,9 +37,6 @@ public class SphericalDisplaceNode extends BaseNode {
 
     @NodeProperty(displayName = "Falloff Power", category = "Spherical", order = 3)
     private double falloffPower = 1.0d;
-
-    @NodeProperty(displayName = "Affect Outside Radius", category = "Spherical", order = 4)
-    private boolean affectOutsideRadius = false;
 
     private static final String INPUT_POINTS_ID = "input_points";
     private static final String INPUT_CENTER_ID = "input_center";
@@ -75,24 +74,19 @@ public class SphericalDisplaceNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> inputPoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
-        if (inputPoints.isEmpty()) {
-            writeInvalid();
-            return;
-        }
+        List<Vector3d> inputPoints = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        Vector3d center = OptionalPortDrive.resolveOptionalPoint(this, INPUT_CENTER_ID, new Vector3d());
+        Double resolvedStrength = OptionalPortDrive.resolveOptionalDouble(this, INPUT_STRENGTH_ID, strength);
+        Double resolvedRadius = OptionalPortDrive.resolveOptionalDouble(this, INPUT_RADIUS_ID, radius);
+        Double resolvedPower = OptionalPortDrive.resolveOptionalDouble(this, INPUT_POWER_ID, falloffPower);
 
-        Vector3d center = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_CENTER_ID));
-        if (center == null) {
-            center = new Vector3d(0.0d, 0.0d, 0.0d);
-        }
-        if (!DeformationUtils.isFinite(center)) {
-            writeInvalid();
-            return;
-        }
-        double resolvedStrength = resolveDouble(inputValues.get(INPUT_STRENGTH_ID), strength);
-        double resolvedRadius = Math.max(1.0e-9d, Math.abs(resolveDouble(inputValues.get(INPUT_RADIUS_ID), radius)));
-        double resolvedPower = Math.max(1.0e-6d, resolveDouble(inputValues.get(INPUT_POWER_ID), falloffPower));
-        if (!Double.isFinite(resolvedStrength) || !Double.isFinite(resolvedRadius) || !Double.isFinite(resolvedPower)) {
+        if (inputPoints == null
+                || center == null
+                || resolvedStrength == null
+                || resolvedRadius == null
+                || resolvedRadius <= 0.0d
+                || resolvedPower == null
+                || resolvedPower <= 0.0d) {
             writeInvalid();
             return;
         }
@@ -107,25 +101,17 @@ public class SphericalDisplaceNode extends BaseNode {
             }
 
             double normalized = distance / resolvedRadius;
-            if (!affectOutsideRadius && normalized > 1.0d) {
+            if (normalized > 1.0d) {
                 out.add(new Vector3d(point));
                 continue;
             }
             double clamped = Math.max(0.0d, Math.min(1.0d, 1.0d - normalized));
             double weight = Math.pow(clamped, resolvedPower);
-            if (affectOutsideRadius && normalized > 1.0d) {
-                weight = -Math.pow(normalized - 1.0d, resolvedPower);
-            }
 
             Vector3d dir = radial.normalize();
-            Vector3d displaced = new Vector3d(point).add(dir.mul(resolvedStrength * weight));
-            out.add(displaced);
+            out.add(new Vector3d(point).add(dir.mul(resolvedStrength * weight)));
         }
 
-        if (out.isEmpty()) {
-            writeInvalid();
-            return;
-        }
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(out));
         outputValues.put(OUTPUT_COUNT_ID, out.size());
         outputValues.put(OUTPUT_VALID_ID, true);
@@ -137,17 +123,12 @@ public class SphericalDisplaceNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
-    private double resolveDouble(Object value, double fallback) {
-        return DeformationUtils.resolveFiniteDouble(value, fallback);
-    }
-
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
         state.put("strength", strength);
         state.put("radius", radius);
         state.put("falloffPower", falloffPower);
-        state.put("affectOutsideRadius", affectOutsideRadius);
         return state;
     }
 
@@ -156,9 +137,14 @@ public class SphericalDisplaceNode extends BaseNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        strength = DeformationUtils.finiteOrCurrent(map.get("strength"), strength);
-        radius = Math.max(1.0e-9d, Math.abs(DeformationUtils.finiteOrCurrent(map.get("radius"), radius)));
-        falloffPower = Math.max(1.0e-6d, DeformationUtils.finiteOrCurrent(map.get("falloffPower"), falloffPower));
-        if (map.get("affectOutsideRadius") instanceof Boolean b) affectOutsideRadius = b;
+        if (map.get("strength") instanceof Number value && Double.isFinite(value.doubleValue())) {
+            strength = value.doubleValue();
+        }
+        if (map.get("radius") instanceof Number value && Double.isFinite(value.doubleValue()) && value.doubleValue() > 0.0d) {
+            radius = value.doubleValue();
+        }
+        if (map.get("falloffPower") instanceof Number value && Double.isFinite(value.doubleValue()) && value.doubleValue() > 0.0d) {
+            falloffPower = value.doubleValue();
+        }
     }
 }

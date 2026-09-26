@@ -5,6 +5,10 @@ import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 /**
  * Shared vector validation helpers used across reference vector nodes.
  */
@@ -45,5 +49,24 @@ public final class VectorUtils {
 
     public static boolean isNonZero(@Nullable Vector3d vector) {
         return vector != null && vector.lengthSquared() > EPS_SQ;
+    }
+
+    /**
+     * Strict VECTOR_LIST resolution: null/empty/non-Collection → null;
+     * any non-VECTOR or non-finite entry → null; otherwise full list (no filtering).
+     */
+    public static @Nullable List<Vector3d> resolveStrictVectorList(@Nullable Object value) {
+        if (!(value instanceof Collection<?> collection) || collection.isEmpty()) {
+            return null;
+        }
+        List<Vector3d> vectors = new ArrayList<>(collection.size());
+        for (Object entry : collection) {
+            Vector3d vector = toVector(entry);
+            if (!isFinite(vector)) {
+                return null;
+            }
+            vectors.add(vector);
+        }
+        return List.copyOf(vectors);
     }
 }

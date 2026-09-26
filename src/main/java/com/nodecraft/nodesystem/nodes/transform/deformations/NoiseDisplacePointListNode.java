@@ -7,7 +7,10 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -23,7 +26,7 @@ import java.util.UUID;
     displayName = "Noise Displace Point List",
     description = "Applies deterministic pseudo-noise displacement to a point list",
     category = "transform.deformations",
-    order = 3
+    order = 4
 )
 public class NoiseDisplacePointListNode extends BaseNode {
 
@@ -77,24 +80,20 @@ public class NoiseDisplacePointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> pointsInput = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
-        if (pointsInput.isEmpty()) {
-            writeEmptyOutputs();
-            return;
-        }
+        List<Vector3d> pointsInput = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        Double resolvedAmplitude = OptionalPortDrive.resolveOptionalDouble(this, INPUT_AMPLITUDE_ID, amplitude);
+        Double resolvedFrequency = OptionalPortDrive.resolveOptionalDouble(this, INPUT_FREQUENCY_ID, frequency);
+        Integer resolvedSeed = OptionalPortDrive.resolveOptionalInteger(this, INPUT_SEED_ID, seed);
+        Vector3d resolvedOffset = OptionalPortDrive.resolveOptionalVector(this, INPUT_OFFSET_ID, offset);
 
-        double resolvedAmplitude = resolveDouble(inputValues.get(INPUT_AMPLITUDE_ID), amplitude);
-        double resolvedFrequency = resolveDouble(inputValues.get(INPUT_FREQUENCY_ID), frequency);
-        int resolvedSeed = resolveInt(inputValues.get(INPUT_SEED_ID), seed);
-        Vector3d resolvedOffset = inputValues.get(INPUT_OFFSET_ID) instanceof Vector3d offsetInput
-            ? new Vector3d(offsetInput)
-            : new Vector3d(offset);
-        Vector3d axisWeight = new Vector3d(axisWeightX, axisWeightY, axisWeightZ);
-        if (!Double.isFinite(resolvedAmplitude)
-            || !Double.isFinite(resolvedFrequency)
-            || !DeformationUtils.isFinite(resolvedOffset)
-            || !DeformationUtils.isFinite(axisWeight)) {
-            writeEmptyOutputs();
+        if (pointsInput == null
+                || resolvedAmplitude == null
+                || resolvedFrequency == null
+                || resolvedFrequency < 0.0d
+                || resolvedSeed == null
+                || resolvedOffset == null
+                || !VectorUtils.isFinite(new Vector3d(axisWeightX, axisWeightY, axisWeightZ))) {
+            writeInvalid();
             return;
         }
 
@@ -138,29 +137,39 @@ public class NoiseDisplacePointListNode extends BaseNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        amplitude = DeformationUtils.finiteOrCurrent(map.get("amplitude"), amplitude);
-        frequency = DeformationUtils.finiteOrCurrent(map.get("frequency"), frequency);
-        if (map.get("seed") instanceof Number value) seed = value.intValue();
-        offset.x = DeformationUtils.finiteOrCurrent(map.get("offsetX"), offset.x);
-        offset.y = DeformationUtils.finiteOrCurrent(map.get("offsetY"), offset.y);
-        offset.z = DeformationUtils.finiteOrCurrent(map.get("offsetZ"), offset.z);
-        axisWeightX = DeformationUtils.finiteOrCurrent(map.get("axisWeightX"), axisWeightX);
-        axisWeightY = DeformationUtils.finiteOrCurrent(map.get("axisWeightY"), axisWeightY);
-        axisWeightZ = DeformationUtils.finiteOrCurrent(map.get("axisWeightZ"), axisWeightZ);
+        if (map.get("amplitude") instanceof Number value && Double.isFinite(value.doubleValue())) {
+            amplitude = value.doubleValue();
+        }
+        if (map.get("frequency") instanceof Number value && Double.isFinite(value.doubleValue()) && value.doubleValue() >= 0.0d) {
+            frequency = value.doubleValue();
+        }
+        if (map.get("seed") instanceof Integer value) {
+            seed = value;
+        }
+        if (map.get("offsetX") instanceof Number value && Double.isFinite(value.doubleValue())) {
+            offset.x = value.doubleValue();
+        }
+        if (map.get("offsetY") instanceof Number value && Double.isFinite(value.doubleValue())) {
+            offset.y = value.doubleValue();
+        }
+        if (map.get("offsetZ") instanceof Number value && Double.isFinite(value.doubleValue())) {
+            offset.z = value.doubleValue();
+        }
+        if (map.get("axisWeightX") instanceof Number value && Double.isFinite(value.doubleValue())) {
+            axisWeightX = value.doubleValue();
+        }
+        if (map.get("axisWeightY") instanceof Number value && Double.isFinite(value.doubleValue())) {
+            axisWeightY = value.doubleValue();
+        }
+        if (map.get("axisWeightZ") instanceof Number value && Double.isFinite(value.doubleValue())) {
+            axisWeightZ = value.doubleValue();
+        }
     }
 
-    private void writeEmptyOutputs() {
+    private void writeInvalid() {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private double resolveDouble(Object value, double fallback) {
-        return DeformationUtils.resolveFiniteDouble(value, fallback);
-    }
-
-    private int resolveInt(Object value, int fallback) {
-        return value instanceof Number number ? number.intValue() : fallback;
     }
 
     private double noise(double x, double y, double z, double freq, int seedValue) {

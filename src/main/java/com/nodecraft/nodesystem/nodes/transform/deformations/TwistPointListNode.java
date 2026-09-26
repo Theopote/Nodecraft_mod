@@ -7,7 +7,10 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -26,8 +29,6 @@ import java.util.UUID;
     order = 0
 )
 public class TwistPointListNode extends BaseNode {
-
-    private static final double EPSILON = 1.0e-9d;
 
     public enum ClampMode {
         CLAMP,
@@ -75,28 +76,23 @@ public class TwistPointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> pointsInput = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
-        Vector3d axisOrigin = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_AXIS_ORIGIN_ID));
-        Object axisDirectionObj = inputValues.get(INPUT_AXIS_DIRECTION_ID);
+        List<Vector3d> pointsInput = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        Vector3d axisOrigin = OptionalPortDrive.resolveOptionalPoint(this, INPUT_AXIS_ORIGIN_ID, new Vector3d());
+        Vector3d axisDirection = SpatialValueResolver.resolveVector(inputValues.get(INPUT_AXIS_DIRECTION_ID));
+        Double resolvedAngleDegrees = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ANGLE_DEGREES_ID, angleDegrees);
+        Double resolvedTwistLength = OptionalPortDrive.resolveOptionalDouble(this, INPUT_TWIST_LENGTH_ID, twistLength);
 
-        if (pointsInput.isEmpty() || !DeformationUtils.isFinite(axisOrigin) || !(axisDirectionObj instanceof Vector3d axisDirection)) {
-            writeEmptyOutputs();
+        if (pointsInput == null
+                || axisOrigin == null
+                || !VectorUtils.isNonZero(axisDirection)
+                || resolvedAngleDegrees == null
+                || resolvedTwistLength == null
+                || resolvedTwistLength <= 0.0d) {
+            writeInvalid();
             return;
         }
 
-        Vector3d axis = new Vector3d(axisDirection);
-        if (!DeformationUtils.isUsableDirection(axis)) {
-            writeEmptyOutputs();
-            return;
-        }
-        axis.normalize();
-
-        double resolvedAngleDegrees = resolveDouble(inputValues.get(INPUT_ANGLE_DEGREES_ID), angleDegrees);
-        double resolvedTwistLength = Math.max(EPSILON, resolveDouble(inputValues.get(INPUT_TWIST_LENGTH_ID), twistLength));
-        if (!Double.isFinite(resolvedAngleDegrees) || !Double.isFinite(resolvedTwistLength)) {
-            writeEmptyOutputs();
-            return;
-        }
+        Vector3d axis = new Vector3d(axisDirection).normalize();
         double totalAngleRadians = Math.toRadians(resolvedAngleDegrees);
 
         List<Vector3d> twistedPoints = new ArrayList<>(pointsInput.size());
@@ -132,67 +128,25 @@ public class TwistPointListNode extends BaseNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("angleDegrees") instanceof Number value) {
-            setAngleDegrees(value.doubleValue());
+        if (map.get("angleDegrees") instanceof Number value && Double.isFinite(value.doubleValue())) {
+            angleDegrees = value.doubleValue();
         }
-        if (map.get("twistLength") instanceof Number value) {
-            setTwistLength(value.doubleValue());
+        if (map.get("twistLength") instanceof Number value && Double.isFinite(value.doubleValue()) && value.doubleValue() > 0.0d) {
+            twistLength = value.doubleValue();
         }
         if (map.get("clampMode") instanceof String value) {
-            setClampModeString(value);
+            try {
+                clampMode = ClampMode.valueOf(value.trim().toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+                clampMode = ClampMode.CLAMP;
+            }
         }
     }
 
-    public double getAngleDegrees() {
-        return angleDegrees;
-    }
-
-    public void setAngleDegrees(double angleDegrees) {
-        this.angleDegrees = DeformationUtils.resolveFiniteDouble(angleDegrees, this.angleDegrees);
-        markDirty();
-    }
-
-    public double getTwistLength() {
-        return twistLength;
-    }
-
-    public void setTwistLength(double twistLength) {
-        this.twistLength = Math.max(EPSILON, DeformationUtils.resolveFiniteDouble(twistLength, this.twistLength));
-        markDirty();
-    }
-
-    public ClampMode getClampMode() {
-        return clampMode;
-    }
-
-    public void setClampMode(ClampMode clampMode) {
-        this.clampMode = clampMode == null ? ClampMode.CLAMP : clampMode;
-        markDirty();
-    }
-
-    public void setClampModeString(String mode) {
-        if (mode == null || mode.isBlank()) {
-            setClampMode(ClampMode.CLAMP);
-            return;
-        }
-        try {
-            setClampMode(ClampMode.valueOf(mode.trim().toUpperCase()));
-        } catch (IllegalArgumentException ignored) {
-            setClampMode(ClampMode.CLAMP);
-        }
-    }
-
-    private void writeEmptyOutputs() {
+    private void writeInvalid() {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private double resolveDouble(Object value, double fallback) {
-        if (value instanceof Number number) {
-            return DeformationUtils.resolveFiniteDouble(number, fallback);
-        }
-        return fallback;
     }
 
     private double applyClampMode(double normalizedDistance) {
@@ -202,5 +156,4 @@ public class TwistPointListNode extends BaseNode {
             case UNBOUNDED -> normalizedDistance;
         };
     }
-
 }

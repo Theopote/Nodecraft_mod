@@ -78,9 +78,8 @@ class BasicTransformsLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV52() {
+    void basicTransformsFreezeVersionIsV52() {
         assertEquals(52, GraphFormatVersion.V52);
-        assertEquals(GraphFormatVersion.V52, GraphFormatVersion.CURRENT);
     }
 
     @Test

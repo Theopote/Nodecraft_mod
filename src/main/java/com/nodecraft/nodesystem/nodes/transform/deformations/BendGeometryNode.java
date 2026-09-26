@@ -7,17 +7,20 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BentSdfData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.SdfGeometryData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.VoxelizedGeometrySdfData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SdfBoundsEstimator;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -32,10 +35,9 @@ import java.util.UUID;
     displayName = "Bend Geometry",
     description = "Applies an axial bend domain deformation to SDF or geometry before voxelization",
     category = "transform.deformations",
-    order = 9
+    order = 10
 )
 public class BendGeometryNode extends BaseNode {
-    private static final double EPS = 1.0e-9d;
 
     @NodeProperty(displayName = "Bend Degrees", category = "Bend", order = 1)
     private double bendDegrees = 90.0d;
@@ -54,9 +56,6 @@ public class BendGeometryNode extends BaseNode {
 
     @NodeProperty(displayName = "Fill Source Geometry", category = "Approximation", order = 6)
     private boolean fillSourceGeometry = true;
-
-    @NodeProperty(displayName = "Max Source Voxels", category = "Approximation", order = 7)
-    private int maxSourceVoxels = 32768;
 
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_SDF_ID = "input_sdf";
@@ -101,21 +100,42 @@ public class BendGeometryNode extends BaseNode {
     }
 
     @Override
+    public String getDescription() {
+        return "Applies an axial bend domain deformation to SDF or geometry before voxelization";
+    }
+
+    @Override
     public void processNode(@Nullable ExecutionContext context) {
         SourceData source = resolveSource();
-        Vector3d axisOrigin = resolvePoint(inputValues.get(INPUT_AXIS_ORIGIN_ID), new Vector3d());
-        Vector3d axisDirection = resolveDirection(inputValues.get(INPUT_AXIS_DIRECTION_ID), new Vector3d(1.0d, 0.0d, 0.0d));
-        Vector3d bendNormal = resolveDirection(inputValues.get(INPUT_BEND_NORMAL_ID), new Vector3d(0.0d, 1.0d, 0.0d));
-        if (source == null || axisDirection == null || bendNormal == null) {
+        Vector3d axisOrigin = OptionalPortDrive.resolveOptionalPoint(this, INPUT_AXIS_ORIGIN_ID, new Vector3d());
+        Vector3d axisDirection = OptionalPortDrive.resolveOptionalVector(
+            this, INPUT_AXIS_DIRECTION_ID, new Vector3d(1.0d, 0.0d, 0.0d));
+        Vector3d bendNormal = OptionalPortDrive.resolveOptionalVector(
+            this, INPUT_BEND_NORMAL_ID, new Vector3d(0.0d, 1.0d, 0.0d));
+        Double resolvedDegrees = OptionalPortDrive.resolveOptionalDouble(this, INPUT_BEND_DEGREES_ID, bendDegrees);
+        Double resolvedLength = OptionalPortDrive.resolveOptionalDouble(this, INPUT_BEND_LENGTH_ID, bendLength);
+
+        if (source == null
+                || axisOrigin == null
+                || !VectorUtils.isNonZero(axisDirection)
+                || !VectorUtils.isNonZero(bendNormal)
+                || resolvedDegrees == null
+                || resolvedLength == null
+                || resolvedLength <= 0.0d) {
             writeInvalid();
             return;
         }
 
-        double resolvedDegrees = resolveDouble(inputValues.get(INPUT_BEND_DEGREES_ID), bendDegrees);
-        double resolvedLength = Math.max(EPS, Math.abs(resolveDouble(inputValues.get(INPUT_BEND_LENGTH_ID), bendLength)));
-        double iso = resolveDouble(inputValues.get(INPUT_ISO_ID), source.isoValue);
+        Double iso = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ISO_ID, source.isoValue);
+        if (iso == null) {
+            writeInvalid();
+            return;
+        }
 
-        BentSdfData bent = new BentSdfData(source.sdf, axisOrigin, axisDirection, bendNormal, resolvedDegrees, resolvedLength, clampMode);
+        Vector3d axis = new Vector3d(axisDirection).normalize();
+        Vector3d normal = new Vector3d(bendNormal).normalize();
+        BentSdfData bent = new BentSdfData(
+            source.sdf, axisOrigin, axis, normal, resolvedDegrees, resolvedLength, clampMode);
         SdfBoundsEstimator.AxisAlignedBounds estimated = SdfBoundsEstimator.estimate(bent);
         if (estimated == null || !estimated.isValid()) {
             writeInvalid();
@@ -133,24 +153,69 @@ public class BendGeometryNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
+    /**
+     * Connection-aware source precedence: Geometry connected → Geometry only (never SDF);
+     * Geometry unconnected → SDF port (unconnected+null / connected-invalid → fail).
+     */
     private @Nullable SourceData resolveSource() {
-        Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
+        if (OptionalPortDrive.isConnected(this, INPUT_GEOMETRY_ID)) {
+            return resolveGeometrySource(inputValues.get(INPUT_GEOMETRY_ID));
+        }
+        return resolveSdfSource();
+    }
+
+    private @Nullable SourceData resolveGeometrySource(@Nullable Object geometryObj) {
         if (geometryObj instanceof SdfGeometryData sdfGeometry) {
-            return new SourceData(sdfGeometry.sdf(), sdfGeometry.min(), sdfGeometry.max(), sdfGeometry.isoValue(), false, 0);
+            return new SourceData(
+                sdfGeometry.sdf(),
+                sdfGeometry.min(),
+                sdfGeometry.max(),
+                sdfGeometry.isoValue(),
+                false,
+                0
+            );
         }
         if (geometryObj instanceof GeometryData geometry) {
             RegionData region = GeometryVoxelizer.createBoundingRegion(geometry);
             BlockPosList blocks = GeometryVoxelizer.voxelize(geometry, fillSourceGeometry);
             Bounds bounds = boundsFromRegion(region);
-            if (bounds == null || blocks.isEmpty() || blocks.size() > Math.max(1, maxSourceVoxels)) {
+            if (bounds == null
+                    || blocks.isEmpty()
+                    || blocks.size() > GenerationLimits.MAX_DEFORM_SOURCE_VOXELS) {
                 return null;
             }
-            return new SourceData(new VoxelizedGeometrySdfData(blocks), bounds.min, bounds.max, 0.0d, true, blocks.size());
+            return new SourceData(
+                new VoxelizedGeometrySdfData(blocks),
+                bounds.min,
+                bounds.max,
+                0.0d,
+                true,
+                blocks.size()
+            );
         }
+        return null;
+    }
 
-        if (!(inputValues.get(INPUT_SDF_ID) instanceof SignedDistanceFieldData sdf)) {
+    private @Nullable SourceData resolveSdfSource() {
+        boolean sdfConnected = OptionalPortDrive.isConnected(this, INPUT_SDF_ID);
+        Object sdfObj = inputValues.get(INPUT_SDF_ID);
+        if (sdfConnected) {
+            if (!(sdfObj instanceof SignedDistanceFieldData sdf)) {
+                return null;
+            }
+            return buildSdfSource(sdf);
+        }
+        // Unconnected: null → fail; a present valid SDF (e.g. compute() injection) is accepted.
+        if (sdfObj == null) {
             return null;
         }
+        if (!(sdfObj instanceof SignedDistanceFieldData sdf)) {
+            return null;
+        }
+        return buildSdfSource(sdf);
+    }
+
+    private @Nullable SourceData buildSdfSource(SignedDistanceFieldData sdf) {
         Bounds bounds = resolveInputBounds();
         if (bounds == null) {
             SdfBoundsEstimator.AxisAlignedBounds estimated = SdfBoundsEstimator.estimate(sdf);
@@ -163,9 +228,15 @@ public class BendGeometryNode extends BaseNode {
     }
 
     private @Nullable Bounds resolveInputBounds() {
-        Vector3d min = resolvePoint(inputValues.get(INPUT_BOUNDS_MIN_ID), null);
-        Vector3d max = resolvePoint(inputValues.get(INPUT_BOUNDS_MAX_ID), null);
-        if (!isFinite(min) || !isFinite(max) || min.x > max.x || min.y > max.y || min.z > max.z) {
+        boolean minConnected = OptionalPortDrive.isConnected(this, INPUT_BOUNDS_MIN_ID);
+        boolean maxConnected = OptionalPortDrive.isConnected(this, INPUT_BOUNDS_MAX_ID);
+        if (!minConnected && !maxConnected) {
+            return null;
+        }
+        Vector3d min = OptionalPortDrive.resolveOptionalPoint(this, INPUT_BOUNDS_MIN_ID, null);
+        Vector3d max = OptionalPortDrive.resolveOptionalPoint(this, INPUT_BOUNDS_MAX_ID, null);
+        if (!PointUtils.isFinite(min) || !PointUtils.isFinite(max)
+                || min.x > max.x || min.y > max.y || min.z > max.z) {
             return null;
         }
         return new Bounds(min, max);
@@ -196,32 +267,76 @@ public class BendGeometryNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
-    private static @Nullable Vector3d resolvePoint(@Nullable Object value, @Nullable Vector3d fallback) {
-        Vector3d point = SpatialValueResolver.resolveVector3d(value);
-        if (isFinite(point)) {
-            return point;
-        }
-        return fallback == null ? null : new Vector3d(fallback);
+    public double getBendDegrees() {
+        return bendDegrees;
     }
 
-    private static @Nullable Vector3d resolveDirection(@Nullable Object value, Vector3d fallback) {
-        Vector3d direction = resolvePoint(value, fallback);
-        if (!isFinite(direction) || direction.lengthSquared() <= EPS) {
-            return null;
+    public void setBendDegrees(double bendDegrees) {
+        if (Double.isFinite(bendDegrees)) {
+            this.bendDegrees = bendDegrees;
+            markDirty();
         }
-        return direction.normalize();
     }
 
-    private static boolean isFinite(@Nullable Vector3d vector) {
-        return vector != null && Double.isFinite(vector.x) && Double.isFinite(vector.y) && Double.isFinite(vector.z);
+    public double getBendLength() {
+        return bendLength;
     }
 
-    private static double resolveDouble(@Nullable Object value, double fallback) {
-        if (value instanceof Number number) {
-            double candidate = number.doubleValue();
-            return Double.isFinite(candidate) ? candidate : fallback;
+    public void setBendLength(double bendLength) {
+        if (Double.isFinite(bendLength) && bendLength > 0.0d) {
+            this.bendLength = bendLength;
+            markDirty();
         }
-        return fallback;
+    }
+
+    public BentSdfData.ClampMode getClampMode() {
+        return clampMode;
+    }
+
+    public void setClampMode(BentSdfData.ClampMode clampMode) {
+        this.clampMode = clampMode == null ? BentSdfData.ClampMode.CLAMP : clampMode;
+        markDirty();
+    }
+
+    private void setClampModeString(String value) {
+        if (value == null || value.isBlank()) {
+            setClampMode(BentSdfData.ClampMode.CLAMP);
+            return;
+        }
+        try {
+            setClampMode(BentSdfData.ClampMode.valueOf(value.trim().toUpperCase()));
+        } catch (RuntimeException ignored) {
+            setClampMode(BentSdfData.ClampMode.CLAMP);
+        }
+    }
+
+    public double getBoundsPadding() {
+        return boundsPadding;
+    }
+
+    public void setBoundsPadding(double boundsPadding) {
+        if (Double.isFinite(boundsPadding) && boundsPadding >= 0.0d) {
+            this.boundsPadding = boundsPadding;
+            markDirty();
+        }
+    }
+
+    public int getBoundsSamples() {
+        return boundsSamples;
+    }
+
+    public void setBoundsSamples(int boundsSamples) {
+        this.boundsSamples = GenerationLimits.clampBoundsSamples(boundsSamples);
+        markDirty();
+    }
+
+    public boolean isFillSourceGeometry() {
+        return fillSourceGeometry;
+    }
+
+    public void setFillSourceGeometry(boolean fillSourceGeometry) {
+        this.fillSourceGeometry = fillSourceGeometry;
+        markDirty();
     }
 
     @Override
@@ -233,7 +348,6 @@ public class BendGeometryNode extends BaseNode {
         state.put("boundsPadding", boundsPadding);
         state.put("boundsSamples", boundsSamples);
         state.put("fillSourceGeometry", fillSourceGeometry);
-        state.put("maxSourceVoxels", maxSourceVoxels);
         return state;
     }
 
@@ -242,20 +356,23 @@ public class BendGeometryNode extends BaseNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("bendDegrees") instanceof Number value) bendDegrees = value.doubleValue();
-        if (map.get("bendLength") instanceof Number value) bendLength = Math.max(EPS, Math.abs(value.doubleValue()));
-        if (map.get("clampMode") instanceof String value) setClampModeString(value);
-        if (map.get("boundsPadding") instanceof Number value) boundsPadding = Math.max(0.0d, value.doubleValue());
-        if (map.get("boundsSamples") instanceof Number value) boundsSamples = Math.max(2, value.intValue());
-        if (map.get("fillSourceGeometry") instanceof Boolean value) fillSourceGeometry = value;
-        if (map.get("maxSourceVoxels") instanceof Number value) maxSourceVoxels = Math.max(1, value.intValue());
-    }
-
-    private void setClampModeString(String value) {
-        try {
-            clampMode = BentSdfData.ClampMode.valueOf(value.trim().toUpperCase());
-        } catch (RuntimeException ignored) {
-            clampMode = BentSdfData.ClampMode.CLAMP;
+        if (map.get("bendDegrees") instanceof Number value) {
+            setBendDegrees(value.doubleValue());
+        }
+        if (map.get("bendLength") instanceof Number value) {
+            setBendLength(value.doubleValue());
+        }
+        if (map.get("clampMode") instanceof String value) {
+            setClampModeString(value);
+        }
+        if (map.get("boundsPadding") instanceof Number value) {
+            setBoundsPadding(value.doubleValue());
+        }
+        if (map.get("boundsSamples") instanceof Number value) {
+            setBoundsSamples(value.intValue());
+        }
+        if (map.get("fillSourceGeometry") instanceof Boolean value) {
+            setFillSourceGeometry(value);
         }
     }
 
