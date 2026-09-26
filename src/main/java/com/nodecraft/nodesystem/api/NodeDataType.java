@@ -126,6 +126,7 @@ public enum NodeDataType {
     FRAME_LIST("frame_list", "Frame List", List.class, ListElementKind.FRAME),
     /** Ordered paths (beam centerlines, eave edges, multi-segment hosts). */
     PATH_LIST("path_list", "Path List", List.class, ListElementKind.PATH),
+    LINE_LIST("line_list", "Line List", List.class, ListElementKind.LINE),
     REGION_LIST("region_list", "Region List", List.class, ListElementKind.REGION),
     PLANT_STRUCTURE_LIST("plant_structure_list", "Plant Structure List", List.class, ListElementKind.PLANT_STRUCTURE);
 
@@ -201,6 +202,7 @@ public enum NodeDataType {
             case PLANE -> PLANE;
             case FRAME -> FRAME;
             case PATH -> PATH;
+            case LINE -> LINE;
             case TREE_PATH -> TREE_PATH;
             case POLYGON_PROFILE -> POLYGON_PROFILE;
             case REGION -> REGION;
@@ -324,6 +326,7 @@ public enum NodeDataType {
                     || value instanceof LineData
                     || value instanceof PolylineData
                     || value instanceof Curve;
+            case LINE -> value instanceof LineData;
             case TREE_PATH -> value instanceof TreePathData;
             case POLYGON_PROFILE -> value instanceof PolygonProfileData;
             case REGION -> value instanceof RegionData;

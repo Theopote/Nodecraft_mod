@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PointUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -59,9 +60,9 @@ public class DeconstructPointNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d point = PointUtils.toPointPosition(inputValues.get(INPUT_POINT_ID));
         if (!PointUtils.isFinite(point)) {
-            outputValues.put(OUTPUT_X_ID, 0.0D);
-            outputValues.put(OUTPUT_Y_ID, 0.0D);
-            outputValues.put(OUTPUT_Z_ID, 0.0D);
+            outputValues.put(OUTPUT_X_ID, Double.NaN);
+            outputValues.put(OUTPUT_Y_ID, Double.NaN);
+            outputValues.put(OUTPUT_Z_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }

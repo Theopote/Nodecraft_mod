@@ -73,12 +73,6 @@ public class ConstructCoordinateNode extends BaseNode {
     }
 
     private Integer toInt(Object value) {
-        if (value instanceof Number number) {
-            double raw = number.doubleValue();
-            if (Double.isFinite(raw)) {
-                return number.intValue();
-            }
-        }
-        return null;
+        return value instanceof Integer i ? i : null;
     }
 }

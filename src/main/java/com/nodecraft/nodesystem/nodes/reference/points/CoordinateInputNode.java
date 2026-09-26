@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import imgui.ImGui;
 import imgui.type.ImInt;
 import net.minecraft.util.math.BlockPos;
@@ -38,6 +39,7 @@ public class CoordinateInputNode extends BaseCustomUINode {
     private static final String INPUT_Z_ID = "input_z";
 
     private static final String OUTPUT_BLOCK_POS_ID = "output_block_pos";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
     @NodeProperty(displayName = "X", category = "Components", order = 1, description = "X block coordinate")
     private int x = 0;
@@ -54,6 +56,7 @@ public class CoordinateInputNode extends BaseCustomUINode {
         addInputPort(new BasePort(INPUT_Y_ID, "Y", "Optional Y override", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_Z_ID, "Z", "Optional Z override", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_BLOCK_POS_ID, "Block Pos", "Block position", NodeDataType.BLOCK_POS, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when all components resolved to valid integers", NodeDataType.BOOLEAN, this));
         updateOutput();
     }
 
@@ -135,32 +138,37 @@ public class CoordinateInputNode extends BaseCustomUINode {
     }
 
     private void updateOutput() {
-        int resolvedX = getResolvedX();
-        int resolvedY = getResolvedY();
-        int resolvedZ = getResolvedZ();
-        BlockPos blockPos = new BlockPos(resolvedX, resolvedY, resolvedZ);
-        outputValues.put(OUTPUT_BLOCK_POS_ID, blockPos);
+        Integer resolvedX = resolveComponent(INPUT_X_ID, x);
+        Integer resolvedY = resolveComponent(INPUT_Y_ID, y);
+        Integer resolvedZ = resolveComponent(INPUT_Z_ID, z);
+
+        if (resolvedX == null || resolvedY == null || resolvedZ == null) {
+            outputValues.put(OUTPUT_BLOCK_POS_ID, null);
+            outputValues.put(OUTPUT_VALID_ID, false);
+        } else {
+            outputValues.put(OUTPUT_BLOCK_POS_ID, new BlockPos(resolvedX, resolvedY, resolvedZ));
+            outputValues.put(OUTPUT_VALID_ID, true);
+        }
         syncOutputPorts();
     }
 
     private int getResolvedX() {
-        return resolveComponent(INPUT_X_ID, x);
+        Integer resolved = resolveComponent(INPUT_X_ID, x);
+        return resolved != null ? resolved : x;
     }
 
     private int getResolvedY() {
-        return resolveComponent(INPUT_Y_ID, y);
+        Integer resolved = resolveComponent(INPUT_Y_ID, y);
+        return resolved != null ? resolved : y;
     }
 
     private int getResolvedZ() {
-        return resolveComponent(INPUT_Z_ID, z);
+        Integer resolved = resolveComponent(INPUT_Z_ID, z);
+        return resolved != null ? resolved : z;
     }
 
-    private int resolveComponent(String inputPortId, int fallback) {
-        Object value = inputValues.get(inputPortId);
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        return fallback;
+    private @Nullable Integer resolveComponent(String inputPortId, int fallback) {
+        return StrictIntegerUtils.resolveExactInteger(inputValues.get(inputPortId), fallback);
     }
 
     private boolean isInputConnected(String inputPortId) {

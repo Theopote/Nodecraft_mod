@@ -7,10 +7,11 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PointUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
-import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -23,7 +24,7 @@ import java.util.UUID;
     displayName = "Closest Point",
     description = "Finds the closest geometric point in a point list to a reference point",
     category = "reference.points",
-    order = 7
+    order = 11
 )
 public class ClosestPointNode extends BaseNode {
 
@@ -73,8 +74,8 @@ public class ClosestPointNode extends BaseNode {
             return;
         }
 
-        Object candidatesObj = inputValues.get(INPUT_COORDINATES_ID);
-        if (!(candidatesObj instanceof Collection<?> candidates)) {
+        List<Vector3d> candidates = PointUtils.resolveStrictPointList(inputValues.get(INPUT_COORDINATES_ID));
+        if (candidates == null) {
             writeInvalid();
             return;
         }
@@ -82,24 +83,15 @@ public class ClosestPointNode extends BaseNode {
         double minDistanceSquared = Double.MAX_VALUE;
         Vector3d closest = null;
         int closestIndex = -1;
-        int index = 0;
 
-        for (Object candidateObj : candidates) {
-            Vector3d candidate = PointUtils.toPointPosition(candidateObj);
-            if (PointUtils.isFinite(candidate)) {
-                double distanceSquared = PointUtils.distanceSquared(reference, candidate);
-                if (distanceSquared < minDistanceSquared) {
-                    minDistanceSquared = distanceSquared;
-                    closest = candidate;
-                    closestIndex = index;
-                }
+        for (int index = 0; index < candidates.size(); index++) {
+            Vector3d candidate = candidates.get(index);
+            double distanceSquared = PointUtils.distanceSquared(reference, candidate);
+            if (distanceSquared < minDistanceSquared) {
+                minDistanceSquared = distanceSquared;
+                closest = candidate;
+                closestIndex = index;
             }
-            index++;
-        }
-
-        if (closest == null) {
-            writeInvalid();
-            return;
         }
 
         outputValues.put(OUTPUT_CLOSEST_POINT_ID, new PointData(closest));

@@ -7,6 +7,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PointUtils;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -18,7 +20,7 @@ import java.util.UUID;
     displayName = "Move Point Along Direction",
     description = "Moves a start point along a direction vector by a distance (direction is always normalized)",
     category = "reference.points",
-    order = 2
+    order = 7
 )
 public class PointAlongVectorNode extends BaseNode {
 
@@ -61,17 +63,17 @@ public class PointAlongVectorNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d point = PointUtils.toPointPosition(inputValues.get(INPUT_POINT_ID));
-        Object vectorObj = inputValues.get(INPUT_VECTOR_ID);
+        Vector3d direction = SpatialValueResolver.resolveVector(inputValues.get(INPUT_VECTOR_ID));
         Object distanceObj = inputValues.get(INPUT_DISTANCE_ID);
 
-        if (!PointUtils.isFinite(point) || !(vectorObj instanceof Vector3d inputVector)
-            || !PointUtils.isFinite(inputVector) || !(distanceObj instanceof Number number)) {
+        if (!PointUtils.isFinite(point) || !PointUtils.isFinite(direction)
+            || !(distanceObj instanceof Number number)) {
             outputValues.put(OUTPUT_POINT_ID, null);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
 
-        Vector3d direction = new Vector3d(inputVector);
+        direction = new Vector3d(direction);
         if (direction.lengthSquared() <= PointUtils.EPS) {
             outputValues.put(OUTPUT_POINT_ID, null);
             outputValues.put(OUTPUT_VALID_ID, false);

@@ -24,7 +24,7 @@ import java.util.UUID;
     displayName = "Deconstruct Box Face",
     description = "Extracts corners, edges, plane, center, and normal from a box face",
     category = "reference.points",
-    order = 13
+    order = 17
 )
 public class DeconstructBoxFaceNode extends BaseNode {
 
@@ -38,7 +38,7 @@ public class DeconstructBoxFaceNode extends BaseNode {
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_EDGES_ID = "output_edges";
     private static final String OUTPUT_CORNER_INDICES_ID = "output_corner_indices";
-    private static final String OUTPUT_EDGE_CORNER_INDEX_PAIRS_ID = "output_edge_corner_index_pairs";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public DeconstructBoxFaceNode() {
         super(UUID.randomUUID(), "reference.points.deconstruct_face");
@@ -51,9 +51,9 @@ public class DeconstructBoxFaceNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Face center point", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_NORMAL_ID, "Normal", "Face normal vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Plane containing the face", NodeDataType.PLANE, this));
-        addOutputPort(new BasePort(OUTPUT_EDGES_ID, "Edges", "Face edge segments", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_CORNER_INDICES_ID, "Corner Indices", "Indices into the parent box corner list", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_EDGE_CORNER_INDEX_PAIRS_ID, "Edge Corner Index Pairs", "Corner index pairs for each edge in winding order", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_EDGES_ID, "Edges", "Face edge segments", NodeDataType.LINE_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_CORNER_INDICES_ID, "Corner Indices", "Indices into the parent box corner list", NodeDataType.INTEGER_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when face input is a valid box face", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -65,20 +65,12 @@ public class DeconstructBoxFaceNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object faceObj = inputValues.get(INPUT_FACE_ID);
         if (!(faceObj instanceof BoxFaceData face)) {
-            outputValues.put(OUTPUT_NAME_ID, null);
-            outputValues.put(OUTPUT_INDEX_ID, null);
-            outputValues.put(OUTPUT_CORNERS_ID, List.of());
-            outputValues.put(OUTPUT_CENTER_ID, null);
-            outputValues.put(OUTPUT_NORMAL_ID, null);
-            outputValues.put(OUTPUT_PLANE_ID, null);
-            outputValues.put(OUTPUT_EDGES_ID, List.of());
-            outputValues.put(OUTPUT_CORNER_INDICES_ID, List.of());
-            outputValues.put(OUTPUT_EDGE_CORNER_INDEX_PAIRS_ID, List.of());
+            writeInvalid();
             return;
         }
 
         List<Vector3d> corners = face.getCorners();
-        List<LineData> edges = new ArrayList<>(4);
+        List<LineData> edges = new ArrayList<>(corners.size());
         for (int i = 0; i < corners.size(); i++) {
             Vector3d start = corners.get(i);
             Vector3d end = corners.get((i + 1) % corners.size());
@@ -94,8 +86,20 @@ public class DeconstructBoxFaceNode extends BaseNode {
         outputValues.put(OUTPUT_CENTER_ID, new PointData(face.getCenter()));
         outputValues.put(OUTPUT_NORMAL_ID, face.getNormal());
         outputValues.put(OUTPUT_PLANE_ID, face.getPlane());
-        outputValues.put(OUTPUT_EDGES_ID, edges);
-        outputValues.put(OUTPUT_CORNER_INDICES_ID, face.getCornerIndices());
-        outputValues.put(OUTPUT_EDGE_CORNER_INDEX_PAIRS_ID, face.getEdgeCornerIndexPairs());
+        outputValues.put(OUTPUT_EDGES_ID, List.copyOf(edges));
+        outputValues.put(OUTPUT_CORNER_INDICES_ID, List.copyOf(face.getCornerIndices()));
+        outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    private void writeInvalid() {
+        outputValues.put(OUTPUT_NAME_ID, null);
+        outputValues.put(OUTPUT_INDEX_ID, null);
+        outputValues.put(OUTPUT_CORNERS_ID, List.of());
+        outputValues.put(OUTPUT_CENTER_ID, null);
+        outputValues.put(OUTPUT_NORMAL_ID, null);
+        outputValues.put(OUTPUT_PLANE_ID, null);
+        outputValues.put(OUTPUT_EDGES_ID, List.of());
+        outputValues.put(OUTPUT_CORNER_INDICES_ID, List.of());
+        outputValues.put(OUTPUT_VALID_ID, false);
     }
 }

@@ -22,7 +22,7 @@ import java.util.UUID;
     displayName = "Block To Point",
     description = "Explicitly converts a block coordinate into a geometric point, with optional block-center offset",
     category = "reference.points",
-    order = 1
+    order = 3
 )
 public class BlockToPointNode extends BaseNode {
 

@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -22,7 +23,7 @@ import java.util.UUID;
     displayName = "Get Box Face",
     description = "Gets a single face from box geometry by semantic name or index",
     category = "reference.points",
-    order = 11
+    order = 15
 )
 public class GetBoxFaceNode extends BaseNode {
 
@@ -35,7 +36,7 @@ public class GetBoxFaceNode extends BaseNode {
     private boolean wrapIndex = false;
 
     @NodeProperty(displayName = "Default Face Name", category = "Selection", order = 3,
-        description = "Fallback semantic face name when no face name input is connected")
+        description = "Fallback semantic face name when no face name or index input is connected")
     private String defaultFaceName = "";
 
     private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
@@ -68,8 +69,8 @@ public class GetBoxFaceNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_BOX_GEOMETRY_ID);
-        Object faceNameObj = inputValues.get(INPUT_FACE_NAME_ID);
-        Object indexObj = inputValues.get(INPUT_INDEX_ID);
+        boolean faceNameConnected = inputValues.get(INPUT_FACE_NAME_ID) != null;
+        boolean indexConnected = inputValues.get(INPUT_INDEX_ID) != null;
 
         BoxFaceData face = null;
         boolean found = false;
@@ -78,19 +79,31 @@ public class GetBoxFaceNode extends BaseNode {
 
         if (geometryObj instanceof BoxGeometryData boxGeometry) {
             List<BoxFaceData> faces = boxGeometry.getFaces();
-            BoxFaceData resolvedFace = resolveBySemanticName(faces, faceNameObj);
-            if (resolvedFace == null) {
-                resolvedFace = resolveBySemanticName(faces, defaultFaceName);
-            }
-            if (resolvedFace == null) {
-                resolvedFace = resolveByIndex(faces, indexObj);
-            }
 
-            if (resolvedFace != null) {
-                face = resolvedFace;
-                found = true;
-                name = face.getName();
-                resolvedIndex = face.getIndex();
+            if (faceNameConnected) {
+                face = resolveBySemanticName(faces, inputValues.get(INPUT_FACE_NAME_ID));
+                if (face != null) {
+                    found = true;
+                    name = face.getName();
+                    resolvedIndex = face.getIndex();
+                }
+            } else if (indexConnected) {
+                Integer index = StrictIntegerUtils.requireExactInteger(inputValues.get(INPUT_INDEX_ID));
+                if (index != null) {
+                    face = resolveByIndex(faces, index);
+                    if (face != null) {
+                        found = true;
+                        name = face.getName();
+                        resolvedIndex = face.getIndex();
+                    }
+                }
+            } else if (!defaultFaceName.isBlank()) {
+                face = resolveBySemanticName(faces, defaultFaceName);
+                if (face != null) {
+                    found = true;
+                    name = face.getName();
+                    resolvedIndex = face.getIndex();
+                }
             }
         }
 
@@ -118,12 +131,7 @@ public class GetBoxFaceNode extends BaseNode {
         return null;
     }
 
-    private BoxFaceData resolveByIndex(List<BoxFaceData> faces, Object indexObj) {
-        if (!(indexObj instanceof Number number)) {
-            return null;
-        }
-
-        int index = number.intValue();
+    private @Nullable BoxFaceData resolveByIndex(List<BoxFaceData> faces, int index) {
         int faceCount = faces.size();
         if (faceCount <= 0) {
             return null;

@@ -20,7 +20,7 @@ import java.util.UUID;
     displayName = "Deconstruct Block Position",
     description = "Extracts X, Y, and Z integer components from a block position",
     category = "reference.points",
-    order = 4
+    order = 2
 )
 public class DeconstructCoordinateNode extends BaseNode {
 
@@ -57,7 +57,8 @@ public class DeconstructCoordinateNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        BlockPos coordinate = PointUtils.toBlockPos(inputValues.get(INPUT_COORDINATE_ID));
+        Object coordinateObj = inputValues.get(INPUT_COORDINATE_ID);
+        BlockPos coordinate = coordinateObj instanceof BlockPos blockPos ? blockPos : null;
         if (coordinate == null) {
             outputValues.put(OUTPUT_X_ID, 0);
             outputValues.put(OUTPUT_Y_ID, 0);

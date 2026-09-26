@@ -23,7 +23,7 @@ import java.util.UUID;
     displayName = "Get Box Corner",
     description = "Gets a single corner from box geometry by index",
     category = "reference.points",
-    order = 10
+    order = 14
 )
 public class GetBoxCornerNode extends BaseNode {
 
@@ -68,9 +68,9 @@ public class GetBoxCornerNode extends BaseNode {
         boolean found = false;
         Integer resolvedIndex = null;
 
-        if (geometryObj instanceof BoxGeometryData boxGeometry && indexObj instanceof Number number) {
+        if (geometryObj instanceof BoxGeometryData boxGeometry && indexObj instanceof Integer indexValue) {
             List<Vector3d> corners = boxGeometry.getCorners();
-            int index = number.intValue();
+            int index = indexValue;
             int cornerCount = corners.size();
 
             if (cornerCount > 0) {

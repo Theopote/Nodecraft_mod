@@ -660,12 +660,12 @@
 |---|---|---|---|
 | Block Position Input | `reference.points.block_position` | Inputs an integer block position from panel values or optional X/Y/Z ports. | `CoordinateInputNode` |
 | Construct Block Position | `reference.points.construct_coordinate` | Constructs a block position from X, Y, and Z integer components | `ConstructCoordinateNode` |
-| Block To Point | `reference.points.point_from_block` | Explicitly converts a block coordinate into a geometric point, with optional block-center offset | `BlockToPointNode` |
-| Move Point Along Direction | `reference.points.point_along_vector` | Moves a start point along a direction vector by a distance (direction is always normalized) | `PointAlongVectorNode` |
-| Translate Point | `reference.points.translate_point` | Translates a geometric point by a displacement vector (Point + Vector → Point) | `TranslatePointNode` |
-| Construct Point | `reference.points.construct_point` | Constructs a geometric point from X, Y, and Z double components | `ConstructPointNode` |
 | Deconstruct Block Position | `reference.points.deconstruct_block_position` | Extracts X, Y, and Z integer components from a block position | `DeconstructCoordinateNode` |
+| Block To Point | `reference.points.point_from_block` | Explicitly converts a block coordinate into a geometric point, with optional block-center offset | `BlockToPointNode` |
+| Construct Point | `reference.points.construct_point` | Constructs a geometric point from X, Y, and Z double components | `ConstructPointNode` |
 | Deconstruct Point | `reference.points.deconstruct_point` | Extracts X, Y, and Z double components from a geometric point | `DeconstructPointNode` |
+| Translate Point | `reference.points.translate_point` | Translates a geometric point by a displacement vector (Point + Vector → Point) | `TranslatePointNode` |
+| Move Point Along Direction | `reference.points.point_along_vector` | Moves a start point along a direction vector by a distance (direction is always normalized) | `PointAlongVectorNode` |
 | Mid Point | `reference.points.mid_point` | Computes the midpoint between two input points | `MidpointNode` |
 | Distance Between Points | `reference.points.distance_between_points` | Computes the distance between two input points | `DistanceNode` |
 | Vector Between Points | `reference.points.vector_between_points` | Computes the displacement vector from one geometric point to another (To − From) | `VectorBetweenPointsNode` |

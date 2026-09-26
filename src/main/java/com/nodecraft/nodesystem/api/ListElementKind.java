@@ -17,6 +17,7 @@ public enum ListElementKind {
     PLANE,
     FRAME,
     PATH,
+    LINE,
     TREE_PATH,
     POLYGON_PROFILE,
     REGION,

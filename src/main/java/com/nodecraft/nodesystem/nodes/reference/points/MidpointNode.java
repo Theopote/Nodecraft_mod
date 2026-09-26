@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PointUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -18,7 +19,7 @@ import java.util.UUID;
     displayName = "Mid Point",
     description = "Computes the midpoint between two input points",
     category = "reference.points",
-    order = 5
+    order = 8
 )
 public class MidpointNode extends BaseNode {
 

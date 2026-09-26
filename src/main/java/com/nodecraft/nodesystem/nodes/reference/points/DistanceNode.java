@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PointUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -17,7 +18,7 @@ import java.util.UUID;
     displayName = "Distance Between Points",
     description = "Computes the distance between two input points",
     category = "reference.points",
-    order = 6
+    order = 9
 )
 public class DistanceNode extends BaseNode {
 

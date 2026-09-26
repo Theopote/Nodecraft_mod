@@ -7,6 +7,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PointUtils;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -18,7 +20,7 @@ import java.util.UUID;
     displayName = "Translate Point",
     description = "Translates a geometric point by a displacement vector (Point + Vector → Point)",
     category = "reference.points",
-    order = 3
+    order = 6
 )
 public class TranslatePointNode extends BaseNode {
 
@@ -57,9 +59,9 @@ public class TranslatePointNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d point = PointUtils.toPointPosition(inputValues.get(INPUT_POINT_ID));
-        Object offsetObj = inputValues.get(INPUT_OFFSET_ID);
+        Vector3d offset = SpatialValueResolver.resolveVector(inputValues.get(INPUT_OFFSET_ID));
 
-        if (!PointUtils.isFinite(point) || !(offsetObj instanceof Vector3d offset) || !PointUtils.isFinite(offset)) {
+        if (!PointUtils.isFinite(point) || !PointUtils.isFinite(offset)) {
             outputValues.put(OUTPUT_POINT_ID, null);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;

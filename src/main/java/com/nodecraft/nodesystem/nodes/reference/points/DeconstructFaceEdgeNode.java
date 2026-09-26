@@ -8,6 +8,8 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.FrameUtils;
+import com.nodecraft.nodesystem.util.PointUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -20,7 +22,7 @@ import java.util.UUID;
     displayName = "Deconstruct Face Edge",
     description = "Extracts endpoints, midpoint, direction, displacement, and length from a face edge",
     category = "reference.points",
-    order = 14
+    order = 18
 )
 public class DeconstructFaceEdgeNode extends BaseNode {
 
@@ -64,6 +66,19 @@ public class DeconstructFaceEdgeNode extends BaseNode {
 
         Vec3d start = edge.start();
         Vec3d end = edge.end();
+        Vector3d startVec = new Vector3d(start.x, start.y, start.z);
+        Vector3d endVec = new Vector3d(end.x, end.y, end.z);
+        if (!FrameUtils.isFinite(startVec) || !FrameUtils.isFinite(endVec)) {
+            writeInvalid();
+            return;
+        }
+
+        double lengthSquared = start.squaredDistanceTo(end);
+        if (lengthSquared <= PointUtils.EPS) {
+            writeInvalid();
+            return;
+        }
+
         Vec3d direction = edge.getDirection();
         Vec3d vector = edge.getVector();
         Vec3d midpoint = start.add(end).multiply(0.5d);

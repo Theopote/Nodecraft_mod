@@ -302,8 +302,14 @@ public final class GraphFormatVersion {
      */
     public static final int V48 = 48;
 
+    /**
+     * Reference Points v1: strict INTEGER, strict POINT_LIST fail-closed, unified SpatialValueResolver,
+     * typed topology (LINE_LIST/INTEGER_LIST), Get Box Face precedence, unique order 0-18.
+     */
+    public static final int V49 = 49;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V48;
+    public static final int CURRENT = V49;
 
     private GraphFormatVersion() {
     }

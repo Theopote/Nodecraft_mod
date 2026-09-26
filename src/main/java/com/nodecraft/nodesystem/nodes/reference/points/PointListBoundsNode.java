@@ -8,10 +8,11 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PointUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
-import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
@@ -20,7 +21,7 @@ import java.util.UUID;
     displayName = "Point List Bounds",
     description = "Calculates an axis-aligned bounding box from a list of geometric points",
     category = "reference.points",
-    order = 9
+    order = 13
 )
 public class PointListBoundsNode extends BaseNode {
 
@@ -58,9 +59,9 @@ public class PointListBoundsNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_SIZE_Z_ID, "Size Z",
             "Geometric size on the Z axis", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
-            "Number of valid points used to build the bounds", NodeDataType.INTEGER, this));
+            "Number of points in the input list", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
-            "True when at least one valid point was resolved", NodeDataType.BOOLEAN, this));
+            "True when the input point list is valid and non-empty", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -75,35 +76,18 @@ public class PointListBoundsNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object value = inputValues.get(INPUT_POINTS_ID);
-        if (!(value instanceof Collection<?> collection) || collection.isEmpty()) {
+        List<Vector3d> points = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        if (points == null) {
             writeInvalid();
             return;
         }
 
-        Vector3d min = null;
-        Vector3d max = null;
-        int count = 0;
-
-        for (Object entry : collection) {
-            Vector3d point = PointUtils.toPointPosition(entry);
-            if (!PointUtils.isFinite(point)) {
-                continue;
-            }
-
-            if (min == null) {
-                min = new Vector3d(point);
-                max = new Vector3d(point);
-            } else {
-                min.min(point);
-                max.max(point);
-            }
-            count++;
-        }
-
-        if (min == null || max == null || count == 0) {
-            writeInvalid();
-            return;
+        Vector3d min = new Vector3d(points.getFirst());
+        Vector3d max = new Vector3d(points.getFirst());
+        for (int i = 1; i < points.size(); i++) {
+            Vector3d point = points.get(i);
+            min.min(point);
+            max.max(point);
         }
 
         Vector3d center = new Vector3d(min).add(max).mul(0.5);
@@ -111,16 +95,14 @@ public class PointListBoundsNode extends BaseNode {
         double sizeY = max.y - min.y;
         double sizeZ = max.z - min.z;
 
-        BoundingBoxData boundingBox = new BoundingBoxData(min, max);
-
-        outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
+        outputValues.put(OUTPUT_BOUNDING_BOX_ID, new BoundingBoxData(min, max));
         outputValues.put(OUTPUT_MIN_POINT_ID, new PointData(min));
         outputValues.put(OUTPUT_MAX_POINT_ID, new PointData(max));
         outputValues.put(OUTPUT_CENTER_POINT_ID, new PointData(center));
         outputValues.put(OUTPUT_SIZE_X_ID, sizeX);
         outputValues.put(OUTPUT_SIZE_Y_ID, sizeY);
         outputValues.put(OUTPUT_SIZE_Z_ID, sizeZ);
-        outputValues.put(OUTPUT_COUNT_ID, count);
+        outputValues.put(OUTPUT_COUNT_ID, points.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 

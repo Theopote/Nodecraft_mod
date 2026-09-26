@@ -7,10 +7,11 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PointUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
-import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
@@ -19,7 +20,7 @@ import java.util.UUID;
     displayName = "Point List Center",
     description = "Calculates the average geometric center of a point list",
     category = "reference.points",
-    order = 8
+    order = 12
 )
 public class PointListCenterNode extends BaseNode {
 
@@ -37,11 +38,11 @@ public class PointListCenterNode extends BaseNode {
             NodeDataType.POINT_LIST, this));
 
         addOutputPort(new BasePort(OUTPUT_CENTER_POINT_ID, "Center Point",
-            "Average geometric center of the valid input points", NodeDataType.POINT, this));
+            "Average geometric center of the input points", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
-            "Number of valid points used to compute the center", NodeDataType.INTEGER, this));
+            "Number of points in the input list", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
-            "True when at least one valid point was resolved", NodeDataType.BOOLEAN, this));
+            "True when the input point list is valid and non-empty", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -56,33 +57,20 @@ public class PointListCenterNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object value = inputValues.get(INPUT_POINTS_ID);
-        if (!(value instanceof Collection<?> collection) || collection.isEmpty()) {
+        List<Vector3d> points = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        if (points == null) {
             writeInvalid();
             return;
         }
 
         Vector3d sum = new Vector3d();
-        int count = 0;
-
-        for (Object entry : collection) {
-            Vector3d point = PointUtils.toPointPosition(entry);
-            if (!PointUtils.isFinite(point)) {
-                continue;
-            }
+        for (Vector3d point : points) {
             sum.add(point);
-            count++;
         }
-
-        if (count == 0) {
-            writeInvalid();
-            return;
-        }
-
-        Vector3d center = sum.div((double) count);
+        Vector3d center = sum.div((double) points.size());
 
         outputValues.put(OUTPUT_CENTER_POINT_ID, new PointData(center));
-        outputValues.put(OUTPUT_COUNT_ID, count);
+        outputValues.put(OUTPUT_COUNT_ID, points.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 

@@ -24,7 +24,7 @@ import java.util.UUID;
     displayName = "Get Face Edge",
     description = "Gets a single edge from a face by index",
     category = "reference.points",
-    order = 12
+    order = 16
 )
 public class GetFaceEdgeNode extends BaseNode {
 
@@ -47,7 +47,7 @@ public class GetFaceEdgeNode extends BaseNode {
         super(UUID.randomUUID(), "reference.points.get_face_edge");
 
         addInputPort(new BasePort(INPUT_FACE_ID, "Face", "The face to query", NodeDataType.BOX_FACE, this));
-        addInputPort(new BasePort(INPUT_INDEX_ID, "Edge Index", "Edge index from 0 to 3", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_INDEX_ID, "Edge Index", "Edge index in face winding order", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_EDGE_ID, "Edge", "Resolved face edge", NodeDataType.LINE, this));
         addOutputPort(new BasePort(OUTPUT_FOUND_ID, "Found", "Whether the edge index resolved successfully", NodeDataType.BOOLEAN, this));
@@ -68,9 +68,9 @@ public class GetFaceEdgeNode extends BaseNode {
         boolean found = false;
         Integer resolvedIndex = null;
 
-        if (faceObj instanceof BoxFaceData face && indexObj instanceof Number number) {
+        if (faceObj instanceof BoxFaceData face && indexObj instanceof Integer indexValue) {
             List<Vector3d> corners = face.getCorners();
-            int index = number.intValue();
+            int index = indexValue;
             int edgeCount = corners.size();
 
             if (edgeCount > 0) {
