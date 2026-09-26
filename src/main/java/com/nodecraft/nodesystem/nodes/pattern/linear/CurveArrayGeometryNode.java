@@ -148,8 +148,7 @@ public class CurveArrayGeometryNode extends BaseNode {
         List<GeometryData> copies = new ArrayList<>(candidateFrames.size());
         List<Vector3d> origins = new ArrayList<>(candidateFrames.size());
         List<FrameData> frames = new ArrayList<>(candidateFrames.size());
-        for (int i = 0; i < candidateFrames.size(); i++) {
-            FrameData frame = candidateFrames.get(i);
+        for (FrameData frame : candidateFrames) {
             GeometryData copy = PlaceGeometryOnFramesNode.placeOnFrame(geometry, pivot, frame);
             if (copy != null) {
                 copies.add(copy);

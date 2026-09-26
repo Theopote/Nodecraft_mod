@@ -122,7 +122,10 @@ public class InstanceOnPointsNode extends BaseNode {
         for (Object entry : list) {
             if (entry instanceof BlockPlacementData placement && placement.pos() != null) {
                 BlockPos pos = placement.pos();
-                BlockPos local = pos.add(-origin.getX(), -origin.getY(), -origin.getZ());
+                BlockPos local = null;
+                if (pos != null) {
+                    local = pos.add(-origin.getX(), -origin.getY(), -origin.getZ());
+                }
                 resolved.add(new BlockPlacementData(local, placement.blockId(), placement.stateData()));
             }
         }

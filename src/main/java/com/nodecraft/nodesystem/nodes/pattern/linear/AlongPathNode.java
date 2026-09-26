@@ -102,7 +102,7 @@ public class AlongPathNode extends BaseNode {
             double yawRadians = orientToPath ? computeYaw(pathPoints, anchorIndex) : 0.0d;
             double sin = Math.sin(yawRadians);
             double cos = Math.cos(yawRadians);
-            BlockPos sourceOrigin = sourcePositions.get(0);
+            BlockPos sourceOrigin = sourcePositions.getFirst();
 
             for (BlockPos sourcePos : sourcePositions) {
                 int localX = sourcePos.getX() - sourceOrigin.getX();

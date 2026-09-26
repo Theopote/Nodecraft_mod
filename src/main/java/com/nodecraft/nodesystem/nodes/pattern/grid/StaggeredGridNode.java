@@ -109,7 +109,7 @@ public class StaggeredGridNode extends BaseNode {
 
     private boolean shouldOffsetRow(int row) {
         boolean oddRow = (row & 1) == 1;
-        return rowParityMode == RowParityMode.OFFSET_ODD_ROWS ? oddRow : !oddRow;
+        return (rowParityMode == RowParityMode.OFFSET_ODD_ROWS) == oddRow;
     }
 
     private Vector3d normalize(Vector3d input, Vector3d fallback) {

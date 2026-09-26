@@ -92,9 +92,8 @@ public class LinearArrayNode extends BaseNode {
         List<DataTreeData.Branch> branches = new ArrayList<>();
         
         // 检查输入是否为方块坐标列表
-        if (coordinatesObj instanceof BlockPosList) {
-            BlockPosList coordinates = (BlockPosList) coordinatesObj;
-            
+        if (coordinatesObj instanceof BlockPosList coordinates) {
+
             // 如果输入坐标列表为空，直接返回空结果
             if (coordinates.isEmpty()) {
                 outputValues.put(OUTPUT_ARRAY_COORDINATES_ID, result);
@@ -251,7 +250,7 @@ public class LinearArrayNode extends BaseNode {
     public void setNodeState(Object state) {
         if (state instanceof java.util.Map) {
             java.util.Map<?, ?> stateMap = (java.util.Map<?, ?>) state;
-            
+
             if (stateMap.containsKey("useDirection")) {
                 Object useDirectionObj = stateMap.get("useDirection");
                 if (useDirectionObj instanceof Boolean) {
