@@ -14,6 +14,7 @@ import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 
 /**
@@ -37,7 +38,7 @@ public final class PrimitiveVolumeSampler {
         double minDistance,
         MinDistanceScatterSelector.DistributionMode mode
     ) {
-        if (geometry == null || !isSupported(geometry) || targetCount <= 0) {
+        if (!isSupported(geometry) || targetCount <= 0) {
             return List.of();
         }
 
@@ -118,8 +119,8 @@ public final class PrimitiveVolumeSampler {
         if (region == null || !region.isComplete()) {
             return null;
         }
-        Vector3d min = vectorFromBlockPos(region.getMinCorner());
-        Vector3d max = vectorFromBlockPos(region.getMaxCorner());
+        Vector3d min = vectorFromBlockPos(Objects.requireNonNull(region.getMinCorner()));
+        Vector3d max = vectorFromBlockPos(Objects.requireNonNull(region.getMaxCorner()));
         for (int attempt = 0; attempt < MAX_REJECTION_ATTEMPTS; attempt++) {
             Vector3d candidate = new Vector3d(
                 min.x + random.nextDouble() * (max.x - min.x),

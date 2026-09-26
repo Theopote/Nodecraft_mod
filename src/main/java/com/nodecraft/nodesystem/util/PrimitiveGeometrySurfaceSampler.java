@@ -44,7 +44,7 @@ public final class PrimitiveGeometrySurfaceSampler {
         double minDistance,
         MinDistanceScatterSelector.DistributionMode mode
     ) {
-        if (geometry == null || !isSupported(geometry) || targetCount <= 0) {
+        if (!isSupported(geometry) || targetCount <= 0) {
             return List.of();
         }
 
