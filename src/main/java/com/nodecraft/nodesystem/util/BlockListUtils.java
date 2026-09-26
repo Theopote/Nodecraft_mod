@@ -25,16 +25,11 @@ public final class BlockListUtils {
      *         non-empty set in encounter order with duplicates removed
      */
     public static @Nullable LinkedHashSet<BlockPos> resolveStrictBlockSet(@Nullable Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof BlockPosList blockPosList) {
-            return resolveFromIterable(blockPosList);
-        }
-        if (value instanceof Collection<?> collection) {
-            return resolveFromIterable(collection);
-        }
-        return null;
+        return switch (value) {
+            case BlockPosList blockPosList -> resolveFromIterable(blockPosList);
+            case Collection<?> collection -> resolveFromIterable(collection);
+            case null, default -> null;
+        };
     }
 
     private static @Nullable LinkedHashSet<BlockPos> resolveFromIterable(Iterable<?> values) {

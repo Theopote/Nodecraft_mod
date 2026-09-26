@@ -1,8 +1,6 @@
 package com.nodecraft.nodesystem.nodes.utilities.organization;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
-import com.nodecraft.nodesystem.api.NodeEffect;
-import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -11,7 +9,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -128,12 +125,17 @@ public class NodePresetNode extends BaseNode {
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> getOrCreatePresets(@Nullable ExecutionContext context) {
-        Object existing = context.getVariable(GraphIOKeys.NODE_PRESETS_KEY);
+        Object existing = null;
+        if (context != null) {
+            existing = context.getVariable(GraphIOKeys.NODE_PRESETS_KEY);
+        }
         if (existing instanceof Map<?, ?> map) {
             return (Map<String, Object>) map;
         }
         Map<String, Object> created = new LinkedHashMap<>();
-        context.setVariable(GraphIOKeys.NODE_PRESETS_KEY, created);
+        if (context != null) {
+            context.setVariable(GraphIOKeys.NODE_PRESETS_KEY, created);
+        }
         return created;
     }
 }

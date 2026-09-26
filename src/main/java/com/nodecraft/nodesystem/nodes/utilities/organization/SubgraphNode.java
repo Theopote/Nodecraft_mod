@@ -17,14 +17,7 @@ import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @NodeInfo(
     effect = NodeEffect.COMPOSITE,
@@ -140,7 +133,7 @@ public class SubgraphNode extends BaseNode {
             boolean success = NodeExecutor.nestedSync(subgraph, context, skipSideEffects).executeSync();
 
             Map<String, Object> outputs = SubgraphCallFrameBridge.current(context) != null
-                    ? new LinkedHashMap<>(SubgraphCallFrameBridge.current(context).outputs())
+                    ? new LinkedHashMap<>(Objects.requireNonNull(SubgraphCallFrameBridge.current(context)).outputs())
                     : Map.of();
 
             writeDynamicOutputs(outputs, interfaceSpec.outputs());

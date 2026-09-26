@@ -1,7 +1,5 @@
 package com.nodecraft.nodesystem.nodes.utilities.organization;
 
-import com.nodecraft.nodesystem.api.NodeEffect;
-import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;

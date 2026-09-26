@@ -368,12 +368,12 @@ public class ImGuiNodeRenderer {
             );
         } else if (execFrontier.isPendingNode(nodeId)) {
             drawList.addRect(
-                    nodeScreenX - 1.0f * canvasZoom,
-                    nodeScreenY - 1.0f * canvasZoom,
-                    nodeScreenX + finalNodeWidthScaled + 1.0f * canvasZoom,
-                    nodeScreenY + finalNodeHeightScaled + 1.0f * canvasZoom,
+                    nodeScreenX - canvasZoom,
+                    nodeScreenY - canvasZoom,
+                    nodeScreenX + finalNodeWidthScaled + canvasZoom,
+                    nodeScreenY + finalNodeHeightScaled + canvasZoom,
                     NodeRenderConstants.EXEC_FRONTIER_PENDING_NODE_COLOR,
-                    nodeCornerRadiusScaled + 1.0f * canvasZoom,
+                    nodeCornerRadiusScaled + canvasZoom,
                     0,
                     Math.max(nodeBorderThicknessScaled * 1.5f, 2.0f * canvasZoom)
             );

@@ -1,8 +1,6 @@
 package com.nodecraft.nodesystem.nodes.utilities.organization;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
-import com.nodecraft.nodesystem.api.NodeEffect;
-import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -10,6 +8,7 @@ import com.nodecraft.nodesystem.api.IPort;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -278,8 +277,7 @@ public class GroupNode extends BaseNode {
      */
     @Override
     public void setNodeState(@Nullable Object state) {
-        if (state instanceof Object[]) {
-            Object[] objState = (Object[]) state;
+        if (state instanceof Object[] objState) {
             if (objState.length >= 8) {
                 if (objState[0] instanceof String) {
                     groupName = (String) objState[0];
@@ -302,16 +300,12 @@ public class GroupNode extends BaseNode {
                 
                 // 恢复包含的节点ID
                 containedNodeIds.clear();
-                if (objState[6] instanceof UUID[]) {
-                    UUID[] nodeIds = (UUID[]) objState[6];
-                    for (UUID id : nodeIds) {
-                        containedNodeIds.add(id);
-                    }
+                if (objState[6] instanceof UUID[] nodeIds) {
+                    containedNodeIds.addAll(Arrays.asList(nodeIds));
                 }
                 
                 // 恢复端口状态
-                if (objState[7] instanceof boolean[]) {
-                    boolean[] portStates = (boolean[]) objState[7];
+                if (objState[7] instanceof boolean[] portStates) {
                     if (portStates.length >= 2) {
                         if (portStates[0] && getInputPort(INPUT_SIGNAL_ID) == null) {
                             addInputSignalPort();

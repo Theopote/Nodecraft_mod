@@ -70,12 +70,17 @@ public class ExecutionContext implements com.nodecraft.nodesystem.api.ExecutionC
         }
         if (world instanceof ServerWorld serverWorld) {
             MinecraftServer server = serverWorld.getServer();
-            if (server.isOnThread()) {
+            if (server != null && server.isOnThread()) {
                 return supplier.get();
             }
             try {
-                CompletableFuture<T> future = server.submit(supplier);
-                return future.get();
+                CompletableFuture<T> future = null;
+                if (server != null) {
+                    future = server.submit(supplier);
+                }
+                if (future != null) {
+                    return future.get();
+                }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new NodeExecutionException("Failed to run node work on the Minecraft server thread", e);

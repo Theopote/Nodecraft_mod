@@ -319,13 +319,11 @@ public final class GraphMigrationRegistry {
             String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
             String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
 
-            if (connection.targetPortId != null
-                    && EXTRUDE_TYPE.equals(targetType)
+            if (EXTRUDE_TYPE.equals(targetType)
                     && "input_extrusion_vector".equalsIgnoreCase(connection.targetPortId)) {
                 connection.targetPortId = "input_direction";
             }
-            if (connection.sourcePortId != null
-                    && EXTRUDE_TYPE.equals(sourceType)
+            if (EXTRUDE_TYPE.equals(sourceType)
                     && "output_surface_strip".equalsIgnoreCase(connection.sourcePortId)) {
                 connection.sourcePortId = "output_side_surface";
             }
@@ -1316,10 +1314,7 @@ public final class GraphMigrationRegistry {
                 && ("output_radians".equals(sourcePort) || "output_signed_radians".equals(sourcePort))) {
             return true;
         }
-        if (SLERP_VECTORS_TYPE.equals(sourceType) && "output_angle_radians".equals(sourcePort)) {
-            return true;
-        }
-        return false;
+        return SLERP_VECTORS_TYPE.equals(sourceType) && "output_angle_radians".equals(sourcePort);
     }
 
     private static final String GET_FACE_EDGE_TYPE = "reference.points.get_face_edge";
@@ -1617,7 +1612,7 @@ public final class GraphMigrationRegistry {
 
             if (("math.list.filter_list".equals(targetType) || "math.list.dispatch_list".equals(targetType))
                     && "input_condition".equals(targetPort)) {
-                if (sourceDataType == null || sourceDataType != NodeDataType.BOOLEAN_LIST) {
+                if (sourceDataType != NodeDataType.BOOLEAN_LIST) {
                     LOGGER.debug("Dropped non-BOOLEAN_LIST mask wire to {}#{}",
                             connection.targetNodeId, connection.targetPortId);
                     return true;
@@ -2319,8 +2314,7 @@ public final class GraphMigrationRegistry {
 
         List<SavedNode> nodesToMigrate = new ArrayList<>();
         for (SavedNode node : graph.nodes) {
-            if (node != null && node.typeId != null
-                    && BLOCK_STATE_SELECTOR_TYPE.equalsIgnoreCase(node.typeId)) {
+            if (node != null && BLOCK_STATE_SELECTOR_TYPE.equalsIgnoreCase(node.typeId)) {
                 nodesToMigrate.add(node);
             }
         }
@@ -2497,7 +2491,7 @@ public final class GraphMigrationRegistry {
             String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
             String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
             if (sourceType == null || targetType == null) {
-                return sourceType == null || targetType == null;
+                return true;
             }
             String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
             String targetPort = connection.targetPortId == null ? "" : connection.targetPortId.toLowerCase(Locale.ROOT);
@@ -3550,22 +3544,24 @@ public final class GraphMigrationRegistry {
                 }
                 String typeId = node.typeId.toLowerCase(Locale.ROOT);
 
-                if (COMMENT_TYPE.equals(typeId)) {
-                    liftCommentNode(graph, node);
-                    continue;
-                }
-                if (GROUP_TYPE.equals(typeId)) {
-                    liftGroupNode(graph, node);
-                    continue;
-                }
-                if (SUBGRAPH_REGISTER_TYPE.equals(typeId) || NODE_PRESET_TYPE.equals(typeId)) {
-                    continue;
+                switch (typeId) {
+                    case COMMENT_TYPE -> {
+                        liftCommentNode(graph, node);
+                        continue;
+                    }
+                    case GROUP_TYPE -> {
+                        liftGroupNode(graph, node);
+                        continue;
+                    }
+                    case SUBGRAPH_REGISTER_TYPE, NODE_PRESET_TYPE -> {
+                        continue;
+                    }
+                    case SUBGRAPH_TYPE -> {
+                        extractEmbeddedSubgraphDefinition(graph, node);
+                        stripSubgraphNodeState(node);
+                    }
                 }
 
-                if (SUBGRAPH_TYPE.equals(typeId)) {
-                    extractEmbeddedSubgraphDefinition(graph, node);
-                    stripSubgraphNodeState(node);
-                }
                 if (GRAPH_INPUT_TYPE.equals(typeId)) {
                     remapGraphInputPorts(node);
                 }
@@ -3783,16 +3779,12 @@ public final class GraphMigrationRegistry {
         if (nodeType == null || portId == null) {
             return false;
         }
-        if (READ_IMAGE_TYPE.equals(nodeType)) {
-            return READ_IMAGE_OBSOLETE_PORTS.contains(portId);
-        }
-        if (IMPORT_VOX_TYPE.equals(nodeType)) {
-            return IMPORT_VOX_OBSOLETE_PORTS.contains(portId);
-        }
-        if (IMAGE_SAMPLER_TYPE.equals(nodeType)) {
-            return IMAGE_SAMPLER_OBSOLETE_PORTS.contains(portId);
-        }
-        return false;
+        return switch (nodeType) {
+            case READ_IMAGE_TYPE -> READ_IMAGE_OBSOLETE_PORTS.contains(portId);
+            case IMPORT_VOX_TYPE -> IMPORT_VOX_OBSOLETE_PORTS.contains(portId);
+            case IMAGE_SAMPLER_TYPE -> IMAGE_SAMPLER_OBSOLETE_PORTS.contains(portId);
+            default -> false;
+        };
     }
 
     private static String remapBlockStateTypeId(String typeId) {

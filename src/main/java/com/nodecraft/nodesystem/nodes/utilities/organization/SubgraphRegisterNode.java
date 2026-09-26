@@ -1,8 +1,6 @@
 package com.nodecraft.nodesystem.nodes.utilities.organization;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
-import com.nodecraft.nodesystem.api.NodeEffect;
-import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
@@ -125,12 +123,17 @@ public class SubgraphRegisterNode extends BaseNode {
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> getOrCreateRegistry(@Nullable ExecutionContext context) {
-        Object existing = context.getVariable(GraphIOKeys.SUBGRAPH_REGISTRY_KEY);
+        Object existing = null;
+        if (context != null) {
+            existing = context.getVariable(GraphIOKeys.SUBGRAPH_REGISTRY_KEY);
+        }
         if (existing instanceof Map<?, ?> map) {
             return (Map<String, Object>) map;
         }
         Map<String, Object> created = new LinkedHashMap<>();
-        context.setVariable(GraphIOKeys.SUBGRAPH_REGISTRY_KEY, created);
+        if (context != null) {
+            context.setVariable(GraphIOKeys.SUBGRAPH_REGISTRY_KEY, created);
+        }
         return created;
     }
 
