@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.execution.ExecutionRunLimits;
 import com.nodecraft.nodesystem.execution.IncrementalExecutionOptions;
 import com.nodecraft.nodesystem.execution.NodeExecutor;
 import com.nodecraft.nodesystem.execution.runtime.CancellationToken;
+import com.nodecraft.nodesystem.execution.runtime.SimpleCancellationToken;
 import com.nodecraft.nodesystem.execution.subgraph.SubgraphCallFrameBridge;
 import com.nodecraft.nodesystem.graph.GraphInterfaceValidator;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
@@ -55,12 +56,35 @@ class OrganizationLanguageContractTest {
 
     private static NodeRegistry registry;
 
+    private static final String SIDE_EFFECT_PROBE_ID = "test.organization.side_effect_probe";
+    private static final String CHAINED_SIDE_EFFECT_PROBE_ID = "test.organization.chained_side_effect_probe";
+
     @BeforeAll
     static void init() {
         registry = NodeRegistry.getInstance();
         if (!registry.isInitialized()) {
             registry.initialize();
         }
+        registerContractProbeTypes();
+    }
+
+    private static void registerContractProbeTypes() {
+        registry.registerNode(new com.nodecraft.gui.node.NodeInfo(
+                SIDE_EFFECT_PROBE_ID,
+                "Side Effect Probe",
+                "Contract test probe",
+                "test",
+                0,
+                SideEffectProbe.class
+        ));
+        registry.registerNode(new com.nodecraft.gui.node.NodeInfo(
+                CHAINED_SIDE_EFFECT_PROBE_ID,
+                "Chained Side Effect Probe",
+                "Contract test passthrough probe",
+                "test",
+                0,
+                ChainedSideEffectProbe.class
+        ));
     }
 
     @Test
@@ -187,9 +211,112 @@ class OrganizationLanguageContractTest {
     }
 
     @Test
+    void subgraphConnectedNullEnabledFailsClosed() {
+        SavedGraph definition = childGraphWithExecutionProbe();
+        SubgraphNode subgraph = new SubgraphNode();
+        subgraph.setNodeState(Map.of("subgraphRef", "inner"));
+        subgraph.syncPortsFromDefinition(definition);
+
+        NullBooleanSource nullEnabled = new NullBooleanSource();
+        NodeGraph graph = new NodeGraph("enabled-null");
+        graph.addNode(subgraph);
+        graph.addNode(nullEnabled);
+        graph.connect(nullEnabled.getId(), "out", subgraph.getId(), "input_enabled");
+
+        ExecutionContext context = ExecutionContext.createEmpty(null);
+        context.setSubgraphDefinitions(Map.of("inner", definition));
+
+        assertTrue(new NodeExecutor(graph, context).executeSync());
+        assertFalse((Boolean) subgraph.getOutput("output_valid"));
+        assertFalse(String.valueOf(subgraph.getOutput("output_error")).isBlank());
+        assertEquals(0, ChainedSideEffectProbe.globalExecutionCount());
+    }
+
+    @Test
+    void nestedExecutorInheritsParentCancellation() {
+        SavedGraph definition = childGraphWithExecutionProbe();
+        SubgraphNode wrapper = new SubgraphNode();
+        wrapper.setNodeState(Map.of("subgraphRef", "inner"));
+        wrapper.syncPortsFromDefinition(definition);
+
+        NodeGraph outer = new NodeGraph("outer-cancel");
+        outer.addNode(wrapper);
+
+        ExecutionContext context = ExecutionContext.createEmpty(null);
+        context.setSubgraphDefinitions(Map.of("inner", definition));
+
+        SimpleCancellationToken cancellation = new SimpleCancellationToken();
+        cancellation.cancel();
+        NodeExecutor executor = new NodeExecutor(
+                outer,
+                context,
+                null,
+                IncrementalExecutionOptions.defaults(),
+                ExecutionRunLimits.defaults(),
+                cancellation,
+                false,
+                null,
+                true
+        );
+        assertFalse(executor.executeSync());
+        assertEquals(0, ChainedSideEffectProbe.globalExecutionCount());
+    }
+
+    @Test
+    void nestedExecutorSharesParentStepBudget() {
+        ChainedSideEffectProbe.resetGlobalExecutionCount();
+        NodeGraph inner = new NodeGraph("inner-budget");
+        ChainedSideEffectProbe[] probes = new ChainedSideEffectProbe[6];
+        for (int i = 0; i < probes.length; i++) {
+            probes[i] = new ChainedSideEffectProbe();
+            inner.addNode(probes[i]);
+        }
+        GraphInputNode input = new GraphInputNode();
+        input.setNodeState(Map.of("inputName", "in"));
+        GraphOutputNode output = new GraphOutputNode();
+        output.setNodeState(Map.of("outputName", "out"));
+        inner.addNode(input);
+        inner.addNode(output);
+        inner.connect(input.getId(), "output_value", probes[0].getId(), "in");
+        for (int i = 0; i < probes.length - 1; i++) {
+            inner.connect(probes[i].getId(), "out", probes[i + 1].getId(), "in");
+        }
+        inner.connect(probes[probes.length - 1].getId(), "out", output.getId(), "input_value");
+
+        SavedGraph definition = GraphSerializer.toSavedGraph(inner);
+        SubgraphNode wrapper = new SubgraphNode();
+        wrapper.setNodeState(Map.of("subgraphRef", "inner"));
+        wrapper.syncPortsFromDefinition(definition);
+
+        NodeGraph outer = new NodeGraph("outer-budget");
+        outer.addNode(wrapper);
+
+        ExecutionContext context = ExecutionContext.createEmpty(null);
+        context.setSubgraphDefinitions(Map.of("inner", definition));
+
+        ExecutionRunLimits limits = new ExecutionRunLimits(3L, 60_000L);
+        NodeExecutor executor = new NodeExecutor(
+                outer,
+                context,
+                null,
+                IncrementalExecutionOptions.defaults(),
+                limits,
+                CancellationToken.none(),
+                false,
+                null,
+                true
+        );
+        assertFalse(executor.executeSync());
+        assertFalse((Boolean) wrapper.getOutput("output_valid"));
+        assertTrue(ChainedSideEffectProbe.globalExecutionCount() >= 1);
+        assertTrue(ChainedSideEffectProbe.globalExecutionCount() < probes.length);
+    }
+
+    @Test
     void nestedPreviewInheritsSkipSideEffectsPolicy() {
+        SideEffectProbe.resetGlobalExecutionCount();
         NodeGraph inner = new NodeGraph("inner-side-effect");
-        SideEffectProbe sideEffect = new SideEffectProbe("world.write.organization_contract_probe");
+        SideEffectProbe sideEffect = new SideEffectProbe();
         inner.addNode(sideEffect);
 
         SavedGraph definition = GraphSerializer.toSavedGraph(inner);
@@ -215,7 +342,7 @@ class OrganizationLanguageContractTest {
                 true
         );
         assertTrue(previewExecutor.executeSync());
-        assertEquals(0, sideEffect.executionCount());
+        assertEquals(0, SideEffectProbe.globalExecutionCount());
     }
 
     @Test
@@ -293,6 +420,22 @@ class OrganizationLanguageContractTest {
         assertEquals(NodeDataType.BLOCK_LIST, input.type());
     }
 
+    private static SavedGraph childGraphWithExecutionProbe() {
+        ChainedSideEffectProbe.resetGlobalExecutionCount();
+        NodeGraph inner = new NodeGraph("inner-probe");
+        GraphInputNode input = new GraphInputNode();
+        input.setNodeState(Map.of("inputName", "in"));
+        ChainedSideEffectProbe probe = new ChainedSideEffectProbe();
+        GraphOutputNode output = new GraphOutputNode();
+        output.setNodeState(Map.of("outputName", "out"));
+        inner.addNode(input);
+        inner.addNode(probe);
+        inner.addNode(output);
+        inner.connect(input.getId(), "output_value", probe.getId(), "in");
+        inner.connect(probe.getId(), "out", output.getId(), "input_value");
+        return GraphSerializer.toSavedGraph(inner);
+    }
+
     private static SavedGraph childGraphWithTypedIo() {
         SavedGraph graph = new SavedGraph();
         graph.nodes = new ArrayList<>();
@@ -350,21 +493,77 @@ class OrganizationLanguageContractTest {
         return connection;
     }
 
-    private static final class SideEffectProbe extends BaseNode {
-        private final AtomicInteger executionCount = new AtomicInteger();
+    private static final class NullBooleanSource extends BaseNode {
+        NullBooleanSource() {
+            super(UUID.randomUUID(), "test.organization.null_boolean");
+            addOutputPort(new BasePort("out", "Out", "", NodeDataType.BOOLEAN, this));
+        }
 
-        SideEffectProbe(String typeId) {
-            super(UUID.randomUUID(), typeId);
+        @Override
+        public void processNode(ExecutionContext context) {
+            outputValues.put("out", null);
+        }
+    }
+
+    @NodeInfo(
+            effect = NodeEffect.PURE,
+            id = "test.organization.side_effect_probe",
+            displayName = "Side Effect Probe",
+            description = "Contract test probe",
+            category = "test",
+            order = 0
+    )
+    public static final class SideEffectProbe extends BaseNode {
+        private static final AtomicInteger GLOBAL_EXECUTION_COUNT = new AtomicInteger();
+
+        public SideEffectProbe() {
+            super(UUID.randomUUID(), SIDE_EFFECT_PROBE_ID);
             addInputPort(new BasePort("in", "In", "", NodeDataType.ANY, this));
         }
 
         @Override
         public void processNode(ExecutionContext context) {
-            executionCount.incrementAndGet();
+            GLOBAL_EXECUTION_COUNT.incrementAndGet();
         }
 
-        int executionCount() {
-            return executionCount.get();
+        static void resetGlobalExecutionCount() {
+            GLOBAL_EXECUTION_COUNT.set(0);
+        }
+
+        static int globalExecutionCount() {
+            return GLOBAL_EXECUTION_COUNT.get();
+        }
+    }
+
+    @NodeInfo(
+            effect = NodeEffect.PURE,
+            id = "test.organization.chained_side_effect_probe",
+            displayName = "Chained Side Effect Probe",
+            description = "Contract test passthrough probe",
+            category = "test",
+            order = 0
+    )
+    public static final class ChainedSideEffectProbe extends BaseNode {
+        private static final AtomicInteger GLOBAL_EXECUTION_COUNT = new AtomicInteger();
+
+        public ChainedSideEffectProbe() {
+            super(UUID.randomUUID(), CHAINED_SIDE_EFFECT_PROBE_ID);
+            addInputPort(new BasePort("in", "In", "", NodeDataType.ANY, this));
+            addOutputPort(new BasePort("out", "Out", "", NodeDataType.ANY, this));
+        }
+
+        @Override
+        public void processNode(ExecutionContext context) {
+            GLOBAL_EXECUTION_COUNT.incrementAndGet();
+            outputValues.put("out", getInput("in"));
+        }
+
+        static void resetGlobalExecutionCount() {
+            GLOBAL_EXECUTION_COUNT.set(0);
+        }
+
+        static int globalExecutionCount() {
+            return GLOBAL_EXECUTION_COUNT.get();
         }
     }
 }

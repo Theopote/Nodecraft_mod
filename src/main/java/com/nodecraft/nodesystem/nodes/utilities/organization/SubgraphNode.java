@@ -15,6 +15,7 @@ import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.graph.SubgraphInterfaceScanner;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -71,16 +72,16 @@ public class SubgraphNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        boolean runtimeEnabled = !Boolean.FALSE.equals(inputValues.get(INPUT_ENABLED_ID));
-        boolean active = enabled && runtimeEnabled;
-        String ref = resolvedSubgraphRef();
-
-        if (!active) {
-            writeDisabledOutputs();
-            outputValues.put(OUTPUT_VALID_ID, true);
-            outputValues.put(OUTPUT_ERROR_ID, "");
+        Boolean runtimeEnabled = OptionalPortDrive.resolveOptionalBoolean(this, INPUT_ENABLED_ID, enabled);
+        if (runtimeEnabled == null) {
+            writeFailure("Enabled is connected but null or invalid");
             return;
         }
+        if (!runtimeEnabled) {
+            writeDisabledOutputs();
+            return;
+        }
+        String ref = resolvedSubgraphRef();
 
         if (ref == null || ref.isBlank()) {
             writeFailure("Subgraph ref is empty");
@@ -129,8 +130,7 @@ public class SubgraphNode extends BaseNode {
             NodeGraph subgraph = GraphSerializer.fromSavedGraph(definition);
             invalidateGraphIoCache(subgraph);
 
-            boolean skipSideEffects = context.isSkipOutputExecuteSideEffects();
-            boolean success = NodeExecutor.nestedSync(subgraph, context, skipSideEffects).executeSync();
+            boolean success = NodeExecutor.nestedSync(subgraph, context).executeSync();
 
             Map<String, Object> outputs = SubgraphCallFrameBridge.current(context) != null
                     ? new LinkedHashMap<>(Objects.requireNonNull(SubgraphCallFrameBridge.current(context)).outputs())

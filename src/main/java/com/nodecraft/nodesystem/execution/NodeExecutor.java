@@ -68,6 +68,9 @@ public class NodeExecutor {
     private volatile CompletableFuture<Boolean> executionFuture;
     private final ExecutionProfiler profiler = new ExecutionProfiler();
     private volatile ExecutionProfiler.Profile lastExecutionProfile = new ExecutionProfiler.Profile(0L, 0, List.of());
+    @Nullable
+    private ExecutionRunGuard activeSharedExecutionRunGuard;
+    private boolean ownsSharedExecutionRunGuard;
 
     private enum NodeState {
         NOT_VISITED,
@@ -149,21 +152,31 @@ public class NodeExecutor {
     }
 
     /**
-     * Nested subgraph execution on the caller thread. Inherits preview side-effect policy from parent.
+     * Nested subgraph execution on the caller thread. Inherits parent cancellation, run limits,
+     * incremental options, preview side-effect policy, and shared step budget from context.
      */
-    public static NodeExecutor nestedSync(
-            NodeGraph graph,
-            ExecutionContext context,
-            boolean skipOutputExecuteSideEffects
-    ) {
+    public static NodeExecutor nestedSync(NodeGraph graph, @Nullable ExecutionContext context) {
+        if (context == null) {
+            return new NodeExecutor(
+                    graph,
+                    null,
+                    null,
+                    IncrementalExecutionOptions.defaults(),
+                    ExecutionRunLimits.defaults(),
+                    CancellationToken.none(),
+                    false,
+                    null,
+                    true
+            );
+        }
         return new NodeExecutor(
                 graph,
                 context,
                 null,
-                IncrementalExecutionOptions.defaults(),
-                ExecutionRunLimits.defaults(),
-                CancellationToken.none(),
-                skipOutputExecuteSideEffects,
+                context.getParentIncrementalOptions(),
+                context.getParentRunLimits(),
+                context.getParentCancellationToken(),
+                context.isSkipOutputExecuteSideEffects(),
                 null,
                 true
         );
@@ -306,8 +319,18 @@ public class NodeExecutor {
             nodeStates.put(node.getId(), NodeState.NOT_VISITED);
         }
 
+        ExecutionRunGuard existingSharedGuard = context != null ? context.getSharedExecutionRunGuard() : null;
+        ownsSharedExecutionRunGuard = existingSharedGuard == null;
+        activeSharedExecutionRunGuard = existingSharedGuard != null
+                ? existingSharedGuard
+                : new ExecutionRunGuard(runLimits);
+
         if (context != null) {
             context.setSkipOutputExecuteSideEffects(skipOutputExecuteSideEffects);
+            context.configureParentExecutionPolicy(incrementalOptions, runLimits, cancellation);
+            if (ownsSharedExecutionRunGuard) {
+                context.setSharedExecutionRunGuard(activeSharedExecutionRunGuard);
+            }
         }
 
         try {
@@ -328,13 +351,24 @@ public class NodeExecutor {
             execFlowMode = false;
             forcedExecRecomputeNodeIds.clear();
             execFrontierSnapshot = ExecFrontierSnapshot.EMPTY;
+            activeSharedExecutionRunGuard = null;
+            if (context != null && ownsSharedExecutionRunGuard) {
+                context.clearSharedExecutionRunGuard();
+            }
         }
+    }
+
+    private ExecutionRunGuard executionRunGuardForRun() {
+        if (activeSharedExecutionRunGuard != null) {
+            return activeSharedExecutionRunGuard;
+        }
+        return new ExecutionRunGuard(runLimits);
     }
 
     private boolean executeDataflowGraph(GraphExecutionPlanner.ExecutionPlan plan) {
         List<INode> sortedNodes = plan.topologicalOrder();
         boolean partialExecution = executionScopeNodeIds != null && !executionScopeNodeIds.isEmpty();
-        ExecutionRunGuard guard = new ExecutionRunGuard(runLimits);
+        ExecutionRunGuard guard = executionRunGuardForRun();
         profiler.beginRun();
         LOGGER.debug(
                 "Starting {} dataflow graph execution. nodes={}, levels={}, maxParallelWidth={}, scopeSize={}",
@@ -385,7 +419,7 @@ public class NodeExecutor {
 
         execFlowMode = true;
         boolean partialExecution = executionScopeNodeIds != null && !executionScopeNodeIds.isEmpty();
-        ExecutionRunGuard guard = new ExecutionRunGuard(runLimits);
+        ExecutionRunGuard guard = executionRunGuardForRun();
         profiler.beginRun();
         LOGGER.debug(
                 "Starting exec-flow graph execution. entries={}, reachable={}, scopeSize={}",

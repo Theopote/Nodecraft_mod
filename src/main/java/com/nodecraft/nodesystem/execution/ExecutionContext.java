@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.execution;
 import com.nodecraft.core.exception.NodeExecutionException;
 import com.nodecraft.nodesystem.minecraft.DefaultPlayerAccessor;
 import com.nodecraft.nodesystem.minecraft.PlayerAccessor;
+import com.nodecraft.nodesystem.execution.runtime.CancellationToken;
 import com.nodecraft.nodesystem.execution.subgraph.SubgraphCallFrame;
 import com.nodecraft.nodesystem.io.SavedGraph;
 
@@ -37,6 +38,11 @@ public class ExecutionContext implements com.nodecraft.nodesystem.api.ExecutionC
     private final Deque<SubgraphCallFrame> subgraphCallFrames = new ArrayDeque<>();
     private Map<String, SavedGraph> subgraphDefinitions = Map.of();
     private boolean skipOutputExecuteSideEffects;
+    @Nullable
+    private ExecutionRunGuard sharedExecutionRunGuard;
+    private IncrementalExecutionOptions parentIncrementalOptions = IncrementalExecutionOptions.defaults();
+    private ExecutionRunLimits parentRunLimits = ExecutionRunLimits.defaults();
+    private CancellationToken parentCancellation = CancellationToken.none();
     
     // 玩家数据访问器
     private PlayerAccessor playerAccessor;
@@ -233,5 +239,46 @@ public class ExecutionContext implements com.nodecraft.nodesystem.api.ExecutionC
 
     public void setSkipOutputExecuteSideEffects(boolean skipOutputExecuteSideEffects) {
         this.skipOutputExecuteSideEffects = skipOutputExecuteSideEffects;
+    }
+
+    /**
+     * Publishes the active parent executor policy so nested subgraph runs inherit cancellation,
+     * run limits, and preview side-effect policy.
+     */
+    public void configureParentExecutionPolicy(
+            IncrementalExecutionOptions incrementalOptions,
+            ExecutionRunLimits runLimits,
+            CancellationToken cancellation
+    ) {
+        parentIncrementalOptions = incrementalOptions == null
+                ? IncrementalExecutionOptions.defaults()
+                : incrementalOptions;
+        parentRunLimits = runLimits == null ? ExecutionRunLimits.defaults() : runLimits;
+        parentCancellation = cancellation != null ? cancellation : CancellationToken.none();
+    }
+
+    public IncrementalExecutionOptions getParentIncrementalOptions() {
+        return parentIncrementalOptions;
+    }
+
+    public ExecutionRunLimits getParentRunLimits() {
+        return parentRunLimits;
+    }
+
+    public CancellationToken getParentCancellationToken() {
+        return parentCancellation;
+    }
+
+    @Nullable
+    public ExecutionRunGuard getSharedExecutionRunGuard() {
+        return sharedExecutionRunGuard;
+    }
+
+    public void setSharedExecutionRunGuard(@Nullable ExecutionRunGuard guard) {
+        this.sharedExecutionRunGuard = guard;
+    }
+
+    public void clearSharedExecutionRunGuard() {
+        this.sharedExecutionRunGuard = null;
     }
 }
