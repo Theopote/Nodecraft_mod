@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -14,7 +15,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    effect = NodeEffect.PURE,
+    effect = NodeEffect.CONTEXT_WRITE,
     id = "variable.remove",
     displayName = "Remove Variable",
     description = "Removes a user variable from the execution scope.",
@@ -58,8 +59,8 @@ public class RemoveVariableNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        String name = VariableScopeBridge.resolveName(inputValues.get(INPUT_NAME_ID), defaultName);
-        String error = VariableScopeBridge.validationError(name);
+        String name = VariableScopeBridge.resolveName(this, INPUT_NAME_ID, defaultName);
+        String error = nameError(name);
 
         if (error != null) {
             outputValues.put(OUTPUT_PREVIOUS_ID, null);
@@ -78,6 +79,16 @@ public class RemoveVariableNode extends BaseNode {
         outputValues.put(OUTPUT_REMOVED_ID, existed);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private @Nullable String nameError(@Nullable String name) {
+        if (name == null) {
+            if (OptionalPortDrive.isConnected(this, INPUT_NAME_ID)) {
+                return "Name is connected but null or invalid.";
+            }
+            return VariableScopeBridge.validationError(null);
+        }
+        return VariableScopeBridge.validationError(name);
     }
 
     @Override

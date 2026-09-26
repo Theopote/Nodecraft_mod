@@ -800,9 +800,9 @@
 | Set Variable | `variable.set` | Stores a value under a user variable name in the execution scope. Connect an output to downstream nodes when write order matters. | `SetVariableNode` |
 | Get Variable | `variable.get` | Reads a value by user variable name from the execution scope. Exists means the name exists, even when its stored value is null. | `GetVariableNode` |
 | Variable List | `variable.list` | Lists user variables currently available in the execution scope. | `VariableListNode` |
-| Frame Local Variable | `variable.frame_local` | Reads or writes variables in an isolated frame-local namespace. When Clear Frame and Write are both true, the frame is cleared first, then Value is written to Name. | `FrameLocalVariableNode` |
+| Frame Local Variable | `variable.frame_local` | Reads or writes variables in an isolated frame-local namespace. Command order: validate frame/name, clear frame when Clear Frame=true, write when Write=true, otherwise read Name or Default. | `FrameLocalVariableNode` |
 | Remove Variable | `variable.remove` | Removes a user variable from the execution scope. | `RemoveVariableNode` |
-| Clear Variables | `variable.clear` | Clears user variables from the execution scope. | `ClearVariablesNode` |
+| Clear Variables | `variable.clear` | Clears user variables from the execution scope. Internal NodeCraft variables are always preserved. | `ClearVariablesNode` |
 
 ## world.query（11）
 

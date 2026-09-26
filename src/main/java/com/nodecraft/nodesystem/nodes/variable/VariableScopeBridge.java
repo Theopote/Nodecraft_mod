@@ -1,6 +1,8 @@
 package com.nodecraft.nodesystem.nodes.variable;
 
+import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
@@ -72,11 +74,11 @@ public final class VariableScopeBridge {
         return decodeFallbackValue(fallbackScope().remove(key));
     }
 
-    static int clear(@Nullable ExecutionContext context, boolean includeInternalVariables) {
+    static int clear(@Nullable ExecutionContext context) {
         Map<String, Object> snapshot = snapshot(context);
         int removed = 0;
         for (String key : snapshot.keySet()) {
-            if (!includeInternalVariables && isInternalVariableName(key)) {
+            if (isInternalVariableName(key)) {
                 continue;
             }
             if (containsKey(context, key)) {
@@ -109,14 +111,8 @@ public final class VariableScopeBridge {
         return copy;
     }
 
-    static String resolveName(Object inputName, String defaultName) {
-        if (inputName instanceof String name && !name.isBlank()) {
-            return name.trim();
-        }
-        if (defaultName == null || defaultName.isBlank()) {
-            return null;
-        }
-        return defaultName.trim();
+    static @Nullable String resolveName(BaseNode node, String portId, @Nullable String defaultName) {
+        return OptionalPortDrive.resolveOptionalString(node, portId, defaultName);
     }
 
     static boolean isUserVariableNameValid(String name) {

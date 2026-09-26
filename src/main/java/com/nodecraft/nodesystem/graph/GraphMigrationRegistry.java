@@ -116,6 +116,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V55 -> migrateV55ToV56(graph);
             case GraphFormatVersion.V56 -> migrateV56ToV57(graph);
             case GraphFormatVersion.V57 -> migrateV57ToV58(graph);
+            case GraphFormatVersion.V58 -> migrateV58ToV59(graph);
             default -> graph;
         };
     }
@@ -4051,5 +4052,83 @@ public final class GraphMigrationRegistry {
 
     static Map<String, String> nodeTypeAliases() {
         return GraphMigrationManifest.get().nodeTypeAliases();
+    }
+
+    private static final String SET_VARIABLE_TYPE = "variable.set";
+    private static final String VARIABLE_LIST_TYPE = "variable.list";
+    private static final String CLEAR_VARIABLES_TYPE = "variable.clear";
+
+    /**
+     * Variable Scope v1: rename Set Variable Success→Valid, drop Variable List Entries port wires,
+     * strip Clear Variables includeInternalVariables state.
+     */
+    private static SavedGraph migrateV58ToV59(SavedGraph graph) {
+        applyVariableScopeV59ToGraph(graph);
+        if (graph.subgraphDefinitions != null) {
+            for (SavedGraph definition : graph.subgraphDefinitions.values()) {
+                if (definition != null) {
+                    applyVariableScopeV59ToGraph(definition);
+                }
+            }
+        }
+        return graph;
+    }
+
+    private static void applyVariableScopeV59ToGraph(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                if (CLEAR_VARIABLES_TYPE.equalsIgnoreCase(node.typeId)) {
+                    stripClearVariablesState(node);
+                }
+            }
+        }
+
+        if (graph.connections == null) {
+            return;
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node != null && node.nodeId != null && node.typeId != null) {
+                    nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+                }
+            }
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String sourcePort = normalizePortId(connection.sourcePortId);
+
+            if (SET_VARIABLE_TYPE.equals(sourceType) && "output_success".equals(sourcePort)) {
+                connection.sourcePortId = "output_valid";
+                return false;
+            }
+            return VARIABLE_LIST_TYPE.equals(sourceType) && "output_entries".equals(sourcePort);
+        });
+    }
+
+    private static void stripClearVariablesState(SavedNode node) {
+        if (!(node.state instanceof Map<?, ?> state)) {
+            return;
+        }
+        Map<String, Object> cleaned = new HashMap<>();
+        for (Map.Entry<?, ?> entry : state.entrySet()) {
+            if (!(entry.getKey() instanceof String key)) {
+                continue;
+            }
+            if ("includeinternalvariables".equals(key.toLowerCase(Locale.ROOT))) {
+                continue;
+            }
+            cleaned.put(key, entry.getValue());
+        }
+        node.state = cleaned;
     }
 }

@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -14,7 +15,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    effect = NodeEffect.PURE,
+    effect = NodeEffect.CONTEXT_READ,
     id = "variable.get",
     displayName = "Get Variable",
     description = "Reads a value by user variable name from the execution scope. Exists means the name exists, even when its stored value is null.",
@@ -40,9 +41,19 @@ public class GetVariableNode extends BaseNode {
         super(UUID.randomUUID(), "variable.get");
 
         addInputPort(new BasePort(INPUT_NAME_ID, "Name", "Variable name", NodeDataType.STRING, this));
-        addInputPort(new BasePort(INPUT_DEFAULT_VALUE_ID, "Default", "Fallback value when variable is missing", NodeDataType.ANY, this));
+        BasePort defaultIn = new BasePort(
+                INPUT_DEFAULT_VALUE_ID,
+                "Default",
+                "Fallback value when variable is missing",
+                NodeDataType.ANY,
+                this
+        );
+        defaultIn.bindPassthroughType("T");
+        addInputPort(defaultIn);
 
-        addOutputPort(new BasePort(OUTPUT_VALUE_ID, "Value", "Resolved variable value", NodeDataType.ANY, this));
+        BasePort valueOut = new BasePort(OUTPUT_VALUE_ID, "Value", "Resolved variable value", NodeDataType.ANY, this);
+        valueOut.bindPassthroughType("T");
+        addOutputPort(valueOut);
         addOutputPort(new BasePort(OUTPUT_EXISTS_ID, "Exists", "Whether the variable exists", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_NAME_ID, "Name", "Resolved variable name", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_IS_NULL_ID, "Is Null", "Whether the stored variable value is null", NodeDataType.BOOLEAN, this));
@@ -62,9 +73,9 @@ public class GetVariableNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        String name = VariableScopeBridge.resolveName(inputValues.get(INPUT_NAME_ID), defaultName);
+        String name = VariableScopeBridge.resolveName(this, INPUT_NAME_ID, defaultName);
         Object fallback = inputValues.get(INPUT_DEFAULT_VALUE_ID);
-        String error = VariableScopeBridge.validationError(name);
+        String error = nameError(name);
 
         if (error != null) {
             outputValues.put(OUTPUT_VALUE_ID, fallback);
@@ -85,6 +96,16 @@ public class GetVariableNode extends BaseNode {
         outputValues.put(OUTPUT_IS_NULL_ID, exists && value == null);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private @Nullable String nameError(@Nullable String name) {
+        if (name == null) {
+            if (OptionalPortDrive.isConnected(this, INPUT_NAME_ID)) {
+                return "Name is connected but null or invalid.";
+            }
+            return VariableScopeBridge.validationError(null);
+        }
+        return VariableScopeBridge.validationError(name);
     }
 
     @Override

@@ -90,11 +90,15 @@ class DataTreeListLanguageContractTest {
     }
 
     @Test
-    void variablesKeepAnyAsDesignGoal() {
-        assertPortType(new SetVariableNode(), "input_value", NodeDataType.ANY);
-        assertPortType(new GetVariableNode(), "output_value", NodeDataType.ANY);
-        assertTrue(hasAnyPort(new SetVariableNode()));
-        assertTrue(hasAnyPort(new GetVariableNode()));
+    void variableValuePortsBindPassthroughT() {
+        for (INode node : List.of(new SetVariableNode(), new GetVariableNode())) {
+            for (IPort port : allPorts(node)) {
+                if (port.getDataType() == NodeDataType.ANY) {
+                    assertTrue(port.isPassthroughBinding(), node.getTypeId() + "#" + port.getId());
+                    assertEquals("T", port.getListTypeVariable());
+                }
+            }
+        }
     }
 
     @Test

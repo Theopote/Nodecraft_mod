@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
@@ -17,10 +18,10 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @NodeInfo(
-    effect = NodeEffect.PURE,
+    effect = NodeEffect.CONTEXT_WRITE,
     id = "variable.frame_local",
     displayName = "Frame Local Variable",
-    description = "Reads or writes variables in an isolated frame-local namespace. When Clear Frame and Write are both true, the frame is cleared first, then Value is written to Name.",
+    description = "Reads or writes variables in an isolated frame-local namespace. Command order: validate frame/name, clear frame when Clear Frame=true, write when Write=true, otherwise read Name or Default.",
     category = "variable",
     order = 3
 )
@@ -56,13 +57,21 @@ public class FrameLocalVariableNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_FRAME_ID, "Frame", "Frame namespace", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_NAME_ID, "Name", "Variable name in this frame", NodeDataType.STRING, this));
-        addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Value to write", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_DEFAULT_ID, "Default", "Fallback when key does not exist", NodeDataType.ANY, this));
+        BasePort valueIn = new BasePort(INPUT_VALUE_ID, "Value", "Value to write", NodeDataType.ANY, this);
+        valueIn.bindPassthroughType("T");
+        addInputPort(valueIn);
+        BasePort defaultIn = new BasePort(INPUT_DEFAULT_ID, "Default", "Fallback when key does not exist", NodeDataType.ANY, this);
+        defaultIn.bindPassthroughType("T");
+        addInputPort(defaultIn);
         addInputPort(new BasePort(INPUT_WRITE_ID, "Write", "When true, writes Value into frame local map", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_CLEAR_FRAME_ID, "Clear Frame", "When true, clears all values under this frame", NodeDataType.BOOLEAN, this));
 
-        addOutputPort(new BasePort(OUTPUT_VALUE_ID, "Value", "Read or written value", NodeDataType.ANY, this));
-        addOutputPort(new BasePort(OUTPUT_PREVIOUS_ID, "Previous", "Previous value before write", NodeDataType.ANY, this));
+        BasePort valueOut = new BasePort(OUTPUT_VALUE_ID, "Value", "Read or written value", NodeDataType.ANY, this);
+        valueOut.bindPassthroughType("T");
+        addOutputPort(valueOut);
+        BasePort previousOut = new BasePort(OUTPUT_PREVIOUS_ID, "Previous", "Previous value before write", NodeDataType.ANY, this);
+        previousOut.bindPassthroughType("T");
+        addOutputPort(previousOut);
         addOutputPort(new BasePort(OUTPUT_EXISTS_ID, "Exists", "Whether key exists in this frame", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_FRAME_ID, "Frame", "Resolved frame name", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_NAME_ID, "Name", "Resolved variable name", NodeDataType.STRING, this));
@@ -79,27 +88,28 @@ public class FrameLocalVariableNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Reads or writes variables in an isolated frame-local namespace. When Clear Frame and Write are both true, the frame is cleared first, then Value is written to Name.";
+        return "Reads or writes variables in an isolated frame-local namespace. Command order: validate frame/name, clear frame when Clear Frame=true, write when Write=true, otherwise read Name or Default.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        String frame = resolveFrame(inputValues.get(INPUT_FRAME_ID));
-        String name = resolveName(inputValues.get(INPUT_NAME_ID));
-        boolean write = Boolean.TRUE.equals(inputValues.get(INPUT_WRITE_ID));
-        boolean clearFrame = Boolean.TRUE.equals(inputValues.get(INPUT_CLEAR_FRAME_ID));
-        String error = validateFrameLocalAccess(frame, name);
+        String frame = resolveFrame();
+        String name = VariableScopeBridge.resolveName(this, INPUT_NAME_ID, defaultName);
+        Boolean write = OptionalPortDrive.resolveOptionalBoolean(this, INPUT_WRITE_ID, false);
+        Boolean clearFrame = OptionalPortDrive.resolveOptionalBoolean(this, INPUT_CLEAR_FRAME_ID, false);
 
+        if (write == null) {
+            writeFailure(frame, name, "Write is connected but null or invalid.");
+            return;
+        }
+        if (clearFrame == null) {
+            writeFailure(frame, name, "Clear Frame is connected but null or invalid.");
+            return;
+        }
+
+        String error = validateFrameLocalAccess(frame, name);
         if (error != null) {
-            outputValues.put(OUTPUT_VALUE_ID, inputValues.get(INPUT_DEFAULT_ID));
-            outputValues.put(OUTPUT_PREVIOUS_ID, null);
-            outputValues.put(OUTPUT_EXISTS_ID, false);
-            outputValues.put(OUTPUT_FRAME_ID, frame == null ? "" : frame);
-            outputValues.put(OUTPUT_NAME_ID, name == null ? "" : name);
-            outputValues.put(OUTPUT_SIZE_ID, 0);
-            outputValues.put(OUTPUT_VALID_ID, false);
-            outputValues.put(OUTPUT_CLEARED_ID, false);
-            outputValues.put(OUTPUT_ERROR_ID, error);
+            writeFailure(frame, name, error);
             return;
         }
 
@@ -135,25 +145,36 @@ public class FrameLocalVariableNode extends BaseNode {
         outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private String resolveFrame(Object inputFrame) {
-        if (inputFrame instanceof String frame && !frame.isBlank()) {
-            return frame.trim();
-        }
-        return defaultFrame == null ? null : defaultFrame.trim();
+    private @Nullable String resolveFrame() {
+        return OptionalPortDrive.resolveOptionalString(this, INPUT_FRAME_ID, defaultFrame);
     }
 
-    private String resolveName(Object inputName) {
-        if (inputName instanceof String name && !name.isBlank()) {
-            return name.trim();
-        }
-        return defaultName == null ? null : defaultName.trim();
-    }
-
-    private String validateFrameLocalAccess(String frame, String name) {
-        if (frame == null || frame.isBlank()) {
+    private @Nullable String validateFrameLocalAccess(@Nullable String frame, @Nullable String name) {
+        if (frame == null) {
+            if (OptionalPortDrive.isConnected(this, INPUT_FRAME_ID)) {
+                return "Frame is connected but null or invalid.";
+            }
             return "Frame name is required.";
         }
+        if (name == null) {
+            if (OptionalPortDrive.isConnected(this, INPUT_NAME_ID)) {
+                return "Name is connected but null or invalid.";
+            }
+            return VariableScopeBridge.validationError(null);
+        }
         return VariableScopeBridge.validationError(name);
+    }
+
+    private void writeFailure(@Nullable String frame, @Nullable String name, String error) {
+        outputValues.put(OUTPUT_VALUE_ID, inputValues.get(INPUT_DEFAULT_ID));
+        outputValues.put(OUTPUT_PREVIOUS_ID, null);
+        outputValues.put(OUTPUT_EXISTS_ID, false);
+        outputValues.put(OUTPUT_FRAME_ID, frame == null ? "" : frame);
+        outputValues.put(OUTPUT_NAME_ID, name == null ? "" : name);
+        outputValues.put(OUTPUT_SIZE_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_CLEARED_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error);
     }
 
     @SuppressWarnings("unchecked")

@@ -12,13 +12,12 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
-    effect = NodeEffect.PURE,
+    effect = NodeEffect.CONTEXT_READ,
     id = "variable.list",
     displayName = "Variable List",
     description = "Lists user variables currently available in the execution scope.",
@@ -37,7 +36,6 @@ public class VariableListNode extends BaseNode {
 
     private static final String OUTPUT_NAMES_ID = "output_names";
     private static final String OUTPUT_VALUES_ID = "output_values";
-    private static final String OUTPUT_ENTRIES_ID = "output_entries";
     private static final String OUTPUT_COUNT_ID = "output_count";
 
     public VariableListNode() {
@@ -45,9 +43,8 @@ public class VariableListNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_PREFIX_ID, "Prefix", "Optional name prefix filter", NodeDataType.STRING, this));
 
-        addOutputPort(new BasePort(OUTPUT_NAMES_ID, "Names", "Variable names", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_NAMES_ID, "Names", "Variable names", NodeDataType.STRING_LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALUES_ID, "Values", "Variable values", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_ENTRIES_ID, "Entries", "List of {name,value} maps", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of listed variables", NodeDataType.INTEGER, this));
     }
 
@@ -73,7 +70,6 @@ public class VariableListNode extends BaseNode {
 
         List<Object> names = new ArrayList<>();
         List<Object> values = new ArrayList<>();
-        List<Object> entryList = new ArrayList<>();
 
         for (Map.Entry<String, Object> entry : entries) {
             String name = entry.getKey();
@@ -86,15 +82,10 @@ public class VariableListNode extends BaseNode {
 
             names.add(name);
             values.add(entry.getValue());
-            Map<String, Object> entryView = new LinkedHashMap<>();
-            entryView.put("name", name);
-            entryView.put("value", entry.getValue());
-            entryList.add(entryView);
         }
 
         outputValues.put(OUTPUT_NAMES_ID, names);
         outputValues.put(OUTPUT_VALUES_ID, values);
-        outputValues.put(OUTPUT_ENTRIES_ID, entryList);
         outputValues.put(OUTPUT_COUNT_ID, names.size());
     }
 

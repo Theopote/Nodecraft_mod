@@ -28,10 +28,10 @@ public enum NodeEffect {
     /** UI, chat, or other editor-facing effects. */
     UI_EFFECT(false),
 
-    /** Reads graph/subgraph call-frame inputs (Graph Input). */
+    /** Reads execution or subgraph call-frame context without mutation (Graph Input, Get Variable). */
     CONTEXT_READ(true),
 
-    /** Writes graph/subgraph call-frame outputs (Graph Output). */
+    /** Writes execution or subgraph call-frame context (Graph Output, Set Variable). */
     CONTEXT_WRITE(true),
 
     /** Composite shell node; child side-effect policy enforced by nested executor. */

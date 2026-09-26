@@ -413,9 +413,11 @@ utilities.organization.group|utilities.organization|Group
 utilities.organization.preset|utilities.organization|Node Preset
 utilities.organization.subgraph_register|utilities.organization|Subgraph Register
 utilities.organization.subgraph|utilities.organization|Subgraph
+variable.clear|variable|Clear Variables
 variable.frame_local|variable|Frame Local Variable
 variable.get|variable|Get Variable
 variable.list|variable|Variable List
+variable.remove|variable|Remove Variable
 variable.set|variable|Set Variable
 world.query.filter_grid_points|world.query|Filter Grid Points
 world.query.flood_fill|world.query|Flood Fill

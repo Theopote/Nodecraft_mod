@@ -147,4 +147,26 @@ public final class OptionalPortDrive {
         }
         return propertyFallback;
     }
+
+    /**
+     * Optional STRING drive. Returns {@code null} when connected but invalid (fail closed).
+     * When unconnected, returns trimmed {@code propertyFallback}; blank property → {@code null}.
+     */
+    public static @Nullable String resolveOptionalString(
+            BaseNode node,
+            String portId,
+            @Nullable String propertyFallback
+    ) {
+        if (isConnected(node, portId)) {
+            Object value = node.getInput(portId);
+            if (!(value instanceof String text) || text.isBlank()) {
+                return null;
+            }
+            return text.trim();
+        }
+        if (propertyFallback == null || propertyFallback.isBlank()) {
+            return null;
+        }
+        return propertyFallback.trim();
+    }
 }

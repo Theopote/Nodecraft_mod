@@ -23,8 +23,8 @@ Every catalog node declares an execution capability via `@NodeInfo(effect = …)
 | `FILE_IO` | **No** | `utilities.fileio.*`, `output.export.*` |
 | `NETWORK` | **No** | (reserved) |
 | `UI_EFFECT` | **No** | `output.debug.*`, bake status UI |
-| `CONTEXT_READ` | Yes | `utilities.organization.graph_input` |
-| `CONTEXT_WRITE` | Yes | `utilities.organization.graph_output` |
+| `CONTEXT_READ` | Yes | `utilities.organization.graph_input`, `variable.get`, `variable.list` |
+| `CONTEXT_WRITE` | Yes | `utilities.organization.graph_output`, `variable.set`, `variable.remove`, `variable.clear`, `variable.frame_local` |
 | `COMPOSITE` | Yes | `utilities.organization.subgraph` (child policy via nested executor) |
 | `EDITOR_ONLY` | Yes | reserved editor metadata helpers |
 

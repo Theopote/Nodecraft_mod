@@ -363,8 +363,14 @@ public final class GraphFormatVersion {
      */
     public static final int V58 = 58;
 
+    /**
+     * Variable Scope v1: CONTEXT_READ/WRITE effects, passthrough T on value ports,
+     * connection-aware optional drives, Clear Variables Valid/Error, STRING_LIST names.
+     */
+    public static final int V59 = 59;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V58;
+    public static final int CURRENT = V59;
 
     private GraphFormatVersion() {
     }
