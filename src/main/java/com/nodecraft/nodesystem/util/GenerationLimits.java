@@ -47,7 +47,33 @@ public final class GenerationLimits {
      */
     public static final int MAX_BOUNDS_SAMPLES = 128;
 
+    /** Minimum grid resolution per axis for 3D Lloyd relaxation. */
+    public static final int MIN_VORONOI_LLOYD_CELLS_PER_AXIS = 4;
+
+    /** Maximum grid resolution per axis for 3D Lloyd relaxation. */
+    public static final int MAX_VORONOI_LLOYD_CELLS_PER_AXIS = 96;
+
+    /** Maximum Lloyd relaxation iterations. */
+    public static final int MAX_VORONOI_LLOYD_ITERATIONS = 32;
+
+    /** Maximum site count accepted by 3D Lloyd relaxation. */
+    public static final int MAX_VORONOI_LLOYD_SITES = 4096;
+
+    /**
+     * Hard cap on estimated nearest-site distance tests:
+     * cells^3 * siteCount * iterations.
+     */
+    public static final long MAX_LLOYD_DISTANCE_TESTS = 100_000_000L;
+
     private GenerationLimits() {
+    }
+
+    public static boolean exceedsLloydWorkBudget(int cellsPerAxis, int siteCount, int iterations) {
+        if (iterations <= 0) {
+            return false;
+        }
+        long cellsCubed = (long) cellsPerAxis * cellsPerAxis * cellsPerAxis;
+        return cellsCubed * (long) siteCount * (long) iterations > MAX_LLOYD_DISTANCE_TESTS;
     }
 
     public static int clampNonNegativeCount(int count) {

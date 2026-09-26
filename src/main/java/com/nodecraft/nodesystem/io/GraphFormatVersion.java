@@ -278,8 +278,14 @@ public final class GraphFormatVersion {
      */
     public static final int V44 = 44;
 
+    /**
+     * Pattern Voronoi 3D v1: Lloyd Relax 3D with Corner A/B POINT ports,
+     * strict validation, Iterations=0 passthrough, and fail-closed work budget.
+     */
+    public static final int V45 = 45;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V44;
+    public static final int CURRENT = V45;
 
     private GraphFormatVersion() {
     }

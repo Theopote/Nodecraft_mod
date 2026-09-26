@@ -8,6 +8,8 @@ import java.util.List;
 /**
  * Lloyd relaxation for 3D sites using a uniform axis-aligned grid: each cell center votes for its
  * nearest site; sites move to the centroid of cells they own. This is an approximation, not an exact 3D Voronoi diagram.
+ * <p>
+ * Callers must validate bounds, site count, cells, and iterations before invoking {@link #relax}.
  */
 public final class Voronoi3DGridLloyd {
 
@@ -24,24 +26,29 @@ public final class Voronoi3DGridLloyd {
         if (min == null || max == null || sites == null || sites.isEmpty()) {
             return List.of();
         }
-        int n = Math.max(4, Math.min(96, cellsPerAxis));
-        int iters = Math.max(1, Math.min(32, iterations));
+        if (cellsPerAxis < GenerationLimits.MIN_VORONOI_LLOYD_CELLS_PER_AXIS
+                || cellsPerAxis > GenerationLimits.MAX_VORONOI_LLOYD_CELLS_PER_AXIS
+                || iterations < 0
+                || iterations > GenerationLimits.MAX_VORONOI_LLOYD_ITERATIONS) {
+            return List.of();
+        }
 
-        List<Vector3d> working = new ArrayList<>(sites.size());
-        for (Vector3d s : sites) {
-            working.add(new Vector3d(s));
+        List<Vector3d> working = copySites(sites);
+        if (iterations == 0) {
+            return working;
         }
 
         Vector3d span = new Vector3d(max).sub(min);
-        if (span.lengthSquared() < 1.0e-18d) {
-            return List.copyOf(working);
+        if (span.x <= 1.0e-12d || span.y <= 1.0e-12d || span.z <= 1.0e-12d) {
+            return List.of();
         }
 
+        int n = cellsPerAxis;
         double invNx = 1.0d / n;
         double invNy = 1.0d / n;
         double invNz = 1.0d / n;
 
-        for (int it = 0; it < iters; it++) {
+        for (int it = 0; it < iterations; it++) {
             double[] sumX = new double[working.size()];
             double[] sumY = new double[working.size()];
             double[] sumZ = new double[working.size()];
@@ -71,6 +78,14 @@ public final class Voronoi3DGridLloyd {
                     );
                 }
             }
+        }
+        return working;
+    }
+
+    private static List<Vector3d> copySites(List<Vector3d> sites) {
+        List<Vector3d> working = new ArrayList<>(sites.size());
+        for (Vector3d site : sites) {
+            working.add(new Vector3d(site));
         }
         return List.copyOf(working);
     }

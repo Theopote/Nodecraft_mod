@@ -626,7 +626,7 @@
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Voronoi 3D Lloyd Relax (Grid) | `pattern.voronoi_3d.lloyd_relax` | Approximate 3D Lloyd relaxation: grid cell centers vote for nearest site; sites move to cell centroids (repeat). Not an exact Voronoi diagram. | `Voronoi3DLloydRelaxNode` |
+| Lloyd Relax 3D | `pattern.voronoi_3d.lloyd_relax` | Approximates Lloyd relaxation inside an axis-aligned 3D box using a uniform sampling grid. Not an exact Voronoi diagram. | `Voronoi3DLloydRelaxNode` |
 
 ## reference.frames (8)
 

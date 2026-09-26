@@ -51,9 +51,8 @@ class PatternSurfaceVolumeDistributionLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV44() {
+    void surfaceVolumeDistributionFreezeVersionIsV44() {
         assertEquals(44, GraphFormatVersion.V44);
-        assertEquals(GraphFormatVersion.V44, GraphFormatVersion.CURRENT);
     }
 
     @Test
