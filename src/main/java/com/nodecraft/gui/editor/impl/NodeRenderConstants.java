@@ -22,7 +22,7 @@ public class NodeRenderConstants {
     public static final float NODE_BORDER_THICKNESS_UNSCALED = 2.0f;
 
     // Compact reroute node visual constants
-    public static final String REROUTE_NODE_TYPE_ID = "utilities.assist.reroute";
+    public static final String REROUTE_NODE_TYPE_ID = "utilities.assist.relay";
     public static final float REROUTE_NODE_WIDTH_UNSCALED = 26.0f;
     public static final float REROUTE_NODE_HEIGHT_UNSCALED = 14.0f;
     public static final float REROUTE_PORT_RADIUS_UNSCALED = 3.2f;

@@ -4,36 +4,36 @@ import com.nodecraft.gui.components.node.NodeActionGraphSupport;
 import com.nodecraft.gui.components.node.NodeActionProvider;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
-import com.nodecraft.nodesystem.nodes.utilities.assist.SignalMergeNode;
+import com.nodecraft.nodesystem.nodes.utilities.assist.CoalesceNode;
 import imgui.ImGui;
 import java.util.function.Supplier;
 
-/** Branch add/remove chrome for {@link SignalMergeNode}. */
-public final class SignalMergeActionProvider implements NodeActionProvider {
+/** Branch add/remove chrome for {@link CoalesceNode} ({@code utilities.assist.coalesce}). */
+public final class CoalesceActionProvider implements NodeActionProvider {
 
-    public static final SignalMergeActionProvider INSTANCE = new SignalMergeActionProvider();
+    public static final CoalesceActionProvider INSTANCE = new CoalesceActionProvider();
 
-    private SignalMergeActionProvider() {
+    private CoalesceActionProvider() {
     }
 
     @Override
     public boolean render(INode node, Supplier<NodeGraph> graphSupplier) {
-        if (!(node instanceof SignalMergeNode mergeNode)) {
+        if (!(node instanceof CoalesceNode coalesceNode)) {
             return false;
         }
 
         ImGui.text("Branch Controls");
-        ImGui.textDisabled("Input branches: " + mergeNode.getInputBranchCount() + " (2-8)");
+        ImGui.textDisabled("Input branches: " + coalesceNode.getInputBranchCount() + " (2-8)");
 
-        boolean canRemove = mergeNode.canDecreaseInputBranch();
+        boolean canRemove = coalesceNode.canDecreaseInputBranch();
         if (!canRemove) {
             ImGui.beginDisabled();
         }
         if (ImGui.button("- Input")) {
-            String removedPortId = mergeNode.removeLastInputBranch();
+            String removedPortId = coalesceNode.removeLastInputBranch();
             if (removedPortId != null) {
                 NodeActionGraphSupport.removeConnectionsForPort(
-                        graphSupplier, mergeNode.getId(), removedPortId, true);
+                        graphSupplier, coalesceNode.getId(), removedPortId, true);
             }
         }
         if (!canRemove) {
@@ -41,12 +41,12 @@ public final class SignalMergeActionProvider implements NodeActionProvider {
         }
 
         ImGui.sameLine();
-        boolean canAdd = mergeNode.canIncreaseInputBranch();
+        boolean canAdd = coalesceNode.canIncreaseInputBranch();
         if (!canAdd) {
             ImGui.beginDisabled();
         }
         if (ImGui.button("+ Input")) {
-            mergeNode.addInputBranch();
+            coalesceNode.addInputBranch();
         }
         if (!canAdd) {
             ImGui.endDisabled();

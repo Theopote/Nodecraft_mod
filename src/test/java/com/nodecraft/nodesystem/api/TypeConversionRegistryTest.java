@@ -20,12 +20,15 @@ class TypeConversionRegistryTest {
     }
 
     @Test
-    void anyTypeIsImplicitlyConnectable() {
-        assertEquals(TypeConversionRegistry.ConversionPolicy.IMPLICIT_SAFE,
+    void anyTypeWidensAsSinkButNotAsSource() {
+        assertEquals(TypeConversionRegistry.ConversionPolicy.UNSUPPORTED,
             TypeConversionRegistry.classify(NodeDataType.ANY, NodeDataType.GEOMETRY));
         assertEquals(TypeConversionRegistry.ConversionPolicy.IMPLICIT_SAFE,
             TypeConversionRegistry.classify(NodeDataType.SPHERE, NodeDataType.ANY));
-        assertTrue(NodeDataType.isConnectableTo(NodeDataType.ANY, NodeDataType.STRING));
+        assertEquals(TypeConversionRegistry.ConversionPolicy.IMPLICIT_SAFE,
+            TypeConversionRegistry.classify(NodeDataType.ANY, NodeDataType.ANY));
+        assertFalse(NodeDataType.isConnectableTo(NodeDataType.ANY, NodeDataType.STRING));
+        assertTrue(NodeDataType.isConnectableTo(NodeDataType.STRING, NodeDataType.ANY));
     }
 
     @Test

@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**533**
+- **节点总数**：**532**
 - **分类总数**：**60**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -59,7 +59,7 @@
 | `transform.deformations` | 11 |
 | `transform.orientation` | 6 |
 | `transform.placement` | 8 |
-| `utilities.assist` | 6 |
+| `utilities.assist` | 5 |
 | `utilities.fileio` | 3 |
 | `utilities.morphology` | 1 |
 | `utilities.organization` | 7 |
@@ -761,16 +761,15 @@
 | Scale Block Positions | `transform.placement.scale_block_positions` | Scales a list of block positions relative to a center point | `ScaleBlockPositionsNode` |
 | Mirror Block Positions | `transform.placement.mirror_block_positions` | Mirrors a block position list across a plane and snaps results to the block grid | `MirrorBlockPositionsNode` |
 
-## utilities.assist（6）
+## utilities.assist（5）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | String Format | `utilities.assist.string_format` | Formats strings with placeholders like {0}, {1} from dynamic values. | `StringFormatNode` |
-| Assert / Validate | `utilities.assist.assert` | Validates a boolean condition and optionally throws to stop execution when it fails. | `AssertNode` |
-| Reroute | `utilities.assist.reroute` | 用于整理连线的中继节点，仅透传输入到输出 | `RerouteNode` |
+| Validate | `utilities.assist.validate` | Validates a boolean condition and gates a pass-through value. | `ValidateNode` |
+| Coalesce | `utilities.assist.coalesce` | Returns the first non-null connected branch input by priority. | `CoalesceNode` |
+| Relay | `utilities.assist.relay` | Passes a signal through, optionally with a visual semantic tag. | `RelayNode` |
 | Signal Fork | `utilities.assist.signal_fork` | 将一路输入透传到两路输出，便于连线分流 | `SignalForkNode` |
-| Signal Merge | `utilities.assist.signal_merge` | 将两路输入按优先级汇聚为一路输出 | `SignalMergeNode` |
-| Tag Relay | `utilities.assist.tag_relay` | Passes a signal through while adding a visual semantic tag. | `TagRelayNode` |
 
 ## utilities.fileio（3）
 

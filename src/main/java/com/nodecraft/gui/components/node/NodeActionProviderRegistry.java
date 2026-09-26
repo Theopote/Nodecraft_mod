@@ -1,8 +1,8 @@
 package com.nodecraft.gui.components.node;
 
 import com.nodecraft.gui.components.node.actions.ApplyChangesActionProvider;
+import com.nodecraft.gui.components.node.actions.CoalesceActionProvider;
 import com.nodecraft.gui.components.node.actions.SignalForkActionProvider;
-import com.nodecraft.gui.components.node.actions.SignalMergeActionProvider;
 import com.nodecraft.gui.components.node.actions.TagRelayActionProvider;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
@@ -19,7 +19,7 @@ public final class NodeActionProviderRegistry {
 
     private static final List<NodeActionProvider> ASSIST_PROVIDERS = List.of(
             SignalForkActionProvider.INSTANCE,
-            SignalMergeActionProvider.INSTANCE,
+            CoalesceActionProvider.INSTANCE,
             TagRelayActionProvider.INSTANCE
     );
 

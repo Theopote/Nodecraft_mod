@@ -1,12 +1,13 @@
 package com.nodecraft.nodesystem.nodes.utilities.assist;
 
+import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
 import org.jetbrains.annotations.Nullable;
@@ -16,16 +17,17 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 汇线节点：将两路输入按优先级汇聚为一路输出，用于简化连线。
+ * Coalesce: first non-null connected branch wins (prefer-primary ordering).
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "utilities.assist.signal_merge",
-    displayName = "Signal Merge",
-    description = "将两路输入按优先级汇聚为一路输出",
-    category = "utilities.assist"
+    id = "utilities.assist.coalesce",
+    displayName = "Coalesce",
+    description = "Returns the first non-null connected branch input by priority.",
+    category = "utilities.assist",
+    order = 2
 )
-public class SignalMergeNode extends BaseCustomUINode {
+public class CoalesceNode extends BaseCustomUINode {
 
     private static final int MIN_INPUT_BRANCHES = 2;
     private static final int DEFAULT_INPUT_BRANCHES = 2;
@@ -37,37 +39,40 @@ public class SignalMergeNode extends BaseCustomUINode {
 
     private static final String OUTPUT_SIGNAL_ID = "output_signal";
     private static final String OUTPUT_SOURCE_ID = "output_source";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
     private volatile int inputBranchCount = DEFAULT_INPUT_BRANCHES;
-    @NodeProperty(displayName = "Prefer Primary", category = "Merge", order = 1)
+    @NodeProperty(displayName = "Prefer Primary", category = "Coalesce", order = 1)
     private boolean preferPrimary = true;
 
-    public SignalMergeNode() {
-        super(UUID.randomUUID(), "utilities.assist.signal_merge");
+    public CoalesceNode() {
+        super(UUID.randomUUID(), "utilities.assist.coalesce");
 
         rebuildInputPorts();
 
-        addInputPort(new BasePort(
-            INPUT_PREFER_PRIMARY_ID,
-            "主输入优先",
-            "是否优先使用主输入（布尔）",
-            NodeDataType.BOOLEAN,
-            this
-        ));
-
-        addOutputPort(new BasePort(
+        BasePort signalOut = new BasePort(
             OUTPUT_SIGNAL_ID,
-            "输出",
-            "汇聚后的输出",
+            "Output",
+            "First non-null connected branch",
             NodeDataType.ANY,
             this
-        ));
+        );
+        signalOut.bindPassthroughType("T");
+        addOutputPort(signalOut);
 
         addOutputPort(new BasePort(
             OUTPUT_SOURCE_ID,
-            "来源",
-            "输出来源：primary / secondary / branch_n / none",
+            "Source",
+            "Winning branch: primary / secondary / branch_n / none",
             NodeDataType.STRING,
+            this
+        ));
+
+        addOutputPort(new BasePort(
+            OUTPUT_VALID_ID,
+            "Valid",
+            "Always true for coalesce",
+            NodeDataType.BOOLEAN,
             this
         ));
     }
@@ -99,7 +104,7 @@ public class SignalMergeNode extends BaseCustomUINode {
                 ImGui.pushStyleColor(ImGuiCol.Button, 0.3f, 0.3f, 0.3f, 0.5f);
                 ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 0.5f);
             }
-            if (ImGui.button(" - ##merge_remove", buttonWidth, 0) && canRemove) {
+            if (ImGui.button(" - ##coalesce_remove", buttonWidth, 0) && canRemove) {
                 removeLastInputBranch();
                 changed = true;
             }
@@ -114,7 +119,7 @@ public class SignalMergeNode extends BaseCustomUINode {
                 ImGui.pushStyleColor(ImGuiCol.Button, 0.3f, 0.3f, 0.3f, 0.5f);
                 ImGui.pushStyleColor(ImGuiCol.Text, 0.5f, 0.5f, 0.5f, 0.5f);
             }
-            if (ImGui.button(" + ##merge_add", buttonWidth, 0) && canAdd) {
+            if (ImGui.button(" + ##coalesce_add", buttonWidth, 0) && canAdd) {
                 addInputBranch();
                 changed = true;
             }
@@ -145,17 +150,17 @@ public class SignalMergeNode extends BaseCustomUINode {
 
     private static String getInputBranchDisplayName(int index) {
         return switch (index) {
-            case 1 -> "主输入";
-            case 2 -> "次输入";
-            default -> "输入 " + index;
+            case 1 -> "Primary";
+            case 2 -> "Secondary";
+            default -> "Branch " + index;
         };
     }
 
     private static String getInputBranchDescription(int index) {
         return switch (index) {
-            case 1 -> "主优先级输入";
-            case 2 -> "次优先级输入";
-            default -> "可参与汇聚的输入分支 " + index;
+            case 1 -> "Primary priority input";
+            case 2 -> "Secondary priority input";
+            default -> "Coalesce input branch " + index;
         };
     }
 
@@ -170,14 +175,23 @@ public class SignalMergeNode extends BaseCustomUINode {
     private void rebuildInputPorts() {
         inputPorts.clear();
         for (int i = 1; i <= inputBranchCount; i++) {
-            addInputPort(new BasePort(
+            BasePort branch = new BasePort(
                 getInputBranchPortId(i),
                 getInputBranchDisplayName(i),
                 getInputBranchDescription(i),
                 NodeDataType.ANY,
                 this
-            ));
+            );
+            branch.bindPassthroughType("T");
+            addInputPort(branch);
         }
+        addInputPort(new BasePort(
+            INPUT_PREFER_PRIMARY_ID,
+            "Prefer Primary",
+            "Whether to scan primary-first (boolean)",
+            NodeDataType.BOOLEAN,
+            this
+        ));
     }
 
     public int getInputBranchCount() {
@@ -226,18 +240,20 @@ public class SignalMergeNode extends BaseCustomUINode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        boolean usePrimaryFirst = preferPrimary;
-        Object preferPrimaryInput = inputValues.get(INPUT_PREFER_PRIMARY_ID);
-        if (preferPrimaryInput instanceof Boolean value) {
-            usePrimaryFirst = value;
-        }
+        Boolean preferOverride = OptionalPortDrive.resolveOptionalBoolean(
+            this, INPUT_PREFER_PRIMARY_ID, preferPrimary);
+        boolean usePrimaryFirst = preferOverride != null ? preferOverride : preferPrimary;
 
         Object result = null;
         String source = "none";
 
         if (usePrimaryFirst) {
             for (int i = 1; i <= inputBranchCount; i++) {
-                Object value = inputValues.get(getInputBranchPortId(i));
+                String portId = getInputBranchPortId(i);
+                if (!OptionalPortDrive.isConnected(this, portId)) {
+                    continue;
+                }
+                Object value = inputValues.get(portId);
                 if (value != null) {
                     result = value;
                     source = getSourceNameForBranch(i);
@@ -246,7 +262,11 @@ public class SignalMergeNode extends BaseCustomUINode {
             }
         } else {
             for (int i = inputBranchCount; i >= 1; i--) {
-                Object value = inputValues.get(getInputBranchPortId(i));
+                String portId = getInputBranchPortId(i);
+                if (!OptionalPortDrive.isConnected(this, portId)) {
+                    continue;
+                }
+                Object value = inputValues.get(portId);
                 if (value != null) {
                     result = value;
                     source = getSourceNameForBranch(i);
@@ -257,6 +277,7 @@ public class SignalMergeNode extends BaseCustomUINode {
 
         outputValues.put(OUTPUT_SIGNAL_ID, result);
         outputValues.put(OUTPUT_SOURCE_ID, source);
+        outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     public boolean isPreferPrimary() {

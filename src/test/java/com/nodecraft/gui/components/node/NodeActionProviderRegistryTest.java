@@ -1,13 +1,13 @@
 package com.nodecraft.gui.components.node;
 
 import com.nodecraft.gui.components.node.actions.ApplyChangesActionProvider;
+import com.nodecraft.gui.components.node.actions.CoalesceActionProvider;
 import com.nodecraft.gui.components.node.actions.SignalForkActionProvider;
-import com.nodecraft.gui.components.node.actions.SignalMergeActionProvider;
 import com.nodecraft.gui.components.node.actions.TagRelayActionProvider;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.nodes.utilities.assist.CoalesceNode;
+import com.nodecraft.nodesystem.nodes.utilities.assist.RelayNode;
 import com.nodecraft.nodesystem.nodes.utilities.assist.SignalForkNode;
-import com.nodecraft.nodesystem.nodes.utilities.assist.SignalMergeNode;
-import com.nodecraft.nodesystem.nodes.utilities.assist.TagRelayNode;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -20,7 +20,7 @@ class NodeActionProviderRegistryTest {
     void registryOwnsAssistAndActionProviders() {
         assertEquals(3, NodeActionProviderRegistry.assistProviders().size());
         assertTrue(NodeActionProviderRegistry.assistProviders().contains(SignalForkActionProvider.INSTANCE));
-        assertTrue(NodeActionProviderRegistry.assistProviders().contains(SignalMergeActionProvider.INSTANCE));
+        assertTrue(NodeActionProviderRegistry.assistProviders().contains(CoalesceActionProvider.INSTANCE));
         assertTrue(NodeActionProviderRegistry.assistProviders().contains(TagRelayActionProvider.INSTANCE));
 
         assertEquals(1, NodeActionProviderRegistry.actionProviders().size());
@@ -30,11 +30,11 @@ class NodeActionProviderRegistryTest {
     @Test
     void providersDeclineNodesTheyDoNotOwn() {
         SignalForkNode fork = new SignalForkNode();
-        SignalMergeNode merge = new SignalMergeNode();
-        TagRelayNode relay = new TagRelayNode();
+        CoalesceNode coalesce = new CoalesceNode();
+        RelayNode relay = new RelayNode();
 
-        assertFalse(SignalForkActionProvider.INSTANCE.render(merge, () -> null));
-        assertFalse(SignalMergeActionProvider.INSTANCE.render(fork, () -> null));
+        assertFalse(SignalForkActionProvider.INSTANCE.render(coalesce, () -> null));
+        assertFalse(CoalesceActionProvider.INSTANCE.render(fork, () -> null));
         assertFalse(TagRelayActionProvider.INSTANCE.render(fork, () -> null));
         assertFalse(ApplyChangesActionProvider.INSTANCE.render(relay, () -> null));
     }
@@ -43,7 +43,7 @@ class NodeActionProviderRegistryTest {
     void removeConnectionsForPortDropsMatchingWires() {
         NodeGraph graph = new NodeGraph("action-support");
         SignalForkNode fork = new SignalForkNode();
-        TagRelayNode relay = new TagRelayNode();
+        RelayNode relay = new RelayNode();
         graph.addNode(fork);
         graph.addNode(relay);
 

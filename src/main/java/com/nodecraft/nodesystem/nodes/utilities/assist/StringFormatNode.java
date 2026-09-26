@@ -7,7 +7,10 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -27,7 +30,7 @@ import java.util.regex.Pattern;
     displayName = "String Format",
     description = "Formats strings with placeholders like {0}, {1} from dynamic values.",
     category = "utilities.assist",
-    order = 6
+    order = 0
 )
 public class StringFormatNode extends BaseNode {
 
@@ -70,10 +73,17 @@ public class StringFormatNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        String resolvedTemplate = inputValues.get(INPUT_TEMPLATE_ID) instanceof String text && !text.isBlank()
-            ? text
-            : template;
+        String resolvedTemplate = resolveTemplate();
+        if (resolvedTemplate == null) {
+            emitFail("Invalid template input.");
+            return;
+        }
+
         List<Object> values = resolveValues();
+        if (values == null) {
+            emitFail("Invalid values input.");
+            return;
+        }
 
         String result = resolvedTemplate;
         for (int i = 0; i < values.size(); i++) {
@@ -93,6 +103,55 @@ public class StringFormatNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, stats.missingCount() == 0);
     }
 
+    private void emitFail(String message) {
+        outputValues.put(OUTPUT_TEXT_ID, "");
+        outputValues.put(OUTPUT_LENGTH_ID, 0);
+        outputValues.put(OUTPUT_USED_VALUE_COUNT_ID, 0);
+        outputValues.put(OUTPUT_MISSING_PLACEHOLDER_COUNT_ID, 0);
+        outputValues.put(OUTPUT_MESSAGE_ID, message);
+        outputValues.put(OUTPUT_VALID_ID, false);
+    }
+
+    /**
+     * Connected template must be String (including blank); null/non-String fails.
+     * Unconnected uses the property template.
+     */
+    private @Nullable String resolveTemplate() {
+        if (OptionalPortDrive.isConnected(this, INPUT_TEMPLATE_ID)) {
+            Object value = inputValues.get(INPUT_TEMPLATE_ID);
+            return value instanceof String text ? text : null;
+        }
+        return template == null ? "" : template;
+    }
+
+    /**
+     * Connected Values must be a List (empty/null/invalid fails).
+     * Unconnected uses Value0-2 via containsKey.
+     *
+     * @return null when connected Values is invalid
+     */
+    private @Nullable List<Object> resolveValues() {
+        if (OptionalPortDrive.isConnected(this, INPUT_VALUES_ID)) {
+            Object value = inputValues.get(INPUT_VALUES_ID);
+            if (!(value instanceof List<?> list) || list.isEmpty()) {
+                return null;
+            }
+            return new ArrayList<>(list);
+        }
+
+        List<Object> values = new ArrayList<>();
+        if (inputValues.containsKey(INPUT_VALUE_0_ID)) {
+            values.add(inputValues.get(INPUT_VALUE_0_ID));
+        }
+        if (inputValues.containsKey(INPUT_VALUE_1_ID)) {
+            values.add(inputValues.get(INPUT_VALUE_1_ID));
+        }
+        if (inputValues.containsKey(INPUT_VALUE_2_ID)) {
+            values.add(inputValues.get(INPUT_VALUE_2_ID));
+        }
+        return values;
+    }
+
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
@@ -109,27 +168,10 @@ public class StringFormatNode extends BaseNode {
         if (map.get("template") instanceof String text) {
             template = text;
         }
-        if (map.get("precision") instanceof Number n) {
-            precision = Math.max(0, Math.min(8, n.intValue()));
+        Integer exactPrecision = StrictIntegerUtils.requireExactInteger(map.get("precision"));
+        if (exactPrecision != null) {
+            precision = Math.max(0, Math.min(8, exactPrecision));
         }
-    }
-
-    private List<Object> resolveValues() {
-        List<Object> values = new ArrayList<>();
-        if (inputValues.get(INPUT_VALUES_ID) instanceof List<?> list && !list.isEmpty()) {
-            values.addAll(list);
-            return values;
-        }
-        if (inputValues.containsKey(INPUT_VALUE_0_ID)) {
-            values.add(inputValues.get(INPUT_VALUE_0_ID));
-        }
-        if (inputValues.containsKey(INPUT_VALUE_1_ID)) {
-            values.add(inputValues.get(INPUT_VALUE_1_ID));
-        }
-        if (inputValues.containsKey(INPUT_VALUE_2_ID)) {
-            values.add(inputValues.get(INPUT_VALUE_2_ID));
-        }
-        return values;
     }
 
     private PlaceholderStats analyzePlaceholders(String text, int valueCount) {
@@ -170,9 +212,10 @@ public class StringFormatNode extends BaseNode {
                 return String.format(Locale.ROOT, format, n.doubleValue());
             }
             case Vector3d v -> {
-                int p = Math.max(0, Math.min(8, precision));
-                String f = "%." + p + "f";
-                return "(" + String.format(Locale.ROOT, f, v.x) + ", " + String.format(Locale.ROOT, f, v.y) + ", " + String.format(Locale.ROOT, f, v.z) + ")";
+                return formatVector3(v.x, v.y, v.z);
+            }
+            case VectorData v -> {
+                return formatVector3(v.x(), v.y(), v.z());
             }
             case PointData p -> {
                 return valueToString(p.position());
@@ -198,6 +241,14 @@ public class StringFormatNode extends BaseNode {
             }
         }
         return String.valueOf(value);
+    }
+
+    private String formatVector3(double x, double y, double z) {
+        int p = Math.max(0, Math.min(8, precision));
+        String f = "%." + p + "f";
+        return "(" + String.format(Locale.ROOT, f, x) + ", "
+            + String.format(Locale.ROOT, f, y) + ", "
+            + String.format(Locale.ROOT, f, z) + ")";
     }
 
     private record PlaceholderStats(int usedCount, int missingCount) {

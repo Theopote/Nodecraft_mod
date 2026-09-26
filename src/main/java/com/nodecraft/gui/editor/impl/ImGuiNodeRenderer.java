@@ -12,7 +12,7 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.execution.ExecFrontierSnapshot;
 import com.nodecraft.nodesystem.graph.NodeGraph;
-import com.nodecraft.nodesystem.nodes.utilities.assist.TagRelayNode;
+import com.nodecraft.nodesystem.nodes.utilities.assist.RelayNode;
 import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphNode;
 import com.nodecraft.nodesystem.nodes.output.execute.ApplyChangesNode;
 import com.nodecraft.nodesystem.nodes.output.preview.PreviewGeometryNode;
@@ -231,11 +231,14 @@ public class ImGuiNodeRenderer {
             borderColor = ImGui.colorConvertFloat4ToU32(0.26f, 0.84f, 0.82f, 1.0f);
         }
 
-        if (node instanceof TagRelayNode tagRelayNode) {
-            int mappedColor = parseHexColorToU32(tagRelayNode.getResolvedColorHex(), baseNodeColor);
-            baseNodeColor = mappedColor;
-            nodeBgColor = cache.adjustBrightnessCached(mappedColor, 0.35f);
-            borderColor = cache.adjustBrightnessCached(mappedColor, 1.35f);
+        if (node instanceof RelayNode relayNode) {
+            String shortLabel = relayNode.getShortTagLabel();
+            if (shortLabel != null && !shortLabel.isBlank()) {
+                int mappedColor = parseHexColorToU32(relayNode.getResolvedColorHex(), baseNodeColor);
+                baseNodeColor = mappedColor;
+                nodeBgColor = cache.adjustBrightnessCached(mappedColor, 0.35f);
+                borderColor = cache.adjustBrightnessCached(mappedColor, 1.35f);
+            }
         }
 
         // 检查是否有自定义颜色
@@ -344,8 +347,8 @@ public class ImGuiNodeRenderer {
             float titleY = nodeScreenY + ((baseTextLineHeight + 2 * NodeRenderConstants.NODE_VERTICAL_PADDING) * canvasZoom - scaledTextLineHeight) / 2;
             drawList.addText(font, baseFontSize * canvasZoom, titleX, titleY, textColor, title);
 
-            if (node instanceof TagRelayNode tagRelayNode) {
-                renderTagRelayBadge(drawList, tagRelayNode, nodeScreenX, nodeScreenY, finalNodeWidthScaled,
+            if (node instanceof RelayNode relayNode) {
+                renderTagRelayBadge(drawList, relayNode, nodeScreenX, nodeScreenY, finalNodeWidthScaled,
                         baseTextLineHeight, baseFontSize, canvasZoom, textColor, font);
             }
         }
@@ -658,10 +661,17 @@ public class ImGuiNodeRenderer {
     }
 
     private static boolean isCompactRerouteNode(INode node) {
-        return node != null && NodeRenderConstants.REROUTE_NODE_TYPE_ID.equalsIgnoreCase(node.getTypeId());
+        if (node == null || !NodeRenderConstants.REROUTE_NODE_TYPE_ID.equalsIgnoreCase(node.getTypeId())) {
+            return false;
+        }
+        if (node instanceof RelayNode relay) {
+            String label = relay.getShortTagLabel();
+            return label == null || label.isBlank();
+        }
+        return true;
     }
 
-    private void renderTagRelayBadge(ImDrawList drawList, TagRelayNode node, float nodeScreenX, float nodeScreenY,
+    private void renderTagRelayBadge(ImDrawList drawList, RelayNode node, float nodeScreenX, float nodeScreenY,
                                      float finalNodeWidthScaled, float baseTextLineHeight, float baseFontSize,
                                      float canvasZoom, int defaultTextColor, imgui.ImFont font) {
         String shortLabel = node.getShortTagLabel();

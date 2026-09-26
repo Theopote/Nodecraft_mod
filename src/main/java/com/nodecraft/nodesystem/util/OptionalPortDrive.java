@@ -120,6 +120,21 @@ public final class OptionalPortDrive {
     }
 
     /**
+     * Optional BOOLEAN drive. Returns {@code null} when connected but invalid (fail closed).
+     */
+    public static @Nullable Boolean resolveOptionalBoolean(
+            BaseNode node,
+            String portId,
+            boolean propertyFallback
+    ) {
+        if (isConnected(node, portId)) {
+            Object value = node.getInput(portId);
+            return value instanceof Boolean bool ? bool : null;
+        }
+        return propertyFallback;
+    }
+
+    /**
      * Optional INTEGER drive. Returns {@code null} when connected but invalid (fail closed).
      */
     public static @Nullable Integer resolveOptionalInteger(

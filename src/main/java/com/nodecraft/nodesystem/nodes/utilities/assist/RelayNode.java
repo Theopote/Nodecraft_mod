@@ -15,12 +15,13 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "utilities.assist.tag_relay",
-    displayName = "Tag Relay",
-    description = "Passes a signal through while adding a visual semantic tag.",
-    category = "utilities.assist"
+    id = "utilities.assist.relay",
+    displayName = "Relay",
+    description = "Passes a signal through, optionally with a visual semantic tag.",
+    category = "utilities.assist",
+    order = 3
 )
-public class TagRelayNode extends BaseNode {
+public class RelayNode extends BaseNode {
 
     private static final String INPUT_SIGNAL_ID = "input_signal";
     private static final String OUTPUT_SIGNAL_ID = "output_signal";
@@ -46,16 +47,21 @@ public class TagRelayNode extends BaseNode {
     }
 
     @NodeProperty(displayName = "Tag", category = "Relay", order = 1)
-    private String tag = "Tag";
+    private String tag = "";
 
     @NodeProperty(displayName = "Color", category = "Relay", order = 2)
     private String color = DEFAULT_COLOR_HEX;
 
-    public TagRelayNode() {
-        super(UUID.randomUUID(), "utilities.assist.tag_relay");
+    public RelayNode() {
+        super(UUID.randomUUID(), "utilities.assist.relay");
 
-        addInputPort(new BasePort(INPUT_SIGNAL_ID, "Input", "Signal to pass through", NodeDataType.ANY, this));
-        addOutputPort(new BasePort(OUTPUT_SIGNAL_ID, "Output", "Passed-through signal", NodeDataType.ANY, this));
+        BasePort input = new BasePort(INPUT_SIGNAL_ID, "Input", "Signal to pass through", NodeDataType.ANY, this);
+        input.bindPassthroughType("T");
+        addInputPort(input);
+
+        BasePort output = new BasePort(OUTPUT_SIGNAL_ID, "Output", "Passed-through signal", NodeDataType.ANY, this);
+        output.bindPassthroughType("T");
+        addOutputPort(output);
     }
 
     @Override
@@ -87,10 +93,13 @@ public class TagRelayNode extends BaseNode {
         }
     }
 
+    /**
+     * Short canvas badge label. Empty tag yields {@code ""} for compact plain-relay look.
+     */
     public String getShortTagLabel() {
         String normalized = tag == null ? "" : tag.trim();
         if (normalized.isEmpty()) {
-            return "TAG";
+            return "";
         }
         if (normalized.length() <= MAX_SHORT_LABEL_LENGTH) {
             return normalized;

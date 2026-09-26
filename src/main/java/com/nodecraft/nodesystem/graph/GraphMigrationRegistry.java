@@ -111,6 +111,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V51 -> migrateV51ToV52(graph);
             case GraphFormatVersion.V52 -> migrateV52ToV53(graph);
             case GraphFormatVersion.V53 -> migrateV53ToV54(graph);
+            case GraphFormatVersion.V54 -> migrateV54ToV55(graph);
             default -> graph;
         };
     }
@@ -3174,6 +3175,84 @@ public final class GraphMigrationRegistry {
             cleaned.put(key, value);
         }
         node.state = cleaned.isEmpty() ? null : cleaned;
+    }
+
+    private static final String LEGACY_REROUTE_TYPE = "utilities.assist.reroute";
+    private static final String LEGACY_TAG_RELAY_TYPE = "utilities.assist.tag_relay";
+    private static final String LEGACY_ASSERT_TYPE = "utilities.assist.assert";
+    private static final String LEGACY_SIGNAL_MERGE_TYPE = "utilities.assist.signal_merge";
+    private static final String RELAY_TYPE = "utilities.assist.relay";
+    private static final String VALIDATE_TYPE = "utilities.assist.validate";
+    private static final String COALESCE_TYPE = "utilities.assist.coalesce";
+
+    /**
+     * Assist Utilities v1: remap Reroute/Tag→Relay, Assert→Validate, Signal Merge→Coalesce;
+     * drop Assert Passed wires; strip failHard.
+     */
+    private static SavedGraph migrateV54ToV55(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                String remapped = remapAssistV55TypeId(node.typeId);
+                if (!remapped.equals(node.typeId)) {
+                    LOGGER.debug("Remapped {} -> {}", node.typeId, remapped);
+                    node.typeId = remapped;
+                }
+                if (VALIDATE_TYPE.equalsIgnoreCase(node.typeId) && node.state instanceof Map<?, ?> state) {
+                    Map<String, Object> cleaned = new HashMap<>();
+                    for (Map.Entry<?, ?> entry : state.entrySet()) {
+                        if (!(entry.getKey() instanceof String key)) {
+                            continue;
+                        }
+                        if ("failhard".equals(key.toLowerCase(Locale.ROOT))) {
+                            LOGGER.debug("Stripped Assert failHard from {}", node.nodeId);
+                            continue;
+                        }
+                        cleaned.put(key, entry.getValue());
+                    }
+                    node.state = cleaned.isEmpty() ? null : cleaned;
+                }
+            }
+        }
+
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null || connection.sourcePortId == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            if (VALIDATE_TYPE.equals(sourceType)
+                    && "output_passed".equals(connection.sourcePortId.toLowerCase(Locale.ROOT))) {
+                LOGGER.debug("Dropped Assert Passed wire {}#{}", connection.sourceNodeId, connection.sourcePortId);
+                return true;
+            }
+            return false;
+        });
+
+        return graph;
+    }
+
+    private static String remapAssistV55TypeId(String typeId) {
+        String normalized = typeId.toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case LEGACY_REROUTE_TYPE, LEGACY_TAG_RELAY_TYPE -> RELAY_TYPE;
+            case LEGACY_ASSERT_TYPE -> VALIDATE_TYPE;
+            case LEGACY_SIGNAL_MERGE_TYPE -> COALESCE_TYPE;
+            default -> typeId;
+        };
     }
 
     private static String remapBlockStateTypeId(String typeId) {

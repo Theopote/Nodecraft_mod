@@ -339,8 +339,14 @@ public final class GraphFormatVersion {
      */
     public static final int V54 = 54;
 
+    /**
+     * Assist Utilities v1: scalar passthrough T, ban unbound ANY→typed washout,
+     * Reroute+Tag→Relay, Assert→Validate, Signal Merge→Coalesce.
+     */
+    public static final int V55 = 55;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V54;
+    public static final int CURRENT = V55;
 
     private GraphFormatVersion() {
     }

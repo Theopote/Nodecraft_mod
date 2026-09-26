@@ -45,7 +45,7 @@ Custom UI nodes already extend `BaseCustomUINode` / implement `ICustomUINode`.
 
 **Files:**
 - `NodeActionProvider`, `NodeActionProviderRegistry`, `NodeActionGraphSupport`
-- `actions/SignalForkActionProvider`, `SignalMergeActionProvider`,
+- `actions/SignalForkActionProvider`, `CoalesceActionProvider`,
   `TagRelayActionProvider`, `ApplyChangesActionProvider`
 
 **Panel:** `NodeActionPanel` only orchestrates providers + universal Reset/Delete.

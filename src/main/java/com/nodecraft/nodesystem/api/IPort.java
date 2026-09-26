@@ -44,6 +44,14 @@ public interface IPort {
     default boolean isListElementBinding() {
         return false;
     }
+
+    /**
+     * When true with a type variable, this declared-{@code ANY} port remaps to the bound scalar
+     * (or other concrete) type of {@code T} — used by Assist Relay / Fork / Validate / Coalesce.
+     */
+    default boolean isPassthroughBinding() {
+        return false;
+    }
     
     /**
      * 判断此端口是否为输入端口

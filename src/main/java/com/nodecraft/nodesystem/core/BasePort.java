@@ -32,6 +32,7 @@ public class BasePort implements IPort {
     private final boolean required;
     private String listTypeVariable;
     private boolean listElementBinding;
+    private boolean passthroughBinding;
     private Direction direction = Direction.UNASSIGNED;
     private boolean isConnected = false;
     private IPort connectedPort = null;
@@ -65,6 +66,7 @@ public class BasePort implements IPort {
     public BasePort bindListType(String variable) {
         this.listTypeVariable = variable;
         this.listElementBinding = false;
+        this.passthroughBinding = false;
         return this;
     }
 
@@ -74,6 +76,18 @@ public class BasePort implements IPort {
     public BasePort bindListElementType(String variable) {
         this.listTypeVariable = variable;
         this.listElementBinding = true;
+        this.passthroughBinding = false;
+        return this;
+    }
+
+    /**
+     * Binds this declared-{@code ANY} port to a scalar passthrough type variable {@code T}.
+     * Effective type remaps to the concrete upstream type when {@code T} is bound.
+     */
+    public BasePort bindPassthroughType(String variable) {
+        this.listTypeVariable = variable;
+        this.listElementBinding = false;
+        this.passthroughBinding = true;
         return this;
     }
 
@@ -116,6 +130,11 @@ public class BasePort implements IPort {
     @Override
     public boolean isListElementBinding() {
         return listElementBinding;
+    }
+
+    @Override
+    public boolean isPassthroughBinding() {
+        return passthroughBinding;
     }
 
     @Override

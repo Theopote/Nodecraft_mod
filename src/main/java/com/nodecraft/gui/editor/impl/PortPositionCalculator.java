@@ -251,7 +251,14 @@ public class PortPositionCalculator {
     }
 
     private static boolean isCompactRerouteNode(INode node) {
-        return node != null && NodeRenderConstants.REROUTE_NODE_TYPE_ID.equalsIgnoreCase(node.getTypeId());
+        if (node == null || !NodeRenderConstants.REROUTE_NODE_TYPE_ID.equalsIgnoreCase(node.getTypeId())) {
+            return false;
+        }
+        if (node instanceof com.nodecraft.nodesystem.nodes.utilities.assist.RelayNode relay) {
+            String label = relay.getShortTagLabel();
+            return label == null || label.isBlank();
+        }
+        return true;
     }
 
     /**

@@ -397,12 +397,11 @@ transform.orientation.project_points_to_plane|transform.orientation|Project Poin
 transform.orientation.project_profile_to_plane|transform.orientation|Project Profile To Plane
 transform.orientation.project_to_plane|transform.orientation|Project Point To Plane
 transform.orientation.rotate_vector|transform.orientation|Rotate Vector
-utilities.assist.assert|utilities.assist|Assert / Validate
-utilities.assist.reroute|utilities.assist|Reroute
+utilities.assist.coalesce|utilities.assist|Coalesce
+utilities.assist.relay|utilities.assist|Relay
 utilities.assist.signal_fork|utilities.assist|Signal Fork
-utilities.assist.signal_merge|utilities.assist|Signal Merge
 utilities.assist.string_format|utilities.assist|String Format
-utilities.assist.tag_relay|utilities.assist|Tag Relay
+utilities.assist.validate|utilities.assist|Validate
 utilities.fileio.image_sampler|utilities.fileio|Image Sampler
 utilities.fileio.read_image|utilities.fileio|Read Image
 utilities.morphology.block_list_morphology|utilities.assist|Block List Morphology

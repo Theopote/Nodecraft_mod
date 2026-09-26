@@ -173,7 +173,7 @@
 |---|---|---|
 | `input.context.dimension_info` | 已有基础实现 | [DimensionInfoNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/input/context/DimensionInfoNode.java) |
 | `input.context.current_time` | 已有基础实现 | [CurrentTimeNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/input/context/CurrentTimeNode.java) |
-| `utilities.assist.reroute` | 已有基础实现 | [RerouteNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/utilities/assist/RerouteNode.java) |
+| `utilities.assist.relay` | 已有基础实现 | [RelayNode.java](/f:/development/ND/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/utilities/assist/RelayNode.java) |
 | `math.list_sequence.get_item` | 已有基础实现 | [GetItemNode.java](/f:/development/NC/nodecraft/src/main/java/com/nodecraft/nodesystem/nodes/math/list_sequence/GetItemNode.java) |
 | `math.list_sequence.set_item` | 已有基础实现 | `src/main/java/com/nodecraft/nodesystem/nodes/math/list_sequence/SetItemNode.java` |
 | `math.list_sequence.list_length` | 已有基础实现 | `src/main/java/com/nodecraft/nodesystem/nodes/math/list_sequence/ListLengthNode.java` |

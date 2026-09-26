@@ -31,8 +31,16 @@ public final class TypeConversionRegistry {
                     : ConversionPolicy.UNSUPPORTED;
         }
 
-        if (input == NodeDataType.ANY || output == NodeDataType.ANY || output == input) {
+        if (output == input) {
             return ConversionPolicy.IMPLICIT_SAFE;
+        }
+
+        // typed → ANY is widening (sink). Unbound ANY → typed is banned (type washout).
+        if (input == NodeDataType.ANY) {
+            return ConversionPolicy.IMPLICIT_SAFE;
+        }
+        if (output == NodeDataType.ANY) {
+            return ConversionPolicy.UNSUPPORTED;
         }
 
         if (isNumericType(output) && isNumericType(input)) {

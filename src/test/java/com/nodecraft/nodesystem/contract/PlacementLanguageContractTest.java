@@ -75,9 +75,9 @@ class PlacementLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV54() {
+    void placementFreezeVersionIsV54() {
         assertEquals(54, GraphFormatVersion.V54);
-        assertEquals(GraphFormatVersion.V54, GraphFormatVersion.CURRENT);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V54);
     }
 
     @Test
@@ -123,7 +123,7 @@ class PlacementLanguageContractTest {
         BlockPosList input = new BlockPosList();
         input.add(new BlockPos(0, 0, 0));
 
-        // Identity transforms: prove cellCenterâ†’floor round-trips (nearest would map centerâ†’(1,1,1)).
+        // Identity transforms: prove cellCenterâ†’floor round-trips (nearest would map centerâ†?1,1,1)).
         BaseNode rotate = node("transform.placement.rotate_block_positions");
         rotate.setInput("input_coordinates", input);
         rotate.setInput("input_center", new PointData(0, 0, 0));
@@ -142,7 +142,7 @@ class PlacementLanguageContractTest {
 
         MirrorProbe mirror = new MirrorProbe();
         mirror.setInput("input_coordinates", input);
-        // Plane through cell center â†’ reflection is identity on that point.
+        // Plane through cell center â†?reflection is identity on that point.
         mirror.connectInput("input_plane", NodeDataType.PLANE);
         mirror.setInput("input_plane", PlaneData.canonical(new Vector3d(0.5d, 0.5d, 0.5d), new Vector3d(0, 1, 0)));
         mirror.processNode(null);
@@ -212,7 +212,7 @@ class PlacementLanguageContractTest {
         PlaceFramesProbe place = new PlaceFramesProbe();
         place.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
         place.connectInput("input_frames", NodeDataType.FRAME_LIST);
-        // Second frame has zero-length axes â†’ orthonormalized() fails â†’ placeOnFrame null
+        // Second frame has zero-length axes â†?orthonormalized() fails â†?placeOnFrame null
         FrameData good = new FrameData(
                 new Vector3d(1, 0, 0), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1)
         );

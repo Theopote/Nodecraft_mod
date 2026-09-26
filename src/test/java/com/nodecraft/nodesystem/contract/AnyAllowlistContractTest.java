@@ -114,6 +114,26 @@ class AnyAllowlistContractTest {
     }
 
     @Test
+    void assistPassthroughAnyPortsMustBindTypeVariable() {
+        for (String nodeId : registry.getAllNodeIds()) {
+            if (!nodeId.toLowerCase(Locale.ROOT).startsWith("utilities.assist.")) {
+                continue;
+            }
+            if ("utilities.assist.string_format".equals(nodeId)) {
+                continue; // ANY sinks only — format to STRING
+            }
+            INode instance = tryCreate(nodeId);
+            assertNotNull(instance, nodeId);
+            for (IPort port : allPorts(instance)) {
+                if (port.getDataType() == NodeDataType.ANY) {
+                    assertTrue(port.isPassthroughBinding(),
+                            nodeId + "#" + port.getId() + " ANY must bind passthrough T");
+                }
+            }
+        }
+    }
+
+    @Test
     void frozenFamiliesMustNotExposeAny() {
         List<String> violations = new ArrayList<>();
         for (String nodeId : registry.getAllNodeIds()) {

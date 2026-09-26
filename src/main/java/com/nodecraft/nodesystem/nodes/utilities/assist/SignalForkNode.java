@@ -1,9 +1,9 @@
 package com.nodecraft.nodesystem.nodes.utilities.assist;
 
+import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import imgui.ImGui;
@@ -22,7 +22,8 @@ import java.util.UUID;
     id = "utilities.assist.signal_fork",
     displayName = "Signal Fork",
     description = "将一路输入透传到两路输出，便于连线分流",
-    category = "utilities.assist"
+    category = "utilities.assist",
+    order = 4
 )
 public class SignalForkNode extends BaseCustomUINode {
 
@@ -36,13 +37,15 @@ public class SignalForkNode extends BaseCustomUINode {
     public SignalForkNode() {
         super(UUID.randomUUID(), "utilities.assist.signal_fork");
 
-        addInputPort(new BasePort(
+        BasePort input = new BasePort(
             INPUT_SIGNAL_ID,
             "输入",
             "需要分流的输入信号",
             NodeDataType.ANY,
             this
-        ));
+        );
+        input.bindPassthroughType("T");
+        addInputPort(input);
 
         rebuildOutputPorts();
     }
@@ -137,13 +140,15 @@ public class SignalForkNode extends BaseCustomUINode {
     private void rebuildOutputPorts() {
         outputPorts.clear();
         for (int i = 1; i <= outputBranchCount; i++) {
-            addOutputPort(new BasePort(
+            BasePort output = new BasePort(
                 getOutputPortId(i),
                 getOutputDisplayName(i),
                 getOutputDescription(i),
                 NodeDataType.ANY,
                 this
-            ));
+            );
+            output.bindPassthroughType("T");
+            addOutputPort(output);
         }
         markDirty();
     }
@@ -206,15 +211,15 @@ public class SignalForkNode extends BaseCustomUINode {
 
     @Override
     public void setNodeState(@Nullable Object state) {
-        if (state instanceof Number number) {
-            setOutputBranchCount(number.intValue());
+        if (state instanceof Integer integer) {
+            setOutputBranchCount(integer);
             return;
         }
 
         if (state instanceof Map<?, ?> map) {
             Object count = map.get("outputBranchCount");
-            if (count instanceof Number number) {
-                setOutputBranchCount(number.intValue());
+            if (count instanceof Integer integer) {
+                setOutputBranchCount(integer);
             }
         }
     }

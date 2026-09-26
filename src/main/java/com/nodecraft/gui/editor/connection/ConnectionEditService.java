@@ -6,6 +6,7 @@ import com.nodecraft.gui.editor.impl.ImGuiNodeHistory;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.PortTypeResolver;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import org.jetbrains.annotations.Nullable;
 
@@ -184,7 +185,7 @@ public final class ConnectionEditService {
             return;
         }
 
-        INode rerouteNode = host.addNode("utilities.assist.reroute", worldX, worldY);
+        INode rerouteNode = host.addNode("utilities.assist.relay", worldX, worldY);
         if (rerouteNode == null) {
             NodeCraft.LOGGER.warn("双击连接线插入中继失败：无法创建中继节点");
             return;
@@ -266,11 +267,11 @@ public final class ConnectionEditService {
         if (sourcePort.getNode().getId().equals(targetPort.getNode().getId())) {
             return "不能连接到同一节点";
         }
-        if (!NodeDataType.isConnectableTo(sourcePort.getDataType(), targetPort.getDataType())) {
+        if (!PortTypeResolver.isConnectable(sourcePort, targetPort)) {
             return String.format(
                     "类型不匹配: 输出 %s 无法连接到输入 %s",
-                    sourcePort.getDataType().getDisplayName(),
-                    targetPort.getDataType().getDisplayName()
+                    PortTypeResolver.resolveEffectiveType(sourcePort).getDisplayName(),
+                    PortTypeResolver.resolveEffectiveType(targetPort).getDisplayName()
             );
         }
         UUID connectedNodeId = graph.getConnectedOutputNodeId(targetPort.getNode().getId(), targetPort.getId());

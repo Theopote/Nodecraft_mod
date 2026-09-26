@@ -3,6 +3,7 @@ package com.nodecraft.gui.editor.impl;
 import java.util.Map;
 import java.util.UUID;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.PortTypeResolver;
 import com.nodecraft.nodesystem.execution.ExecFrontierSnapshot;
 import com.nodecraft.nodesystem.execution.ExecutionPortKind;
 import com.nodecraft.nodesystem.graph.NodeGraph;
@@ -210,7 +211,7 @@ public class ConnectionRenderer {
                         connection.targetNode().getId().equals(hoveredTargetNodeId) &&
                         connection.targetPort().getId().equals(hoveredTargetPortId);
 
-                boolean typeMismatch = !NodeDataType.isConnectableTo(connection.sourcePort().getDataType(), connection.targetPort().getDataType());
+                boolean typeMismatch = !PortTypeResolver.isConnectable(connection.sourcePort(), connection.targetPort());
                 boolean isExecConnection = ExecutionPortKind.isExecConnection(connection);
                 int normalColor;
                 if (typeMismatch) {
