@@ -14,7 +14,7 @@ Spatial Convention v1 (`BlockSpace` cell-center lattice).
 grid = block cell-center lattice (n + 0.5), not integer-corner round(x)
 BLOCK_POS index → POINT at cell center via BlockSpace
 PURE predicates never touch ExecutionContext world
-WORLD_READ nodes require context + world; bounded volume / count / distance caps
+WORLD_READ nodes require context + world; bounded volume / count / distance / entity-radius / region-axis caps
 strict typed ports: POINT_LIST, VECTOR_LIST, MINECRAFT_ENTITY_LIST, STRING_LIST
 OptionalPortDrive / connection-aware optionals: unconnected → default/disabled;
   connected-null/invalid → fail closed (never silent no-op)
@@ -110,6 +110,7 @@ Grid nodes **classify only** — no silent snap-to-grid.
 - Origin / Hit Position: `POINT`; Direction / Hit Normal: `VECTOR`
 - `Max Distance` / `Entity Radius`: finite; optional drives where applicable
 - `Max Distance` hard cap: `GenerationLimits.MAX_WORLD_QUERY_DISTANCE` (8192) — fail closed, never clamp
+- `Entity Radius` hard cap: `GenerationLimits.MAX_ENTITY_QUERY_RADIUS` (256) — fail closed, never clamp
 - Block raycast requires player in execution context — **fail closed** when missing (no silent skip)
 - Hit Entity: `MINECRAFT_ENTITY`
 
@@ -122,6 +123,7 @@ Grid nodes **classify only** — no silent snap-to-grid.
 - Typed outputs: `Entities List` (`MINECRAFT_ENTITY_LIST`), `Entity Type IDs` (`STRING_LIST`), `Entity Positions` (`POINT_LIST`)
 - Filter booleans: `OptionalPortDrive` with property fallback
 - Entity Type: unconnected → no filter; connected null/invalid/blank → `Valid=false`
+- Region per-axis inclusive span hard cap: `GenerationLimits.MAX_ENTITY_QUERY_REGION_AXIS` (2048) — checked before `getOtherEntities`, fail closed
 
 ### Get Entity
 
@@ -134,7 +136,7 @@ Grid nodes **classify only** — no silent snap-to-grid.
 
 - `BlockSpace` — cell-center grid helpers
 - `BlockPosMath.tryOffset` — safe block offset
-- `GenerationLimits.MAX_NEIGHBOR_QUERY_BLOCKS`, `MAX_FLOOD_FILL_BLOCKS`, `MAX_WORLD_QUERY_DISTANCE`, `estimateCubeVolume`
+- `GenerationLimits.MAX_NEIGHBOR_QUERY_BLOCKS`, `MAX_FLOOD_FILL_BLOCKS`, `MAX_WORLD_QUERY_DISTANCE`, `MAX_ENTITY_QUERY_RADIUS`, `MAX_ENTITY_QUERY_REGION_AXIS`, `estimateCubeVolume`
 - `PointUtils.resolveStrictPointList`, `VectorUtils.resolveStrictVectorList`
 - `OptionalPortDrive`
 

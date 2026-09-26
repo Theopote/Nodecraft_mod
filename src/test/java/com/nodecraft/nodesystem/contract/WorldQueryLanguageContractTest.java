@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -370,6 +371,33 @@ class WorldQueryLanguageContractTest {
         assertEquals(Boolean.FALSE, getEntity.getOutput("output_valid"));
         assertTrue(String.valueOf(getEntity.getOutput("output_error"))
                 .contains(String.valueOf(GenerationLimits.MAX_WORLD_QUERY_DISTANCE)));
+    }
+
+    @Test
+    void raycastRejectsEntityRadiusAboveHardCap() {
+        RaycastProbe node = new RaycastProbe();
+        node.setInput("input_origin", new PointData(0, 0, 0));
+        node.setInput("input_direction", new VectorData(0, -1, 0));
+        node.setInput("input_max_distance", 10.0d);
+        node.setInput("input_entity_radius", GenerationLimits.MAX_ENTITY_QUERY_RADIUS + 1.0d);
+        node.processNode(ExecutionContext.createEmpty(null));
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertTrue(String.valueOf(node.getOutput("output_error"))
+                .contains(String.valueOf(GenerationLimits.MAX_ENTITY_QUERY_RADIUS)));
+    }
+
+    @Test
+    void getEntitiesRejectsRegionAxisAboveHardCap() {
+        GetEntitiesInRegionProbe node = new GetEntitiesInRegionProbe();
+        int over = GenerationLimits.MAX_ENTITY_QUERY_REGION_AXIS;
+        node.setInput("input_region", new RegionData(
+                new BlockPos(0, 0, 0),
+                new BlockPos(over, 0, 0)
+        ));
+        node.processNode(ExecutionContext.createEmpty(null));
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertTrue(String.valueOf(node.getOutput("output_error"))
+                .contains(String.valueOf(GenerationLimits.MAX_ENTITY_QUERY_REGION_AXIS)));
     }
 
     private static void assertPortType(INode node, String portId, NodeDataType expected) {

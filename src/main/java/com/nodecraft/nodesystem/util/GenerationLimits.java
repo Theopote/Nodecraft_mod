@@ -123,6 +123,18 @@ public final class GenerationLimits {
      */
     public static final double MAX_WORLD_QUERY_DISTANCE = 8192.0d;
 
+    /**
+     * Hard upper bound for Raycast entity-hitbox expansion radius.
+     * Distinct from {@link #MAX_WORLD_QUERY_DISTANCE} (ray length); values above fail closed.
+     */
+    public static final double MAX_ENTITY_QUERY_RADIUS = 256.0d;
+
+    /**
+     * Hard per-axis span (inclusive block count) for Get Entities In Region.
+     * Regions exceeding any axis fail closed before {@code getOtherEntities}.
+     */
+    public static final int MAX_ENTITY_QUERY_REGION_AXIS = 2048;
+
     private GenerationLimits() {
     }
 

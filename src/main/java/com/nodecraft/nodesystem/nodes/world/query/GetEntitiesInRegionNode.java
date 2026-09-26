@@ -9,11 +9,13 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.registry.Registries;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import org.jetbrains.annotations.Nullable;
 
@@ -108,6 +110,23 @@ public class GetEntitiesInRegionNode extends BaseNode {
         Object regionObj = inputValues.get(INPUT_REGION_ID);
         if (!(regionObj instanceof RegionData region) || !region.isComplete()) {
             writeFailure("Region input must be a complete region.");
+            return;
+        }
+
+        BlockPos min = region.getMinCorner();
+        BlockPos max = region.getMaxCorner();
+        if (min == null || max == null) {
+            writeFailure("Region input must be a complete region.");
+            return;
+        }
+        long sizeX = (long) max.getX() - min.getX() + 1L;
+        long sizeY = (long) max.getY() - min.getY() + 1L;
+        long sizeZ = (long) max.getZ() - min.getZ() + 1L;
+        if (sizeX > GenerationLimits.MAX_ENTITY_QUERY_REGION_AXIS
+                || sizeY > GenerationLimits.MAX_ENTITY_QUERY_REGION_AXIS
+                || sizeZ > GenerationLimits.MAX_ENTITY_QUERY_REGION_AXIS) {
+            writeFailure("Region axis span exceeds hard cap of "
+                    + GenerationLimits.MAX_ENTITY_QUERY_REGION_AXIS + " blocks.");
             return;
         }
 

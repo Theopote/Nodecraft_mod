@@ -121,6 +121,10 @@ public class RaycastNode extends BaseNode {
             writeNoHit(false, "Entity Radius must be a finite number greater than or equal to zero.");
             return;
         }
+        if (entityRadiusValue > GenerationLimits.MAX_ENTITY_QUERY_RADIUS) {
+            writeNoHit(false, "Entity Radius exceeds hard cap of " + GenerationLimits.MAX_ENTITY_QUERY_RADIUS + ".");
+            return;
+        }
         double entityRadius = entityRadiusValue;
 
         Entity sourceEntity = context.getPlayer();
