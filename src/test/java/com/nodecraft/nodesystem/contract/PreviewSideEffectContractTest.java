@@ -132,6 +132,7 @@ class PreviewSideEffectContractTest {
         List<String> worldWriteIds = registry.getAllNodeIds().stream()
                 .filter(id -> id.startsWith("world.write."))
                 .filter(id -> !"world.write.peek_last_undo".equals(id))
+                .filter(id -> !"world.write.clear_undo_history".equals(id))
                 .toList();
         assertTrue(worldWriteIds.size() >= 10, "expected world.write catalog entries");
 
@@ -160,7 +161,8 @@ class PreviewSideEffectContractTest {
         assertTrue(NodeEffectResolver.inferFromTypeId("world.read.get_block").isAllowedInPreview());
         assertEquals(NodeEffect.PURE, NodeEffectResolver.inferFromTypeId("output.execute.merge_block_placements"));
         assertEquals(NodeEffect.PREVIEW_WRITE, NodeEffectResolver.inferFromTypeId("output.execute.clear_preview"));
-        assertEquals(NodeEffect.WORLD_READ, NodeEffectResolver.inferFromTypeId("world.write.peek_last_undo"));
+        assertEquals(NodeEffect.CONTEXT_READ, NodeEffectResolver.inferFromTypeId("world.write.peek_last_undo"));
+        assertEquals(NodeEffect.CONTEXT_WRITE, NodeEffectResolver.inferFromTypeId("world.write.clear_undo_history"));
     }
 
     private static INode createOrResolve(String nodeId, NodeInfo info) {

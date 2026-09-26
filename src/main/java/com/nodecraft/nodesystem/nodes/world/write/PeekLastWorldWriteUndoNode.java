@@ -14,12 +14,12 @@ import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
-    effect = NodeEffect.WORLD_READ,
+    effect = NodeEffect.CONTEXT_READ,
     id = "world.write.peek_last_undo",
     displayName = "Peek Last World Write Undo",
     description = "Inspects the latest world.write undo record and outputs affected count and region bounds",
     category = "world.write",
-    order = 100
+    order = 16
 )
 public class PeekLastWorldWriteUndoNode extends BaseNode {
     private static final String OUTPUT_HAS_RECORD_ID = "output_has_record";
@@ -28,6 +28,8 @@ public class PeekLastWorldWriteUndoNode extends BaseNode {
     private static final String OUTPUT_MIN_POS_ID = "output_min_pos";
     private static final String OUTPUT_MAX_POS_ID = "output_max_pos";
     private static final String OUTPUT_REGION_ID = "output_region";
+    private static final String OUTPUT_VALID_ID = WorldWriteUtils.OUTPUT_VALID_ID;
+    private static final String OUTPUT_ERROR_ID = WorldWriteUtils.OUTPUT_ERROR_ID;
 
     public PeekLastWorldWriteUndoNode() {
         super(UUID.randomUUID(), "world.write.peek_last_undo");
@@ -37,31 +39,35 @@ public class PeekLastWorldWriteUndoNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_MIN_POS_ID, "Min Position", "Minimum corner of latest undo record bounds", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_MAX_POS_ID, "Max Position", "Maximum corner of latest undo record bounds", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Affected Region", "Axis-aligned bounds of latest undo record", NodeDataType.REGION, this));
-    }
-
-    @Override
-    public String getDescription() {
-        return "Inspects the latest world.write undo record and outputs affected count and region bounds";
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether peek succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Why peek failed", NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        WorldWriteHistoryService service = WorldWriteHistoryService.getInstance();
-        UUID actorId = context != null
-            ? WorldWriteHistoryService.resolveActorId(context.getPlayer())
-            : WorldWriteHistoryService.SERVER_ACTOR_ID;
-        WorldWriteHistoryService.UndoRecord record = service.peek(actorId);
-        boolean hasRecord = record != null && record.size() > 0;
-        int count = 0;
-        if (record != null) {
-            count = record.size();
+        if (context == null || context.getWorld() == null) {
+            outputValues.put(OUTPUT_HAS_RECORD_ID, false);
+            outputValues.put(OUTPUT_RECORDED_COUNT_ID, 0);
+            outputValues.put(OUTPUT_REMAINING_HISTORY_ID, 0);
+            outputValues.put(OUTPUT_MIN_POS_ID, null);
+            outputValues.put(OUTPUT_MAX_POS_ID, null);
+            outputValues.put(OUTPUT_REGION_ID, null);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            outputValues.put(OUTPUT_ERROR_ID, "Missing execution world");
+            return;
         }
-        int remaining = service.size(actorId);
+
+        WorldWriteHistoryService service = WorldWriteHistoryService.getInstance();
+        UUID actorId = WorldWriteHistoryService.resolveActorId(context.getPlayer());
+        WorldWriteHistoryService.UndoRecord record = service.peek(actorId, context.getWorld());
+        boolean hasRecord = record != null && record.size() > 0;
+        int count = hasRecord ? record.size() : 0;
+        int remaining = service.size(actorId, context.getWorld());
         BlockPos minPos = null;
         BlockPos maxPos = null;
         RegionData region = null;
 
-        if (hasRecord && record != null) {
+        if (hasRecord) {
             List<BlockPos> positions = record.getPositions();
             int minX = Integer.MAX_VALUE;
             int minY = Integer.MAX_VALUE;
@@ -88,6 +94,7 @@ public class PeekLastWorldWriteUndoNode extends BaseNode {
         outputValues.put(OUTPUT_MIN_POS_ID, minPos);
         outputValues.put(OUTPUT_MAX_POS_ID, maxPos);
         outputValues.put(OUTPUT_REGION_ID, region);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 }
-

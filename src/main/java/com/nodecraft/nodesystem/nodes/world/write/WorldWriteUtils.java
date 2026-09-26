@@ -1,72 +1,110 @@
 package com.nodecraft.nodesystem.nodes.world.write;
 
-import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.datatypes.RegionData;
+import com.nodecraft.nodesystem.util.BlockListUtils;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BlockStateData;
 import com.nodecraft.nodesystem.util.BlockStateResolver;
-import com.nodecraft.nodesystem.util.Coordinate;
-import com.nodecraft.nodesystem.util.Vector3;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.registry.Registries;
-import net.minecraft.state.property.Property;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
-import java.util.Map;
-import java.util.Optional;
+import java.util.List;
 
+/**
+ * World Write v1 shared input / budget / trigger helpers (strict typed, fail-closed).
+ */
 final class WorldWriteUtils {
 
     static final String INPUT_TRIGGER_ID = "input_trigger";
     static final String OUTPUT_VALID_ID = "output_valid";
     static final String OUTPUT_ERROR_ID = "output_error";
+    static final String OUTPUT_COMPLETE_ID = "output_complete";
+    static final String OUTPUT_HIT_LIMIT_ID = "output_hit_limit";
+
+    enum TriggerResult {
+        RUN,
+        SKIP,
+        FAIL
+    }
 
     private WorldWriteUtils() {
     }
 
-    static boolean shouldRun(Map<String, Object> inputValues) {
-        Object trigger = inputValues.get(INPUT_TRIGGER_ID);
-        return !(trigger instanceof Boolean) || (Boolean) trigger;
-    }
-
-    static int resolveLimit(Object value, int fallback) {
-        if (value instanceof Number number) {
-            int resolved = number.intValue();
-            return resolved <= 0 ? Integer.MAX_VALUE : resolved;
+    /**
+     * Trigger contract: unconnected → property; connected true/false → that;
+     * connected null/invalid → {@link TriggerResult#FAIL} (no world mutation).
+     */
+    static TriggerResult resolveWriteTrigger(BaseNode node, boolean propertyDefault) {
+        if (!OptionalPortDrive.isConnected(node, INPUT_TRIGGER_ID)) {
+            return propertyDefault ? TriggerResult.RUN : TriggerResult.SKIP;
         }
-        return Math.max(1, fallback);
+        Object value = node.getInput(INPUT_TRIGGER_ID);
+        if (!(value instanceof Boolean bool)) {
+            return TriggerResult.FAIL;
+        }
+        return bool ? TriggerResult.RUN : TriggerResult.SKIP;
     }
 
-    static int flags(boolean notify) {
-        return notify ? Block.NOTIFY_ALL : Block.FORCE_STATE;
+    /**
+     * User budget exact INTEGER in {@code [1, hardCeiling]}. Connected invalid / out of range → null.
+     */
+    static @Nullable Integer resolveUserBudgetExactInteger(
+        BaseNode node,
+        String portId,
+        int propertyFallback,
+        int hardCeiling
+    ) {
+        Integer resolved;
+        if (OptionalPortDrive.isConnected(node, portId)) {
+            resolved = StrictIntegerUtils.requireExactInteger(node.getInput(portId));
+        } else {
+            Object raw = node.getInput(portId);
+            if (raw == null) {
+                resolved = propertyFallback;
+            } else {
+                resolved = StrictIntegerUtils.requireExactInteger(raw);
+                if (resolved == null) {
+                    return null;
+                }
+            }
+        }
+        if (resolved == null || resolved < 1 || resolved > hardCeiling) {
+            return null;
+        }
+        return resolved;
     }
 
-    static @Nullable BlockPos resolveBlockPos(Object value) {
+    static @Nullable Boolean resolveOptionalBoolean(BaseNode node, String portId, boolean propertyFallback) {
+        return OptionalPortDrive.resolveOptionalBoolean(node, portId, propertyFallback);
+    }
+
+    static @Nullable Double resolveOptionalFiniteDouble(BaseNode node, String portId, double propertyFallback) {
+        Double resolved = OptionalPortDrive.resolveOptionalDouble(node, portId, propertyFallback);
+        if (resolved == null) {
+            return OptionalPortDrive.isConnected(node, portId) ? null : (Double.isFinite(propertyFallback) ? propertyFallback : null);
+        }
+        return Double.isFinite(resolved) ? resolved : null;
+    }
+
+    /** Strict BLOCK_POS — rejects Point / Vector floor coercion. */
+    static @Nullable BlockPos requireBlockPos(@Nullable Object value) {
         if (value instanceof BlockPos pos) {
             return pos.toImmutable();
         }
-        if (value instanceof Coordinate(int x, int y, int z)) {
-            return new BlockPos(x, y, z);
-        }
-        if (value instanceof PointData pointData) {
-            Vector3d position = pointData.position();
-            return BlockPos.ofFloored(position.x, position.y, position.z);
-        }
-        if (value instanceof Vector3d vector) {
-            return BlockPos.ofFloored(vector.x, vector.y, vector.z);
-        }
-        if (value instanceof Vec3d vector) {
-            return BlockPos.ofFloored(vector.x, vector.y, vector.z);
-        }
-        if (value instanceof Vector3(float x, float y, float z)) {
-            return BlockPos.ofFloored(x, y, z);
-        }
         return null;
+    }
+
+    static @Nullable List<BlockPos> requireBlockList(@Nullable Object value) {
+        return BlockListUtils.resolveStrictBlockList(value);
     }
 
     static @Nullable BlockState resolveBlockState(Object value) {
@@ -76,6 +114,9 @@ final class WorldWriteUtils {
         if (value instanceof String blockId && !blockId.isBlank()) {
             try {
                 Identifier id = Identifier.of(blockId);
+                if (!Registries.BLOCK.containsId(id)) {
+                    return null;
+                }
                 Block block = Registries.BLOCK.get(id);
                 return block.getDefaultState();
             } catch (Exception ignored) {
@@ -83,7 +124,6 @@ final class WorldWriteUtils {
             }
         }
         if (value instanceof BlockStateData stateData) {
-            // Legacy graphs may still carry blockId inside state until V35 migration strips it.
             String blockId = stateData.get("blockId");
             if (blockId == null || blockId.isBlank()) {
                 blockId = stateData.get("id");
@@ -107,6 +147,13 @@ final class WorldWriteUtils {
         return exactMatch ? current.equals(target) : current.getBlock() == target.getBlock();
     }
 
+    static int flags(boolean notify) {
+        return notify ? Block.NOTIFY_ALL : Block.FORCE_STATE;
+    }
+
+    /**
+     * Inclusive region volume. Returns {@code -1} on overflow / non-positive extent.
+     */
     static long volume(RegionData region) {
         if (region == null || !region.isComplete()) {
             return 0L;
@@ -122,9 +169,13 @@ final class WorldWriteUtils {
         long height = (long) maxCorner.getY() - minCorner.getY() + 1L;
         long depth = (long) maxCorner.getZ() - minCorner.getZ() + 1L;
         if (width <= 0L || height <= 0L || depth <= 0L) {
-            return 0L;
+            return -1L;
         }
-        return width * height * depth;
+        try {
+            return Math.multiplyExact(Math.multiplyExact(width, height), depth);
+        } catch (ArithmeticException e) {
+            return -1L;
+        }
     }
 
     static BlockPosList dedupe(BlockPosList positions) {
@@ -138,22 +189,27 @@ final class WorldWriteUtils {
         return deduped;
     }
 
-    private static <T extends Comparable<T>> BlockState withProperty(BlockState state, String name, String rawValue) {
-        Property<T> property = findProperty(state, name);
-        if (property == null || rawValue == null) {
-            return state;
+    static BlockPosList toBlockPosList(@Nullable List<BlockPos> positions) {
+        BlockPosList list = new BlockPosList();
+        if (positions == null) {
+            return list;
         }
-        Optional<T> parsed = property.parse(rawValue);
-        return parsed.map(value -> state.with(property, value)).orElse(state);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T extends Comparable<T>> @Nullable Property<T> findProperty(BlockState state, String name) {
-        for (Property<?> property : state.getProperties()) {
-            if (property.getName().equals(name)) {
-                return (Property<T>) property;
+        for (BlockPos pos : positions) {
+            if (pos != null) {
+                list.add(pos.toImmutable());
             }
         }
-        return null;
+        return list;
+    }
+
+    static String worldKey(@Nullable World world) {
+        if (world == null || world.getRegistryKey() == null || world.getRegistryKey().getValue() == null) {
+            return "unknown";
+        }
+        return world.getRegistryKey().getValue().toString();
+    }
+
+    static boolean exceedsWriteBlockCap(long count) {
+        return count < 0L || count > GenerationLimits.MAX_WORLD_WRITE_BLOCKS;
     }
 }

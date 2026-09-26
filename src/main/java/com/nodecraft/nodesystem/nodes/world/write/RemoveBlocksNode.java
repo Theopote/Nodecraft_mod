@@ -7,8 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.BlockPosList;
-import net.minecraft.block.Block;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.util.math.BlockPos;
@@ -18,9 +17,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Low-level world edit node that clears blocks at explicit coordinates.
- */
 @NodeInfo(
     effect = NodeEffect.WORLD_WRITE,
     id = "world.write.remove_blocks",
@@ -39,9 +35,16 @@ public class RemoveBlocksNode extends BaseNode {
 
     private static final String OUTPUT_REMOVED_BLOCKS_ID = "output_removed_blocks";
     private static final String OUTPUT_SUCCESS_COUNT_ID = "output_success_count";
+    private static final String OUTPUT_FAILURE_COUNT_ID = "output_failure_count";
     private static final String OUTPUT_TOTAL_COUNT_ID = "output_total_count";
     private static final String OUTPUT_PREVIOUS_BLOCKS_ID = "output_previous_blocks";
+    private static final String OUTPUT_HIT_LIMIT_ID = WorldWriteUtils.OUTPUT_HIT_LIMIT_ID;
+    private static final String OUTPUT_COMPLETE_ID = WorldWriteUtils.OUTPUT_COMPLETE_ID;
+    private static final String OUTPUT_VALID_ID = WorldWriteUtils.OUTPUT_VALID_ID;
     private static final String OUTPUT_ERROR_ID = WorldWriteUtils.OUTPUT_ERROR_ID;
+
+    @NodeProperty(displayName = "Trigger", category = "Execution", order = 0)
+    private boolean trigger = false;
 
     private boolean notifyUpdate = true;
     private boolean spawnDrops = true;
@@ -53,15 +56,19 @@ public class RemoveBlocksNode extends BaseNode {
         super(UUID.randomUUID(), "world.write.remove_blocks");
 
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinates to clear", NodeDataType.BLOCK_LIST, this));
-        addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "When connected, false prevents this write from running", NodeDataType.BOOLEAN, this));
+        addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "Optional arming gate; connected invalid fails closed", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_NOTIFY_ID, "Notify Update", "Whether neighbor and listener updates should fire", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_SPAWN_DROPS_ID, "Spawn Drops", "Whether removed blocks should drop items", NodeDataType.BOOLEAN, this));
-        addInputPort(new BasePort(INPUT_MAX_BLOCKS_ID, "Max Blocks", "Safety limit for the number of blocks to clear", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_MAX_BLOCKS_ID, "Max Blocks", "User budget hard-capped by MAX_WORLD_WRITE_BLOCKS", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_REMOVED_BLOCKS_ID, "Removed Blocks", "Number of non-air blocks removed", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_SUCCESS_COUNT_ID, "Success Count", "Number of successful operations", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_FAILURE_COUNT_ID, "Failure Count", "Number of failed operations", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_TOTAL_COUNT_ID, "Total Count", "Number of attempted operations", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_PREVIOUS_BLOCKS_ID, "Previous Blocks", "Block states that existed before clearing", NodeDataType.BLOCK_INFO_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "True when Max Blocks budget stopped early", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_COMPLETE_ID, "Complete", "False when Hit Limit or per-cell failures", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether preflight succeeded", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Why clearing did not run or the first write error", NodeDataType.STRING, this));
     }
 
@@ -72,121 +79,128 @@ public class RemoveBlocksNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
+        WorldWriteUtils.TriggerResult triggerResult = WorldWriteUtils.resolveWriteTrigger(this, trigger);
+        if (triggerResult == WorldWriteUtils.TriggerResult.FAIL) {
+            publish(0, 0, 0, 0, List.of(), false, false, false, "Trigger is connected but null or invalid.");
+            return;
+        }
+        if (triggerResult == WorldWriteUtils.TriggerResult.SKIP) {
+            publish(0, 0, 0, 0, List.of(), true, false, true, "Not triggered");
+            return;
+        }
+
+        Boolean notify = WorldWriteUtils.resolveOptionalBoolean(this, INPUT_NOTIFY_ID, notifyUpdate);
+        Boolean dropItems = WorldWriteUtils.resolveOptionalBoolean(this, INPUT_SPAWN_DROPS_ID, spawnDrops);
+        Integer blockLimit = WorldWriteUtils.resolveUserBudgetExactInteger(
+            this, INPUT_MAX_BLOCKS_ID, maxBlocks, GenerationLimits.MAX_WORLD_WRITE_BLOCKS);
+        if (notify == null || dropItems == null) {
+            publish(0, 0, 0, 0, List.of(), false, false, false, "Boolean drive is connected but null or invalid.");
+            return;
+        }
+        if (blockLimit == null) {
+            publish(0, 0, 0, 0, List.of(), false, false, false,
+                "Max Blocks must be an exact INTEGER between 1 and " + GenerationLimits.MAX_WORLD_WRITE_BLOCKS + ".");
+            return;
+        }
+
+        List<BlockPos> coordinates = WorldWriteUtils.requireBlockList(inputValues.get(INPUT_COORDINATES_ID));
+        if (coordinates == null) {
+            publish(0, 0, 0, 0, List.of(), false, false, false, "Invalid coordinates (strict BLOCK_LIST required).");
+            return;
+        }
+        if (coordinates.size() > blockLimit) {
+            publish(0, 0, 0, 0, List.of(), false, false, false,
+                "Coordinate count " + coordinates.size() + " exceeds Max Blocks " + blockLimit + ".");
+            return;
+        }
+        if (context == null || context.getWorld() == null) {
+            publish(0, 0, 0, 0, List.of(), false, false, false, "Missing execution world");
+            return;
+        }
+
+        BlockState airState = Blocks.AIR.getDefaultState();
+        int flags = WorldWriteUtils.flags(notify);
+        WorldWriteTransaction tx = new WorldWriteTransaction(WorldWriteUtils.worldKey(context.getWorld()));
+        List<Object> previousBlocks = new ArrayList<>();
         int removedBlocks = 0;
         int successCount = 0;
         int totalCount = 0;
-        String error = "";
-        List<Object> previousBlocks = new ArrayList<>();
 
-        Object coordinatesObj = inputValues.get(INPUT_COORDINATES_ID);
-        boolean notify = inputValues.get(INPUT_NOTIFY_ID) instanceof Boolean value ? value : notifyUpdate;
-        boolean dropItems = inputValues.get(INPUT_SPAWN_DROPS_ID) instanceof Boolean value ? value : spawnDrops;
-        int blockLimit = inputValues.get(INPUT_MAX_BLOCKS_ID) instanceof Number value
-            ? Math.max(1, value.intValue())
-            : maxBlocks;
-
-        if (!WorldWriteUtils.shouldRun(inputValues)) {
-            error = "Not triggered";
-        } else if (context == null || context.getWorld() == null) {
-            error = "Missing execution world";
-        } else if (!(coordinatesObj instanceof BlockPosList coordinates)) {
-            error = "Invalid coordinates";
-        } else if (coordinates.size() > blockLimit) {
-            error = "Coordinate count " + coordinates.size() + " exceeds max blocks " + blockLimit;
-        } else {
-
-            BlockState airState = Blocks.AIR.getDefaultState();
-            int flags = WorldWriteUtils.flags(notify);
-            WorldWriteHistoryService.UndoRecord undoRecord = recordUndo ? new WorldWriteHistoryService.UndoRecord() : null;
-
-            for (BlockPos pos : coordinates) {
-                totalCount++;
-                try {
-                    BlockState currentState = context.getWorld().getBlockState(pos);
-                    previousBlocks.add(currentState);
-
-                    if (currentState.isAir()) {
-                        successCount++;
-                        continue;
-                    }
-
-                    boolean success;
-                    if (dropItems) {
-                        success = context.getWorld().breakBlock(pos, true);
-                    } else {
-                        success = context.getWorld().setBlockState(pos, airState, flags);
-                    }
-
-                    if (success) {
-                        successCount++;
-                        removedBlocks++;
-                        if (undoRecord != null) {
-                            undoRecord.add(pos, currentState);
-                        }
-                    }
-                } catch (Exception e) {
-                    if (error.isEmpty()) {
-                        error = "Error clearing block at " + pos + ": " + e.getMessage();
-                    }
+        for (BlockPos pos : coordinates) {
+            totalCount++;
+            try {
+                BlockState currentState = context.getWorld().getBlockState(pos);
+                previousBlocks.add(currentState);
+                if (currentState.isAir()) {
+                    successCount++;
+                    continue;
                 }
-            }
-            if (undoRecord != null) {
-                WorldWriteHistoryService.getInstance().push(
-                    WorldWriteHistoryService.resolveActorId(context.getPlayer()),
-                    undoRecord
-                );
+                boolean success;
+                if (dropItems) {
+                    success = context.getWorld().breakBlock(pos, true);
+                } else {
+                    success = context.getWorld().setBlockState(pos, airState, flags);
+                }
+                if (success) {
+                    tx.recordSuccess(context, pos, currentState);
+                    removedBlocks++;
+                    successCount++;
+                } else {
+                    tx.recordFailure();
+                }
+            } catch (Exception e) {
+                tx.recordFailure();
             }
         }
 
+        tx.pushIfNeeded(context, recordUndo);
+        String error = tx.failureCount() > 0 ? "Partial write: " + tx.failureCount() + " failure(s)" : "";
+        publish(
+            removedBlocks,
+            successCount,
+            tx.failureCount(),
+            totalCount,
+            previousBlocks,
+            true,
+            tx.hitLimit(),
+            tx.isComplete(),
+            error
+        );
+    }
+
+    private void publish(
+        int removedBlocks,
+        int successCount,
+        int failureCount,
+        int totalCount,
+        List<Object> previousBlocks,
+        boolean valid,
+        boolean hitLimit,
+        boolean complete,
+        String error
+    ) {
         outputValues.put(OUTPUT_REMOVED_BLOCKS_ID, removedBlocks);
         outputValues.put(OUTPUT_SUCCESS_COUNT_ID, successCount);
+        outputValues.put(OUTPUT_FAILURE_COUNT_ID, failureCount);
         outputValues.put(OUTPUT_TOTAL_COUNT_ID, totalCount);
         outputValues.put(OUTPUT_PREVIOUS_BLOCKS_ID, previousBlocks);
-        outputValues.put(OUTPUT_ERROR_ID, error);
+        outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
+        outputValues.put(OUTPUT_COMPLETE_ID, complete);
+        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
-    public boolean isNotifyUpdate() {
-        return notifyUpdate;
-    }
-
-    public void setNotifyUpdate(boolean notifyUpdate) {
-        if (this.notifyUpdate != notifyUpdate) {
-            this.notifyUpdate = notifyUpdate;
-            markDirty();
-        }
-    }
-
-    public boolean isSpawnDrops() {
-        return spawnDrops;
-    }
-
-    public void setSpawnDrops(boolean spawnDrops) {
-        if (this.spawnDrops != spawnDrops) {
-            this.spawnDrops = spawnDrops;
-            markDirty();
-        }
-    }
-
-    public int getMaxBlocks() {
-        return maxBlocks;
-    }
-
+    public boolean isNotifyUpdate() { return notifyUpdate; }
+    public void setNotifyUpdate(boolean notifyUpdate) { this.notifyUpdate = notifyUpdate; markDirty(); }
+    public boolean isSpawnDrops() { return spawnDrops; }
+    public void setSpawnDrops(boolean spawnDrops) { this.spawnDrops = spawnDrops; markDirty(); }
+    public int getMaxBlocks() { return maxBlocks; }
     public void setMaxBlocks(int maxBlocks) {
-        int resolved = Math.max(1, maxBlocks);
-        if (this.maxBlocks != resolved) {
-            this.maxBlocks = resolved;
-            markDirty();
-        }
+        this.maxBlocks = Math.max(1, Math.min(maxBlocks, GenerationLimits.MAX_WORLD_WRITE_BLOCKS));
+        markDirty();
     }
-
-    public boolean isRecordUndo() {
-        return recordUndo;
-    }
-
-    public void setRecordUndo(boolean recordUndo) {
-        if (this.recordUndo != recordUndo) {
-            this.recordUndo = recordUndo;
-            markDirty();
-        }
-    }
+    public boolean isRecordUndo() { return recordUndo; }
+    public void setRecordUndo(boolean recordUndo) { this.recordUndo = recordUndo; markDirty(); }
+    public boolean isTrigger() { return trigger; }
+    public void setTrigger(boolean trigger) { this.trigger = trigger; markDirty(); }
 }

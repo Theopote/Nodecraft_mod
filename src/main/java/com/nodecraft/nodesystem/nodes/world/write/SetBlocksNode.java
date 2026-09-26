@@ -7,12 +7,13 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.block.BlockState;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,7 +21,8 @@ import java.util.UUID;
     effect = NodeEffect.WORLD_WRITE,
     id = "world.write.set_blocks",
     displayName = "Set Blocks",
-    description = "Sets blocks at explicit coordinates, with optional shared block-entity NBT",
+    description = "Sets blocks at explicit coordinates, with optional shared block-entity NBT. "
+        + "Block Info List must match Coordinates size (no cyclic reuse).",
     category = "world.write",
     order = 1
 )
@@ -32,21 +34,27 @@ public class SetBlocksNode extends BaseNode {
     private static final String INPUT_TRIGGER_ID = WorldWriteUtils.INPUT_TRIGGER_ID;
     private static final String INPUT_NOTIFY_ID = "input_notify";
     private static final String INPUT_SPAWN_DROPS_ID = "input_spawn_drops";
-    private static final String INPUT_BATCH_UPDATES_ID = "input_batch_updates";
     private static final String INPUT_MAX_BLOCKS_ID = "input_max_blocks";
     private static final String INPUT_NBT_ID = WorldWriteNbtUtils.INPUT_NBT_ID;
     private static final String INPUT_NBT_STRING_ID = WorldWriteNbtUtils.INPUT_NBT_STRING_ID;
     private static final String INPUT_MERGE_NBT_ID = WorldWriteNbtUtils.INPUT_MERGE_NBT_ID;
 
     private static final String OUTPUT_SUCCESS_COUNT_ID = "output_success_count";
+    private static final String OUTPUT_FAILURE_COUNT_ID = "output_failure_count";
     private static final String OUTPUT_NBT_SUCCESS_COUNT_ID = "output_nbt_success_count";
     private static final String OUTPUT_TOTAL_COUNT_ID = "output_total_count";
     private static final String OUTPUT_ALL_SUCCESS_ID = "output_all_success";
+    private static final String OUTPUT_HIT_LIMIT_ID = WorldWriteUtils.OUTPUT_HIT_LIMIT_ID;
+    private static final String OUTPUT_COMPLETE_ID = WorldWriteUtils.OUTPUT_COMPLETE_ID;
+    private static final String OUTPUT_VALID_ID = WorldWriteUtils.OUTPUT_VALID_ID;
     private static final String OUTPUT_ERROR_ID = WorldWriteUtils.OUTPUT_ERROR_ID;
+
+    @NodeProperty(displayName = "Trigger", category = "Execution", order = 0)
+    private boolean trigger = false;
 
     private boolean notifyUpdate = true;
     private boolean spawnDrops = false;
-    private boolean batchUpdates = true;
+    private boolean mergeNbtProperty = false;
     private int maxBlocks = 32768;
     @NodeProperty(displayName = "Record Undo", category = "Execution", order = 1)
     private boolean recordUndo = true;
@@ -55,195 +63,193 @@ public class SetBlocksNode extends BaseNode {
         super(UUID.randomUUID(), "world.write.set_blocks");
 
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Target block coordinates", NodeDataType.BLOCK_LIST, this));
-        addInputPort(new BasePort(INPUT_BLOCK_INFO_ID, "Block Info", "Block state or block id to place", NodeDataType.BLOCK_INFO, this));
-        addInputPort(new BasePort(INPUT_BLOCK_INFO_LIST_ID, "Block Info List", "Optional per-position block states or ids", NodeDataType.BLOCK_INFO_LIST, this));
-        addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "When connected, false prevents this write from running", NodeDataType.BOOLEAN, this));
+        addInputPort(new BasePort(INPUT_BLOCK_INFO_ID, "Block Info", "Shared block when Block Info List is empty", NodeDataType.BLOCK_INFO, this));
+        addInputPort(new BasePort(INPUT_BLOCK_INFO_LIST_ID, "Block Info List",
+            "Per-position block states; size must equal Coordinates size", NodeDataType.BLOCK_INFO_LIST, this));
+        addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "Optional arming gate; connected invalid fails closed", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_NOTIFY_ID, "Notify Update", "Whether neighbor and listener updates should fire", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_SPAWN_DROPS_ID, "Spawn Drops", "Whether replacing blocks should drop items first", NodeDataType.BOOLEAN, this));
-        addInputPort(new BasePort(INPUT_BATCH_UPDATES_ID, "Batch Updates", "Reserved batch-update toggle", NodeDataType.BOOLEAN, this));
-        addInputPort(new BasePort(INPUT_MAX_BLOCKS_ID, "Max Blocks", "Safety limit for the number of writes", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_NBT_ID, "NBT", "Optional shared block-entity NBT to apply after placement", NodeDataType.NBT_COMPOUND, this));
-        addInputPort(new BasePort(INPUT_NBT_STRING_ID, "NBT String", "Optional shared SNBT string to apply after placement", NodeDataType.STRING, this));
-        addInputPort(new BasePort(INPUT_MERGE_NBT_ID, "Merge NBT", "Merge incoming NBT with each block entity NBT instead of replacing", NodeDataType.BOOLEAN, this));
+        addInputPort(new BasePort(INPUT_MAX_BLOCKS_ID, "Max Blocks", "User budget hard-capped by MAX_WORLD_WRITE_BLOCKS", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_NBT_ID, "NBT", "Optional shared block-entity NBT", NodeDataType.NBT_COMPOUND, this));
+        addInputPort(new BasePort(INPUT_NBT_STRING_ID, "NBT String", "Optional shared SNBT string", NodeDataType.STRING, this));
+        addInputPort(new BasePort(INPUT_MERGE_NBT_ID, "Merge NBT", "Merge incoming NBT with each block entity NBT", NodeDataType.BOOLEAN, this));
 
         addOutputPort(new BasePort(OUTPUT_SUCCESS_COUNT_ID, "Success Count", "Number of successful writes", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_NBT_SUCCESS_COUNT_ID, "NBT Success Count", "Number of block entities that received optional NBT", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_FAILURE_COUNT_ID, "Failure Count", "Number of failed writes", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_NBT_SUCCESS_COUNT_ID, "NBT Success Count", "Block entities that received NBT", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_TOTAL_COUNT_ID, "Total Count", "Number of attempted writes", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_ALL_SUCCESS_ID, "All Success", "Whether every attempted write succeeded", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Why the batch did not run or the first write error", NodeDataType.STRING, this));
-    }
-
-    @Override
-    public String getDescription() {
-        return "Sets blocks at explicit coordinates, with optional shared block-entity NBT";
+        addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "True when Max Blocks budget stopped early", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_COMPLETE_ID, "Complete", "False when Hit Limit or per-cell failures", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether preflight succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Why the batch did not run or first write error", NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        int successCount = 0;
-        int nbtSuccessCount = 0;
-        int totalCount = 0;
-        boolean allSuccess = true;
-        String error = "";
+        WorldWriteUtils.TriggerResult triggerResult = WorldWriteUtils.resolveWriteTrigger(this, trigger);
+        if (triggerResult == WorldWriteUtils.TriggerResult.FAIL) {
+            publish(0, 0, 0, 0, false, false, false, false, "Trigger is connected but null or invalid.");
+            return;
+        }
+        if (triggerResult == WorldWriteUtils.TriggerResult.SKIP) {
+            publish(0, 0, 0, 0, true, false, true, true, "Not triggered");
+            return;
+        }
 
-        Object coordinatesObj = inputValues.get(INPUT_COORDINATES_ID);
-        Object blockInfoObj = inputValues.get(INPUT_BLOCK_INFO_ID);
-        Object blockInfoListObj = inputValues.get(INPUT_BLOCK_INFO_LIST_ID);
-        boolean notify = inputValues.get(INPUT_NOTIFY_ID) instanceof Boolean value ? value : notifyUpdate;
-        boolean dropItems = inputValues.get(INPUT_SPAWN_DROPS_ID) instanceof Boolean value ? value : spawnDrops;
-        boolean batch = inputValues.get(INPUT_BATCH_UPDATES_ID) instanceof Boolean value ? value : batchUpdates;
-        int blockLimit = WorldWriteUtils.resolveLimit(inputValues.get(INPUT_MAX_BLOCKS_ID), maxBlocks);
+        Boolean notify = WorldWriteUtils.resolveOptionalBoolean(this, INPUT_NOTIFY_ID, notifyUpdate);
+        Boolean dropItems = WorldWriteUtils.resolveOptionalBoolean(this, INPUT_SPAWN_DROPS_ID, spawnDrops);
+        Boolean mergeNbt = WorldWriteNbtUtils.resolveMergeNbt(this, mergeNbtProperty);
+        Integer blockLimit = WorldWriteUtils.resolveUserBudgetExactInteger(
+            this, INPUT_MAX_BLOCKS_ID, maxBlocks, GenerationLimits.MAX_WORLD_WRITE_BLOCKS);
+        if (notify == null || dropItems == null || mergeNbt == null) {
+            publish(0, 0, 0, 0, false, false, false, false, "Boolean drive is connected but null or invalid.");
+            return;
+        }
+        if (blockLimit == null) {
+            publish(0, 0, 0, 0, false, false, false, false,
+                "Max Blocks must be an exact INTEGER between 1 and " + GenerationLimits.MAX_WORLD_WRITE_BLOCKS + ".");
+            return;
+        }
 
-        if (!WorldWriteUtils.shouldRun(inputValues)) {
-            allSuccess = false;
-            error = "Not triggered";
-        } else if (context == null || context.getWorld() == null) {
-            allSuccess = false;
-            error = "Missing execution world";
-        } else if (!(coordinatesObj instanceof BlockPosList coordinates)) {
-            allSuccess = false;
-            error = "Invalid coordinates";
-        } else if (coordinates.size() > blockLimit) {
-            allSuccess = false;
-            error = "Coordinate count " + coordinates.size() + " exceeds max blocks " + blockLimit;
-        } else {
-            List<?> blockInfoList = blockInfoListObj instanceof List<?> list ? list : null;
-            BlockState singleTargetState = blockInfoList == null || blockInfoList.isEmpty()
-                ? WorldWriteUtils.resolveBlockState(blockInfoObj)
-                : null;
+        List<BlockPos> coordinates = WorldWriteUtils.requireBlockList(inputValues.get(INPUT_COORDINATES_ID));
+        if (coordinates == null) {
+            publish(0, 0, 0, 0, false, false, false, false, "Invalid coordinates (strict BLOCK_LIST required).");
+            return;
+        }
+        if (coordinates.size() > blockLimit) {
+            publish(0, 0, 0, 0, false, false, false, false,
+                "Coordinate count " + coordinates.size() + " exceeds Max Blocks " + blockLimit + ".");
+            return;
+        }
 
-            if ((blockInfoList == null || blockInfoList.isEmpty()) && singleTargetState == null) {
-                allSuccess = false;
-                error = "Invalid block info";
-            } else {
-                int flags = WorldWriteUtils.flags(notify);
-                WorldWriteHistoryService.UndoRecord undoRecord = recordUndo ? new WorldWriteHistoryService.UndoRecord() : null;
-                boolean hasNbtInput = WorldWriteNbtUtils.hasNbtInput(inputValues);
-                NbtCompound incomingNbt = WorldWriteNbtUtils.resolveIncomingNbt(inputValues);
-                boolean mergeNbt = WorldWriteNbtUtils.mergeRequested(inputValues);
-                if (hasNbtInput && incomingNbt == null) {
-                    allSuccess = false;
-                    error = "Invalid NBT input";
-                }
-
-                if (batch) {
-                    // Reserved for future world-level batch APIs.
-                }
-
-                for (BlockPos pos : coordinates) {
-                    totalCount++;
-                    try {
-                        BlockState targetState = singleTargetState;
-                        if (targetState == null && blockInfoList != null && !blockInfoList.isEmpty()) {
-                            int index = totalCount - 1;
-                            Object currentInfo = blockInfoList.get(index % blockInfoList.size());
-                            targetState = WorldWriteUtils.resolveBlockState(currentInfo);
-                        }
-                        if (targetState == null) {
-                            allSuccess = false;
-                            if (error.isEmpty()) {
-                                error = "Invalid block info at index " + (totalCount - 1);
-                            }
-                            continue;
-                        }
-
-                        BlockState previousState = context.getWorld().getBlockState(pos);
-                        if (dropItems && !context.getWorld().isAir(pos)) {
-                            context.getWorld().breakBlock(pos, true);
-                        }
-                        boolean success = context.getWorld().setBlockState(pos, targetState, flags);
-                        if (success) {
-                            successCount++;
-                            if (incomingNbt != null) {
-                                boolean nbtSuccess = WorldWriteNbtUtils.applyToBlockEntity(context, pos, incomingNbt, mergeNbt, notify);
-                                if (nbtSuccess) {
-                                    nbtSuccessCount++;
-                                } else {
-                                    allSuccess = false;
-                                    if (error.isEmpty()) {
-                                        error = "NBT was not applied at " + pos;
-                                    }
-                                }
-                            }
-                            if (undoRecord != null) {
-                                undoRecord.add(pos, previousState);
-                            }
-                        } else {
-                            allSuccess = false;
-                            if (error.isEmpty()) {
-                                error = "World rejected block placement at " + pos;
-                            }
-                        }
-                    } catch (Exception e) {
-                        allSuccess = false;
-                        if (error.isEmpty()) {
-                            error = "Error setting block at " + pos + ": " + e.getMessage();
-                        }
-                    }
-                }
-                if (undoRecord != null) {
-                    WorldWriteHistoryService.getInstance().push(
-                        WorldWriteHistoryService.resolveActorId(context.getPlayer()),
-                        undoRecord
-                    );
-                }
+        Object listRaw = inputValues.get(INPUT_BLOCK_INFO_LIST_ID);
+        List<BlockState> perPosStates = null;
+        if (listRaw != null) {
+            if (!(listRaw instanceof Collection<?> listCollection)) {
+                publish(0, 0, 0, 0, false, false, false, false, "Invalid Block Info List.");
+                return;
+            }
+            if (!listCollection.isEmpty() && listCollection.size() != coordinates.size()) {
+                publish(0, 0, 0, 0, false, false, false, false,
+                    "Block Info List size (" + listCollection.size() + ") must equal Coordinates size ("
+                        + coordinates.size() + ").");
+                return;
+            }
+            perPosStates = BlockInfoListUtils.resolveStrictOrderedBlockInfoList(listRaw);
+            if (perPosStates == null) {
+                publish(0, 0, 0, 0, false, false, false, false, "Invalid Block Info List.");
+                return;
             }
         }
 
+        BlockState sharedState = null;
+        if (perPosStates == null || perPosStates.isEmpty()) {
+            sharedState = WorldWriteUtils.resolveBlockState(inputValues.get(INPUT_BLOCK_INFO_ID));
+            if (sharedState == null) {
+                publish(0, 0, 0, 0, false, false, false, false, "Invalid block info");
+                return;
+            }
+        }
+
+        WorldWriteNbtUtils.NbtResolveResult nbtResult = WorldWriteNbtUtils.resolveIncomingNbt(this);
+        if (nbtResult.failed()) {
+            publish(0, 0, 0, 0, false, false, false, false, nbtResult.error());
+            return;
+        }
+
+        if (context == null || context.getWorld() == null) {
+            publish(0, 0, 0, 0, false, false, false, false, "Missing execution world");
+            return;
+        }
+
+        WorldWriteTransaction tx = new WorldWriteTransaction(WorldWriteUtils.worldKey(context.getWorld()));
+        int flags = WorldWriteUtils.flags(notify);
+        int nbtSuccessCount = 0;
+        int totalCount = 0;
+        NbtCompound incomingNbt = nbtResult.nbt();
+
+        for (int i = 0; i < coordinates.size(); i++) {
+            BlockPos pos = coordinates.get(i);
+            totalCount++;
+            BlockState targetState = sharedState != null ? sharedState : perPosStates.get(i);
+            try {
+                BlockState previousState = context.getWorld().getBlockState(pos);
+                if (dropItems && !context.getWorld().isAir(pos)) {
+                    context.getWorld().breakBlock(pos, true);
+                }
+                boolean success = context.getWorld().setBlockState(pos, targetState, flags);
+                if (success) {
+                    tx.recordSuccess(context, pos, previousState);
+                    if (incomingNbt != null) {
+                        if (WorldWriteNbtUtils.applyToBlockEntity(context, pos, incomingNbt, mergeNbt, notify)) {
+                            nbtSuccessCount++;
+                        } else {
+                            tx.recordFailure();
+                            if (tx.failureCount() == 1) {
+                                // first NBT failure message via incomplete
+                            }
+                        }
+                    }
+                } else {
+                    tx.recordFailure();
+                }
+            } catch (Exception e) {
+                tx.recordFailure();
+            }
+        }
+
+        tx.pushIfNeeded(context, recordUndo);
+        String error = "";
+        if (tx.failureCount() > 0) {
+            error = "Partial write: " + tx.failureCount() + " failure(s)";
+        }
+        publish(
+            tx.successCount(),
+            tx.failureCount(),
+            nbtSuccessCount,
+            totalCount,
+            true,
+            tx.hitLimit(),
+            tx.isComplete(),
+            tx.failureCount() == 0,
+            error
+        );
+    }
+
+    private void publish(
+        int successCount,
+        int failureCount,
+        int nbtSuccessCount,
+        int totalCount,
+        boolean valid,
+        boolean hitLimit,
+        boolean complete,
+        boolean allSuccess,
+        String error
+    ) {
         outputValues.put(OUTPUT_SUCCESS_COUNT_ID, successCount);
+        outputValues.put(OUTPUT_FAILURE_COUNT_ID, failureCount);
         outputValues.put(OUTPUT_NBT_SUCCESS_COUNT_ID, nbtSuccessCount);
         outputValues.put(OUTPUT_TOTAL_COUNT_ID, totalCount);
         outputValues.put(OUTPUT_ALL_SUCCESS_ID, allSuccess);
-        outputValues.put(OUTPUT_ERROR_ID, error);
+        outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
+        outputValues.put(OUTPUT_COMPLETE_ID, complete);
+        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
-    public boolean isNotifyUpdate() {
-        return notifyUpdate;
-    }
-
-    public void setNotifyUpdate(boolean notifyUpdate) {
-        this.notifyUpdate = notifyUpdate;
-        markDirty();
-    }
-
-    public boolean isSpawnDrops() {
-        return spawnDrops;
-    }
-
-    public void setSpawnDrops(boolean spawnDrops) {
-        this.spawnDrops = spawnDrops;
-        markDirty();
-    }
-
-    public boolean isBatchUpdates() {
-        return batchUpdates;
-    }
-
-    public void setBatchUpdates(boolean batchUpdates) {
-        this.batchUpdates = batchUpdates;
-        markDirty();
-    }
-
-    public int getMaxBlocks() {
-        return maxBlocks;
-    }
-
+    public boolean isNotifyUpdate() { return notifyUpdate; }
+    public void setNotifyUpdate(boolean notifyUpdate) { this.notifyUpdate = notifyUpdate; markDirty(); }
+    public boolean isSpawnDrops() { return spawnDrops; }
+    public void setSpawnDrops(boolean spawnDrops) { this.spawnDrops = spawnDrops; markDirty(); }
+    public int getMaxBlocks() { return maxBlocks; }
     public void setMaxBlocks(int maxBlocks) {
-        int resolved = Math.max(1, maxBlocks);
-        if (this.maxBlocks != resolved) {
-            this.maxBlocks = resolved;
-            markDirty();
-        }
+        this.maxBlocks = Math.max(1, Math.min(maxBlocks, GenerationLimits.MAX_WORLD_WRITE_BLOCKS));
+        markDirty();
     }
-
-    public boolean isRecordUndo() {
-        return recordUndo;
-    }
-
-    public void setRecordUndo(boolean recordUndo) {
-        if (this.recordUndo != recordUndo) {
-            this.recordUndo = recordUndo;
-            markDirty();
-        }
-    }
+    public boolean isRecordUndo() { return recordUndo; }
+    public void setRecordUndo(boolean recordUndo) { this.recordUndo = recordUndo; markDirty(); }
+    public boolean isTrigger() { return trigger; }
+    public void setTrigger(boolean trigger) { this.trigger = trigger; markDirty(); }
 }

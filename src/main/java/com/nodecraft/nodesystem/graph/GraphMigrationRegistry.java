@@ -122,6 +122,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V60 -> migrateV60ToV61(graph);
             case GraphFormatVersion.V61 -> migrateV61ToV62(graph);
             case GraphFormatVersion.V62 -> migrateV62ToV63(graph);
+            case GraphFormatVersion.V63 -> migrateV63ToV64(graph);
             default -> graph;
         };
     }
@@ -4661,5 +4662,120 @@ public final class GraphMigrationRegistry {
             cleaned.put(key, entry.getValue());
         }
         node.state = cleaned;
+    }
+
+    /**
+     * World Write v1: drop dead ports, inject trigger=true for mutators, strip unimplemented
+     * teleport/remove lookup ports.
+     */
+    private static SavedGraph migrateV63ToV64(SavedGraph graph) {
+        applyWorldWriteV64ToGraph(graph);
+        if (graph.subgraphDefinitions != null) {
+            for (SavedGraph definition : graph.subgraphDefinitions.values()) {
+                if (definition != null) {
+                    applyWorldWriteV64ToGraph(definition);
+                }
+            }
+        }
+        return graph;
+    }
+
+    private static final Set<String> WORLD_WRITE_MUTATOR_TYPES = Set.of(
+            "world.write.set_block",
+            "world.write.set_blocks",
+            "world.write.fill_region",
+            "world.write.replace_blocks",
+            "world.write.clone_region",
+            "world.write.remove_blocks",
+            "world.write.set_block_nbt",
+            "world.write.spawn_entity",
+            "world.write.entity_teleport",
+            "world.write.remove_entities",
+            "world.write.write_sign_text",
+            "world.write.apply_redstone_power",
+            "world.write.simulate_right_click",
+            "world.write.execute_command",
+            "world.write.undo_last_write",
+            "world.write.redo_last_write",
+            "world.write.clear_undo_history"
+    );
+
+    private static void applyWorldWriteV64ToGraph(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                String type = node.typeId.toLowerCase(Locale.ROOT);
+                if (WORLD_WRITE_MUTATOR_TYPES.contains(type)) {
+                    injectTriggerTrueState(node);
+                }
+            }
+        }
+
+        if (graph.connections == null) {
+            return;
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node != null && node.nodeId != null && node.typeId != null) {
+                    nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+                }
+            }
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return true;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourcePort = normalizePortId(connection.sourcePortId);
+            String targetPort = normalizePortId(connection.targetPortId);
+
+            if ("world.write.set_blocks".equals(targetType) && "input_batch_updates".equals(targetPort)) {
+                return true;
+            }
+            if ("world.write.apply_redstone_power".equals(targetType) && "input_play_sound".equals(targetPort)) {
+                return true;
+            }
+            if ("world.write.entity_teleport".equals(targetType)
+                    && ("input_dimension".equals(targetPort)
+                    || "input_allow_across_dimension".equals(targetPort)
+                    || "input_entity_uuid".equals(targetPort)
+                    || "input_entity_type".equals(targetPort))) {
+                return true;
+            }
+            if ("world.write.remove_entities".equals(targetType)
+                    && ("input_entity_uuid".equals(targetPort)
+                    || "input_entity_type".equals(targetPort)
+                    || "input_uuid".equals(targetPort))) {
+                return true;
+            }
+            // Drop wires into removed teleported/failed LIST ports that will be typed differently —
+            // keep wires; port ids stay, only type changes.
+            return false;
+        });
+    }
+
+    private static void injectTriggerTrueState(SavedNode node) {
+        Map<String, Object> state;
+        if (node.state instanceof Map<?, ?> existing) {
+            state = new HashMap<>();
+            for (Map.Entry<?, ?> entry : existing.entrySet()) {
+                if (entry.getKey() instanceof String key) {
+                    state.put(key, entry.getValue());
+                }
+            }
+        } else {
+            state = new HashMap<>();
+        }
+        if (!state.containsKey("trigger")) {
+            state.put("trigger", true);
+        }
+        node.state = state;
     }
 }

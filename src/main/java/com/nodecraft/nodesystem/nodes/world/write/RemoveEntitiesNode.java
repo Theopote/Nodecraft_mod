@@ -3,197 +3,172 @@ package com.nodecraft.nodesystem.nodes.world.write;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import net.minecraft.entity.Entity;
+import net.minecraft.server.world.ServerWorld;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Remove Entities 节点: 移除实体。
- */
 @NodeInfo(
     effect = NodeEffect.WORLD_WRITE,
     id = "world.write.remove_entities",
     displayName = "Remove Entities",
-    description = "移除实体",
-    category = "world.write"
+    description = "Removes entities from the world. Lookup by UUID/type belongs in world.query.",
+    category = "world.write",
+    order = 9
 )
 public class RemoveEntitiesNode extends BaseNode {
 
-    // --- 节点属性 ---
-    private boolean dropItems = false; // 移除实体时是否掉落物品
-    private String description = "移除指定的实体或实体列表";
-
-    // --- 输入端口 IDs ---
     private static final String INPUT_ENTITY_ID = "input_entity";
     private static final String INPUT_ENTITY_LIST_ID = "input_entity_list";
-    private static final String INPUT_ENTITY_UUID_ID = "input_entity_uuid";
+    private static final String INPUT_TRIGGER_ID = WorldWriteUtils.INPUT_TRIGGER_ID;
     private static final String INPUT_DROP_ITEMS_ID = "input_drop_items";
-    private static final String INPUT_ENTITY_TYPE_ID = "input_entity_type";
     private static final String INPUT_MAX_COUNT_ID = "input_max_count";
 
-    // --- 输出端口 IDs ---
     private static final String OUTPUT_REMOVED_COUNT_ID = "output_removed_count";
+    private static final String OUTPUT_FAILURE_COUNT_ID = "output_failure_count";
     private static final String OUTPUT_SUCCESS_ID = "output_success";
     private static final String OUTPUT_FAILED_ENTITIES_ID = "output_failed_entities";
+    private static final String OUTPUT_COMPLETE_ID = WorldWriteUtils.OUTPUT_COMPLETE_ID;
+    private static final String OUTPUT_HIT_LIMIT_ID = WorldWriteUtils.OUTPUT_HIT_LIMIT_ID;
+    private static final String OUTPUT_VALID_ID = WorldWriteUtils.OUTPUT_VALID_ID;
+    private static final String OUTPUT_ERROR_ID = WorldWriteUtils.OUTPUT_ERROR_ID;
 
-    // --- 构造函数 ---
+    @NodeProperty(displayName = "Trigger", category = "Execution", order = 0)
+    private boolean trigger = false;
+
+    private boolean dropItems = false;
+    private int maxCount = GenerationLimits.MAX_WORLD_WRITE_ENTITIES;
+
     public RemoveEntitiesNode() {
         super(UUID.randomUUID(), "world.write.remove_entities");
-        
-        // 创建并添加输入端口
-        addInputPort(new BasePort(INPUT_ENTITY_ID, "Entity", 
-                "要移除的单个实体", NodeDataType.MINECRAFT_ENTITY, this));
-        addInputPort(new BasePort(INPUT_ENTITY_LIST_ID, "Entity List", 
-                "要移除的实体列表", NodeDataType.MINECRAFT_ENTITY_LIST, this));
-        addInputPort(new BasePort(INPUT_ENTITY_UUID_ID, "Entity UUID", 
-                "要移除的实体UUID", NodeDataType.STRING, this));
-        addInputPort(new BasePort(INPUT_DROP_ITEMS_ID, "Drop Items", 
-                "是否掉落物品", NodeDataType.BOOLEAN, this));
-        addInputPort(new BasePort(INPUT_ENTITY_TYPE_ID, "Entity Type", 
-                "要移除的实体类型", NodeDataType.ENTITY_TYPE, this));
-        addInputPort(new BasePort(INPUT_MAX_COUNT_ID, "Max Count", 
-                "最大移除数量", NodeDataType.INTEGER, this));
 
-        // 创建并添加输出端口
-        addOutputPort(new BasePort(OUTPUT_REMOVED_COUNT_ID, "Removed Count", 
-                "成功移除的实体数量", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", 
-                "是否成功移除所有实体", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_FAILED_ENTITIES_ID, "Failed Entities", 
-                "移除失败的实体列表", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_ENTITY_ID, "Entity", "Single entity to remove", NodeDataType.MINECRAFT_ENTITY, this));
+        addInputPort(new BasePort(INPUT_ENTITY_LIST_ID, "Entities", "Entities to remove", NodeDataType.MINECRAFT_ENTITY_LIST, this));
+        addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "Optional arming gate; connected invalid fails closed", NodeDataType.BOOLEAN, this));
+        addInputPort(new BasePort(INPUT_DROP_ITEMS_ID, "Drop Items", "Reserved; preferred path is discard without drops", NodeDataType.BOOLEAN, this));
+        addInputPort(new BasePort(INPUT_MAX_COUNT_ID, "Max Count", "User budget hard-capped by MAX_WORLD_WRITE_ENTITIES", NodeDataType.INTEGER, this));
+
+        addOutputPort(new BasePort(OUTPUT_REMOVED_COUNT_ID, "Removed Count", "Entities successfully removed", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_FAILURE_COUNT_ID, "Failure Count", "Entities that failed to remove", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether every attempted remove succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_FAILED_ENTITIES_ID, "Failed Entities", "Entities that could not be removed", NodeDataType.MINECRAFT_ENTITY_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_COMPLETE_ID, "Complete", "False when Max Count truncated or failures", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "True when Max Count truncated the input list", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether preflight succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Why remove did not run or failed", NodeDataType.STRING, this));
     }
 
-    @Override
-    public String getDescription() {
-        return this.description;
-    }
-
-    // --- 核心逻辑 ---
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        // 默认输出值
-        int removedCount = 0;
-        boolean success = false;
-        List<Object> failedEntities = new java.util.ArrayList<>();
-        
-        // 获取输入值
-        Object entityObj = inputValues.get(INPUT_ENTITY_ID);
-        Object entityListObj = inputValues.get(INPUT_ENTITY_LIST_ID);
-        Object entityUuidObj = inputValues.get(INPUT_ENTITY_UUID_ID);
-        Object entityTypeObj = inputValues.get(INPUT_ENTITY_TYPE_ID);
-        
-        // 获取布尔值参数
-        boolean dropItemsValue = this.dropItems;
-        Object dropItemsObj = inputValues.get(INPUT_DROP_ITEMS_ID);
-        if (dropItemsObj instanceof Boolean) {
-            dropItemsValue = (Boolean) dropItemsObj;
+        WorldWriteUtils.TriggerResult triggerResult = WorldWriteUtils.resolveWriteTrigger(this, trigger);
+        if (triggerResult == WorldWriteUtils.TriggerResult.FAIL) {
+            publish(0, 0, false, List.of(), false, false, false, "Trigger is connected but null or invalid.");
+            return;
         }
-        
-        // 获取最大移除数量
-        int maxCount = Integer.MAX_VALUE;
-        Object maxCountObj = inputValues.get(INPUT_MAX_COUNT_ID);
-        if (maxCountObj instanceof Number) {
-            maxCount = ((Number) maxCountObj).intValue();
-            if (maxCount <= 0) {
-                maxCount = Integer.MAX_VALUE;
+        if (triggerResult == WorldWriteUtils.TriggerResult.SKIP) {
+            publish(0, 0, true, List.of(), true, false, true, "Not triggered");
+            return;
+        }
+
+        Boolean drop = WorldWriteUtils.resolveOptionalBoolean(this, INPUT_DROP_ITEMS_ID, dropItems);
+        Integer budget = WorldWriteUtils.resolveUserBudgetExactInteger(
+            this, INPUT_MAX_COUNT_ID, maxCount, GenerationLimits.MAX_WORLD_WRITE_ENTITIES);
+        if (drop == null) {
+            publish(0, 0, false, List.of(), false, false, false, "Drop Items is connected but null or invalid.");
+            return;
+        }
+        if (budget == null) {
+            publish(0, 0, false, List.of(), false, false, false,
+                "Max Count must be an exact INTEGER between 1 and " + GenerationLimits.MAX_WORLD_WRITE_ENTITIES + ".");
+            return;
+        }
+        if (context == null || !(context.getWorld() instanceof ServerWorld)) {
+            publish(0, 0, false, List.of(), false, false, false, "Missing execution world");
+            return;
+        }
+
+        List<Entity> entities = collectEntities(inputValues.get(INPUT_ENTITY_ID), inputValues.get(INPUT_ENTITY_LIST_ID));
+        if (entities == null) {
+            publish(0, 0, false, List.of(), false, false, false, "Invalid Entity / Entities payload.");
+            return;
+        }
+        boolean hitLimit = entities.size() > budget;
+        if (hitLimit) {
+            entities = new ArrayList<>(entities.subList(0, budget));
+        }
+
+        int removed = 0;
+        List<Entity> failed = new ArrayList<>();
+        for (Entity entity : entities) {
+            try {
+                // Prefer discard; drop-items path is not fully modeled for arbitrary entity types.
+                entity.discard();
+                removed++;
+            } catch (Exception e) {
+                failed.add(entity);
             }
         }
-        
-        // 检查执行上下文是否有效
-        if (context != null && context.getWorld() != null) {
-            // 创建要处理的实体列表
-            List<Object> entitiesToRemove = new java.util.ArrayList<>();
-            
-            // 添加单个实体
-            if (entityObj != null) {
-                entitiesToRemove.add(entityObj);
+
+        boolean success = failed.isEmpty();
+        boolean complete = success && !hitLimit;
+        String error = !failed.isEmpty()
+            ? "Partial remove: " + failed.size() + " failure(s)"
+            : (hitLimit ? "Hit Max Count" : "");
+        publish(removed, failed.size(), success, failed, true, hitLimit, complete, error);
+    }
+
+    private static @Nullable List<Entity> collectEntities(@Nullable Object single, @Nullable Object listObj) {
+        List<Entity> out = new ArrayList<>();
+        if (single != null) {
+            if (!(single instanceof Entity entity)) {
+                return null;
             }
-            
-            // 添加实体列表
-            if (entityListObj instanceof List) {
-                List<?> entityList = (List<?>) entityListObj;
-                entitiesToRemove.addAll(entityList);
+            out.add(entity);
+        }
+        if (listObj != null) {
+            if (!(listObj instanceof List<?> list)) {
+                return null;
             }
-            
-            // 通过UUID查找并添加实体
-            if (entityUuidObj instanceof String) {
-                String uuid = (String) entityUuidObj;
-                try {
-                    UUID entityUUID = UUID.fromString(uuid);
-                    // 在实际实现中，查找并添加实体
-                    // Entity entity = context.getWorld().getEntity(entityUUID);
-                    // if (entity != null) {
-                    //     entitiesToRemove.add(entity);
-                    // }
-                } catch (IllegalArgumentException e) {
-                    com.nodecraft.core.NodeCraft.LOGGER.warn("Invalid UUID format: {}", uuid);
+            for (Object entry : list) {
+                if (!(entry instanceof Entity entity)) {
+                    return null;
                 }
+                out.add(entity);
             }
-            
-            // 如果指定了实体类型，查找所有该类型的实体
-            if (entityTypeObj != null && (entitiesToRemove.isEmpty() || maxCount > entitiesToRemove.size())) {
-                String entityType = entityTypeObj.toString();
-                // 在实际实现中，获取所有指定类型的实体
-                // 例如：List<Entity> typedEntities = context.getWorld().getEntities(new EntityType.Builder().create(entityType));
-                // int remainingSlots = maxCount - entitiesToRemove.size();
-                // entitiesToRemove.addAll(typedEntities.subList(0, Math.min(typedEntities.size(), remainingSlots)));
-            }
-            
-            // 限制移除数量
-            if (entitiesToRemove.size() > maxCount) {
-                entitiesToRemove = entitiesToRemove.subList(0, maxCount);
-            }
-            
-            // 移除实体
-            for (Object entity : entitiesToRemove) {
-                try {
-                    // 在实际实现中移除实体
-                    /*
-                    if (entity instanceof Entity) {
-                        Entity minecraftEntity = (Entity) entity;
-                        
-                        // 设置是否掉落物品
-                        if (minecraftEntity instanceof LivingEntity) {
-                            ((LivingEntity) minecraftEntity).setDropsItems(dropItemsValue);
-                        }
-                        
-                        // 移除实体
-                        minecraftEntity.remove();
-                        removedCount++;
-                    }
-                    */
-                    
-                    // 模拟成功移除
-                    removedCount++;
-                } catch (Exception e) {
-                    // 记录失败的实体
-                    failedEntities.add(entity);
-                    com.nodecraft.core.NodeCraft.LOGGER.warn("Error removing entity", e);
-                }
-            }
-            
-            // 检查是否全部成功移除
-            success = (removedCount == entitiesToRemove.size());
         }
-        
-        // 设置输出值
+        return out;
+    }
+
+    private void publish(
+        int removedCount,
+        int failureCount,
+        boolean success,
+        List<Entity> failed,
+        boolean valid,
+        boolean hitLimit,
+        boolean complete,
+        String error
+    ) {
         outputValues.put(OUTPUT_REMOVED_COUNT_ID, removedCount);
+        outputValues.put(OUTPUT_FAILURE_COUNT_ID, failureCount);
         outputValues.put(OUTPUT_SUCCESS_ID, success);
-        outputValues.put(OUTPUT_FAILED_ENTITIES_ID, failedEntities);
+        outputValues.put(OUTPUT_FAILED_ENTITIES_ID, failed);
+        outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
+        outputValues.put(OUTPUT_COMPLETE_ID, complete);
+        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
-    
-    // --- Getters/Setters for Properties ---
-    
-    public boolean isDropItems() {
-        return dropItems;
-    }
-    
-    public void setDropItems(boolean dropItems) {
-        this.dropItems = dropItems;
-        markDirty();
-    }
-} 
+
+    public boolean isDropItems() { return dropItems; }
+    public void setDropItems(boolean dropItems) { this.dropItems = dropItems; markDirty(); }
+    public boolean isTrigger() { return trigger; }
+    public void setTrigger(boolean trigger) { this.trigger = trigger; markDirty(); }
+}

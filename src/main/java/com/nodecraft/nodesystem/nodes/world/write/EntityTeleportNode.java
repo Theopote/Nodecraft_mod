@@ -3,271 +3,219 @@ package com.nodecraft.nodesystem.nodes.world.write;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import net.minecraft.util.math.BlockPos;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import net.minecraft.entity.Entity;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Entity Teleport 节点: 将实体传送到指定坐标
- */
 @NodeInfo(
     effect = NodeEffect.WORLD_WRITE,
     id = "world.write.entity_teleport",
     displayName = "Teleport Entity",
-    description = "传送实体",
-    category = "world.write"
+    description = "Teleports entities to a POINT destination in the current world (same-dimension only)",
+    category = "world.write",
+    order = 8
 )
 public class EntityTeleportNode extends BaseNode {
 
-    // --- 节点属性 ---
-    private boolean preserveRotation = true; // 是否保留实体的原有旋转
-    private boolean resetFallDistance = true; // 是否重置坠落距离
-    private boolean allowAcrossDimension = false; // 是否允许跨维度传送
-    private String description = "将实体传送到指定位置";
-
-    // --- 输入端口 IDs ---
     private static final String INPUT_ENTITY_ID = "input_entity";
     private static final String INPUT_ENTITY_LIST_ID = "input_entity_list";
     private static final String INPUT_DESTINATION_ID = "input_destination";
+    private static final String INPUT_TRIGGER_ID = WorldWriteUtils.INPUT_TRIGGER_ID;
     private static final String INPUT_PRESERVE_ROTATION_ID = "input_preserve_rotation";
     private static final String INPUT_ROTATION_YAW_ID = "input_rotation_yaw";
     private static final String INPUT_ROTATION_PITCH_ID = "input_rotation_pitch";
-    private static final String INPUT_DIMENSION_ID = "input_dimension";
     private static final String INPUT_RESET_FALL_DISTANCE_ID = "input_reset_fall_distance";
+    private static final String INPUT_MAX_COUNT_ID = "input_max_count";
 
-    // --- 输出端口 IDs ---
     private static final String OUTPUT_SUCCESS_COUNT_ID = "output_success_count";
+    private static final String OUTPUT_FAILURE_COUNT_ID = "output_failure_count";
     private static final String OUTPUT_TOTAL_COUNT_ID = "output_total_count";
     private static final String OUTPUT_ALL_SUCCESS_ID = "output_all_success";
     private static final String OUTPUT_TELEPORTED_ENTITIES_ID = "output_teleported_entities";
+    private static final String OUTPUT_COMPLETE_ID = WorldWriteUtils.OUTPUT_COMPLETE_ID;
+    private static final String OUTPUT_VALID_ID = WorldWriteUtils.OUTPUT_VALID_ID;
+    private static final String OUTPUT_ERROR_ID = WorldWriteUtils.OUTPUT_ERROR_ID;
 
-    // --- 构造函数 ---
+    @NodeProperty(displayName = "Trigger", category = "Execution", order = 0)
+    private boolean trigger = false;
+
+    private boolean preserveRotation = true;
+    private boolean resetFallDistance = true;
+    private int maxCount = GenerationLimits.MAX_WORLD_WRITE_ENTITIES;
+
     public EntityTeleportNode() {
         super(UUID.randomUUID(), "world.write.entity_teleport");
-        
-        // 创建并添加输入端口
-        addInputPort(new BasePort(INPUT_ENTITY_ID, "Entity", 
-                "要传送的单个实体", NodeDataType.MINECRAFT_ENTITY, this));
-        addInputPort(new BasePort(INPUT_ENTITY_LIST_ID, "Entity List", 
-                "要传送的实体列表", NodeDataType.MINECRAFT_ENTITY_LIST, this));
-        addInputPort(new BasePort(INPUT_DESTINATION_ID, "Destination", 
-                "目标位置", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_PRESERVE_ROTATION_ID, "Preserve Rotation", 
-                "是否保留原有旋转", NodeDataType.BOOLEAN, this));
-        addInputPort(new BasePort(INPUT_ROTATION_YAW_ID, "Yaw", 
-                "水平旋转角度", NodeDataType.FLOAT, this));
-        addInputPort(new BasePort(INPUT_ROTATION_PITCH_ID, "Pitch", 
-                "垂直旋转角度", NodeDataType.FLOAT, this));
-        addInputPort(new BasePort(INPUT_DIMENSION_ID, "Dimension", 
-                "目标维度ID", NodeDataType.STRING, this));
-        addInputPort(new BasePort(INPUT_RESET_FALL_DISTANCE_ID, "Reset Fall Distance", 
-                "是否重置坠落距离", NodeDataType.BOOLEAN, this));
 
-        // 创建并添加输出端口
-        addOutputPort(new BasePort(OUTPUT_SUCCESS_COUNT_ID, "Success Count", 
-                "成功传送的实体数量", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_TOTAL_COUNT_ID, "Total Count", 
-                "尝试传送的实体总数", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_ALL_SUCCESS_ID, "All Success", 
-                "是否所有实体都成功传送", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_TELEPORTED_ENTITIES_ID, "Teleported Entities", 
-                "成功传送的实体列表", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_ENTITY_ID, "Entity", "Single entity to teleport", NodeDataType.MINECRAFT_ENTITY, this));
+        addInputPort(new BasePort(INPUT_ENTITY_LIST_ID, "Entities", "Entities to teleport", NodeDataType.MINECRAFT_ENTITY_LIST, this));
+        addInputPort(new BasePort(INPUT_DESTINATION_ID, "Destination", "Target POINT (same world)", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "Optional arming gate; connected invalid fails closed", NodeDataType.BOOLEAN, this));
+        addInputPort(new BasePort(INPUT_PRESERVE_ROTATION_ID, "Preserve Rotation", "Keep entity yaw/pitch", NodeDataType.BOOLEAN, this));
+        addInputPort(new BasePort(INPUT_ROTATION_YAW_ID, "Yaw", "Yaw in degrees when Preserve Rotation is false", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_ROTATION_PITCH_ID, "Pitch", "Pitch in degrees when Preserve Rotation is false", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_RESET_FALL_DISTANCE_ID, "Reset Fall Distance", "Clear fall distance after teleport", NodeDataType.BOOLEAN, this));
+        addInputPort(new BasePort(INPUT_MAX_COUNT_ID, "Max Count", "User budget hard-capped by MAX_WORLD_WRITE_ENTITIES", NodeDataType.INTEGER, this));
+
+        addOutputPort(new BasePort(OUTPUT_SUCCESS_COUNT_ID, "Success Count", "Entities teleported", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_FAILURE_COUNT_ID, "Failure Count", "Entities that failed", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_TOTAL_COUNT_ID, "Total Count", "Entities attempted", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_ALL_SUCCESS_ID, "All Success", "Whether every attempt succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_TELEPORTED_ENTITIES_ID, "Teleported Entities", "Successfully teleported entities", NodeDataType.MINECRAFT_ENTITY_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_COMPLETE_ID, "Complete", "False when Max Count truncated or failures", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether preflight succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Why teleport did not run or failed", NodeDataType.STRING, this));
     }
 
-    @Override
-    public String getDescription() {
-        return this.description;
-    }
-
-    // --- 核心逻辑 ---
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        // 默认输出值
-        int successCount = 0;
-        int totalCount = 0;
-        boolean allSuccess = true;
-        List<Object> teleportedEntities = new java.util.ArrayList<>();
-        
-        // 获取输入值
-        Object entityObj = inputValues.get(INPUT_ENTITY_ID);
-        Object entityListObj = inputValues.get(INPUT_ENTITY_LIST_ID);
-        Object destinationObj = inputValues.get(INPUT_DESTINATION_ID);
-        Object dimensionObj = inputValues.get(INPUT_DIMENSION_ID);
-        
-        // 获取布尔值参数
-        boolean preserveRotationValue = this.preserveRotation;
-        Object preserveRotationObj = inputValues.get(INPUT_PRESERVE_ROTATION_ID);
-        if (preserveRotationObj instanceof Boolean) {
-            preserveRotationValue = (Boolean) preserveRotationObj;
+        WorldWriteUtils.TriggerResult triggerResult = WorldWriteUtils.resolveWriteTrigger(this, trigger);
+        if (triggerResult == WorldWriteUtils.TriggerResult.FAIL) {
+            publish(0, 0, 0, false, List.of(), false, false, "Trigger is connected but null or invalid.");
+            return;
         }
-        
-        boolean resetFallDistanceValue = this.resetFallDistance;
-        Object resetFallDistanceObj = inputValues.get(INPUT_RESET_FALL_DISTANCE_ID);
-        if (resetFallDistanceObj instanceof Boolean) {
-            resetFallDistanceValue = (Boolean) resetFallDistanceObj;
+        if (triggerResult == WorldWriteUtils.TriggerResult.SKIP) {
+            publish(0, 0, 0, true, List.of(), true, true, "Not triggered");
+            return;
         }
-        
-        // 获取旋转角度
-        float yaw = 0.0f;
-        Object yawObj = inputValues.get(INPUT_ROTATION_YAW_ID);
-        if (yawObj instanceof Number) {
-            yaw = ((Number) yawObj).floatValue();
+
+        Boolean preserve = WorldWriteUtils.resolveOptionalBoolean(this, INPUT_PRESERVE_ROTATION_ID, preserveRotation);
+        Boolean resetFall = WorldWriteUtils.resolveOptionalBoolean(this, INPUT_RESET_FALL_DISTANCE_ID, resetFallDistance);
+        Integer budget = WorldWriteUtils.resolveUserBudgetExactInteger(
+            this, INPUT_MAX_COUNT_ID, maxCount, GenerationLimits.MAX_WORLD_WRITE_ENTITIES);
+        if (preserve == null || resetFall == null) {
+            publish(0, 0, 0, false, List.of(), false, false, "Boolean drive is connected but null or invalid.");
+            return;
         }
-        
-        float pitch = 0.0f;
-        Object pitchObj = inputValues.get(INPUT_ROTATION_PITCH_ID);
-        if (pitchObj instanceof Number) {
-            pitch = ((Number) pitchObj).floatValue();
+        if (budget == null) {
+            publish(0, 0, 0, false, List.of(), false, false,
+                "Max Count must be an exact INTEGER between 1 and " + GenerationLimits.MAX_WORLD_WRITE_ENTITIES + ".");
+            return;
         }
-        
-        // 检查执行上下文和必要输入是否有效
-        if (context != null && context.getWorld() != null && destinationObj != null) {
-            // 创建要处理的实体列表
-            List<Object> entitiesToTeleport = new java.util.ArrayList<>();
-            
-            // 添加单个实体
-            if (entityObj != null) {
-                entitiesToTeleport.add(entityObj);
+
+        Double yaw = null;
+        Double pitch = null;
+        if (!preserve) {
+            yaw = WorldWriteUtils.resolveOptionalFiniteDouble(this, INPUT_ROTATION_YAW_ID, 0.0d);
+            pitch = WorldWriteUtils.resolveOptionalFiniteDouble(this, INPUT_ROTATION_PITCH_ID, 0.0d);
+            if (yaw == null || pitch == null) {
+                publish(0, 0, 0, false, List.of(), false, false, "Yaw/Pitch must be finite DOUBLE when Preserve Rotation is false.");
+                return;
             }
-            
-            // 添加实体列表
-            if (entityListObj instanceof List<?> entityList) {
-                entitiesToTeleport.addAll(entityList);
-            }
-            
-            // 处理目标位置
-            double x = 0.0, y = 0.0, z = 0.0;
-            
-            if (destinationObj instanceof PointData point) {
-                x = point.getX();
-                y = point.getY();
-                z = point.getZ();
-            } else if (destinationObj instanceof Vector3d) {
-                Vector3d pos = (Vector3d) destinationObj;
-                x = pos.x;
-                y = pos.y;
-                z = pos.z;
-            } else if (destinationObj instanceof BlockPos) {
-                BlockPos pos = (BlockPos) destinationObj;
-                x = pos.getX() + 0.5; // 中心对齐
-                y = pos.getY();
-                z = pos.getZ() + 0.5; // 中心对齐
-            }
-            
-            // 处理维度
-            String dimension = null;
-            if (dimensionObj instanceof String) {
-                dimension = (String) dimensionObj;
-            }
-            
-            // 遍历实体进行传送
-            for (Object entity : entitiesToTeleport) {
-                totalCount++;
-                
-                try {
-                    // 在实际实现中传送实体
-                    /*
-                    if (entity instanceof Entity) {
-                        Entity minecraftEntity = (Entity) entity;
-                        
-                        // 如果需要跨维度传送
-                        if (dimension != null && !dimension.isEmpty() && allowAcrossDimension) {
-                            RegistryKey<World> targetDimension = RegistryKey.getOrCreateKey(
-                                Registry.WORLD_KEY, new ResourceLocation(dimension));
-                            
-                            if (minecraftEntity.world.getRegistryKey() != targetDimension) {
-                                // 处理跨维度传送
-                                ServerWorld targetWorld = minecraftEntity.getServer().getWorld(targetDimension);
-                                if (targetWorld != null && minecraftEntity instanceof ServerPlayerEntity) {
-                                    ServerPlayerEntity player = (ServerPlayerEntity) minecraftEntity;
-                                    player.teleport(targetWorld, x, y, z, 
-                                                   preserveRotationValue ? player.rotationYaw : yaw, 
-                                                   preserveRotationValue ? player.rotationPitch : pitch);
-                                    if (resetFallDistanceValue) {
-                                        player.fallDistance = 0.0f;
-                                    }
-                                    successCount++;
-                                    teleportedEntities.add(minecraftEntity);
-                                    continue;
-                                }
-                            }
-                        }
-                        
-                        // 同维度传送
-                        boolean teleportSuccess = minecraftEntity.teleport(x, y, z);
-                        
-                        // 设置旋转
-                        if (!preserveRotationValue) {
-                            minecraftEntity.rotationYaw = yaw;
-                            minecraftEntity.rotationPitch = pitch;
-                            minecraftEntity.setRotationYawHead(yaw);
-                        }
-                        
-                        // 重置坠落距离
-                        if (resetFallDistanceValue) {
-                            minecraftEntity.fallDistance = 0.0f;
-                        }
-                        
-                        if (teleportSuccess) {
-                            successCount++;
-                            teleportedEntities.add(minecraftEntity);
-                        } else {
-                            allSuccess = false;
-                        }
-                    }
-                    */
-                    
-                    // 模拟成功传送
-                    successCount++;
-                    teleportedEntities.add(entity);
-                } catch (Exception e) {
-                    // 记录错误
-                    allSuccess = false;
-                    com.nodecraft.core.NodeCraft.LOGGER.warn("Error teleporting entity", e);
+        }
+
+        if (!(inputValues.get(INPUT_DESTINATION_ID) instanceof PointData destination)) {
+            publish(0, 0, 0, false, List.of(), false, false, "Destination must be a POINT.");
+            return;
+        }
+        if (context == null || !(context.getWorld() instanceof ServerWorld world)) {
+            publish(0, 0, 0, false, List.of(), false, false, "Missing execution world");
+            return;
+        }
+
+        List<Entity> entities = collectEntities(inputValues.get(INPUT_ENTITY_ID), inputValues.get(INPUT_ENTITY_LIST_ID));
+        if (entities == null) {
+            publish(0, 0, 0, false, List.of(), false, false, "Invalid Entity / Entities payload.");
+            return;
+        }
+        boolean hitLimit = entities.size() > budget;
+        if (hitLimit) {
+            entities = entities.subList(0, budget);
+        }
+
+        double x = destination.getX();
+        double y = destination.getY();
+        double z = destination.getZ();
+        List<Entity> teleported = new ArrayList<>();
+        int failureCount = 0;
+
+        for (Entity entity : entities) {
+            try {
+                if (entity.getEntityWorld() != world) {
+                    failureCount++;
+                    continue;
                 }
+                float useYaw = preserve ? entity.getYaw() : yaw.floatValue();
+                float usePitch = preserve ? entity.getPitch() : pitch.floatValue();
+                if (entity instanceof ServerPlayerEntity player) {
+                    player.refreshPositionAndAngles(x, y, z, useYaw, usePitch);
+                    player.requestTeleport(x, y, z);
+                } else {
+                    entity.refreshPositionAndAngles(x, y, z, useYaw, usePitch);
+                    entity.requestTeleport(x, y, z);
+                }
+                if (resetFall) {
+                    entity.fallDistance = 0.0f;
+                }
+                teleported.add(entity);
+            } catch (Exception e) {
+                failureCount++;
             }
         }
-        
-        // 设置输出值
+
+        int successCount = teleported.size();
+        boolean complete = !hitLimit && failureCount == 0;
+        String error = failureCount > 0 ? "Partial teleport: " + failureCount + " failure(s)" : (hitLimit ? "Hit Max Count" : "");
+        publish(successCount, failureCount, entities.size(), failureCount == 0, teleported, true, complete, error);
+    }
+
+    private static @Nullable List<Entity> collectEntities(@Nullable Object single, @Nullable Object listObj) {
+        List<Entity> out = new ArrayList<>();
+        if (single != null) {
+            if (!(single instanceof Entity entity)) {
+                return null;
+            }
+            out.add(entity);
+        }
+        if (listObj != null) {
+            if (!(listObj instanceof List<?> list)) {
+                return null;
+            }
+            for (Object entry : list) {
+                if (!(entry instanceof Entity entity)) {
+                    return null;
+                }
+                out.add(entity);
+            }
+        }
+        return out;
+    }
+
+    private void publish(
+        int successCount,
+        int failureCount,
+        int totalCount,
+        boolean allSuccess,
+        List<Entity> teleported,
+        boolean valid,
+        boolean complete,
+        String error
+    ) {
         outputValues.put(OUTPUT_SUCCESS_COUNT_ID, successCount);
+        outputValues.put(OUTPUT_FAILURE_COUNT_ID, failureCount);
         outputValues.put(OUTPUT_TOTAL_COUNT_ID, totalCount);
         outputValues.put(OUTPUT_ALL_SUCCESS_ID, allSuccess);
-        outputValues.put(OUTPUT_TELEPORTED_ENTITIES_ID, teleportedEntities);
+        outputValues.put(OUTPUT_TELEPORTED_ENTITIES_ID, teleported);
+        outputValues.put(OUTPUT_COMPLETE_ID, complete);
+        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
-    
-    // --- Getters/Setters for Properties ---
-    
-    public boolean isPreserveRotation() {
-        return preserveRotation;
-    }
-    
-    public void setPreserveRotation(boolean preserveRotation) {
-        this.preserveRotation = preserveRotation;
-        markDirty();
-    }
-    
-    public boolean isResetFallDistance() {
-        return resetFallDistance;
-    }
-    
-    public void setResetFallDistance(boolean resetFallDistance) {
-        this.resetFallDistance = resetFallDistance;
-        markDirty();
-    }
-    
-    public boolean isAllowAcrossDimension() {
-        return allowAcrossDimension;
-    }
-    
-    public void setAllowAcrossDimension(boolean allowAcrossDimension) {
-        this.allowAcrossDimension = allowAcrossDimension;
-        markDirty();
-    }
-} 
+
+    public boolean isTrigger() { return trigger; }
+    public void setTrigger(boolean trigger) { this.trigger = trigger; markDirty(); }
+    public boolean isPreserveRotation() { return preserveRotation; }
+    public void setPreserveRotation(boolean preserveRotation) { this.preserveRotation = preserveRotation; markDirty(); }
+    public boolean isResetFallDistance() { return resetFallDistance; }
+    public void setResetFallDistance(boolean resetFallDistance) { this.resetFallDistance = resetFallDistance; markDirty(); }
+}

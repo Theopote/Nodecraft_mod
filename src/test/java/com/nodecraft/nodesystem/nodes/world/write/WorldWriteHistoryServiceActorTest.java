@@ -6,7 +6,6 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
 
 class WorldWriteHistoryServiceActorTest {
 
@@ -16,10 +15,10 @@ class WorldWriteHistoryServiceActorTest {
     }
 
     @Test
-    void serverActorUsesSharedHistoryBucket() {
+    void serverActorUsesSharedHistoryBucketPerWorld() {
         WorldWriteHistoryService service = WorldWriteHistoryService.getInstance();
-        assertEquals(0, service.size(null));
-        assertEquals(0, service.size(WorldWriteHistoryService.SERVER_ACTOR_ID));
+        assertEquals(0, service.size(null, "minecraft:overworld"));
+        assertEquals(0, service.size(WorldWriteHistoryService.SERVER_ACTOR_ID, "minecraft:overworld"));
     }
 
     @Test
@@ -28,8 +27,8 @@ class WorldWriteHistoryServiceActorTest {
         UUID playerA = UUID.randomUUID();
         UUID playerB = UUID.randomUUID();
 
-        assertEquals(0, service.size(playerA));
-        assertEquals(0, service.size(playerB));
+        assertEquals(0, service.size(playerA, "minecraft:overworld"));
+        assertEquals(0, service.size(playerB, "minecraft:overworld"));
         assertNotSame(playerA, playerB);
     }
 }

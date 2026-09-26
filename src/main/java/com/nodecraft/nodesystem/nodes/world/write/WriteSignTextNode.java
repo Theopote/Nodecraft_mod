@@ -3,9 +3,12 @@ package com.nodecraft.nodesystem.nodes.world.write;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.registry.Registries;
 import net.minecraft.text.Text;
@@ -13,6 +16,7 @@ import net.minecraft.util.DyeColor;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,8 +24,9 @@ import java.util.UUID;
     effect = NodeEffect.WORLD_WRITE,
     id = "world.write.write_sign_text",
     displayName = "Write Sign Text",
-    description = "Writes text to a sign block entity",
-    category = "world.write"
+    description = "Writes text to the front side of a sign block entity",
+    category = "world.write",
+    order = 10
 )
 public class WriteSignTextNode extends BaseNode {
 
@@ -38,112 +43,178 @@ public class WriteSignTextNode extends BaseNode {
     private static final String OUTPUT_SUCCESS_ID = "output_success";
     private static final String OUTPUT_IS_SIGN_ID = "output_is_sign";
     private static final String OUTPUT_SIGN_TYPE_ID = "output_sign_type";
+    private static final String OUTPUT_VALID_ID = WorldWriteUtils.OUTPUT_VALID_ID;
     private static final String OUTPUT_ERROR_ID = WorldWriteUtils.OUTPUT_ERROR_ID;
+
+    @NodeProperty(displayName = "Trigger", category = "Execution", order = 0)
+    private boolean trigger = false;
 
     private String[] defaultLines = new String[]{"", "", "", ""};
     private boolean allowFormatting = true;
     private String textColor = "black";
+    private boolean glowingProperty = false;
+    @NodeProperty(displayName = "Record Undo", category = "Execution", order = 1)
+    private boolean recordUndo = true;
 
     public WriteSignTextNode() {
         super(UUID.randomUUID(), "world.write.write_sign_text");
 
         addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate", "Sign position", NodeDataType.BLOCK_POS, this));
-        addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "When connected, false prevents this write from running", NodeDataType.BOOLEAN, this));
+        addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "Optional arming gate; connected invalid fails closed", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_LINE_1_ID, "Line 1", "First line", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_LINE_2_ID, "Line 2", "Second line", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_LINE_3_ID, "Line 3", "Third line", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_LINE_4_ID, "Line 4", "Fourth line", NodeDataType.STRING, this));
-        addInputPort(new BasePort(INPUT_LINES_LIST_ID, "Lines List", "Optional list input overriding the individual lines", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_LINES_LIST_ID, "Lines List", "Optional STRING_LIST overriding individual lines (front side)", NodeDataType.STRING_LIST, this));
         addInputPort(new BasePort(INPUT_TEXT_COLOR_ID, "Text Color", "Sign dye color id", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_GLOWING_ID, "Glowing", "Whether sign text should glow", NodeDataType.BOOLEAN, this));
 
         addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether sign text was updated", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_IS_SIGN_ID, "Is Sign", "Whether the target block entity is a sign", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_SIGN_TYPE_ID, "Sign Type", "Registry id of the sign block", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether preflight succeeded", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Why sign text was not updated", NodeDataType.STRING, this));
     }
 
     @Override
-    public String getDescription() {
-        return "Writes text to a sign block entity";
-    }
-
-    @Override
     public void processNode(@Nullable ExecutionContext context) {
-        boolean success = false;
-        boolean isSign = false;
-        String signType = "";
-        String error = "";
-
-        Object coordinateObj = inputValues.get(INPUT_COORDINATE_ID);
-        BlockPos pos = WorldWriteUtils.resolveBlockPos(coordinateObj);
-        if (!WorldWriteUtils.shouldRun(inputValues)) {
-            error = "Not triggered";
-        } else if (context == null || context.getWorld() == null) {
-            error = "Missing execution world";
-        } else if (pos == null) {
-            error = "Invalid coordinate";
-        } else {
-            String[] lines = resolveLines();
-            String colorId = inputValues.get(INPUT_TEXT_COLOR_ID) instanceof String value ? value : textColor;
-            boolean glowing = inputValues.get(INPUT_GLOWING_ID) instanceof Boolean value ? value : false;
-
-            try {
-                var blockEntity = context.getWorld().getBlockEntity(pos);
-                if (blockEntity instanceof SignBlockEntity sign) {
-                    isSign = true;
-                    signType = Registries.BLOCK.getId(context.getWorld().getBlockState(pos).getBlock()).toString();
-
-                    var signText = sign.getFrontText()
-                        .withColor(DyeColor.byId(colorId.toLowerCase(), DyeColor.BLACK))
-                        .withGlowing(glowing);
-
-                    for (int i = 0; i < 4; i++) {
-                        String line = sanitizeLine(lines[i]);
-                        signText = signText.withMessage(i, Text.literal(line));
-                    }
-
-                    success = sign.setText(signText, true);
-                    if (success) {
-                        sign.markDirty();
-                        context.getWorld().updateListeners(pos, context.getWorld().getBlockState(pos), context.getWorld().getBlockState(pos), 3);
-                    } else {
-                        error = "World rejected sign text update";
-                    }
-                } else {
-                    error = "Target block entity is not a sign";
-                }
-            } catch (Exception e) {
-                error = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
-            }
+        WorldWriteUtils.TriggerResult triggerResult = WorldWriteUtils.resolveWriteTrigger(this, trigger);
+        if (triggerResult == WorldWriteUtils.TriggerResult.FAIL) {
+            publish(false, false, "", false, "Trigger is connected but null or invalid.");
+            return;
+        }
+        if (triggerResult == WorldWriteUtils.TriggerResult.SKIP) {
+            publish(false, false, "", true, "Not triggered");
+            return;
         }
 
-        outputValues.put(OUTPUT_SUCCESS_ID, success);
-        outputValues.put(OUTPUT_IS_SIGN_ID, isSign);
-        outputValues.put(OUTPUT_SIGN_TYPE_ID, signType);
-        outputValues.put(OUTPUT_ERROR_ID, error);
+        BlockPos pos = WorldWriteUtils.requireBlockPos(inputValues.get(INPUT_COORDINATE_ID));
+        if (pos == null) {
+            publish(false, false, "", false, "Invalid coordinate (BLOCK_POS required).");
+            return;
+        }
+
+        String[] lines;
+        try {
+            lines = resolveLines();
+        } catch (IllegalArgumentException e) {
+            publish(false, false, "", false, e.getMessage());
+            return;
+        }
+
+        String colorId;
+        if (OptionalPortDrive.isConnected(this, INPUT_TEXT_COLOR_ID)) {
+            Object raw = inputValues.get(INPUT_TEXT_COLOR_ID);
+            if (!(raw instanceof String text) || text.isBlank()) {
+                publish(false, false, "", false, "Text Color is connected but null or blank.");
+                return;
+            }
+            colorId = text;
+        } else {
+            Object raw = inputValues.get(INPUT_TEXT_COLOR_ID);
+            colorId = raw instanceof String text && !text.isBlank() ? text : textColor;
+        }
+
+        Boolean glowing = WorldWriteUtils.resolveOptionalBoolean(this, INPUT_GLOWING_ID, glowingProperty);
+        if (glowing == null) {
+            publish(false, false, "", false, "Glowing is connected but null or invalid.");
+            return;
+        }
+
+        if (context == null || context.getWorld() == null) {
+            publish(false, false, "", false, "Missing execution world");
+            return;
+        }
+
+        try {
+            var blockEntity = context.getWorld().getBlockEntity(pos);
+            if (!(blockEntity instanceof SignBlockEntity sign)) {
+                publish(false, false, "", true, "Target block entity is not a sign");
+                return;
+            }
+
+            BlockState previousState = context.getWorld().getBlockState(pos);
+            WorldWriteTransaction tx = new WorldWriteTransaction(WorldWriteUtils.worldKey(context.getWorld()));
+            tx.recordSuccess(context, pos, previousState);
+
+            String signType = Registries.BLOCK.getId(previousState.getBlock()).toString();
+            var signText = sign.getFrontText()
+                .withColor(DyeColor.byId(colorId.toLowerCase(), DyeColor.BLACK))
+                .withGlowing(glowing);
+
+            for (int i = 0; i < 4; i++) {
+                signText = signText.withMessage(i, Text.literal(sanitizeLine(lines[i])));
+            }
+
+            boolean success = sign.setText(signText, true);
+            if (success) {
+                sign.markDirty();
+                context.getWorld().updateListeners(pos, previousState, previousState, 3);
+                tx.pushIfNeeded(context, recordUndo);
+                publish(true, true, signType, true, "");
+            } else {
+                tx.recordFailure();
+                publish(false, true, signType, true, "World rejected sign text update");
+            }
+        } catch (Exception e) {
+            publish(false, false, "", true, e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+        }
     }
 
     private String[] resolveLines() {
         String[] lines = new String[4];
         System.arraycopy(defaultLines, 0, lines, 0, 4);
 
-        Object linesListObj = inputValues.get(INPUT_LINES_LIST_ID);
-        if (linesListObj instanceof List<?> linesList) {
-            for (int i = 0; i < Math.min(linesList.size(), 4); i++) {
-                Object lineObj = linesList.get(i);
-                if (lineObj != null) {
-                    lines[i] = String.valueOf(lineObj);
+        if (OptionalPortDrive.isConnected(this, INPUT_LINES_LIST_ID)) {
+            Object raw = inputValues.get(INPUT_LINES_LIST_ID);
+            if (!(raw instanceof Collection<?> collection)) {
+                throw new IllegalArgumentException("Lines List is connected but null or invalid.");
+            }
+            int i = 0;
+            for (Object entry : collection) {
+                if (i >= 4) {
+                    break;
                 }
+                if (!(entry instanceof String text)) {
+                    throw new IllegalArgumentException("Lines List must be STRING_LIST (all String members).");
+                }
+                lines[i++] = text;
             }
             return lines;
         }
 
-        if (inputValues.get(INPUT_LINE_1_ID) instanceof String value) lines[0] = value;
-        if (inputValues.get(INPUT_LINE_2_ID) instanceof String value) lines[1] = value;
-        if (inputValues.get(INPUT_LINE_3_ID) instanceof String value) lines[2] = value;
-        if (inputValues.get(INPUT_LINE_4_ID) instanceof String value) lines[3] = value;
+        Object localList = inputValues.get(INPUT_LINES_LIST_ID);
+        if (localList instanceof Collection<?> collection) {
+            int i = 0;
+            for (Object entry : collection) {
+                if (i >= 4) {
+                    break;
+                }
+                if (!(entry instanceof String text)) {
+                    throw new IllegalArgumentException("Lines List must be STRING_LIST (all String members).");
+                }
+                lines[i++] = text;
+            }
+            return lines;
+        }
+
+        lines[0] = resolveOptionalLine(INPUT_LINE_1_ID, lines[0]);
+        lines[1] = resolveOptionalLine(INPUT_LINE_2_ID, lines[1]);
+        lines[2] = resolveOptionalLine(INPUT_LINE_3_ID, lines[2]);
+        lines[3] = resolveOptionalLine(INPUT_LINE_4_ID, lines[3]);
         return lines;
+    }
+
+    private String resolveOptionalLine(String portId, String fallback) {
+        if (OptionalPortDrive.isConnected(this, portId)) {
+            Object raw = inputValues.get(portId);
+            if (!(raw instanceof String text)) {
+                throw new IllegalArgumentException(portId + " is connected but null or invalid.");
+            }
+            return text;
+        }
+        Object raw = inputValues.get(portId);
+        return raw instanceof String text ? text : fallback;
     }
 
     private String sanitizeLine(String line) {
@@ -154,54 +225,14 @@ public class WriteSignTextNode extends BaseNode {
         return normalized.replaceAll("(?i)§[0-9A-FK-OR]", "");
     }
 
-    public String[] getDefaultLines() {
-        return defaultLines;
+    private void publish(boolean success, boolean isSign, String signType, boolean valid, String error) {
+        outputValues.put(OUTPUT_SUCCESS_ID, success);
+        outputValues.put(OUTPUT_IS_SIGN_ID, isSign);
+        outputValues.put(OUTPUT_SIGN_TYPE_ID, signType == null ? "" : signType);
+        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
-    public void setDefaultLines(String[] defaultLines) {
-        if (defaultLines != null && defaultLines.length == 4) {
-            this.defaultLines = defaultLines;
-            markDirty();
-        }
-    }
-
-    public boolean isAllowFormatting() {
-        return allowFormatting;
-    }
-
-    public void setAllowFormatting(boolean allowFormatting) {
-        this.allowFormatting = allowFormatting;
-        markDirty();
-    }
-
-    public String getTextColor() {
-        return textColor;
-    }
-
-    public void setTextColor(String textColor) {
-        if (textColor != null && !textColor.isBlank()) {
-            this.textColor = textColor;
-            markDirty();
-        }
-    }
-
-    @Override
-    public @Nullable Object getNodeState() {
-        return new Object[]{defaultLines, allowFormatting, textColor};
-    }
-
-    @Override
-    public void setNodeState(@Nullable Object state) {
-        if (state instanceof Object[] values && values.length >= 3) {
-            if (values[0] instanceof String[] lines && lines.length == 4) {
-                defaultLines = lines;
-            }
-            if (values[1] instanceof Boolean formatting) {
-                allowFormatting = formatting;
-            }
-            if (values[2] instanceof String color) {
-                textColor = color;
-            }
-        }
-    }
+    public boolean isTrigger() { return trigger; }
+    public void setTrigger(boolean trigger) { this.trigger = trigger; markDirty(); }
 }

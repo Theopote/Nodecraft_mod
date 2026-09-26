@@ -1,6 +1,9 @@
 package com.nodecraft.nodesystem.nodes.world.write;
 
+import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
@@ -11,17 +14,18 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Stores undo records for direct world.write operations.
+ * Stores undo records for direct world.write operations, keyed by (actor, worldKey).
  */
 public final class WorldWriteHistoryService {
     private static final int MAX_UNDO_STACK_SIZE = 32;
     public static final UUID SERVER_ACTOR_ID = UUID.fromString("00000000-0000-0000-0000-000000000000");
     private static final WorldWriteHistoryService INSTANCE = new WorldWriteHistoryService();
 
-    private final Map<UUID, ActorHistory> histories = new HashMap<>();
+    private final Map<HistoryKey, ActorHistory> histories = new HashMap<>();
 
     private WorldWriteHistoryService() {
     }
@@ -34,37 +38,90 @@ public final class WorldWriteHistoryService {
         return player != null ? player.getUuid() : SERVER_ACTOR_ID;
     }
 
-    public synchronized void push(UUID actorId, UndoRecord record) {
-        historyFor(actorId).push(record);
+    public synchronized void push(UUID actorId, String worldKey, UndoRecord record) {
+        historyFor(actorId, worldKey).push(record);
     }
 
-    public synchronized UndoRecord peek(UUID actorId) {
-        return historyFor(actorId).peek();
+    public synchronized UndoRecord peek(UUID actorId, String worldKey) {
+        return historyFor(actorId, worldKey).peek();
     }
 
+    public synchronized UndoRecord peek(UUID actorId, World world) {
+        return peek(actorId, WorldWriteUtils.worldKey(world));
+    }
+
+    public synchronized int size(UUID actorId, String worldKey) {
+        return historyFor(actorId, worldKey).size();
+    }
+
+    public synchronized int size(UUID actorId, World world) {
+        return size(actorId, WorldWriteUtils.worldKey(world));
+    }
+
+    /** @deprecated use {@link #size(UUID, String)} or {@link #size(UUID, World)} */
+    @Deprecated
     public synchronized int size(UUID actorId) {
-        return historyFor(actorId).size();
+        return size(actorId, "unknown");
     }
 
-    public synchronized int redoSize(UUID actorId) {
-        return historyFor(actorId).redoSize();
+    public synchronized int redoSize(UUID actorId, String worldKey) {
+        return historyFor(actorId, worldKey).redoSize();
     }
 
-    public synchronized boolean undoLast(UUID actorId, World world) {
-        return historyFor(actorId).undoLast(world);
+    public synchronized int redoSize(UUID actorId, World world) {
+        return redoSize(actorId, WorldWriteUtils.worldKey(world));
     }
 
-    public synchronized boolean redoLast(UUID actorId, World world) {
-        return historyFor(actorId).redoLast(world);
+    /**
+     * Undo last write for this actor in {@code world}. World key mismatch → fail closed; record kept.
+     */
+    public synchronized UndoApplyResult undoLast(UUID actorId, World world) {
+        if (world == null) {
+            return UndoApplyResult.failed("Missing world");
+        }
+        String key = WorldWriteUtils.worldKey(world);
+        return historyFor(actorId, key).undoLast(world, key);
+    }
+
+    public synchronized UndoApplyResult redoLast(UUID actorId, World world) {
+        if (world == null) {
+            return UndoApplyResult.failed("Missing world");
+        }
+        String key = WorldWriteUtils.worldKey(world);
+        return historyFor(actorId, key).redoLast(world, key);
+    }
+
+    public synchronized void clear(UUID actorId, String worldKey) {
+        historyFor(actorId, worldKey).clear();
     }
 
     public synchronized void clear(UUID actorId) {
-        historyFor(actorId).clear();
+        UUID resolved = actorId != null ? actorId : SERVER_ACTOR_ID;
+        histories.entrySet().removeIf(entry -> entry.getKey().actorId.equals(resolved));
     }
 
-    private ActorHistory historyFor(UUID actorId) {
+    private ActorHistory historyFor(UUID actorId, String worldKey) {
         UUID resolvedActorId = actorId != null ? actorId : SERVER_ACTOR_ID;
-        return histories.computeIfAbsent(resolvedActorId, ignored -> new ActorHistory());
+        String resolvedWorld = worldKey == null || worldKey.isBlank() ? "unknown" : worldKey;
+        return histories.computeIfAbsent(new HistoryKey(resolvedActorId, resolvedWorld), ignored -> new ActorHistory());
+    }
+
+    private record HistoryKey(UUID actorId, String worldKey) {
+        HistoryKey {
+            Objects.requireNonNull(actorId);
+            worldKey = worldKey == null ? "unknown" : worldKey;
+        }
+    }
+
+    public record UndoApplyResult(boolean success, boolean complete, int successCount, int failureCount, String error) {
+        static UndoApplyResult failed(String error) {
+            return new UndoApplyResult(false, false, 0, 0, error == null ? "" : error);
+        }
+
+        static UndoApplyResult ok(int successCount, int failureCount) {
+            boolean complete = failureCount == 0;
+            return new UndoApplyResult(true, complete, successCount, failureCount, complete ? "" : "Partial undo/redo");
+        }
     }
 
     private static final class ActorHistory {
@@ -94,32 +151,53 @@ public final class WorldWriteHistoryService {
             return redoStack.size();
         }
 
-        private boolean undoLast(World world) {
-            UndoRecord record = undoStack.isEmpty() ? null : undoStack.removeLast();
-            if (record == null || world == null) {
-                return false;
+        private UndoApplyResult undoLast(World world, String expectedWorldKey) {
+            if (undoStack.isEmpty()) {
+                return UndoApplyResult.failed("Nothing to undo");
             }
-            UndoRecord redoRecord = record.applyAndCaptureInverse(world);
-            if (redoRecord != null && redoRecord.size() > 0) {
-                redoStack.add(redoRecord);
+            UndoRecord record = undoStack.getLast();
+            if (!expectedWorldKey.equals(record.worldKey())) {
+                return UndoApplyResult.failed("Undo record world mismatch");
+            }
+            undoStack.removeLast();
+            ApplyOutcome outcome = record.applyAndCaptureInverse(world);
+            if (outcome.inverse() != null && outcome.inverse().size() > 0) {
+                if (outcome.failureCount() > 0) {
+                    // Partial: keep remaining target snapshots on undo stack; still push inverse of successes.
+                    undoStack.add(record.withoutApplied(outcome.appliedIndices()));
+                }
+                redoStack.add(outcome.inverse());
                 trimRedoStack();
+            } else if (outcome.failureCount() > 0) {
+                undoStack.add(record);
+                return UndoApplyResult.failed("Undo failed to apply");
             }
-            return true;
+            return UndoApplyResult.ok(outcome.successCount(), outcome.failureCount());
         }
 
-        private boolean redoLast(World world) {
-            UndoRecord record = redoStack.isEmpty() ? null : redoStack.removeLast();
-            if (record == null || world == null) {
-                return false;
+        private UndoApplyResult redoLast(World world, String expectedWorldKey) {
+            if (redoStack.isEmpty()) {
+                return UndoApplyResult.failed("Nothing to redo");
             }
-            UndoRecord undoRecord = record.applyAndCaptureInverse(world);
-            if (undoRecord != null && undoRecord.size() > 0) {
-                undoStack.add(undoRecord);
+            UndoRecord record = redoStack.getLast();
+            if (!expectedWorldKey.equals(record.worldKey())) {
+                return UndoApplyResult.failed("Redo record world mismatch");
+            }
+            redoStack.removeLast();
+            ApplyOutcome outcome = record.applyAndCaptureInverse(world);
+            if (outcome.inverse() != null && outcome.inverse().size() > 0) {
+                if (outcome.failureCount() > 0) {
+                    redoStack.add(record.withoutApplied(outcome.appliedIndices()));
+                }
+                undoStack.add(outcome.inverse());
                 while (undoStack.size() > MAX_UNDO_STACK_SIZE) {
                     undoStack.removeFirst();
                 }
+            } else if (outcome.failureCount() > 0) {
+                redoStack.add(record);
+                return UndoApplyResult.failed("Redo failed to apply");
             }
-            return true;
+            return UndoApplyResult.ok(outcome.successCount(), outcome.failureCount());
         }
 
         private void clear() {
@@ -134,49 +212,98 @@ public final class WorldWriteHistoryService {
         }
     }
 
-    public static final class UndoRecord {
-        private final List<BlockPos> positions = new ArrayList<>();
-        private final List<BlockState> previousStates = new ArrayList<>();
+    private record ApplyOutcome(UndoRecord inverse, int successCount, int failureCount, List<Integer> appliedIndices) {
+    }
 
+    public static final class UndoRecord {
+        private final String worldKey;
+        private final List<BlockSnapshot> snapshots = new ArrayList<>();
+
+        public UndoRecord(String worldKey) {
+            this.worldKey = worldKey == null ? "unknown" : worldKey;
+        }
+
+        public String worldKey() {
+            return worldKey;
+        }
+
+        public void add(BlockSnapshot snapshot) {
+            if (snapshot == null) {
+                return;
+            }
+            snapshots.add(snapshot);
+        }
+
+        /** Compatibility: state-only snapshot (no BE NBT). */
         public void add(BlockPos pos, BlockState previousState) {
             if (pos == null || previousState == null) {
                 return;
             }
-            positions.add(pos.toImmutable());
-            previousStates.add(previousState);
+            snapshots.add(new BlockSnapshot(pos, previousState, null));
         }
 
         public int size() {
-            return positions.size();
+            return snapshots.size();
         }
 
         public List<BlockPos> getPositions() {
+            List<BlockPos> positions = new ArrayList<>(snapshots.size());
+            for (BlockSnapshot snapshot : snapshots) {
+                positions.add(snapshot.pos());
+            }
             return Collections.unmodifiableList(positions);
         }
 
-        public boolean apply(World world) {
-            if (world == null) {
-                return false;
+        UndoRecord withoutApplied(List<Integer> appliedIndices) {
+            UndoRecord remaining = new UndoRecord(worldKey);
+            java.util.HashSet<Integer> applied = new java.util.HashSet<>(appliedIndices);
+            for (int i = 0; i < snapshots.size(); i++) {
+                if (!applied.contains(i)) {
+                    remaining.add(snapshots.get(i));
+                }
             }
-            for (int i = 0; i < positions.size(); i++) {
-                world.setBlockState(positions.get(i), previousStates.get(i), 3);
-            }
-            return true;
+            return remaining;
         }
 
-        private UndoRecord applyAndCaptureInverse(World world) {
+        public boolean apply(World world) {
+            return applyAndCaptureInverse(world).failureCount() == 0;
+        }
+
+        private ApplyOutcome applyAndCaptureInverse(World world) {
             if (world == null) {
-                return null;
+                return new ApplyOutcome(null, 0, snapshots.size(), List.of());
             }
-            UndoRecord inverse = new UndoRecord();
-            for (int i = 0; i < positions.size(); i++) {
-                BlockPos pos = positions.get(i);
-                BlockState targetState = previousStates.get(i);
+            UndoRecord inverse = new UndoRecord(worldKey);
+            int success = 0;
+            int failure = 0;
+            List<Integer> applied = new ArrayList<>();
+            for (int i = 0; i < snapshots.size(); i++) {
+                BlockSnapshot target = snapshots.get(i);
+                BlockPos pos = target.pos();
                 BlockState currentState = world.getBlockState(pos);
-                inverse.add(pos, currentState);
-                world.setBlockState(pos, targetState, 3);
+                NbtCompound currentNbt = null;
+                BlockEntity be = world.getBlockEntity(pos);
+                if (be != null) {
+                    // Best-effort without ExecutionContext: skip NBT capture on inverse if unavailable
+                    currentNbt = null;
+                }
+                inverse.add(new BlockSnapshot(pos, currentState, currentNbt));
+                boolean placed = world.setBlockState(pos, target.state(), 3);
+                if (!placed) {
+                    failure++;
+                    continue;
+                }
+                if (target.blockEntityNbt() != null) {
+                    BlockEntity restored = world.getBlockEntity(pos);
+                    if (restored != null) {
+                        WorldWriteNbtUtils.applyBlockEntityNbt(restored, target.blockEntityNbt(), null);
+                        restored.markDirty();
+                    }
+                }
+                success++;
+                applied.add(i);
             }
-            return inverse;
+            return new ApplyOutcome(inverse, success, failure, applied);
         }
     }
 }

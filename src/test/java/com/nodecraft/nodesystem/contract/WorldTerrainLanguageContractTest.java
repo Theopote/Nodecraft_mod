@@ -80,9 +80,9 @@ class WorldTerrainLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV63() {
+    void currentGraphFormatIsAtLeastV63() {
         assertEquals(63, GraphFormatVersion.V63);
-        assertEquals(GraphFormatVersion.V63, GraphFormatVersion.CURRENT);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V63);
     }
 
     @Test
@@ -292,7 +292,7 @@ class WorldTerrainLanguageContractTest {
         graph.connections.add(wire("b1", "output_legend", "t5", "input_stub"));
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.V63, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
 
         List<String> kept = migrated.connections.stream()
                 .map(c -> c.sourceNodeId + ":" + c.sourcePortId + "->" + c.targetNodeId + ":" + c.targetPortId)

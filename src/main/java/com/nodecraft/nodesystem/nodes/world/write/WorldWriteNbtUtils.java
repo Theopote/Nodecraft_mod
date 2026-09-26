@@ -1,7 +1,10 @@
 package com.nodecraft.nodesystem.nodes.world.write;
 
 import com.mojang.brigadier.StringReader;
+import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
@@ -11,7 +14,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.util.Map;
 
 final class WorldWriteNbtUtils {
 
@@ -19,27 +21,81 @@ final class WorldWriteNbtUtils {
     static final String INPUT_NBT_STRING_ID = "input_nbt_string";
     static final String INPUT_MERGE_NBT_ID = "input_merge_nbt";
 
+    /** Result of NBT preflight: ok with compound, none, or fail with error. */
+    record NbtResolveResult(@Nullable NbtCompound nbt, @Nullable String error) {
+        static NbtResolveResult none() {
+            return new NbtResolveResult(null, null);
+        }
+
+        static NbtResolveResult ok(NbtCompound nbt) {
+            return new NbtResolveResult(nbt, null);
+        }
+
+        static NbtResolveResult fail(String error) {
+            return new NbtResolveResult(null, error);
+        }
+
+        boolean failed() {
+            return error != null;
+        }
+    }
+
     private WorldWriteNbtUtils() {
     }
 
-    static @Nullable NbtCompound resolveIncomingNbt(Map<String, Object> inputValues) {
-        if (inputValues.get(INPUT_NBT_ID) instanceof NbtCompound nbt) {
-            return nbt.copy();
+    /**
+     * Connection-aware NBT resolution: connected NBT Compound owns the source (invalid → fail);
+     * otherwise optional SNBT with hard length cap.
+     */
+    static NbtResolveResult resolveIncomingNbt(BaseNode node) {
+        boolean nbtConnected = OptionalPortDrive.isConnected(node, INPUT_NBT_ID);
+        if (nbtConnected) {
+            Object value = node.getInput(INPUT_NBT_ID);
+            if (!(value instanceof NbtCompound nbt)) {
+                return NbtResolveResult.fail("NBT Compound is connected but null or invalid.");
+            }
+            return NbtResolveResult.ok(nbt.copy());
         }
-        if (inputValues.get(INPUT_NBT_STRING_ID) instanceof String text && !text.isBlank()) {
-            return parseSnbt(text);
+
+        Object localNbt = node.getInput(INPUT_NBT_ID);
+        if (localNbt instanceof NbtCompound nbt) {
+            return NbtResolveResult.ok(nbt.copy());
         }
-        return null;
+
+        boolean snbtConnected = OptionalPortDrive.isConnected(node, INPUT_NBT_STRING_ID);
+        Object snbtRaw = node.getInput(INPUT_NBT_STRING_ID);
+        if (snbtConnected) {
+            if (!(snbtRaw instanceof String text) || text.isBlank()) {
+                return NbtResolveResult.fail("NBT String is connected but null or blank.");
+            }
+            if (text.length() > GenerationLimits.MAX_WORLD_WRITE_SNBT_CHARS) {
+                return NbtResolveResult.fail("NBT String exceeds MAX_WORLD_WRITE_SNBT_CHARS ("
+                    + GenerationLimits.MAX_WORLD_WRITE_SNBT_CHARS + ").");
+            }
+            NbtCompound parsed = parseSnbt(text);
+            if (parsed == null) {
+                return NbtResolveResult.fail("NBT String SNBT parse failed.");
+            }
+            return NbtResolveResult.ok(parsed);
+        }
+
+        if (snbtRaw instanceof String text && !text.isBlank()) {
+            if (text.length() > GenerationLimits.MAX_WORLD_WRITE_SNBT_CHARS) {
+                return NbtResolveResult.fail("NBT String exceeds MAX_WORLD_WRITE_SNBT_CHARS ("
+                    + GenerationLimits.MAX_WORLD_WRITE_SNBT_CHARS + ").");
+            }
+            NbtCompound parsed = parseSnbt(text);
+            if (parsed == null) {
+                return NbtResolveResult.fail("NBT String SNBT parse failed.");
+            }
+            return NbtResolveResult.ok(parsed);
+        }
+
+        return NbtResolveResult.none();
     }
 
-    static boolean hasNbtInput(Map<String, Object> inputValues) {
-        Object nbt = inputValues.get(INPUT_NBT_ID);
-        Object text = inputValues.get(INPUT_NBT_STRING_ID);
-        return nbt instanceof NbtCompound || text instanceof String stringValue && !stringValue.isBlank();
-    }
-
-    static boolean mergeRequested(Map<String, Object> inputValues) {
-        return inputValues.get(INPUT_MERGE_NBT_ID) instanceof Boolean value && value;
+    static @Nullable Boolean resolveMergeNbt(BaseNode node, boolean propertyFallback) {
+        return OptionalPortDrive.resolveOptionalBoolean(node, INPUT_MERGE_NBT_ID, propertyFallback);
     }
 
     static @Nullable NbtCompound parseSnbt(String text) {
@@ -124,8 +180,10 @@ final class WorldWriteNbtUtils {
         return success;
     }
 
-    static @Nullable NbtCompound extractBlockEntityNbt(BlockEntity blockEntity, ExecutionContext context) {
-        Object lookup = context.getWorld() != null ? context.getWorld().getRegistryManager() : null;
+    static @Nullable NbtCompound extractBlockEntityNbt(BlockEntity blockEntity, @Nullable ExecutionContext context) {
+        Object lookup = context != null && context.getWorld() != null
+            ? context.getWorld().getRegistryManager()
+            : null;
         Method[] methods = blockEntity.getClass().getMethods();
         for (Method method : methods) {
             if (!method.getName().startsWith("createNbt")) {
@@ -145,8 +203,10 @@ final class WorldWriteNbtUtils {
         return null;
     }
 
-    static boolean applyBlockEntityNbt(BlockEntity blockEntity, NbtCompound nbt, ExecutionContext context) {
-        Object lookup = context.getWorld() != null ? context.getWorld().getRegistryManager() : null;
+    static boolean applyBlockEntityNbt(BlockEntity blockEntity, NbtCompound nbt, @Nullable ExecutionContext context) {
+        Object lookup = context != null && context.getWorld() != null
+            ? context.getWorld().getRegistryManager()
+            : null;
         Method[] methods = blockEntity.getClass().getMethods();
         for (Method method : methods) {
             String name = method.getName();

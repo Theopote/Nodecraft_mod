@@ -393,8 +393,14 @@ public final class GraphFormatVersion {
      */
     public static final int V63 = 63;
 
+    /**
+     * World Write v1: strict typed inputs, hard write caps, full BE-NBT transactions,
+     * Trigger fail-closed, real entity teleport/remove, Valid/Error on all write nodes.
+     */
+    public static final int V64 = 64;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V63;
+    public static final int CURRENT = V64;
 
     private GraphFormatVersion() {
     }

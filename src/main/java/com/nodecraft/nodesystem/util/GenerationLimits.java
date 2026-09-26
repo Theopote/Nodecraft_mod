@@ -165,6 +165,18 @@ public final class GenerationLimits {
     /** Hard upper bound for Flow Accumulation iterations (independent of work product). */
     public static final int MAX_TERRAIN_FLOW_ITERATIONS = 4_096;
 
+    /** Hard safety ceiling for world.write Max Blocks / region volume budgets. */
+    public static final int MAX_WORLD_WRITE_BLOCKS = 262_144;
+
+    /** Hard safety ceiling for world.write Max Count entity mutate budgets. */
+    public static final int MAX_WORLD_WRITE_ENTITIES = 4_096;
+
+    /** Hard safety ceiling for world.write SNBT / NBT String input length. */
+    public static final int MAX_WORLD_WRITE_SNBT_CHARS = 65_536;
+
+    /** Hard safety ceiling for Execute Command string length (without leading slash). */
+    public static final int MAX_WORLD_WRITE_COMMAND_CHARS = 1_024;
+
     private GenerationLimits() {
     }
 

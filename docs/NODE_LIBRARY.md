@@ -878,23 +878,23 @@
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Set Block | `world.write.set_block` | Places one block at one block position, with optional block-entity NBT | `SetBlockNode` |
-| Set Blocks | `world.write.set_blocks` | Sets blocks at explicit coordinates, with optional shared block-entity NBT | `SetBlocksNode` |
+| Set Blocks | `world.write.set_blocks` | Sets blocks at explicit coordinates, with optional shared block-entity NBT. | `SetBlocksNode` |
 | Fill Region | `world.write.fill_region` | Fills a region with a block | `FillRegionNode` |
 | Replace Blocks | `world.write.replace_blocks` | Replaces matching blocks in a region or coordinate list | `ReplaceBlocksNode` |
-| Clone Region | `world.write.clone_region` | 复制区域到另一个位置 | `CloneRegionNode` |
+| Clone Region | `world.write.clone_region` | Clones a source region to a destination block position | `CloneRegionNode` |
 | Clear Blocks | `world.write.remove_blocks` | Clears blocks at explicit coordinates by replacing them with air | `RemoveBlocksNode` |
 | Set Block NBT | `world.write.set_block_nbt` | Writes or merges NBT data to a block entity at a target position. | `SetBlockNbtNode` |
-| Undo Last World Write | `world.write.undo_last_write` | Reverts the most recent recorded world.write block placement operation | `UndoLastWorldWriteNode` |
-| Peek Last World Write Undo | `world.write.peek_last_undo` | Inspects the latest world.write undo record and outputs affected count and region bounds | `PeekLastWorldWriteUndoNode` |
-| Redo Last World Write | `world.write.redo_last_write` | Reapplies the most recently undone world.write block operation | `RedoLastWorldWriteNode` |
-| Clear World Write Undo History | `world.write.clear_undo_history` | Clears all recorded world.write undo history entries | `ClearWorldWriteUndoHistoryNode` |
+| Spawn Entity | `world.write.spawn_entity` | Spawns an entity into the world at a POINT position | `SpawnEntityNode` |
+| Teleport Entity | `world.write.entity_teleport` | Teleports entities to a POINT destination in the current world (same-dimension only) | `EntityTeleportNode` |
+| Remove Entities | `world.write.remove_entities` | Removes entities from the world. Lookup by UUID/type belongs in world.query. | `RemoveEntitiesNode` |
+| Write Sign Text | `world.write.write_sign_text` | Writes text to the front side of a sign block entity | `WriteSignTextNode` |
 | Apply Redstone Power | `world.write.apply_redstone_power` | Places a temporary redstone power source next to a target block | `ApplyRedstonePowerNode` |
-| Teleport Entity | `world.write.entity_teleport` | 传送实体 | `EntityTeleportNode` |
-| Execute Command | `world.write.execute_command` | Executes a Minecraft command on the server | `ExecuteCommandNode` |
-| Remove Entities | `world.write.remove_entities` | 移除实体 | `RemoveEntitiesNode` |
 | Simulate Right Click | `world.write.simulate_right_click` | Simulates a server-side right click on a block | `SimulateRightClickNode` |
-| Spawn Entity | `world.write.spawn_entity` | Spawns an entity into the world at a given position | `SpawnEntityNode` |
-| Write Sign Text | `world.write.write_sign_text` | Writes text to a sign block entity | `WriteSignTextNode` |
+| Execute Command | `world.write.execute_command` | Privileged escape hatch: executes a Minecraft command when AllowCommandNodes is enabled | `ExecuteCommandNode` |
+| Undo Last World Write | `world.write.undo_last_write` | Reverts the most recent recorded world.write block placement operation | `UndoLastWorldWriteNode` |
+| Redo Last World Write | `world.write.redo_last_write` | Reapplies the most recently undone world.write block operation | `RedoLastWorldWriteNode` |
+| Peek Last World Write Undo | `world.write.peek_last_undo` | Inspects the latest world.write undo record and outputs affected count and region bounds | `PeekLastWorldWriteUndoNode` |
+| Clear World Write Undo History | `world.write.clear_undo_history` | Clears recorded world.write undo history for the current actor and world | `ClearWorldWriteUndoHistoryNode` |
 
 ## Notes
 
