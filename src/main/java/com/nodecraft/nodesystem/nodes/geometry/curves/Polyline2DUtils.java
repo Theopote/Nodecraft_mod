@@ -28,7 +28,7 @@ final class Polyline2DUtils {
     }
 
     static void appendIfFar(List<Vector2d> out, Vector2d point) {
-        Vector2d last = out.get(out.size() - 1);
+        Vector2d last = out.getLast();
         if (last.distanceSquared(point) > EPS * EPS) {
             out.add(new Vector2d(point));
         }

@@ -74,7 +74,7 @@ public class ResamplePolygonProfileNode extends BaseNode {
             return;
         }
 
-        List<Vector3d> sourceClosedPoints = profile.getClosedPoints();
+        List<Vector3d> sourceClosedPoints = profile.closedPoints();
         if (sourceClosedPoints.size() < 4) {
             writeEmptyOutputs();
             return;
@@ -88,14 +88,14 @@ public class ResamplePolygonProfileNode extends BaseNode {
 
         List<Vector3d> closedResampledPoints = new ArrayList<>(uniqueResampledPoints.size() + 1);
         closedResampledPoints.addAll(uniqueResampledPoints);
-        closedResampledPoints.add(new Vector3d(uniqueResampledPoints.get(0)));
+        closedResampledPoints.add(new Vector3d(uniqueResampledPoints.getFirst()));
 
-        PolygonProfileData resampledProfile = new PolygonProfileData(closedResampledPoints, profile.getPlane());
+        PolygonProfileData resampledProfile = new PolygonProfileData(closedResampledPoints, profile.plane());
 
         outputValues.put(OUTPUT_PROFILE_ID, resampledProfile);
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(closedResampledPoints));
         outputValues.put(OUTPUT_BOUNDARY_ID, resampledProfile.getBoundary());
-        outputValues.put(OUTPUT_PLANE_ID, resampledProfile.getPlane());
+        outputValues.put(OUTPUT_PLANE_ID, resampledProfile.plane());
         outputValues.put(OUTPUT_CENTER_ID, new PointData(resampledProfile.getCenter()));
         outputValues.put(OUTPUT_EDGE_COUNT_ID, targetEdgeCount);
         outputValues.put(OUTPUT_VALID_ID, true);
@@ -152,6 +152,6 @@ public class ResamplePolygonProfileNode extends BaseNode {
                 return new Vector3d(start).lerp(end, t);
             }
         }
-        return new Vector3d(closedPoints.get(0));
+        return new Vector3d(closedPoints.getFirst());
     }
 }

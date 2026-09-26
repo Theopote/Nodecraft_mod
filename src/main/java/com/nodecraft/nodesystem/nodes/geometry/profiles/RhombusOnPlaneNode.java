@@ -94,7 +94,7 @@ public class RhombusOnPlaneNode extends BaseNode {
         points.add(toWorld(center, basis, hx, 0.0d));
         points.add(toWorld(center, basis, 0.0d, hy));
         points.add(toWorld(center, basis, -hx, 0.0d));
-        points.add(new Vector3d(points.get(0)));
+        points.add(new Vector3d(points.getFirst()));
 
         PlaneData resolvedPlane = new PlaneData(center, basis.normal());
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(points));

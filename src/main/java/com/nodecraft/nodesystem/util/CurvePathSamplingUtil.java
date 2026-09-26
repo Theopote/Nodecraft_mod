@@ -30,7 +30,7 @@ public final class CurvePathSamplingUtil {
             return toVector3dList(pts);
         }
         if (polyObj instanceof PolylineData poly) {
-            return toVector3dList(poly.getPoints());
+            return toVector3dList(poly.points());
         }
         if (lineObj instanceof LineData line) {
             Vec3d a = line.getStart();

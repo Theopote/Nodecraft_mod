@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.geometry.curves;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
@@ -71,7 +70,7 @@ public class BoxFaceBoundaryPathNode extends AbstractCurveNode {
             polylinePoints.add(new Vec3d(corner.x, corner.y, corner.z));
         }
         if (!corners.isEmpty()) {
-            Vector3d first = corners.get(0);
+            Vector3d first = corners.getFirst();
             closedPoints.add(new Vector3d(first));
             polylinePoints.add(new Vec3d(first.x, first.y, first.z));
         }

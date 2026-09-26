@@ -66,9 +66,9 @@ public class DeconstructPolygonProfileNode extends BaseNode {
             return;
         }
 
-        PlaneData plane = profile.getPlane();
+        PlaneData plane = profile.plane();
 
-        outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(profile.getClosedPoints()));
+        outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(profile.closedPoints()));
         outputValues.put(OUTPUT_BOUNDARY_ID, profile.getBoundary());
         outputValues.put(OUTPUT_PLANE_ID, plane);
         outputValues.put(OUTPUT_CENTER_ID, new PointData(profile.getCenter()));
@@ -104,7 +104,7 @@ public class DeconstructPolygonProfileNode extends BaseNode {
             areaVector.add(new Vector3d(current).cross(next));
         }
 
-        Vector3d normal = profile.getPlane().getNormal().normalize();
+        Vector3d normal = profile.plane().getNormal().normalize();
         return Math.abs(areaVector.dot(normal)) * 0.5d;
     }
 }

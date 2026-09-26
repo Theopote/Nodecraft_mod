@@ -8,7 +8,6 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
@@ -146,7 +145,7 @@ public class PreviewPolygonProfilesNode extends BaseNode {
 
     private LineData buildNormalLine(PolygonProfileData profile) {
         Vector3d start = profile.getCenter();
-        Vector3d end = new Vector3d(start).add(new Vector3d(profile.getPlane().getNormal()).normalize().mul(Math.max(0.05d, normalLength)));
+        Vector3d end = new Vector3d(start).add(new Vector3d(profile.plane().getNormal()).normalize().mul(Math.max(0.05d, normalLength)));
         return new LineData(
             new Vec3d(start.x, start.y, start.z),
             new Vec3d(end.x, end.y, end.z)

@@ -153,7 +153,7 @@ public class SweepProfileAlongPathNode extends BaseNode {
             if (closeProfile) {
                 List<Vector3d> closedSectionPoints = new ArrayList<>(uniqueSectionPoints.size() + 1);
                 closedSectionPoints.addAll(uniqueSectionPoints);
-                closedSectionPoints.add(new Vector3d(uniqueSectionPoints.get(0)));
+                closedSectionPoints.add(new Vector3d(uniqueSectionPoints.getFirst()));
 
                 PlaneData sectionPlane = new PlaneData(spinePoint, frame.zAxis());
                 PolygonProfileData sectionProfile = new PolygonProfileData(closedSectionPoints, sectionPlane);

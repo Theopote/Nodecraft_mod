@@ -55,7 +55,7 @@ public final class PathUtils {
         }
         return switch (path.getKind()) {
             case LINE -> verticesFromLine(path.getLine());
-            case POLYLINE -> toVector3dList(path.getPolyline().getPoints());
+            case POLYLINE -> toVector3dList(path.getPolyline().points());
             case CURVE -> verticesFromCurve(path.getCurve());
         };
     }
@@ -83,7 +83,7 @@ public final class PathUtils {
             return verticesFromCurve(curve);
         }
         if (polyObj instanceof PolylineData poly) {
-            return toVector3dList(poly.getPoints());
+            return toVector3dList(poly.points());
         }
         if (lineObj instanceof LineData line) {
             return verticesFromLine(line);
@@ -172,8 +172,8 @@ public final class PathUtils {
             return null;
         }
         if (!closed && verts.size() == 2) {
-            Vec3d a = polyline.getPoints().get(0);
-            Vec3d b = polyline.getPoints().get(1);
+            Vec3d a = polyline.points().get(0);
+            Vec3d b = polyline.points().get(1);
             return PathData.fromLine(new LineData(a, b));
         }
         return PathData.fromPolyline(polyline);

@@ -79,7 +79,7 @@ public class ScatterOnSurfaceStripNode extends BaseNode {
             return;
         }
 
-        List<List<Vector3d>> sections = strip.getSections();
+        List<List<Vector3d>> sections = strip.sections();
         if (sections.size() < 2 || sections.get(0).size() < 2) {
             outputValues.put(OUTPUT_POINTS_ID, List.of());
             outputValues.put(OUTPUT_BLOCKS_ID, new BlockPosList());

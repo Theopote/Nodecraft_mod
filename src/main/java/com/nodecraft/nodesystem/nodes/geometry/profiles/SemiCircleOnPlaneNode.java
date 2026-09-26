@@ -96,7 +96,7 @@ public class SemiCircleOnPlaneNode extends BaseNode {
                 .add(new Vector3d(basis.xAxis()).mul(Math.cos(a) * resolvedRadius))
                 .add(new Vector3d(basis.yAxis()).mul(Math.sin(a) * resolvedRadius)));
         }
-        points.add(new Vector3d(points.get(0)));
+        points.add(new Vector3d(points.getFirst()));
 
         PlaneData resolvedPlane = new PlaneData(center, basis.normal());
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(points));

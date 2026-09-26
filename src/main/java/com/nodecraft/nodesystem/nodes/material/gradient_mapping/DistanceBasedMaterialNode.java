@@ -215,7 +215,7 @@ public class DistanceBasedMaterialNode extends BaseNode {
         if (polylineObj != null) {
             count++;
             if (polylineObj instanceof PolylineData polyline) {
-                List<Vec3d> points = polyline.getPoints();
+                List<Vec3d> points = polyline.points();
                 if (points == null || points.size() < 2) {
                     error = "Reference Polyline must have at least 2 points";
                 } else {

@@ -139,8 +139,8 @@ public class PreviewSurfaceStripNode extends BaseNode {
 
     private List<PolylineData> buildSectionPaths(SurfaceStripData surfaceStrip) {
         List<PolylineData> result = new ArrayList<>();
-        List<List<Vector3d>> sections = surfaceStrip.getSections();
-        List<Boolean> closedFlags = surfaceStrip.getSectionClosedFlags();
+        List<List<Vector3d>> sections = surfaceStrip.sections();
+        List<Boolean> closedFlags = surfaceStrip.sectionClosedFlags();
         for (int i = 0; i < sections.size(); i++) {
             PolylineData polyline = createPolyline(sections.get(i), closedFlags.get(i));
             if (polyline != null) {
@@ -152,7 +152,7 @@ public class PreviewSurfaceStripNode extends BaseNode {
 
     private List<LineData> buildRailSegments(SurfaceStripData surfaceStrip) {
         List<LineData> result = new ArrayList<>();
-        List<List<Vector3d>> sections = surfaceStrip.getSections();
+        List<List<Vector3d>> sections = surfaceStrip.sections();
         for (int sectionIndex = 0; sectionIndex < sections.size() - 1; sectionIndex++) {
             List<Vector3d> current = sections.get(sectionIndex);
             List<Vector3d> next = sections.get(sectionIndex + 1);

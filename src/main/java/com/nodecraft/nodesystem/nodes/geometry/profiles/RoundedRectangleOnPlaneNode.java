@@ -116,7 +116,7 @@ public class RoundedRectangleOnPlaneNode extends BaseNode {
             appendCorner(points, center, basis, -halfW + clampedRadius, halfH - clampedRadius, Math.PI * 0.5d, Math.PI, clampedRadius, resolvedCornerSegments, false);
             appendCorner(points, center, basis, -halfW + clampedRadius, -halfH + clampedRadius, Math.PI, Math.PI * 1.5d, clampedRadius, resolvedCornerSegments, false);
         }
-        points.add(new Vector3d(points.get(0)));
+        points.add(new Vector3d(points.getFirst()));
 
         PlaneData resolvedPlane = new PlaneData(center, basis.normal());
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(points));

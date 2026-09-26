@@ -6,7 +6,6 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
@@ -155,7 +154,7 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
         }
 
         List<Vector2d> out = new ArrayList<>();
-        out.add(new Vector2d(pts.get(0)));
+        out.add(new Vector2d(pts.getFirst()));
 
         for (int i = 1; i < n - 1; i++) {
             Vector2d a = pts.get(i - 1);

@@ -67,7 +67,7 @@ public class ProjectProfileToPlaneNode extends BaseNode {
             return;
         }
 
-        List<Vector3d> sourcePoints = profile.getClosedPoints();
+        List<Vector3d> sourcePoints = profile.closedPoints();
         if (sourcePoints.size() < 4) {
             writeInvalid();
             return;

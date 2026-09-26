@@ -45,8 +45,8 @@ public final class SurfaceStripBridge {
         }
 
         Set<BlockPos> blockSet = new LinkedHashSet<>();
-        List<List<Vector3d>> sections = surfaceStrip.getSections();
-        List<Boolean> closedFlags = surfaceStrip.getSectionClosedFlags();
+        List<List<Vector3d>> sections = surfaceStrip.sections();
+        List<Boolean> closedFlags = surfaceStrip.sectionClosedFlags();
         int resolvedSteps = Math.max(1, longitudinalSteps);
         BridgeMode resolvedMode = mode == null ? BridgeMode.LATTICE : mode;
         boolean includeSectionEdges = resolvedMode.includeSectionEdges();
@@ -90,8 +90,8 @@ public final class SurfaceStripBridge {
         }
 
         List<GeometryData> geometries = new ArrayList<>();
-        List<List<Vector3d>> sections = surfaceStrip.getSections();
-        List<Boolean> closedFlags = surfaceStrip.getSectionClosedFlags();
+        List<List<Vector3d>> sections = surfaceStrip.sections();
+        List<Boolean> closedFlags = surfaceStrip.sectionClosedFlags();
         int resolvedSteps = Math.max(1, longitudinalSteps);
         BridgeMode resolvedMode = mode == null ? BridgeMode.LATTICE : mode;
         boolean includeSectionEdges = resolvedMode.includeSectionEdges();
@@ -142,7 +142,7 @@ public final class SurfaceStripBridge {
         double maxY = 0.0d;
         double maxZ = 0.0d;
 
-        for (List<Vector3d> section : surfaceStrip.getSections()) {
+        for (List<Vector3d> section : surfaceStrip.sections()) {
             for (Vector3d point : section) {
                 if (!hasPoint) {
                     minX = maxX = point.x;
@@ -191,12 +191,12 @@ public final class SurfaceStripBridge {
         int total = 0;
 
         if (includeSectionEdges) {
-            for (Boolean closed : surfaceStrip.getSectionClosedFlags()) {
+            for (Boolean closed : surfaceStrip.sectionClosedFlags()) {
                 total += Boolean.TRUE.equals(closed) ? pointsPerSection : pointsPerSection - 1;
             }
             for (int sectionIndex = 0; sectionIndex < sectionCount - 1; sectionIndex++) {
-                boolean closed = Boolean.TRUE.equals(surfaceStrip.getSectionClosedFlags().get(sectionIndex))
-                    || Boolean.TRUE.equals(surfaceStrip.getSectionClosedFlags().get(sectionIndex + 1));
+                boolean closed = Boolean.TRUE.equals(surfaceStrip.sectionClosedFlags().get(sectionIndex))
+                    || Boolean.TRUE.equals(surfaceStrip.sectionClosedFlags().get(sectionIndex + 1));
                 total += (resolvedSteps - 1) * (closed ? pointsPerSection : pointsPerSection - 1);
             }
         }

@@ -67,7 +67,7 @@ public class LinesElement extends AbstractPreviewElement {
             nextPoints.add(line.getStart());
             nextPoints.add(line.getEnd());
         } else if (data instanceof PolylineData polyline) {
-            nextPoints.addAll(polyline.getPoints());
+            nextPoints.addAll(polyline.points());
         } else if (data instanceof Curve curve) {
             nextPoints.addAll(curve.getSamplePoints());
         } else if (data instanceof List<?> list) {

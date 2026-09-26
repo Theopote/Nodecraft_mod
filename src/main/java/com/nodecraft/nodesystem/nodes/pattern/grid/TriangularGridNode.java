@@ -31,7 +31,7 @@ public class TriangularGridNode extends BaseNode {
     private static final String INPUT_V_COUNT_ID = "input_v_count";
 
     private static final String OUTPUT_POINTS_ID = "output_points";
-    private static final String OUTPUT_TRIANGLE_UP_ID = "output_triangle_up";
+    private static final String OUTPUT_FLIP_ID = "output_flip";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
@@ -43,7 +43,7 @@ public class TriangularGridNode extends BaseNode {
         addInputPort(new BasePort(INPUT_V_COUNT_ID, "V Count", "Number of positions along the V axis", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Triangular lattice anchor points", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_TRIANGLE_UP_ID, "Triangle Up", "Per-anchor orientation flag (true=up, false=down)", NodeDataType.BOOLEAN_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_FLIP_ID, "Flip", "Alternating orientation flag for downstream instancing at each lattice anchor", NodeDataType.BOOLEAN_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of emitted anchor points", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a triangular grid was generated", NodeDataType.BOOLEAN, this));
     }
@@ -93,7 +93,7 @@ public class TriangularGridNode extends BaseNode {
         }
 
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(points));
-        outputValues.put(OUTPUT_TRIANGLE_UP_ID, List.copyOf(orientation));
+        outputValues.put(OUTPUT_FLIP_ID, List.copyOf(orientation));
         outputValues.put(OUTPUT_COUNT_ID, points.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
@@ -110,7 +110,7 @@ public class TriangularGridNode extends BaseNode {
 
     private void writeEmpty() {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_TRIANGLE_UP_ID, List.of());
+        outputValues.put(OUTPUT_FLIP_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
     }

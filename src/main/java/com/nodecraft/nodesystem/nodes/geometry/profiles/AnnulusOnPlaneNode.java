@@ -138,7 +138,7 @@ public class AnnulusOnPlaneNode extends BaseNode {
                 .add(new Vector3d(basis.xAxis()).mul(Math.cos(a) * ringRadius))
                 .add(new Vector3d(basis.yAxis()).mul(Math.sin(a) * ringRadius)));
         }
-        points.add(new Vector3d(points.get(0)));
+        points.add(new Vector3d(points.getFirst()));
         return points;
     }
 

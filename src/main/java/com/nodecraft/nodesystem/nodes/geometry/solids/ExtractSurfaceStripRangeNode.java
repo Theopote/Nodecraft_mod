@@ -99,8 +99,8 @@ public class ExtractSurfaceStripRangeNode extends BaseNode {
             return;
         }
 
-        List<List<Vector3d>> sourceSections = surfaceStrip.getSections();
-        List<Boolean> sourceClosedFlags = surfaceStrip.getSectionClosedFlags();
+        List<List<Vector3d>> sourceSections = surfaceStrip.sections();
+        List<Boolean> sourceClosedFlags = surfaceStrip.sectionClosedFlags();
         List<List<Vector3d>> extractedSections = new ArrayList<>(endIndex - startIndex + 1);
         List<Boolean> extractedClosedFlags = new ArrayList<>(endIndex - startIndex + 1);
 

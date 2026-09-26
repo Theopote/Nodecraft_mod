@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.datatypes;
 
 import org.joml.Vector3d;
+import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,10 +11,7 @@ import java.util.Objects;
  * Represents a lightweight ordered strip surface made of corresponding section point lists.
  * This is intended as an intermediate modeling datatype for loft/extrude/sweep workflows.
  */
-public class SurfaceStripData {
-    private final List<List<Vector3d>> sections;
-    private final List<Boolean> sectionClosedFlags;
-
+public record SurfaceStripData(List<List<Vector3d>> sections, List<Boolean> sectionClosedFlags) {
     public SurfaceStripData(List<List<Vector3d>> sections, List<Boolean> sectionClosedFlags) {
         if (sections == null || sections.size() < 2) {
             throw new IllegalArgumentException("Surface strip requires at least two sections");
@@ -52,7 +50,8 @@ public class SurfaceStripData {
         this.sectionClosedFlags = List.copyOf(copiedFlags);
     }
 
-    public List<List<Vector3d>> getSections() {
+    @Override
+    public List<List<Vector3d>> sections() {
         List<List<Vector3d>> copiedSections = new ArrayList<>(sections.size());
         for (List<Vector3d> section : sections) {
             List<Vector3d> copiedSection = new ArrayList<>(section.size());
@@ -64,16 +63,12 @@ public class SurfaceStripData {
         return List.copyOf(copiedSections);
     }
 
-    public List<Boolean> getSectionClosedFlags() {
-        return sectionClosedFlags;
-    }
-
     public int getSectionCount() {
         return sections.size();
     }
 
     public int getPointsPerSection() {
-        return sections.isEmpty() ? 0 : sections.get(0).size();
+        return sections.isEmpty() ? 0 : sections.getFirst().size();
     }
 
     public boolean areAllSectionsClosed() {
@@ -100,18 +95,13 @@ public class SurfaceStripData {
         if (this == o) return true;
         if (!(o instanceof SurfaceStripData that)) return false;
         return Objects.equals(sections, that.sections)
-            && Objects.equals(sectionClosedFlags, that.sectionClosedFlags);
+                && Objects.equals(sectionClosedFlags, that.sectionClosedFlags);
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(sections, sectionClosedFlags);
-    }
-
-    @Override
-    public String toString() {
+    public @NonNull String toString() {
         return "SurfaceStripData{sectionCount=" + getSectionCount()
-            + ", pointsPerSection=" + getPointsPerSection()
-            + ", allClosed=" + areAllSectionsClosed() + "}";
+                + ", pointsPerSection=" + getPointsPerSection()
+                + ", allClosed=" + areAllSectionsClosed() + "}";
     }
 }

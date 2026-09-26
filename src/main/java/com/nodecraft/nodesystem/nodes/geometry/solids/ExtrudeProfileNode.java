@@ -92,13 +92,13 @@ public class ExtrudeProfileNode extends BaseNode {
             return;
         }
 
-        List<Vector3d> baseClosedPoints = baseProfile.getClosedPoints();
+        List<Vector3d> baseClosedPoints = baseProfile.closedPoints();
         List<Vector3d> topClosedPoints = new ArrayList<>(baseClosedPoints.size());
         for (Vector3d point : baseClosedPoints) {
             topClosedPoints.add(new Vector3d(point).add(direction));
         }
 
-        PlaneData basePlane = baseProfile.getPlane();
+        PlaneData basePlane = baseProfile.plane();
         PlaneData topPlane = new PlaneData(
             new Vector3d(basePlane.getPoint()).add(direction),
             basePlane.getNormal()

@@ -73,13 +73,13 @@ public class MorphBetweenProfilesNode extends BaseNode {
             Vector3d p = new Vector3d(aUnique.get(i)).lerp(bUnique.get(i), t);
             closed.add(p);
         }
-        closed.add(new Vector3d(closed.get(0)));
+        closed.add(new Vector3d(closed.getFirst()));
 
         Vector3d centerA = a.getCenter();
         Vector3d centerB = b.getCenter();
         Vector3d center = new Vector3d(centerA).lerp(centerB, t);
-        Vector3d nA = a.getPlane().getNormal();
-        Vector3d nB = b.getPlane().getNormal();
+        Vector3d nA = a.plane().getNormal();
+        Vector3d nB = b.plane().getNormal();
         Vector3d n = new Vector3d(nA).lerp(nB, t);
         if (n.lengthSquared() <= 1.0e-12d) {
             n = new Vector3d(nA);
@@ -112,7 +112,6 @@ public class MorphBetweenProfilesNode extends BaseNode {
 
     private double clamp01(double value) {
         if (value < 0.0d) return 0.0d;
-        if (value > 1.0d) return 1.0d;
-        return value;
+        return Math.min(value, 1.0d);
     }
 }

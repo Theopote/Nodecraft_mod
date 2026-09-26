@@ -1,6 +1,8 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import net.minecraft.util.math.Vec3d;
 import org.joml.Vector3d;
+import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,10 +12,7 @@ import java.util.Objects;
  * Represents a lightweight planar polygon profile for construct/modeling workflows.
  * The stored point list is ordered and closed: the last point repeats the first point.
  */
-public class PolygonProfileData {
-    private final List<Vector3d> closedPoints;
-    private final PlaneData plane;
-
+public record PolygonProfileData(List<Vector3d> closedPoints, PlaneData plane) {
     public PolygonProfileData(List<Vector3d> closedPoints, PlaneData plane) {
         if (closedPoints == null || closedPoints.size() < 4) {
             throw new IllegalArgumentException("Polygon profile requires at least 3 unique points plus closure");
@@ -27,8 +26,8 @@ public class PolygonProfileData {
             copiedPoints.add(new Vector3d(Objects.requireNonNull(point, "Polygon point cannot be null")));
         }
 
-        Vector3d first = copiedPoints.get(0);
-        Vector3d last = copiedPoints.get(copiedPoints.size() - 1);
+        Vector3d first = copiedPoints.getFirst();
+        Vector3d last = copiedPoints.getLast();
         if (first.distance(last) > 1.0e-6d) {
             throw new IllegalArgumentException("Polygon profile points must be closed");
         }
@@ -37,7 +36,8 @@ public class PolygonProfileData {
         this.plane = plane;
     }
 
-    public List<Vector3d> getClosedPoints() {
+    @Override
+    public List<Vector3d> closedPoints() {
         List<Vector3d> copied = new ArrayList<>(closedPoints.size());
         for (Vector3d point : closedPoints) {
             copied.add(new Vector3d(point));
@@ -54,15 +54,11 @@ public class PolygonProfileData {
     }
 
     public PolylineData getBoundary() {
-        List<net.minecraft.util.math.Vec3d> points = new ArrayList<>(closedPoints.size());
+        List<Vec3d> points = new ArrayList<>(closedPoints.size());
         for (Vector3d point : closedPoints) {
-            points.add(new net.minecraft.util.math.Vec3d(point.x, point.y, point.z));
+            points.add(new Vec3d(point.x, point.y, point.z));
         }
         return new PolylineData(points);
-    }
-
-    public PlaneData getPlane() {
-        return plane;
     }
 
     public int getEdgeCount() {
@@ -86,12 +82,7 @@ public class PolygonProfileData {
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(closedPoints, plane);
-    }
-
-    @Override
-    public String toString() {
+    public @NonNull String toString() {
         return "PolygonProfileData{edges=" + getEdgeCount() + "}";
     }
 }

@@ -74,7 +74,7 @@ public class ProfileBoolean2DNode extends BaseNode {
             return;
         }
 
-        PlaneData plane = a.getPlane();
+        PlaneData plane = a.plane();
         PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
         GeometryFactory gf = new GeometryFactory();
 
@@ -107,7 +107,7 @@ public class ProfileBoolean2DNode extends BaseNode {
 
         outputValues.put(OUTPUT_PROFILE_ID, primary);
         outputValues.put(OUTPUT_PROFILES_ID, new ArrayList<>(profiles));
-        outputValues.put(OUTPUT_PLANE_ID, primary.getPlane());
+        outputValues.put(OUTPUT_PLANE_ID, primary.plane());
         outputValues.put(OUTPUT_CENTER_ID, new PointData(primary.getCenter()));
         outputValues.put(OUTPUT_COUNT_ID, profiles.size());
         outputValues.put(OUTPUT_VALID_ID, true);
@@ -127,7 +127,7 @@ public class ProfileBoolean2DNode extends BaseNode {
     private Polygon toJtsPolygon(PolygonProfileData profile,
                                  PlaneProjectionUtils.PlaneAxes axes,
                                  GeometryFactory gf) {
-        List<Vector3d> closed = profile.getClosedPoints();
+        List<Vector3d> closed = profile.closedPoints();
         if (closed.size() < 4) {
             return null;
         }
@@ -143,7 +143,7 @@ public class ProfileBoolean2DNode extends BaseNode {
                                            PlaneData targetPlane,
                                            PlaneProjectionUtils.PlaneAxes axes,
                                            GeometryFactory gf) {
-        List<Vector3d> closed = profile.getClosedPoints();
+        List<Vector3d> closed = profile.closedPoints();
         if (closed.size() < 4) {
             return null;
         }
@@ -196,7 +196,7 @@ public class ProfileBoolean2DNode extends BaseNode {
     }
 
     private double area2d(PolygonProfileData profile, PlaneProjectionUtils.PlaneAxes axes) {
-        List<Vector3d> pts = profile.getClosedPoints();
+        List<Vector3d> pts = profile.closedPoints();
         double area2 = 0.0d;
         for (int i = 0; i < pts.size() - 1; i++) {
             Vector2d a = axes.to2d(pts.get(i));

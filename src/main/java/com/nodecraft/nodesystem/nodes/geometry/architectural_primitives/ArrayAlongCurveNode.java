@@ -8,13 +8,9 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
-import com.nodecraft.nodesystem.datatypes.LineData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
-import com.nodecraft.nodesystem.util.Curve;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
@@ -196,7 +192,7 @@ public class ArrayAlongCurveNode extends BaseNode {
                 emitted++;
             }
             if (emitted < maxInstances
-                && (sampleDistances.isEmpty() || sampleDistances.get(sampleDistances.size() - 1) < total - EPSILON)) {
+                && (sampleDistances.isEmpty() || sampleDistances.getLast() < total - EPSILON)) {
                 sampleDistances.add(total);
             }
         }

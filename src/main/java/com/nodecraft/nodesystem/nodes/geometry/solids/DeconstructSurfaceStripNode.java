@@ -71,8 +71,8 @@ public class DeconstructSurfaceStripNode extends BaseNode {
             return;
         }
 
-        List<List<Vector3d>> sections = surfaceStrip.getSections();
-        List<Boolean> closedFlags = surfaceStrip.getSectionClosedFlags();
+        List<List<Vector3d>> sections = surfaceStrip.sections();
+        List<Boolean> closedFlags = surfaceStrip.sectionClosedFlags();
         List<Object> sectionPaths = new ArrayList<>(sections.size());
         List<LineData> railSegments = new ArrayList<>();
         List<DataTreeData.Branch> sectionPathBranches = new ArrayList<>(sections.size());

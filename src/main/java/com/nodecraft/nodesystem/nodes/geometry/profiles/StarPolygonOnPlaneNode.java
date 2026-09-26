@@ -82,7 +82,7 @@ public class StarPolygonOnPlaneNode extends BaseNode {
         int resolvedPointCount = resolvePointCount();
         Vector3d preferred = inputValues.get(INPUT_AXIS_ID) instanceof Vector3d v ? new Vector3d(v) : null;
 
-        if (!Double.isFinite(outer) || !Double.isFinite(inner) || outer <= 0.0d || inner <= 0.0d || inner >= outer || resolvedPointCount < 3) {
+        if (!Double.isFinite(outer) || !Double.isFinite(inner) || inner <= 0.0d || inner >= outer || resolvedPointCount < 3) {
             writeInvalid();
             return;
         }
@@ -103,7 +103,7 @@ public class StarPolygonOnPlaneNode extends BaseNode {
                 .add(new Vector3d(basis.xAxis()).mul(Math.cos(a) * radius))
                 .add(new Vector3d(basis.yAxis()).mul(Math.sin(a) * radius)));
         }
-        points.add(new Vector3d(points.get(0)));
+        points.add(new Vector3d(points.getFirst()));
 
         PlaneData resolvedPlane = new PlaneData(center, basis.normal());
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(points));

@@ -34,7 +34,7 @@ public final class NodeRecommendationPorts {
                 return port.getId();
             }
         }
-        return node.getOutputPorts().isEmpty() ? null : node.getOutputPorts().get(0).getId();
+        return node.getOutputPorts().isEmpty() ? null : node.getOutputPorts().getFirst().getId();
     }
 
     public static String resolveInputPortId(INode node, String preferredPortId) {
@@ -50,6 +50,6 @@ public final class NodeRecommendationPorts {
                 return port.getId();
             }
         }
-        return node.getInputPorts().isEmpty() ? null : node.getInputPorts().get(0).getId();
+        return node.getInputPorts().isEmpty() ? null : node.getInputPorts().getFirst().getId();
     }
 }

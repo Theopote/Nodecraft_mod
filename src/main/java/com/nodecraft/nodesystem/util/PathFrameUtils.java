@@ -229,7 +229,7 @@ public final class PathFrameUtils {
      */
     public static List<Vector3d> profileLocalOffsets(PolygonProfileData profile) {
         List<Vector3d> unique = profile.getUniquePoints();
-        return pointsToLocalOffsets(unique, profile.getCenter(), profile.getPlane());
+        return pointsToLocalOffsets(unique, profile.getCenter(), profile.plane());
     }
 
     /**

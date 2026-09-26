@@ -102,7 +102,7 @@ public class RectangleOnPlaneNode extends BaseNode {
         corners.add(new Vector3d(center).add(halfX).sub(halfY));
         corners.add(new Vector3d(center).add(halfX).add(halfY));
         corners.add(new Vector3d(center).sub(halfX).add(halfY));
-        corners.add(new Vector3d(corners.get(0)));
+        corners.add(new Vector3d(corners.getFirst()));
 
         PlaneData resolvedPlane = new PlaneData(center, basis.normal());
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(corners));

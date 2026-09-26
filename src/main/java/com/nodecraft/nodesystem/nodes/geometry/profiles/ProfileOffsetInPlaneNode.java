@@ -88,7 +88,7 @@ public class ProfileOffsetInPlaneNode extends BaseNode {
             return;
         }
 
-        PlaneData plane = profile.getPlane();
+        PlaneData plane = profile.plane();
         PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
         GeometryFactory gf = new GeometryFactory();
         Polygon polygon = toJtsPolygon(profile, axes, gf);
@@ -110,7 +110,7 @@ public class ProfileOffsetInPlaneNode extends BaseNode {
             return;
         }
 
-        PolygonProfileData primary = profiles.get(0);
+        PolygonProfileData primary = profiles.getFirst();
         for (PolygonProfileData p : profiles) {
             if (Math.abs(area2d(p, axes)) > Math.abs(area2d(primary, axes))) {
                 primary = p;
@@ -119,14 +119,14 @@ public class ProfileOffsetInPlaneNode extends BaseNode {
 
         outputValues.put(OUTPUT_PROFILE_ID, primary);
         outputValues.put(OUTPUT_PROFILES_ID, new ArrayList<>(profiles));
-        outputValues.put(OUTPUT_PLANE_ID, primary.getPlane());
+        outputValues.put(OUTPUT_PLANE_ID, primary.plane());
         outputValues.put(OUTPUT_CENTER_ID, new PointData(primary.getCenter()));
         outputValues.put(OUTPUT_COUNT_ID, profiles.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private Polygon toJtsPolygon(PolygonProfileData profile, PlaneProjectionUtils.PlaneAxes axes, GeometryFactory gf) {
-        List<Vector3d> closed = profile.getClosedPoints();
+        List<Vector3d> closed = profile.closedPoints();
         if (closed.size() < 4) {
             return null;
         }
@@ -178,7 +178,7 @@ public class ProfileOffsetInPlaneNode extends BaseNode {
     }
 
     private double area2d(PolygonProfileData profile, PlaneProjectionUtils.PlaneAxes axes) {
-        List<Vector3d> pts = profile.getClosedPoints();
+        List<Vector3d> pts = profile.closedPoints();
         double area2 = 0.0d;
         for (int i = 0; i < pts.size() - 1; i++) {
             Vector2d a = axes.to2d(pts.get(i));

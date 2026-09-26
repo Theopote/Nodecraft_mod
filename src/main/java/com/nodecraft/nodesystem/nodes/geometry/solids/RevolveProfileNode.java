@@ -130,11 +130,11 @@ public class RevolveProfileNode extends BaseNode {
 
             List<Vector3d> closedSectionPoints = new ArrayList<>(uniqueSectionPoints.size() + 1);
             closedSectionPoints.addAll(uniqueSectionPoints);
-            closedSectionPoints.add(new Vector3d(uniqueSectionPoints.get(0)));
+            closedSectionPoints.add(new Vector3d(uniqueSectionPoints.getFirst()));
 
             Vector3d sectionCenter = SolidNodeUtils.computeCenter(uniqueSectionPoints);
             Vector3d sectionNormal = SolidNodeUtils.rotateAroundAxis(
-                profile.getPlane().getNormal(),
+                profile.plane().getNormal(),
                 new Vector3d(),
                 axis.direction(),
                 currentAngle

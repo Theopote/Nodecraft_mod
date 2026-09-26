@@ -124,7 +124,7 @@ public final class PreviewPayloadAdapters {
 
     public static PreviewCurvePayload curveFromPolylineData(PolylineData polyline, boolean closed) {
         List<PreviewPoint> pts = new ArrayList<>(polyline.getPointCount());
-        for (Vec3d v : polyline.getPoints()) {
+        for (Vec3d v : polyline.points()) {
             pts.add(new PreviewPoint(v.x, v.y, v.z));
         }
         return new PreviewCurvePayload(pts, closed);

@@ -121,13 +121,13 @@ public class ShrinkwrapPointsOnSurfaceStripNode extends BaseNode {
     }
 
     private static List<Triangle> buildTriangles(SurfaceStripData strip) {
-        List<List<Vector3d>> sections = strip.getSections();
-        List<Boolean> closedFlags = strip.getSectionClosedFlags();
+        List<List<Vector3d>> sections = strip.sections();
+        List<Boolean> closedFlags = strip.sectionClosedFlags();
         List<Triangle> tris = new ArrayList<>();
         if (sections.size() < 2) {
             return tris;
         }
-        int pointCount = sections.get(0).size();
+        int pointCount = sections.getFirst().size();
         if (pointCount < 2) {
             return tris;
         }

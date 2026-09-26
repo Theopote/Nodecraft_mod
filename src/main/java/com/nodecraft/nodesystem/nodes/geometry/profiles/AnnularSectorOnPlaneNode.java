@@ -117,7 +117,7 @@ public class AnnularSectorOnPlaneNode extends BaseNode {
             double a = start + (end - start) * t;
             points.add(world(center, basis, inner, a));
         }
-        points.add(new Vector3d(points.get(0)));
+        points.add(new Vector3d(points.getFirst()));
 
         PlaneData resolvedPlane = new PlaneData(center, basis.normal());
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(points));

@@ -63,7 +63,7 @@ public class ProfileTriangulate2DNode extends BaseNode {
             return;
         }
 
-        PlaneData plane = profile.getPlane();
+        PlaneData plane = profile.plane();
         PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
         List<Vector2d> pts2d = new ArrayList<>(unique3d.size());
         for (Vector3d p : unique3d) {

@@ -61,7 +61,7 @@ public class PolygonByPointsNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> points = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
-        if (points.size() >= 2 && points.get(0).distance(points.get(points.size() - 1)) <= PLANAR_TOLERANCE) {
+        if (points.size() >= 2 && points.getFirst().distance(points.getLast()) <= PLANAR_TOLERANCE) {
             points = new ArrayList<>(points.subList(0, points.size() - 1));
         }
         if (points.size() < 3) {
@@ -76,7 +76,7 @@ public class PolygonByPointsNode extends BaseNode {
         }
 
         List<Vector3d> closedPoints = new ArrayList<>(points);
-        closedPoints.add(new Vector3d(points.get(0)));
+        closedPoints.add(new Vector3d(points.getFirst()));
 
         Vector3d center = averagePoint(points);
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(closedPoints));
@@ -99,7 +99,7 @@ public class PolygonByPointsNode extends BaseNode {
     }
 
     private PlaneData computePlane(List<Vector3d> points) {
-        Vector3d first = points.get(0);
+        Vector3d first = points.getFirst();
         for (int i = 1; i < points.size() - 1; i++) {
             for (int j = i + 1; j < points.size(); j++) {
                 Vector3d a = new Vector3d(points.get(i)).sub(first);

@@ -41,11 +41,14 @@ class PatternGridLanguageContractTest {
             "pattern.grid.triangular_grid"
     );
 
-    private static final List<String> LAYOUT_PRODUCER_IDS = List.of(
+    /** Generic lattice layout producers sharing {@code output_points}. */
+    private static final List<String> GENERIC_LAYOUT_PRODUCER_IDS = List.of(
             "pattern.grid.staggered_grid",
             "pattern.grid.hex_grid",
             "pattern.grid.triangular_grid"
     );
+
+    private static final String FACADE_GRID_ID = "pattern.grid.facade_grid";
 
     @BeforeAll
     static void init() {
@@ -292,8 +295,9 @@ class PatternGridLanguageContractTest {
     }
 
     @Test
-    void triangularGridOrientationIsBooleanList() {
-        assertPortType("pattern.grid.triangular_grid", "output_triangle_up", false, NodeDataType.BOOLEAN_LIST);
+    void triangularGridFlipIsBooleanListForInstancing() {
+        assertPortType("pattern.grid.triangular_grid", "output_flip", false, NodeDataType.BOOLEAN_LIST);
+        assertFalse(hasPort("pattern.grid.triangular_grid", "output_triangle_up", false));
 
         BaseNode grid = assertInstanceOf(BaseNode.class,
                 registry.createNodeInstance("pattern.grid.triangular_grid"));
@@ -302,13 +306,23 @@ class PatternGridLanguageContractTest {
         grid.processNode(null);
 
         @SuppressWarnings("unchecked")
-        List<Boolean> orientation = assertInstanceOf(List.class, grid.getOutput("output_triangle_up"));
-        assertEquals(4, orientation.size());
+        List<PointData> points = assertInstanceOf(List.class, grid.getOutput("output_points"));
+        @SuppressWarnings("unchecked")
+        List<Boolean> flip = assertInstanceOf(List.class, grid.getOutput("output_flip"));
+        assertEquals(4, points.size());
+        assertEquals(4, flip.size());
     }
 
     @Test
-    void layoutProducersDoNotOutputBlockListAnchors() {
-        for (String typeId : LAYOUT_PRODUCER_IDS) {
+    void facadeGridIsSpecializedLayoutProducer() {
+        assertPortType(FACADE_GRID_ID, "output_center_points", false, NodeDataType.POINT_LIST);
+        assertPortType(FACADE_GRID_ID, "output_cell_boundaries", false, NodeDataType.PATH_LIST);
+        assertFalse(hasPort(FACADE_GRID_ID, "output_points", false));
+    }
+
+    @Test
+    void genericLayoutProducersDoNotOutputBlockListAnchors() {
+        for (String typeId : GENERIC_LAYOUT_PRODUCER_IDS) {
             INode node = registry.createNodeInstance(typeId);
             for (IPort port : node.getOutputPorts()) {
                 assertFalse(port.getDataType() == NodeDataType.BLOCK_LIST,
@@ -318,8 +332,8 @@ class PatternGridLanguageContractTest {
     }
 
     @Test
-    void layoutProducersUsePointListOutput() {
-        for (String typeId : LAYOUT_PRODUCER_IDS) {
+    void genericLayoutProducersUseOutputPoints() {
+        for (String typeId : GENERIC_LAYOUT_PRODUCER_IDS) {
             assertPortType(typeId, "output_points", false, NodeDataType.POINT_LIST);
         }
     }

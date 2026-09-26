@@ -99,7 +99,7 @@ public class CrossOnPlaneNode extends BaseNode {
         for (double[] p : local) {
             points.add(toWorld(center, basis, p[0], p[1]));
         }
-        points.add(new Vector3d(points.get(0)));
+        points.add(new Vector3d(points.getFirst()));
 
         PlaneData resolvedPlane = new PlaneData(center, basis.normal());
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(points));

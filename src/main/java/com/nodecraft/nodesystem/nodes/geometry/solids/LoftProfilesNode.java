@@ -134,8 +134,8 @@ public class LoftProfilesNode extends BaseNode {
 
         outputValues.put(OUTPUT_SOURCE_PROFILE_ID, sourceProfile);
         outputValues.put(OUTPUT_TARGET_PROFILE_ID, targetProfile);
-        outputValues.put(OUTPUT_SOURCE_POINTS_ID, SpatialValueResolver.toPointDataList(sourceProfile.getClosedPoints()));
-        outputValues.put(OUTPUT_TARGET_POINTS_ID, SpatialValueResolver.toPointDataList(targetProfile.getClosedPoints()));
+        outputValues.put(OUTPUT_SOURCE_POINTS_ID, SpatialValueResolver.toPointDataList(sourceProfile.closedPoints()));
+        outputValues.put(OUTPUT_TARGET_POINTS_ID, SpatialValueResolver.toPointDataList(targetProfile.closedPoints()));
         outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, SolidDataTreeUtils.indexedGroupTree(List.of(sourceUniquePoints, targetUniquePoints)));
         outputValues.put(OUTPUT_RAIL_SEGMENTS_ID, List.copyOf(railSegments));
         outputValues.put(OUTPUT_RAIL_SEGMENTS_TREE_ID, SolidDataTreeUtils.indexedValueTree(railSegments));
@@ -204,7 +204,7 @@ public class LoftProfilesNode extends BaseNode {
         if (!closed.isEmpty()) {
             closed.add(new Vector3d(closed.getFirst()));
         }
-        return new PolygonProfileData(closed, original.getPlane());
+        return new PolygonProfileData(closed, original.plane());
     }
 
     private void writeEmptyOutputs() {

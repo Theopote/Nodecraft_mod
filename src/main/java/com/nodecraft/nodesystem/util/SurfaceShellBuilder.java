@@ -44,8 +44,8 @@ public final class SurfaceShellBuilder {
             return null;
         }
 
-        List<List<Vector3d>> sourceSections = surfaceStrip.getSections();
-        List<Boolean> closedFlags = surfaceStrip.getSectionClosedFlags();
+        List<List<Vector3d>> sourceSections = surfaceStrip.sections();
+        List<Boolean> closedFlags = surfaceStrip.sectionClosedFlags();
         if (sourceSections.size() < 2 || sourceSections.getFirst().size() < 2) {
             return null;
         }
@@ -139,7 +139,7 @@ public final class SurfaceShellBuilder {
             if (surfaceStrip == null) {
                 continue;
             }
-            for (List<Vector3d> section : surfaceStrip.getSections()) {
+            for (List<Vector3d> section : surfaceStrip.sections()) {
                 for (Vector3d point : section) {
                     if (!hasPoint) {
                         minX = maxX = point.x;

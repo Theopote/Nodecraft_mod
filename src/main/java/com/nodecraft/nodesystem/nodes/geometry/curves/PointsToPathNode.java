@@ -68,8 +68,8 @@ public class PointsToPathNode extends AbstractCurveNode {
         }
 
         if (closePath && points.size() >= 2) {
-            Vec3d first = points.get(0);
-            Vec3d last = points.get(points.size() - 1);
+            Vec3d first = points.getFirst();
+            Vec3d last = points.getLast();
             if (!first.equals(last)) {
                 points.add(first);
             }

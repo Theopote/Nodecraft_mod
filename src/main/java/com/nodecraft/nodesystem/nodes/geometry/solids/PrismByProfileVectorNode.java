@@ -90,8 +90,8 @@ public class PrismByProfileVectorNode extends BaseNode {
         PrismGeometryData prism = new PrismGeometryData(basePoints, extrusionVector);
         SurfaceStripData surfaceStrip = prism.getSideSurfaceStrip();
         PlaneData topPlane = new PlaneData(
-            new Vector3d(profile.getPlane().getPoint()).add(extrusionVector),
-            profile.getPlane().getNormal()
+            new Vector3d(profile.plane().getPoint()).add(extrusionVector),
+            profile.plane().getNormal()
         );
 
         outputValues.put(OUTPUT_PRISM_ID, prism);
