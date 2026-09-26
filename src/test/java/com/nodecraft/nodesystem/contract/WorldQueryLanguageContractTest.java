@@ -89,9 +89,9 @@ class WorldQueryLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV60() {
+    void currentGraphFormatIsAtLeastV60() {
         assertEquals(60, GraphFormatVersion.V60);
-        assertEquals(GraphFormatVersion.V60, GraphFormatVersion.CURRENT);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V60);
     }
 
     @Test
@@ -277,7 +277,8 @@ class WorldQueryLanguageContractTest {
         graph.connections.add(wire("r1", "output_filtered_points", "t5", "input_stub"));
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.V60, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
+        assertTrue(migrated.formatVersion >= GraphFormatVersion.V60);
         assertEquals(1, migrated.connections.size());
         assertEquals("output_filtered_points", migrated.connections.getFirst().sourcePortId);
     }

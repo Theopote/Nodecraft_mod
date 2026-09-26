@@ -12,29 +12,29 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class GetPointsInRegionNodeTest {
+class GetBlockPositionsInRegionNodeTest {
 
     @Test
-    void zeroMaxPointsUsesGlobalGenerationCapForOversizedRegion() {
-        GetPointsInRegionNode node = new GetPointsInRegionNode();
+    void unconnectedMaxPointsUsesDefaultBudgetForOversizedRegion() {
+        GetBlockPositionsInRegionNode node = new GetBlockPositionsInRegionNode();
         RegionData region = new RegionData(new BlockPos(0, 0, 0), new BlockPos(1023, 1, 1023));
 
         Map<String, Object> outputs = node.compute(Map.of(
-            "input_region", region,
-            "input_max_points", 0
+            "input_region", region
         ));
 
         assertTrue((Boolean) outputs.get("output_valid"));
         int count = (Integer) outputs.get("output_count");
-        assertTrue(count <= GenerationLimits.MAX_LIST_ELEMENTS);
+        assertTrue(count <= WorldReadUtils.DEFAULT_MAX_BLOCKS);
         assertTrue(count < 2_097_152);
         assertTrue((Boolean) outputs.get("output_sampled"));
         assertTrue((Boolean) outputs.get("output_hit_limit"));
+        assertFalse((Boolean) outputs.get("output_complete"));
     }
 
     @Test
-    void zeroMaxPointsReturnsFullSmallRegion() {
-        GetPointsInRegionNode node = new GetPointsInRegionNode();
+    void zeroMaxPointsFailsClosed() {
+        GetBlockPositionsInRegionNode node = new GetBlockPositionsInRegionNode();
         RegionData region = new RegionData(new BlockPos(0, 0, 0), new BlockPos(10, 10, 10));
 
         Map<String, Object> outputs = node.compute(Map.of(
@@ -42,30 +42,25 @@ class GetPointsInRegionNodeTest {
             "input_max_points", 0
         ));
 
-        assertTrue((Boolean) outputs.get("output_valid"));
-        assertEquals(1331, outputs.get("output_count"));
-        assertFalse((Boolean) outputs.get("output_sampled"));
-        assertFalse((Boolean) outputs.get("output_hit_limit"));
+        assertFalse((Boolean) outputs.get("output_valid"));
     }
 
     @Test
-    void explicitMaxPointsIsRespected() {
-        GetPointsInRegionNode node = new GetPointsInRegionNode();
-        RegionData region = new RegionData(new BlockPos(0, 0, 0), new BlockPos(4, 4, 4));
+    void overHardCapFailsClosed() {
+        GetBlockPositionsInRegionNode node = new GetBlockPositionsInRegionNode();
+        RegionData region = new RegionData(new BlockPos(0, 0, 0), new BlockPos(1, 1, 1));
 
         Map<String, Object> outputs = node.compute(Map.of(
             "input_region", region,
-            "input_max_points", 8
+            "input_max_points", GenerationLimits.MAX_WORLD_READ_BLOCKS + 1
         ));
 
-        assertEquals(8, outputs.get("output_count"));
-        assertTrue((Boolean) outputs.get("output_sampled"));
-        assertTrue((Boolean) outputs.get("output_hit_limit"));
+        assertFalse((Boolean) outputs.get("output_valid"));
     }
 
     @Test
-    void smallRegionReturnsAllPointsWithoutSampling() {
-        GetPointsInRegionNode node = new GetPointsInRegionNode();
+    void underBudgetReturnsFullRegionWithoutSampling() {
+        GetBlockPositionsInRegionNode node = new GetBlockPositionsInRegionNode();
         RegionData region = new RegionData(new BlockPos(0, 0, 0), new BlockPos(1, 1, 1));
 
         Map<String, Object> outputs = node.compute(Map.of(
@@ -76,11 +71,28 @@ class GetPointsInRegionNodeTest {
         assertEquals(8, outputs.get("output_count"));
         assertFalse((Boolean) outputs.get("output_sampled"));
         assertFalse((Boolean) outputs.get("output_hit_limit"));
+        assertTrue((Boolean) outputs.get("output_complete"));
     }
 
     @Test
-    void filterModeCapsCoordinateList() {
-        GetPointsInRegionNode node = new GetPointsInRegionNode();
+    void explicitMaxPointsTriggersUniformSampling() {
+        GetBlockPositionsInRegionNode node = new GetBlockPositionsInRegionNode();
+        RegionData region = new RegionData(new BlockPos(0, 0, 0), new BlockPos(4, 4, 4));
+
+        Map<String, Object> outputs = node.compute(Map.of(
+            "input_region", region,
+            "input_max_points", 8
+        ));
+
+        assertEquals(8, outputs.get("output_count"));
+        assertTrue((Boolean) outputs.get("output_sampled"));
+        assertTrue((Boolean) outputs.get("output_hit_limit"));
+        assertFalse((Boolean) outputs.get("output_complete"));
+    }
+
+    @Test
+    void filterModeCapsCoordinateListWithoutSampling() {
+        GetBlockPositionsInRegionNode node = new GetBlockPositionsInRegionNode();
         node.setFilterFromCoordinates(true);
         RegionData region = new RegionData(new BlockPos(0, 0, 0), new BlockPos(9, 0, 0));
         BlockPosList coordinates = new BlockPosList();
@@ -97,5 +109,7 @@ class GetPointsInRegionNodeTest {
 
         assertEquals(3, outputs.get("output_count"));
         assertTrue((Boolean) outputs.get("output_hit_limit"));
+        assertFalse((Boolean) outputs.get("output_sampled"));
+        assertFalse((Boolean) outputs.get("output_complete"));
     }
 }

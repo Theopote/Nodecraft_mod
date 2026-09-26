@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -118,6 +119,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V57 -> migrateV57ToV58(graph);
             case GraphFormatVersion.V58 -> migrateV58ToV59(graph);
             case GraphFormatVersion.V59 -> migrateV59ToV60(graph);
+            case GraphFormatVersion.V60 -> migrateV60ToV61(graph);
             default -> graph;
         };
     }
@@ -4185,6 +4187,130 @@ public final class GraphMigrationRegistry {
             }
             if (FILTER_GRID_POINTS_TYPE.equals(sourceType)) {
                 return "output_skipped_count".equals(sourcePort);
+            }
+            return false;
+        });
+    }
+
+    private static final String LEGACY_GET_POINTS_IN_REGION_TYPE = "world.read.get_points_in_region";
+    private static final String GET_BLOCK_POSITIONS_IN_REGION_TYPE = "world.read.get_block_positions_in_region";
+    private static final String BIOME_AT_PLAYER_TYPE = "world.read.biome_at_player";
+    private static final String GET_BIOME_TYPE = "world.read.get_biome";
+    private static final String GET_BLOCK_NBT_TYPE = "world.read.get_block_nbt";
+    private static final String GET_ENTITY_NBT_TYPE = "world.read.get_entity_nbt";
+    private static final String READ_SIGN_TEXT_TYPE = "world.read.read_sign_text";
+    private static final String SCAN_REGION_BY_TYPE = "world.read.scan_region_by_type";
+
+    /**
+     * World Read v1: rename Get Points → Get Block Positions, drop Biome At Player,
+     * drop removed ports (scan entries/type counts, entity-NBT query ports, sign
+     * Include Formatting, biome heuristics), remap Block NBT / Sign Success → Valid.
+     */
+    private static SavedGraph migrateV60ToV61(SavedGraph graph) {
+        applyWorldReadV61ToGraph(graph);
+        if (graph.subgraphDefinitions != null) {
+            for (SavedGraph definition : graph.subgraphDefinitions.values()) {
+                if (definition != null) {
+                    applyWorldReadV61ToGraph(definition);
+                }
+            }
+        }
+        return graph;
+    }
+
+    private static void applyWorldReadV61ToGraph(SavedGraph graph) {
+        Set<String> removedNodeIds = new HashSet<>();
+
+        if (graph.nodes != null) {
+            graph.nodes = new ArrayList<>(graph.nodes);
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                String type = node.typeId.toLowerCase(Locale.ROOT);
+                if (LEGACY_GET_POINTS_IN_REGION_TYPE.equals(type)) {
+                    LOGGER.debug("Migrated node type: {} -> {}", node.typeId, GET_BLOCK_POSITIONS_IN_REGION_TYPE);
+                    node.typeId = GET_BLOCK_POSITIONS_IN_REGION_TYPE;
+                }
+            }
+            graph.nodes.removeIf(node -> {
+                if (node == null || node.typeId == null) {
+                    return false;
+                }
+                if (BIOME_AT_PLAYER_TYPE.equalsIgnoreCase(node.typeId)) {
+                    if (node.nodeId != null) {
+                        removedNodeIds.add(node.nodeId);
+                    }
+                    return true;
+                }
+                return false;
+            });
+        }
+
+        if (graph.nodePositions != null && !removedNodeIds.isEmpty()) {
+            for (String nodeId : removedNodeIds) {
+                graph.nodePositions.remove(nodeId);
+            }
+        }
+
+        if (graph.connections == null) {
+            return;
+        }
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node != null && node.nodeId != null && node.typeId != null) {
+                    nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+                }
+            }
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String sourcePort = normalizePortId(connection.sourcePortId);
+            if (GET_BLOCK_NBT_TYPE.equals(sourceType) && "output_success".equals(sourcePort)) {
+                connection.sourcePortId = "output_valid";
+            } else if (READ_SIGN_TEXT_TYPE.equals(sourceType) && "output_success".equals(sourcePort)) {
+                connection.sourcePortId = "output_valid";
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            if (removedNodeIds.contains(connection.sourceNodeId)
+                    || removedNodeIds.contains(connection.targetNodeId)) {
+                return true;
+            }
+
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourcePort = normalizePortId(connection.sourcePortId);
+            String targetPort = normalizePortId(connection.targetPortId);
+
+            if (GET_BIOME_TYPE.equals(sourceType)) {
+                return "output_is_ocean".equals(sourcePort) || "output_downfall".equals(sourcePort);
+            }
+            if (SCAN_REGION_BY_TYPE.equals(sourceType)) {
+                return "output_entries".equals(sourcePort) || "output_type_counts".equals(sourcePort);
+            }
+            if (GET_ENTITY_NBT_TYPE.equals(sourceType)) {
+                return "output_distance".equals(sourcePort);
+            }
+            if (GET_ENTITY_NBT_TYPE.equals(targetType)) {
+                return "input_uuid".equals(targetPort)
+                        || "input_entity_type".equals(targetPort)
+                        || "input_find_nearest".equals(targetPort)
+                        || "input_max_distance".equals(targetPort);
+            }
+            if (READ_SIGN_TEXT_TYPE.equals(targetType)) {
+                return "input_include_formatting".equals(targetPort);
             }
             return false;
         });

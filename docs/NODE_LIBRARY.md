@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **528**
+- Total nodes: **527**
 - Total categories: **60**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -65,7 +65,7 @@
 | `utilities.organization` | 3 |
 | `variable` | 6 |
 | `world.query` | 11 |
-| `world.read` | 12 |
+| `world.read` | 11 |
 | `world.selection` | 9 |
 | `world.terrain` | 19 |
 | `world.write` | 18 |
@@ -820,22 +820,21 @@
 | Get Entities In Region | `world.query.get_entities_in_region` | Gets entities inside a region with optional filtering | `GetEntitiesInRegionNode` |
 | Get Entity | `world.query.get_entity` | Finds an entity by UUID or by type near the current player. | `GetEntityNode` |
 
-## world.read (12)
+## world.read (11)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Get Block | `world.read.get_block` | Reads block state, type, light, fluid, and block-entity presence at a block position. | `GetBlockNode` |
 | Get Blocks In Region | `world.read.get_blocks_in_region` | Reads block states and coordinates inside a region with scan limits. | `GetBlocksInRegionNode` |
 | Find Blocks | `world.read.find_blocks` | Finds matching block positions inside a region using block type or exact block state matching. | `FindBlocksNode` |
-| Get Biome | `world.read.get_biome` | Gets the biome registry id and basic climate data for a block position | `GetBiomeNode` |
-| Biome At Player | `world.read.biome_at_player` | Gets the biome at the player's current position | `BiomeAtPlayerNode` |
-| Get Points In Region | `world.read.get_points_in_region` | Generates or filters block positions inside a region with optional uniform sampling. | `GetPointsInRegionNode` |
-| Get Heightmap | `world.read.get_heightmap` | Reads the top Y value for each X/Z column inside a region | `GetHeightmapNode` |
-| Get Surface Blocks | `world.read.get_surface_blocks` | Gets the top visible block for each X/Z column inside a region | `GetSurfaceBlocksNode` |
+| Get Biome | `world.read.get_biome` | Gets the biome registry id and base temperature for a block position | `GetBiomeNode` |
+| Get Block Positions In Region | `world.read.get_block_positions_in_region` | Generates or filters block positions inside a region. Under budget: complete enumeration. Over budget: uniform deterministic sampling. | `GetBlockPositionsInRegionNode` |
+| Get Heightmap | `world.read.get_heightmap` | Reads the top Y value for each X/Z column in a region's XZ footprint (Region Y is ignored). | `GetHeightmapNode` |
+| Get Surface Blocks | `world.read.get_surface_blocks` | Gets the top visible block for each X/Z column in a region's XZ footprint (Region Y is ignored). | `GetSurfaceBlocksNode` |
 | Scan Region By Type | `world.read.scan_region_by_type` | Scans a region and returns per-block-type counts for analysis and conditional building | `ScanRegionByTypeNode` |
-| Get Block NBT | `world.read.get_block_nbt` | Reads full block-entity NBT data at a block position. | `GetBlockNbtNode` |
-| Get Entity NBT | `world.read.get_entity_nbt` | Reads full entity NBT data from an entity object, UUID, or nearest type query. | `GetEntityNbtNode` |
-| Read Sign Text | `world.read.read_sign_text` | Reads text from a sign block entity | `ReadSignTextNode` |
+| Get Block NBT | `world.read.get_block_nbt` | Reads full block-entity NBT data at a block position. Max String Length limits serialized output only, not source NBT size. | `GetBlockNbtNode` |
+| Get Entity NBT | `world.read.get_entity_nbt` | Reads full entity NBT from a Minecraft entity object. Compose with world.query.Get Entity for lookup. Max String Length limits serialized output only. | `GetEntityNbtNode` |
+| Read Sign Text | `world.read.read_sign_text` | Reads plain text from the front face of a sign block entity | `ReadSignTextNode` |
 
 ## world.selection (9)
 

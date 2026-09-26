@@ -3,11 +3,14 @@ package com.nodecraft.nodesystem.nodes.world.read;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.Heightmap;
@@ -23,9 +26,9 @@ import java.util.UUID;
     effect = NodeEffect.WORLD_READ,
     id = "world.read.get_surface_blocks",
     displayName = "Get Surface Blocks",
-    description = "Gets the top visible block for each X/Z column inside a region",
+    description = "Gets the top visible block for each X/Z column in a region's XZ footprint (Region Y is ignored).",
     category = "world.read",
-    order = 7
+    order = 6
 )
 public class GetSurfaceBlocksNode extends BaseNode {
 
@@ -42,29 +45,34 @@ public class GetSurfaceBlocksNode extends BaseNode {
     private static final String OUTPUT_TOTAL_COLUMNS_ID = "output_total_columns";
     private static final String OUTPUT_DOMINANT_BLOCK_ID = "output_dominant_block";
     private static final String OUTPUT_HIT_LIMIT_ID = "output_hit_limit";
+    private static final String OUTPUT_COMPLETE_ID = "output_complete";
     private static final String OUTPUT_STOPPED_REASON_ID = "output_stopped_reason";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
 
+    @NodeProperty(displayName = "Heightmap Type", category = "Heightmap", order = 1)
     private String heightmapType = "WORLD_SURFACE";
+
+    @NodeProperty(displayName = "Exclude Air", category = "Filter", order = 2)
     private boolean excludeAir = true;
 
     public GetSurfaceBlocksNode() {
         super(UUID.randomUUID(), "world.read.get_surface_blocks");
 
-        addInputPort(new BasePort(INPUT_REGION_ID, "Region", "Region whose X/Z columns should be sampled", NodeDataType.REGION, this));
+        addInputPort(new BasePort(INPUT_REGION_ID, "Region", "Region whose X/Z footprint should be sampled (Y ignored)", NodeDataType.REGION, this));
         addInputPort(new BasePort(INPUT_HEIGHTMAP_TYPE_ID, "Heightmap Type", "Optional heightmap type name", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_EXCLUDE_AIR_ID, "Exclude Air", "Whether columns resolving to air should be excluded", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_STEP_ID, "Step", "Sample every Nth X/Z column", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_MAX_COLUMNS_ID, "Max Columns", "Maximum number of columns to sample", NodeDataType.INTEGER, this));
 
-        addOutputPort(new BasePort(OUTPUT_SURFACE_BLOCKS_ID, "Surface Blocks", "Top block state for each sampled column", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SURFACE_BLOCKS_ID, "Surface Blocks", "Top block state for each sampled column", NodeDataType.BLOCK_INFO_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_POSITIONS_ID, "Surface Positions", "Block positions of sampled surface blocks", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCK_TYPES_ID, "Block Types", "Registry ids of sampled surface blocks", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCK_TYPES_ID, "Block Types", "Registry ids of sampled surface blocks", NodeDataType.STRING_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of sampled surface blocks", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_TOTAL_COLUMNS_ID, "Total Columns", "Total X/Z columns in the region", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_DOMINANT_BLOCK_ID, "Dominant Surface Block", "Most common sampled surface block id", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "Whether Max Columns stopped sampling", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_COMPLETE_ID, "Complete", "Whether all stepped columns were sampled", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_STOPPED_REASON_ID, "Stopped Reason", "completed, max_columns, or invalid", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether surface sampling was executed", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when surface sampling is invalid", NodeDataType.STRING, this));
@@ -72,66 +80,106 @@ public class GetSurfaceBlocksNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Gets the top visible block for each X/Z column inside a region";
+        return "Gets the top visible block for each X/Z column in a region's XZ footprint (Region Y is ignored).";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
+        Heightmap.Type resolvedType = WorldReadUtils.resolveHeightmapType(this, INPUT_HEIGHTMAP_TYPE_ID, heightmapType);
+        if (resolvedType == null) {
+            publishInvalid("Heightmap Type is connected but null or invalid.", 0L);
+            return;
+        }
+
+        Boolean resolvedExcludeAir = OptionalPortDrive.resolveOptionalBoolean(this, INPUT_EXCLUDE_AIR_ID, excludeAir);
+        if (resolvedExcludeAir == null) {
+            publishInvalid("Exclude Air is connected but null or invalid.", 0L);
+            return;
+        }
+
+        Integer step = WorldReadUtils.resolveExactStep(this, INPUT_STEP_ID, 1);
+        if (step == null) {
+            publishInvalid("Step must be an exact INTEGER greater than or equal to 1.", 0L);
+            return;
+        }
+
+        Integer maxColumns = WorldReadUtils.resolveBoundedWorldReadCount(
+                this, INPUT_MAX_COLUMNS_ID, GenerationLimits.MAX_WORLD_READ_COLUMNS, WorldReadUtils.DEFAULT_MAX_COLUMNS);
+        if (maxColumns == null) {
+            publishInvalid("Max Columns must be an exact INTEGER between 1 and "
+                    + GenerationLimits.MAX_WORLD_READ_COLUMNS + ".", 0L);
+            return;
+        }
+
+        Object regionObj = inputValues.get(INPUT_REGION_ID);
+        if (!(regionObj instanceof RegionData region) || !region.isComplete()) {
+            publishInvalid("Region input is incomplete.", 0L);
+            return;
+        }
+
+        long totalColumns = WorldReadUtils.columnCount(region);
+        if (totalColumns == WorldReadUtils.OVERFLOW) {
+            publishInvalid("Region column count overflows integer coordinate range.", 0L);
+            return;
+        }
+
+        BlockPos min = region.getMinCorner();
+        BlockPos max = region.getMaxCorner();
+        if (min == null || max == null) {
+            publishInvalid("Region bounds are invalid.", totalColumns);
+            return;
+        }
+
+        if (context == null || context.getWorld() == null) {
+            publishInvalid("Execution context or world is missing.", totalColumns);
+            return;
+        }
+
         List<BlockState> blocks = new ArrayList<>();
         BlockPosList positions = new BlockPosList();
         List<String> blockTypes = new ArrayList<>();
         int count = 0;
         int sampledColumns = 0;
-        long totalColumns = 0L;
         boolean hitLimit = false;
         String stoppedReason = "completed";
-        boolean valid = false;
-        String error = "";
         Map<String, Integer> blockCounts = new HashMap<>();
 
-        Object regionObj = inputValues.get(INPUT_REGION_ID);
-        Heightmap.Type resolvedType = resolveHeightmapType(inputValues.get(INPUT_HEIGHTMAP_TYPE_ID));
-        boolean resolvedExcludeAir = inputValues.get(INPUT_EXCLUDE_AIR_ID) instanceof Boolean value ? value : excludeAir;
-        int step = inputValues.get(INPUT_STEP_ID) instanceof Number n ? Math.max(1, n.intValue()) : 1;
-        int maxColumns = inputValues.get(INPUT_MAX_COLUMNS_ID) instanceof Number n ? Math.max(1, n.intValue()) : WorldReadUtils.DEFAULT_MAX_COLUMNS;
-
-        if (context == null || context.getWorld() == null) {
-            stoppedReason = "invalid";
-            error = "Execution context or world is missing.";
-        } else if (!(regionObj instanceof RegionData region) || !region.isComplete()) {
-            stoppedReason = "invalid";
-            error = "Region input is incomplete.";
-        } else {
-            totalColumns = WorldReadUtils.columnCount(region);
-            BlockPos min = region.getMinCorner();
-            BlockPos max = region.getMaxCorner();
-            if (min != null && max != null) {
-                valid = true;
-                sample:
-                for (int x = min.getX(); x <= max.getX(); x += step) {
-                    for (int z = min.getZ(); z <= max.getZ(); z += step) {
-                        if (sampledColumns >= maxColumns) {
-                            hitLimit = true;
-                            stoppedReason = "max_columns";
-                            break sample;
-                        }
-                        sampledColumns++;
-                        int topY = context.getWorld().getTopY(resolvedType, x, z) - 1;
-                        BlockPos pos = new BlockPos(x, topY, z);
-                        BlockState state = context.getWorld().getBlockState(pos);
-                        if (resolvedExcludeAir && state.isAir()) {
-                            continue;
-                        }
-                        String blockId = WorldReadUtils.blockId(state);
-                        blocks.add(state);
-                        positions.add(pos);
-                        blockTypes.add(blockId);
-                        blockCounts.put(blockId, blockCounts.getOrDefault(blockId, 0) + 1);
-                        count++;
-                    }
+        sample:
+        for (long x = min.getX(); x <= max.getX(); ) {
+            for (long z = min.getZ(); z <= max.getZ(); ) {
+                if (sampledColumns >= maxColumns) {
+                    hitLimit = true;
+                    stoppedReason = "max_columns";
+                    break sample;
                 }
+                sampledColumns++;
+                int xi = (int) x;
+                int zi = (int) z;
+                int topY = context.getWorld().getTopY(resolvedType, xi, zi) - 1;
+                BlockPos pos = new BlockPos(xi, topY, zi);
+                BlockState state = context.getWorld().getBlockState(pos);
+                if (!(resolvedExcludeAir && state.isAir())) {
+                    String blockId = WorldReadUtils.blockId(state);
+                    blocks.add(state);
+                    positions.add(pos);
+                    blockTypes.add(blockId);
+                    blockCounts.put(blockId, blockCounts.getOrDefault(blockId, 0) + 1);
+                    count++;
+                }
+
+                Integer nextZ = WorldReadUtils.nextAxisCoordinate(z, step, max.getZ());
+                if (nextZ == null) {
+                    break;
+                }
+                z = nextZ;
             }
+            Integer nextX = WorldReadUtils.nextAxisCoordinate(x, step, max.getX());
+            if (nextX == null) {
+                break;
+            }
+            x = nextX;
         }
+
         String dominantBlock = blockCounts.entrySet().stream()
             .max(Map.Entry.comparingByValue())
             .map(Map.Entry::getKey)
@@ -144,18 +192,24 @@ public class GetSurfaceBlocksNode extends BaseNode {
         outputValues.put(OUTPUT_TOTAL_COLUMNS_ID, (int) Math.min(Integer.MAX_VALUE, totalColumns));
         outputValues.put(OUTPUT_DOMINANT_BLOCK_ID, dominantBlock);
         outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
+        outputValues.put(OUTPUT_COMPLETE_ID, !hitLimit);
         outputValues.put(OUTPUT_STOPPED_REASON_ID, stoppedReason);
-        outputValues.put(OUTPUT_VALID_ID, valid);
-        outputValues.put(OUTPUT_ERROR_ID, error);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private Heightmap.Type resolveHeightmapType(Object value) {
-        String raw = value instanceof String string && !string.isBlank() ? string : heightmapType;
-        try {
-            return Heightmap.Type.valueOf(raw.trim().toUpperCase());
-        } catch (IllegalArgumentException ignored) {
-            return Heightmap.Type.WORLD_SURFACE;
-        }
+    private void publishInvalid(String error, long totalColumns) {
+        outputValues.put(OUTPUT_SURFACE_BLOCKS_ID, List.of());
+        outputValues.put(OUTPUT_SURFACE_POSITIONS_ID, new BlockPosList());
+        outputValues.put(OUTPUT_BLOCK_TYPES_ID, List.of());
+        outputValues.put(OUTPUT_COUNT_ID, 0);
+        outputValues.put(OUTPUT_TOTAL_COLUMNS_ID, (int) Math.min(Integer.MAX_VALUE, Math.max(0L, totalColumns)));
+        outputValues.put(OUTPUT_DOMINANT_BLOCK_ID, "");
+        outputValues.put(OUTPUT_HIT_LIMIT_ID, false);
+        outputValues.put(OUTPUT_COMPLETE_ID, false);
+        outputValues.put(OUTPUT_STOPPED_REASON_ID, "invalid");
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error);
     }
 
     public String getHeightmapType() {

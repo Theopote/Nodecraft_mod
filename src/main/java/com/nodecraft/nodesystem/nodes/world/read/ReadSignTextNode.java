@@ -20,15 +20,14 @@ import java.util.UUID;
     effect = NodeEffect.WORLD_READ,
     id = "world.read.read_sign_text",
     displayName = "Read Sign Text",
-    description = "Reads text from a sign block entity",
-    category = "world.read"
+    description = "Reads plain text from the front face of a sign block entity",
+    category = "world.read",
+    order = 10
 )
 public class ReadSignTextNode extends BaseNode {
 
     private static final String INPUT_COORDINATE_ID = "input_coordinate";
-    private static final String INPUT_INCLUDE_FORMATTING_ID = "input_include_formatting";
 
-    private static final String OUTPUT_SUCCESS_ID = "output_success";
     private static final String OUTPUT_TEXT_LINES_ID = "output_text_lines";
     private static final String OUTPUT_COMBINED_TEXT_ID = "output_combined_text";
     private static final String OUTPUT_IS_SIGN_ID = "output_is_sign";
@@ -40,10 +39,8 @@ public class ReadSignTextNode extends BaseNode {
         super(UUID.randomUUID(), "world.read.read_sign_text");
 
         addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate", "Sign position", NodeDataType.BLOCK_POS, this));
-        addInputPort(new BasePort(INPUT_INCLUDE_FORMATTING_ID, "Include Formatting", "Reserved for future styled text output; current output is plain text", NodeDataType.BOOLEAN, this));
 
-        addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether sign text was read successfully", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_TEXT_LINES_ID, "Text Lines", "List of sign lines", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_TEXT_LINES_ID, "Text Lines", "List of sign lines", NodeDataType.STRING_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COMBINED_TEXT_ID, "Combined Text", "Combined non-empty sign text", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_IS_SIGN_ID, "Is Sign", "Whether the target block entity is a sign", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_SIGN_TYPE_ID, "Sign Type", "Registry id of the sign block", NodeDataType.STRING, this));
@@ -53,59 +50,67 @@ public class ReadSignTextNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Reads text from a sign block entity";
+        return "Reads plain text from the front face of a sign block entity";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        boolean success = false;
-        List<String> textLines = new ArrayList<>();
-        String combinedText = "";
-        boolean isSign = false;
-        String signType = "";
-        boolean valid = false;
-        String error = "";
-
-        BlockPos pos = WorldReadUtils.resolveBlockPos(inputValues.get(INPUT_COORDINATE_ID));
+        BlockPos pos = WorldReadUtils.requireBlockPos(inputValues.get(INPUT_COORDINATE_ID));
+        if (pos == null) {
+            writeFailure("Coordinate input must be a block position.");
+            return;
+        }
         if (context == null || context.getWorld() == null) {
-            error = "Execution context or world is missing.";
-        } else if (pos == null) {
-            error = "Coordinate input must resolve to a block position.";
-        } else {
-            try {
-                valid = true;
-                var blockEntity = context.getWorld().getBlockEntity(pos);
-                if (blockEntity instanceof SignBlockEntity sign) {
-                    isSign = true;
-                    signType = Registries.BLOCK.getId(context.getWorld().getBlockState(pos).getBlock()).toString();
-
-                    var text = sign.getFrontText();
-                    StringBuilder builder = new StringBuilder();
-                    for (int i = 0; i < 4; i++) {
-                        String line = text.getMessage(i, false).getString();
-                        textLines.add(line);
-                        if (!line.isBlank()) {
-                            if (!builder.isEmpty()) {
-                                builder.append(' ');
-                            }
-                            builder.append(line);
-                        }
-                    }
-                    combinedText = builder.toString();
-                    success = true;
-                }
-            } catch (Exception e) {
-                error = "Error reading sign text at " + pos + ": " + e.getMessage();
-                NodeCraft.LOGGER.warn(error);
-            }
+            writeFailure("Execution context or world is missing.");
+            return;
         }
 
-        outputValues.put(OUTPUT_SUCCESS_ID, success);
-        outputValues.put(OUTPUT_TEXT_LINES_ID, textLines);
-        outputValues.put(OUTPUT_COMBINED_TEXT_ID, combinedText);
-        outputValues.put(OUTPUT_IS_SIGN_ID, isSign);
-        outputValues.put(OUTPUT_SIGN_TYPE_ID, signType);
-        outputValues.put(OUTPUT_VALID_ID, valid);
-        outputValues.put(OUTPUT_ERROR_ID, error);
+        try {
+            var blockEntity = context.getWorld().getBlockEntity(pos);
+            if (!(blockEntity instanceof SignBlockEntity sign)) {
+                outputValues.put(OUTPUT_TEXT_LINES_ID, List.of());
+                outputValues.put(OUTPUT_COMBINED_TEXT_ID, "");
+                outputValues.put(OUTPUT_IS_SIGN_ID, false);
+                outputValues.put(OUTPUT_SIGN_TYPE_ID, "");
+                outputValues.put(OUTPUT_VALID_ID, true);
+                outputValues.put(OUTPUT_ERROR_ID, "");
+                return;
+            }
+
+            String signType = Registries.BLOCK.getId(context.getWorld().getBlockState(pos).getBlock()).toString();
+            var text = sign.getFrontText();
+            List<String> textLines = new ArrayList<>(4);
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < 4; i++) {
+                String line = text.getMessage(i, false).getString();
+                textLines.add(line);
+                if (!line.isBlank()) {
+                    if (!builder.isEmpty()) {
+                        builder.append(' ');
+                    }
+                    builder.append(line);
+                }
+            }
+
+            outputValues.put(OUTPUT_TEXT_LINES_ID, textLines);
+            outputValues.put(OUTPUT_COMBINED_TEXT_ID, builder.toString());
+            outputValues.put(OUTPUT_IS_SIGN_ID, true);
+            outputValues.put(OUTPUT_SIGN_TYPE_ID, signType);
+            outputValues.put(OUTPUT_VALID_ID, true);
+            outputValues.put(OUTPUT_ERROR_ID, "");
+        } catch (Exception e) {
+            String error = "Error reading sign text at " + pos + ": " + e.getMessage();
+            NodeCraft.LOGGER.warn(error);
+            writeFailure(error);
+        }
+    }
+
+    private void writeFailure(String error) {
+        outputValues.put(OUTPUT_TEXT_LINES_ID, List.of());
+        outputValues.put(OUTPUT_COMBINED_TEXT_ID, "");
+        outputValues.put(OUTPUT_IS_SIGN_ID, false);
+        outputValues.put(OUTPUT_SIGN_TYPE_ID, "");
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

@@ -34,6 +34,7 @@ Last updated: 2026-09-25
 | Organization & Subgraph | [`node-language-v1-organization.md`](./node-language-v1-organization.md) **(PASSED / FROZEN, V58)** |
 | Variable Scope | [`node-language-v1-variable.md`](./node-language-v1-variable.md) **(PASSED / FROZEN, V59)** |
 | World Query | [`node-language-v1-world-query.md`](./node-language-v1-world-query.md) **(PASSED / FROZEN, V60)** |
+| World Read | [`node-language-v1-world-read.md`](./node-language-v1-world-read.md) **(PASSED / FROZEN, V61)** |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 
@@ -65,6 +66,7 @@ Last updated: 2026-09-25
 | Block Morphology v1 | **PASSED / FROZEN** | V57 |
 | Variable Scope v1 | **PASSED / FROZEN** | V59 |
 | World Query v1 | **PASSED / FROZEN** | V60 |
+| World Read v1 | **PASSED / FROZEN** | V61 |
 
 If a node’s current implementation disagrees with this freeze, **treat the gap as debt to
 remediate** (with graph/preset migration). Do not copy the gap into new nodes.

@@ -135,6 +135,15 @@ public final class GenerationLimits {
      */
     public static final int MAX_ENTITY_QUERY_REGION_AXIS = 2048;
 
+    /** Hard safety ceiling for world.read Max Blocks / Max Points budgets. */
+    public static final int MAX_WORLD_READ_BLOCKS = 262_144;
+
+    /** Hard safety ceiling for world.read Max Columns (heightmap / surface) budgets. */
+    public static final int MAX_WORLD_READ_COLUMNS = 65_536;
+
+    /** Hard safety ceiling for world.read Max Results (Find Blocks) budgets. */
+    public static final int MAX_WORLD_READ_RESULTS = 262_144;
+
     private GenerationLimits() {
     }
 

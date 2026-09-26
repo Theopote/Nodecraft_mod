@@ -4,15 +4,20 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
@@ -25,6 +30,7 @@ import java.util.UUID;
 )
 public class FindBlocksNode extends BaseNode {
 
+    @NodeProperty(displayName = "Max Results", category = "Limits", order = 1)
     private int maxResults = 1000;
 
     private static final String INPUT_REGION_ID = "input_region";
@@ -41,6 +47,7 @@ public class FindBlocksNode extends BaseNode {
     private static final String OUTPUT_VISITED_COUNT_ID = "output_visited_count";
     private static final String OUTPUT_TOTAL_POSSIBLE_ID = "output_total_possible";
     private static final String OUTPUT_HIT_LIMIT_ID = "output_hit_limit";
+    private static final String OUTPUT_COMPLETE_ID = "output_complete";
     private static final String OUTPUT_STOPPED_REASON_ID = "output_stopped_reason";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
@@ -50,7 +57,7 @@ public class FindBlocksNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_REGION_ID, "Region", "Region to search", NodeDataType.REGION, this));
         addInputPort(new BasePort(INPUT_BLOCK_INFO_ID, "Block Info", "Target block state for exact matching", NodeDataType.BLOCK_INFO, this));
-        addInputPort(new BasePort(INPUT_TARGET_BLOCK_TYPE_ID, "Target Block Type", "Target block registry id", NodeDataType.BLOCK_TYPE, this));
+        addInputPort(new BasePort(INPUT_TARGET_BLOCK_TYPE_ID, "Target Block Type", "Target block registry id when Block Info is unconnected", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_EXACT_MATCH_ID, "Exact Match", "When Block Info is a BlockState, require exact state equality", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_MAX_RESULTS_ID, "Max Results", "Maximum number of matching positions to return", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_MAX_BLOCKS_ID, "Max Blocks", "Maximum number of block positions to scan", NodeDataType.INTEGER, this));
@@ -62,6 +69,7 @@ public class FindBlocksNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_VISITED_COUNT_ID, "Visited Count", "Number of block positions inspected", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_TOTAL_POSSIBLE_ID, "Total Possible", "Total positions in the region", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "Whether Max Results or Max Blocks stopped the search", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_COMPLETE_ID, "Complete", "Whether the entire region was scanned without hitting a limit", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_STOPPED_REASON_ID, "Stopped Reason", "completed, max_results, max_blocks, or invalid", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the search inputs and world were valid", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when the search is invalid", NodeDataType.STRING, this));
@@ -74,32 +82,59 @@ public class FindBlocksNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        SearchResult result = new SearchResult();
+        Object target;
+        if (OptionalPortDrive.isConnected(this, INPUT_BLOCK_INFO_ID)) {
+            Object blockInfo = inputValues.get(INPUT_BLOCK_INFO_ID);
+            if (!(blockInfo instanceof BlockState) && WorldReadUtils.resolveBlockId(blockInfo) == null) {
+                publishInvalid("Block Info is connected but null or invalid.", 0L);
+                return;
+            }
+            target = blockInfo;
+        } else if (inputValues.get(INPUT_BLOCK_INFO_ID) instanceof BlockState localState) {
+            target = localState;
+        } else {
+            Object targetBlockType = inputValues.get(INPUT_TARGET_BLOCK_TYPE_ID);
+            if (WorldReadUtils.resolveBlockId(targetBlockType) == null) {
+                publishInvalid("Target Block Type is required when Block Info is unconnected.", 0L);
+                return;
+            }
+            target = targetBlockType;
+        }
 
-        Object regionObj = inputValues.get(INPUT_REGION_ID);
-        Object target = resolveTargetInput();
-        boolean exactMatch = inputValues.get(INPUT_EXACT_MATCH_ID) instanceof Boolean value && value;
-        int maxResultsValue = inputValues.get(INPUT_MAX_RESULTS_ID) instanceof Number value
-            ? Math.max(1, value.intValue())
-            : maxResults;
-        int maxBlocks = inputValues.get(INPUT_MAX_BLOCKS_ID) instanceof Number value
-            ? Math.max(1, value.intValue())
-            : WorldReadUtils.DEFAULT_MAX_BLOCKS;
-
-        if (context == null || context.getWorld() == null) {
-            publishInvalid("Execution context or world is missing.", 0L);
+        Boolean exactMatch = OptionalPortDrive.resolveOptionalBoolean(this, INPUT_EXACT_MATCH_ID, false);
+        if (exactMatch == null) {
+            publishInvalid("Exact Match is connected but null or invalid.", 0L);
             return;
         }
+
+        Integer maxResultsValue = WorldReadUtils.resolveBoundedWorldReadCount(
+                this, INPUT_MAX_RESULTS_ID, GenerationLimits.MAX_WORLD_READ_RESULTS, maxResults);
+        if (maxResultsValue == null) {
+            publishInvalid("Max Results must be an exact INTEGER between 1 and "
+                    + GenerationLimits.MAX_WORLD_READ_RESULTS + ".", 0L);
+            return;
+        }
+
+        Integer maxBlocks = WorldReadUtils.resolveBoundedWorldReadCount(
+                this, INPUT_MAX_BLOCKS_ID, GenerationLimits.MAX_WORLD_READ_BLOCKS, WorldReadUtils.DEFAULT_MAX_BLOCKS);
+        if (maxBlocks == null) {
+            publishInvalid("Max Blocks must be an exact INTEGER between 1 and "
+                    + GenerationLimits.MAX_WORLD_READ_BLOCKS + ".", 0L);
+            return;
+        }
+
+        Object regionObj = inputValues.get(INPUT_REGION_ID);
         if (!(regionObj instanceof RegionData region) || !region.isComplete()) {
             publishInvalid("Region input is incomplete.", 0L);
             return;
         }
-        if (target == null) {
-            publishInvalid("Target Block Type or Block Info is required.", WorldReadUtils.volume(region));
+
+        long totalPossible = WorldReadUtils.volume(region);
+        if (totalPossible == WorldReadUtils.OVERFLOW) {
+            publishInvalid("Region volume overflows integer coordinate range.", 0L);
             return;
         }
 
-        long totalPossible = WorldReadUtils.volume(region);
         BlockPos min = region.getMinCorner();
         BlockPos max = region.getMaxCorner();
         if (min == null || max == null) {
@@ -107,6 +142,12 @@ public class FindBlocksNode extends BaseNode {
             return;
         }
 
+        if (context == null || context.getWorld() == null) {
+            publishInvalid("Execution context or world is missing.", totalPossible);
+            return;
+        }
+
+        SearchResult result = new SearchResult();
         blockSearch:
         for (BlockPos pos : BlockPos.iterate(min, max)) {
             if (result.visitedCount >= maxBlocks) {
@@ -146,21 +187,10 @@ public class FindBlocksNode extends BaseNode {
         outputValues.put(OUTPUT_VISITED_COUNT_ID, result.visitedCount);
         outputValues.put(OUTPUT_TOTAL_POSSIBLE_ID, (int) Math.min(Integer.MAX_VALUE, totalPossible));
         outputValues.put(OUTPUT_HIT_LIMIT_ID, result.hitLimit);
+        outputValues.put(OUTPUT_COMPLETE_ID, !result.hitLimit);
         outputValues.put(OUTPUT_STOPPED_REASON_ID, result.stoppedReason);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, result.errorCount > 0 ? result.firstError : "");
-    }
-
-    private @Nullable Object resolveTargetInput() {
-        Object blockInfo = inputValues.get(INPUT_BLOCK_INFO_ID);
-        if (blockInfo instanceof BlockState || WorldReadUtils.resolveBlockId(blockInfo) != null) {
-            return blockInfo;
-        }
-        Object targetBlockType = inputValues.get(INPUT_TARGET_BLOCK_TYPE_ID);
-        if (WorldReadUtils.resolveBlockId(targetBlockType) != null) {
-            return targetBlockType;
-        }
-        return null;
     }
 
     private void publishInvalid(String error, long totalPossible) {
@@ -169,8 +199,9 @@ public class FindBlocksNode extends BaseNode {
         outputValues.put(OUTPUT_FIRST_POS_ID, null);
         outputValues.put(OUTPUT_FOUND_ANY_ID, false);
         outputValues.put(OUTPUT_VISITED_COUNT_ID, 0);
-        outputValues.put(OUTPUT_TOTAL_POSSIBLE_ID, (int) Math.min(Integer.MAX_VALUE, totalPossible));
+        outputValues.put(OUTPUT_TOTAL_POSSIBLE_ID, (int) Math.min(Integer.MAX_VALUE, Math.max(0L, totalPossible)));
         outputValues.put(OUTPUT_HIT_LIMIT_ID, false);
+        outputValues.put(OUTPUT_COMPLETE_ID, false);
         outputValues.put(OUTPUT_STOPPED_REASON_ID, "invalid");
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_ERROR_ID, error);
@@ -184,6 +215,20 @@ public class FindBlocksNode extends BaseNode {
         if (maxResults > 0) {
             this.maxResults = maxResults;
             markDirty();
+        }
+    }
+
+    @Override
+    public Object getNodeState() {
+        Map<String, Object> state = new HashMap<>();
+        state.put("maxResults", maxResults);
+        return state;
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (state instanceof Map<?, ?> map && map.get("maxResults") instanceof Number number) {
+            setMaxResults(number.intValue());
         }
     }
 

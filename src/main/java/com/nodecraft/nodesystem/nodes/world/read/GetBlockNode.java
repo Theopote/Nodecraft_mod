@@ -66,55 +66,52 @@ public class GetBlockNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        BlockState blockState = null;
-        String blockType = "";
-        boolean isAir = true;
-        boolean isSolid = false;
-        int lightLevel = 0;
-        boolean hasBlockEntity = false;
-        String fluidType = "";
-        boolean hasFluid = false;
-        boolean isReplaceable = false;
-        int luminance = 0;
-        boolean valid = false;
-        String error = "";
-
-        BlockPos pos = WorldReadUtils.resolveBlockPos(inputValues.get(INPUT_COORDINATE_ID));
+        BlockPos pos = WorldReadUtils.requireBlockPos(inputValues.get(INPUT_COORDINATE_ID));
+        if (pos == null) {
+            writeFailure("Coordinate input must be a block position.");
+            return;
+        }
         if (context == null || context.getWorld() == null) {
-            error = "Execution context or world is missing.";
-        } else if (pos == null) {
-            error = "Coordinate input must resolve to a block position.";
-        } else {
-            try {
-                blockState = context.getWorld().getBlockState(pos);
-                blockType = WorldReadUtils.blockId(blockState);
-                isAir = blockState.isAir();
-                isSolid = blockState.isSolidBlock(context.getWorld(), pos);
-                lightLevel = context.getWorld().getLightLevel(pos);
-                hasBlockEntity = context.getWorld().getBlockEntity(pos) != null;
-                FluidState fluidState = context.getWorld().getFluidState(pos);
-                hasFluid = !fluidState.isEmpty();
-                fluidType = hasFluid ? Registries.FLUID.getId(fluidState.getFluid()).toString() : "";
-                isReplaceable = blockState.isReplaceable();
-                luminance = blockState.getLuminance();
-                valid = true;
-            } catch (Exception e) {
-                error = "Error getting block at " + pos + ": " + e.getMessage();
-                NodeCraft.LOGGER.warn(error);
-            }
+            writeFailure("Execution context or world is missing.");
+            return;
         }
 
-        outputValues.put(OUTPUT_BLOCK_ID, blockState);
-        outputValues.put(OUTPUT_BLOCK_TYPE_ID, blockType);
-        outputValues.put(OUTPUT_IS_AIR_ID, isAir);
-        outputValues.put(OUTPUT_IS_SOLID_ID, isSolid);
-        outputValues.put(OUTPUT_LIGHT_LEVEL_ID, lightLevel);
-        outputValues.put(OUTPUT_HAS_BLOCK_ENTITY_ID, hasBlockEntity);
-        outputValues.put(OUTPUT_FLUID_TYPE_ID, fluidType);
-        outputValues.put(OUTPUT_HAS_FLUID_ID, hasFluid);
-        outputValues.put(OUTPUT_IS_REPLACEABLE_ID, isReplaceable);
-        outputValues.put(OUTPUT_LUMINANCE_ID, luminance);
-        outputValues.put(OUTPUT_VALID_ID, valid);
-        outputValues.put(OUTPUT_ERROR_ID, error);
+        try {
+            BlockState blockState = context.getWorld().getBlockState(pos);
+            FluidState fluidState = context.getWorld().getFluidState(pos);
+            boolean hasFluid = !fluidState.isEmpty();
+
+            outputValues.put(OUTPUT_BLOCK_ID, blockState);
+            outputValues.put(OUTPUT_BLOCK_TYPE_ID, WorldReadUtils.blockId(blockState));
+            outputValues.put(OUTPUT_IS_AIR_ID, blockState.isAir());
+            outputValues.put(OUTPUT_IS_SOLID_ID, blockState.isSolidBlock(context.getWorld(), pos));
+            outputValues.put(OUTPUT_LIGHT_LEVEL_ID, context.getWorld().getLightLevel(pos));
+            outputValues.put(OUTPUT_HAS_BLOCK_ENTITY_ID, context.getWorld().getBlockEntity(pos) != null);
+            outputValues.put(OUTPUT_FLUID_TYPE_ID, hasFluid ? Registries.FLUID.getId(fluidState.getFluid()).toString() : "");
+            outputValues.put(OUTPUT_HAS_FLUID_ID, hasFluid);
+            outputValues.put(OUTPUT_IS_REPLACEABLE_ID, blockState.isReplaceable());
+            outputValues.put(OUTPUT_LUMINANCE_ID, blockState.getLuminance());
+            outputValues.put(OUTPUT_VALID_ID, true);
+            outputValues.put(OUTPUT_ERROR_ID, "");
+        } catch (Exception e) {
+            String error = "Error getting block at " + pos + ": " + e.getMessage();
+            NodeCraft.LOGGER.warn(error);
+            writeFailure(error);
+        }
+    }
+
+    private void writeFailure(String error) {
+        outputValues.put(OUTPUT_BLOCK_ID, null);
+        outputValues.put(OUTPUT_BLOCK_TYPE_ID, "");
+        outputValues.put(OUTPUT_IS_AIR_ID, true);
+        outputValues.put(OUTPUT_IS_SOLID_ID, false);
+        outputValues.put(OUTPUT_LIGHT_LEVEL_ID, 0);
+        outputValues.put(OUTPUT_HAS_BLOCK_ENTITY_ID, false);
+        outputValues.put(OUTPUT_FLUID_TYPE_ID, "");
+        outputValues.put(OUTPUT_HAS_FLUID_ID, false);
+        outputValues.put(OUTPUT_IS_REPLACEABLE_ID, false);
+        outputValues.put(OUTPUT_LUMINANCE_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

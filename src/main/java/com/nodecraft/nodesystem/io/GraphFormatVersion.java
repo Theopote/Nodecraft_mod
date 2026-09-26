@@ -375,8 +375,14 @@ public final class GraphFormatVersion {
      */
     public static final int V60 = 60;
 
+    /**
+     * World Read v1: strict BLOCK_POS, hard read caps, typed collections,
+     * Valid/Complete/Error, entity-NBT entity-only, Get Block Positions PURE.
+     */
+    public static final int V61 = 61;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V60;
+    public static final int CURRENT = V61;
 
     private GraphFormatVersion() {
     }
