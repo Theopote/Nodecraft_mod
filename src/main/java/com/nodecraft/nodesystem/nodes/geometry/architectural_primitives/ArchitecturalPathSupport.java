@@ -53,7 +53,7 @@ final class ArchitecturalPathSupport {
         if (unique.size() < 2 && !closed) {
             return null;
         }
-        if (unique.size() < 1) {
+        if (unique.isEmpty()) {
             return null;
         }
         double[] cumulative = PathUtils.buildCumulative(unique, closed);
@@ -88,7 +88,7 @@ final class ArchitecturalPathSupport {
             frames.add(sampleAt(path, 0.0d));
             return List.copyOf(frames);
         }
-        double span = path.closed() ? path.length() : path.length();
+        double span = path.length();
         for (int i = 0; i < safeCount; i++) {
             double t = i / (double) (safeCount - (path.closed() ? 0 : 1));
             if (!path.closed() && i == safeCount - 1) {

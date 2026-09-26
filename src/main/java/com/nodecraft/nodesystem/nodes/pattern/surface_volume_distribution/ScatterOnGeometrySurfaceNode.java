@@ -211,7 +211,7 @@ public class ScatterOnGeometrySurfaceNode extends BaseNode {
             return selected;
         }
 
-        selected.add(candidates.remove(0));
+        selected.add(candidates.removeFirst());
         while (!candidates.isEmpty() && selected.size() < resolvedCount) {
             int bestIndex = -1;
             double bestScore = Double.NEGATIVE_INFINITY;

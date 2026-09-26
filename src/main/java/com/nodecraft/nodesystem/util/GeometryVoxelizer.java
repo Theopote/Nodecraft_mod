@@ -504,7 +504,7 @@ public final class GeometryVoxelizer {
         }
 
         List<Vector3d> baseVertices = geometry.getBaseVertices();
-        Vector3d baseOrigin = new Vector3d(baseVertices.get(0));
+        Vector3d baseOrigin = new Vector3d(baseVertices.getFirst());
         Vector3d axis = new Vector3d(extrusion).normalize();
 
         Vector3d u = buildPrismPlaneU(baseVertices, baseOrigin, axis, eps);

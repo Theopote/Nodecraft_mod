@@ -31,8 +31,8 @@ public final class PointListKnn3d {
             return;
         }
 
-        Vector3d min = new Vector3d(points.get(0));
-        Vector3d max = new Vector3d(points.get(0));
+        Vector3d min = new Vector3d(points.getFirst());
+        Vector3d max = new Vector3d(points.getFirst());
         for (Vector3d p : points) {
             min.min(p);
             max.max(p);

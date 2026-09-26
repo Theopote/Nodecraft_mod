@@ -484,7 +484,7 @@ public class ExpressionNode extends BaseCustomUINode {
             if (args.size() != 1) {
                 throw error(name + " expects 1 argument");
             }
-            return function.apply(args.get(0));
+            return function.apply(args.getFirst());
         }
 
         private double two(String name, List<Double> args, BinaryFunction function) {
@@ -498,7 +498,7 @@ public class ExpressionNode extends BaseCustomUINode {
             if (args.isEmpty()) {
                 throw error("min expects at least 1 argument");
             }
-            double value = args.get(0);
+            double value = args.getFirst();
             for (int i = 1; i < args.size(); i++) {
                 value = Math.min(value, args.get(i));
             }
@@ -509,7 +509,7 @@ public class ExpressionNode extends BaseCustomUINode {
             if (args.isEmpty()) {
                 throw error("max expects at least 1 argument");
             }
-            double value = args.get(0);
+            double value = args.getFirst();
             for (int i = 1; i < args.size(); i++) {
                 value = Math.max(value, args.get(i));
             }
@@ -532,7 +532,7 @@ public class ExpressionNode extends BaseCustomUINode {
 
         private double smoothstep(List<Double> args) {
             if (args.size() == 1) {
-                double t = ScalarMathOps.clamp01(args.get(0));
+                double t = ScalarMathOps.clamp01(args.getFirst());
                 return t * t * (3.0d - 2.0d * t);
             }
             if (args.size() == 3) {
@@ -554,10 +554,9 @@ public class ExpressionNode extends BaseCustomUINode {
 
         private String readIdentifier() {
             int start = index;
-            index++;
-            while (!isAtEnd() && isIdentifierPart(currentChar())) {
+            do {
                 index++;
-            }
+            } while (!isAtEnd() && isIdentifierPart(currentChar()));
             return text.substring(start, index);
         }
 

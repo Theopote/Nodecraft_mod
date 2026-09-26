@@ -98,16 +98,14 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
         }
 
         int count = useShortestList ? Math.min(points.size(), normals.size()) : Math.max(points.size(), normals.size());
-        if (count <= 0) {
-            writeInvalid();
-            return;
-        }
 
         Vector3d forwardHint = SpatialValueResolver.resolveVector(inputValues.get(INPUT_FORWARD_HINT_ID));
         if (!OrientationUtils.isUsableDirection(forwardHint)) {
             forwardHint = new Vector3d(1.0d, 0.0d, 0.0d);
         } else {
-            forwardHint.normalize();
+            if (forwardHint != null) {
+                forwardHint.normalize();
+            }
         }
 
         List<Vector3d> outPoints = new ArrayList<>(count);
@@ -126,19 +124,35 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
                 }
                 continue;
             }
-            Vector3d up = new Vector3d(n).normalize();
-
-            Vector3d tangent = new Vector3d(forwardHint);
-            if (Math.abs(tangent.dot(up)) > 0.999d) {
-                tangent = Math.abs(up.y) < 0.9d ? new Vector3d(0.0d, 1.0d, 0.0d) : new Vector3d(1.0d, 0.0d, 0.0d);
+            Vector3d up = null;
+            if (n != null) {
+                up = new Vector3d(n).normalize();
             }
-            tangent = tangent.sub(new Vector3d(up).mul(tangent.dot(up)));
-            if (tangent.lengthSquared() <= EPS) {
+
+            Vector3d tangent = null;
+            if (forwardHint != null) {
+                tangent = new Vector3d(forwardHint);
+            }
+            if (tangent != null && Math.abs(tangent.dot(up)) > 0.999d) {
+                if (up != null) {
+                    tangent = Math.abs(up.y) < 0.9d ? new Vector3d(0.0d, 1.0d, 0.0d) : new Vector3d(1.0d, 0.0d, 0.0d);
+                }
+            }
+            if (tangent != null) {
+                if (up != null) {
+                    tangent = tangent.sub(new Vector3d(up).mul(tangent.dot(up)));
+                }
+            }
+            if (tangent != null && tangent.lengthSquared() <= EPS) {
                 tangent = new Vector3d(1.0d, 0.0d, 0.0d);
-                tangent.sub(new Vector3d(up).mul(tangent.dot(up)));
+                if (up != null) {
+                    tangent.sub(new Vector3d(up).mul(tangent.dot(up)));
+                }
                 if (tangent.lengthSquared() <= EPS) {
                     tangent = new Vector3d(0.0d, 0.0d, 1.0d);
-                    tangent.sub(new Vector3d(up).mul(tangent.dot(up)));
+                    if (up != null) {
+                        tangent.sub(new Vector3d(up).mul(tangent.dot(up)));
+                    }
                 }
             }
             if (!OrientationUtils.isUsableDirection(tangent)) {
@@ -147,15 +161,22 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
                 }
                 continue;
             }
-            tangent.normalize();
-            Vector3d bitangent = new Vector3d(up).cross(tangent);
+            if (tangent != null) {
+                tangent.normalize();
+            }
+            Vector3d bitangent = null;
+            if (up != null) {
+                bitangent = new Vector3d(up).cross(tangent);
+            }
             if (!OrientationUtils.isUsableDirection(bitangent)) {
                 if (useShortestList) {
                     break;
                 }
                 continue;
             }
-            bitangent.normalize();
+            if (bitangent != null) {
+                bitangent.normalize();
+            }
 
             Vector3d x = new Vector3d(1.0d, 0.0d, 0.0d);
             Vector3d y = new Vector3d(0.0d, 1.0d, 0.0d);
@@ -184,7 +205,9 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
             xAxes.add(x);
             yAxes.add(y);
             zAxes.add(z);
-            planes.add(new PlaneData(new Vector3d(p), new Vector3d(up)));
+            if (up != null) {
+                planes.add(new PlaneData(new Vector3d(p), new Vector3d(up)));
+            }
             frames.add(new FrameData(p, x, y, z));
         }
 
@@ -216,7 +239,7 @@ public class AlignPointsToSurfaceNormalsNode extends BaseNode {
     private Vector3d getByMode(List<Vector3d> list, int index) {
         if (list.isEmpty()) return null;
         if (index < list.size()) return list.get(index);
-        return useShortestList ? null : list.get(list.size() - 1);
+        return useShortestList ? null : list.getLast();
     }
 
     @Override

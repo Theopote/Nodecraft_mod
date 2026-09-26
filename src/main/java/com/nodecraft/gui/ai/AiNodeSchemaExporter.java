@@ -175,7 +175,7 @@ public final class AiNodeSchemaExporter {
         }
         StringBuilder builder = new StringBuilder();
         for (AiNodeSchemaCatalog.PortSchema port : ports) {
-            if (builder.length() > 0) {
+            if (!builder.isEmpty()) {
                 builder.append("<br>");
             }
             builder.append('`').append(escapeMarkdown(port.id())).append(':')
@@ -190,7 +190,7 @@ public final class AiNodeSchemaExporter {
         }
         StringBuilder builder = new StringBuilder();
         for (AiNodeSchemaCatalog.ParamSchema param : params) {
-            if (builder.length() > 0) {
+            if (!builder.isEmpty()) {
                 builder.append("<br>");
             }
             builder.append('`').append(escapeMarkdown(param.name())).append(':')

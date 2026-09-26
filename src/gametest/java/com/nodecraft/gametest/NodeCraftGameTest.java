@@ -21,12 +21,14 @@ import net.minecraft.world.World;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import net.fabricmc.fabric.api.gametest.v1.CustomTestMethodInvoker;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Server-side GameTests for preview cleanup and async bake undo/redo integration.
@@ -233,7 +235,9 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
 
         BakePlacementService.TaskSnapshot snapshot = service.getTaskSnapshot(taskId);
         ctx.assertTrue(snapshot != null, "snapshot retained");
-        ctx.assertEquals(BakeTaskState.CANCELLED, snapshot.state(), "terminal cancel state");
+        if (snapshot != null) {
+            ctx.assertEquals(BakeTaskState.CANCELLED, snapshot.state(), "terminal cancel state");
+        }
 
         ctx.complete();
     }
@@ -296,8 +300,12 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
 
         BakePlacementService.TaskSnapshot snapshot = service.getTaskSnapshot(taskId);
         ctx.assertTrue(snapshot != null, "snapshot retained");
-        ctx.assertEquals(BakeTaskState.TIMED_OUT, snapshot.state(), "terminal timeout state");
-        ctx.assertEquals(0, snapshot.rollbackFailedCount(), "clean timeout rollback");
+        if (snapshot != null) {
+            ctx.assertEquals(BakeTaskState.TIMED_OUT, snapshot.state(), "terminal timeout state");
+        }
+        if (snapshot != null) {
+            ctx.assertEquals(0, snapshot.rollbackFailedCount(), "clean timeout rollback");
+        }
 
         ctx.complete();
     }
@@ -345,13 +353,15 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         ctx.assertTrue(service.cancelTask(taskId), "cancel mid apply");
         BakePlacementService.TaskSnapshot rolling = service.getTaskSnapshot(taskId);
         ctx.assertTrue(rolling != null, "live snapshot during rollback");
-        ctx.assertEquals(BakeTaskState.ROLLING_BACK, rolling.state(), "enters ROLLING_BACK before drain");
+        if (rolling != null) {
+            ctx.assertEquals(BakeTaskState.ROLLING_BACK, rolling.state(), "enters ROLLING_BACK before drain");
+        }
 
         drainTasks(service);
         ctx.expectBlock(Blocks.STONE, rel1);
         ctx.expectBlock(Blocks.STONE, rel2);
         ctx.assertEquals(0, history.size(), "no history on aborted apply");
-        ctx.assertEquals(BakeTaskState.CANCELLED, service.getTaskSnapshot(taskId).state(), "abort terminal");
+        ctx.assertEquals(BakeTaskState.CANCELLED, Objects.requireNonNull(service.getTaskSnapshot(taskId)).state(), "abort terminal");
 
         ctx.complete();
     }
@@ -406,7 +416,9 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
 
         BakePlacementService.TaskSnapshot snapshot = service.getTaskSnapshot(undoTaskId);
         ctx.assertTrue(snapshot != null, "undo cancel snapshot retained");
-        ctx.assertEquals(BakeTaskState.CANCELLED, snapshot.state(), "undo cancel terminal state");
+        if (snapshot != null) {
+            ctx.assertEquals(BakeTaskState.CANCELLED, snapshot.state(), "undo cancel terminal state");
+        }
 
         ctx.complete();
     }
@@ -500,7 +512,9 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         ctx.assertEquals(1, history.size(), "one undo transaction");
         BakeHistory.UndoRecord committed = history.peek();
         ctx.assertTrue(committed != null, "committed record");
-        ctx.assertEquals(1, committed.size(), "one unique position in history");
+        if (committed != null) {
+            ctx.assertEquals(1, committed.size(), "one unique position in history");
+        }
 
         UUID undoId = service.undoLastAsync(actorId, world, 1000, 1_000_000L);
         ctx.assertTrue(undoId != null, "undo queued");
@@ -566,7 +580,10 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
             session = NodeExecutionScheduler.client().activePreview().orElse(null);
         }
         ctx.assertTrue(session != null, "preview session started after debounce");
-        Boolean ok = session.result().get(5, TimeUnit.SECONDS);
+        Boolean ok = null;
+        if (session != null) {
+            ok = session.result().get(5, TimeUnit.SECONDS);
+        }
         ctx.assertTrue(Boolean.TRUE.equals(ok), "preview session completed");
         ctx.assertEquals(0, sideEffect.executionCount(), "output.execute skipped in preview");
         ctx.assertEquals(0, history.size(), "preview must not commit bake history");
@@ -576,7 +593,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
     }
 
     @Override
-    public void invokeTestMethod(TestContext context, Method method) throws ReflectiveOperationException {
+    public void invokeTestMethod(@NonNull TestContext context, Method method) throws ReflectiveOperationException {
         method.invoke(this, context);
     }
 

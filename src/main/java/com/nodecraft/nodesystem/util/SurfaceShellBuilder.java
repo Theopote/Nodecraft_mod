@@ -210,7 +210,7 @@ public final class SurfaceShellBuilder {
 
         if (!closed) {
             if (pointIndex == 0) {
-                previous = section.get(0);
+                previous = section.getFirst();
             } else if (pointIndex == size - 1) {
                 next = section.get(size - 1);
             }

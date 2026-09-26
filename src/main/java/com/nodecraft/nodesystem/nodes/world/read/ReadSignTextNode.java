@@ -85,7 +85,7 @@ public class ReadSignTextNode extends BaseNode {
                         String line = text.getMessage(i, false).getString();
                         textLines.add(line);
                         if (!line.isBlank()) {
-                            if (builder.length() > 0) {
+                            if (!builder.isEmpty()) {
                                 builder.append(' ');
                             }
                             builder.append(line);

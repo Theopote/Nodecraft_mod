@@ -109,7 +109,7 @@ public final class ConvexHull3d {
     }
 
     private static boolean isCoplanar(List<Vector3d> pts) {
-        Vector3d a = pts.get(0);
+        Vector3d a = pts.getFirst();
         Vector3d v1 = null;
         for (int i = 1; i < pts.size(); i++) {
             Vector3d vi = new Vector3d(pts.get(i)).sub(a);

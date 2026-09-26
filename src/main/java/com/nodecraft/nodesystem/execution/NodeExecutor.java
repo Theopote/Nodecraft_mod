@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.execution;
 
 import com.nodecraft.nodesystem.api.ExecLoopNode;
+import com.nodecraft.nodesystem.api.ExecRoutingNode;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -35,7 +36,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Executes a node graph using either pure dataflow scheduling or exec-edge scheduling.
  *
- * <p>When the graph has no {@link NodeDataType#EXEC} connections, nodes run once in dataflow
+ * <p>When the graph has no  connections, nodes run once in dataflow
  * topological order (legacy behaviour). When exec edges exist, only the exec frontier runs
  * nodes; data inputs are pulled lazily from upstream data ports.</p>
  *
@@ -132,7 +133,7 @@ public class NodeExecutor {
             ExecutionRunLimits runLimits,
             CancellationToken cancellation,
             boolean skipOutputExecuteSideEffects,
-            ExecutorService sharedWorker,
+            @org.jspecify.annotations.Nullable ExecutorService sharedWorker,
             boolean shutdownWorkerOnComplete
     ) {
         this.graph = graph;
@@ -694,12 +695,9 @@ public class NodeExecutor {
         if (forcedExecRecomputeNodeIds.remove(node.getId())) {
             return true;
         }
-        if (incrementalOptions.skipCachedNodesInPartialScope()
-                && executionCache.hasValidCachedOutput(node)
-                && !requiresRecomputeDueToScopedUpstream(node, recomputedThisRun)) {
-            return false;
-        }
-        return true;
+        return !incrementalOptions.skipCachedNodesInPartialScope()
+                || !executionCache.hasValidCachedOutput(node)
+                || requiresRecomputeDueToScopedUpstream(node, recomputedThisRun);
     }
 
     private boolean shouldExecuteNode(INode node, Set<UUID> recomputedThisRun, NodeExecutionCache executionCache) {

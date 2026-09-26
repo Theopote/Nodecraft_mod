@@ -114,7 +114,7 @@ public final class AiPromptBuilder {
             - Generation tasks should include an output node only if a compatible output.* node is listed.
 
             # AVAILABLE_NODE_LIBRARY
-            Runtime schema revision: """ + schemaRevision + "\n" + """
+            Runtime schema revision:""" + schemaRevision + "\n" + """
             Usage: strictly use the typeId and port ids provided below.
             Allowed typeIds in this request:
             """ + buildAllowedTypeIdList(schemas) + "\n\n" + """
@@ -130,12 +130,12 @@ public final class AiPromptBuilder {
             if (schema == null || schema.typeId() == null || schema.typeId().isBlank()) {
                 continue;
             }
-            if (builder.length() > 0) {
+            if (!builder.isEmpty()) {
                 builder.append(", ");
             }
             builder.append(schema.typeId());
         }
-        return builder.length() == 0 ? "(none)" : builder.toString();
+        return builder.isEmpty() ? "(none)" : builder.toString();
     }
 
     private static @NonNull JsonObject getJsonObject(AiNodeSchemaCatalog.NodeSchema schema) {

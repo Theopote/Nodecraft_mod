@@ -192,7 +192,7 @@ public class AccumulatorNode extends BaseNode {
                     if (!builder.isEmpty() && !separator.isEmpty()) {
                         builder.append(separator);
                     }
-                    builder.append(String.valueOf(value));
+                    builder.append(value);
                     running.add(builder.toString());
                     processedCount++;
                 }

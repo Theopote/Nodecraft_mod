@@ -122,7 +122,7 @@ public class OffsetBoxFaceNode extends BaseNode {
                 new Vec3d(end.x, end.y, end.z)
             ));
         }
-        Vector3d first = shiftedCorners.get(0);
+        Vector3d first = shiftedCorners.getFirst();
         polylinePoints.add(new Vec3d(first.x, first.y, first.z));
         closedPoints.add(new Vector3d(first));
         PolylineData polyline = new PolylineData(polylinePoints);

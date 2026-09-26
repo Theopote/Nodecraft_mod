@@ -78,12 +78,12 @@ public final class WorldWriteHistoryService {
             undoStack.add(record);
             redoStack.clear();
             while (undoStack.size() > MAX_UNDO_STACK_SIZE) {
-                undoStack.remove(0);
+                undoStack.removeFirst();
             }
         }
 
         private UndoRecord peek() {
-            return undoStack.isEmpty() ? null : undoStack.get(undoStack.size() - 1);
+            return undoStack.isEmpty() ? null : undoStack.getLast();
         }
 
         private int size() {
@@ -95,7 +95,7 @@ public final class WorldWriteHistoryService {
         }
 
         private boolean undoLast(World world) {
-            UndoRecord record = undoStack.isEmpty() ? null : undoStack.remove(undoStack.size() - 1);
+            UndoRecord record = undoStack.isEmpty() ? null : undoStack.removeLast();
             if (record == null || world == null) {
                 return false;
             }
@@ -108,7 +108,7 @@ public final class WorldWriteHistoryService {
         }
 
         private boolean redoLast(World world) {
-            UndoRecord record = redoStack.isEmpty() ? null : redoStack.remove(redoStack.size() - 1);
+            UndoRecord record = redoStack.isEmpty() ? null : redoStack.removeLast();
             if (record == null || world == null) {
                 return false;
             }
@@ -116,7 +116,7 @@ public final class WorldWriteHistoryService {
             if (undoRecord != null && undoRecord.size() > 0) {
                 undoStack.add(undoRecord);
                 while (undoStack.size() > MAX_UNDO_STACK_SIZE) {
-                    undoStack.remove(0);
+                    undoStack.removeFirst();
                 }
             }
             return true;
@@ -129,7 +129,7 @@ public final class WorldWriteHistoryService {
 
         private void trimRedoStack() {
             while (redoStack.size() > MAX_UNDO_STACK_SIZE) {
-                redoStack.remove(0);
+                redoStack.removeFirst();
             }
         }
     }

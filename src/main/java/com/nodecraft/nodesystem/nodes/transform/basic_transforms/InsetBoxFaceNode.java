@@ -181,7 +181,7 @@ public class InsetBoxFaceNode extends BaseNode {
                 new Vec3d(end.x, end.y, end.z)
             ));
         }
-        Vector3d first = insetCorners.get(0);
+        Vector3d first = insetCorners.getFirst();
         polylinePoints.add(new Vec3d(first.x, first.y, first.z));
         closedPoints.add(new Vector3d(first));
 

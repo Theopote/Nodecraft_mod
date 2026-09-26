@@ -156,8 +156,8 @@ public class ScanRegionByTypeNode extends BaseNode {
             }
             uniqueTypeCount = counts.size();
             if (!sorted.isEmpty()) {
-                mostCommonBlock = sorted.get(0).getKey();
-                mostCommonCount = sorted.get(0).getValue();
+                mostCommonBlock = sorted.getFirst().getKey();
+                mostCommonCount = sorted.getFirst().getValue();
             }
             if (targetId != null) {
                 targetCount = counts.getOrDefault(targetId, 0);

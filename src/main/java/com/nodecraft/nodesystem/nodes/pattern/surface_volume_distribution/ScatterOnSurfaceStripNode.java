@@ -80,7 +80,7 @@ public class ScatterOnSurfaceStripNode extends BaseNode {
         }
 
         List<List<Vector3d>> sections = strip.sections();
-        if (sections.size() < 2 || sections.get(0).size() < 2) {
+        if (sections.size() < 2 || sections.getFirst().size() < 2) {
             outputValues.put(OUTPUT_POINTS_ID, List.of());
             outputValues.put(OUTPUT_BLOCKS_ID, new BlockPosList());
             outputValues.put(OUTPUT_COUNT_ID, 0);
@@ -95,7 +95,7 @@ public class ScatterOnSurfaceStripNode extends BaseNode {
 
         Random random = new Random(resolvedSeed);
         int sectionCount = sections.size();
-        int pointsPerSection = sections.get(0).size();
+        int pointsPerSection = sections.getFirst().size();
 
         List<Vector3d> points = new ArrayList<>(resolvedCount);
         int maxAttempts = Math.max(resolvedCount * 24, 128);

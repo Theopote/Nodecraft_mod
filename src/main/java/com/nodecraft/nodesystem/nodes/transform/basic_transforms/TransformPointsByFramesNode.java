@@ -70,7 +70,7 @@ public class TransformPointsByFramesNode extends BaseNode {
             Vector3d z = basis.getZAxis();
 
             for (Vector3d local : localPoints) {
-                if (local == null || !isFinite(local)) {
+                if (!isFinite(local)) {
                     writeInvalid();
                     return;
                 }

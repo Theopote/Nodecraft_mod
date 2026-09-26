@@ -163,7 +163,7 @@ public class ScatterInVolumeNode extends BaseNode {
         Collections.shuffle(candidates, random);
         List<BlockPos> selected = new ArrayList<>(Math.min(targetCount, source.size()));
         if (distributionMode == DistributionMode.BLUE_NOISE_APPROX && !candidates.isEmpty()) {
-            selected.add(candidates.remove(0));
+            selected.add(candidates.removeFirst());
             while (!candidates.isEmpty() && selected.size() < targetCount) {
                 int bestIndex = -1;
                 double bestScore = Double.NEGATIVE_INFINITY;

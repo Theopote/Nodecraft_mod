@@ -31,7 +31,7 @@ import java.util.regex.Pattern;
 )
 public class StringFormatNode extends BaseNode {
 
-    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{(\\d+)\\}");
+    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{(\\d+)}");
 
     @NodeProperty(displayName = "Template", category = "Format", order = 1)
     private String template = "{0}";
@@ -190,7 +190,7 @@ public class StringFormatNode extends BaseNode {
             case Map<?, ?> map -> {
                 List<String> out = new ArrayList<>();
                 for (Map.Entry<?, ?> e : map.entrySet()) {
-                    out.add(String.valueOf(e.getKey()) + "=" + valueToString(e.getValue()));
+                    out.add(e.getKey() + "=" + valueToString(e.getValue()));
                 }
                 return "{" + String.join(", ", out) + "}";
             }
