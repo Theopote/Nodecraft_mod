@@ -1,5 +1,7 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import org.jspecify.annotations.NonNull;
+
 import java.util.Objects;
 
 /**
@@ -106,7 +108,7 @@ public record LSystemRule(String symbol, String production, float probability, S
     }
 
     @Override
-    public String toString() {
+    public @NonNull String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append(symbol).append(" -> ").append(production);
         if (isProbabilistic()) {
