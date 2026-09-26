@@ -123,7 +123,7 @@ class GeometrySampleLanguageContractTest {
     @Test
     void onlyResamplePathExposesSamplingMode() {
         assertPortType("geometry.curves.resample_path", "input_mode", true, NodeDataType.STRING);
-        assertFalse(hasInputPort("pattern.linear.path_instances", "input_mode"));
+        assertFalse(hasInputPort("pattern.linear.path_frames", "input_mode"));
         assertFalse(hasInputPort("geometry.curves.voxelize_curve", "input_mode"));
         assertFalse(hasInputPort("geometry.curves.offset_curve_plane", "input_count"));
     }

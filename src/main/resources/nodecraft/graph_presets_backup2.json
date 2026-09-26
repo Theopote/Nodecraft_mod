@@ -7,8 +7,8 @@
       "presets": [
         {
           "id": "composite.textured_box",
-          "displayName": "创建带材质的立方体",
-          "description": "Box → Assign Block Type → Geometry Viewer",
+          "displayName": "创建带材质的立方�?,
+          "description": "Box �?Assign Block Type �?Geometry Viewer",
           "kind": "composite",
           "nodes": [
             {
@@ -47,8 +47,8 @@
         },
         {
           "id": "composite.array_transform_deform",
-          "displayName": "阵列并变形",
-          "description": "Box → Linear Array → Transform Geometry",
+          "displayName": "阵列并变�?,
+          "description": "Box �?Linear Array �?Transform Geometry",
           "kind": "composite",
           "nodes": [
             {
@@ -59,7 +59,7 @@
             },
             {
               "ref": "array",
-              "typeId": "pattern.linear.linear_array_geometry",
+              "typeId": "pattern.linear.linear_array",
               "x": 300.0,
               "y": 0.0
             },
@@ -88,7 +88,7 @@
         {
           "id": "composite.boolean_cut_bake",
           "displayName": "布尔切割",
-          "description": "Box A + Box B → Difference → Bake Geometry To Blocks",
+          "description": "Box A + Box B �?Difference �?Bake Geometry To Blocks",
           "kind": "composite",
           "nodes": [
             {
@@ -161,8 +161,8 @@
         },
         {
           "id": "element.roof_generator",
-          "displayName": "屋顶生成器",
-          "description": "坡屋顶与檐口模板（筹备中）",
+          "displayName": "屋顶生成�?,
+          "description": "坡屋顶与檐口模板（筹备中�?,
           "kind": "placeholder",
           "nodes": [],
           "connections": []
@@ -170,7 +170,7 @@
         {
           "id": "element.decorative_pattern",
           "displayName": "装饰纹样",
-          "description": "重复纹样与浮雕带（筹备中）",
+          "description": "重复纹样与浮雕带（筹备中�?,
           "kind": "placeholder",
           "nodes": [],
           "connections": []
@@ -557,7 +557,7 @@
     },
     {
       "id": "quickstart",
-      "displayName": "快速入门",
+      "displayName": "快速入�?,
       "presets": [
         {
           "id": "quickstart.basic_box",
@@ -721,20 +721,20 @@
     },
     {
       "id": "workflows",
-      "displayName": "工作流",
+      "displayName": "工作�?,
       "presets": [
         {
           "id": "workflow.heightmap_terrain",
           "displayName": "从高度图生成地形",
-          "description": "高度图 → 地形体素 → 落地（筹备中）",
+          "description": "高度�?�?地形体素 �?落地（筹备中�?,
           "kind": "placeholder",
           "nodes": [],
           "connections": []
         },
         {
           "id": "workflow.procedural_city_block",
-          "displayName": "程序化城市街区",
-          "description": "街区网格 → 体量 → 材质（筹备中）",
+          "displayName": "程序化城市街�?,
+          "description": "街区网格 �?体量 �?材质（筹备中�?,
           "kind": "placeholder",
           "nodes": [],
           "connections": []
@@ -742,7 +742,7 @@
         {
           "id": "workflow.organic_sdf",
           "displayName": "有机曲面建模",
-          "description": "SDF 链 → 体素化 → 预览（筹备中）",
+          "description": "SDF �?�?体素�?�?预览（筹备中�?,
           "kind": "placeholder",
           "nodes": [],
           "connections": []
@@ -755,7 +755,7 @@
       "presets": [
         {
           "id": "style.medieval_castle",
-          "displayName": "中世纪城堡",
+          "displayName": "中世纪城�?,
           "description": "塔楼、幕墙与门楼模块化模板（筹备中）",
           "kind": "placeholder",
           "nodes": [],
@@ -772,7 +772,7 @@
         {
           "id": "style.eastern_palace",
           "displayName": "东方宫殿",
-          "description": "院落、台基与屋顶体系模板（筹备中）",
+          "description": "院落、台基与屋顶体系模板（筹备中�?,
           "kind": "placeholder",
           "nodes": [],
           "connections": []

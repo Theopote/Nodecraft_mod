@@ -76,8 +76,16 @@ public class StaggeredGridNode extends BaseNode {
         double stepDistance = getDouble(INPUT_STEP_DISTANCE_ID, 1.0d);
         double rowDistance = getDouble(INPUT_ROW_DISTANCE_ID, 1.0d);
         double staggerOffset = getDouble(INPUT_STAGGER_OFFSET_ID, stepDistance * 0.5d);
-        int stepCount = GenerationLimits.clampGridAxis(getInteger(INPUT_STEP_COUNT_ID, 5));
-        int rowCount = GenerationLimits.clampGridAxis(getInteger(INPUT_ROW_COUNT_ID, 3));
+        int requestedStepCount = getInteger(INPUT_STEP_COUNT_ID, 5);
+        int requestedRowCount = getInteger(INPUT_ROW_COUNT_ID, 3);
+        GenerationLimits.GridAxisCounts gridCounts = GenerationLimits.clampExclusiveGridCounts(
+            requestedStepCount,
+            requestedRowCount,
+            1,
+            Math.max(1, source.size())
+        );
+        int stepCount = gridCounts.xCount();
+        int rowCount = gridCounts.yCount();
 
         Vector3d stepVec = new Vector3d(stepDir).mul(stepDistance);
         Vector3d rowVec = new Vector3d(rowDir).mul(rowDistance);

@@ -255,8 +255,8 @@ public final class GraphFormatVersion {
     public static final int V40 = 40;
 
     /**
-     * Pattern Linear v1: four canonical linear pattern nodes; POINT_LIST instancing;
-     * closed-path seam rules; drop Instance on Points deconstruct / material ports.
+     * Pattern Linear v1: four canonical linear pattern nodes with clean type ids;
+     * POINT_LIST instancing; closed-path seam rules; no legacy block-array nodes.
      */
     public static final int V41 = 41;
 

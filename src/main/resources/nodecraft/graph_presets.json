@@ -93,7 +93,7 @@
             },
             {
               "ref": "array",
-              "typeId": "pattern.linear.linear_array_geometry",
+              "typeId": "pattern.linear.linear_array",
               "x": 280,
               "y": 120,
               "state": {
@@ -805,7 +805,7 @@
             },
             {
               "ref": "battlement_array",
-              "typeId": "pattern.linear.linear_array_geometry",
+              "typeId": "pattern.linear.linear_array",
               "x": 280,
               "y": 740,
               "state": {

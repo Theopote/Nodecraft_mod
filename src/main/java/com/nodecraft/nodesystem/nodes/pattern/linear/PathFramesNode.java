@@ -19,15 +19,15 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "pattern.linear.path_instances",
+    id = "pattern.linear.path_frames",
     displayName = "Path Frames",
     description = "Generates parallel-transport frames at path vertices.",
     category = "pattern.linear",
     order = 1
 )
-public class PathInstancesNode extends BaseNode {
+public class PathFramesNode extends BaseNode {
 
-    private static final double DEDUPE_EPSILON = 1.0e-6d;
+    private static final double DEDUPE_EPSILON = PathUtils.CLOSED_DISTANCE_EPSILON;
     private static final double EPSILON = 1.0e-9d;
 
     private static final String INPUT_PATH_ID = "input_path";
@@ -40,8 +40,8 @@ public class PathInstancesNode extends BaseNode {
     private static final String OUTPUT_LENGTH_ID = "output_length";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
-    public PathInstancesNode() {
-        super(UUID.randomUUID(), "pattern.linear.path_instances");
+    public PathFramesNode() {
+        super(UUID.randomUUID(), "pattern.linear.path_frames");
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
             "Path to frame (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_UP_VECTOR_ID, "Up Vector", "Reference up vector for frame construction", NodeDataType.VECTOR, this));
@@ -73,10 +73,9 @@ public class PathInstancesNode extends BaseNode {
             return;
         }
 
-        boolean closed = PathUtils.isClosed(samples);
-        List<Vector3d> vertices = closed && samples.size() > 1 && samples.getFirst().equals(samples.getLast())
-            ? new ArrayList<>(samples.subList(0, samples.size() - 1))
-            : samples;
+        PathUtils.ClosedVertices closedVerts = PathUtils.closedUniqueVertices(samples);
+        List<Vector3d> vertices = closedVerts.vertices();
+        boolean closed = closedVerts.closed();
         if (vertices.size() < 2) {
             writeInvalid();
             return;
@@ -147,6 +146,6 @@ public class PathInstancesNode extends BaseNode {
 
     @Override
     public void setNodeState(Object state) {
-        // Legacy deduplicateNearDuplicates / deduplicateEpsilon keys are ignored.
+        // No persisted properties.
     }
 }

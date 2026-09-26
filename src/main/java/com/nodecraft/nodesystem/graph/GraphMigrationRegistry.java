@@ -106,7 +106,6 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V37 -> migrateV37ToV38(graph);
             case GraphFormatVersion.V38 -> migrateV38ToV39(graph);
             case GraphFormatVersion.V39 -> migrateV39ToV40(graph);
-            case GraphFormatVersion.V40 -> migrateV40ToV41(graph);
             default -> graph;
         };
     }
@@ -197,9 +196,8 @@ public final class GraphMigrationRegistry {
             "geometry.curves.fillet_polyline_corners",
             "geometry.solids.sweep",
             "geometry.solids.sweep_from_points",
-            "pattern.linear.along_path",
-            "pattern.linear.path_instances",
-            "pattern.linear.curve_array_geometry",
+            "pattern.linear.path_frames",
+            "pattern.linear.curve_array",
             "geometry.architectural_primitives.array_along_curve",
             "transform.orientation.project_curve_to_plane",
             "reference.points.project_to_polyline",
@@ -598,7 +596,7 @@ public final class GraphMigrationRegistry {
     private static final String RANDOM_NUMBERS_TYPE = "math.random.random_numbers";
     private static final String CIRCULAR_ANGLE_TYPE = "input.numeric.angle_picker";
     private static final String FRAME_ALONG_PATH_TYPE = "geometry.curves.frame_along_path";
-    private static final String PATH_INSTANCES_TYPE = "pattern.linear.path_instances";
+    private static final String PATH_FRAMES_TYPE = "pattern.linear.path_frames";
     private static final String ARC_TYPE = "geometry.curves.arc";
     private static final String BEZIER_TYPE = "geometry.curves.bezier";
 
@@ -612,8 +610,8 @@ public final class GraphMigrationRegistry {
                     continue;
                 }
                 if (FRAME_ALONG_PATH_TYPE.equalsIgnoreCase(node.typeId)) {
-                    LOGGER.debug("Migrated node type: {} -> {}", node.typeId, PATH_INSTANCES_TYPE);
-                    node.typeId = PATH_INSTANCES_TYPE;
+                    LOGGER.debug("Migrated node type: {} -> {}", node.typeId, PATH_FRAMES_TYPE);
+                    node.typeId = PATH_FRAMES_TYPE;
                 }
                 migrateDomainInputNodeState(node);
             }
@@ -643,7 +641,7 @@ public final class GraphMigrationRegistry {
                 LOGGER.debug("Dropped Circular Angle radians output connection from {}", connection.sourceNodeId);
                 return true;
             }
-            if (PATH_INSTANCES_TYPE.equals(targetType) && "input_path_points".equals(targetPort)) {
+            if (PATH_FRAMES_TYPE.equals(targetType) && "input_path_points".equals(targetPort)) {
                 LOGGER.debug("Dropped Path Frames legacy input_path_points on {}", connection.targetNodeId);
                 return true;
             }
@@ -695,7 +693,7 @@ public final class GraphMigrationRegistry {
             if (BEZIER_TYPE.equals(targetType) && "input_resolution".equalsIgnoreCase(connection.targetPortId)) {
                 connection.targetPortId = "input_samples";
             }
-            if (PATH_INSTANCES_TYPE.equals(targetType) && "output_origins".equalsIgnoreCase(connection.sourcePortId)) {
+            if (PATH_FRAMES_TYPE.equals(targetType) && "output_origins".equalsIgnoreCase(connection.sourcePortId)) {
                 connection.sourcePortId = "output_points";
             }
         }
@@ -768,7 +766,7 @@ public final class GraphMigrationRegistry {
                 LOGGER.debug("Dropped Resample Path legacy curve output from {}", connection.sourceNodeId);
                 return true;
             }
-            if (PATH_INSTANCES_TYPE.equals(targetType)
+            if (PATH_FRAMES_TYPE.equals(targetType)
                     && ("input_mode".equals(targetPort) || "input_count".equals(targetPort) || "input_spacing".equals(targetPort))) {
                 LOGGER.debug("Dropped Path Frames sampling port {} on {}", connection.targetPortId, connection.targetNodeId);
                 return true;
@@ -2270,17 +2268,6 @@ public final class GraphMigrationRegistry {
     private static final String WEIGHTED_WEIGHTS_PORT = "input_weights";
     private static final String FALLBACK_BLOCK_TYPE_PORT = "input_fallback_block_type";
 
-    private static final String INSTANCE_ON_POINTS_TYPE = "pattern.linear.instance_on_points";
-    private static final Set<String> INSTANCE_ON_POINTS_DROPPED_OUTPUT_PORTS = Set.of(
-            "output_positions",
-            "output_block_ids",
-            "output_count"
-    );
-    private static final Set<String> INSTANCE_ON_POINTS_DROPPED_INPUT_PORTS = Set.of(
-            "input_template_coordinates",
-            "input_block_info"
-    );
-
     /**
      * Type Selectors v1: Block Type {@code BLOCK_TYPE} port; remove Block State Selector.
      */
@@ -2799,53 +2786,6 @@ public final class GraphMigrationRegistry {
                     && !isDeclaredConnectionStillCompatible(sourceType, connection.sourcePortId,
                     targetType, connection.targetPortId)) {
                 LOGGER.debug("Dropped Basic Assignment v1 incompatible Weighted Palette weights wire {}#{} → {}#{}",
-                        connection.sourceNodeId, connection.sourcePortId,
-                        connection.targetNodeId, connection.targetPortId);
-                return true;
-            }
-
-            return false;
-        });
-
-        return graph;
-    }
-
-    /**
-     * Pattern Linear v1: drop Instance on Points deconstruct outputs and cross-role input ports.
-     */
-    private static SavedGraph migrateV40ToV41(SavedGraph graph) {
-        if (graph.connections == null || graph.nodes == null) {
-            return graph;
-        }
-
-        graph.connections = new ArrayList<>(graph.connections);
-
-        Map<String, String> nodeTypeBySavedId = new HashMap<>();
-        for (SavedNode node : graph.nodes) {
-            if (node != null && node.nodeId != null && node.typeId != null) {
-                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
-            }
-        }
-
-        graph.connections.removeIf(connection -> {
-            if (connection == null) {
-                return false;
-            }
-            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
-            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
-            String sourcePort = connection.sourcePortId == null ? "" : connection.sourcePortId.toLowerCase(Locale.ROOT);
-            String targetPort = connection.targetPortId == null ? "" : connection.targetPortId.toLowerCase(Locale.ROOT);
-
-            if (INSTANCE_ON_POINTS_TYPE.equals(sourceType)
-                    && INSTANCE_ON_POINTS_DROPPED_OUTPUT_PORTS.contains(sourcePort)) {
-                LOGGER.debug("Dropped Pattern Linear v1 deconstruct output wire {}#{}",
-                        connection.sourceNodeId, connection.sourcePortId);
-                return true;
-            }
-
-            if (INSTANCE_ON_POINTS_TYPE.equals(targetType)
-                    && INSTANCE_ON_POINTS_DROPPED_INPUT_PORTS.contains(targetPort)) {
-                LOGGER.debug("Dropped Pattern Linear v1 cross-role input wire {}#{} → {}#{}",
                         connection.sourceNodeId, connection.sourcePortId,
                         connection.targetNodeId, connection.targetPortId);
                 return true;

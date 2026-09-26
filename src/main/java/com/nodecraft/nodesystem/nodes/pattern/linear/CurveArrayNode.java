@@ -26,13 +26,13 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "pattern.linear.curve_array_geometry",
+    id = "pattern.linear.curve_array",
     displayName = "Curve Array",
     description = "Creates repeated geometry copies along a curve using parallel-transport frames and placement",
     category = "pattern.linear",
     order = 3
 )
-public class CurveArrayGeometryNode extends BaseNode {
+public class CurveArrayNode extends BaseNode {
 
     private static final double EPS = 1.0e-9d;
 
@@ -58,8 +58,8 @@ public class CurveArrayGeometryNode extends BaseNode {
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
-    public CurveArrayGeometryNode() {
-        super(UUID.randomUUID(), "pattern.linear.curve_array_geometry");
+    public CurveArrayNode() {
+        super(UUID.randomUUID(), "pattern.linear.curve_array");
 
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to copy along the path", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_PIVOT_ID, "Pivot", "Local pivot point in the source geometry that maps to each path frame", NodeDataType.POINT, this));
@@ -97,8 +97,9 @@ public class CurveArrayGeometryNode extends BaseNode {
             return;
         }
 
-        boolean closed = PathUtils.isClosed(path);
-        List<Vector3d> unique = closed ? path.subList(0, path.size() - 1) : path;
+        PathUtils.ClosedVertices closedVerts = PathUtils.closedUniqueVertices(path);
+        List<Vector3d> unique = closedVerts.vertices();
+        boolean closed = closedVerts.closed();
         double[] cumulative = PathUtils.buildCumulative(unique, closed);
         if (cumulative == null || cumulative[cumulative.length - 1] <= EPS) {
             writeResult(List.of(), List.of(), List.of(), false);

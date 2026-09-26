@@ -48,7 +48,7 @@ class GeometryCurvesFamilyContractTest {
     private static final Set<String> PATH_CONSUMER_IDS = Set.of(
             "geometry.curves.evaluate_curve",
             "geometry.curves.resample_path",
-            "pattern.linear.path_instances",
+            "pattern.linear.path_frames",
             "geometry.curves.offset_curve_plane",
             "geometry.curves.path_to_points",
             "geometry.curves.voxelize_curve",
@@ -58,7 +58,7 @@ class GeometryCurvesFamilyContractTest {
             "geometry.curves.path_length",
             "geometry.curves.closest_point_on_path",
             "geometry.curves.fillet_polyline_corners",
-            "pattern.linear.curve_array_geometry",
+            "pattern.linear.curve_array",
             "geometry.architectural_primitives.array_along_curve",
             "transform.orientation.project_curve_to_plane",
             "output.preview.preview_curves",
@@ -165,10 +165,10 @@ class GeometryCurvesFamilyContractTest {
         assertPortType("geometry.solids.sweep_from_points", "input_path", true, NodeDataType.PATH);
         assertFalse(hasInputPort("geometry.solids.sweep", "input_path_points"));
         assertFalse(hasInputPort("geometry.solids.sweep_from_points", "input_path_points"));
-        assertPortType("pattern.linear.path_instances", "input_path", true, NodeDataType.PATH);
-        assertFalse(hasInputPort("pattern.linear.path_instances", "input_path_points"));
-        assertFalse(hasInputPort("pattern.linear.path_instances", "input_mode"));
-        assertPortType("pattern.linear.curve_array_geometry", "input_path", true, NodeDataType.PATH);
+        assertPortType("pattern.linear.path_frames", "input_path", true, NodeDataType.PATH);
+        assertFalse(hasInputPort("pattern.linear.path_frames", "input_path_points"));
+        assertFalse(hasInputPort("pattern.linear.path_frames", "input_mode"));
+        assertPortType("pattern.linear.curve_array", "input_path", true, NodeDataType.PATH);
         assertPortType("geometry.architectural_primitives.array_along_curve", "input_path", true, NodeDataType.PATH);
         assertPortType("transform.orientation.project_curve_to_plane", "input_path", true, NodeDataType.PATH);
         assertPortType("geometry.curves.closest_point_on_path", "input_path", true, NodeDataType.PATH);
@@ -305,7 +305,7 @@ class GeometryCurvesFamilyContractTest {
         assertEquals(Boolean.TRUE, resample.getOutput("output_valid"));
         assertInstanceOf(PathData.class, resample.getOutput("output_path"));
 
-        BaseNode frame = node("pattern.linear.path_instances");
+        BaseNode frame = node("pattern.linear.path_frames");
         frame.setInput("input_path", line);
         frame.processNode(null);
         assertEquals(Boolean.TRUE, frame.getOutput("output_valid"));
@@ -330,7 +330,7 @@ class GeometryCurvesFamilyContractTest {
 
         assertValidWithPath("geometry.curves.evaluate_curve", line);
         assertValidWithPath("geometry.curves.resample_path", line);
-        assertValidWithPath("pattern.linear.path_instances", line);
+        assertValidWithPath("pattern.linear.path_frames", line);
         assertValidWithPath("geometry.curves.rainbow_curve_offset", line);
         assertValidWithPath("geometry.curves.voxelize_curve", line);
 

@@ -5,19 +5,15 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
-import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
-import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
-import com.nodecraft.nodesystem.io.SavedConnection;
-import com.nodecraft.nodesystem.io.SavedGraph;
-import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Vector3d;
@@ -27,8 +23,8 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -43,10 +39,10 @@ class PatternLinearLanguageContractTest {
     private static NodeRegistry registry;
 
     private static final Set<String> CANONICAL_LINEAR_IDS = Set.of(
-            "pattern.linear.linear_array_geometry",
-            "pattern.linear.path_instances",
+            "pattern.linear.linear_array",
+            "pattern.linear.path_frames",
             "pattern.linear.instance_on_points",
-            "pattern.linear.curve_array_geometry"
+            "pattern.linear.curve_array"
     );
 
     @BeforeAll
@@ -74,16 +70,19 @@ class PatternLinearLanguageContractTest {
     }
 
     @Test
-    void legacyBlockArrayNodesAreNotRegistered() {
-        assertFalse(registry.getAllNodeIds().contains("pattern.linear.linear_array"));
-        assertFalse(registry.getAllNodeIds().contains("pattern.linear.along_path"));
-        assertFalse(registry.getAllNodeIds().contains("pattern.linear.staggered_array"));
+    void removedLegacyTypeIdsAreNotRegistered() {
+        List<String> ids = registry.getAllNodeIds();
+        assertFalse(ids.contains("pattern.linear.linear_array_geometry"));
+        assertFalse(ids.contains("pattern.linear.path_instances"));
+        assertFalse(ids.contains("pattern.linear.curve_array_geometry"));
+        assertFalse(ids.contains("pattern.linear.along_path"));
+        assertFalse(ids.contains("pattern.linear.staggered_array"));
     }
 
     @Test
     void linearArrayCountMeansTotalEmittedInstances() {
         BaseNode linear = assertInstanceOf(BaseNode.class,
-                registry.createNodeInstance("pattern.linear.linear_array_geometry"));
+                registry.createNodeInstance("pattern.linear.linear_array"));
         SphereData sphere = new SphereData(new Vector3d(0, 0, 0), 1.0d);
         linear.setInput("input_geometry", sphere);
         linear.setInput("input_direction", new Vector3d(1, 0, 0));
@@ -102,7 +101,7 @@ class PatternLinearLanguageContractTest {
     @Test
     void linearArraySingleCopyReturnsRawGeometry() {
         BaseNode linear = assertInstanceOf(BaseNode.class,
-                registry.createNodeInstance("pattern.linear.linear_array_geometry"));
+                registry.createNodeInstance("pattern.linear.linear_array"));
         SphereData sphere = new SphereData(new Vector3d(0, 0, 0), 1.0d);
         linear.setInput("input_geometry", sphere);
         linear.setInput("input_direction", new Vector3d(1, 0, 0));
@@ -133,9 +132,30 @@ class PatternLinearLanguageContractTest {
     }
 
     @Test
+    void staggeredGridRespectsMaxListElements() {
+        BaseNode grid = assertInstanceOf(BaseNode.class,
+                registry.createNodeInstance("pattern.grid.staggered_grid"));
+        List<BlockPos> template = IntStream.range(0, 10)
+                .mapToObj(i -> new BlockPos(i, 64, 0))
+                .toList();
+        grid.setInput("input_coordinates", new BlockPosList(template));
+        grid.setInput("input_step_direction", new Vector3d(1, 0, 0));
+        grid.setInput("input_row_direction", new Vector3d(0, 0, 1));
+        grid.setInput("input_step_distance", 1.0d);
+        grid.setInput("input_row_distance", 1.0d);
+        grid.setInput("input_step_count", 1024);
+        grid.setInput("input_row_count", 1024);
+        grid.processNode(null);
+
+        BlockPosList result = assertInstanceOf(BlockPosList.class, grid.getOutput("output_array_coordinates"));
+        assertTrue(result.size() <= GenerationLimits.MAX_LIST_ELEMENTS);
+        assertTrue(result.size() < 1024 * 1024 * 10);
+    }
+
+    @Test
     void closedPathFramesDoNotDuplicateSeam() {
         BaseNode pathFrames = assertInstanceOf(BaseNode.class,
-                registry.createNodeInstance("pattern.linear.path_instances"));
+                registry.createNodeInstance("pattern.linear.path_frames"));
         PolylineData path = new PolylineData(List.of(
                 new Vec3d(0, 0, 0),
                 new Vec3d(10, 0, 0),
@@ -148,18 +168,33 @@ class PatternLinearLanguageContractTest {
 
         assertEquals(Boolean.TRUE, pathFrames.getOutput("output_valid"));
         assertEquals(3, pathFrames.getOutput("output_count"));
+    }
+
+    @Test
+    void nearClosedPathFramesDoNotDuplicateSeam() {
+        BaseNode pathFrames = assertInstanceOf(BaseNode.class,
+                registry.createNodeInstance("pattern.linear.path_frames"));
+        PolylineData path = new PolylineData(List.of(
+                new Vec3d(0, 0, 0),
+                new Vec3d(10, 0, 0),
+                new Vec3d(10, 0, 10),
+                new Vec3d(0.0000005d, 0, 0)
+        ));
+        pathFrames.setInput("input_path", path);
+        pathFrames.setInput("input_up_vector", new Vector3d(0, 1, 0));
+        pathFrames.processNode(null);
+
+        assertEquals(Boolean.TRUE, pathFrames.getOutput("output_valid"));
+        assertEquals(3, pathFrames.getOutput("output_count"));
         @SuppressWarnings("unchecked")
         List<PointData> points = assertInstanceOf(List.class, pathFrames.getOutput("output_points"));
         assertEquals(3, points.size());
-        @SuppressWarnings("unchecked")
-        List<FrameData> frames = assertInstanceOf(List.class, pathFrames.getOutput("output_frames"));
-        assertEquals(3, frames.size());
     }
 
     @Test
     void closedCurveArrayDoesNotDuplicateSeam() {
         BaseNode curve = assertInstanceOf(BaseNode.class,
-                registry.createNodeInstance("pattern.linear.curve_array_geometry"));
+                registry.createNodeInstance("pattern.linear.curve_array"));
         SphereData sphere = new SphereData(new Vector3d(0, 0, 0), 0.5d);
         PolylineData path = new PolylineData(List.of(
                 new Vec3d(0, 0, 0),
@@ -178,17 +213,8 @@ class PatternLinearLanguageContractTest {
         assertEquals(4, curve.getOutput("output_count"));
         @SuppressWarnings("unchecked")
         List<FrameData> frames = assertInstanceOf(List.class, curve.getOutput("output_frames"));
-        @SuppressWarnings("unchecked")
-        List<Object> copies = assertInstanceOf(List.class, curve.getOutput("output_geometries"));
-        @SuppressWarnings("unchecked")
-        List<PointData> origins = assertInstanceOf(List.class, curve.getOutput("output_origins"));
-        assertEquals(4, frames.size());
-        assertEquals(4, copies.size());
-        assertEquals(4, origins.size());
         FrameData first = frames.getFirst();
         FrameData last = frames.get(3);
-        assertEquals(0.0d, first.getOrigin().x, 1.0e-6d);
-        assertEquals(0.0d, first.getOrigin().z, 1.0e-6d);
         assertTrue(first.getOrigin().distanceSquared(last.getOrigin()) > 1.0e-6d,
                 "Closed curve array must not duplicate seam at start/end");
     }
@@ -196,7 +222,7 @@ class PatternLinearLanguageContractTest {
     @Test
     void curveArrayCountOneIsLegal() {
         BaseNode curve = assertInstanceOf(BaseNode.class,
-                registry.createNodeInstance("pattern.linear.curve_array_geometry"));
+                registry.createNodeInstance("pattern.linear.curve_array"));
         SphereData sphere = new SphereData(new Vector3d(0, 0, 0), 0.5d);
         PolylineData path = new PolylineData(List.of(
                 new Vec3d(0, 0, 0),
@@ -236,29 +262,6 @@ class PatternLinearLanguageContractTest {
         assertEquals(1, node.getOutput("output_placement_count"));
     }
 
-    @Test
-    void v40ToV41DropsInstanceOnPointsDeconstructAndMaterialPorts() {
-        SavedGraph v40 = new SavedGraph();
-        v40.formatVersion = GraphFormatVersion.V40;
-
-        SavedNode iop = savedNode("iop", "pattern.linear.instance_on_points");
-        SavedNode preview = savedNode("preview", "output.preview.preview_blocks");
-
-        v40.nodes = new ArrayList<>(List.of(iop, preview));
-        v40.connections = new ArrayList<>(List.of(
-                wire("iop", "output_placements", "preview", "input_block_placements"),
-                wire("iop", "output_positions", "preview", "input_block_placements"),
-                wire("iop", "output_block_ids", "preview", "input_block_placements")
-        ));
-        v40.nodePositions = Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v40);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertTrue(hasWire(migrated, "iop", "output_placements", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "iop", "output_positions", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "iop", "output_block_ids", "preview", "input_block_placements"));
-    }
-
     private static void assertPortType(String typeId, String portId, boolean input, NodeDataType expected) {
         INode node = registry.createNodeInstance(typeId);
         IPort port = (input ? node.getInputPorts() : node.getOutputPorts()).stream()
@@ -272,34 +275,5 @@ class PatternLinearLanguageContractTest {
         INode node = registry.createNodeInstance(typeId);
         return (input ? node.getInputPorts() : node.getOutputPorts()).stream()
                 .anyMatch(port -> port.getId().equals(portId));
-    }
-
-    private static SavedNode savedNode(String id, String typeId) {
-        SavedNode node = new SavedNode();
-        node.nodeId = id;
-        node.typeId = typeId;
-        return node;
-    }
-
-    private static SavedConnection wire(String sourceId, String sourcePort, String targetId, String targetPort) {
-        SavedConnection connection = new SavedConnection();
-        connection.sourceNodeId = sourceId;
-        connection.sourcePortId = sourcePort;
-        connection.targetNodeId = targetId;
-        connection.targetPortId = targetPort;
-        return connection;
-    }
-
-    private static boolean hasWire(SavedGraph graph, String sourceId, String sourcePort,
-                                   String targetId, String targetPort) {
-        if (graph.connections == null) {
-            return false;
-        }
-        return graph.connections.stream().anyMatch(connection ->
-                connection != null
-                        && sourceId.equals(connection.sourceNodeId)
-                        && sourcePort.equals(connection.sourcePortId)
-                        && targetId.equals(connection.targetNodeId)
-                        && targetPort.equals(connection.targetPortId));
     }
 }

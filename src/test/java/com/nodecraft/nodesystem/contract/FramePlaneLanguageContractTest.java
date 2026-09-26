@@ -48,7 +48,7 @@ class FramePlaneLanguageContractTest {
             "reference.planes.offset_plane",
             "reference.planes.block_face_plane",
             "transform.basic_transforms.transform_by_frames",
-            "pattern.linear.path_instances"
+            "pattern.linear.path_frames"
     );
 
     @BeforeAll
@@ -261,10 +261,10 @@ class FramePlaneLanguageContractTest {
 
     @Test
     void pathFramesUnchanged() {
-        assertPortType("pattern.linear.path_instances", "output_frames", false, NodeDataType.FRAME_LIST);
-        assertPortType("pattern.linear.path_instances", "output_points", false, NodeDataType.POINT_LIST);
-        assertPortType("pattern.linear.path_instances", "output_tangents", false, NodeDataType.VECTOR_LIST);
-        assertPortType("pattern.linear.path_instances", "output_length", false, NodeDataType.DOUBLE);
+        assertPortType("pattern.linear.path_frames", "output_frames", false, NodeDataType.FRAME_LIST);
+        assertPortType("pattern.linear.path_frames", "output_points", false, NodeDataType.POINT_LIST);
+        assertPortType("pattern.linear.path_frames", "output_tangents", false, NodeDataType.VECTOR_LIST);
+        assertPortType("pattern.linear.path_frames", "output_length", false, NodeDataType.DOUBLE);
     }
 
     @Test

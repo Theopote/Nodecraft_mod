@@ -16,7 +16,32 @@ public final class PathUtils {
 
     private static final double EPS = 1.0e-9d;
 
+    /** Distance tolerance for treating polyline endpoints as closed (matches {@link #isClosed}). */
+    public static final double CLOSED_DISTANCE_EPSILON = 1.0e-6d;
+
     private PathUtils() {
+    }
+
+    /**
+     * Unique polyline vertices for frame/sampling: when closed, drops the duplicate seam vertex
+     * using the same tolerance as {@link #isClosed(List)}.
+     */
+    public record ClosedVertices(List<Vector3d> vertices, boolean closed) {
+    }
+
+    /**
+     * Returns closed unique vertices. For a near-closed polyline {@code A-B-C-A'} where
+     * {@code distance(A, A') < CLOSED_DISTANCE_EPSILON}, the result is {@code [A, B, C]} with
+     * {@code closed=true}.
+     */
+    public static ClosedVertices closedUniqueVertices(List<Vector3d> samples) {
+        List<Vector3d> verts = new ArrayList<>(samples);
+        boolean closed = isClosed(verts);
+        if (closed && verts.size() > 1
+                && verts.getFirst().distance(verts.getLast()) < CLOSED_DISTANCE_EPSILON) {
+            verts = new ArrayList<>(verts.subList(0, verts.size() - 1));
+        }
+        return new ClosedVertices(List.copyOf(verts), closed);
     }
 
     /**
@@ -72,7 +97,7 @@ public final class PathUtils {
         }
         Vector3d first = verts.getFirst();
         Vector3d last = verts.getLast();
-        return first.distance(last) < 1.0e-6d;
+        return first.distance(last) < CLOSED_DISTANCE_EPSILON;
     }
 
     public static double @Nullable [] buildCumulative(List<Vector3d> unique, boolean closed) {

@@ -29,7 +29,7 @@ import java.util.UUID;
  * Samples a path and generates local frames (origin + axes) along it.
  */
 /**
- * @deprecated Merged into {@link com.nodecraft.nodesystem.nodes.pattern.linear.PathInstancesNode}.
+ * @deprecated Merged into {@link com.nodecraft.nodesystem.nodes.pattern.linear.PathFramesNode}.
  * Graph migration V11→V12 remaps saved graphs automatically.
  */
 @Deprecated

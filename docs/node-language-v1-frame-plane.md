@@ -1,4 +1,4 @@
-# Node Language v1 â€” Frame & Plane
+# Node Language v1 â€?Frame & Plane
 
 ## PLANE
 
@@ -21,11 +21,11 @@ Requirements:
 
 ```text
 |X| = |Y| = |Z| = 1
-X âŸ‚ Y, Y âŸ‚ Z, Z âŸ‚ X
+X âŸ?Y, Y âŸ?Z, Z âŸ?X
 Z = X Ã— Y
 ```
 
-FRAME represents **position + orientation only** â€” not scale, not shear.
+FRAME represents **position + orientation only** â€?not scale, not shear.
 
 All FRAME producers must output orthonormal right-handed frames via `FrameData.orthonormal(...)`.
 
@@ -41,9 +41,9 @@ PLANE
 Deconstruct nodes expand internal fields:
 
 ```text
-FRAME      â†’ Deconstruct Frame
-FRAME_LIST â†’ Deconstruct Frames
-PLANE      â†’ Deconstruct Plane
+FRAME      â†?Deconstruct Frame
+FRAME_LIST â†?Deconstruct Frames
+PLANE      â†?Deconstruct Plane
 ```
 
 Do not duplicate Origin/X/Y/Z/Plane on every producer.
@@ -53,11 +53,11 @@ Do not duplicate Origin/X/Y/Z/Plane on every producer.
 | Type | Contains | Missing |
 |------|----------|---------|
 | PLANE | Origin, Normal | Stable tangent orientation |
-| FRAME | Origin, X, Y, Z | â€” |
+| FRAME | Origin, X, Y, Z | â€?|
 
 ```text
-Plane â†’ Frame requires X Hint (or deterministic fallback)
-Frame â†’ Plane via Deconstruct Frame (origin + Z normal)
+Plane â†?Frame requires X Hint (or deterministic fallback)
+Frame â†?Plane via Deconstruct Frame (origin + Z normal)
 ```
 
 ## Core nodes
@@ -88,14 +88,14 @@ Frame â†’ Plane via Deconstruct Frame (origin + Z normal)
 
 | Node | id | Notes |
 |------|-----|-------|
-| Path Frames | `pattern.linear.path_instances` | Frames + path sampling (Points, Tangents) |
+| Path Frames | `pattern.linear.path_frames` | Frames + path sampling (Points, Tangents) |
 | Face Center Frame | `reference.frames.frame_from_face` | Frame + Center |
 | Sphere Surface Frame | `reference.frames.frame_along_surface` | Frame + Surface Point + Normal |
 
 ## Transform Frame
 
 - Input: `FRAME` + Translation + Rotation XYZ (degrees)
-- No Scale â€” scale belongs on geometry transform nodes
+- No Scale â€?scale belongs on geometry transform nodes
 - No decomposed Origin/X/Y/Z inputs
 - Output: `FRAME` + `Valid` only
 
@@ -114,7 +114,7 @@ Frame â†’ Plane via Deconstruct Frame (origin + Z normal)
 Typical chain:
 
 ```text
-Path Frames â†’ FRAME_LIST â†’ Transform Points by Frames
+Path Frames â†?FRAME_LIST â†?Transform Points by Frames
 ```
 
 ## Resample / sampling
@@ -123,7 +123,7 @@ Resample Path remains the only arc-length sampling node for paths. Path Frames u
 
 ## Graph migration (V17â†’V18)
 
-Removed producer ports are dropped from saved graphs. Old decomposed-frame connections to Transform Points by Frames cannot be auto-synthesized â€” repair manually using `FRAME_LIST`.
+Removed producer ports are dropped from saved graphs. Old decomposed-frame connections to Transform Points by Frames cannot be auto-synthesized â€?repair manually using `FRAME_LIST`.
 
 ## Known limitations
 

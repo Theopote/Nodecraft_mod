@@ -39,7 +39,7 @@ class PatternArrayFamilyContractTest {
     @Test
     void countMeansTotalEmittedInstances() {
         BaseNode linear = assertInstanceOf(BaseNode.class,
-            NodeRegistry.getInstance().createNodeInstance("pattern.linear.linear_array_geometry"));
+            NodeRegistry.getInstance().createNodeInstance("pattern.linear.linear_array"));
         SphereData sphere = new SphereData(new Vector3d(0, 0, 0), 1.0d);
         linear.setInput("input_geometry", sphere);
         linear.setInput("input_direction", new Vector3d(1, 0, 0));
@@ -77,18 +77,18 @@ class PatternArrayFamilyContractTest {
         SphereData last = assertInstanceOf(SphereData.class, copies.get(3));
         assertEquals(2.0d, first.getCenter().x, 1.0e-6d);
         assertEquals(0.0d, first.getCenter().z, 1.0e-6d);
-        // 270° for i=3 with Count=4 / 360° — not a duplicate of 0°
+        // 270° for i=3 with Count=4 / 360° �?not a duplicate of 0°
         assertEquals(0.0d, last.getCenter().x, 1.0e-6d);
         assertEquals(2.0d, last.getCenter().z, 1.0e-6d);
     }
 
     @Test
     void curveArrayUsesFrameListAndPlacement() {
-        assertPortType("pattern.linear.curve_array_geometry", "input_path", true, NodeDataType.PATH);
-        assertPortType("pattern.linear.curve_array_geometry", "output_frames", false, NodeDataType.FRAME_LIST);
+        assertPortType("pattern.linear.curve_array", "input_path", true, NodeDataType.PATH);
+        assertPortType("pattern.linear.curve_array", "output_frames", false, NodeDataType.FRAME_LIST);
 
         BaseNode curve = assertInstanceOf(BaseNode.class,
-            NodeRegistry.getInstance().createNodeInstance("pattern.linear.curve_array_geometry"));
+            NodeRegistry.getInstance().createNodeInstance("pattern.linear.curve_array"));
         SphereData sphere = new SphereData(new Vector3d(0, 0, 0), 0.5d);
         PolylineData path = new PolylineData(List.of(
             new Vec3d(0, 0, 0),
@@ -112,10 +112,10 @@ class PatternArrayFamilyContractTest {
 
     @Test
     void pathFramesStayContinuousWithoutBlockFloor() {
-        assertPortType("pattern.linear.path_instances", "output_frames", false, NodeDataType.FRAME_LIST);
+        assertPortType("pattern.linear.path_frames", "output_frames", false, NodeDataType.FRAME_LIST);
 
         BaseNode pathFrames = assertInstanceOf(BaseNode.class,
-            NodeRegistry.getInstance().createNodeInstance("pattern.linear.path_instances"));
+            NodeRegistry.getInstance().createNodeInstance("pattern.linear.path_frames"));
         PolylineData path = new PolylineData(List.of(
             new Vec3d(1.8, 2.4, 3.9),
             new Vec3d(4.2, 2.4, 5.1)

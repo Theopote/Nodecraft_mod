@@ -256,14 +256,13 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("seed_radius", "input.numeric.float", -760.0f, 40.0f,
             createNodeState("value", seedRadius, "min", 0.25f, "max", 8.0f, "precision", 2, "showLabel", false)));
         nodes.add(new MockNode("seed_sphere", "geometry.primitives.sphere", -520.0f, 40.0f, null));
-        nodes.add(new MockNode("seed_bake", "geometry.voxel.voxelize_geometry", -260.0f, 40.0f,
-            createNodeState("fillGeometry", true)));
-
         nodes.add(new MockNode("helix", "geometry.curves.helix", -520.0f, 280.0f, null));
         nodes.add(new MockNode("path_preview", "output.preview.preview_curves", -260.0f, 280.0f,
             createNodeState("previewEnabled", true, "pathColor", "#FFD933", "lineWidth", 1.8f, "showDirection", true)));
-        nodes.add(new MockNode("along_path", "pattern.linear.along_path", 40.0f, 180.0f,
-            createNodeState("orientToPath", true, "deduplicateAnchors", true)));
+        nodes.add(new MockNode("curve_array", "pattern.linear.curve_array", 40.0f, 180.0f,
+            createNodeState("orientToPath", true, "includeEnds", true)));
+        nodes.add(new MockNode("array_bake", "geometry.voxel.voxelize_geometry", 200.0f, 180.0f,
+            createNodeState("fillGeometry", true)));
 
         nodes.add(new MockNode("preview", "output.preview.geometry_viewer", 360.0f, 80.0f,
             createNodeState("previewEnabled", true, "previewColor", "#45B36B", "transparency", 0.36f, "showOutline", false)));
@@ -272,8 +271,6 @@ public final class AiMockPlanService {
 
         connections.add(new MockConnection("center", "output_coordinate", "seed_sphere", "input_center"));
         connections.add(new MockConnection("seed_radius", "output_value", "seed_sphere", "input_radius"));
-        connections.add(new MockConnection("seed_sphere", "output_geometry", "seed_bake", "input_geometry"));
-
         connections.add(new MockConnection("center", "output_coordinate", "helix", "input_center"));
         connections.add(new MockConnection("axis", "output_vector", "helix", "input_axis"));
         connections.add(new MockConnection("radius", "output_value", "helix", "input_radius"));
@@ -282,11 +279,11 @@ public final class AiMockPlanService {
         connections.add(new MockConnection("segments", "output_value", "helix", "input_segments_per_turn"));
 
         connections.add(new MockConnection("helix", "output_curve", "path_preview", "input_path"));
-        connections.add(new MockConnection("seed_bake", "output_blocks", "along_path", "input_coordinates"));
-        connections.add(new MockConnection("helix", "output_curve", "along_path", "input_path"));
-
-        connections.add(new MockConnection("along_path", "output_array_coordinates", "preview", "input_blocks"));
-        connections.add(new MockConnection("along_path", "output_array_coordinates", "apply", "input_blocks"));
+        connections.add(new MockConnection("seed_sphere", "output_geometry", "curve_array", "input_geometry"));
+        connections.add(new MockConnection("helix", "output_curve", "curve_array", "input_path"));
+        connections.add(new MockConnection("curve_array", "output_geometry", "array_bake", "input_geometry"));
+        connections.add(new MockConnection("array_bake", "output_blocks", "preview", "input_blocks"));
+        connections.add(new MockConnection("array_bake", "output_blocks", "apply", "input_blocks"));
     }
 
     private static void buildTowerTemplate(ParsedParameters params, List<MockNode> nodes, List<MockConnection> connections) {
@@ -340,11 +337,10 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("seed_radius", "input.numeric.float", -760.0f, 20.0f,
             createNodeState("value", seedRadius, "min", 0.25f, "max", 8.0f, "precision", 2, "showLabel", false)));
         nodes.add(new MockNode("seed_sphere", "geometry.primitives.sphere", -540.0f, 20.0f, null));
-        nodes.add(new MockNode("seed_bake", "geometry.voxel.voxelize_geometry", -280.0f, 20.0f,
+        nodes.add(new MockNode("curve_array", "pattern.linear.curve_array", 20.0f, 120.0f,
+            createNodeState("orientToPath", true, "includeEnds", true)));
+        nodes.add(new MockNode("array_bake", "geometry.voxel.voxelize_geometry", 180.0f, 120.0f,
             createNodeState("fillGeometry", true)));
-
-        nodes.add(new MockNode("along_path", "pattern.linear.along_path", 20.0f, 120.0f,
-            createNodeState("orientToPath", true, "deduplicateAnchors", true)));
         nodes.add(new MockNode("preview", "output.preview.geometry_viewer", 360.0f, 40.0f,
             createNodeState("previewEnabled", true, "previewColor", "#F4A261", "transparency", 0.34f, "showOutline", false)));
         nodes.add(new MockNode("apply", "output.execute.apply_changes", 360.0f, 220.0f,
@@ -361,13 +357,11 @@ public final class AiMockPlanService {
 
         connections.add(new MockConnection("arch_center", "output_coordinate", "seed_sphere", "input_center"));
         connections.add(new MockConnection("seed_radius", "output_value", "seed_sphere", "input_radius"));
-        connections.add(new MockConnection("seed_sphere", "output_geometry", "seed_bake", "input_geometry"));
-
-        connections.add(new MockConnection("seed_bake", "output_blocks", "along_path", "input_coordinates"));
-        connections.add(new MockConnection("arch_curve", "output_curve", "along_path", "input_path"));
-
-        connections.add(new MockConnection("along_path", "output_array_coordinates", "preview", "input_blocks"));
-        connections.add(new MockConnection("along_path", "output_array_coordinates", "apply", "input_blocks"));
+        connections.add(new MockConnection("seed_sphere", "output_geometry", "curve_array", "input_geometry"));
+        connections.add(new MockConnection("arch_curve", "output_curve", "curve_array", "input_path"));
+        connections.add(new MockConnection("curve_array", "output_geometry", "array_bake", "input_geometry"));
+        connections.add(new MockConnection("array_bake", "output_blocks", "preview", "input_blocks"));
+        connections.add(new MockConnection("array_bake", "output_blocks", "apply", "input_blocks"));
     }
 
     private static void buildRingWalkwayTemplate(ParsedParameters params, List<MockNode> nodes, List<MockConnection> connections) {
