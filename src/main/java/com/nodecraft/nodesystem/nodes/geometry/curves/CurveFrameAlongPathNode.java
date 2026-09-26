@@ -1,23 +1,16 @@
 package com.nodecraft.nodesystem.nodes.geometry.curves;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
-import com.nodecraft.nodesystem.api.NodeEffect;
-import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
-import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.PathFrameUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -140,7 +133,7 @@ public class CurveFrameAlongPathNode extends AbstractCurveNode {
                 emitted++;
             }
             if (emitted < maxInstances
-                && (sampleDistances.isEmpty() || sampleDistances.get(sampleDistances.size() - 1) < total - EPS)) {
+                && (sampleDistances.isEmpty() || sampleDistances.getLast() < total - EPS)) {
                 sampleDistances.add(total);
             }
         } else {
