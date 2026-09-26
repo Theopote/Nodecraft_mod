@@ -230,10 +230,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         ActiveSource active = resolveActiveSource();
         switch (active) {
             case COORDINATES -> tryProcessInputCoordinates(context);
-            case PICKED -> {
-                // Pick data already stored; drop stale coordinate errors.
-                clearInputValidationState();
-            }
+            case PICKED -> // Pick data already stored; drop stale coordinate errors.
+                    clearInputValidationState();
             case NONE -> {
                 clearInputValidationState();
                 if (!hasPickedBlock) {
